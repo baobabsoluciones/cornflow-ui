@@ -1,4 +1,4 @@
-export class Solution {
+export class SolutionCore {
   id: string;
   data: object;
   checks: object;

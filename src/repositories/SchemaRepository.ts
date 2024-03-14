@@ -1,5 +1,6 @@
 import  client from "@/api/Api";
 import { SchemaConfig } from "@/models/SchemaConfig";
+import jsonschema from 'jsonschema';
 
 export default class SchemaRepository {
   // Get schema for the app
@@ -12,6 +13,10 @@ export default class SchemaRepository {
     } else {
       throw new Error("Error getting schema")
     }
- }
+  }
+
+  checkSchema(data: any, schemaJson: any) {
+    return jsonschema.validate(data, schemaJson);
+  }
 
 }

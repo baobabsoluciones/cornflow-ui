@@ -1,4 +1,4 @@
-export class Instance {
+export class InstanceCore {
   id: string;
   data: object;
   checks: object;

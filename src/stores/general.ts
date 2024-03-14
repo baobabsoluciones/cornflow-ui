@@ -5,6 +5,7 @@ import fullLogo from '@/app/assets/logo/full_logo.png'
 
 import { SchemaConfig } from "@/models/SchemaConfig";
 import { Execution } from "@/models/Execution";
+import { LoadedExecution } from "@/models/LoadedExecution";
 
 import SchemaRepository from '@/repositories/SchemaRepository';
 import ExecutionRepository from "@/repositories/ExecutionRepository";
@@ -24,10 +25,10 @@ export const useGeneralStore = defineStore("general", {
     appPages: config.getPages(),
     appDashboard: config.getDashboard(),
     lastExecutions: [] as Execution[],
+    loadedExecutions: [] as LoadedExecution[],
   }),
   actions: {
     async initializeData() {
-
       await this.setSchema();
       await this.fetchLastExecutions();
     },
@@ -52,6 +53,27 @@ export const useGeneralStore = defineStore("general", {
       } catch (error) {
         console.error('Error getting last executions', error);
       }
+    },
+
+    async fetchLoadedExecution(id: string) {
+      try {
+        const loadedExecution = await this.executionRepository.loadExecution(id);
+        this.addLoadedExecution(loadedExecution);
+      } catch (error) {
+        console.error('Error getting loaded execution', error);
+      }
+    },
+
+    addLoadedExecution(loadedExecution: LoadedExecution) {
+      this.loadedExecutions.push(loadedExecution);
+    },
+
+    removeLoadedExecution(index: number) {
+      this.loadedExecutions.splice(index, 1);
+     },
+
+    resetLoadedExecutions() {
+      this.loadedExecutions = [];
     },
 
     addNotification(notification: { message: string; type: 'success' | 'warning' | 'info' | 'error' }) {

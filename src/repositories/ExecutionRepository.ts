@@ -2,6 +2,7 @@ import  client from "@/api/Api";
 import { Execution } from "@/models/Execution";
 import { LoadedExecution } from "@/models/LoadedExecution";
 import { useGeneralStore } from "@/stores/general";
+import InstanceRepository from "./InstanceRepository";
 
 export default class ExecutionRepository {
 
@@ -23,24 +24,39 @@ export default class ExecutionRepository {
     }
   }
 
+  // Get full execution data by id
   async loadExecution(id: string): Promise<LoadedExecution> {
     const response = await client.get(`/execution/${id}/data/`);
 
     if (response.status === 200) {
       const execution = response.content;
-      const instanceResponse = await client.get(`/instance/${execution.instance_id}/`);
-      if (instanceResponse.status === 200) {
-        const instanceContent = instanceResponse.content;
-        const { Instance, Solution} = useGeneralStore().appConfig;
-        const instance = new Instance(instanceContent.id, instanceContent.data, instanceContent.checks, useGeneralStore().schemaConfig.instanceSchema);
+      const instanceRepository = new InstanceRepository();
+      const instance = await instanceRepository.getInstance(execution.instance_id);
+      if (instance) {
+        const { Solution, Experiment} = useGeneralStore().appConfig;
         const solution = new Solution(execution.id, execution.data, execution.checks, useGeneralStore().schemaConfig.solutionSchema);
-        return new LoadedExecution(instance, solution, execution.id, execution.name, execution.description, execution.created_at)
+        const experiment = new Experiment(instance, solution);
+        return new LoadedExecution(experiment, execution.id, execution.name, execution.description, execution.created_at)
       } else {
         throw new Error("Error loading instance")
       }
     } else {
       throw new Error("Error loading execution")
     }
+  }
+
+  async createExecution() {
+    
+
+  }
+
+  async deleteExecution(id: string) {
+    const response = await client.remove(`/execution/${id}/`);
+    return response;
+  }
+
+  async refreshExecution(id: string) {
+
   }
 
 }

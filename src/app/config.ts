@@ -21,9 +21,9 @@
  * 
  * const app = {
  *   core: {
- *     Experiment: ExperimentCore,
- *     Instance: InstanceCore,
- *     Solution: SolutionCore,
+ *     Experiment: Experiment,
+ *     Instance: Instance,
+ *     Solution: Solution,
  *     AppConfig: {
  *       isPilotVersion: false,
  *       showTimeLimit: true,
@@ -87,13 +87,13 @@
  *    ```
  */
 
-// import { ExperimentCore } from '@/models/Experiment.ts'
-import { Instance } from '@/models/Instance.ts'
-import { Solution } from '@/models/Solution.ts'
+import { Instance } from '@/app/models/Instance.ts'
+import { Solution } from '@/app/models/Solution.ts'
+import { Experiment } from '@/app/models/Experiment.ts'
 
 const app = {
   core: {
-    Experiment: '',
+    Experiment: Experiment,
     Instance: Instance,
     Solution: Solution,
     parameters: {

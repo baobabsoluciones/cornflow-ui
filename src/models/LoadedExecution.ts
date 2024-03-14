@@ -1,24 +1,20 @@
-import { Instance } from "./Instance";
-import { Solution } from "./Solution";
+import { ExperimentCore } from "./Experiment";
 
 export class LoadedExecution {
-  instance: Instance;
-  solution: Solution;
+  experiment: ExperimentCore;
   executionId: string;
   name: string;
   description: string;
   createdAt: string;
 
   constructor(
-    instance: Instance, 
-    solution: Solution, 
+    experiment: ExperimentCore,
     executionId: string, 
     name: string, 
     description: string, 
     createdAt: string
   ) {
-    this.instance = instance;
-    this.solution = solution;
+    this.experiment = experiment;
     this.executionId = executionId;
     this.name = name;
     this.description = description;
