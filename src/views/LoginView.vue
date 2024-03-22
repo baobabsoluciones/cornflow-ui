@@ -18,7 +18,7 @@
 
                 <div class="actions">
                     <v-btn class="primary-btn" @click="submitLogIn()" :disabled="!isValidForm">
-                        <span style="font-size:10px !important">ACCEDER</span>
+                        <span style="font-size:10px !important">{{ $t('message.hello') }}</span>
                     </v-btn>
                 </div>
             </div>
