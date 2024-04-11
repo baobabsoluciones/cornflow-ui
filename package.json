@@ -13,6 +13,7 @@
     "@types/webfontloader": "^1.6.38",
     "jsonschema": "^1.4.1",
     "pinia": "^2.1.7",
+    "prettier": "^3.2.5",
     "vite-plugin-vuetify": "^2.0.2",
     "vue": "^3.3.11",
     "vue-i18n": "^9.9.0",

@@ -1,0 +1,17 @@
+.main-container {
+  margin-left: 56px !important;
+  min-height: 100vh;
+  background-color: var(--cf-background);
+}
+
+.view-container {
+  padding: 40px 60px 60px 60px;
+}
+
+h4 {
+  font-weight: 500;
+}
+
+h5 {
+  font-weight: 500;
+}

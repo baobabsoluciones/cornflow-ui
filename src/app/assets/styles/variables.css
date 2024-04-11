@@ -1,11 +1,12 @@
 :root {
-    --cf-primary: #1594f1;
-    --cf-info: #181926;
-    --cf-success: #3ba780;
-    --cf-warning: #b99748;
-    --cf-danger: #f44336;
-    --cf-background: #F6EDEA;
-    --cf-secondary: #f7be68;
-    --cf-accent: #4DC3DD;
-    --cf-dark-accent: #181926;
+  --cf-primary: #1594f1;
+  --cf-info: #181926;
+  --cf-success: #3ba780;
+  --cf-warning: #b99748;
+  --cf-danger: #f44336;
+  --cf-background: #f5f5f7;
+  --cf-secondary: #f7be68;
+  --cf-accent: #4dc3dd;
+  --cf-dark-accent: #181926;
+  --cf-disabled: #f2f4f7;
 }
