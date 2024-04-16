@@ -1,10 +1,13 @@
+import Ajv from 'ajv'
+const ajv = new Ajv()
+
 export class SchemaConfig {
-  config: any;
-  instanceSchema: any;
-  instanceChecksSchema: any;
-  solutionSchema: any;
-  solutionChecksSchema: any;
-  name: string;
+  config: any
+  instanceSchema: any
+  instanceChecksSchema: any
+  solutionSchema: any
+  solutionChecksSchema: any
+  name: string
 
   constructor(
     config: any,
@@ -14,11 +17,11 @@ export class SchemaConfig {
     solutionChecksSchema: any,
     name: string,
   ) {
-    this.config = config;
-    this.instanceSchema = instanceSchema;
-    this.instanceChecksSchema = instanceChecksSchema;
-    this.solutionSchema = solutionSchema;
-    this.name = name;
-    this.solutionChecksSchema = solutionChecksSchema;
+    this.config = config
+    this.instanceSchema = instanceSchema
+    this.instanceChecksSchema = instanceChecksSchema
+    this.solutionSchema = solutionSchema
+    this.name = name
+    this.solutionChecksSchema = solutionChecksSchema
   }
 }

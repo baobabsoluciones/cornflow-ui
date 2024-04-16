@@ -14,11 +14,17 @@
                   'future-step': currentStep < index,
                 }"
               >
-                <v-icon v-if="currentStep > index">mdi-check-circle</v-icon>
-                <v-icon v-else-if="currentStep === index"
+                <v-icon
+                  color="var(--primary-variant)"
+                  v-if="currentStep > index"
+                  >mdi-check-circle</v-icon
+                >
+                <v-icon
+                  color="var(--primary-variant)"
+                  v-else-if="currentStep === index"
                   >mdi-record-circle</v-icon
                 >
-                <v-icon v-else color="var(--cf-disabled)"
+                <v-icon v-else color="var(--disabled)"
                   >mdi-record-circle</v-icon
                 >
                 <div
@@ -46,15 +52,14 @@
               <div
                 class="ml-4"
                 v-if="steps[currentStep].subtitleContent"
+                v-html="steps[currentStep].subtitleContent"
                 style="
                   word-wrap: break-word;
                   font-size: 0.85rem;
                   color: var(--subtitle);
                   margin-top: -8px;
                 "
-              >
-                {{ steps[currentStep].subtitleContent }}
-              </div>
+              ></div>
             </slot>
             <div class="ml-4 mb-2">
               <slot :name="`step-${currentStep}-content`"></slot>
@@ -68,6 +73,7 @@
                 color="primary"
                 v-if="currentStep > 0"
                 @click="currentStep--"
+                :disabled="disablePreviousButton"
               >
                 <v-icon left>mdi-arrow-left</v-icon>
                 {{ previousButtonText }}
@@ -80,6 +86,7 @@
                 color="primary"
                 v-if="currentStep < steps.length - 1"
                 @click="currentStep++"
+                :disabled="disableNextButton"
               >
                 {{ continueButtonText }}
                 <v-icon right>mdi-arrow-right</v-icon>
@@ -109,11 +116,24 @@ export default {
       type: String,
       default: 'Continue',
     },
+    disablePreviousButton: {
+      type: Boolean,
+      default: false,
+    },
+    disableNextButton: {
+      type: Boolean,
+      default: false,
+    },
   },
   data() {
     return {
       currentStep: 0,
     }
+  },
+  watch: {
+    currentStep(newStep) {
+      this.$emit('update:currentStep', newStep)
+    },
   },
 }
 </script>
@@ -154,7 +174,7 @@ export default {
   left: 50%;
   height: 150%;
   width: 2px;
-  background-color: black;
+  background-color: var(--primary-variant) !important;
   transform: translateX(-50%);
 }
 
@@ -164,7 +184,7 @@ export default {
 
 .icon-container.current-step::after,
 .icon-container.future-step::after {
-  background-color: var(--cf-disabled);
+  background-color: var(--disabled) !important;
 }
 
 .icon-container.last-icon::after {

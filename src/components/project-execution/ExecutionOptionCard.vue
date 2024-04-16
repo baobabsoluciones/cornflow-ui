@@ -10,7 +10,7 @@
           <h4 class="flex-grow-1 ml-2">{{ title }}</h4>
           <v-checkbox
             class="mr-2"
-            color="black"
+            color="primary"
             hide-details
             v-model="isChecked"
           ></v-checkbox>

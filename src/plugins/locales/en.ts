@@ -3,6 +3,8 @@ export default {
     title: 'Project execution',
     description:
       'Create a new execution or load an existing one to visualize the solution you are looking for. To do so, follow the steps below:',
+    continueButton: 'Continue',
+    previousButton: 'Previous',
     steps: {
       step1: {
         title: 'New execution',
@@ -34,6 +36,16 @@ export default {
         description: 'Load a file with the instance data',
         titleContent: 'Load instance',
         subtitleContent: 'Select a file to load the instance data',
+        loadInstance: {
+          dragAndDropDescription: 'Drag and drop your instance file here',
+          uploadFile: 'Upload file',
+          noSchemaError:
+            'No schema was found: are you connected to the server?',
+          instanceSchemaError: 'Instance does not comply with schema ',
+          instanceLoaded: 'Instance loaded successfully',
+          invalidFileFormat: 'Invalid file format. Please try again.',
+          unexpectedError: 'An unexpected error occurred. Please try again.',
+        },
       },
       step3: {
         title: 'Select solver',
@@ -47,6 +59,9 @@ export default {
         description: 'Select the maximum time for the execution',
         titleContent: 'Fill the following information',
         subtitleContent: 'Select how long you want the execution run to last',
+        timeLimitPlaceholder: 'Please insert',
+        time: 'Time',
+        secondsSuffix: 'sec',
       },
       step5: {
         title: 'Name and description',
@@ -54,13 +69,19 @@ export default {
         titleContent: 'Fill the following information',
         subtitleContent:
           'Please provide a name and a brief description for the execution to be created. This will aid in searching and identifying it. We recommend keeping them brief and as concise as possible',
+        nameTitleField: 'Name',
+        descriptionTitleField: 'Description',
+        namePlaceholder: 'Please insert a name',
+        descriptionPlaceholder: 'Please insert a description',
       },
       step6: {
         title: 'Confirm',
         description: 'Confirm the execution data and start the execution',
         titleContent: 'Execution resolution confirmation',
         subtitleContent:
-          'If you choose to resolve the execution, the model will automatically initiate resolution and will take the estimated time to finish. You can access its status by opening the tab with the assigned name on the bottom horizontal bar. If you decide to review the data you´ve inputted, a tab will be created on the same bottom horizontal bar, and you´ll have access to the input data to modify as necessary. From there, you can proceed to resolve the execution',
+          "If you choose to resolve the execution, the model will automatically initiate resolution and will take the estimated time to finish. You can access its status by opening the tab with the assigned name on the bottom horizontal bar.<br><br>If you decide to review the data you've inputted, a tab will be created on the same bottom horizontal bar, and you'll have access to the input data to modify as necessary. From there, you can proceed to resolve the execution.",
+        resolve: 'Resolve',
+        review: 'Review',
       },
     },
   },

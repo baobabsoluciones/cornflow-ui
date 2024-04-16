@@ -1,7 +1,7 @@
 .main-container {
   margin-left: 56px !important;
   min-height: 100vh;
-  background-color: var(--cf-background);
+  background-color: var(--background);
 }
 
 .view-container {

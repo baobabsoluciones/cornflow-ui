@@ -5,7 +5,15 @@
       :title="title"
       :description="description"
     />
-    <FormSteps :steps="steps" class="mt-5">
+    <FormSteps
+      :steps="steps"
+      :disablePreviousButton="disablePrevButton"
+      :disableNextButton="disableNextButton"
+      :continueButtonText="$t('projectExecution.continueButton')"
+      :previousButtonText="$t('projectExecution.previousButton')"
+      @update:currentStep="handleStepChange"
+      class="mt-5"
+    >
       <template v-for="(step, index) in steps" v-slot:[`step-${index}-content`]>
         <!-- Template for step 1 -->
         <template v-if="index === 0">
@@ -35,20 +43,92 @@
         <template
           v-else-if="index === 1 && optionSelected === 'createExecution'"
         >
-          <LoadInstanceStepTwo class="mt-4"> </LoadInstanceStepTwo>
+          <LoadInstanceStepTwo
+            :fileSelected="instanceFile"
+            @fileSelected="handleInstanceFileSelected"
+            @instanceSelected="handleInstanceSelected"
+            class="mt-4"
+          >
+          </LoadInstanceStepTwo>
         </template>
 
         <!-- Template for create execution step 3 -->
-        <template v-else-if="index === 2"> </template>
+        <template v-else-if="index === 2">
+          <CheckboxOptions
+            :options="solvers"
+            :multiple="false"
+            @update:options="solvers = $event"
+            class="mt-4"
+          />
+        </template>
 
         <!-- Template for create execution step 4 -->
-        <template v-else-if="index === 3"> </template>
+        <template v-else-if="index === 3">
+          <div style="width: 40%">
+            <InputField
+              class="mt-4"
+              v-model="newExecution.timeLimit"
+              :title="$t('projectExecution.steps.step4.time')"
+              :placeholder="
+                $t('projectExecution.steps.step4.timeLimitPlaceholder')
+              "
+              type="number"
+              :suffix="$t('projectExecution.steps.step4.secondsSuffix')"
+              prependInnerIcon="mdi-clock-time-four-outline"
+            >
+            </InputField>
+          </div>
+        </template>
 
-        <!-- Template for create execution step 5 -->
-        <template v-else-if="index === 4"> </template>
+        <template v-else-if="index === 4">
+          <div class="input-fields-container">
+            <div class="input-field">
+              <InputField
+                v-model="newExecution.name"
+                :title="$t('projectExecution.steps.step5.nameTitleField')"
+                :placeholder="
+                  $t('projectExecution.steps.step5.namePlaceholder')
+                "
+                type="text"
+              />
+            </div>
+            <div class="input-field">
+              <InputField
+                v-model="newExecution.description"
+                :title="
+                  $t('projectExecution.steps.step5.descriptionTitleField')
+                "
+                :placeholder="
+                  $t('projectExecution.steps.step5.descriptionPlaceholder')
+                "
+                type="text"
+                prependInnerIcon="mdi-text"
+              />
+            </div>
+          </div>
+        </template>
 
         <!-- Template for create execution step 6 -->
-        <template v-else-if="index === 5"> </template>
+        <template v-else-if="index === 5">
+          <div class="mt-4 d-flex justify-center">
+            <v-btn
+              @click="createExecution(false)"
+              variant="outlined"
+              prepend-icon="mdi-magnify"
+              class="mr-10"
+            >
+              {{ $t('projectExecution.steps.step6.review') }}
+            </v-btn>
+            <v-btn
+              @click="createExecution(true)"
+              class="ml-2"
+              variant="outlined"
+              prepend-icon="mdi-play"
+            >
+              {{ $t('projectExecution.steps.step6.resolve') }}
+            </v-btn>
+          </div>
+        </template>
       </template>
 
       <!-- Template for continue button for search execution action -->
@@ -84,6 +164,8 @@ import CreateExecutionStepOne from '@/components/project-execution/CreateExecuti
 import DateRangePicker from '@/components/core/DateRangePicker.vue'
 import ProjectExecutionsTable from '@/components/project-execution/ProjectExecutionsTable.vue'
 import LoadInstanceStepTwo from '@/components/project-execution/LoadInstanceStepTwo.vue'
+import CheckboxOptions from '@/components/core/CheckboxOptions.vue'
+import InputField from '@/components/core/InputField.vue'
 import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
 
@@ -95,6 +177,8 @@ export default {
     ProjectExecutionsTable,
     CreateExecutionStepOne,
     LoadInstanceStepTwo,
+    CheckboxOptions,
+    InputField,
   },
   data() {
     return {
@@ -105,14 +189,27 @@ export default {
         startDate: null,
         endDate: null,
       },
+      currentStep: 0,
       generalStore: useGeneralStore(),
       showSnackbar: null,
+      instanceFile: null,
+      selectedSolver: [],
+      newExecution: {
+        instance: null,
+        selectedSolver: null,
+        timeLimit: null,
+        name: null,
+        description: null,
+      },
     }
   },
   created() {
     this.showSnackbar = inject('showSnackbar')
   },
   methods: {
+    handleStepChange(newStep) {
+      this.currentStep = newStep
+    },
     handleCheckboxChange({ value, option }) {
       this.optionSelected = value ? option : null
     },
@@ -121,6 +218,12 @@ export default {
     },
     handleEndDateChange(newDate) {
       this.selectedDates.endDate = newDate
+    },
+    handleInstanceFileSelected(file) {
+      this.instanceFile = file
+    },
+    handleInstanceSelected(instance) {
+      this.newExecution.instance = instance
     },
     async searchByDates() {
       try {
@@ -139,6 +242,21 @@ export default {
         this.showSnackbar('Error al realizar la búsqueda', 'error')
       }
     },
+    async createExecution(createSolution = true) {
+      try {
+        const result = await this.generalStore.createExecution(
+          this.newExecution,
+          createSolution,
+        )
+        if (result) {
+          this.showSnackbar('Ejecución creada correctamente')
+        } else {
+          this.showSnackbar('Error al crear la ejecución', 'error')
+        }
+      } catch (error) {
+        this.showSnackbar('Error al crear la ejecución', 'error')
+      }
+    },
   },
   computed: {
     title() {
@@ -146,6 +264,44 @@ export default {
     },
     description() {
       return this.$t('projectExecution.description')
+    },
+    disableNextButton() {
+      return (
+        (this.currentStep === 1 &&
+          this.optionSelected === 'createExecution' &&
+          !this.newExecution.instance) ||
+        (this.currentStep === 2 &&
+          this.optionSelected === 'createExecution' &&
+          !this.newExecution.selectedSolver) ||
+        (this.currentStep === 3 &&
+          this.optionSelected === 'createExecution' &&
+          !this.newExecution.timeLimit) ||
+        (this.currentStep === 4 &&
+          this.optionSelected === 'createExecution' &&
+          !this.newExecution.name)
+      )
+    },
+    disablePrevButton() {
+      return this.currentStep === 0
+    },
+    solvers: {
+      get() {
+        return this.generalStore.getExecutionSolvers.map((solver) => ({
+          value: solver,
+          text: solver,
+          description: '',
+          checked: false,
+        }))
+      },
+      set(newSolvers) {
+        let updatedSolvers = newSolvers
+        let selectedSolver = updatedSolvers.find(
+          (solver) => solver.checked === true,
+        )
+        this.newExecution.selectedSolver = selectedSolver
+          ? selectedSolver.value
+          : null
+      },
     },
     steps() {
       if (this.optionSelected === null) {
@@ -227,4 +383,13 @@ export default {
   },
 }
 </script>
-<style></style>
+<style scoped>
+.input-fields-container {
+  display: flex;
+  justify-content: space-between;
+}
+
+.input-field {
+  width: 45%;
+}
+</style>

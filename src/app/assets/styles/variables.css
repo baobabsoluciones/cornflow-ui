@@ -1,12 +1,15 @@
 :root {
-  --cf-primary: #1594f1;
-  --cf-info: #181926;
-  --cf-success: #3ba780;
-  --cf-warning: #b99748;
-  --cf-danger: #f44336;
-  --cf-background: #f5f5f7;
-  --cf-secondary: #f7be68;
-  --cf-accent: #4dc3dd;
-  --cf-dark-accent: #181926;
-  --cf-disabled: #f2f4f7;
+  --primary: #1594f1;
+  --primary-variant: #020246;
+  --title: #404040;
+  --subtitle: #6e6e6e;
+  --success: #3ba780;
+  --warning: #b99748;
+  --danger: #f44336;
+  --background: #f5f5f7;
+  --background-variant: #f6edea;
+  --secondary: #f7be68;
+  --accent: #4dc3dd;
+  --dark-accent: #181926;
+  --disabled: #f2f4f7;
 }

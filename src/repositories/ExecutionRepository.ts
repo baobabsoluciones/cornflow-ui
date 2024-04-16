@@ -77,7 +77,10 @@ export default class ExecutionRepository {
     }
   }
 
-  async createExecution() {}
+  // async createExecution(execution, createSolution = true) {
+  //   const response = await client.post('/execution/', payload)
+  //   return response
+  // }
 
   async deleteExecution(id: string) {
     const response = await client.remove(`/execution/${id}/`)
