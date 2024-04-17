@@ -1,13 +1,13 @@
-import { InstanceCore } from "@/models/Instance";
+import { InstanceCore } from '@/models/Instance'
 
 export class Instance extends InstanceCore {
-
   constructor(
     id: string,
     data: object,
-    checks: object,
+    schemaChecks: object,
     schema: string,
+    dataChecks: object[] = [],
   ) {
-    super(id, data, checks, schema);
+    super(id, data, schemaChecks, schema, dataChecks)
   }
 }

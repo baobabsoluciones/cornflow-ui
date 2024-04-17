@@ -1,7 +1,14 @@
 <template>
   <v-app>
-    <core-app-drawer />
+    <core-app-drawer style="position: fixed !important" />
     <core-app-view />
+    <app-bar-tab
+      :tabs="generalStore.getLoadedExecutionTabs"
+      createTitle="Create"
+      @close="removeTab"
+      @create="createTab"
+    >
+    </app-bar-tab>
   </v-app>
 </template>
 
@@ -11,8 +18,19 @@ import AuthService from '@/services/AuthService'
 import CoreAppHeader from '@/components/AppHeader.vue'
 import CoreAppDrawer from '@/components/AppDrawer.vue'
 import CoreAppView from '@/components/AppView.vue'
+import AppBarTab from '@/components/core/AppBarTab.vue'
+import { useRouter } from 'vue-router'
 
 const generalStore = useGeneralStore()
+const router = useRouter()
+
+const removeTab = (index) => {
+  generalStore.removeLoadedExecution(index)
+}
+
+const createTab = () => {
+  router.push('/project-execution')
+}
 
 // Check if user is logged in
 if (AuthService.isAuthenticated()) {

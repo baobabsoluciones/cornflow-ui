@@ -112,16 +112,7 @@
         <template v-else-if="index === 5">
           <div class="mt-4 d-flex justify-center">
             <v-btn
-              @click="createExecution(false)"
-              variant="outlined"
-              prepend-icon="mdi-magnify"
-              class="mr-10"
-            >
-              {{ $t('projectExecution.steps.step6.review') }}
-            </v-btn>
-            <v-btn
               @click="createExecution(true)"
-              class="ml-2"
               variant="outlined"
               prepend-icon="mdi-play"
             >
@@ -249,7 +240,15 @@ export default {
           createSolution,
         )
         if (result) {
-          this.showSnackbar('Ejecución creada correctamente')
+          const loadedResult = await this.generalStore.fetchLoadedExecution(
+            result.id,
+          )
+
+          if (loadedResult) {
+            this.showSnackbar('Ejecución creada correctamente')
+          } else {
+            this.showSnackbar('Error al crear la ejecución', 'error')
+          }
         } else {
           this.showSnackbar('Error al crear la ejecución', 'error')
         }

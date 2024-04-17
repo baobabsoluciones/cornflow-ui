@@ -11,7 +11,8 @@ import { LoadedExecution } from '@/models/LoadedExecution'
 import SchemaRepository from '@/repositories/SchemaRepository'
 import UserRepository from '@/repositories/UserRepository'
 import ExecutionRepository from '@/repositories/ExecutionRepository'
-import { create } from 'domain'
+
+import { toISOStringLocal } from '@/utils/data_io'
 
 export const useGeneralStore = defineStore('general', {
   state: () => ({
@@ -67,8 +68,8 @@ export const useGeneralStore = defineStore('general', {
 
         const executions = await this.executionRepository.getExecutions(
           this.getSchemaName,
-          fromDate.toISOString(),
-          toDate.toISOString(),
+          toISOStringLocal(fromDate),
+          toISOStringLocal(toDate, true),
         )
         this.lastExecutions = executions
       } catch (error) {
@@ -76,12 +77,12 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
-    async fetchExecutionsByDateRange(fromDate: string, toDate: string) {
+    async fetchExecutionsByDateRange(fromDate: Date, toDate: Date) {
       try {
         const executions = await this.executionRepository.getExecutions(
           this.getSchemaName,
-          fromDate.toISOString(),
-          toDate.toISOString(),
+          toISOStringLocal(fromDate),
+          toISOStringLocal(toDate, true),
         )
         return executions
       } catch (error) {
@@ -92,7 +93,11 @@ export const useGeneralStore = defineStore('general', {
     async fetchLoadedExecution(id: string) {
       try {
         const loadedExecution = await this.executionRepository.loadExecution(id)
-        this.addLoadedExecution(loadedExecution)
+        if (loadedExecution) {
+          this.addLoadedExecution(loadedExecution)
+          return true
+        }
+        return false
       } catch (error) {
         console.error('Error getting loaded execution', error)
       }
@@ -159,6 +164,33 @@ export const useGeneralStore = defineStore('general', {
 
     getExecutionSolvers(): string[] {
       return this.schemaConfig.config.properties.solver.enum
+    },
+
+    getLoadedExecutionTabs(): object[] {
+      return this.loadedExecutions.map((execution) => {
+        let icon
+        let isLoading = false
+        switch (execution.state) {
+          case 1:
+            icon = 'mdi-checkbox-marked'
+            break
+          case 0:
+          case -7:
+            isLoading = true
+            icon = 'mdi-loading'
+            break
+          default:
+            icon = 'mdi-close-box'
+        }
+
+        return {
+          value: execution.executionId,
+          text: execution.name,
+          icon: icon,
+          loading: isLoading,
+          selected: false,
+        }
+      })
     },
   },
 })

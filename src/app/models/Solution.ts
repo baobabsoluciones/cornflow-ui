@@ -1,13 +1,13 @@
-import { SolutionCore } from '@/models/Solution';
+import { SolutionCore } from '@/models/Solution'
 
-export class Solution extends SolutionCore{
-
+export class Solution extends SolutionCore {
   constructor(
     id: string,
     data: object,
-    checks: object,
+    schemaChecks: object,
     schema: string,
+    dataChecks: object[] = [],
   ) {
-    super(id, data, checks, schema);
+    super(id, data, schemaChecks, schema, dataChecks)
   }
 }

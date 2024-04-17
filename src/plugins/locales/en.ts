@@ -79,7 +79,7 @@ export default {
         description: 'Confirm the execution data and start the execution',
         titleContent: 'Execution resolution confirmation',
         subtitleContent:
-          "If you choose to resolve the execution, the model will automatically initiate resolution and will take the estimated time to finish. You can access its status by opening the tab with the assigned name on the bottom horizontal bar.<br><br>If you decide to review the data you've inputted, a tab will be created on the same bottom horizontal bar, and you'll have access to the input data to modify as necessary. From there, you can proceed to resolve the execution.",
+          'If you choose to resolve the execution, the model will automatically initiate resolution and will take the estimated time to finish. You can access its status by opening the tab with the assigned name on the bottom horizontal bar.',
         resolve: 'Resolve',
         review: 'Review',
       },
