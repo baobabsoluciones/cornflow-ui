@@ -9,6 +9,7 @@
       :steps="steps"
       :disablePreviousButton="disablePrevButton"
       :disableNextButton="disableNextButton"
+      :currentStep.sync="currentStep"
       :continueButtonText="$t('projectExecution.continueButton')"
       :previousButtonText="$t('projectExecution.previousButton')"
       @update:currentStep="handleStepChange"
@@ -110,13 +111,37 @@
 
         <!-- Template for create execution step 6 -->
         <template v-else-if="index === 5">
-          <div class="mt-4 d-flex justify-center">
+          <div
+            class="mt-4 d-flex justify-center"
+            v-if="!executionLaunched && !executionIsLoading"
+          >
             <v-btn
               @click="createExecution(true)"
               variant="outlined"
               prepend-icon="mdi-play"
             >
               {{ $t('projectExecution.steps.step6.resolve') }}
+            </v-btn>
+          </div>
+          <div
+            v-else-if="executionIsLoading"
+            class="d-flex justify-center mt-5"
+          >
+            <v-progress-circular indeterminate></v-progress-circular>
+          </div>
+          <div v-else class="d-flex flex-column align-center justify-center">
+            <v-icon style="font-size: 3.5rem" color="green" class="mt-5"
+              >mdi-check-circle-outline</v-icon
+            >
+            <p class="text-center mt-3" style="font-size: 0.9rem">
+              {{ $t('projectExecution.steps.step6.successMessage') }}
+            </p>
+            <v-btn
+              @click="resetAndLoadNewExecution()"
+              variant="outlined"
+              class="mt-10"
+            >
+              {{ $t('projectExecution.steps.step6.loadNewExecution') }}
             </v-btn>
           </div>
         </template>
@@ -138,11 +163,15 @@
       </template>
     </FormSteps>
     <v-card
-      class="ma-5"
+      class="ma-5 mt-10"
+      elevation="5"
+      rounded="lg"
       v-if="optionSelected === 'searchExecution' && searchExecution"
     >
       <ProjectExecutionsTable
         :executionsByDate="executionsByDate"
+        @loadExecution="loadExecution"
+        @deleteExecution="deleteExecution"
       ></ProjectExecutionsTable>
     </v-card>
   </div>
@@ -192,6 +221,8 @@ export default {
         name: null,
         description: null,
       },
+      executionIsLoading: false,
+      executionLaunched: false,
     }
   },
   created() {
@@ -223,18 +254,22 @@ export default {
           this.selectedDates.endDate,
         )
         if (result) {
-          this.showSnackbar('Búsqueda realizada correctamente')
+          this.showSnackbar(this.$t('projectExecution.snackbar.succesSearch'))
           this.executionsByDate = result
           this.searchExecution = true
         } else {
-          this.showSnackbar('No hay datos para mostrar', 'error')
+          this.showSnackbar(this.$t('projectExecution.snackbar.noDataSearch'))
         }
       } catch (error) {
-        this.showSnackbar('Error al realizar la búsqueda', 'error')
+        this.showSnackbar(
+          this.$t('projectExecution.snackbar.errorSearch'),
+          'error',
+        )
       }
     },
     async createExecution(createSolution = true) {
       try {
+        this.executionIsLoading = true
         const result = await this.generalStore.createExecution(
           this.newExecution,
           createSolution,
@@ -245,15 +280,87 @@ export default {
           )
 
           if (loadedResult) {
-            this.showSnackbar('Ejecución creada correctamente')
+            this.executionIsLoading = false
+            this.executionLaunched = true
+            this.showSnackbar(
+              this.$t('projectExecution.snackbar.successCreate'),
+            )
           } else {
-            this.showSnackbar('Error al crear la ejecución', 'error')
+            this.showSnackbar(
+              this.$t('projectExecution.snackbar.errorCreate'),
+              'error',
+            )
           }
         } else {
-          this.showSnackbar('Error al crear la ejecución', 'error')
+          this.showSnackbar(
+            this.$t('projectExecution.snackbar.error'),
+            'errorCreate',
+          )
         }
       } catch (error) {
-        this.showSnackbar('Error al crear la ejecución', 'error')
+        this.showSnackbar(
+          this.$t('projectExecution.snackbar.error'),
+          'errorCreate',
+        )
+      }
+    },
+    async loadExecution(execution) {
+      try {
+        const loadedResult = await this.generalStore.fetchLoadedExecution(
+          execution.id,
+        )
+
+        if (loadedResult) {
+          this.showSnackbar(this.$t('projectExecution.snackbar.successLoad'))
+        } else {
+          this.showSnackbar(
+            this.$t('projectExecution.snackbar.errorLoad'),
+            'error',
+          )
+        }
+      } catch (error) {
+        this.showSnackbar(
+          this.$t('projectExecution.snackbar.errorLoad'),
+          'error',
+        )
+      }
+    },
+    async deleteExecution(execution) {
+      try {
+        const result = await this.generalStore.deleteExecution(execution.id)
+
+        if (result) {
+          this.executionsByDate = this.executionsByDate.filter(
+            (exec) => exec.id !== execution.id,
+          )
+          this.showSnackbar(this.$t('projectExecution.snackbar.successDelete'))
+        } else {
+          this.showSnackbar(
+            this.$t('projectExecution.snackbar.errorDelete'),
+            'error',
+          )
+        }
+      } catch (error) {
+        this.showSnackbar(
+          this.$t('projectExecution.snackbar.errorDelete'),
+          'error',
+        )
+      }
+    },
+    resetAndLoadNewExecution() {
+      Object.assign(this.$data, this.$options.data())
+      this.showSnackbar = inject('showSnackbar')
+    },
+  },
+  watch: {
+    currentStep(newVal, oldVal) {
+      if (this.optionSelected === 'searchExecution') {
+        this.executionsByDate = []
+        this.selectedDates = {
+          startDate: null,
+          endDate: null,
+        }
+        this.searchExecution = false
       }
     },
   },

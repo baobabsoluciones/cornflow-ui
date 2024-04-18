@@ -1,6 +1,6 @@
 <template>
-  <div class="d-flex justify-space-around mt-5">
-    <div>
+  <v-row class="mt-4 justify-space-around">
+    <v-col class="v-col-s-12 v-col-4">
       <h5 class="mb-2">{{ startDateTitle }}</h5>
       <v-date-picker
         hide-header
@@ -9,18 +9,19 @@
         v-model="startDate"
         :max="endDate || today"
       ></v-date-picker>
-    </div>
-    <div>
+    </v-col>
+    <v-col class="v-col-s-12 v-col-4">
       <h5 class="mb-2">{{ endDateTitle }}</h5>
       <v-date-picker
         hide-header
+        max-width="500px"
         elevation="3"
         v-model="endDate"
         :min="startDate"
         :max="today"
       ></v-date-picker>
-    </div>
-  </div>
+    </v-col>
+  </v-row>
 </template>
 
 <script>

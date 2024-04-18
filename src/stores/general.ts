@@ -34,6 +34,7 @@ export const useGeneralStore = defineStore('general', {
     appDashboard: config.getDashboard(),
     lastExecutions: [] as Execution[],
     loadedExecutions: [] as LoadedExecution[],
+    autoLoadInterval: null,
   }),
   actions: {
     async initializeData() {
@@ -115,8 +116,67 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
+    async deleteExecution(id: string) {
+      try {
+        const result = await this.executionRepository.deleteExecution(id)
+        if (result) {
+          // Filter out the execution with the given id from lastExecutions
+          this.lastExecutions = this.lastExecutions.filter(
+            (execution) => execution.id !== id,
+          )
+
+          // Filter out the execution with the given executionId from loadedExecutions
+          this.loadedExecutions = this.loadedExecutions.filter(
+            (execution) => execution.executionId !== id,
+          )
+        }
+        return result
+      } catch (error) {
+        console.error('Error deleting execution', error)
+      }
+    },
+
     addLoadedExecution(loadedExecution: LoadedExecution) {
-      this.loadedExecutions.push(loadedExecution)
+      const index = this.loadedExecutions.findIndex(
+        (execution) => execution.executionId === loadedExecution.executionId,
+      )
+
+      if (index !== -1) {
+        // Replace the existing loadedExecution
+        this.loadedExecutions.splice(index, 1, loadedExecution)
+      } else {
+        // Add the new loadedExecution
+        this.loadedExecutions.push(loadedExecution)
+      }
+
+      // Start auto-loading executions
+      this.autoLoadExecutions()
+    },
+
+    async autoLoadExecutions() {
+      // Clear any existing interval
+      if (this.autoLoadInterval) {
+        clearInterval(this.autoLoadInterval)
+      }
+
+      // Start a new interval
+      this.autoLoadInterval = setInterval(async () => {
+        for (let execution of this.loadedExecutions) {
+          if (execution.state === 0 || execution.state === -7) {
+            try {
+              const updatedExecution =
+                await this.executionRepository.loadExecution(
+                  execution.executionId,
+                )
+              if (updatedExecution) {
+                this.addLoadedExecution(updatedExecution)
+              }
+            } catch (error) {
+              console.error('Error auto-loading execution', error)
+            }
+          }
+        }
+      }, 4000) // Check every 4 seconds
     },
 
     removeLoadedExecution(index: number) {

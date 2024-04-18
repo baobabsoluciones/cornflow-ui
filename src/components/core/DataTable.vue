@@ -32,6 +32,15 @@ export default {
 </script>
 
 <style scoped>
+::v-deep .v-data-table__th {
+  border-right: 1px solid #0000001e !important; /* Change color as needed */
+}
+
+/* Remove border from the last header cell */
+::v-deep .v-data-table__th:last-child {
+  border-right: none !important;
+}
+
 ::v-deep .v-data-table-footer {
   justify-content: space-between !important;
 }

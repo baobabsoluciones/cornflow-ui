@@ -5,6 +5,17 @@ export default {
       'Create a new execution or load an existing one to visualize the solution you are looking for. To do so, follow the steps below:',
     continueButton: 'Continue',
     previousButton: 'Previous',
+    snackbar: {
+      successCreate: 'Execution created successfully',
+      errorCreate: 'An error occurred while creating the execution',
+      succesSearch: 'Search succesfully completed',
+      errorSearch: 'An error occurred while searching for executions',
+      noDataSearch: 'No executions found in the selected interval',
+      successDelete: 'Execution deleted successfully',
+      errorDelete: 'An error occurred while deleting the execution',
+      successLoad: 'Execution loaded successfully',
+      errorLoad: 'An error occurred while loading the execution',
+    },
     steps: {
       step1: {
         title: 'New execution',
@@ -82,6 +93,9 @@ export default {
           'If you choose to resolve the execution, the model will automatically initiate resolution and will take the estimated time to finish. You can access its status by opening the tab with the assigned name on the bottom horizontal bar.',
         resolve: 'Resolve',
         review: 'Review',
+        successMessage:
+          'The execution has been launched successfully. A new tab has been opened on the bottom bar. You can click on this tab to open it.',
+        loadNewExecution: 'Load new execution',
       },
     },
   },

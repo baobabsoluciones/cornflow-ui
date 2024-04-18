@@ -92,7 +92,6 @@ const schemasToREADME = function (
   const schemaToTypes = function (schema) {
     const mainProps = schema.properties
     const listPerTable = function (tab) {
-      // console.log(tab)
       let tabProps
       if (mainProps[tab].type === 'array') {
         tabProps = mainProps[tab].items.properties

@@ -16,6 +16,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/',
+    redirect: '/project-execution',
     name: 'Project execution',
     component: IndexView,
     beforeEnter: (to, from, next) => {

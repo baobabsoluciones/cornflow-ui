@@ -113,7 +113,7 @@ export default class ExecutionRepository {
 
   async deleteExecution(id: string) {
     const response = await client.remove(`/execution/${id}/`)
-    return response
+    return response.status === 200
   }
 
   async refreshExecution(id: string) {}
