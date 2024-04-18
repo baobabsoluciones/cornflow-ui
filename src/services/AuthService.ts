@@ -1,32 +1,41 @@
-import client from '../api/Api';
+import client from '../api/Api'
 
 class AuthService {
   async login(username: string, password: string): Promise<boolean> {
-    const response = await client.post('/login/', { username, password }, { 'Content-Type': 'application/json' });
-    const isAuthenticated = response.status === 200;
-    const token = response.content.token;
+    const response = await client.post(
+      '/login/',
+      { username, password },
+      { 'Content-Type': 'application/json' },
+    )
+    const isAuthenticated = response.status === 200
+    const token = response.content.token
+    const userId = response.content.id
 
     if (isAuthenticated) {
-      sessionStorage.setItem('isAuthenticated', 'true');
-      sessionStorage.setItem('token', token);
+      sessionStorage.setItem('isAuthenticated', 'true')
+      sessionStorage.setItem('token', token)
+      sessionStorage.setItem('userId', userId)
     } else {
-      sessionStorage.setItem('isAuthenticated', 'false');
+      sessionStorage.setItem('isAuthenticated', 'false')
     }
 
-    return isAuthenticated;
+    return isAuthenticated
   }
 
   logout(): void {
-    sessionStorage.setItem('isAuthenticated', 'false');
-    sessionStorage.removeItem('token');
+    sessionStorage.setItem('isAuthenticated', 'false')
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('userId')
   }
 
-  getToken = () => sessionStorage.getItem('token');
+  getToken = () => sessionStorage.getItem('token')
+
+  getUserId = () => sessionStorage.getItem('userId')
 
   isAuthenticated(): boolean {
-    const isAuthenticated = sessionStorage.getItem('isAuthenticated') === 'true';
-    return isAuthenticated;
+    const isAuthenticated = sessionStorage.getItem('isAuthenticated') === 'true'
+    return isAuthenticated
   }
 }
 
-export default new AuthService();
+export default new AuthService()
