@@ -1,5 +1,6 @@
 import readXlsxFile from 'read-excel-file'
 import * as XLSX from 'xlsx'
+import i18n from '@/plugins/i18n'
 
 const readTable = function (
   file,
@@ -138,4 +139,27 @@ const toISOStringLocal = function (date, isEndDate = false) {
   )
 }
 
-export { loadExcel, schemaDataToTable, schemasToREADME, toISOStringLocal }
+const formatDateForHeaders = function (date) {
+  const today = new Date()
+  const itemDate = new Date(date)
+  const options = {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  }
+  const locale = i18n.global.locale
+
+  let formattedDate = new Intl.DateTimeFormat(locale, options).format(itemDate)
+  itemDate.toDateString() ===
+    new Date(today.setDate(today.getDate() - 1)).toDateString()
+
+  return formattedDate
+}
+export {
+  loadExcel,
+  schemaDataToTable,
+  schemasToREADME,
+  toISOStringLocal,
+  formatDateForHeaders,
+}

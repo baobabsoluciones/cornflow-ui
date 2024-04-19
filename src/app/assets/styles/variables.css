@@ -1,4 +1,4 @@
-:root {
+body {
   --primary: #1594f1;
   --primary-variant: #020246;
   --title: #404040;
@@ -6,7 +6,7 @@
   --success: #3ba780;
   --warning: #b99748;
   --danger: #f44336;
-  --background: #f5f5f7;
+  --background: #f6f6f6;
   --background-variant: #f6edea;
   --secondary: #f7be68;
   --accent: #4dc3dd;

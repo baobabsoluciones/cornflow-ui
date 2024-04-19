@@ -1,7 +1,11 @@
 <template>
   <DataTable :headers="headerExecutions" :items="executionsByDate">
     <template v-slot:createdAt="{ item }">
-      {{ new Date(item.createdAt).toISOString().split('T')[0] }}
+      {{
+        formatDateByTime
+          ? formatDateTime(item.createdAt)
+          : new Date(item.createdAt).toISOString().split('T')[0]
+      }}
     </template>
     <template v-slot:solver="{ item }">
       {{ item.config.solver }}
@@ -51,6 +55,10 @@ export default {
       type: Array,
       required: true,
     },
+    formatDateByTime: {
+      type: Boolean,
+      default: false,
+    },
   },
   data() {
     return {
@@ -59,9 +67,9 @@ export default {
         {
           title: this.$t('executionTable.date'),
           value: 'createdAt',
-          width: '20%',
+          width: '15%',
         },
-        { title: this.$t('executionTable.name'), value: 'name', width: '15%' },
+        { title: this.$t('executionTable.name'), value: 'name', width: '20%' },
         {
           title: this.$t('executionTable.description'),
           value: 'description',
@@ -70,7 +78,7 @@ export default {
         {
           title: this.$t('executionTable.excel'),
           value: 'excel',
-          width: '3%',
+          width: '8%',
         },
         {
           title: this.$t('executionTable.status'),
@@ -80,17 +88,17 @@ export default {
         {
           title: this.$t('executionTable.solver'),
           value: 'solver',
-          width: '10%',
+          width: '15%',
         },
         {
           title: this.$t('executionTable.solution'),
           value: 'solution',
-          width: '3%',
+          width: '10%',
         },
         {
           title: this.$t('executionTable.actions'),
           value: 'actions',
-          width: '15%',
+          width: '10%',
         },
       ],
       generalStore: useGeneralStore(),
@@ -161,6 +169,10 @@ export default {
     },
     async deleteExecution(execution) {
       this.$emit('deleteExecution', execution)
+    },
+    formatDateTime(datetime) {
+      const date = new Date(datetime)
+      return `${date.getHours()}:${date.getMinutes()}`
     },
   },
 }

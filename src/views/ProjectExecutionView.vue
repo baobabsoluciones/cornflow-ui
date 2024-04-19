@@ -293,13 +293,13 @@ export default {
           }
         } else {
           this.showSnackbar(
-            this.$t('projectExecution.snackbar.error'),
+            this.$t('projectExecution.snackbar.errorCreate'),
             'errorCreate',
           )
         }
       } catch (error) {
         this.showSnackbar(
-          this.$t('projectExecution.snackbar.error'),
+          this.$t('projectExecution.snackbar.errorCreate'),
           'errorCreate',
         )
       }
