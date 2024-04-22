@@ -109,4 +109,17 @@ export default {
     excel: 'Excel',
     actions: 'Actions',
   },
+  versionHistory: {
+    title: 'Version history',
+    description:
+      'Here you can find a summary of all the versions you have made for the different projects executed',
+    yesterday: 'Yesterday',
+    today: 'Today',
+    last7days: 'Last 7 days',
+    lastMonth: 'Last 30 days',
+    custom: 'Custom range',
+    from: 'From',
+    to: 'To',
+    noData: ' No data found for the selected range dates',
+  },
 }
