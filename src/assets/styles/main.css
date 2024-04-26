@@ -16,6 +16,31 @@ h5 {
   font-weight: 500;
 }
 
+.primary-btn {
+  background-color: var(--primary-variant) !important;
+  color: white !important;
+  border: none !important;
+  outline: 0 !important;
+  line-height: 1.5em !important;
+  font-size: 0.9em !important;
+  font-style: normal !important;
+  text-transform: none !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.01em !important;
+}
+
+.secondary-btn {
+  color: var(--primary-variant) !important;
+  border: none !important;
+  outline: 0 !important;
+  line-height: 1.5em !important;
+  font-size: 0.9em !important;
+  font-style: normal !important;
+  text-transform: none !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.01em !important;
+}
+
 @media (max-width: 1200px) {
   .v-col-s-1 {
     flex: 0 0 8.33% !important;

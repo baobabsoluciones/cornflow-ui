@@ -2,7 +2,7 @@
   <v-card class="rounded-lg pa-10" style="background-color: white !important">
     <v-row>
       <v-col class="v-col-8 v-col-s-12">
-        <v-expansion-panels variant="accordion" multiple>
+        <v-expansion-panels variant="accordion" multiple v-model="openedPanels">
           <v-expansion-panel v-for="(item, index) in data" :key="index">
             <v-expansion-panel-title>{{
               formatDateForHeaders(item.date)
@@ -75,6 +75,10 @@ export default {
       type: String,
       default: 'No data for the selected range',
     },
+    allPanelsOpen: {
+      type: Boolean,
+      default: true,
+    },
   },
   data: () => ({
     selectedDateRange: 'today',
@@ -82,9 +86,17 @@ export default {
       from: null,
       to: null,
     },
+    openedPanels: [],
   }),
   methods: {
     formatDateForHeaders,
+  },
+  watch: {
+    data(newData, oldData) {
+      if (newData.length !== oldData.length && this.allPanelsOpen) {
+        this.openedPanels = newData.map((_, index) => index)
+      }
+    },
   },
 }
 </script>

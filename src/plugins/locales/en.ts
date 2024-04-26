@@ -122,4 +122,7 @@ export default {
     to: 'To',
     noData: ' No data found for the selected range dates',
   },
+  inputData: {
+    title: 'Input data',
+  },
 }

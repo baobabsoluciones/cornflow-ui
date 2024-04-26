@@ -44,13 +44,13 @@
         <template
           v-else-if="index === 1 && optionSelected === 'createExecution'"
         >
-          <LoadInstanceStepTwo
+          <CreateExecutionLoadInstance
             :fileSelected="instanceFile"
             @fileSelected="handleInstanceFileSelected"
             @instanceSelected="handleInstanceSelected"
             class="mt-4"
           >
-          </LoadInstanceStepTwo>
+          </CreateExecutionLoadInstance>
         </template>
 
         <!-- Template for create execution step 3 -->
@@ -111,39 +111,11 @@
 
         <!-- Template for create execution step 6 -->
         <template v-else-if="index === 5">
-          <div
-            class="mt-4 d-flex justify-center"
-            v-if="!executionLaunched && !executionIsLoading"
-          >
-            <v-btn
-              @click="createExecution(true)"
-              variant="outlined"
-              prepend-icon="mdi-play"
-            >
-              {{ $t('projectExecution.steps.step6.resolve') }}
-            </v-btn>
-          </div>
-          <div
-            v-else-if="executionIsLoading"
-            class="d-flex justify-center mt-5"
-          >
-            <v-progress-circular indeterminate></v-progress-circular>
-          </div>
-          <div v-else class="d-flex flex-column align-center justify-center">
-            <v-icon style="font-size: 3.5rem" color="green" class="mt-5"
-              >mdi-check-circle-outline</v-icon
-            >
-            <p class="text-center mt-3" style="font-size: 0.9rem">
-              {{ $t('projectExecution.steps.step6.successMessage') }}
-            </p>
-            <v-btn
-              @click="resetAndLoadNewExecution()"
-              variant="outlined"
-              class="mt-10"
-            >
-              {{ $t('projectExecution.steps.step6.loadNewExecution') }}
-            </v-btn>
-          </div>
+          <CreateExecutionResolve
+            :newExecution="newExecution"
+            @resetAndLoadNewExecution="resetAndLoadNewExecution"
+            @update:instance="handleInstanceSelected"
+          ></CreateExecutionResolve>
         </template>
       </template>
 
@@ -181,9 +153,10 @@
 import TitleView from '@/components/core/TitleView.vue'
 import FormSteps from '@/components/core/FormSteps.vue'
 import CreateExecutionStepOne from '@/components/project-execution/CreateExecutionStepOne.vue'
+import CreateExecutionLoadInstance from '@/components/project-execution/CreateExecutionLoadInstance.vue'
+import CreateExecutionResolve from '@/components/project-execution/CreateExecutionResolve.vue'
 import DateRangePicker from '@/components/core/DateRangePicker.vue'
 import ProjectExecutionsTable from '@/components/project-execution/ProjectExecutionsTable.vue'
-import LoadInstanceStepTwo from '@/components/project-execution/LoadInstanceStepTwo.vue'
 import CheckboxOptions from '@/components/core/CheckboxOptions.vue'
 import InputField from '@/components/core/InputField.vue'
 import { useGeneralStore } from '@/stores/general'
@@ -196,7 +169,8 @@ export default {
     DateRangePicker,
     ProjectExecutionsTable,
     CreateExecutionStepOne,
-    LoadInstanceStepTwo,
+    CreateExecutionResolve,
+    CreateExecutionLoadInstance,
     CheckboxOptions,
     InputField,
   },
@@ -221,8 +195,6 @@ export default {
         name: null,
         description: null,
       },
-      executionIsLoading: false,
-      executionLaunched: false,
     }
   },
   created() {
@@ -264,43 +236,6 @@ export default {
         this.showSnackbar(
           this.$t('projectExecution.snackbar.errorSearch'),
           'error',
-        )
-      }
-    },
-    async createExecution(createSolution = true) {
-      try {
-        this.executionIsLoading = true
-        const result = await this.generalStore.createExecution(
-          this.newExecution,
-          createSolution,
-        )
-        if (result) {
-          const loadedResult = await this.generalStore.fetchLoadedExecution(
-            result.id,
-          )
-
-          if (loadedResult) {
-            this.executionIsLoading = false
-            this.executionLaunched = true
-            this.showSnackbar(
-              this.$t('projectExecution.snackbar.successCreate'),
-            )
-          } else {
-            this.showSnackbar(
-              this.$t('projectExecution.snackbar.errorCreate'),
-              'error',
-            )
-          }
-        } else {
-          this.showSnackbar(
-            this.$t('projectExecution.snackbar.errorCreate'),
-            'errorCreate',
-          )
-        }
-      } catch (error) {
-        this.showSnackbar(
-          this.$t('projectExecution.snackbar.errorCreate'),
-          'errorCreate',
         )
       }
     },

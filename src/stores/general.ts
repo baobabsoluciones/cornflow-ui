@@ -34,6 +34,7 @@ export const useGeneralStore = defineStore('general', {
     appDashboard: config.getDashboard(),
     lastExecutions: [] as Execution[],
     loadedExecutions: [] as LoadedExecution[],
+    selectedExecution: null,
     autoLoadInterval: null,
   }),
   actions: {
@@ -104,12 +105,10 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
-    async createExecution(execution: Execution, createSolution = true) {
+    async createExecution(execution: Execution) {
       try {
-        const newExecution = await this.executionRepository.createExecution(
-          execution,
-          createSolution,
-        )
+        const newExecution =
+          await this.executionRepository.createExecution(execution)
         return newExecution
       } catch (error) {
         console.error('Error creating execution', error)
@@ -170,6 +169,14 @@ export const useGeneralStore = defineStore('general', {
                 )
               if (updatedExecution) {
                 this.addLoadedExecution(updatedExecution)
+
+                // If the updated execution is the selected execution, update it too
+                if (
+                  this.selectedExecution &&
+                  this.selectedExecution.executionId === execution.executionId
+                ) {
+                  this.selectedExecution = updatedExecution
+                }
               }
             } catch (error) {
               console.error('Error auto-loading execution', error)
@@ -187,6 +194,12 @@ export const useGeneralStore = defineStore('general', {
       this.loadedExecutions = []
     },
 
+    setSelectedExecution(executionId: string) {
+      this.selectedExecution = this.loadedExecutions.find(
+        (execution) => execution.executionId === executionId,
+      )
+    },
+
     addNotification(notification: {
       message: string
       type: 'success' | 'warning' | 'info' | 'error'
@@ -200,6 +213,128 @@ export const useGeneralStore = defineStore('general', {
 
     resetNotifications() {
       this.notifications = []
+    },
+
+    getSelectedExecutionData(collection: string): any {
+      return this.selectedExecution.experiment[collection].data
+    },
+
+    getTableDataKeys(collection: string, data: object): any[] {
+      const schemaChecks = this.schemaConfig[collection + 'Schema']
+      const schemaKeys = [...schemaChecks.required]
+      const keys = Object.keys(data)
+
+      return Array.from(new Set([...schemaKeys, ...keys]))
+    },
+
+    getTableDataNames(collection: string, data: object, lang = 'en'): any[] {
+      return this.getTableDataKeys(collection, data).map((el) => {
+        const title = this.getTableDataName(collection, el, lang)
+        return { text: title ?? el, value: el }
+      })
+    },
+
+    getTableDataName(collection: string, key: string, lang = 'en'): string {
+      const title =
+        this.schemaConfig[collection + 'Schema'].properties[key].title
+      if (typeof title === 'string') {
+        return title
+      } else if (typeof title === 'object') {
+        return title[lang] ?? title.en ?? key
+      }
+      return key
+    },
+
+    getTableJsonSchema(collection: string, table): any {
+      return this.schemaConfig[collection + 'Schema'].properties[table]
+    },
+
+    getTableOption(collection: string, table, option): any {
+      return this.getTableJsonSchema(collection, table)[option]
+    },
+
+    showTable(collection: string, table: string): boolean {
+      const show = this.getTableOption(collection, table, 'show')
+      return show !== undefined ? show : true
+    },
+
+    getTableHeader(collection, table): any[] {
+      const items = this.getTableJsonSchema(collection, table).items
+      const keys = Object.keys(items.properties)
+      const required = items.required || []
+
+      return Array.from(new Set([...required, ...keys]))
+    },
+
+    getTableJsonSchemaProperty(collection, table, property): any {
+      return this.getTableJsonSchema(collection, table).items.properties[
+        property
+      ]
+    },
+
+    isTablePropertySortable(collection, table, item): boolean {
+      const propSortable = this.getTableJsonSchemaProperty(
+        collection,
+        table,
+        item,
+      ).sortable
+      if (propSortable === undefined) {
+        const tableSortable = this.getTableJsonSchemaProperty(
+          collection,
+          table,
+          item,
+        ).sortable
+        return tableSortable !== undefined ? tableSortable : true
+      }
+      return propSortable
+    },
+
+    getTablePropertyTitle(collection, table, item, lang = 'en'): string {
+      const title = this.getTableJsonSchemaProperty(
+        collection,
+        table,
+        item,
+      ).title
+      if (typeof title === 'string') {
+        return title
+      } else if (typeof title === 'object') {
+        return title[lang] || title.en || item
+      }
+      return item
+    },
+
+    getTableHeaders(collection, table): any[] {
+      const items = this.getTableJsonSchema(collection, table).items
+      const keys = Object.keys(items.properties)
+      let result = items.required?.slice()
+
+      if (!result || result.length === 0) {
+        result = keys
+      } else {
+        keys.forEach((el) => {
+          if (!result.includes(el)) {
+            result.push(el)
+          }
+        })
+      }
+
+      return result
+    },
+
+    getTableHeadersData(collection, table, lang = 'en'): any[] {
+      const headers = this.getTableHeaders(collection, table)
+      return headers.map((header) => ({
+        title: this.getTablePropertyTitle(collection, table, header, lang),
+        value: header,
+        sortable: this.isTablePropertySortable(collection, table, header),
+        filterable: this.getTableJsonSchemaProperty(collection, table, header)
+          .filterable,
+        type: this.getTableJsonSchemaProperty(collection, table, header).type,
+        required: this.getTableJsonSchema(
+          collection,
+          table,
+        ).items.required?.includes(header),
+      }))
     },
   },
   getters: {
