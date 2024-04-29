@@ -1,3 +1,5 @@
+import { load } from 'webfontloader'
+
 export default {
   projectExecution: {
     title: 'Project execution',
@@ -97,6 +99,16 @@ export default {
           'The execution has been launched successfully. A new tab has been opened on the bottom bar. You can click on this tab to open it.',
         loadNewExecution: 'Load new execution',
       },
+    },
+    infoCard: {
+      createNewExecution: 'Create new execution',
+      loadFromHistory: 'Load from history',
+      executionCreated: 'Execution successfully created',
+      noExecutionSelected: 'No execution selected',
+      solutionWillLoadMessage:
+        'The solution will be loaded automatically on this view when the resolution is finished',
+      loadExecutionMessage:
+        'You can load an execution from the history view or create a new one and select it on the bottom tab bar',
     },
   },
   executionTable: {

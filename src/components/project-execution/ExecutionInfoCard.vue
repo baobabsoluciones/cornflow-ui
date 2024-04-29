@@ -18,7 +18,7 @@
           variant="outlined"
           prepend-icon="mdi-chart-timeline-variant"
         >
-          Create new execution
+          {{ $t('projectExecution.infoCard.createNewExecution') }}
         </v-btn>
         <v-btn
           @click="navigateTo('/history-execution')"
@@ -26,7 +26,7 @@
           variant="outlined"
           prepend-icon="mdi-history"
         >
-          Load from history
+          {{ $t('projectExecution.infoCard.loadFromHistory') }}
         </v-btn>
       </div>
     </template>
@@ -65,14 +65,14 @@ export default {
 
     const titleInfoCard = computed(() => {
       return props.selectedExecution
-        ? 'Ejecución creada correctamente'
-        : 'Ninguna ejecución seleccionada'
+        ? $t('projectExecution.infoCard.executionCreated')
+        : $t('projectExecution.infoCard.noExecutionSelected')
     })
 
     const descriptionInfoCard = computed(() => {
       return props.selectedExecution
-        ? 'La solución se cargará automáticamente en esta pestaña cuando la resolución termine'
-        : 'Puede cargar una ejecución desde el historial de versiones o crear una nueva y pulsar en la pestaña correspondiente en la barra inferior para ver los detalles aquí'
+        ? $t('projectExecution.infoCard.solutionWillLoadMessage')
+        : $t('projectExecution.infoCard.loadExecutionMessage')
     })
 
     return {
