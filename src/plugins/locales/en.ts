@@ -1,3 +1,5 @@
+import { load } from 'webfontloader'
+
 export default {
   projectExecution: {
     title: 'Project execution',
@@ -98,6 +100,16 @@ export default {
         loadNewExecution: 'Load new execution',
       },
     },
+    infoCard: {
+      createNewExecution: 'Create new execution',
+      loadFromHistory: 'Load from history',
+      executionCreated: 'Execution successfully created',
+      noExecutionSelected: 'No execution selected',
+      solutionWillLoadMessage:
+        'The solution will be loaded automatically on this view when the resolution is finished',
+      loadExecutionMessage:
+        'You can load an execution from the history view or create a new one and select it on the bottom tab bar',
+    },
   },
   executionTable: {
     date: 'Date',
@@ -121,5 +133,16 @@ export default {
     from: 'From',
     to: 'To',
     noData: ' No data found for the selected range dates',
+  },
+  inputData: {
+    title: 'Input data',
+    save: 'Save',
+    exitWithoutSaving: 'Exit without saving',
+    saveChanges: 'Save changes',
+    savingMessage: 'Are you sure you want to save changes?',
+    addItem: 'Add new item',
+  },
+  outputData: {
+    title: 'Output data',
   },
 }

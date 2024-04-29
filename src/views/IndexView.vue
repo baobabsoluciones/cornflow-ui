@@ -7,6 +7,7 @@
       createTitle="Create"
       @close="removeTab"
       @create="createTab"
+      @select="selectTab"
     >
     </app-bar-tab>
   </v-app>
@@ -30,6 +31,10 @@ const removeTab = (index) => {
 
 const createTab = () => {
   router.push('/project-execution')
+}
+
+const selectTab = (executionTab) => {
+  generalStore.setSelectedExecution(executionTab.value)
 }
 
 // Check if user is logged in

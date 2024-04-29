@@ -1,7 +1,7 @@
 <template>
   <div class="form-steps">
     <v-row>
-      <v-col class="v-col-s-5 v-col-md-4 v-col-xl-3">
+      <v-col class="v-col-s-3 v-col-md-4 v-col-xl-3">
         <v-card class="elevation-2" style="border-radius: 20px !important">
           <div class="steps-container">
             <div v-for="(step, index) in steps" :key="index" class="step-item">
@@ -40,7 +40,7 @@
           </div>
         </v-card>
       </v-col>
-      <v-col class="v-col-s-7 v-col-md-8 v-col-xl-7">
+      <v-col class="v-col-s-9 v-col-md-8 v-col-xl-7">
         <v-card class="elevation-2" style="border-radius: 20px !important">
           <div class="px-3 py-3">
             <slot :name="`step-${localCurrentStep}-title`">

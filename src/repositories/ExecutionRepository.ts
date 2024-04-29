@@ -72,6 +72,7 @@ export default class ExecutionRepository {
           execution.created_at,
           execution.state,
           execution.message,
+          execution.config,
         )
       } else {
         throw new Error('Error loading instance')
@@ -81,7 +82,7 @@ export default class ExecutionRepository {
     }
   }
 
-  async createExecution(execution, createSolution = true) {
+  async createExecution(execution: any) {
     const instanceRepository = new InstanceRepository()
     const instance = await instanceRepository.createInstance(execution)
 

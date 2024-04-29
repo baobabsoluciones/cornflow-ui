@@ -15,6 +15,7 @@
         v-for="(tab, index) in tabs"
         :key="index"
         :class="tab.selected ? 'selected-tab' : ''"
+        @click="selectTab(tab)"
       >
         <v-icon v-if="tab.loading" class="mr-2 loading-icon" color="primary"
           >mdi-loading</v-icon
@@ -69,7 +70,11 @@ export default {
       emit('close', index)
     }
 
-    return { closeTab }
+    const selectTab = (tab) => {
+      emit('select', tab)
+    }
+
+    return { closeTab, selectTab }
   },
 }
 </script>

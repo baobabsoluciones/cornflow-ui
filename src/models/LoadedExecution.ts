@@ -8,6 +8,7 @@ export class LoadedExecution {
   createdAt: string
   state: number
   messageState: string
+  config: any
 
   constructor(
     experiment: ExperimentCore,
@@ -17,6 +18,7 @@ export class LoadedExecution {
     createdAt: string,
     state: number,
     message: string,
+    config: any,
   ) {
     this.experiment = experiment
     this.executionId = executionId
@@ -25,5 +27,6 @@ export class LoadedExecution {
     this.createdAt = createdAt
     this.state = state
     this.messageState = message
+    this.config = config
   }
 }
