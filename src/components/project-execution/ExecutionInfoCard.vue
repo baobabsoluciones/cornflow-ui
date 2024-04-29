@@ -37,6 +37,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import InfoCard from '@/components/core/InfoCard.vue'
+import { useI18n } from 'vue-i18n'
 
 export default {
   props: {
@@ -49,6 +50,7 @@ export default {
     InfoCard,
   },
   setup(props) {
+    const { t } = useI18n()
     const router = useRouter()
 
     const navigateTo = (path) => {
@@ -65,14 +67,14 @@ export default {
 
     const titleInfoCard = computed(() => {
       return props.selectedExecution
-        ? $t('projectExecution.infoCard.executionCreated')
-        : $t('projectExecution.infoCard.noExecutionSelected')
+        ? t('projectExecution.infoCard.executionCreated')
+        : t('projectExecution.infoCard.noExecutionSelected')
     })
 
     const descriptionInfoCard = computed(() => {
       return props.selectedExecution
-        ? $t('projectExecution.infoCard.solutionWillLoadMessage')
-        : $t('projectExecution.infoCard.loadExecutionMessage')
+        ? t('projectExecution.infoCard.solutionWillLoadMessage')
+        : t('projectExecution.infoCard.loadExecutionMessage')
     })
 
     return {
