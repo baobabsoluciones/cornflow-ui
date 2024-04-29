@@ -9,6 +9,7 @@
       :steps="steps"
       :disablePreviousButton="disablePrevButton"
       :disableNextButton="disableNextButton"
+      :currentStep.sync="currentStep"
       :continueButtonText="$t('projectExecution.continueButton')"
       :previousButtonText="$t('projectExecution.previousButton')"
       @update:currentStep="handleStepChange"
@@ -43,13 +44,13 @@
         <template
           v-else-if="index === 1 && optionSelected === 'createExecution'"
         >
-          <LoadInstanceStepTwo
+          <CreateExecutionLoadInstance
             :fileSelected="instanceFile"
             @fileSelected="handleInstanceFileSelected"
             @instanceSelected="handleInstanceSelected"
             class="mt-4"
           >
-          </LoadInstanceStepTwo>
+          </CreateExecutionLoadInstance>
         </template>
 
         <!-- Template for create execution step 3 -->
@@ -110,24 +111,11 @@
 
         <!-- Template for create execution step 6 -->
         <template v-else-if="index === 5">
-          <div class="mt-4 d-flex justify-center">
-            <v-btn
-              @click="createExecution(false)"
-              variant="outlined"
-              prepend-icon="mdi-magnify"
-              class="mr-10"
-            >
-              {{ $t('projectExecution.steps.step6.review') }}
-            </v-btn>
-            <v-btn
-              @click="createExecution(true)"
-              class="ml-2"
-              variant="outlined"
-              prepend-icon="mdi-play"
-            >
-              {{ $t('projectExecution.steps.step6.resolve') }}
-            </v-btn>
-          </div>
+          <CreateExecutionResolve
+            :newExecution="newExecution"
+            @resetAndLoadNewExecution="resetAndLoadNewExecution"
+            @update:instance="handleInstanceSelected"
+          ></CreateExecutionResolve>
         </template>
       </template>
 
@@ -147,11 +135,15 @@
       </template>
     </FormSteps>
     <v-card
-      class="ma-5"
+      class="ma-5 mt-10"
+      elevation="5"
+      rounded="lg"
       v-if="optionSelected === 'searchExecution' && searchExecution"
     >
       <ProjectExecutionsTable
         :executionsByDate="executionsByDate"
+        @loadExecution="loadExecution"
+        @deleteExecution="deleteExecution"
       ></ProjectExecutionsTable>
     </v-card>
   </div>
@@ -161,9 +153,10 @@
 import TitleView from '@/components/core/TitleView.vue'
 import FormSteps from '@/components/core/FormSteps.vue'
 import CreateExecutionStepOne from '@/components/project-execution/CreateExecutionStepOne.vue'
+import CreateExecutionLoadInstance from '@/components/project-execution/CreateExecutionLoadInstance.vue'
+import CreateExecutionResolve from '@/components/project-execution/CreateExecutionResolve.vue'
 import DateRangePicker from '@/components/core/DateRangePicker.vue'
 import ProjectExecutionsTable from '@/components/project-execution/ProjectExecutionsTable.vue'
-import LoadInstanceStepTwo from '@/components/project-execution/LoadInstanceStepTwo.vue'
 import CheckboxOptions from '@/components/core/CheckboxOptions.vue'
 import InputField from '@/components/core/InputField.vue'
 import { useGeneralStore } from '@/stores/general'
@@ -176,7 +169,8 @@ export default {
     DateRangePicker,
     ProjectExecutionsTable,
     CreateExecutionStepOne,
-    LoadInstanceStepTwo,
+    CreateExecutionResolve,
+    CreateExecutionLoadInstance,
     CheckboxOptions,
     InputField,
   },
@@ -232,29 +226,76 @@ export default {
           this.selectedDates.endDate,
         )
         if (result) {
-          this.showSnackbar('Búsqueda realizada correctamente')
+          this.showSnackbar(this.$t('projectExecution.snackbar.succesSearch'))
           this.executionsByDate = result
           this.searchExecution = true
         } else {
-          this.showSnackbar('No hay datos para mostrar', 'error')
+          this.showSnackbar(this.$t('projectExecution.snackbar.noDataSearch'))
         }
       } catch (error) {
-        this.showSnackbar('Error al realizar la búsqueda', 'error')
+        this.showSnackbar(
+          this.$t('projectExecution.snackbar.errorSearch'),
+          'error',
+        )
       }
     },
-    async createExecution(createSolution = true) {
+    async loadExecution(execution) {
       try {
-        const result = await this.generalStore.createExecution(
-          this.newExecution,
-          createSolution,
+        const loadedResult = await this.generalStore.fetchLoadedExecution(
+          execution.id,
         )
-        if (result) {
-          this.showSnackbar('Ejecución creada correctamente')
+
+        if (loadedResult) {
+          this.showSnackbar(this.$t('projectExecution.snackbar.successLoad'))
         } else {
-          this.showSnackbar('Error al crear la ejecución', 'error')
+          this.showSnackbar(
+            this.$t('projectExecution.snackbar.errorLoad'),
+            'error',
+          )
         }
       } catch (error) {
-        this.showSnackbar('Error al crear la ejecución', 'error')
+        this.showSnackbar(
+          this.$t('projectExecution.snackbar.errorLoad'),
+          'error',
+        )
+      }
+    },
+    async deleteExecution(execution) {
+      try {
+        const result = await this.generalStore.deleteExecution(execution.id)
+
+        if (result) {
+          this.executionsByDate = this.executionsByDate.filter(
+            (exec) => exec.id !== execution.id,
+          )
+          this.showSnackbar(this.$t('projectExecution.snackbar.successDelete'))
+        } else {
+          this.showSnackbar(
+            this.$t('projectExecution.snackbar.errorDelete'),
+            'error',
+          )
+        }
+      } catch (error) {
+        this.showSnackbar(
+          this.$t('projectExecution.snackbar.errorDelete'),
+          'error',
+        )
+      }
+    },
+    resetAndLoadNewExecution() {
+      Object.assign(this.$data, this.$options.data())
+      this.showSnackbar = inject('showSnackbar')
+    },
+  },
+  watch: {
+    currentStep(newVal, oldVal) {
+      if (this.optionSelected === 'searchExecution') {
+        this.executionsByDate = []
+        this.selectedDates = {
+          startDate: null,
+          endDate: null,
+        }
+        this.searchExecution = false
       }
     },
   },

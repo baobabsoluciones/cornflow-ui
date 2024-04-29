@@ -190,7 +190,7 @@ export default defineComponent({
 }
 
 .dragging-over {
-  background-color: #f0f0f0; /* Change this to the color you want */
+  background-color: #f0f0f0;
 }
 
 .dnd-content {
@@ -215,7 +215,7 @@ export default defineComponent({
 }
 
 .error-container {
-  max-height: 200px; /* Adjust as needed */
+  max-height: 200px;
   overflow-y: auto;
 }
 </style>

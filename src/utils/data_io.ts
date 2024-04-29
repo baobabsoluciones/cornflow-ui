@@ -1,5 +1,6 @@
 import readXlsxFile from 'read-excel-file'
 import * as XLSX from 'xlsx'
+import i18n from '@/plugins/i18n'
 
 const readTable = function (
   file,
@@ -92,7 +93,6 @@ const schemasToREADME = function (
   const schemaToTypes = function (schema) {
     const mainProps = schema.properties
     const listPerTable = function (tab) {
-      // console.log(tab)
       let tabProps
       if (mainProps[tab].type === 'array') {
         tabProps = mainProps[tab].items.properties
@@ -114,4 +114,52 @@ const schemasToREADME = function (
   XLSX.utils.book_append_sheet(wb, typesTable, '_TYPES')
 }
 
-export { loadExcel, schemaDataToTable, schemasToREADME }
+const toISOStringLocal = function (date, isEndDate = false) {
+  var timezoneOffsetMin = date.getTimezoneOffset(),
+    offsetHours = Math.abs(timezoneOffsetMin / 60),
+    offsetMinutes = timezoneOffsetMin % 60,
+    offsetSign = timezoneOffsetMin > 0 ? '-' : '+'
+
+  // If it's an end date, set the time to 23:59
+  if (isEndDate) {
+    date.setHours(23, 59, 0, 0)
+  } else {
+    // If it's a start date, set the time to 00:00
+    date.setHours(0, 0, 0, 0)
+  }
+
+  return (
+    new Date(date.getTime() - timezoneOffsetMin * 60 * 1000)
+      .toISOString()
+      .slice(0, -1) +
+    offsetSign +
+    String(offsetHours).padStart(2, '0') +
+    ':' +
+    String(offsetMinutes).padStart(2, '0')
+  )
+}
+
+const formatDateForHeaders = function (date) {
+  const today = new Date()
+  const itemDate = new Date(date)
+  const options = {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  }
+  const locale = i18n.global.locale
+
+  let formattedDate = new Intl.DateTimeFormat(locale, options).format(itemDate)
+  itemDate.toDateString() ===
+    new Date(today.setDate(today.getDate() - 1)).toDateString()
+
+  return formattedDate
+}
+export {
+  loadExcel,
+  schemaDataToTable,
+  schemasToREADME,
+  toISOStringLocal,
+  formatDateForHeaders,
+}

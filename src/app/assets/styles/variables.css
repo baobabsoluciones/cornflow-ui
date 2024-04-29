@@ -1,12 +1,13 @@
-:root {
+body {
   --primary: #1594f1;
   --primary-variant: #020246;
+  --primary-light: #bfddf3;
   --title: #404040;
   --subtitle: #6e6e6e;
   --success: #3ba780;
-  --warning: #b99748;
+  --warning: #dea727;
   --danger: #f44336;
-  --background: #f5f5f7;
+  --background: #f6f6f6;
   --background-variant: #f6edea;
   --secondary: #f7be68;
   --accent: #4dc3dd;

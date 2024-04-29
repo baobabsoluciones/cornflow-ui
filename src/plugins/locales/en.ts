@@ -5,6 +5,17 @@ export default {
       'Create a new execution or load an existing one to visualize the solution you are looking for. To do so, follow the steps below:',
     continueButton: 'Continue',
     previousButton: 'Previous',
+    snackbar: {
+      successCreate: 'Execution created successfully',
+      errorCreate: 'An error occurred while creating the execution',
+      succesSearch: 'Search succesfully completed',
+      errorSearch: 'An error occurred while searching for executions',
+      noDataSearch: 'No executions found in the selected interval',
+      successDelete: 'Execution deleted successfully',
+      errorDelete: 'An error occurred while deleting the execution',
+      successLoad: 'Execution loaded successfully',
+      errorLoad: 'An error occurred while loading the execution',
+    },
     steps: {
       step1: {
         title: 'New execution',
@@ -79,10 +90,23 @@ export default {
         description: 'Confirm the execution data and start the execution',
         titleContent: 'Execution resolution confirmation',
         subtitleContent:
-          "If you choose to resolve the execution, the model will automatically initiate resolution and will take the estimated time to finish. You can access its status by opening the tab with the assigned name on the bottom horizontal bar.<br><br>If you decide to review the data you've inputted, a tab will be created on the same bottom horizontal bar, and you'll have access to the input data to modify as necessary. From there, you can proceed to resolve the execution.",
+          'If you choose to resolve the execution, the model will automatically initiate resolution and will take the estimated time to finish. You can access its status by opening the tab with the assigned name on the bottom horizontal bar.',
         resolve: 'Resolve',
         review: 'Review',
+        successMessage:
+          'The execution has been launched successfully. A new tab has been opened on the bottom bar. You can click on this tab to open it.',
+        loadNewExecution: 'Load new execution',
       },
+    },
+    infoCard: {
+      createNewExecution: 'Create new execution',
+      loadFromHistory: 'Load from history',
+      executionCreated: 'Execution successfully created',
+      noExecutionSelected: 'No execution selected',
+      solutionWillLoadMessage:
+        'The solution will be loaded automatically on this view when the resolution is finished',
+      loadExecutionMessage:
+        'You can load an execution from the history view or create a new one and select it on the bottom tab bar',
     },
   },
   executionTable: {
@@ -128,4 +152,28 @@ export default {
     password_no_space: "The password can not contain any spaces",
     password_match: "Passwords do not match"
   }
+  versionHistory: {
+    title: 'Version history',
+    description:
+      'Here you can find a summary of all the versions you have made for the different projects executed',
+    yesterday: 'Yesterday',
+    today: 'Today',
+    last7days: 'Last 7 days',
+    lastMonth: 'Last 30 days',
+    custom: 'Custom range',
+    from: 'From',
+    to: 'To',
+    noData: ' No data found for the selected range dates',
+  },
+  inputData: {
+    title: 'Input data',
+    save: 'Save',
+    exitWithoutSaving: 'Exit without saving',
+    saveChanges: 'Save changes',
+    savingMessage: 'Are you sure you want to save changes?',
+    addItem: 'Add new item',
+  },
+  outputData: {
+    title: 'Output data',
+  },
 }

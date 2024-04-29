@@ -4,19 +4,27 @@ import Ajv from 'ajv'
 export class InstanceCore {
   id: string | null
   data: object
-  checks: object
+  schemaChecks: object
   schema: string
+  dataChecks: object[]
 
-  constructor(id: string, data: object, checks: object, schema: string) {
+  constructor(
+    id: string,
+    data: object,
+    schemaChecks: object,
+    schema: string,
+    dataChecks: object[] = [],
+  ) {
     this.data = data
-    this.checks = checks
+    this.schemaChecks = schemaChecks
     this.schema = schema
     this.id = id
+    this.dataChecks = dataChecks
   }
 
   checkSchema() {
     const ajv = new Ajv({ strict: false, allErrors: true })
-    const validate = ajv.compile(this.checks)
+    const validate = ajv.compile(this.schemaChecks)
     const valid = validate(this.data)
     if (!valid) {
       return validate.errors

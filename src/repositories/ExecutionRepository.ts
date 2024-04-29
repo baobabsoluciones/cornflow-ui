@@ -15,6 +15,7 @@ export default class ExecutionRepository {
       schema: name,
       creation_date_gte: dateFrom,
       creation_date_lte: dateTo,
+      limit: 100,
     }
 
     const response = await client.get('/execution/', queryParams)
@@ -58,8 +59,9 @@ export default class ExecutionRepository {
         const solution = new Solution(
           execution.id,
           execution.data,
-          execution.checks,
           useGeneralStore().schemaConfig.solutionSchema,
+          useGeneralStore().getSchemaName,
+          execution.checks,
         )
         const experiment = new Experiment(instance, solution)
         return new LoadedExecution(
@@ -68,6 +70,9 @@ export default class ExecutionRepository {
           execution.name,
           execution.description,
           execution.created_at,
+          execution.state,
+          execution.message,
+          execution.config,
         )
       } else {
         throw new Error('Error loading instance')
@@ -77,14 +82,39 @@ export default class ExecutionRepository {
     }
   }
 
-  // async createExecution(execution, createSolution = true) {
-  //   const response = await client.post('/execution/', payload)
-  //   return response
-  // }
+  async createExecution(execution: any) {
+    const instanceRepository = new InstanceRepository()
+    const instance = await instanceRepository.createInstance(execution)
+
+    if (instance) {
+      const json = {
+        name: execution.name,
+        description: execution.description ? execution.description : '',
+        config: {
+          timeLimit: parseInt(execution.timeLimit),
+          solver: execution.selectedSolver,
+        },
+        schema: useGeneralStore().getSchemaName,
+        instance_id: instance.id,
+      }
+
+      const response = await client.post('/execution/', json, {
+        'Content-Type': 'application/json',
+      })
+      if (response.status === 201) {
+        const execution = response.content
+        return execution
+      } else {
+        throw new Error('Error creating execution')
+      }
+    } else {
+      throw new Error('Error creating instance')
+    }
+  }
 
   async deleteExecution(id: string) {
     const response = await client.remove(`/execution/${id}/`)
-    return response
+    return response.status === 200
   }
 
   async refreshExecution(id: string) {}

@@ -24,7 +24,6 @@ import { MAppDrawer } from 'mango-ui'
 import { MFilterSearch } from 'mango-ui'
 import { MButton } from 'mango-ui'
 
-
 const pinia = createPinia()
 const app = createApp(App)
 
