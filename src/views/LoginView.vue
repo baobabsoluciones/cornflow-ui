@@ -1,54 +1,16 @@
 <template>
-  <div class="sign-in">
-    <div class="modal">
-      <div class="header">
-        <div class="logo" />
-        <h1 class="title">CORNFLOW APP</h1>
-      </div>
-
-      <div class="form-content">
-        <label class="label">Usuario</label>
-        <v-text-field
-          variant="outlined"
-          density="compact"
-          class="input"
-          v-model="username"
-          style="margin-bottom: -8px"
-        />
-
-        <label class="label">Contraseña</label>
-        <v-text-field
-          variant="outlined"
-          density="compact"
-          class="input"
-          v-model="password"
-          :type="show ? 'text' : 'password'"
-          :append-inner-icon="!show ? 'mdi-eye' : 'mdi-eye-off'"
-          @click:append-inner="show = !show"
-          @keydown.enter.prevent="submitLogIn()"
-        />
-
-        <div class="actions">
-          <v-btn
-            class="primary-btn"
-            @click="submitLogIn()"
-            :disabled="!isValidForm"
-          >
-            <span style="font-size: 10px !important">{{
-              $t('message.hello')
-            }}</span>
-          </v-btn>
-        </div>
-      </div>
-    </div>
-  </div>
+  <LogInSignUp/>
 </template>
 
 <script>
 import AuthService from '@/services/AuthService'
 import { inject } from 'vue'
+import LogInSignUp from '@/components/LogInSignUp.vue'
 
 export default {
+  components: {
+    LogInSignUp,
+  },
   data() {
     return {
       show: false,
