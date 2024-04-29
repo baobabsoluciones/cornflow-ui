@@ -124,5 +124,13 @@ export default {
   },
   inputData: {
     title: 'Input data',
+    save: 'Save',
+    exitWithoutSaving: 'Exit without saving',
+    saveChanges: 'Save changes',
+    savingMessage: 'Are you sure you want to save changes?',
+    addItem: 'Add new item',
+  },
+  outputData: {
+    title: 'Output data',
   },
 }

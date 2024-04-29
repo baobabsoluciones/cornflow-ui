@@ -34,7 +34,7 @@
 <script>
 import { inject } from 'vue'
 import { useGeneralStore } from '@/stores/general'
-import InputDataTable from '@/components/core/input-data/InputDataTable.vue'
+import InputDataTable from '@/components/core/input-data/InputOutputDataTable.vue'
 
 export default {
   components: { InputDataTable },

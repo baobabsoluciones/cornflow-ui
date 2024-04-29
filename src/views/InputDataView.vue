@@ -9,7 +9,7 @@
     </ExecutionInfoCard>
     <InputDataTable
       class="mt-5"
-      v-if="selectedExecution"
+      v-if="selectedExecution && selectedExecution.state == 1"
       :execution="selectedExecution"
     >
     </InputDataTable>
@@ -19,7 +19,7 @@
 <script>
 import TitleView from '@/components/core/TitleView.vue'
 import ExecutionInfoCard from '@/components/project-execution/ExecutionInfoCard.vue'
-import InputDataTable from '@/components/core/input-data/InputDataTable.vue'
+import InputDataTable from '@/components/core/input-data/InputOutputDataTable.vue'
 import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
 
@@ -61,9 +61,5 @@ export default {
 <style scoped>
 ::v-deep .v-table {
   height: 55vh;
-}
-
-.selected-option {
-  border: 2px solid var(--primary-variant);
 }
 </style>

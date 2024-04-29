@@ -45,10 +45,12 @@
       <template #table="{ tabSelected }">
         <v-row class="mt-8">
           <DataTable
-            :items="tableData"
+            :items="formattedTableData"
             :headers="headers"
             :options="{ density: 'compact' }"
             :editionMode="editionMode"
+            @create-item="createItem"
+            @deleteItem="deleteItem"
           />
         </v-row>
         <v-row class="mt-5 mb-2 justify-center" v-if="canResolve">
@@ -65,30 +67,26 @@
     <BaseModal
       v-model="openConfirmationSaveModal"
       :closeOnOutsideClick="false"
-      title="Save changes"
+      :title="$t('inputData.saveChanges')"
       :buttons="[
         {
-          text: 'Save',
+          text: $t('inputData.save'),
           action: 'save',
           class: 'primary-btn',
         },
         {
-          text: 'Exit without saving',
+          text: $t('inputData.exitWithoutSaving'),
           action: 'cancel',
           class: 'secondary-btn',
         },
       ]"
       @save="saveChanges"
       @cancel="cancelEdit"
-      @close="cancelEdit"
+      @close="openConfirmationSaveModal = false"
     >
       <template #content>
         <v-row class="d-flex justify-center pr-2 pl-2 pb-5 pt-3">
-          <span
-            >Are you sure you want to save the changes? A new instance will be
-            created with the new information and this will be the one added to
-            the execution.</span
-          >
+          <span> {{ $t('inputData.savingMessage') }}</span>
         </v-row>
       </template>
     </BaseModal>
@@ -114,6 +112,10 @@ export default {
       type: Object,
       required: true,
     },
+    type: {
+      type: String,
+      default: 'instance',
+    },
     canEdit: {
       type: Boolean,
       required: false,
@@ -132,7 +134,8 @@ export default {
       selectedTable: '',
       editionMode: false,
       openConfirmationSaveModal: false,
-      instance: null,
+      data: null,
+      formattedTableData: [],
     }
   },
   created() {
@@ -142,53 +145,89 @@ export default {
     execution: {
       handler() {
         const executionInstance = this.execution.experiment
-          ? JSON.parse(JSON.stringify(this.execution.experiment.instance))
-          : JSON.parse(JSON.stringify(this.execution.instance))
-        this.instance = executionInstance
+          ? JSON.parse(JSON.stringify(this.execution.experiment[this.type]))
+          : JSON.parse(JSON.stringify(this.execution[this.type]))
+        this.data = executionInstance
       },
       deep: true,
     },
-    tabsData: {
-      handler() {
-        this.selectedTable = this.tabsData[0]?.value
+    formattedTableData: {
+      handler(data, oldData) {
+        let tableData = this.tableData
+        if (
+          data.length > 0 &&
+          !Array.isArray(this.data.data[this.selectedTable])
+        ) {
+          tableData = this.generalStore.getConfigTableData(
+            this.tableData,
+            this.type,
+            this.selectedTable,
+          )
+        }
+
+        if (
+          data.length > 0 &&
+          JSON.stringify(data) !== JSON.stringify(tableData) &&
+          !Array.isArray(this.data.data[this.selectedTable])
+        ) {
+          this.data.data[this.selectedTable] = data.reduce((obj, item) => {
+            obj[item.key] = item.value
+            return obj
+          }, {})
+        }
+      },
+      deep: true,
+    },
+    tableData: {
+      handler(data, oldData) {
+        if (!Array.isArray(data)) {
+          this.formattedTableData = this.generalStore.getConfigTableData(
+            data,
+            this.type,
+            this.selectedTable,
+          )
+        } else {
+          this.formattedTableData = data
+        }
       },
       deep: true,
     },
   },
   mounted() {
-    this.instance = this.execution.experiment
-      ? JSON.parse(JSON.stringify(this.execution.experiment.instance))
-      : JSON.parse(JSON.stringify(this.execution.instance))
-    this.selectedTable = this.tabsData[0]?.value
+    this.data = this.execution.experiment
+      ? JSON.parse(JSON.stringify(this.execution.experiment[this.type]))
+      : JSON.parse(JSON.stringify(this.execution[this.type]))
   },
-  methods: {},
   computed: {
     tabsData() {
-      if (this.execution && this.instance) {
-        return this.generalStore.getTableDataNames(
-          'instance',
-          this.instance.data,
-        )
+      if (this.execution && this.data) {
+        return this.generalStore.getTableDataNames(this.type, this.data.data)
       }
       return []
     },
     tableData() {
-      if (this.instance && this.selectedTable) {
-        return this.instance.data[this.selectedTable]
+      if (this.data && this.selectedTable) {
+        return this.data.data[this.selectedTable]
       }
       return []
     },
     headers() {
-      if (this.instance && this.selectedTable) {
-        return this.generalStore.getTableHeadersData(
-          'instance',
-          this.selectedTable,
-        )
+      if (this.data && this.selectedTable) {
+        const headers = Array.isArray(this.data.data[this.selectedTable])
+          ? this.generalStore.getTableHeadersData(this.type, this.selectedTable)
+          : this.generalStore.getConfigTableHeadersData()
+        return headers
       }
       return []
     },
   },
   methods: {
+    deleteItem(index) {
+      this.formattedTableData.splice(index, 1)
+    },
+    createItem() {
+      this.formattedTableData.unshift({})
+    },
     handleTabSelected(newTab) {
       this.selectedTable = newTab
     },
@@ -196,26 +235,24 @@ export default {
       this.openConfirmationSaveModal = true
     },
     saveChanges() {
-      this.$emit('save-changes', this.instance)
+      this.updateEditedData()
+      this.$emit('save-changes', this.data)
       this.editionMode = false
       this.openConfirmationSaveModal = false
     },
     cancelEdit() {
-      this.instance = this.execution.experiment
-        ? JSON.parse(JSON.stringify(this.execution.experiment.instance))
-        : JSON.parse(JSON.stringify(this.execution.instance))
+      this.data = this.execution.experiment
+        ? JSON.parse(JSON.stringify(this.execution.experiment[this.type]))
+        : JSON.parse(JSON.stringify(this.execution[this.type]))
       this.editionMode = false
       this.openConfirmationSaveModal = false
     },
+    updateEditedData() {},
   },
 }
 </script>
 <style scoped>
 ::v-deep .v-table {
   height: 55vh;
-}
-
-.selected-option {
-  border: 2px solid var(--primary-variant);
 }
 </style>

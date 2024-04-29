@@ -329,12 +329,57 @@ export const useGeneralStore = defineStore('general', {
         sortable: this.isTablePropertySortable(collection, table, header),
         filterable: this.getTableJsonSchemaProperty(collection, table, header)
           .filterable,
-        type: this.getTableJsonSchemaProperty(collection, table, header).type,
+        type:
+          this.getTableJsonSchemaProperty(collection, table, header).type ===
+          'integer'
+            ? 'number'
+            : this.getTableJsonSchemaProperty(collection, table, header).type,
         required: this.getTableJsonSchema(
           collection,
           table,
         ).items.required?.includes(header),
       }))
+    },
+
+    getConfigTableHeadersData(): any[] {
+      //TODO: i18n
+      return [
+        {
+          title: 'Parameter',
+          value: 'displayName',
+          sortable: true,
+          disabled: true,
+        },
+        { title: 'Value', value: 'value', sortable: true },
+        { title: 'key', value: 'key', sortable: true, disabled: true },
+      ]
+    },
+
+    getConfigTableData(data: object, collection, table, lang = 'en'): any[] {
+      return Object.keys(data).map((key) => ({
+        displayName: this.getConfigDisplayName(collection, table, key, lang),
+        type: this.getConfigType(collection, table, key),
+        value: data[key],
+        key: key,
+      }))
+    },
+
+    getConfigDisplayName(collection, table, key, lang = 'en'): string {
+      const title = this.getTableJsonSchema(collection, table).properties[key]
+        .title
+      if (typeof title === 'string') {
+        return title
+      } else if (typeof title === 'object') {
+        return title[lang] || title.en || key
+      }
+      return key
+    },
+
+    getConfigType(collection, table, key): string {
+      return this.getTableJsonSchema(collection, table).properties[key].type ==
+        'integer'
+        ? 'number'
+        : this.getTableJsonSchema(collection, table).properties[key].type
     },
   },
   getters: {

@@ -1,7 +1,7 @@
 <template>
   <v-card style="max-height: 75vh" elevation="5">
     <v-row>
-      <v-col cols="3">
+      <v-col cols="3" style="margin-top: -6px !important">
         <slot name="tabs">
           <v-tabs
             class="px-5 pb-2 tabs-border"
@@ -48,7 +48,17 @@ export default {
     },
   },
   setup(props, { emit }) {
-    const selectedTab = ref(props.tabsData[0]?.value)
+    const selectedTab = ref(null)
+
+    watch(
+      () => props.tabsData,
+      (newVal) => {
+        if (newVal.length > 0 && selectedTab.value === null) {
+          selectedTab.value = newVal[0]?.value
+        }
+      },
+      { immediate: true },
+    )
 
     watch(selectedTab, (newVal) => {
       emit('update:selectedTab', newVal)
