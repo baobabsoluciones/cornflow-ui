@@ -3,12 +3,21 @@
     <TabTable :tabsData="tabsData" @update:selectedTab="handleTabSelected">
       <template #actions>
         <v-row class="d-flex mt-3">
-          <v-btn
-            icon="mdi-filter-variant"
-            color="primary"
-            density="compact"
-            style="font-size: 0.6rem !important"
-          ></v-btn>
+          <MFilterSearch :filters="{
+            name1: {
+              type: 'range',
+            },
+            name2: {
+              type: 'checkbox',
+              options: [
+                { checked: true, label: 'Label1', value: 'value1' },
+                { checked: false, label: 'Label2', value: 'value2' },
+              ],
+            },
+            name3: {
+              type: 'daterange',
+            },
+          }" @search="handleSearch" @filter="handleFilters"/>
           <v-spacer></v-spacer>
           <v-btn
             v-if="canEdit && !editionMode"
