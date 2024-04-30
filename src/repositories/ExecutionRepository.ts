@@ -60,6 +60,7 @@ export default class ExecutionRepository {
           execution.id,
           execution.data,
           useGeneralStore().schemaConfig.solutionSchema,
+          useGeneralStore().schemaConfig.solutionChecksSchema,
           useGeneralStore().getSchemaName,
           execution.checks,
         )

@@ -108,6 +108,7 @@ export default {
             null,
             jsonData,
             schemas.instanceSchema,
+            schemas.instanceChecksSchema,
             schemas.name,
           )
         }

@@ -49,7 +49,7 @@ export default {
       },
     },
     title() {
-      return this.$t('inputData.title')
+      return this.$t('inputOutputData.inputTitle')
     },
     description() {
       return this.selectedExecution ? this.selectedExecution.name : ''
