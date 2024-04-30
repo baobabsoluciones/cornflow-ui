@@ -14,6 +14,7 @@ export default class InstanceRepository {
         instanceContent.id,
         instanceContent.data,
         useGeneralStore().schemaConfig.instanceSchema,
+        useGeneralStore().schemaConfig.instanceChecksSchema,
         useGeneralStore().getSchemaName,
         instanceContent.checks,
       )

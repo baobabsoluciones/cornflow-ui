@@ -4,10 +4,11 @@ export class Instance extends InstanceCore {
   constructor(
     id: string,
     data: object,
+    schema: object,
     schemaChecks: object,
-    schema: string,
+    schemaName: string,
     dataChecks: object[] = [],
   ) {
-    super(id, data, schemaChecks, schema, dataChecks)
+    super(id, data, schema, schemaChecks, schemaName, dataChecks)
   }
 }

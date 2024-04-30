@@ -215,12 +215,8 @@ export const useGeneralStore = defineStore('general', {
       this.notifications = []
     },
 
-    getSelectedExecutionData(collection: string): any {
-      return this.selectedExecution.experiment[collection].data
-    },
-
     getTableDataKeys(collection: string, data: object): any[] {
-      const schemaChecks = this.schemaConfig[collection + 'Schema']
+      const schemaChecks = this.schemaConfig[collection]
       const schemaKeys = [...schemaChecks.required]
       const keys = Object.keys(data)
 
@@ -235,8 +231,7 @@ export const useGeneralStore = defineStore('general', {
     },
 
     getTableDataName(collection: string, key: string, lang = 'en'): string {
-      const title =
-        this.schemaConfig[collection + 'Schema'].properties[key].title
+      const title = this.schemaConfig[collection].properties[key].title
       if (typeof title === 'string') {
         return title
       } else if (typeof title === 'object') {
@@ -246,7 +241,7 @@ export const useGeneralStore = defineStore('general', {
     },
 
     getTableJsonSchema(collection: string, table): any {
-      return this.schemaConfig[collection + 'Schema'].properties[table]
+      return this.schemaConfig[collection].properties[table]
     },
 
     getTableOption(collection: string, table, option): any {
@@ -349,9 +344,21 @@ export const useGeneralStore = defineStore('general', {
           value: 'displayName',
           sortable: true,
           disabled: true,
+          config: true,
         },
-        { title: 'Value', value: 'value', sortable: true },
-        { title: 'key', value: 'key', sortable: true, disabled: true },
+        {
+          title: 'Value',
+          value: 'value',
+          sortable: true,
+          config: true,
+        },
+        {
+          title: 'key',
+          value: 'key',
+          sortable: true,
+          disabled: true,
+          config: true,
+        },
       ]
     },
 

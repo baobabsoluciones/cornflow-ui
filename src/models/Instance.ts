@@ -4,27 +4,30 @@ import Ajv from 'ajv'
 export class InstanceCore {
   id: string | null
   data: object
+  schema: object
   schemaChecks: object
-  schema: string
-  dataChecks: object[]
+  schemaName: string
+  dataChecks: object
 
   constructor(
     id: string,
     data: object,
+    schema: object,
     schemaChecks: object,
-    schema: string,
-    dataChecks: object[] = [],
+    schemaName: string,
+    dataChecks: object = {},
   ) {
-    this.data = data
-    this.schemaChecks = schemaChecks
-    this.schema = schema
     this.id = id
+    this.data = data
+    this.schema = schema
+    this.schemaChecks = schemaChecks
+    this.schemaName = schemaName
     this.dataChecks = dataChecks
   }
 
   checkSchema() {
     const ajv = new Ajv({ strict: false, allErrors: true })
-    const validate = ajv.compile(this.schemaChecks)
+    const validate = ajv.compile(this.schema)
     const valid = validate(this.data)
     if (!valid) {
       return validate.errors
@@ -33,7 +36,7 @@ export class InstanceCore {
 
   static fromExcel(file, schema, schemaName) {
     return loadExcel(file, schema).then(
-      (data) => new this(null, data, schema, schemaName),
+      (data) => new this(null, data, schema, {}, schemaName),
     )
   }
 }

@@ -107,6 +107,8 @@ export default {
         'The solution will be loaded automatically on this view when the resolution is finished',
       loadExecutionMessage:
         'You can load an execution from the history view or create a new one and select it on the bottom tab bar',
+      noSolutionMessage:
+        'The execution has been succesfully created but no solution has been found',
     },
   },
   executionTable: {
@@ -167,15 +169,19 @@ export default {
     to: 'To',
     noData: ' No data found for the selected range dates',
   },
-  inputData: {
-    title: 'Input data',
+  inputOutputData: {
+    inputTitle: 'Input data',
+    outputTitle: 'Output data',
     save: 'Save',
     exitWithoutSaving: 'Exit without saving',
     saveChanges: 'Save changes',
     savingMessage: 'Are you sure you want to save changes?',
     addItem: 'Add new item',
-  },
-  outputData: {
-    title: 'Output data',
+    viewDetails: 'Show details',
+    hideDetails: 'Hide details',
+    dataChecksInstanceMessage:
+      'Data verification inconsistencies have been detected, which may result in incorrect solutions or, in some cases, the inability to find a solution.',
+    dataChecksSolutionMessage:
+      'Data verification inconsistencies have been detected for the solution.',
   },
 }

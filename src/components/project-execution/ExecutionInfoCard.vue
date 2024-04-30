@@ -8,7 +8,10 @@
     v-if="
       !selectedExecution ||
       selectedExecution.state === 0 ||
-      selectedExecution.state === -7
+      selectedExecution.state === -7 ||
+      (type === 'solution' &&
+        selectedExecution &&
+        !selectedExecution.hasSolution())
     "
   >
     <template #content>
@@ -43,7 +46,11 @@ export default {
   props: {
     selectedExecution: {
       type: Object,
-      default: () => ({}),
+      default: null,
+    },
+    type: {
+      type: String,
+      default: 'instance',
     },
   },
   components: {
@@ -73,7 +80,11 @@ export default {
 
     const descriptionInfoCard = computed(() => {
       return props.selectedExecution
-        ? t('projectExecution.infoCard.solutionWillLoadMessage')
+        ? props.type === 'solution' &&
+          props.selectedExecution &&
+          !props.selectedExecution.hasSolution()
+          ? t('projectExecution.infoCard.noSolutionMessage')
+          : t('projectExecution.infoCard.solutionWillLoadMessage')
         : t('projectExecution.infoCard.loadExecutionMessage')
     })
 

@@ -29,4 +29,8 @@ export class LoadedExecution {
     this.messageState = message
     this.config = config
   }
+
+  hasSolution() {
+    return this.experiment.hasSolution()
+  }
 }
