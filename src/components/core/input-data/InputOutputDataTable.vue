@@ -162,7 +162,6 @@ import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
 import DataTable from '@/components/core/DataTable.vue'
 import BaseModal from '@/components/core/BaseModal.vue'
-import { check } from 'prettier'
 
 export default {
   emits: ['saveChanges', 'resolve'],
