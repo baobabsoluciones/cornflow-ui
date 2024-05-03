@@ -1,6 +1,6 @@
 <template>
   <div class="view-container">
-    <TitleView
+    <MTitleView
       :icon="'mdi-chart-timeline-variant'"
       :title="title"
       :description="description"
@@ -150,7 +150,6 @@
 </template>
 
 <script>
-import TitleView from '@/components/core/TitleView.vue'
 import FormSteps from '@/components/core/FormSteps.vue'
 import CreateExecutionStepOne from '@/components/project-execution/CreateExecutionStepOne.vue'
 import CreateExecutionLoadInstance from '@/components/project-execution/CreateExecutionLoadInstance.vue'
@@ -164,7 +163,6 @@ import { inject } from 'vue'
 
 export default {
   components: {
-    TitleView,
     FormSteps,
     DateRangePicker,
     ProjectExecutionsTable,

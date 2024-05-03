@@ -23,6 +23,8 @@ import 'mango-ui/dist/style.css'
 import { MAppDrawer } from 'mango-ui'
 import { MFilterSearch } from 'mango-ui'
 import { MButton } from 'mango-ui'
+import { MTitleView } from 'mango-ui'
+
 
 const pinia = createPinia()
 const app = createApp(App)
@@ -32,6 +34,8 @@ registerPlugins(app)
 app.component('MAppDrawer', MAppDrawer)
 app.component('MFilterSearch', MFilterSearch)
 app.component('MButton', MButton)
+app.component('MTitleView', MTitleView)
+
 
 app.use(pinia)
 app.mount('#app')
