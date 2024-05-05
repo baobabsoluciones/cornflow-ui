@@ -145,15 +145,7 @@ export default defineComponent({
         },
       ]
     },
-    actions() {
-      return [
-        {
-          title: 'Settings',
-          icon: 'mdi-cog',
-          to: '/settings',
-        },
-      ]
-    },
+    actions() {},
   },
   methods: {},
 })

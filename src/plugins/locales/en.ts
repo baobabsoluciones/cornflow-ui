@@ -184,4 +184,22 @@ export default {
     dataChecksSolutionMessage:
       'Data verification inconsistencies have been detected for the solution.',
   },
+  settings: {
+    currentPassword: 'Current password',
+    newPassword: 'New password',
+    confirmPassword: 'Confirm password',
+    userSettings: 'User settings',
+    changePassword: 'Change password',
+    submit: 'Submit',
+    language: 'Language',
+    english: 'English',
+    spanish: 'Spanish',
+    french: 'French',
+    selectLanguage: 'Select the main language of the application',
+    theme: 'Theme',
+    light: 'Light',
+    dark: 'Dark',
+    selectTheme: 'Select the main theme of the application',
+    settings: 'Settings',
+  },
 }
