@@ -201,5 +201,13 @@ export default {
     dark: 'Dark',
     selectTheme: 'Select the main theme of the application',
     settings: 'Settings',
+    snackbarMessageSuccess: 'Password updated successfully',
+    snackbarMessageError: 'An error occurred while updating the password',
+    required: 'Field required',
+    passwordRuleLength: 'Min. {length} characters.',
+    passwordRuleCharacters:
+      'Must contain uppercases, lowercases, numbers and special characters',
+    passWordRuleNoSpace: 'A password can not contain any spaces',
+    passwordRuleNotMatch: 'Passwords do not match',
   },
 }

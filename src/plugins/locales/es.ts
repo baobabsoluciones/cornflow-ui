@@ -207,5 +207,13 @@ export default {
     dark: 'Oscuro',
     selectTheme: 'Selecciona el tema principal de la aplicación',
     settings: 'Configuración',
+    snackbarMessageSuccess: 'Contraseña actualizada correctamente',
+    snackbarMessageError: 'Se produjo un error al actualizar la contraseña',
+    required: 'Campo requerido',
+    passwordRuleLength: 'Mín. {length} caracteres.',
+    passwordRuleCharacters:
+      'Debe contener mayúsculas, minúsculas, números y caracteres especiales',
+    passWordRuleNoSpace: 'Una contraseña no puede contener espacios',
+    passwordRuleNotMatch: 'Las contraseñas no coinciden',
   },
 }

@@ -209,5 +209,11 @@ export default {
     dark: 'Sombre',
     selectTheme: "Sélectionnez le thème principal de l'application",
     settings: 'Paramètres',
+    required: 'Champ requis',
+    passwordRuleLength: 'Min. {length} caractères.',
+    passwordRuleCharacters:
+      'Doit contenir des majuscules, des minuscules, des chiffres et des caractères spéciaux',
+    passWordRuleNoSpace: "Un mot de passe ne peut pas contenir d'espaces",
+    passwordRuleNotMatch: 'Les mots de passe ne correspondent pas',
   },
 }

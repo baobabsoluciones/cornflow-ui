@@ -53,6 +53,19 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
+    async changeUserPassword(userId: string, password: string) {
+      try {
+        const response = await this.userRepository.changePassword(
+          userId,
+          password,
+        )
+        return response
+      } catch (error) {
+        console.error('Error changing password', error)
+        return false
+      }
+    },
+
     async setSchema() {
       try {
         const schema = await this.schemaRepository.getSchema(this.getSchemaName)

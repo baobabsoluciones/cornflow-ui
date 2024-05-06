@@ -6,7 +6,7 @@
     <v-text-field
       variant="outlined"
       density="compact"
-      hide-details
+      :hide-details="rules?.length === 0"
       :type="showPassword ? 'text' : type"
       :placeholder="placeholder"
       :prefix="prefix"

@@ -1,10 +1,5 @@
 <template>
-  <MAppDrawer
-    :visible="true"
-    :width="250"
-    :actions="actions"
-    @update:rail="mini = !mini"
-  >
+  <MAppDrawer :visible="true" :width="250" @update:rail="mini = !mini">
     <template #logo>
       <div class="mt-2">
         <v-img
@@ -80,12 +75,27 @@
         </template>
       </template>
     </template>
+    <template #actions>
+      <template v-for="action in actions" :key="action.title">
+        <v-list-item
+          :base-color="'var(--title)'"
+          :color="'var(--accent)'"
+          @click="action.action"
+        >
+          <div class="d-flex align-center">
+            <v-icon v-if="action.icon" left>{{ action.icon }}</v-icon>
+            <h4 class="ml-4" v-if="!mini">{{ action.title }}</h4>
+          </div>
+        </v-list-item>
+      </template>
+    </template>
   </MAppDrawer>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue'
 import { useGeneralStore } from '@/stores/general'
+import AuthService from '@/services/AuthService'
 
 export default defineComponent({
   name: 'CoreAppDrawer',
@@ -145,9 +155,22 @@ export default defineComponent({
         },
       ]
     },
-    actions() {},
+    actions() {
+      return [
+        {
+          title: 'Logout',
+          icon: 'mdi-logout',
+          action: this.signOut,
+        },
+      ]
+    },
   },
-  methods: {},
+  methods: {
+    signOut() {
+      AuthService.logout()
+      this.$router.push('/sign-in')
+    },
+  },
 })
 </script>
 
