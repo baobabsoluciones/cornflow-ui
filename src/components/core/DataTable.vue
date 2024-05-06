@@ -62,13 +62,13 @@
         rounded="lg"
         @click="$emit('create-item')"
         style="width: 140px"
-        v-if="editionMode"
+        v-if="editionMode && !headers[0].config"
       >
         <v-row no-gutters class="align-center">
           <v-col cols="auto">
             <v-icon style="font-size: 0.85rem" class="mr-1">mdi-plus</v-icon>
           </v-col>
-          <v-col cols="auto"> {{ $t('inputData.addItem') }} </v-col>
+          <v-col cols="auto"> {{ $t('inputOutputData.addItem') }} </v-col>
         </v-row>
       </v-btn>
     </template>
@@ -117,7 +117,7 @@ export default {
   },
   computed: {
     tableHeaders() {
-      if (this.editionMode) {
+      if (this.editionMode && !this.headers[0].config) {
         return [
           ...this.headers,
           {

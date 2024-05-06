@@ -107,6 +107,8 @@ export default {
         'The solution will be loaded automatically on this view when the resolution is finished',
       loadExecutionMessage:
         'You can load an execution from the history view or create a new one and select it on the bottom tab bar',
+      noSolutionMessage:
+        'The execution has been succesfully created but no solution has been found',
     },
   },
   executionTable: {
@@ -167,15 +169,45 @@ export default {
     to: 'To',
     noData: ' No data found for the selected range dates',
   },
-  inputData: {
-    title: 'Input data',
+  inputOutputData: {
+    inputTitle: 'Input data',
+    outputTitle: 'Output data',
     save: 'Save',
     exitWithoutSaving: 'Exit without saving',
     saveChanges: 'Save changes',
     savingMessage: 'Are you sure you want to save changes?',
     addItem: 'Add new item',
+    viewDetails: 'Show details',
+    hideDetails: 'Hide details',
+    dataChecksInstanceMessage:
+      'Data verification inconsistencies have been detected, which may result in incorrect solutions or, in some cases, the inability to find a solution.',
+    dataChecksSolutionMessage:
+      'Data verification inconsistencies have been detected for the solution.',
   },
-  outputData: {
-    title: 'Output data',
+  settings: {
+    currentPassword: 'Current password',
+    newPassword: 'New password',
+    confirmPassword: 'Confirm password',
+    userSettings: 'User settings',
+    changePassword: 'Change password',
+    submit: 'Submit',
+    language: 'Language',
+    english: 'English',
+    spanish: 'Spanish',
+    french: 'French',
+    selectLanguage: 'Select the main language of the application',
+    theme: 'Theme',
+    light: 'Light',
+    dark: 'Dark',
+    selectTheme: 'Select the main theme of the application',
+    settings: 'Settings',
+    snackbarMessageSuccess: 'Password updated successfully',
+    snackbarMessageError: 'An error occurred while updating the password',
+    required: 'Field required',
+    passwordRuleLength: 'Min. {length} characters.',
+    passwordRuleCharacters:
+      'Must contain uppercases, lowercases, numbers and special characters',
+    passWordRuleNoSpace: 'A password can not contain any spaces',
+    passwordRuleNotMatch: 'Passwords do not match',
   },
 }

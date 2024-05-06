@@ -5,11 +5,14 @@
       :title="title"
       :description="description"
     />
-    <ExecutionInfoCard :selectedExecution="selectedExecution">
+    <ExecutionInfoCard
+      :selectedExecution="selectedExecution"
+      :type="'solution'"
+    >
     </ExecutionInfoCard>
     <InputOutputDataTable
       class="mt-5"
-      v-if="selectedExecution && selectedExecution.state == 1"
+      v-if="selectedExecution && selectedExecution.hasSolution()"
       :type="'solution'"
       :execution="selectedExecution"
     >
@@ -50,7 +53,7 @@ export default {
       },
     },
     title() {
-      return this.$t('outputData.title')
+      return this.$t('inputOutputData.outputTitle')
     },
     description() {
       return this.selectedExecution ? this.selectedExecution.name : ''
