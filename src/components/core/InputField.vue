@@ -6,8 +6,8 @@
     <v-text-field
       variant="outlined"
       density="compact"
-      hide-details
-      :type="type"
+      :hide-details="rules?.length === 0"
+      :type="showPassword ? 'text' : type"
       :placeholder="placeholder"
       :prefix="prefix"
       :suffix="suffix"
@@ -24,8 +24,10 @@
       <template v-slot:prepend-inner v-if="prependInnerIcon">
         <v-icon v-if="prependInnerIcon">{{ prependInnerIcon }}</v-icon>
       </template>
-      <template v-slot:append-inner v-if="appendInnerIcon">
-        <v-icon v-if="appendInnerIcon">{{ appendInnerIcon }}</v-icon>
+      <template v-slot:append-inner v-if="type === 'password'">
+        <v-icon @click="togglePasswordVisibility">{{
+          showPassword ? 'mdi-eye-off' : 'mdi-eye'
+        }}</v-icon>
       </template>
     </v-text-field>
   </div>
@@ -50,6 +52,11 @@ export default {
     rules: Array,
     modelValue: [String, Number, Boolean],
   },
+  data() {
+    return {
+      showPassword: false,
+    }
+  },
   computed: {
     computedValue: {
       get() {
@@ -58,6 +65,11 @@ export default {
       set(value) {
         this.$emit('update:modelValue', value)
       },
+    },
+  },
+  methods: {
+    togglePasswordVisibility() {
+      this.showPassword = !this.showPassword
     },
   },
 }
