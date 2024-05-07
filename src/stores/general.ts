@@ -30,9 +30,9 @@ export const useGeneralStore = defineStore('general', {
     schema: '',
     schemaConfig: {} as SchemaConfig,
     appConfig: config.getCore(),
-    appRoutes: config.getRoutes(),
-    appPages: config.getPages(),
-    appDashboard: config.getDashboard(),
+    appDashboardRoutes: config.getDashboardRoutes(),
+    appDashboardPages: config.getDashboardPages(),
+    appDashboardLayout: config.getDashboardLayout(),
     lastExecutions: [] as Execution[],
     loadedExecutions: [] as LoadedExecution[],
     selectedExecution: null,
@@ -95,6 +95,7 @@ export const useGeneralStore = defineStore('general', {
 
     async fetchExecutionsByDateRange(fromDate: Date, toDate: Date) {
       try {
+        if (!fromDate || !toDate) return
         const executions = await this.executionRepository.getExecutions(
           this.getSchemaName,
           toISOStringLocal(fromDate),

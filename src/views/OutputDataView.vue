@@ -52,6 +52,11 @@ export default {
         this.generalStore.selectedExecution = newValue
       },
     },
+    hasSolution: {
+      get() {
+        return this.selectedExecution.hasSolution()
+      },
+    },
     title() {
       return this.$t('inputOutputData.outputTitle')
     },

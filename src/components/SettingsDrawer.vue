@@ -63,29 +63,31 @@
         <v-list-item-subtitle class="mb-2">{{
           $t('settings.changePassword')
         }}</v-list-item-subtitle>
-        <InputField
-          class="mt-4"
-          v-model="newPassword"
-          :rules="newPassword ? passwordRules : []"
-          :title="$t('settings.newPassword')"
-          type="password"
-        >
-        </InputField>
-        <InputField
-          class="mt-4"
-          v-model="confirmPassword"
-          :rules="confirmPassword ? passwordRules : []"
-          :title="$t('settings.confirmPassword')"
-          type="password"
-        >
-        </InputField>
-        <v-btn
-          :disabled="!validPassword"
-          color="primary"
-          class="my-4"
-          @click="changePassword"
-          >{{ $t('settings.submit') }}</v-btn
-        >
+        <v-form>
+          <InputField
+            class="mt-4"
+            v-model="newPassword"
+            :rules="newPassword ? passwordRules : []"
+            :title="$t('settings.newPassword')"
+            type="password"
+          >
+          </InputField>
+          <InputField
+            class="mt-4"
+            v-model="confirmPassword"
+            :rules="confirmPassword ? passwordRules : []"
+            :title="$t('settings.confirmPassword')"
+            type="password"
+          >
+          </InputField>
+          <v-btn
+            :disabled="!validPassword"
+            color="primary"
+            class="my-4"
+            @click="changePassword"
+            >{{ $t('settings.submit') }}</v-btn
+          >
+        </v-form>
       </v-list-item>
     </v-list>
   </v-navigation-drawer>

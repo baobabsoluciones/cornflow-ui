@@ -25,7 +25,7 @@
           </div>
         </template>
       </v-col>
-      <v-col class="v-col-4 v-col-s-3">
+      <v-col class="v-col-4 v-col-s-6">
         <v-card
           elevation="0"
           class="rounded-lg pa-3"

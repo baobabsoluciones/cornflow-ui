@@ -26,6 +26,7 @@ export default {
   components: {
     TitleView,
     ExecutionInfoCard,
+    DashboardMain,
   },
   data() {
     return {

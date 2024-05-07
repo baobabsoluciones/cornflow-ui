@@ -48,7 +48,10 @@
         <v-list-item
           :base-color="'var(--title)'"
           :color="'var(--accent)'"
-          :class="{ 'non-clickable': !item.to }"
+          :class="{
+            'non-clickable': !item.to,
+            'page-selected': isSubPageActive(item.subPages),
+          }"
           :to="item.to"
         >
           <div class="d-flex align-center">
@@ -136,6 +139,10 @@ export default defineComponent({
           title: 'Dashboard',
           icon: 'mdi-view-dashboard',
           to: '/dashboard',
+          subPages:
+            this.store.appDashboardPages.length > 0
+              ? this.store.appDashboardPages
+              : null,
         },
         {
           title: 'Project Management',
@@ -169,6 +176,9 @@ export default defineComponent({
     signOut() {
       AuthService.logout()
       this.$router.push('/sign-in')
+    },
+    isSubPageActive(subPages) {
+      return subPages?.some((subPage) => this.$route.path === subPage.to)
     },
   },
 })
@@ -215,5 +225,10 @@ export default defineComponent({
 
 h4 {
   font-size: 0.9em !important;
+}
+
+.page-selected {
+  color: var(--accent) !important;
+  caret-color: var(--accent) !important;
 }
 </style>
