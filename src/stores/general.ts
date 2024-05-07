@@ -13,6 +13,7 @@ import UserRepository from '@/repositories/UserRepository'
 import ExecutionRepository from '@/repositories/ExecutionRepository'
 
 import { toISOStringLocal } from '@/utils/data_io'
+import i18n from '@/plugins/i18n'
 
 export const useGeneralStore = defineStore('general', {
   state: () => ({
@@ -125,6 +126,7 @@ export const useGeneralStore = defineStore('general', {
         return newExecution
       } catch (error) {
         console.error('Error creating execution', error)
+        return false
       }
     },
 
@@ -207,10 +209,14 @@ export const useGeneralStore = defineStore('general', {
       this.loadedExecutions = []
     },
 
-    setSelectedExecution(executionId: string) {
-      this.selectedExecution = this.loadedExecutions.find(
-        (execution) => execution.executionId === executionId,
-      )
+    setSelectedExecution(executionId: string | null) {
+      if (executionId === null) {
+        this.selectedExecution = null
+      } else {
+        this.selectedExecution = this.loadedExecutions.find(
+          (execution) => execution.executionId === executionId,
+        )
+      }
     },
 
     addNotification(notification: {
@@ -350,23 +356,22 @@ export const useGeneralStore = defineStore('general', {
     },
 
     getConfigTableHeadersData(): any[] {
-      //TODO: i18n
       return [
         {
-          title: 'Parameter',
+          title: i18n.global.t('inputOutputData.parameter'),
           value: 'displayName',
           sortable: true,
           disabled: true,
           config: true,
         },
         {
-          title: 'Value',
+          title: i18n.global.t('inputOutputData.value'),
           value: 'value',
           sortable: true,
           config: true,
         },
         {
-          title: 'key',
+          title: i18n.global.t('inputOutputData.key'),
           value: 'key',
           sortable: true,
           disabled: true,

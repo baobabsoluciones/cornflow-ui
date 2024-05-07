@@ -83,12 +83,12 @@ export default {
         {
           title: this.$t('executionTable.status'),
           value: 'state',
-          width: '10%',
+          width: '12%',
         },
         {
           title: this.$t('executionTable.solver'),
           value: 'solver',
-          width: '15%',
+          width: '13%',
         },
         {
           title: this.$t('executionTable.solution'),

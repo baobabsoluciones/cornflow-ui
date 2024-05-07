@@ -61,7 +61,12 @@ export default {
     const router = useRouter()
 
     const navigateTo = (path) => {
-      router.push(path)
+      if (path === '/project-execution') {
+        // Force reload of the page
+        router.push({ path, query: { key: Date.now() } })
+      } else {
+        router.push(path)
+      }
     }
 
     const iconInfoCard = computed(() => {

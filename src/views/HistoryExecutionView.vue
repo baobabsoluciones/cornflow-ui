@@ -112,6 +112,9 @@ export default {
   mounted() {
     this.dateOptionSelected = this.labels[0].value
   },
+  activated() {
+    this.fetchData()
+  },
   computed: {
     title() {
       return this.$t('versionHistory.title')

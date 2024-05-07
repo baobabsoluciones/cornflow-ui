@@ -100,6 +100,8 @@ export default {
         review: 'Revisar',
         successMessage:
           'La ejecución se ha lanzado con éxito. Se ha abierto una nueva pestaña en la barra inferior. Puedes hacer clic en esta pestaña para abrirla.',
+        errorMessage:
+          'Ha ocurrido un error al crear la ejecución. Por favor inténtelo de nuevo.',
         loadNewExecution: 'Cargar nueva ejecución',
       },
     },
@@ -189,6 +191,9 @@ export default {
       'Se han detectado inconsistencias en la verificación de datos, lo que puede dar lugar a soluciones incorrectas o, en algunos casos, a la imposibilidad de encontrar una solución.',
     dataChecksSolutionMessage:
       'Se han detectado inconsistencias en la verificación de datos para la solución.',
+    parameter: 'Parámetro',
+    value: 'Valor',
+    key: 'Clave',
   },
   settings: {
     currentPassword: 'Contraseña actual',
