@@ -95,6 +95,8 @@ export default {
         review: 'Review',
         successMessage:
           'The execution has been launched successfully. A new tab has been opened on the bottom bar. You can click on this tab to open it.',
+        errorMessage:
+          'An error occurred while creating the execution. Please try again.',
         loadNewExecution: 'Load new execution',
       },
     },
@@ -183,6 +185,9 @@ export default {
       'Data verification inconsistencies have been detected, which may result in incorrect solutions or, in some cases, the inability to find a solution.',
     dataChecksSolutionMessage:
       'Data verification inconsistencies have been detected for the solution.',
+    parameter: 'Parameter',
+    value: 'Value',
+    key: 'Key',
   },
   settings: {
     currentPassword: 'Current password',

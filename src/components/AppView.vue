@@ -12,7 +12,11 @@
       <v-icon>mdi-cog</v-icon>
     </v-btn>
     <SettingsDrawer v-model="settingsDrawer" @close="settingsDrawer = false" />
-    <router-view />
+    <router-view v-slot="{ Component }">
+      <keep-alive :key="getKey">
+        <component :is="Component" />
+      </keep-alive>
+    </router-view>
   </div>
 </template>
 
@@ -26,6 +30,12 @@ export default defineComponent({
   data: () => ({
     settingsDrawer: false,
   }),
+  computed: {
+    getKey() {
+      const key = this.$route.query.key
+      return Array.isArray(key) ? key[0] : key || 'default'
+    },
+  },
 })
 </script>
 

@@ -14,7 +14,7 @@
         slim
         v-for="(tab, index) in tabs"
         :key="index"
-        :class="tab.selected ? 'selected-tab' : ''"
+        :class="tab.selected === true ? 'selected-tab' : ''"
         @click="selectTab(tab)"
       >
         <v-icon v-if="tab.loading" class="mr-2 loading-icon" color="primary"
@@ -81,7 +81,7 @@ export default {
 
 <style scoped>
 .selected-tab {
-  background-color: var(--background-variant) !important;
+  background-color: var(--background) !important;
 }
 
 .my-tab ::v-deep .v-btn__content {
@@ -106,13 +106,11 @@ export default {
 }
 
 ::v-deep .v-tab.v-tab.v-btn {
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-width: 1px 2px 1px 1px;
+  border-style: solid;
+  border-color: rgba(0, 0, 0, 0.1);
   border-bottom: none !important;
   border-radius: 5px 5px 0 0;
-}
-
-::v-deep .v-tab--selected {
-  background-color: var(--background) !important;
 }
 
 ::v-deep .v-tab--selected .v-tab__slider {
