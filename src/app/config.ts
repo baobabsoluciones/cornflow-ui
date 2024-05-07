@@ -1,24 +1,24 @@
 /**
  * This file is used to configure the core functionalities, pages, routes, and dashboard for the application.
- * 
+ *
  * The `app` object is where you define the core functionalities, pages, routes, and dashboard for your application.
- * 
+ *
  * The `core` property of the `app` object is used to define the core functionalities of your application.
  * Each core functionality is a class that extends the `BaseCore` class and implements the required methods.
- * 
- * The `pages` array is used to define the navigation menu items and their corresponding routes.
+ *
+ * The `dashboardPages` array is used to define the navigation menu items and their corresponding routes for dashboard subpages.
  * Each page is an object with `title`, `icon`, `to`, and `pos` properties.
- * 
- * The `routes` array is used to define the routes for your application and their corresponding components.
+ *
+ * The `dashboardRoutes` array is used to define the dashboard subpages routes for your application and their corresponding components.
  * Each route is an object with `name`, `path`, and `component` properties.
- * 
- * The `dashboard` array is used to define the layout of your application's dashboard.
+ *
+ * The `dashboardLayout` array is used to define the layout of your application's dashboard.
  * Each dashboard item is an object with `title`, `component`, `cols`, `bindings`, and `style` properties.
- * 
+ *
  * The `Config` class is used to get the `core`, `pages`, `routes`, and `dashboard` from the `app` object.
- * 
+ *
  * Example:
- * 
+ *
  * const app = {
  *   core: {
  *     Experiment: Experiment,
@@ -33,7 +33,7 @@
  *       expandedLogo: 'path/to'
  *     },
  *   },
- *   pages: [
+ *   dashboardPages: [
  *     {
  *       title: 'Page 1',
  *       icon: 'mdi-home',
@@ -41,14 +41,14 @@
  *       pos: 1,
  *     },
  *   ],
- *   routes: [
+ *   dashboardRoutes: [
  *     {
  *       name: 'Page1',
  *       path: 'page1',
  *       component: () => import('@/app/views/Page1'),
  *     },
  *   ],
- *   dashboard: [
+ *   dashboardLayout: [
  *     {
  *       title: 'Dashboard Item 1',
  *       component: 'InfoCard',
@@ -62,29 +62,32 @@
  *     },
  *   ],
  * }
- * 
+ *
  * This class is accessible through the `appConfig` property of the `general` store. Here's how you can use it:
- * 
+ *
  * 1. Import the `useGeneralStore` function from the `general` store file:
- * 
+ *
  *    ```typescript
- *    import { useGeneralStore } from "@/store/general"; 
+ *    import { useGeneralStore } from "@/store/general";
  *    ```
- * 
+ *
  * 2. Call the `useGeneralStore` function to get the `general` store instance:
- * 
+ *
  *    ```typescript
  *    const generalStore = useGeneralStore();
  *    ```
- * 
+ *
  * 3. Use the `appConfig` property of the `general` store to access the `Config` class:
- * 
+ *
  *    ```typescript
  *    const core = generalStore.appConfig.getCore();
- *    const pages = generalStore.appConfig.getPages();
- *    const routes = generalStore.appConfig.getRoutes();
- *    const dashboard = generalStore.appConfig.getDashboard();
+ *    const dashboardPages = generalStore.appConfig.getDashboardPages();
+ *    const dashboardRoutes = generalStore.appConfig.getDashboardRoutes();
+ *    const dashboardLayout = generalStore.appConfig.getDashboardLayout();
  *    ```
+ *
+ * Notice that dashboard pages and routes are already implemented in the needed files to be used in the application, and that you should NOT need to implement them again.
+ * Dashboard layout components are also already implemented in the `@/app/components/DashboardMain.vue` file, although this file can be edited as pleased to display custom dashboards.
  */
 
 import { Instance } from '@/app/models/Instance.ts'
@@ -103,35 +106,33 @@ const app = {
       name: 'Rostering',
     },
   },
-  pages: [],
-  routes: [],
-  dashboard: [],
+  dashboardPages: [],
+  dashboardRoutes: [],
+  dashboardLayout: [],
 }
 
 class Config {
-  private config: typeof app;
+  private config: typeof app
 
   constructor() {
-    this.config = app;
+    this.config = app
   }
 
   getCore() {
-    return this.config.core;
+    return this.config.core
   }
 
-  getPages() {
-    return this.config.pages;
+  getDashboardPages() {
+    return this.config.dashboardPages
   }
 
-  getRoutes() {
-    return this.config.routes;
+  getDashboardRoutes() {
+    return this.config.dashboardRoutes
   }
 
-  getDashboard() {
-    return this.config.dashboard;
+  getDashboardLayout() {
+    return this.config.dashboardLayout
   }
 }
 
-export default new Config();
-
-
+export default new Config()
