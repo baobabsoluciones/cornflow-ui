@@ -122,6 +122,10 @@ export default {
     solution: 'Solution',
     excel: 'Excel',
     actions: 'Actions',
+    deleteTitle: 'Delete execution',
+    deleteMessage: 'Are you sure you want to delete this execution?',
+    deleteButton: 'Delete',
+    cancelButton: 'Cancel',
   },
   logIn: {
     subtitle: 'Log in to get started!',
@@ -189,6 +193,10 @@ export default {
     parameter: 'Parameter',
     value: 'Value',
     key: 'Key',
+    deleteTitle: 'Delete item',
+    deleteMessage: 'Are you sure you want to delete this item?',
+    deleteButton: 'Delete',
+    cancelButton: 'Cancel',
   },
   settings: {
     currentPassword: 'Current password',

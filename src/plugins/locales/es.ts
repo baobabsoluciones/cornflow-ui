@@ -127,6 +127,10 @@ export default {
     solution: 'Solución',
     excel: 'Excel',
     actions: 'Acciones',
+    deleteTitle: 'Eliminar ejecución',
+    deleteMessage: '¿Estás seguro de que quieres eliminar esta ejecución?',
+    deleteButton: 'Eliminar',
+    cancelButton: 'Cancelar',
   },
   logIn: {
     subtitle: '¡Inicia sesión para empezar!',
@@ -195,6 +199,10 @@ export default {
     parameter: 'Parámetro',
     value: 'Valor',
     key: 'Clave',
+    deleteTitle: 'Eliminar registro',
+    deleteMessage: '¿Estás seguro de que quieres eliminar este registro?',
+    deleteButton: 'Eliminar',
+    cancelButton: 'Cancelar',
   },
   settings: {
     currentPassword: 'Contraseña actual',
