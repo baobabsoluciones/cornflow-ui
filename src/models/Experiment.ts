@@ -21,9 +21,6 @@ export class ExperimentCore {
     filename = 'none',
     saveInstance = true,
     saveSolution = true,
-    instanceSchema = null,
-    solutionSchema = null,
-    locale = 'en',
   ) {
 
     // we create the object for the file

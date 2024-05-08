@@ -72,6 +72,13 @@
             density="compact"
             style="font-size: 0.6rem !important"
           ></v-btn>
+          <v-btn
+            icon="mdi-microsoft-excel"
+            color="primary"
+            density="compact"
+            style="font-size: 0.6rem !important; margin-left: 5px !important;"
+            @click="handleDownload()"
+          ></v-btn>
           <v-spacer></v-spacer>
           <v-btn
             v-if="canEdit && !editionMode"
@@ -373,6 +380,17 @@ export default {
       this.editionMode = false
       this.openConfirmationSaveModal = false
     },
+    handleDownload() {
+      const {href} = this.$route;
+      let instance = false;
+      let solution = false;
+      if(href === '/input-data'){
+        instance = true;
+      }else if (href === '/output-data'){
+        solution = true;
+      }
+      this.execution.experiment.downloadExcel(undefined, instance, solution)
+    }
   },
 }
 </script>

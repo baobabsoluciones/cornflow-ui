@@ -175,7 +175,7 @@ export default {
       return `${date.getHours()}:${date.getMinutes()}`
     },
     async handleDownload(item){
-      this.generalStore.getDataToDownload(item.id)
+      this.generalStore.getDataToDownload(item.id, true, true)
     }
   },
 }

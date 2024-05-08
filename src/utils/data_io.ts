@@ -66,8 +66,6 @@ async function schemaDataToTable (wb, data) {
   return [sheetName, sheetData];
 });
 
-  console.log(dataArray)
-
   // Iterate over each sheet in the data
   for (const [sheetName, sheetData] of dataArray) {
     // Add a worksheet with the sheet name to the workbook

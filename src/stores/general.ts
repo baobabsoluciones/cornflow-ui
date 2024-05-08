@@ -392,8 +392,19 @@ export const useGeneralStore = defineStore('general', {
       }))
     },
 
-    async getDataToDownload(id: string){
-      const downloadedData = await this.executionRepository.getDataToDownload(id)
+    async getDataToDownload(id: string, onlySolution: boolean = false, onlyInstance: boolean = false){
+
+      let solution = false;
+      let instance = false;
+      if (onlySolution){
+        solution = true;
+      }
+
+      if (onlyInstance){
+        instance= true;
+      }
+
+      const downloadedData = await this.executionRepository.getDataToDownload(id, solution, instance)
     },
 
     getConfigDisplayName(collection, table, key, lang = 'en'): string {

@@ -83,7 +83,7 @@ export default class ExecutionRepository {
     }
   }
 
-  async getDataToDownload(id: string, onlySolution: boolean = false, onlyInstance: boolean = false): Promise<any> {
+  async getDataToDownload(id: string, onlySolution: boolean = true, onlyInstance: boolean = true): Promise<any> {
     const response = await client.get(`/execution/${id}/data/`)
 
     if (response.status === 200) {
@@ -106,7 +106,7 @@ export default class ExecutionRepository {
         const experiment = new Experiment(instance, solution)
 
 
-        experiment.downloadExcel()
+        experiment.downloadExcel(undefined, onlySolution, onlyInstance)
 
         if (onlySolution){
           return experiment.solution;
