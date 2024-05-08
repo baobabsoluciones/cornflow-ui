@@ -26,7 +26,7 @@
       </v-chip>
     </template>
     <template v-slot:excel="{ item }">
-      <v-icon size="small" @click="console.log('descargar')"
+      <v-icon size="small" @click="handleDownload(item)"
         >mdi-microsoft-excel</v-icon
       >
     </template>
@@ -174,6 +174,9 @@ export default {
       const date = new Date(datetime)
       return `${date.getHours()}:${date.getMinutes()}`
     },
+    async handleDownload(item){
+      this.generalStore.getDataToDownload(item.id)
+    }
   },
 }
 </script>

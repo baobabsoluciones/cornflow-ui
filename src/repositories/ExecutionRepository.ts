@@ -83,6 +83,49 @@ export default class ExecutionRepository {
     }
   }
 
+  async getDataToDownload(id: string, onlySolution: boolean = false, onlyInstance: boolean = false): Promise<any> {
+    const response = await client.get(`/execution/${id}/data/`)
+
+    if (response.status === 200) {
+      const execution = response.content
+      const instanceRepository = new InstanceRepository()
+      const instance = await instanceRepository.getInstance(
+        execution.instance_id,
+      )
+      if (instance) {
+        const { Solution, Experiment } = useGeneralStore().appConfig
+        const solution = new Solution(
+          execution.id,
+          execution.data,
+          useGeneralStore().schemaConfig.solutionSchema,
+          useGeneralStore().schemaConfig.solutionChecksSchema,
+          useGeneralStore().getSchemaName,
+          execution.checks,
+        )
+
+        const experiment = new Experiment(instance, solution)
+
+
+        experiment.downloadExcel()
+
+        if (onlySolution){
+          return experiment.solution;
+        }
+
+        if (onlyInstance){
+          return experiment.instance;
+        }
+        
+        return experiment;
+
+      } else {
+        throw new Error('Error loading instance')
+      }
+    } else {
+      throw new Error('Error loading execution')
+    }
+  }
+
   async createExecution(execution: any) {
     const instanceRepository = new InstanceRepository()
     const instance = await instanceRepository.createInstance(execution)

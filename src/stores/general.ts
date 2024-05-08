@@ -105,6 +105,8 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
+    
+
     async fetchLoadedExecution(id: string) {
       try {
         const loadedExecution = await this.executionRepository.loadExecution(id)
@@ -382,6 +384,10 @@ export const useGeneralStore = defineStore('general', {
         value: data[key],
         key: key,
       }))
+    },
+
+    async getDataToDownload(id: string){
+      const downloadedData = await this.executionRepository.getDataToDownload(id)
     },
 
     getConfigDisplayName(collection, table, key, lang = 'en'): string {
