@@ -1,6 +1,6 @@
 export default {
   projectExecution: {
-    title: 'Ejecución del proyecto',
+    title: 'Ejecución',
     description:
       'Crea una nueva ejecución o carga una existente para visualizar la solución que estás buscando. Para hacerlo, sigue los pasos a continuación:',
     continueButton: 'Continuar',
@@ -123,7 +123,7 @@ export default {
     name: 'Nombre',
     description: 'Descripción',
     status: 'Estado',
-    solver: 'Solucionador',
+    solver: 'Solver',
     solution: 'Solución',
     excel: 'Excel',
     actions: 'Acciones',
@@ -178,6 +178,7 @@ export default {
     noData: 'No se encontraron datos para el rango de fechas seleccionado',
   },
   inputOutputData: {
+    title: 'Gestión del proyecto',
     inputTitle: 'Datos de entrada',
     outputTitle: 'Datos de salida',
     save: 'Guardar',

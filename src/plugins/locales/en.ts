@@ -172,6 +172,7 @@ export default {
     noData: ' No data found for the selected range dates',
   },
   inputOutputData: {
+    title: 'Project management',
     inputTitle: 'Input data',
     outputTitle: 'Output data',
     save: 'Save',

@@ -217,8 +217,10 @@ export default {
             data: [],
           }
         }
+        const timeParts = item.createdAt.split('T')[1].split(':')
+        const formattedTime = `${timeParts[0]}:${String(timeParts[1]).padStart(2, '0')}`
         acc[date].data.push({
-          time: item.createdAt.split('T')[1].split('.')[0],
+          time: formattedTime,
           ...item,
         })
         return acc

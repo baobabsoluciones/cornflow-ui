@@ -121,12 +121,12 @@ export default defineComponent({
     generalPages() {
       return [
         {
-          title: 'Project execution',
+          title: this.$t('projectExecution.title'),
           icon: 'mdi-chart-timeline-variant',
           to: '/project-execution',
         },
         {
-          title: 'Executions history',
+          title: this.$t('versionHistory.title'),
           icon: 'mdi-history',
           to: '/history-execution',
           class: 'no-fill-button',
@@ -145,16 +145,16 @@ export default defineComponent({
               : null,
         },
         {
-          title: 'Project Management',
+          title: this.$t('inputOutputData.title'),
           icon: 'mdi-application-cog',
           subPages: [
             {
-              title: 'Input Data',
+              title: this.$t('inputOutputData.inputTitle'),
               icon: 'mdi-table-arrow-left',
               to: '/input-data',
             },
             {
-              title: 'Output Data',
+              title: this.$t('inputOutputData.outputTitle'),
               icon: 'mdi-table-arrow-right',
               to: '/output-data',
             },

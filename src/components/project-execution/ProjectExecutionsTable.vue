@@ -3,7 +3,7 @@
     <template v-slot:createdAt="{ item }">
       {{
         formatDateByTime
-          ? formatDateTime(item.createdAt)
+          ? item.time
           : new Date(item.createdAt).toISOString().split('T')[0]
       }}
     </template>
@@ -169,10 +169,6 @@ export default {
     },
     async deleteExecution(execution) {
       this.$emit('deleteExecution', execution)
-    },
-    formatDateTime(datetime) {
-      const date = new Date(datetime)
-      return `${date.getHours()}:${date.getMinutes()}`
     },
   },
 }
