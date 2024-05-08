@@ -191,6 +191,9 @@ export default {
       "Des incohérences dans la vérification des données ont été détectées, ce qui peut entraîner des solutions incorrectes ou, dans certains cas, l'impossibilité de trouver une solution.",
     dataChecksSolutionMessage:
       'Des incohérences dans la vérification des données ont été détectées pour la solution.',
+    parameter: 'Paramètre',
+    value: 'Valeur',
+    key: 'Clé',
   },
   settings: {
     currentPassword: 'Mot de passe actuel',
