@@ -66,21 +66,7 @@
     <TabTable :tabsData="tabsData" @update:selectedTab="handleTabSelected">
       <template #actions>
         <v-row class="d-flex mt-3">
-          <MFilterSearch :filters="{
-            name1: {
-              type: 'range',
-            },
-            name2: {
-              type: 'checkbox',
-              options: [
-                { checked: true, label: 'Label1', value: 'value1' },
-                { checked: false, label: 'Label2', value: 'value2' },
-              ],
-            },
-            name3: {
-              type: 'daterange',
-            },
-          }" @search="handleSearch" @filter="handleFilters"/>
+          <MFilterSearch :filters="filters" @search="handleSearch" @filter="handleFilters"/>
           <v-spacer></v-spacer>
           <v-btn
             v-if="canEdit && !editionMode"
@@ -210,6 +196,7 @@ export default {
       data: null,
       formattedTableData: [],
       showDataChecksTable: false,
+      filters: [],
     }
   },
   created() {
@@ -362,6 +349,11 @@ export default {
     },
     handleTabSelected(newTab) {
       this.selectedTable = newTab
+      this.filters= this.generalStore.getFilterNames(
+            this.tableData,
+            this.tableType,
+            this.selectedTable,
+          )
     },
     handleDataChecksTabSelected(newTab) {
       this.checkSelectedTable = newTab

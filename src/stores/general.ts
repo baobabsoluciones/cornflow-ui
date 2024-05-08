@@ -297,6 +297,23 @@ export const useGeneralStore = defineStore('general', {
       return propSortable
     },
 
+    isTablePropertyFilterable(collection, table, item): boolean {
+      const propFilterable = this.getTableJsonSchemaProperty(
+        collection,
+        table,
+        item,
+      ).filterable
+      if (propFilterable === undefined) {
+        const tableFilterable = this.getTableJsonSchemaProperty(
+          collection,
+          table,
+          item,
+        ).filterable
+        return tableFilterable !== undefined ? tableFilterable : false
+      }
+      return propFilterable
+    },
+
     getTablePropertyTitle(collection, table, item, lang = 'en'): string {
       const title = this.getTableJsonSchemaProperty(
         collection,
@@ -335,8 +352,7 @@ export const useGeneralStore = defineStore('general', {
         title: this.getTablePropertyTitle(collection, table, header, lang),
         value: header,
         sortable: this.isTablePropertySortable(collection, table, header),
-        filterable: this.getTableJsonSchemaProperty(collection, table, header)
-          .filterable,
+        filterable: this.isTablePropertyFilterable(collection, table, header),
         type:
           this.getTableJsonSchemaProperty(collection, table, header).type ===
           'integer'
@@ -373,6 +389,36 @@ export const useGeneralStore = defineStore('general', {
           config: true,
         },
       ]
+    },
+
+    getFilterNames(collection, table, lang = 'en'): any[] {
+      const filters = this.getTableHeaders(collection, table)
+      return filters.map((header) => ({
+        title: this.getTablePropertyTitle(collection, table, header, lang),
+        value: header,
+        filterable: this.isTablePropertyFilterable(collection, table, header),
+        type: this.getFilterType(this.getTableJsonSchemaProperty(collection, table, header).type),
+        required: this.getTableJsonSchema(
+          collection,
+          table,
+        ).items.required?.includes(header),
+      }))
+    },
+
+    getFilterType(headerType): string {
+      let filterType = '';
+      switch (headerType) {
+          case 'string':
+            filterType = 'checkbox';
+            break;
+          case 'number':
+            filterType = 'range';
+            break;
+          case 'date':
+            filterType = 'dateRange';
+            break;
+        }
+      return filterType
     },
 
     getConfigTableData(data: object, collection, table, lang = 'en'): any[] {
