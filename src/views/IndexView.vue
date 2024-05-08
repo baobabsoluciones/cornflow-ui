@@ -3,7 +3,8 @@
     <core-app-drawer style="position: fixed !important" />
     <core-app-view />
     <app-bar-tab
-      :tabs="generalStore.getLoadedExecutionTabs"
+      :key="tabsKey"
+      :tabs="tabsData"
       createTitle="Create"
       @close="removeTab"
       @create="createTab"
@@ -21,20 +22,59 @@ import CoreAppDrawer from '@/components/AppDrawer.vue'
 import CoreAppView from '@/components/AppView.vue'
 import AppBarTab from '@/components/core/AppBarTab.vue'
 import { useRouter } from 'vue-router'
+import { ref, computed, defineExpose } from 'vue'
 
 const generalStore = useGeneralStore()
 const router = useRouter()
+let tabsData = computed(() => generalStore.getLoadedExecutionTabs)
+let tabsKey = ref(0)
 
+defineExpose({
+  tabsData,
+  tabsKey,
+})
 const removeTab = (index) => {
   generalStore.removeLoadedExecution(index)
 }
 
 const createTab = () => {
-  router.push('/project-execution')
+  router.push({ path: 'project-execution', query: { key: Date.now() } })
 }
 
 const selectTab = (executionTab) => {
-  generalStore.setSelectedExecution(executionTab.value)
+  const currentRoute = router.currentRoute.value.path
+
+  if (generalStore.selectedExecution?.executionId === executionTab.value) {
+    generalStore.setSelectedExecution(null)
+    // Check if the current route matches 'project-execution' or 'history-execution'
+    if (
+      currentRoute === '/project-execution' ||
+      currentRoute === '/history-execution'
+    ) {
+      router.go(-1) // Go to the previous route
+    } else {
+      router.push('/history-execution') // Go to the history execution
+    }
+    // Set all tabs to not selected
+    generalStore.getLoadedExecutionTabs.forEach((tab) => {
+      tab.selected = false
+    })
+    tabsKey.value++
+  } else {
+    generalStore.setSelectedExecution(executionTab.value)
+    // Check if the current route matches 'project-execution' or 'history-execution'
+    if (
+      currentRoute === '/project-execution' ||
+      currentRoute === '/history-execution'
+    ) {
+      router.push('/dashboard') // Go to the dashboard
+    }
+    // Set all tabs to not selected, except for the current one
+    generalStore.getLoadedExecutionTabs.forEach((tab) => {
+      tab.selected = tab.value === executionTab.value
+    })
+    tabsKey.value++
+  }
 }
 
 // Check if user is logged in
