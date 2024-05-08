@@ -397,33 +397,37 @@ export const useGeneralStore = defineStore('general', {
       ]
     },
 
-    getFilterNames(collection, table, lang = 'en'): any[] {
+    getFilterNames(collection, table, lang = 'en'): any {
       const filters = this.getTableHeaders(collection, table)
-      return filters.map((header) => ({
-        title: this.getTablePropertyTitle(collection, table, header, lang),
-        value: header,
-        filterable: this.isTablePropertyFilterable(collection, table, header),
-        type: this.getFilterType(this.getTableJsonSchemaProperty(collection, table, header).type),
-        required: this.getTableJsonSchema(
-          collection,
-          table,
-        ).items.required?.includes(header),
-      }))
+      return filters.reduce((acc, header) => {
+        acc[header] = {
+          title: this.getTablePropertyTitle(collection, table, header, lang),
+          filterable: this.isTablePropertyFilterable(collection, table, header),
+          type: this.getFilterType(
+            this.getTableJsonSchemaProperty(collection, table, header).type,
+          ),
+          required: this.getTableJsonSchema(
+            collection,
+            table,
+          ).items.required?.includes(header),
+        }
+        return acc
+      }, {})
     },
 
     getFilterType(headerType): string {
-      let filterType = '';
+      let filterType = ''
       switch (headerType) {
-          case 'string':
-            filterType = 'checkbox';
-            break;
-          case 'number':
-            filterType = 'range';
-            break;
-          case 'date':
-            filterType = 'dateRange';
-            break;
-        }
+        case 'string':
+          filterType = 'checkbox'
+          break
+        case 'integer':
+          filterType = 'range'
+          break
+        case 'date':
+          filterType = 'dateRange'
+          break
+      }
       return filterType
     },
 

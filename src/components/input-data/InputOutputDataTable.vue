@@ -66,7 +66,11 @@
     <TabTable :tabsData="tabsData" @update:selectedTab="handleTabSelected">
       <template #actions>
         <v-row class="d-flex mt-3">
-          <MFilterSearch :filters="filters" @search="handleSearch" @filter="handleFilters"/>
+          <MFilterSearch
+            :filters="filters"
+            @search="handleSearch"
+            @filter="handleFilters"
+          />
           <v-spacer></v-spacer>
           <v-btn
             v-if="canEdit && !editionMode"
@@ -349,11 +353,10 @@ export default {
     },
     handleTabSelected(newTab) {
       this.selectedTable = newTab
-      this.filters= this.generalStore.getFilterNames(
-            this.tableData,
-            this.tableType,
-            this.selectedTable,
-          )
+      this.filters = this.generalStore.getFilterNames(
+        this.tableType,
+        this.selectedTable,
+      )
     },
     handleDataChecksTabSelected(newTab) {
       this.checkSelectedTable = newTab
