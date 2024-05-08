@@ -37,6 +37,7 @@ export const useGeneralStore = defineStore('general', {
     loadedExecutions: [] as LoadedExecution[],
     selectedExecution: null,
     autoLoadInterval: null,
+    uploadComponentKey: 0,
   }),
   actions: {
     async initializeData() {
@@ -233,6 +234,10 @@ export const useGeneralStore = defineStore('general', {
 
     resetNotifications() {
       this.notifications = []
+    },
+
+    incrementUploadComponentKey() {
+      this.uploadComponentKey++
     },
 
     getTableDataKeys(collection: string, data: object): any[] {

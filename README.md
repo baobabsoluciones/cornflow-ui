@@ -165,6 +165,8 @@ To create a new project based on this base project, follow these steps:
 
 It's important not to edit any other file or folders. Only the folders, files and images just mentioned can be edited.
 
+\*\*Note: To save dashboard preferences for a single execution, including filters, checks, and date ranges, utilize the `setDashboardPreference` method from the `LoadedExecution.ts` class. Subsequently, retrieve these preferences using the `getDashboardPreference` method. The data type is custom, allowing for flexible usage as needed.
+
 ## Installing
 
 - Install or update npm

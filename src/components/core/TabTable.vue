@@ -46,14 +46,22 @@ export default {
       type: Array,
       default: () => [],
     },
+    selectedTable: {
+      type: String,
+      default: null,
+    },
   },
   setup(props, { emit }) {
-    const selectedTab = ref(null)
+    const selectedTab = ref(props.selectedTable)
 
     watch(
       () => props.tabsData,
       (newVal) => {
-        if (newVal.length > 0 && selectedTab.value === null) {
+        if (
+          newVal.length > 0 &&
+          selectedTab.value === null &&
+          props.selectedTable === null
+        ) {
           selectedTab.value = newVal[0]?.value
         }
       },

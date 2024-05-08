@@ -63,7 +63,11 @@
         </v-row>
       </template>
     </TabTable>
-    <TabTable :tabsData="tabsData" @update:selectedTab="handleTabSelected">
+    <TabTable
+      :tabsData="tabsData"
+      @update:selectedTab="handleTabSelected"
+      :selectedTable="selectedTable"
+    >
       <template #actions>
         <v-row class="d-flex mt-3">
           <v-btn
@@ -205,6 +209,7 @@ export default {
   },
   created() {
     this.showSnackbar = inject('showSnackbar')
+    this.selectedTable = this.execution.getSelectedTablePreference(this.type)
   },
   watch: {
     showDataChecksTable: {
@@ -353,6 +358,7 @@ export default {
     },
     handleTabSelected(newTab) {
       this.selectedTable = newTab
+      this.execution?.setSelectedTablePreference(newTab, this.type)
     },
     handleDataChecksTabSelected(newTab) {
       this.checkSelectedTable = newTab

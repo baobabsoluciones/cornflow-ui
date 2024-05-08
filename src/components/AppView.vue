@@ -23,17 +23,18 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
 import SettingsDrawer from '@/components/SettingsDrawer.vue'
+import { useGeneralStore } from '@/stores/general'
 
 export default defineComponent({
   name: 'CoreAppView',
   components: { SettingsDrawer },
   data: () => ({
     settingsDrawer: false,
+    store: useGeneralStore(),
   }),
   computed: {
     getKey() {
-      const key = this.$route.query.key
-      return Array.isArray(key) ? key[0] : key || 'default'
+      return this.store.uploadComponentKey
     },
   },
 })

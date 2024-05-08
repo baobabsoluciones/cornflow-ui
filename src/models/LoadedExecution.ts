@@ -1,5 +1,11 @@
 import { ExperimentCore } from './Experiment'
 
+type UIPreferences = {
+  inputData: { selectedTable: null | string; filters: null | string }
+  outputData: { selectedTable: null | string; filters: null | string }
+  dashboard: null | any
+}
+
 export class LoadedExecution {
   experiment: ExperimentCore
   executionId: string
@@ -9,6 +15,7 @@ export class LoadedExecution {
   state: number
   messageState: string
   config: any
+  private uiPreferences: UIPreferences
 
   constructor(
     experiment: ExperimentCore,
@@ -28,9 +35,42 @@ export class LoadedExecution {
     this.state = state
     this.messageState = message
     this.config = config
+    this.uiPreferences = {
+      inputData: { selectedTable: null, filters: null },
+      outputData: { selectedTable: null, filters: null },
+      dashboard: null,
+    }
   }
 
-  hasSolution() {
+  setSelectedTablePreference(table: string, type: 'instance' | 'solution') {
+    const preferenceType = type === 'instance' ? 'inputData' : 'outputData'
+    this.uiPreferences[preferenceType].selectedTable = table
+  }
+
+  setFiltersPreference(filters: string, type: 'instance' | 'solution') {
+    const preferenceType = type === 'instance' ? 'inputData' : 'outputData'
+    this.uiPreferences[preferenceType].filters = filters
+  }
+
+  setDashboardPreference(dashboard: any) {
+    this.uiPreferences.dashboard = dashboard
+  }
+
+  getSelectedTablePreference(type: 'instance' | 'solution') {
+    const preferenceType = type === 'instance' ? 'inputData' : 'outputData'
+    return this.uiPreferences[preferenceType].selectedTable
+  }
+
+  getFiltersPreference(type: 'instance' | 'solution') {
+    const preferenceType = type === 'instance' ? 'inputData' : 'outputData'
+    return this.uiPreferences[preferenceType].filters
+  }
+
+  getDashboardPreferences() {
+    return this.uiPreferences.dashboard
+  }
+
+  get hasSolution() {
     return this.experiment.hasSolution()
   }
 }
