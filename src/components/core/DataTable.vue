@@ -162,7 +162,7 @@ export default {
 }
 
 .hide-footer ::v-deep .v-data-table-footer {
-  display: none;
+  display: none !important;
 }
 
 .hide-header ::v-deep .v-data-table__th {

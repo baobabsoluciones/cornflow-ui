@@ -63,7 +63,11 @@
         </v-row>
       </template>
     </TabTable>
-    <TabTable :tabsData="tabsData" @update:selectedTab="handleTabSelected">
+    <TabTable
+      :tabsData="tabsData"
+      @update:selectedTab="handleTabSelected"
+      :selectedTable="selectedTable"
+    >
       <template #actions>
         <v-row class="d-flex mt-3">
           <v-btn
@@ -153,6 +157,32 @@
         </v-row>
       </template>
     </BaseModal>
+    <BaseModal
+      v-model="openConfirmationDeleteModal"
+      :closeOnOutsideClick="false"
+      :title="$t('inputOutputData.deleteTitle')"
+      :buttons="[
+        {
+          text: $t('inputOutputData.deleteButton'),
+          action: 'delete',
+          class: 'primary-btn',
+        },
+        {
+          text: $t('inputOutputData.cancelButton'),
+          action: 'cancel',
+          class: 'secondary-btn',
+        },
+      ]"
+      @delete="confirmDelete"
+      @cancel="cancelDelete"
+      @close="openConfirmationDeleteModal = false"
+    >
+      <template #content>
+        <v-row class="d-flex justify-center pr-2 pl-2 pb-5 pt-3">
+          <span> {{ $t('inputOutputData.deleteMessage') }}</span>
+        </v-row>
+      </template>
+    </BaseModal>
   </div>
 </template>
 
@@ -162,6 +192,7 @@ import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
 import DataTable from '@/components/core/DataTable.vue'
 import BaseModal from '@/components/core/BaseModal.vue'
+import { LoadedExecution } from '@/models/LoadedExecution'
 
 export default {
   emits: ['saveChanges', 'resolve'],
@@ -194,10 +225,12 @@ export default {
     return {
       generalStore: useGeneralStore(),
       showSnackbar: null,
-      selectedTable: '',
+      selectedTable: null,
       checkSelectedTable: '',
       editionMode: false,
       openConfirmationSaveModal: false,
+      openConfirmationDeleteModal: false,
+      deletedIndexItem: null,
       data: null,
       formattedTableData: [],
       showDataChecksTable: false,
@@ -205,6 +238,9 @@ export default {
   },
   created() {
     this.showSnackbar = inject('showSnackbar')
+    if (this.execution instanceof LoadedExecution) {
+      this.selectedTable = this.execution.getSelectedTablePreference(this.type)
+    }
   },
   watch: {
     showDataChecksTable: {
@@ -345,14 +381,26 @@ export default {
     },
   },
   methods: {
+    async confirmDelete() {
+      this.formattedTableData.splice(this.deletedIndexItem, 1)
+      this.openConfirmationDeleteModal = false
+    },
+    async cancelDelete() {
+      this.openConfirmationDeleteModal = false
+      this.deletedItem = null
+    },
     deleteItem(index) {
-      this.formattedTableData.splice(index, 1)
+      this.openConfirmationDeleteModal = true
+      this.deletedIndexItem = index
     },
     createItem() {
       this.formattedTableData.unshift({})
     },
     handleTabSelected(newTab) {
       this.selectedTable = newTab
+      if (this.execution instanceof LoadedExecution) {
+        this.execution?.setSelectedTablePreference(newTab, this.type)
+      }
     },
     handleDataChecksTabSelected(newTab) {
       this.checkSelectedTable = newTab
@@ -361,7 +409,6 @@ export default {
       this.openConfirmationSaveModal = true
     },
     saveChanges() {
-      this.updateEditedData()
       this.$emit('save-changes', this.data)
       this.editionMode = false
       this.openConfirmationSaveModal = false
