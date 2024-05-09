@@ -14,14 +14,14 @@
     >
       <template #custom-checkbox>
         <v-row>
-          <v-col cols="6">
+          <v-col cols="12">
             <v-text-field
               :label="$t('versionHistory.from')"
               type="date"
               v-model="customSelectedDates.startDate"
             ></v-text-field>
           </v-col>
-          <v-col cols="6">
+          <v-col cols="12" style="margin-top: -35px !important">
             <v-text-field
               :label="$t('versionHistory.to')"
               type="date"

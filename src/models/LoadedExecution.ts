@@ -70,7 +70,7 @@ export class LoadedExecution {
     return this.uiPreferences.dashboard
   }
 
-  get hasSolution() {
+  hasSolution() {
     return this.experiment.hasSolution()
   }
 }

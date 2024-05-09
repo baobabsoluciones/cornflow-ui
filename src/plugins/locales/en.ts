@@ -203,7 +203,12 @@ export default {
     newPassword: 'New password',
     confirmPassword: 'Confirm password',
     userSettings: 'User settings',
-    changePassword: 'Change password',
+    userProfile: 'User profile',
+    user: 'User configuration',
+    userDescription:
+      'Change your user preferences such as language, theme and your user profile such as password, name and email',
+    changePassword: 'Change your password',
+    userSecurity: 'User security',
     submit: 'Submit',
     language: 'Language',
     english: 'English',

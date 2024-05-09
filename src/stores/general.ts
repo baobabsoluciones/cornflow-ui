@@ -376,13 +376,6 @@ export const useGeneralStore = defineStore('general', {
           sortable: true,
           config: true,
         },
-        {
-          title: i18n.global.t('inputOutputData.key'),
-          value: 'key',
-          sortable: true,
-          disabled: true,
-          config: true,
-        },
       ]
     },
 

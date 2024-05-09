@@ -19,7 +19,11 @@
       </div>
     </template>
     <template #user>
-      <div class="user-container" v-if="user && user.name">
+      <div
+        class="user-container"
+        v-if="user && user.name"
+        @click="navigateTo('user-settings')"
+      >
         <div class="avatar" :style="{ backgroundColor: 'var(--primary)' }">
           {{ user.name[0].toUpperCase() }}
         </div>
@@ -180,6 +184,9 @@ export default defineComponent({
     isSubPageActive(subPages) {
       return subPages?.some((subPage) => this.$route.path === subPage.to)
     },
+    navigateTo(path) {
+      this.$router.push(path)
+    },
   },
 })
 </script>
@@ -192,6 +199,7 @@ export default defineComponent({
 .user-container {
   display: flex;
   align-items: center;
+  cursor: pointer;
 }
 
 .avatar {
