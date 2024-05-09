@@ -1,5 +1,9 @@
 <template>
-  <DataTable :headers="headerExecutions" :items="executionsByDate">
+  <DataTable
+    :headers="headerExecutions"
+    :items="executionsByDate"
+    :showFooter="showFooter"
+  >
     <template v-slot:createdAt="{ item }">
       {{
         formatDateByTime
@@ -86,6 +90,10 @@ export default {
     formatDateByTime: {
       type: Boolean,
       default: false,
+    },
+    showFooter: {
+      type: Boolean,
+      default: true,
     },
   },
   data() {
