@@ -7,7 +7,11 @@ import HistoryExecutionView from '@/views/HistoryExecutionView.vue'
 import DashboardView from '@/views/DashboardView.vue'
 import InputDataView from '@/views/InputDataView.vue'
 import OutputDataView from '@/views/OutputDataView.vue'
+import UserSettingsView from '@/views/UserSettingsView.vue'
 import AuthService from '@/services/AuthService'
+import config from '@/app/config'
+
+const dashboardRoutes = config.getDashboardRoutes()
 
 const routes: RouteRecordRaw[] = [
   {
@@ -28,6 +32,11 @@ const routes: RouteRecordRaw[] = [
       next()
     },
     children: [
+      {
+        path: 'user-settings',
+        name: 'User settings',
+        component: UserSettingsView,
+      },
       {
         path: 'project-execution',
         name: 'Project execution',
@@ -53,6 +62,7 @@ const routes: RouteRecordRaw[] = [
         name: 'Output Data',
         component: OutputDataView,
       },
+      ...dashboardRoutes,
     ],
   },
 ]

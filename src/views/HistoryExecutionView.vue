@@ -14,14 +14,14 @@
     >
       <template #custom-checkbox>
         <v-row>
-          <v-col cols="6">
+          <v-col cols="12">
             <v-text-field
               :label="$t('versionHistory.from')"
               type="date"
               v-model="customSelectedDates.startDate"
             ></v-text-field>
           </v-col>
-          <v-col cols="6">
+          <v-col cols="12" style="margin-top: -35px !important">
             <v-text-field
               :label="$t('versionHistory.to')"
               type="date"
@@ -111,6 +111,9 @@ export default {
   },
   mounted() {
     this.dateOptionSelected = this.labels[0].value
+  },
+  activated() {
+    this.fetchData()
   },
   computed: {
     title() {
@@ -214,8 +217,10 @@ export default {
             data: [],
           }
         }
+        const timeParts = item.createdAt.split('T')[1].split(':')
+        const formattedTime = `${timeParts[0]}:${String(timeParts[1]).padStart(2, '0')}`
         acc[date].data.push({
-          time: item.createdAt.split('T')[1].split('.')[0],
+          time: formattedTime,
           ...item,
         })
         return acc

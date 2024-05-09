@@ -34,7 +34,7 @@
 <script>
 import { inject } from 'vue'
 import { useGeneralStore } from '@/stores/general'
-import InputDataTable from '@/components/core/input-data/InputOutputDataTable.vue'
+import InputDataTable from '@/components/input-data/InputOutputDataTable.vue'
 
 export default {
   components: { InputDataTable },
@@ -87,12 +87,14 @@ export default {
             this.$t('projectExecution.snackbar.errorCreate'),
             'error',
           )
+          this.executionIsLoading = false
         }
       } catch (error) {
         this.showSnackbar(
           this.$t('projectExecution.snackbar.errorCreate'),
           'error',
         )
+        this.executionIsLoading = false
       }
     },
   },

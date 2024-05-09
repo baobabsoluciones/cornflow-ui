@@ -41,6 +41,7 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import InfoCard from '@/components/core/InfoCard.vue'
 import { useI18n } from 'vue-i18n'
+import { useGeneralStore } from '@/stores/general'
 
 export default {
   props: {
@@ -59,9 +60,16 @@ export default {
   setup(props) {
     const { t } = useI18n()
     const router = useRouter()
+    const generalStore = useGeneralStore()
 
     const navigateTo = (path) => {
-      router.push(path)
+      if (path === '/project-execution') {
+        // Force reload of the page
+        router.push({ path })
+        generalStore.incrementUploadComponentKey()
+      } else {
+        router.push(path)
+      }
     }
 
     const iconInfoCard = computed(() => {
