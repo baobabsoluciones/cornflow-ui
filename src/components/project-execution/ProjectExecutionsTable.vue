@@ -30,7 +30,7 @@
       </v-chip>
     </template>
     <template v-slot:excel="{ item }">
-      <v-icon size="small" @click="console.log('descargar')"
+      <v-icon size="small" @click="handleDownload(item)"
         >mdi-microsoft-excel</v-icon
       >
     </template>
@@ -216,6 +216,9 @@ export default {
       this.openConfirmationDeleteModal = false
       this.deletedItem = null
     },
+    async handleDownload(item){
+      this.generalStore.getDataToDownload(item.id, true, true)
+    }
   },
 }
 </script>
