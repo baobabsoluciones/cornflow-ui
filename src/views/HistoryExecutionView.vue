@@ -5,7 +5,7 @@
       :title="title"
       :description="description"
     />
-    <PanelData
+    <MPanelData
       class="mt-5"
       :data="data"
       :checkboxOptions="labels"
@@ -40,12 +40,11 @@
           @deleteExecution="deleteExecution"
         ></ProjectExecutionsTable>
       </template>
-    </PanelData>
+    </MPanelData>
   </div>
 </template>
 
 <script>
-import PanelData from '@/components/core/PanelData.vue'
 import ProjectExecutionsTable from '@/components/project-execution/ProjectExecutionsTable.vue'
 import TitleView from '@/components/core/TitleView.vue'
 import { useGeneralStore } from '@/stores/general'
@@ -54,7 +53,6 @@ import { inject } from 'vue'
 
 export default {
   components: {
-    PanelData,
     TitleView,
     ProjectExecutionsTable,
   },
