@@ -1,5 +1,4 @@
 import readXlsxFile from 'read-excel-file'
-import * as XLSX from 'xlsx'
 import i18n from '@/plugins/i18n'
 
 const readTable = function (
@@ -57,14 +56,14 @@ const loadExcel = function (file, schema) {
 }
 
 // this function writes all sheets according to the schema
-async function schemaDataToTable (wb, data) {
+async function schemaDataToTable(wb, data) {
   // Convert the data object to an array of key-value pairs
   var dataArray = Object.entries(data).map(([sheetName, sheetData]) => {
-  if (!Array.isArray(sheetData)) {
-    sheetData = [sheetData]; // Si sheetData no es un array, lo convertimos en uno
-  }
-  return [sheetName, sheetData];
-});
+    if (!Array.isArray(sheetData)) {
+      sheetData = [sheetData] // Si sheetData no es un array, lo convertimos en uno
+    }
+    return [sheetName, sheetData]
+  })
 
   // Iterate over each sheet in the data
   for (const [sheetName, sheetData] of dataArray) {
@@ -76,9 +75,9 @@ async function schemaDataToTable (wb, data) {
     // Push the headers into the tableData array as the first row
     tableData.push(headers)
     // Iterate over each row of data
-    sheetData.forEach(row => {
+    sheetData.forEach((row) => {
       // Map each value in the row to the corresponding header
-      const rowData = headers.map(header => row[header])
+      const rowData = headers.map((header) => row[header])
       // Push the row of data into the tableData array
       tableData.push(rowData)
     })
@@ -97,13 +96,13 @@ async function schemaDataToTable (wb, data) {
         showRowStripes: true,
         showColumnStripes: false,
       },
-      columns: headers.map(header => ({ name: header })),
+      columns: headers.map((header) => ({ name: header })),
       rows: tableDataNoHeaders,
     })
     // Calculate the maximum header length
     let maxHeaderLength = 0
     // Iterate over each header to find the maximum length
-    headers.forEach(header => {
+    headers.forEach((header) => {
       const headerLength = header.length
       if (headerLength > maxHeaderLength) {
         maxHeaderLength = headerLength
@@ -129,51 +128,6 @@ async function schemaDataToTable (wb, data) {
       }
     }
   }
-}
-
-const schemasToREADME = function (
-  wb,
-  instanceSchema,
-  solutionSchema,
-  locale = 'en',
-) {
-  const schemaToDescriptions = function (schema) {
-    const mainProps = schema.properties
-    return Object.entries(mainProps).map(([key, value]) => ({
-      table: key,
-      description:
-        (typeof value.description === 'object'
-          ? value.description[locale]
-          : value.description) || '',
-    }))
-  }
-  let descriptions = schemaToDescriptions(instanceSchema)
-  descriptions = descriptions.concat(schemaToDescriptions(solutionSchema))
-  const readmeTable = XLSX.utils.json_to_sheet(descriptions)
-  XLSX.utils.book_append_sheet(wb, readmeTable, '_README')
-
-  const schemaToTypes = function (schema) {
-    const mainProps = schema.properties
-    const listPerTable = function (tab) {
-      let tabProps
-      if (mainProps[tab].type === 'array') {
-        tabProps = mainProps[tab].items.properties
-      } else if (mainProps[tab].type === 'object') {
-        tabProps = mainProps[tab].properties
-      }
-
-      return Object.entries(tabProps).map(([key, value]) => ({
-        table: tab,
-        column: key,
-        type: value.type,
-      }))
-    }
-    return Object.keys(mainProps).map(listPerTable).flat()
-  }
-  let types = schemaToTypes(instanceSchema)
-  types = types.concat(schemaToTypes(solutionSchema))
-  const typesTable = XLSX.utils.json_to_sheet(types)
-  XLSX.utils.book_append_sheet(wb, typesTable, '_TYPES')
 }
 
 const toISOStringLocal = function (date, isEndDate = false) {
@@ -222,7 +176,7 @@ const formatDateForHeaders = function (date, locale = i18n.global.locale) {
   return formattedDate
 }
 
-function getNumberFromLetter (letter) {
+function getNumberFromLetter(letter) {
   let result = 0
   const uppercaseLetter = letter.toUpperCase()
   for (let i = 0; i < uppercaseLetter.length; i++) {
@@ -234,7 +188,7 @@ function getNumberFromLetter (letter) {
   return result
 }
 
-function getLetterFromNumber (number) {
+function getLetterFromNumber(number) {
   let result = ''
   while (number > 0) {
     const remainder = (number - 1) % 26
@@ -244,11 +198,4 @@ function getLetterFromNumber (number) {
   return result
 }
 
-
-export {
-  loadExcel,
-  schemaDataToTable,
-  schemasToREADME,
-  toISOStringLocal,
-  formatDateForHeaders,
-}
+export { loadExcel, schemaDataToTable, toISOStringLocal, formatDateForHeaders }
