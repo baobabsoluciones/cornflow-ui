@@ -2,7 +2,7 @@
   <v-app>
     <core-app-drawer style="position: fixed !important" />
     <core-app-view />
-    <app-bar-tab
+    <MAppBarTab
       :key="tabsKey"
       :tabs="tabsData"
       createTitle="Create"
@@ -10,7 +10,7 @@
       @create="createTab"
       @select="selectTab"
     >
-    </app-bar-tab>
+    </MAppBarTab>
   </v-app>
 </template>
 
@@ -20,7 +20,6 @@ import AuthService from '@/services/AuthService'
 import CoreAppHeader from '@/components/AppHeader.vue'
 import CoreAppDrawer from '@/components/AppDrawer.vue'
 import CoreAppView from '@/components/AppView.vue'
-import AppBarTab from '@/components/core/AppBarTab.vue'
 import { useRouter } from 'vue-router'
 import { ref, computed, defineExpose } from 'vue'
 
