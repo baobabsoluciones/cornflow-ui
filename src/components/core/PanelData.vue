@@ -1,7 +1,7 @@
 <template>
   <v-card class="rounded-lg pa-10" style="background-color: white !important">
     <v-row>
-      <v-col class="v-col-8 v-col-s-12">
+      <v-col class="v-col-10 v-col-s-12">
         <v-expansion-panels variant="accordion" multiple v-model="openedPanels">
           <v-expansion-panel v-for="(item, index) in data" :key="index">
             <v-expansion-panel-title>{{
@@ -25,7 +25,7 @@
           </div>
         </template>
       </v-col>
-      <v-col class="v-col-4 v-col-s-6">
+      <v-col class="v-col-2 v-col-s-6">
         <v-card
           elevation="0"
           class="rounded-lg pa-3"
@@ -43,7 +43,7 @@
           >
           </v-checkbox>
           <template v-if="selectedDateRange === 'custom'">
-            <div class="pa-2 ml-8">
+            <div class="pa-2 ml-6">
               <slot name="custom-checkbox"></slot>
             </div>
           </template>

@@ -37,6 +37,7 @@ export const useGeneralStore = defineStore('general', {
     loadedExecutions: [] as LoadedExecution[],
     selectedExecution: null,
     autoLoadInterval: null,
+    uploadComponentKey: 0,
   }),
   actions: {
     async initializeData() {
@@ -237,6 +238,10 @@ export const useGeneralStore = defineStore('general', {
       this.notifications = []
     },
 
+    incrementUploadComponentKey() {
+      this.uploadComponentKey++
+    },
+
     getTableDataKeys(collection: string, data: object): any[] {
       const schemaChecks = this.schemaConfig[collection]
       const schemaKeys = [...schemaChecks.required]
@@ -371,13 +376,6 @@ export const useGeneralStore = defineStore('general', {
           title: i18n.global.t('inputOutputData.value'),
           value: 'value',
           sortable: true,
-          config: true,
-        },
-        {
-          title: i18n.global.t('inputOutputData.key'),
-          value: 'key',
-          sortable: true,
-          disabled: true,
           config: true,
         },
       ]

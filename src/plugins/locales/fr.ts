@@ -200,7 +200,12 @@ export default {
     newPassword: 'Nouveau mot de passe',
     confirmPassword: 'Confirmer le mot de passe',
     userSettings: 'Paramètres utilisateur',
+    userProfile: 'Profil utilisateur',
+    user: 'Configuration utilisateur',
+    userDescription:
+      'Modifiez vos préférences utilisateur telles que la langue, le thème et votre profil utilisateur comme le mot de passe, le nom et l`email',
     changePassword: 'Changer le mot de passe',
+    userSecurity: "Sécurité de l'utilisateur",
     submit: 'Soumettre',
     language: 'Langue',
     english: 'Anglais',
@@ -211,12 +216,15 @@ export default {
     light: 'Clair',
     dark: 'Sombre',
     selectTheme: "Sélectionnez le thème principal de l'application",
-    settings: 'Paramètres',
+    settings: 'Réglages',
+    snackbarMessageSuccess: 'Mot de passe mis à jour avec succès',
+    snackbarMessageError:
+      'Une erreur est survenue lors de la mise à jour du mot de passe',
     required: 'Champ requis',
     passwordRuleLength: 'Min. {length} caractères.',
     passwordRuleCharacters:
       'Doit contenir des majuscules, des minuscules, des chiffres et des caractères spéciaux',
-    passWordRuleNoSpace: "Un mot de passe ne peut pas contenir d'espaces",
+    passWordRuleNoSpace: "Un mot de passe ne peut contenir d'espaces",
     passwordRuleNotMatch: 'Les mots de passe ne correspondent pas',
   },
 }
