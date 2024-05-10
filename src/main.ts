@@ -33,6 +33,7 @@ import { MAppBarTab } from 'mango-ui'
 import { MInfoCard } from 'mango-ui'
 import { MPanelData } from 'mango-ui'
 import { MInputField } from 'mango-ui'
+import { MDataTable } from 'mango-ui'
 
 
 const pinia = createPinia()
@@ -52,6 +53,7 @@ app.component('MInfoCard', MInfoCard)
 app.component('MPanelData', MPanelData)
 app.component('MSnackbar', MSnackbar)
 app.component('MInputField', MInputField)
+app.component('MDataTable', MDataTable)
 
 
 app.use(pinia)

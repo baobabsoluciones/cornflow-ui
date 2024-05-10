@@ -53,7 +53,7 @@
       </template>
       <template #table="{ tabSelected }">
         <v-row class="mt-8">
-          <DataTable
+          <MDataTable
             key="data-checks-table"
             class="data-checks-table"
             :items="dataChecksTableData"
@@ -121,7 +121,7 @@
       </template>
       <template #table="{ tabSelected }">
         <v-row class="mt-8">
-          <DataTable
+          <MDataTable
             :items="formattedTableData"
             :headers="headers"
             :options="{ density: 'compact' }"
@@ -200,14 +200,12 @@
 import TabTable from '@/components/core/TabTable.vue'
 import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
-import DataTable from '@/components/core/DataTable.vue'
 import { LoadedExecution } from '@/models/LoadedExecution'
 
 export default {
   emits: ['saveChanges', 'resolve'],
   components: {
     TabTable,
-    DataTable,
   },
   props: {
     execution: {
