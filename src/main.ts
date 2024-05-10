@@ -27,6 +27,10 @@ import { MFormSteps } from 'mango-ui'
 import { MDragNDropFile } from 'mango-ui'
 import { MSnackbar } from 'mango-ui'
 
+import { MTitleView } from 'mango-ui'
+import { MAppBarTab } from 'mango-ui'
+import { MInfoCard } from 'mango-ui'
+import { MPanelData } from 'mango-ui'
 
 const pinia = createPinia()
 const app = createApp(App)
@@ -38,8 +42,11 @@ app.component('MFilterSearch', MFilterSearch)
 app.component('MButton', MButton)
 app.component('MFormSteps', MFormSteps)
 app.component('MDragNDropFile', MDragNDropFile)
+app.component('MTitleView', MTitleView)
+app.component('MAppBarTab', MAppBarTab)
+app.component('MInfoCard', MInfoCard)
+app.component('MPanelData', MPanelData)
 app.component('MSnackbar', MSnackbar)
-
 
 app.use(pinia)
 app.mount('#app')
