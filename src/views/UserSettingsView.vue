@@ -80,7 +80,7 @@
                 $t('settings.changePassword')
               }}</v-list-item-subtitle>
               <v-form>
-                <InputField
+                <MInputField
                   style="width: 300px !important"
                   class="mt-4"
                   v-model="newPassword"
@@ -88,8 +88,8 @@
                   :title="$t('settings.newPassword')"
                   type="password"
                 >
-                </InputField>
-                <InputField
+                </MInputField>
+                <MInputField
                   style="width: 300px !important"
                   class="mt-4"
                   v-model="confirmPassword"
@@ -97,7 +97,7 @@
                   :title="$t('settings.confirmPassword')"
                   type="password"
                 >
-                </InputField>
+                </MInputField>
                 <v-btn
                   :disabled="!validPassword"
                   color="primary"
@@ -117,14 +117,12 @@
 <script>
 import TitleView from '@/components/core/TitleView.vue'
 import { useGeneralStore } from '@/stores/general'
-import InputField from '@/components/core/InputField.vue'
 import { useI18n } from 'vue-i18n'
 import { inject } from 'vue'
 
 export default {
   components: {
     TitleView,
-    InputField,
   },
   data() {
     return {
