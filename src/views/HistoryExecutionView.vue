@@ -5,10 +5,11 @@
       :title="title"
       :description="description"
     />
-    <PanelData
+    <MPanelData
       class="mt-5"
       :data="data"
       :checkboxOptions="labels"
+      :language="locale"
       :noDataMessage="$t('versionHistory.noData')"
       @date-range-changed="dateOptionSelected = $event"
     >
@@ -40,12 +41,11 @@
           @deleteExecution="deleteExecution"
         ></ProjectExecutionsTable>
       </template>
-    </PanelData>
+    </MPanelData>
   </div>
 </template>
 
 <script>
-import PanelData from '@/components/core/PanelData.vue'
 import ProjectExecutionsTable from '@/components/project-execution/ProjectExecutionsTable.vue'
 import { useGeneralStore } from '@/stores/general'
 import def from 'ajv/dist/vocabularies/discriminator'
@@ -53,7 +53,6 @@ import { inject } from 'vue'
 
 export default {
   components: {
-    PanelData,
     ProjectExecutionsTable,
   },
   data() {
@@ -61,7 +60,38 @@ export default {
       data: [],
       generalStore: useGeneralStore(),
       dateOptionSelected: null,
-      labels: [
+      selectedDates: {
+        startDate: null,
+        endDate: null,
+      },
+      customSelectedDates: {
+        startDate: null,
+        endDate: null,
+      },
+      showSnackbar: null,
+    }
+  },
+  created() {
+    this.showSnackbar = inject('showSnackbar')
+  },
+  mounted() {
+    this.dateOptionSelected = this.labels[0].value
+  },
+  activated() {
+    this.fetchData()
+  },
+  computed: {
+    title() {
+      return this.$t('versionHistory.title')
+    },
+    description() {
+      return this.$t('versionHistory.description')
+    },
+    locale() {
+      return this.$i18n.locale
+    },
+    labels() {
+      return [
         {
           label: this.$t('versionHistory.today'),
           value: 'today',
@@ -92,33 +122,7 @@ export default {
           color: 'primary',
           isCustom: true,
         },
-      ],
-      selectedDates: {
-        startDate: null,
-        endDate: null,
-      },
-      customSelectedDates: {
-        startDate: null,
-        endDate: null,
-      },
-      showSnackbar: null,
-    }
-  },
-  created() {
-    this.showSnackbar = inject('showSnackbar')
-  },
-  mounted() {
-    this.dateOptionSelected = this.labels[0].value
-  },
-  activated() {
-    this.fetchData()
-  },
-  computed: {
-    title() {
-      return this.$t('versionHistory.title')
-    },
-    description() {
-      return this.$t('versionHistory.description')
+      ]
     },
   },
   watch: {
