@@ -5,7 +5,7 @@
       :title="title"
       :description="description"
     />
-    <TabTable
+    <MTabTable
       class="mt-5"
       style="height: 90vh !important"
       :tabsData="userTabs"
@@ -110,20 +110,18 @@
           </v-list>
         </v-col>
       </template>
-    </TabTable>
+    </MTabTable>
   </div>
 </template>
 
 <script>
 import TitleView from '@/components/core/TitleView.vue'
-import TabTable from '@/components/core/TabTable.vue'
 import { useGeneralStore } from '@/stores/general'
 import { useI18n } from 'vue-i18n'
 import { inject } from 'vue'
 
 export default {
   components: {
-    TabTable,
     TitleView,
   },
   data() {

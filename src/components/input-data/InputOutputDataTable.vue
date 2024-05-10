@@ -28,7 +28,7 @@
         }}
       </v-btn>
     </v-alert>
-    <TabTable
+    <MTabTable
       key="data-checks-tabs"
       class="mb-3"
       v-if="showDataChecksTable"
@@ -62,8 +62,8 @@
           />
         </v-row>
       </template>
-    </TabTable>
-    <TabTable
+    </MTabTable>
+    <MTabTable
       :tabsData="tabsData"
       @update:selectedTab="handleTabSelected"
       :selectedTable="selectedTable"
@@ -140,7 +140,7 @@
           </v-btn>
         </v-row>
       </template>
-    </TabTable>
+    </MTabTable>
     <MBaseModal
       v-model="openConfirmationSaveModal"
       :closeOnOutsideClick="false"
@@ -197,7 +197,6 @@
 </template>
 
 <script>
-import TabTable from '@/components/core/TabTable.vue'
 import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
 import { LoadedExecution } from '@/models/LoadedExecution'
@@ -205,7 +204,6 @@ import { LoadedExecution } from '@/models/LoadedExecution'
 export default {
   emits: ['saveChanges', 'resolve'],
   components: {
-    TabTable,
   },
   props: {
     execution: {
