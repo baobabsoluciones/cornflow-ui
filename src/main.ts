@@ -34,6 +34,7 @@ import { MInfoCard } from 'mango-ui'
 import { MPanelData } from 'mango-ui'
 import { MInputField } from 'mango-ui'
 import { MDataTable } from 'mango-ui'
+import { MCheckboxOptions } from 'mango-ui'
 
 
 const pinia = createPinia()
@@ -54,6 +55,7 @@ app.component('MPanelData', MPanelData)
 app.component('MSnackbar', MSnackbar)
 app.component('MInputField', MInputField)
 app.component('MDataTable', MDataTable)
+app.component('MCheckboxOptions', MCheckboxOptions)
 
 
 app.use(pinia)

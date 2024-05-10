@@ -55,7 +55,7 @@
 
         <!-- Template for create execution step 3 -->
         <template v-else-if="index === 2">
-          <CheckboxOptions
+          <MCheckboxOptions
             :options="solvers"
             :multiple="false"
             @update:options="solvers = $event"
@@ -155,7 +155,6 @@ import CreateExecutionLoadInstance from '@/components/project-execution/CreateEx
 import CreateExecutionResolve from '@/components/project-execution/CreateExecutionResolve.vue'
 import DateRangePicker from '@/components/core/DateRangePicker.vue'
 import ProjectExecutionsTable from '@/components/project-execution/ProjectExecutionsTable.vue'
-import CheckboxOptions from '@/components/core/CheckboxOptions.vue'
 import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
 
@@ -166,7 +165,6 @@ export default {
     CreateExecutionStepOne,
     CreateExecutionResolve,
     CreateExecutionLoadInstance,
-    CheckboxOptions,
   },
   data() {
     return {
