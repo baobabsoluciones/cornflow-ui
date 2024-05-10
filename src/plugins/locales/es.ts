@@ -1,6 +1,6 @@
 export default {
   projectExecution: {
-    title: 'Ejecución del proyecto',
+    title: 'Ejecución',
     description:
       'Crea una nueva ejecución o carga una existente para visualizar la solución que estás buscando. Para hacerlo, sigue los pasos a continuación:',
     continueButton: 'Continuar',
@@ -123,10 +123,14 @@ export default {
     name: 'Nombre',
     description: 'Descripción',
     status: 'Estado',
-    solver: 'Solucionador',
+    solver: 'Solver',
     solution: 'Solución',
     excel: 'Excel',
     actions: 'Acciones',
+    deleteTitle: 'Eliminar ejecución',
+    deleteMessage: '¿Estás seguro de que quieres eliminar esta ejecución?',
+    deleteButton: 'Eliminar',
+    cancelButton: 'Cancelar',
   },
   logIn: {
     subtitle: '¡Inicia sesión para empezar!',
@@ -178,6 +182,7 @@ export default {
     noData: 'No se encontraron datos para el rango de fechas seleccionado',
   },
   inputOutputData: {
+    title: 'Gestión del proyecto',
     inputTitle: 'Datos de entrada',
     outputTitle: 'Datos de salida',
     save: 'Guardar',
@@ -194,13 +199,22 @@ export default {
     parameter: 'Parámetro',
     value: 'Valor',
     key: 'Clave',
+    deleteTitle: 'Eliminar registro',
+    deleteMessage: '¿Estás seguro de que quieres eliminar este registro?',
+    deleteButton: 'Eliminar',
+    cancelButton: 'Cancelar',
   },
   settings: {
     currentPassword: 'Contraseña actual',
     newPassword: 'Nueva contraseña',
     confirmPassword: 'Confirmar contraseña',
     userSettings: 'Configuración de usuario',
+    userProfile: 'Perfil de usuario',
+    user: 'Configuración de usuario',
+    userDescription:
+      'Cambia tus preferencias de usuario como el idioma, el tema y tu perfil de usuario como la contraseña, el nombre y el correo electrónico',
     changePassword: 'Cambiar contraseña',
+    userSecurity: 'Seguridad del usuario',
     submit: 'Enviar',
     language: 'Idioma',
     english: 'Inglés',
@@ -211,7 +225,7 @@ export default {
     light: 'Claro',
     dark: 'Oscuro',
     selectTheme: 'Selecciona el tema principal de la aplicación',
-    settings: 'Configuración',
+    settings: 'Configuraciones',
     snackbarMessageSuccess: 'Contraseña actualizada correctamente',
     snackbarMessageError: 'Se produjo un error al actualizar la contraseña',
     required: 'Campo requerido',

@@ -37,7 +37,8 @@ const removeTab = (index) => {
 }
 
 const createTab = () => {
-  router.push({ path: 'project-execution', query: { key: Date.now() } })
+  router.push({ path: 'project-execution' })
+  generalStore.incrementUploadComponentKey()
 }
 
 const selectTab = (executionTab) => {
@@ -67,6 +68,8 @@ const selectTab = (executionTab) => {
       currentRoute === '/history-execution'
     ) {
       router.push('/dashboard') // Go to the dashboard
+    } else {
+      generalStore.incrementUploadComponentKey()
     }
     // Set all tabs to not selected, except for the current one
     generalStore.getLoadedExecutionTabs.forEach((tab) => {

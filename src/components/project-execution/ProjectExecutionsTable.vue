@@ -1,9 +1,13 @@
 <template>
-  <DataTable :headers="headerExecutions" :items="executionsByDate">
+  <DataTable
+    :headers="headerExecutions"
+    :items="executionsByDate"
+    :showFooter="showFooter"
+  >
     <template v-slot:createdAt="{ item }">
       {{
         formatDateByTime
-          ? formatDateTime(item.createdAt)
+          ? item.time
           : new Date(item.createdAt).toISOString().split('T')[0]
       }}
     </template>
@@ -26,7 +30,7 @@
       </v-chip>
     </template>
     <template v-slot:excel="{ item }">
-      <v-icon size="small" @click="console.log('descargar')"
+      <v-icon size="small" @click="handleDownload(item)"
         >mdi-microsoft-excel</v-icon
       >
     </template>
@@ -39,16 +43,44 @@
       </span>
     </template>
   </DataTable>
+  <BaseModal
+    v-model="openConfirmationDeleteModal"
+    :closeOnOutsideClick="false"
+    :title="$t('executionTable.deleteTitle')"
+    :buttons="[
+      {
+        text: $t('executionTable.deleteButton'),
+        action: 'delete',
+        class: 'primary-btn',
+      },
+      {
+        text: $t('executionTable.cancelButton'),
+        action: 'cancel',
+        class: 'secondary-btn',
+      },
+    ]"
+    @delete="confirmDelete"
+    @cancel="cancelDelete"
+    @close="openConfirmationDeleteModal = false"
+  >
+    <template #content>
+      <v-row class="d-flex justify-center pr-2 pl-2 pb-5 pt-3">
+        <span> {{ $t('executionTable.deleteMessage') }}</span>
+      </v-row>
+    </template>
+  </BaseModal>
 </template>
 
 <script>
 import DataTable from '@/components/core/DataTable.vue'
 import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
+import BaseModal from '@/components/core/BaseModal.vue'
 
 export default {
   components: {
     DataTable,
+    BaseModal,
   },
   props: {
     executionsByDate: {
@@ -59,10 +91,16 @@ export default {
       type: Boolean,
       default: false,
     },
+    showFooter: {
+      type: Boolean,
+      default: true,
+    },
   },
   data() {
     return {
       showSnackbar: null,
+      openConfirmationDeleteModal: false,
+      deletedItem: null,
       headerExecutions: [
         {
           title: this.$t('executionTable.date'),
@@ -167,13 +205,20 @@ export default {
     async loadExecution(execution) {
       this.$emit('loadExecution', execution)
     },
-    async deleteExecution(execution) {
-      this.$emit('deleteExecution', execution)
+    async deleteExecution(item) {
+      this.deletedItem = item
+      this.openConfirmationDeleteModal = true
     },
-    formatDateTime(datetime) {
-      const date = new Date(datetime)
-      return `${date.getHours()}:${date.getMinutes()}`
+    async confirmDelete() {
+      this.$emit('deleteExecution', this.deletedItem)
     },
+    async cancelDelete() {
+      this.openConfirmationDeleteModal = false
+      this.deletedItem = null
+    },
+    async handleDownload(item){
+      this.generalStore.getDataToDownload(item.id, true, true)
+    }
   },
 }
 </script>
