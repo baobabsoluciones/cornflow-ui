@@ -1,5 +1,5 @@
 <template>
-  <DataTable
+  <MDataTable
     :headers="headerExecutions"
     :items="executionsByDate"
     :showFooter="showFooter"
@@ -43,7 +43,7 @@
         <v-icon size="small" @click="deleteExecution(item)">mdi-delete</v-icon>
       </span>
     </template>
-  </DataTable>
+  </MDataTable>
   <BaseModal
     v-model="openConfirmationDeleteModal"
     :closeOnOutsideClick="false"
@@ -73,14 +73,12 @@
 </template>
 
 <script>
-import DataTable from '@/components/core/DataTable.vue'
 import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
 import BaseModal from '@/components/core/BaseModal.vue'
 
 export default {
   components: {
-    DataTable,
     BaseModal,
   },
   props: {
