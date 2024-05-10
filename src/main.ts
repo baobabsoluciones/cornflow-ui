@@ -25,6 +25,7 @@ import { MFilterSearch } from 'mango-ui'
 import { MButton } from 'mango-ui'
 import { MFormSteps } from 'mango-ui'
 import { MDragNDropFile } from 'mango-ui'
+import { MSnackbar } from 'mango-ui'
 
 
 const pinia = createPinia()
@@ -37,6 +38,8 @@ app.component('MFilterSearch', MFilterSearch)
 app.component('MButton', MButton)
 app.component('MFormSteps', MFormSteps)
 app.component('MDragNDropFile', MDragNDropFile)
+app.component('MSnackbar', MSnackbar)
+
 
 app.use(pinia)
 app.mount('#app')
