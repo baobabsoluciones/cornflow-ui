@@ -23,6 +23,10 @@ export class SolutionCore {
   }
 
   hasSolution() {
-    return this.data !== undefined && this.data !== null && this.data.length > 0
+    return (
+      this.data !== undefined &&
+      this.data !== null &&
+      Object.keys(this.data).length > 0
+    )
   }
 }

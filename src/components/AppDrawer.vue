@@ -1,10 +1,5 @@
 <template>
-  <MAppDrawer
-    :visible="true"
-    :width="250"
-    :actions="actions"
-    @update:rail="mini = !mini"
-  >
+  <MAppDrawer :visible="true" :width="250" @update:rail="mini = !mini">
     <template #logo>
       <div class="mt-2">
         <v-img
@@ -24,7 +19,11 @@
       </div>
     </template>
     <template #user>
-      <div class="user-container" v-if="user && user.name">
+      <div
+        class="user-container"
+        v-if="user && user.name"
+        @click="navigateTo('user-settings')"
+      >
         <div class="avatar" :style="{ backgroundColor: 'var(--primary)' }">
           {{ user.name[0].toUpperCase() }}
         </div>
@@ -53,7 +52,10 @@
         <v-list-item
           :base-color="'var(--title)'"
           :color="'var(--accent)'"
-          :class="{ 'non-clickable': !item.to }"
+          :class="{
+            'non-clickable': !item.to,
+            'page-selected': isSubPageActive(item.subPages),
+          }"
           :to="item.to"
         >
           <div class="d-flex align-center">
@@ -80,12 +82,27 @@
         </template>
       </template>
     </template>
+    <template #actions>
+      <template v-for="action in actions" :key="action.title">
+        <v-list-item
+          :base-color="'var(--title)'"
+          :color="'var(--accent)'"
+          @click="action.action"
+        >
+          <div class="d-flex align-center">
+            <v-icon v-if="action.icon" left>{{ action.icon }}</v-icon>
+            <h4 class="ml-4" v-if="!mini">{{ action.title }}</h4>
+          </div>
+        </v-list-item>
+      </template>
+    </template>
   </MAppDrawer>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue'
 import { useGeneralStore } from '@/stores/general'
+import AuthService from '@/services/AuthService'
 
 export default defineComponent({
   name: 'CoreAppDrawer',
@@ -108,12 +125,12 @@ export default defineComponent({
     generalPages() {
       return [
         {
-          title: 'Project execution',
+          title: this.$t('projectExecution.title'),
           icon: 'mdi-chart-timeline-variant',
           to: '/project-execution',
         },
         {
-          title: 'Executions history',
+          title: this.$t('versionHistory.title'),
           icon: 'mdi-history',
           to: '/history-execution',
           class: 'no-fill-button',
@@ -126,18 +143,22 @@ export default defineComponent({
           title: 'Dashboard',
           icon: 'mdi-view-dashboard',
           to: '/dashboard',
+          subPages:
+            this.store.appDashboardPages.length > 0
+              ? this.store.appDashboardPages
+              : null,
         },
         {
-          title: 'Project Management',
+          title: this.$t('inputOutputData.title'),
           icon: 'mdi-application-cog',
           subPages: [
             {
-              title: 'Input Data',
+              title: this.$t('inputOutputData.inputTitle'),
               icon: 'mdi-table-arrow-left',
               to: '/input-data',
             },
             {
-              title: 'Output Data',
+              title: this.$t('inputOutputData.outputTitle'),
               icon: 'mdi-table-arrow-right',
               to: '/output-data',
             },
@@ -148,14 +169,25 @@ export default defineComponent({
     actions() {
       return [
         {
-          title: 'Settings',
-          icon: 'mdi-cog',
-          to: '/settings',
+          title: 'Logout',
+          icon: 'mdi-logout',
+          action: this.signOut,
         },
       ]
     },
   },
-  methods: {},
+  methods: {
+    signOut() {
+      AuthService.logout()
+      this.$router.push('/sign-in')
+    },
+    isSubPageActive(subPages) {
+      return subPages?.some((subPage) => this.$route.path === subPage.to)
+    },
+    navigateTo(path) {
+      this.$router.push(path)
+    },
+  },
 })
 </script>
 
@@ -167,6 +199,7 @@ export default defineComponent({
 .user-container {
   display: flex;
   align-items: center;
+  cursor: pointer;
 }
 
 .avatar {
@@ -200,5 +233,10 @@ export default defineComponent({
 
 h4 {
   font-size: 0.9em !important;
+}
+
+.page-selected {
+  color: var(--accent) !important;
+  caret-color: var(--accent) !important;
 }
 </style>

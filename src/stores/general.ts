@@ -13,6 +13,7 @@ import UserRepository from '@/repositories/UserRepository'
 import ExecutionRepository from '@/repositories/ExecutionRepository'
 
 import { toISOStringLocal } from '@/utils/data_io'
+import i18n from '@/plugins/i18n'
 
 export const useGeneralStore = defineStore('general', {
   state: () => ({
@@ -29,13 +30,14 @@ export const useGeneralStore = defineStore('general', {
     schema: '',
     schemaConfig: {} as SchemaConfig,
     appConfig: config.getCore(),
-    appRoutes: config.getRoutes(),
-    appPages: config.getPages(),
-    appDashboard: config.getDashboard(),
+    appDashboardRoutes: config.getDashboardRoutes(),
+    appDashboardPages: config.getDashboardPages(),
+    appDashboardLayout: config.getDashboardLayout(),
     lastExecutions: [] as Execution[],
     loadedExecutions: [] as LoadedExecution[],
     selectedExecution: null,
     autoLoadInterval: null,
+    uploadComponentKey: 0,
   }),
   actions: {
     async initializeData() {
@@ -50,6 +52,19 @@ export const useGeneralStore = defineStore('general', {
         this.user = await this.userRepository.getUserById(userId)
       } catch (error) {
         console.error('Error getting user', error)
+      }
+    },
+
+    async changeUserPassword(userId: string, password: string) {
+      try {
+        const response = await this.userRepository.changePassword(
+          userId,
+          password,
+        )
+        return response
+      } catch (error) {
+        console.error('Error changing password', error)
+        return false
       }
     },
 
@@ -81,6 +96,7 @@ export const useGeneralStore = defineStore('general', {
 
     async fetchExecutionsByDateRange(fromDate: Date, toDate: Date) {
       try {
+        if (!fromDate || !toDate) return
         const executions = await this.executionRepository.getExecutions(
           this.getSchemaName,
           toISOStringLocal(fromDate),
@@ -91,6 +107,8 @@ export const useGeneralStore = defineStore('general', {
         console.error('Error getting executions by date range', error)
       }
     },
+
+    
 
     async fetchLoadedExecution(id: string) {
       try {
@@ -112,6 +130,7 @@ export const useGeneralStore = defineStore('general', {
         return newExecution
       } catch (error) {
         console.error('Error creating execution', error)
+        return false
       }
     },
 
@@ -194,10 +213,14 @@ export const useGeneralStore = defineStore('general', {
       this.loadedExecutions = []
     },
 
-    setSelectedExecution(executionId: string) {
-      this.selectedExecution = this.loadedExecutions.find(
-        (execution) => execution.executionId === executionId,
-      )
+    setSelectedExecution(executionId: string | null) {
+      if (executionId === null) {
+        this.selectedExecution = null
+      } else {
+        this.selectedExecution = this.loadedExecutions.find(
+          (execution) => execution.executionId === executionId,
+        )
+      }
     },
 
     addNotification(notification: {
@@ -213,6 +236,10 @@ export const useGeneralStore = defineStore('general', {
 
     resetNotifications() {
       this.notifications = []
+    },
+
+    incrementUploadComponentKey() {
+      this.uploadComponentKey++
     },
 
     getTableDataKeys(collection: string, data: object): any[] {
@@ -337,26 +364,18 @@ export const useGeneralStore = defineStore('general', {
     },
 
     getConfigTableHeadersData(): any[] {
-      //TODO: i18n
       return [
         {
-          title: 'Parameter',
+          title: i18n.global.t('inputOutputData.parameter'),
           value: 'displayName',
           sortable: true,
           disabled: true,
           config: true,
         },
         {
-          title: 'Value',
+          title: i18n.global.t('inputOutputData.value'),
           value: 'value',
           sortable: true,
-          config: true,
-        },
-        {
-          title: 'key',
-          value: 'key',
-          sortable: true,
-          disabled: true,
           config: true,
         },
       ]
@@ -369,6 +388,21 @@ export const useGeneralStore = defineStore('general', {
         value: data[key],
         key: key,
       }))
+    },
+
+    async getDataToDownload(id: string, onlySolution: boolean = false, onlyInstance: boolean = false){
+
+      let solution = false;
+      let instance = false;
+      if (onlySolution){
+        solution = true;
+      }
+
+      if (onlyInstance){
+        instance= true;
+      }
+
+      const downloadedData = await this.executionRepository.getDataToDownload(id, solution, instance)
     },
 
     getConfigDisplayName(collection, table, key, lang = 'en'): string {

@@ -22,7 +22,7 @@
 
 <script>
 import ExecutionInfoCard from '@/components/project-execution/ExecutionInfoCard.vue'
-import InputOutputDataTable from '@/components/core/input-data/InputOutputDataTable.vue'
+import InputOutputDataTable from '@/components/input-data/InputOutputDataTable.vue'
 import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
 
@@ -48,6 +48,11 @@ export default {
       },
       set(newValue) {
         this.generalStore.selectedExecution = newValue
+      },
+    },
+    hasSolution: {
+      get() {
+        return this.selectedExecution.hasSolution()
       },
     },
     title() {

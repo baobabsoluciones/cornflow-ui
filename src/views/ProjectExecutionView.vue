@@ -5,7 +5,7 @@
       :title="title"
       :description="description"
     />
-    <FormSteps
+    <MFormSteps
       :steps="steps"
       :disablePreviousButton="disablePrevButton"
       :disableNextButton="disableNextButton"
@@ -133,7 +133,7 @@
           <v-icon right>mdi-arrow-right</v-icon>
         </v-btn>
       </template>
-    </FormSteps>
+    </MFormSteps>
     <v-card
       class="ma-5 mt-10"
       elevation="5"
@@ -150,7 +150,6 @@
 </template>
 
 <script>
-import FormSteps from '@/components/core/FormSteps.vue'
 import CreateExecutionStepOne from '@/components/project-execution/CreateExecutionStepOne.vue'
 import CreateExecutionLoadInstance from '@/components/project-execution/CreateExecutionLoadInstance.vue'
 import CreateExecutionResolve from '@/components/project-execution/CreateExecutionResolve.vue'
@@ -163,7 +162,6 @@ import { inject } from 'vue'
 
 export default {
   components: {
-    FormSteps,
     DateRangePicker,
     ProjectExecutionsTable,
     CreateExecutionStepOne,

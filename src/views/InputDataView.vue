@@ -18,7 +18,7 @@
 
 <script>
 import ExecutionInfoCard from '@/components/project-execution/ExecutionInfoCard.vue'
-import InputDataTable from '@/components/core/input-data/InputOutputDataTable.vue'
+import InputDataTable from '@/components/input-data/InputOutputDataTable.vue'
 import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
 
