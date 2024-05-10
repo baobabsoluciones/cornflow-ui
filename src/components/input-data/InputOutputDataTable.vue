@@ -53,7 +53,7 @@
       </template>
       <template #table="{ tabSelected }">
         <v-row class="mt-8">
-          <DataTable
+          <MDataTable
             key="data-checks-table"
             class="data-checks-table"
             :items="dataChecksTableData"
@@ -121,7 +121,7 @@
       </template>
       <template #table="{ tabSelected }">
         <v-row class="mt-8">
-          <DataTable
+          <MDataTable
             :items="formattedTableData"
             :headers="headers"
             :options="{ density: 'compact' }"
@@ -141,7 +141,7 @@
         </v-row>
       </template>
     </TabTable>
-    <BaseModal
+    <MBaseModal
       v-model="openConfirmationSaveModal"
       :closeOnOutsideClick="false"
       :title="$t('inputOutputData.saveChanges')"
@@ -166,8 +166,8 @@
           <span> {{ $t('inputOutputData.savingMessage') }}</span>
         </v-row>
       </template>
-    </BaseModal>
-    <BaseModal
+    </MBaseModal>
+    <MBaseModal
       v-model="openConfirmationDeleteModal"
       :closeOnOutsideClick="false"
       :title="$t('inputOutputData.deleteTitle')"
@@ -192,7 +192,7 @@
           <span> {{ $t('inputOutputData.deleteMessage') }}</span>
         </v-row>
       </template>
-    </BaseModal>
+    </MBaseModal>
   </div>
 </template>
 
@@ -200,16 +200,12 @@
 import TabTable from '@/components/core/TabTable.vue'
 import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
-import DataTable from '@/components/core/DataTable.vue'
-import BaseModal from '@/components/core/BaseModal.vue'
 import { LoadedExecution } from '@/models/LoadedExecution'
 
 export default {
   emits: ['saveChanges', 'resolve'],
   components: {
     TabTable,
-    DataTable,
-    BaseModal,
   },
   props: {
     execution: {
