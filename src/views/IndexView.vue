@@ -2,7 +2,7 @@
   <v-app>
     <core-app-drawer style="position: fixed !important" />
     <core-app-view />
-    <app-bar-tab
+    <MAppBarTab
       :key="tabsKey"
       :tabs="tabsData"
       createTitle="Create"
@@ -10,7 +10,7 @@
       @create="createTab"
       @select="selectTab"
     >
-    </app-bar-tab>
+    </MAppBarTab>
   </v-app>
 </template>
 
@@ -20,7 +20,6 @@ import AuthService from '@/services/AuthService'
 import CoreAppHeader from '@/components/AppHeader.vue'
 import CoreAppDrawer from '@/components/AppDrawer.vue'
 import CoreAppView from '@/components/AppView.vue'
-import AppBarTab from '@/components/core/AppBarTab.vue'
 import { useRouter } from 'vue-router'
 import { ref, computed, defineExpose } from 'vue'
 
@@ -38,7 +37,8 @@ const removeTab = (index) => {
 }
 
 const createTab = () => {
-  router.push({ path: 'project-execution', query: { key: Date.now() } })
+  router.push({ path: 'project-execution' })
+  generalStore.incrementUploadComponentKey()
 }
 
 const selectTab = (executionTab) => {
@@ -68,6 +68,8 @@ const selectTab = (executionTab) => {
       currentRoute === '/history-execution'
     ) {
       router.push('/dashboard') // Go to the dashboard
+    } else {
+      generalStore.incrementUploadComponentKey()
     }
     // Set all tabs to not selected, except for the current one
     generalStore.getLoadedExecutionTabs.forEach((tab) => {

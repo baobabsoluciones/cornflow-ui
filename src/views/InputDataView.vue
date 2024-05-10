@@ -1,6 +1,6 @@
 <template>
   <div class="view-container">
-    <TitleView
+    <MTitleView
       :icon="'mdi-table-arrow-left'"
       :title="title"
       :description="description"
@@ -17,7 +17,6 @@
 </template>
 
 <script>
-import TitleView from '@/components/core/TitleView.vue'
 import ExecutionInfoCard from '@/components/project-execution/ExecutionInfoCard.vue'
 import InputDataTable from '@/components/input-data/InputOutputDataTable.vue'
 import { useGeneralStore } from '@/stores/general'
@@ -25,7 +24,6 @@ import { inject } from 'vue'
 
 export default {
   components: {
-    TitleView,
     ExecutionInfoCard,
     InputDataTable,
   },
