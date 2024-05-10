@@ -27,6 +27,7 @@ import { MFormSteps } from 'mango-ui'
 import { MDragNDropFile } from 'mango-ui'
 
 import { MTitleView } from 'mango-ui'
+import { MAppBarTab } from 'mango-ui'
 
 const pinia = createPinia()
 const app = createApp(App)
@@ -39,6 +40,7 @@ app.component('MButton', MButton)
 app.component('MFormSteps', MFormSteps)
 app.component('MDragNDropFile', MDragNDropFile)
 app.component('MTitleView', MTitleView)
+app.component('MAppBarTab', MAppBarTab)
 
 app.use(pinia)
 app.mount('#app')
