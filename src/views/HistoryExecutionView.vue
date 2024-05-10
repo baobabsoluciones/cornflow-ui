@@ -1,6 +1,6 @@
 <template>
   <div class="view-container">
-    <TitleView
+    <MTitleView
       :icon="'mdi-history'"
       :title="title"
       :description="description"
@@ -47,7 +47,6 @@
 <script>
 import PanelData from '@/components/core/PanelData.vue'
 import ProjectExecutionsTable from '@/components/project-execution/ProjectExecutionsTable.vue'
-import TitleView from '@/components/core/TitleView.vue'
 import { useGeneralStore } from '@/stores/general'
 import def from 'ajv/dist/vocabularies/discriminator'
 import { inject } from 'vue'
@@ -55,7 +54,6 @@ import { inject } from 'vue'
 export default {
   components: {
     PanelData,
-    TitleView,
     ProjectExecutionsTable,
   },
   data() {
