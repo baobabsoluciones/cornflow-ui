@@ -31,6 +31,8 @@ import { MTitleView } from 'mango-ui'
 import { MAppBarTab } from 'mango-ui'
 import { MInfoCard } from 'mango-ui'
 import { MPanelData } from 'mango-ui'
+import { MTabTable } from 'mango-ui'
+
 
 const pinia = createPinia()
 const app = createApp(App)
@@ -47,6 +49,8 @@ app.component('MAppBarTab', MAppBarTab)
 app.component('MInfoCard', MInfoCard)
 app.component('MPanelData', MPanelData)
 app.component('MSnackbar', MSnackbar)
+app.component('MTabTable', MTabTable)
+
 
 app.use(pinia)
 app.mount('#app')
