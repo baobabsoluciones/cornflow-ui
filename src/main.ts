@@ -25,6 +25,7 @@ import { MFilterSearch } from 'mango-ui'
 import { MButton } from 'mango-ui'
 import { MFormSteps } from 'mango-ui'
 import { MDragNDropFile } from 'mango-ui'
+import { MSnackbar } from 'mango-ui'
 
 import { MTitleView } from 'mango-ui'
 import { MAppBarTab } from 'mango-ui'
@@ -45,6 +46,7 @@ app.component('MTitleView', MTitleView)
 app.component('MAppBarTab', MAppBarTab)
 app.component('MInfoCard', MInfoCard)
 app.component('MPanelData', MPanelData)
+app.component('MSnackbar', MSnackbar)
 
 app.use(pinia)
 app.mount('#app')
