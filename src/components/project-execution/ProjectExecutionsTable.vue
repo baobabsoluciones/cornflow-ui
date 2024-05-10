@@ -3,6 +3,7 @@
     :headers="headerExecutions"
     :items="executionsByDate"
     :showFooter="showFooter"
+    :showHeaders="showHeaders"
   >
     <template v-slot:createdAt="{ item }">
       {{
@@ -93,13 +94,25 @@ export default {
       type: Boolean,
       default: true,
     },
+    showHeaders: {
+      type: Boolean,
+      default: true,
+    },
   },
   data() {
     return {
       showSnackbar: null,
       openConfirmationDeleteModal: false,
       deletedItem: null,
-      headerExecutions: [
+      generalStore: useGeneralStore(),
+    }
+  },
+  created() {
+    this.showSnackbar = inject('showSnackbar')
+  },
+  computed: {
+    headerExecutions() {
+      return [
         {
           title: this.$t('executionTable.date'),
           value: 'createdAt',
@@ -136,14 +149,8 @@ export default {
           value: 'actions',
           width: '10%',
         },
-      ],
-      generalStore: useGeneralStore(),
-    }
-  },
-  created() {
-    this.showSnackbar = inject('showSnackbar')
-  },
-  computed: {
+      ]
+    },
     stateInfo() {
       return {
         1: {
@@ -214,9 +221,9 @@ export default {
       this.openConfirmationDeleteModal = false
       this.deletedItem = null
     },
-    async handleDownload(item){
+    async handleDownload(item) {
       this.generalStore.getDataToDownload(item.id, true, true)
-    }
+    },
   },
 }
 </script>
