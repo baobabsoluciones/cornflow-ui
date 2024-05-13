@@ -353,6 +353,7 @@ export default {
     },
     handleTabSelected(newTab) {
       this.selectedTable = newTab
+      console.log(this.formattedTableData)
       this.filters = this.generalStore.getFilterNames(
         this.tableType,
         this.selectedTable,

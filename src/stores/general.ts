@@ -399,6 +399,7 @@ export const useGeneralStore = defineStore('general', {
 
     getFilterNames(collection, table, lang = 'en'): any {
       const filters = this.getTableHeaders(collection, table)
+      console.log(collection)
       return filters.reduce((acc, header) => {
         acc[header] = {
           title: this.getTablePropertyTitle(collection, table, header, lang),
@@ -411,6 +412,12 @@ export const useGeneralStore = defineStore('general', {
             table,
           ).items.required?.includes(header),
         }
+        if (acc[header].type == 'checkbox') {
+          acc[header].options = this.getFilterOptions(collection, table, header);
+        } else if (acc[header].type == 'range') {
+          acc[header].min = this.getFilterMinValue(collection, table, header);
+          acc[header].max = this.getFilterMaxValue(collection, table, header);
+        } 
         return acc
       }, {})
     },
@@ -419,6 +426,7 @@ export const useGeneralStore = defineStore('general', {
       let filterType = ''
       switch (headerType) {
         case 'string':
+        case 'boolean':
           filterType = 'checkbox'
           break
         case 'integer':
@@ -429,6 +437,44 @@ export const useGeneralStore = defineStore('general', {
           break
       }
       return filterType
+    },
+
+    getColumnData (collection, table, header) {
+      // const data = this.selectedExecution.experiment[collection].data
+      // if (!(header in data)) {
+      //   console.error(`La columna '${header}' no existe en los datos.`);
+      //   return [];
+      // }
+      // const columnData = data[header];
+      // return columnData;
+    },
+
+    getFilterOptions (collection, table, header) {
+      const columnData = this.getColumnData (collection, table, header);
+      console.log(collection)
+      console.log(table)
+      console.log(header)
+
+
+      const uniqueValues = [...new Set(columnData)];
+
+      return uniqueValues.map(value => ({
+        label: value,
+        value: value,
+        checked: false
+      }));
+    },
+    
+    getFilterMinValue (collection, table, header) {
+      // const columnData = this.getColumnData (collection, table, header);
+      // return Math.min(...columnData);
+
+    },
+
+    getFilterMaxValue (collection, table, header) {
+      // const columnData = this.getColumnData (collection, table, header);
+      // return Math.max(...columnData);
+
     },
 
     getConfigTableData(data: object, collection, table, lang = 'en'): any[] {
