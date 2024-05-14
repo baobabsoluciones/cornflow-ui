@@ -1,4 +1,5 @@
 <template>
+  <Suspense>
   <MAppDrawer :visible="true" :width="250" @update:rail="mini = !mini">
     <template #logo>
       <div class="mt-2">
@@ -97,10 +98,12 @@
       </template>
     </template>
   </MAppDrawer>
+    </Suspense>
+
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue'
+import { defineComponent, Suspense } from 'vue'
 import { useGeneralStore } from '@/stores/general'
 import AuthService from '@/services/AuthService'
 

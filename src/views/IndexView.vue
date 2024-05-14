@@ -2,6 +2,7 @@
   <v-app>
     <core-app-drawer style="position: fixed !important" />
     <core-app-view />
+    <Suspense>
     <MAppBarTab
       :key="tabsKey"
       :tabs="tabsData"
@@ -11,6 +12,7 @@
       @select="selectTab"
     >
     </MAppBarTab>
+    </Suspense>
   </v-app>
 </template>
 
@@ -21,7 +23,7 @@ import CoreAppHeader from '@/components/AppHeader.vue'
 import CoreAppDrawer from '@/components/AppDrawer.vue'
 import CoreAppView from '@/components/AppView.vue'
 import { useRouter } from 'vue-router'
-import { ref, computed, defineExpose } from 'vue'
+import { ref, computed, defineExpose, Suspense } from 'vue'
 
 const generalStore = useGeneralStore()
 const router = useRouter()
