@@ -225,6 +225,9 @@ export default {
       },
       deep: true,
     },
+    filters: {
+
+    },
     formattedTableData: {
       handler(data, oldData) {
         let tableData = this.tableData
@@ -353,10 +356,11 @@ export default {
     },
     handleTabSelected(newTab) {
       this.selectedTable = newTab
-      console.log(this.formattedTableData)
       this.filters = this.generalStore.getFilterNames(
         this.tableType,
         this.selectedTable,
+        this.type,
+
       )
     },
     handleDataChecksTabSelected(newTab) {
