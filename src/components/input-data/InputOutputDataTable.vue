@@ -68,8 +68,8 @@
         <v-row class="d-flex mt-3">
           <MFilterSearch
             :filters="filters"
-            @search="handleSearch"
-            @filter="handleFilters"
+            @search="handleSearch($event)"
+            @filter="handleFilters($event)"
           />
           <v-spacer></v-spacer>
           <v-btn
@@ -107,7 +107,7 @@
       <template #table="{ tabSelected }">
         <v-row class="mt-8">
           <DataTable
-            :items="formattedTableData"
+            :items="filteredDataTable"
             :headers="headers"
             :options="{ density: 'compact' }"
             :editionMode="editionMode"
@@ -161,6 +161,7 @@ import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
 import DataTable from '@/components/core/DataTable.vue'
 import BaseModal from '@/components/core/BaseModal.vue'
+import useFilters from '@/utils/useFilters'
 
 export default {
   emits: ['saveChanges', 'resolve'],
@@ -201,6 +202,9 @@ export default {
       formattedTableData: [],
       showDataChecksTable: false,
       filters: [],
+      filteredDataTable: [],
+      searchText:'',
+      filtersSelected: [] 
     }
   },
   created() {
@@ -346,6 +350,9 @@ export default {
       }
       return []
     },
+    filteredDataTable(){
+      return useFilters(this.formattedTableData, this.searchText, this.filtersSelected)
+    }
   },
   methods: {
     deleteItem(index) {
@@ -382,6 +389,9 @@ export default {
       this.editionMode = false
       this.openConfirmationSaveModal = false
     },
+    handleSearch(search) {
+      searchText.value = search;
+    }
   },
 }
 </script>

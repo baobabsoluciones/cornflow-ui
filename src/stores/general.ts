@@ -465,8 +465,6 @@ export const useGeneralStore = defineStore('general', {
 
     getFilterOptions(collection, table, header) {
       const columnData = this.getColumnData(collection, table, header);
-      console.log(columnData);
-
       // Verificar si los valores son booleanos
       const uniqueValues = [...new Set(columnData)];
 
