@@ -1,4 +1,5 @@
 <template>
+  <Suspense>
   <MAppDrawer :visible="true" :width="250" @update:rail="mini = !mini">
     <template #logo>
       <div class="mt-2">
@@ -19,7 +20,11 @@
       </div>
     </template>
     <template #user>
-      <div class="user-container" v-if="user && user.name">
+      <div
+        class="user-container"
+        v-if="user && user.name"
+        @click="navigateTo('user-settings')"
+      >
         <div class="avatar" :style="{ backgroundColor: 'var(--primary)' }">
           {{ user.name[0].toUpperCase() }}
         </div>
@@ -93,10 +98,12 @@
       </template>
     </template>
   </MAppDrawer>
+    </Suspense>
+
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue'
+import { defineComponent, Suspense } from 'vue'
 import { useGeneralStore } from '@/stores/general'
 import AuthService from '@/services/AuthService'
 
@@ -121,12 +128,12 @@ export default defineComponent({
     generalPages() {
       return [
         {
-          title: 'Project execution',
+          title: this.$t('projectExecution.title'),
           icon: 'mdi-chart-timeline-variant',
           to: '/project-execution',
         },
         {
-          title: 'Executions history',
+          title: this.$t('versionHistory.title'),
           icon: 'mdi-history',
           to: '/history-execution',
           class: 'no-fill-button',
@@ -145,16 +152,16 @@ export default defineComponent({
               : null,
         },
         {
-          title: 'Project Management',
+          title: this.$t('inputOutputData.title'),
           icon: 'mdi-application-cog',
           subPages: [
             {
-              title: 'Input Data',
+              title: this.$t('inputOutputData.inputTitle'),
               icon: 'mdi-table-arrow-left',
               to: '/input-data',
             },
             {
-              title: 'Output Data',
+              title: this.$t('inputOutputData.outputTitle'),
               icon: 'mdi-table-arrow-right',
               to: '/output-data',
             },
@@ -180,6 +187,9 @@ export default defineComponent({
     isSubPageActive(subPages) {
       return subPages?.some((subPage) => this.$route.path === subPage.to)
     },
+    navigateTo(path) {
+      this.$router.push(path)
+    },
   },
 })
 </script>
@@ -192,6 +202,7 @@ export default defineComponent({
 .user-container {
   display: flex;
   align-items: center;
+  cursor: pointer;
 }
 
 .avatar {

@@ -1,14 +1,22 @@
 <template>
   <v-card style="max-height: 75vh" elevation="5">
     <v-row>
-      <v-col cols="3" style="margin-top: -6px !important">
+      <v-col
+        :cols="direction === 'vertical' ? 3 : 12"
+        style="margin-top: -6px !important"
+      >
         <slot name="tabs">
           <v-tabs
-            class="px-5 pb-2 tabs-border"
+            class="px-5 pb-2"
+            :class="
+              direction === 'vertical'
+                ? 'px-5 pb-2 tabs-border-vertical'
+                : 'px-5 pb-2 tabs-border-horizontal'
+            "
             show-arrows
-            direction="vertical"
+            :direction="direction"
             v-model="selectedTab"
-            style="max-height: 75vh"
+            :style="direction === 'vertical' ? 'max-height: 75vh' : ''"
             nextIcon="mdi-chevron-down"
             prevIcon="mdi-chevron-up"
           >
@@ -22,7 +30,7 @@
           </v-tabs>
         </slot>
       </v-col>
-      <v-col cols="9">
+      <v-col :cols="direction === 'vertical' ? 9 : 12">
         <slot name="actions"> </slot>
         <v-row>
           <slot name="table" :tableData="selectedTab">
@@ -46,14 +54,26 @@ export default {
       type: Array,
       default: () => [],
     },
+    selectedTable: {
+      type: String,
+      default: null,
+    },
+    direction: {
+      type: String,
+      default: 'vertical',
+    },
   },
   setup(props, { emit }) {
-    const selectedTab = ref(null)
+    const selectedTab = ref(props.selectedTable)
 
     watch(
       () => props.tabsData,
       (newVal) => {
-        if (newVal.length > 0 && selectedTab.value === null) {
+        if (
+          newVal.length > 0 &&
+          selectedTab.value === null &&
+          props.selectedTable === null
+        ) {
           selectedTab.value = newVal[0]?.value
         }
       },
@@ -76,7 +96,19 @@ export default {
   border-right: 2px solid rgba(0, 0, 0, 0.1);
 }
 
+.tabs-border-vertical {
+  border-right: 2px solid rgba(0, 0, 0, 0.1);
+}
+
+.tabs-border-horizontal {
+  border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+}
+
 .v-row {
   margin: 0px !important;
+}
+
+::v-deep .v-tab--selected {
+  color: var(--primary) !important;
 }
 </style>

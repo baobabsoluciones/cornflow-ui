@@ -1,5 +1,5 @@
 <template>
-  <InfoCard
+  <MInfoCard
     class="mt-5 info-card"
     :title="titleInfoCard"
     :description="descriptionInfoCard"
@@ -33,14 +33,14 @@
         </v-btn>
       </div>
     </template>
-  </InfoCard>
+  </MInfoCard>
 </template>
 
 <script>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import InfoCard from '@/components/core/InfoCard.vue'
 import { useI18n } from 'vue-i18n'
+import { useGeneralStore } from '@/stores/general'
 
 export default {
   props: {
@@ -54,16 +54,17 @@ export default {
     },
   },
   components: {
-    InfoCard,
   },
   setup(props) {
     const { t } = useI18n()
     const router = useRouter()
+    const generalStore = useGeneralStore()
 
     const navigateTo = (path) => {
       if (path === '/project-execution') {
         // Force reload of the page
-        router.push({ path, query: { key: Date.now() } })
+        router.push({ path })
+        generalStore.incrementUploadComponentKey()
       } else {
         router.push(path)
       }

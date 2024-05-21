@@ -1,11 +1,11 @@
 <template>
   <div class="view-container">
-    <TitleView
+    <MTitleView
       :icon="'mdi-chart-timeline-variant'"
       :title="title"
       :description="description"
     />
-    <FormSteps
+    <MFormSteps
       :steps="steps"
       :disablePreviousButton="disablePrevButton"
       :disableNextButton="disableNextButton"
@@ -55,7 +55,7 @@
 
         <!-- Template for create execution step 3 -->
         <template v-else-if="index === 2">
-          <CheckboxOptions
+          <MCheckboxOptions
             :options="solvers"
             :multiple="false"
             @update:options="solvers = $event"
@@ -66,7 +66,7 @@
         <!-- Template for create execution step 4 -->
         <template v-else-if="index === 3">
           <div style="width: 40%">
-            <InputField
+            <MInputField
               class="mt-4"
               v-model="newExecution.timeLimit"
               :title="$t('projectExecution.steps.step4.time')"
@@ -77,14 +77,14 @@
               :suffix="$t('projectExecution.steps.step4.secondsSuffix')"
               prependInnerIcon="mdi-clock-time-four-outline"
             >
-            </InputField>
+            </MInputField>
           </div>
         </template>
 
         <template v-else-if="index === 4">
           <div class="input-fields-container">
             <div class="input-field">
-              <InputField
+              <MInputField
                 v-model="newExecution.name"
                 :title="$t('projectExecution.steps.step5.nameTitleField')"
                 :placeholder="
@@ -94,7 +94,7 @@
               />
             </div>
             <div class="input-field">
-              <InputField
+              <MInputField
                 v-model="newExecution.description"
                 :title="
                   $t('projectExecution.steps.step5.descriptionTitleField')
@@ -133,7 +133,7 @@
           <v-icon right>mdi-arrow-right</v-icon>
         </v-btn>
       </template>
-    </FormSteps>
+    </MFormSteps>
     <v-card
       class="ma-5 mt-10"
       elevation="5"
@@ -150,29 +150,21 @@
 </template>
 
 <script>
-import TitleView from '@/components/core/TitleView.vue'
-import FormSteps from '@/components/core/FormSteps.vue'
 import CreateExecutionStepOne from '@/components/project-execution/CreateExecutionStepOne.vue'
 import CreateExecutionLoadInstance from '@/components/project-execution/CreateExecutionLoadInstance.vue'
 import CreateExecutionResolve from '@/components/project-execution/CreateExecutionResolve.vue'
 import DateRangePicker from '@/components/core/DateRangePicker.vue'
 import ProjectExecutionsTable from '@/components/project-execution/ProjectExecutionsTable.vue'
-import CheckboxOptions from '@/components/core/CheckboxOptions.vue'
-import InputField from '@/components/core/InputField.vue'
 import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
 
 export default {
   components: {
-    TitleView,
-    FormSteps,
     DateRangePicker,
     ProjectExecutionsTable,
     CreateExecutionStepOne,
     CreateExecutionResolve,
     CreateExecutionLoadInstance,
-    CheckboxOptions,
-    InputField,
   },
   data() {
     return {

@@ -1,5 +1,5 @@
 <template>
-  <DragNDropFile
+  <MDragNDropFile
     downloadIcon="mdi-upload"
     :description="
       $t('projectExecution.steps.step2.loadInstance.dragAndDropDescription')
@@ -18,14 +18,13 @@
 </template>
 
 <script>
-import DragNDropFile from '@/components/core/DragNDropFile.vue'
 import { Instance } from '@/app/models/Instance'
 import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
 
 export default {
   components: {
-    DragNDropFile,
+    
   },
   props: {
     instance: {

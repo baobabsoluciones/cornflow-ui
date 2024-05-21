@@ -37,6 +37,7 @@ export const useGeneralStore = defineStore('general', {
     loadedExecutions: [] as LoadedExecution[],
     selectedExecution: null,
     autoLoadInterval: null,
+    uploadComponentKey: 0,
   }),
   actions: {
     async initializeData() {
@@ -106,6 +107,8 @@ export const useGeneralStore = defineStore('general', {
         console.error('Error getting executions by date range', error)
       }
     },
+
+    
 
     async fetchLoadedExecution(id: string) {
       try {
@@ -233,6 +236,10 @@ export const useGeneralStore = defineStore('general', {
 
     resetNotifications() {
       this.notifications = []
+    },
+
+    incrementUploadComponentKey() {
+      this.uploadComponentKey++
     },
 
     getTableDataKeys(collection: string, data: object): any[] {
@@ -387,13 +394,6 @@ export const useGeneralStore = defineStore('general', {
           sortable: true,
           config: true,
         },
-        {
-          title: i18n.global.t('inputOutputData.key'),
-          value: 'key',
-          sortable: true,
-          disabled: true,
-          config: true,
-        },
       ]
     },
 
@@ -503,6 +503,21 @@ export const useGeneralStore = defineStore('general', {
         value: data[key],
         key: key,
       }))
+    },
+
+    async getDataToDownload(id: string, onlySolution: boolean = false, onlyInstance: boolean = false){
+
+      let solution = false;
+      let instance = false;
+      if (onlySolution){
+        solution = true;
+      }
+
+      if (onlyInstance){
+        instance= true;
+      }
+
+      const downloadedData = await this.executionRepository.getDataToDownload(id, solution, instance)
     },
 
     getConfigDisplayName(collection, table, key, lang = 'en'): string {

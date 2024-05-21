@@ -1,27 +1,28 @@
 <template>
   <div class="view-container">
-    <TitleView
+    <MTitleView
       :icon="'mdi-history'"
       :title="title"
       :description="description"
     />
-    <PanelData
+    <MPanelData
       class="mt-5"
       :data="data"
       :checkboxOptions="labels"
+      :language="locale"
       :noDataMessage="$t('versionHistory.noData')"
       @date-range-changed="dateOptionSelected = $event"
     >
       <template #custom-checkbox>
         <v-row>
-          <v-col cols="6">
+          <v-col cols="12">
             <v-text-field
               :label="$t('versionHistory.from')"
               type="date"
               v-model="customSelectedDates.startDate"
             ></v-text-field>
           </v-col>
-          <v-col cols="6">
+          <v-col cols="12" style="margin-top: -35px !important">
             <v-text-field
               :label="$t('versionHistory.to')"
               type="date"
@@ -40,22 +41,18 @@
           @deleteExecution="deleteExecution"
         ></ProjectExecutionsTable>
       </template>
-    </PanelData>
+    </MPanelData>
   </div>
 </template>
 
 <script>
-import PanelData from '@/components/core/PanelData.vue'
 import ProjectExecutionsTable from '@/components/project-execution/ProjectExecutionsTable.vue'
-import TitleView from '@/components/core/TitleView.vue'
 import { useGeneralStore } from '@/stores/general'
 import def from 'ajv/dist/vocabularies/discriminator'
 import { inject } from 'vue'
 
 export default {
   components: {
-    PanelData,
-    TitleView,
     ProjectExecutionsTable,
   },
   data() {
@@ -63,7 +60,38 @@ export default {
       data: [],
       generalStore: useGeneralStore(),
       dateOptionSelected: null,
-      labels: [
+      selectedDates: {
+        startDate: null,
+        endDate: null,
+      },
+      customSelectedDates: {
+        startDate: null,
+        endDate: null,
+      },
+      showSnackbar: null,
+    }
+  },
+  created() {
+    this.showSnackbar = inject('showSnackbar')
+  },
+  mounted() {
+    this.dateOptionSelected = this.labels[0].value
+  },
+  activated() {
+    this.fetchData()
+  },
+  computed: {
+    title() {
+      return this.$t('versionHistory.title')
+    },
+    description() {
+      return this.$t('versionHistory.description')
+    },
+    locale() {
+      return this.$i18n.locale
+    },
+    labels() {
+      return [
         {
           label: this.$t('versionHistory.today'),
           value: 'today',
@@ -94,33 +122,7 @@ export default {
           color: 'primary',
           isCustom: true,
         },
-      ],
-      selectedDates: {
-        startDate: null,
-        endDate: null,
-      },
-      customSelectedDates: {
-        startDate: null,
-        endDate: null,
-      },
-      showSnackbar: null,
-    }
-  },
-  created() {
-    this.showSnackbar = inject('showSnackbar')
-  },
-  mounted() {
-    this.dateOptionSelected = this.labels[0].value
-  },
-  activated() {
-    this.fetchData()
-  },
-  computed: {
-    title() {
-      return this.$t('versionHistory.title')
-    },
-    description() {
-      return this.$t('versionHistory.description')
+      ]
     },
   },
   watch: {
@@ -217,8 +219,10 @@ export default {
             data: [],
           }
         }
+        const timeParts = item.createdAt.split('T')[1].split(':')
+        const formattedTime = `${timeParts[0]}:${String(timeParts[1]).padStart(2, '0')}`
         acc[date].data.push({
-          time: item.createdAt.split('T')[1].split('.')[0],
+          time: formattedTime,
           ...item,
         })
         return acc
