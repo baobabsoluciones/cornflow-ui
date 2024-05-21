@@ -65,43 +65,50 @@
     </TabTable>
     <TabTable :tabsData="tabsData" @update:selectedTab="handleTabSelected">
       <template #actions>
-        <v-row class="d-flex mt-3">
-          <MFilterSearch
-            :filters="filters"
-            @search="handleSearch"
-            @filter="handleFilters"
-          />
+        <v-row class="mt-3">
+          <v-col cols="10">
+            <MFilterSearch
+              :filters="filters"
+              @search="handleSearch"
+              @filter="handleFilters"
+            />
+          </v-col>
           <v-spacer></v-spacer>
-          <v-btn
-            v-if="canEdit && !editionMode"
-            color="primary"
-            icon="mdi-pencil"
-            class="mr-3"
-            density="compact"
-            style="font-size: 0.6rem !important"
-            @click="editionMode = true"
+          <v-col
+            cols="2"
+            style="margin: 0 !important; justify-content: end; display: flex"
           >
-          </v-btn>
-          <v-btn
-            v-if="canEdit && editionMode"
-            color="primary"
-            icon="mdi-content-save-edit"
-            density="compact"
-            style="font-size: 0.6rem !important"
-            class="mr-3"
-            @click="openSaveModal"
-          >
-          </v-btn>
-          <v-btn
-            icon="mdi-content-save-off"
-            v-if="canEdit && editionMode"
-            color="primary"
-            class="mr-3"
-            density="compact"
-            style="font-size: 0.6rem !important"
-            @click="cancelEdit"
-          >
-          </v-btn>
+            <v-btn
+              v-if="canEdit && !editionMode"
+              color="primary"
+              icon="mdi-pencil"
+              class="mr-3"
+              density="compact"
+              style="font-size: 0.6rem !important"
+              @click="editionMode = true"
+            >
+            </v-btn>
+            <v-btn
+              v-if="canEdit && editionMode"
+              color="primary"
+              icon="mdi-content-save-edit"
+              density="compact"
+              style="font-size: 0.6rem !important"
+              class="mr-3"
+              @click="openSaveModal"
+            >
+            </v-btn>
+            <v-btn
+              icon="mdi-content-save-off"
+              v-if="canEdit && editionMode"
+              color="primary"
+              class="mr-3"
+              density="compact"
+              style="font-size: 0.6rem !important"
+              @click="cancelEdit"
+            >
+            </v-btn>
+          </v-col>
         </v-row>
       </template>
       <template #table="{ tabSelected }">

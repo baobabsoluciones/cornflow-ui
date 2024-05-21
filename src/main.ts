@@ -19,10 +19,10 @@ import './assets/styles/main.css' // Main styles
 import './app/assets/styles/main.css' // Main app custom styles
 import './app/assets/styles/variables.css' // App custom variables
 import '@/plugins'
-import 'mango-ui/dist/style.css'
-import { MAppDrawer } from 'mango-ui'
-import { MFilterSearch } from 'mango-ui'
-import { MButton } from 'mango-ui'
+import 'mango-vue/dist/style.css'
+import { MAppDrawer } from 'mango-vue'
+import { MFilterSearch } from 'mango-vue'
+import { MButton } from 'mango-vue'
 
 const pinia = createPinia()
 const app = createApp(App)
