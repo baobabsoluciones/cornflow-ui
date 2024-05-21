@@ -114,7 +114,7 @@
       <template #table="{ tabSelected }">
         <v-row class="mt-8">
           <DataTable
-            :items="formattedTableData"
+            :items="filteredDataTable"
             :headers="headers"
             :options="{ density: 'compact' }"
             :editionMode="editionMode"
@@ -168,6 +168,7 @@ import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
 import DataTable from '@/components/core/DataTable.vue'
 import BaseModal from '@/components/core/BaseModal.vue'
+import useFilters from '@/utils/useFilters'
 
 export default {
   emits: ['saveChanges', 'resolve'],
@@ -208,6 +209,9 @@ export default {
       formattedTableData: [],
       showDataChecksTable: false,
       filters: [],
+      filteredDataTable: [],
+      searchText: '',
+      filtersSelected: [],
     }
   },
   created() {
@@ -232,6 +236,7 @@ export default {
       },
       deep: true,
     },
+    filters: {},
     formattedTableData: {
       handler(data, oldData) {
         let tableData = this.tableData
@@ -350,6 +355,13 @@ export default {
       }
       return []
     },
+    filteredDataTable() {
+      return useFilters(
+        this.formattedTableData,
+        this.searchText,
+        this.filtersSelected,
+      )
+    },
   },
   methods: {
     deleteItem(index) {
@@ -363,6 +375,7 @@ export default {
       this.filters = this.generalStore.getFilterNames(
         this.tableType,
         this.selectedTable,
+        this.type,
       )
     },
     handleDataChecksTabSelected(newTab) {
@@ -383,6 +396,9 @@ export default {
         : JSON.parse(JSON.stringify(this.execution[this.type]))
       this.editionMode = false
       this.openConfirmationSaveModal = false
+    },
+    handleSearch(search) {
+      searchText.value = search
     },
   },
 }

@@ -397,7 +397,8 @@ export const useGeneralStore = defineStore('general', {
       ]
     },
 
-    getFilterNames(collection, table, lang = 'en'): any {
+    getFilterNames(collection, table, type, lang = 'en'): any {
+
       const filters = this.getTableHeaders(collection, table)
       return filters.reduce((acc, header) => {
         acc[header] = {
@@ -411,6 +412,12 @@ export const useGeneralStore = defineStore('general', {
             table,
           ).items.required?.includes(header),
         }
+        if (acc[header].type == 'checkbox') {
+          acc[header].options = this.getFilterOptions(type, table, header);
+        } else if (acc[header].type == 'range') {
+          acc[header].min = this.getFilterMinValue(collection, table, header);
+          acc[header].max = this.getFilterMaxValue(collection, table, header);
+        } 
         return acc
       }, {})
     },
@@ -419,6 +426,7 @@ export const useGeneralStore = defineStore('general', {
       let filterType = ''
       switch (headerType) {
         case 'string':
+        case 'boolean':
           filterType = 'checkbox'
           break
         case 'integer':
@@ -429,6 +437,63 @@ export const useGeneralStore = defineStore('general', {
           break
       }
       return filterType
+    },
+
+    getColumnData (type, table_name, column) {
+
+       // Obtener los datos
+        const {data} = this.selectedExecution.experiment[type];
+
+        // Asegurarse de que data[table_name] exista
+        if (!data[table_name] || !Array.isArray(data[table_name])) {
+          return [];
+        }
+
+        // Crear un conjunto para almacenar los valores únicos
+        const uniqueValuesSet = new Set();
+
+        // Recorrer los elementos del array y añadir los valores únicos al conjunto
+        data[table_name].forEach(item => {
+          if (item.hasOwnProperty(column)) {
+            uniqueValuesSet.add(item[column]);
+          }
+        });
+
+        // Convertir el conjunto a un array y devolverlo
+        return Array.from(uniqueValuesSet);;
+    },
+
+    getFilterOptions(collection, table, header) {
+      const columnData = this.getColumnData(collection, table, header);
+      // Verificar si los valores son booleanos
+      const uniqueValues = [...new Set(columnData)];
+
+      if (uniqueValues.length === 2 && uniqueValues.includes(true) && uniqueValues.includes(false)) {
+        return [
+          { label: 'True', value: true, checked: false },
+          { label: 'False', value: false, checked: false }
+        ];
+      }
+
+      // Si no son booleanos, procesar normalmente
+      return uniqueValues.map(value => ({
+        label: value,
+        value: value,
+        checked: false
+      }));
+    },
+
+    
+    getFilterMinValue (collection, table, header) {
+      // const columnData = this.getColumnData (collection, table, header);
+      // return Math.min(...columnData);
+
+    },
+
+    getFilterMaxValue (collection, table, header) {
+      // const columnData = this.getColumnData (collection, table, header);
+      // return Math.max(...columnData);
+
     },
 
     getConfigTableData(data: object, collection, table, lang = 'en'): any[] {
