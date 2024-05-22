@@ -108,8 +108,6 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
-    
-
     async fetchLoadedExecution(id: string) {
       try {
         const loadedExecution = await this.executionRepository.loadExecution(id)
@@ -398,102 +396,147 @@ export const useGeneralStore = defineStore('general', {
     },
 
     getFilterNames(collection, table, type, lang = 'en'): any {
-
       const filters = this.getTableHeaders(collection, table)
       return filters.reduce((acc, header) => {
+        const headerType = this.getTableJsonSchemaProperty(
+          collection,
+          table,
+          header,
+        ).type
+
         acc[header] = {
           title: this.getTablePropertyTitle(collection, table, header, lang),
           filterable: this.isTablePropertyFilterable(collection, table, header),
-          type: this.getFilterType(
-            this.getTableJsonSchemaProperty(collection, table, header).type,
-          ),
+          type: this.getFilterType(headerType),
           required: this.getTableJsonSchema(
             collection,
             table,
           ).items.required?.includes(header),
         }
         if (acc[header].type == 'checkbox') {
-          acc[header].options = this.getFilterOptions(type, table, header);
+          acc[header].options = this.getFilterOptions(type, table, header)
+
+          if (
+            acc[header].options[0]?.label &&
+            !isNaN(new Date(acc[header].options[0].label).getTime())
+          ) {
+            acc[header].min = this.getFilterMinDate(type, table, header)
+            acc[header].max = this.getFilterMaxDate(type, table, header)
+            acc[header].type = 'daterange'
+          }
+
+          if (headerType == 'boolean') {
+            acc[header].options = [
+              {
+                label: i18n.global.t('inputOutputData.true'),
+                value: 'true',
+                checked: false,
+              },
+              {
+                label: i18n.global.t('inputOutputData.false'),
+                value: 'false',
+                checked: false,
+              },
+            ]
+          }
         } else if (acc[header].type == 'range') {
-          acc[header].min = this.getFilterMinValue(collection, table, header);
-          acc[header].max = this.getFilterMaxValue(collection, table, header);
-        } 
+          acc[header].min = this.getFilterMinValue(type, table, header)
+          acc[header].max = this.getFilterMaxValue(type, table, header)
+        }
         return acc
       }, {})
     },
 
     getFilterType(headerType): string {
       let filterType = ''
-      switch (headerType) {
+      let type = Array.isArray(headerType) ? headerType[0] : headerType
+      switch (type) {
         case 'string':
         case 'boolean':
           filterType = 'checkbox'
           break
         case 'integer':
+        case 'number':
           filterType = 'range'
           break
         case 'date':
-          filterType = 'dateRange'
+          filterType = 'daterange'
           break
       }
       return filterType
     },
 
-    getColumnData (type, table_name, column) {
+    getColumnData(type, table_name, column) {
+      // Obtener los datos
+      const { data } = this.selectedExecution.experiment[type]
 
-       // Obtener los datos
-        const {data} = this.selectedExecution.experiment[type];
+      // Asegurarse de que data[table_name] exista
+      if (!data[table_name] || !Array.isArray(data[table_name])) {
+        return []
+      }
 
-        // Asegurarse de que data[table_name] exista
-        if (!data[table_name] || !Array.isArray(data[table_name])) {
-          return [];
+      // Crear un conjunto para almacenar los valores únicos
+      const uniqueValuesSet = new Set()
+
+      // Recorrer los elementos del array y añadir los valores únicos al conjunto
+      data[table_name].forEach((item) => {
+        if (item.hasOwnProperty(column)) {
+          uniqueValuesSet.add(item[column])
         }
+      })
 
-        // Crear un conjunto para almacenar los valores únicos
-        const uniqueValuesSet = new Set();
-
-        // Recorrer los elementos del array y añadir los valores únicos al conjunto
-        data[table_name].forEach(item => {
-          if (item.hasOwnProperty(column)) {
-            uniqueValuesSet.add(item[column]);
-          }
-        });
-
-        // Convertir el conjunto a un array y devolverlo
-        return Array.from(uniqueValuesSet);;
+      // Convertir el conjunto a un array y devolverlo
+      return Array.from(uniqueValuesSet)
     },
 
     getFilterOptions(collection, table, header) {
-      const columnData = this.getColumnData(collection, table, header);
+      const columnData = this.getColumnData(collection, table, header)
       // Verificar si los valores son booleanos
-      const uniqueValues = [...new Set(columnData)];
+      const uniqueValues = [...new Set(columnData)]
 
-      if (uniqueValues.length === 2 && uniqueValues.includes(true) && uniqueValues.includes(false)) {
+      if (
+        uniqueValues.length === 2 &&
+        uniqueValues.includes(true) &&
+        uniqueValues.includes(false)
+      ) {
         return [
           { label: 'True', value: true, checked: false },
-          { label: 'False', value: false, checked: false }
-        ];
+          { label: 'False', value: false, checked: false },
+        ]
       }
 
       // Si no son booleanos, procesar normalmente
-      return uniqueValues.map(value => ({
+      return uniqueValues.map((value) => ({
         label: value,
         value: value,
-        checked: false
-      }));
+        checked: false,
+      }))
     },
 
-    
-    getFilterMinValue (collection, table, header) {
-      // const columnData = this.getColumnData (collection, table, header);
-      // return Math.min(...columnData);
-
+    getFilterMinValue(collection, table, header) {
+      const columnData = this.getColumnData(collection, table, header)
+      return Math.min(...columnData)
     },
 
-    getFilterMaxValue (collection, table, header) {
-      // const columnData = this.getColumnData (collection, table, header);
-      // return Math.max(...columnData);
+    getFilterMaxValue(collection, table, header) {
+      const columnData = this.getColumnData(collection, table, header)
+      return Math.max(...columnData)
+    },
 
+    getFilterMinDate(collection, table, header) {
+      const columnData = this.getColumnData(collection, table, header)
+      return columnData.reduce(
+        (minDate, date) => (date < minDate ? date : minDate),
+        columnData[0],
+      )
+    },
+
+    getFilterMaxDate(collection, table, header) {
+      const columnData = this.getColumnData(collection, table, header)
+      return columnData.reduce(
+        (maxDate, date) => (date > maxDate ? date : maxDate),
+        columnData[0],
+      )
     },
 
     getConfigTableData(data: object, collection, table, lang = 'en'): any[] {
@@ -505,19 +548,26 @@ export const useGeneralStore = defineStore('general', {
       }))
     },
 
-    async getDataToDownload(id: string, onlySolution: boolean = false, onlyInstance: boolean = false){
-
-      let solution = false;
-      let instance = false;
-      if (onlySolution){
-        solution = true;
+    async getDataToDownload(
+      id: string,
+      onlySolution: boolean = false,
+      onlyInstance: boolean = false,
+    ) {
+      let solution = false
+      let instance = false
+      if (onlySolution) {
+        solution = true
       }
 
-      if (onlyInstance){
-        instance= true;
+      if (onlyInstance) {
+        instance = true
       }
 
-      const downloadedData = await this.executionRepository.getDataToDownload(id, solution, instance)
+      const downloadedData = await this.executionRepository.getDataToDownload(
+        id,
+        solution,
+        instance,
+      )
     },
 
     getConfigDisplayName(collection, table, key, lang = 'en'): string {

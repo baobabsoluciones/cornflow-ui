@@ -83,6 +83,15 @@
             style="margin: 0 !important; justify-content: end; display: flex"
           >
             <v-btn
+              v-if="!canEdit"
+              icon="mdi-microsoft-excel"
+              class="mr-4"
+              color="primary"
+              density="compact"
+              style="font-size: 0.7rem !important"
+              @click="handleDownload()"
+            ></v-btn>
+            <v-btn
               v-if="canEdit && !editionMode"
               color="primary"
               icon="mdi-pencil"
@@ -112,23 +121,13 @@
               @click="cancelEdit"
             >
             </v-btn>
-            <v-btn
-              icon="mdi-content-save-off"
-              v-if="canEdit && editionMode"
-              color="primary"
-              class="mr-3"
-              density="compact"
-              style="font-size: 0.6rem !important"
-              @click="cancelEdit"
-            >
-            </v-btn>
           </v-col>
         </v-row>
       </template>
       <template #table="{ tabSelected }">
         <v-row class="mt-8">
           <MDataTable
-            :items="formattedTableData"
+            :items="filteredDataTable"
             :headers="headers"
             :options="{ density: 'compact' }"
             :editionMode="editionMode"
@@ -244,9 +243,9 @@ export default {
       data: null,
       formattedTableData: [],
       showDataChecksTable: false,
-      filters: [],
+      filters: {},
       searchText: '',
-      filtersSelected: [],
+      filtersSelected: {},
     }
   },
   created() {
@@ -274,7 +273,6 @@ export default {
       },
       deep: true,
     },
-    filters: {},
     formattedTableData: {
       handler(data, oldData) {
         let tableData = this.tableData
@@ -393,13 +391,13 @@ export default {
       }
       return []
     },
-    // filteredDataTable() {
-    //   return useFilters(
-    //     this.formattedTableData,
-    //     this.searchText,
-    //     this.filtersSelected,
-    //   )
-    // },
+    filteredDataTable() {
+      return useFilters(
+        this.formattedTableData,
+        this.searchText,
+        this.filtersSelected,
+      )
+    },
   },
   methods: {
     async confirmDelete() {
@@ -422,11 +420,13 @@ export default {
       if (this.execution instanceof LoadedExecution) {
         this.execution?.setSelectedTablePreference(newTab, this.type)
       }
-      this.filters = this.generalStore.getFilterNames(
-        this.tableType,
-        this.selectedTable,
-        this.type,
-      )
+      this.filters = Array.isArray(this.data.data[this.selectedTable])
+        ? this.generalStore.getFilterNames(
+            this.tableType,
+            this.selectedTable,
+            this.type,
+          )
+        : {}
     },
     handleDataChecksTabSelected(newTab) {
       this.checkSelectedTable = newTab
@@ -458,7 +458,25 @@ export default {
       this.execution.experiment.downloadExcel(undefined, instance, solution)
     },
     handleSearch(search) {
-      searchText.value = search
+      this.searchText = search
+    },
+    handleFilters(filter) {
+      const newFilters = {
+        ...this.filtersSelected,
+      }
+
+      if (filter.value.length === 0) {
+        if (newFilters.hasOwnProperty(filter.key)) {
+          delete newFilters[filter.key]
+        }
+      } else {
+        newFilters[filter.key] = {
+          type: filter.type,
+          value: filter.value,
+        }
+      }
+
+      this.filtersSelected = newFilters
     },
   },
 }
