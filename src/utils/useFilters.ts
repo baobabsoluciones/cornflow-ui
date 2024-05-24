@@ -1,3 +1,5 @@
+import { c } from 'node_modules/vite/dist/node/types.d-aGj9QkWt'
+
 export default function useFilters(
   data,
   searchText,
@@ -34,7 +36,8 @@ export default function useFilters(
         const dValue = d[filterKey]
         switch (filter.type) {
           case 'checkbox':
-            return filter.value.includes(dValue)
+            const dValueStr = dValue ? dValue.toString() : 'false'
+            return filter.value.includes(dValueStr)
           case 'range':
             return dValue >= filter.value[0] && dValue <= filter.value[1]
           case 'daterange':

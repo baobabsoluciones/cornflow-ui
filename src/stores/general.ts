@@ -408,6 +408,7 @@ export const useGeneralStore = defineStore('general', {
           title: this.getTablePropertyTitle(collection, table, header, lang),
           filterable: this.isTablePropertyFilterable(collection, table, header),
           type: this.getFilterType(headerType),
+          selected: this.isFilterSelected(type, table, header),
           required: this.getTableJsonSchema(
             collection,
             table,
@@ -426,16 +427,17 @@ export const useGeneralStore = defineStore('general', {
           }
 
           if (headerType == 'boolean') {
+            acc[header].type = 'checkbox'
             acc[header].options = [
               {
                 label: i18n.global.t('inputOutputData.true'),
                 value: 'true',
-                checked: false,
+                checked: this.isFilterChecked(type, table, header, 'true'),
               },
               {
                 label: i18n.global.t('inputOutputData.false'),
                 value: 'false',
-                checked: false,
+                checked: this.isFilterChecked(type, table, header, 'false'),
               },
             ]
           }
@@ -489,27 +491,39 @@ export const useGeneralStore = defineStore('general', {
       return Array.from(uniqueValuesSet)
     },
 
+    isEmptyObject(obj) {
+      return Object.keys(obj).length === 0 && obj.constructor === Object
+    },
+
+    isFilterSelected(type, table, header) {
+      const filtersPreference =
+        this.selectedExecution?.getFiltersPreference(type)
+      const tableFilters = filtersPreference
+        ? filtersPreference[table]
+        : undefined
+      const filter = tableFilters ? tableFilters[header] : undefined
+      return filter !== undefined && !this.isEmptyObject(filter)
+    },
+
+    isFilterChecked(type, table, header, value) {
+      const filtersPreference =
+        this.selectedExecution?.getFiltersPreference(type)
+      const tableFilters = filtersPreference
+        ? filtersPreference[table]
+        : undefined
+      const filter = tableFilters ? tableFilters[header] : undefined
+      const stringValue = value ? value.toString() : 'false'
+      return filter !== undefined && filter.value.includes(stringValue)
+    },
+
     getFilterOptions(collection, table, header) {
       const columnData = this.getColumnData(collection, table, header)
-      // Verificar si los valores son booleanos
       const uniqueValues = [...new Set(columnData)]
 
-      if (
-        uniqueValues.length === 2 &&
-        uniqueValues.includes(true) &&
-        uniqueValues.includes(false)
-      ) {
-        return [
-          { label: 'True', value: true, checked: false },
-          { label: 'False', value: false, checked: false },
-        ]
-      }
-
-      // Si no son booleanos, procesar normalmente
       return uniqueValues.map((value) => ({
         label: value,
         value: value,
-        checked: false,
+        checked: this.isFilterChecked(collection, table, header, value),
       }))
     },
 

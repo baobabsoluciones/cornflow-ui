@@ -2,7 +2,6 @@
   <v-app>
     <core-app-drawer style="position: fixed !important" />
     <core-app-view />
-    <Suspense>
     <MAppBarTab
       :key="tabsKey"
       :tabs="tabsData"
@@ -12,7 +11,6 @@
       @select="selectTab"
     >
     </MAppBarTab>
-    </Suspense>
   </v-app>
 </template>
 

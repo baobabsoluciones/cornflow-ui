@@ -73,6 +73,7 @@
           <v-col cols="10">
             <MFilterSearch
               :filters="filters"
+              @reset="handleResetFilters"
               @search="handleSearch"
               @filter="handleFilters"
             />
@@ -243,15 +244,16 @@ export default {
       data: null,
       formattedTableData: [],
       showDataChecksTable: false,
-      filters: {},
       searchText: '',
       filtersSelected: {},
+      filters: {},
     }
   },
   created() {
     this.showSnackbar = inject('showSnackbar')
     if (this.execution instanceof LoadedExecution) {
       this.selectedTable = this.execution.getSelectedTablePreference(this.type)
+      this.handleTabSelected(this.selectedTable)
     }
   },
   watch: {
@@ -270,6 +272,7 @@ export default {
           ? JSON.parse(JSON.stringify(this.execution.experiment[this.type]))
           : JSON.parse(JSON.stringify(this.execution[this.type]))
         this.data = executionInstance
+        this.loadFilters()
       },
       deep: true,
     },
@@ -395,7 +398,7 @@ export default {
       return useFilters(
         this.formattedTableData,
         this.searchText,
-        this.filtersSelected,
+        this.filtersSelected[this.selectedTable],
       )
     },
   },
@@ -415,18 +418,43 @@ export default {
     createItem() {
       this.formattedTableData.unshift({})
     },
-    handleTabSelected(newTab) {
-      this.selectedTable = newTab
-      if (this.execution instanceof LoadedExecution) {
-        this.execution?.setSelectedTablePreference(newTab, this.type)
+    loadFilters() {
+      this.filters = this.getFilters()
+
+      this.filtersSelected = this.execution.getFiltersPreference(this.type)
+
+      if (!this.filtersSelected[this.selectedTable]) {
+        this.filtersSelected[this.selectedTable] = {}
       }
-      this.filters = Array.isArray(this.data.data[this.selectedTable])
+
+      // Update the selected attribute in the filters computed property
+      for (let key in this.filters) {
+        if (this.filters.hasOwnProperty(key)) {
+          this.filters[key].selected = this.filtersSelected.hasOwnProperty(key)
+        }
+      }
+    },
+    getFilters() {
+      return Array.isArray(this.data?.data[this.selectedTable])
         ? this.generalStore.getFilterNames(
             this.tableType,
             this.selectedTable,
             this.type,
           )
         : {}
+    },
+    handleTabSelected(newTab) {
+      this.selectedTable = newTab
+      this.filters = this.getFilters()
+
+      if (!this.filtersSelected[this.selectedTable]) {
+        this.filtersSelected[this.selectedTable] = {}
+      }
+
+      if (this.execution instanceof LoadedExecution) {
+        this.execution.setSelectedTablePreference(newTab, this.type)
+        this.execution.setFiltersPreference(this.filtersSelected, this.type)
+      }
     },
     handleDataChecksTabSelected(newTab) {
       this.checkSelectedTable = newTab
@@ -462,7 +490,7 @@ export default {
     },
     handleFilters(filter) {
       const newFilters = {
-        ...this.filtersSelected,
+        ...this.filtersSelected[this.selectedTable],
       }
 
       if (filter.value.length === 0) {
@@ -476,7 +504,49 @@ export default {
         }
       }
 
-      this.filtersSelected = newFilters
+      this.filtersSelected[this.selectedTable] = newFilters
+      this.filtersSelected = { ...this.filtersSelected } // Create a new object
+      if (this.execution instanceof LoadedExecution) {
+        this.execution.setFiltersPreference(this.filtersSelected, this.type)
+      }
+
+      // Update the selected attribute in the filters computed property
+      for (let key in this.filters) {
+        if (this.filters.hasOwnProperty(key)) {
+          this.filters[key].selected = newFilters.hasOwnProperty(key)
+
+          // Update the checked attribute for each option in filters[key].options
+          if (this.filters[key].options) {
+            this.filters[key].options.forEach((option) => {
+              option.checked =
+                newFilters[key] && newFilters[key].value.includes(option.value)
+            })
+          }
+        }
+      }
+    },
+    handleResetFilters() {
+      // Iterate over all the filter keys and set their selected attribute to false
+      for (let key in this.filters) {
+        if (this.filters.hasOwnProperty(key)) {
+          this.filters[key].selected = false
+
+          // Iterate over all options of each key and set checked to false
+          if (this.filters[key].options) {
+            this.filters[key].options.forEach((option) => {
+              option.checked = false
+            })
+          }
+        }
+      }
+
+      // Set filtersSelected to an empty object
+      this.filtersSelected = {}
+
+      // Set the filters in the execution method
+      if (this.execution instanceof LoadedExecution) {
+        this.execution.setFiltersPreference(this.filtersSelected, this.type)
+      }
     },
   },
 }
