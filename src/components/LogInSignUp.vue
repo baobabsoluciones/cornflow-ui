@@ -1,9 +1,13 @@
 <template>
   <div
     class="d-flex justify-center align-center"
-    style="height: 100vh; background-color: #fffde7"
+    style="height: 100vh; background-color: var(--primary-light-variant)"
   >
-    <v-card flat width="25%" style="background-color: #fffde7">
+    <v-card
+      flat
+      width="25%"
+      style="background-color: var(--primary-light-variant)"
+    >
       <v-card-title>
         <v-col>
           <v-img contain src="@\app\assets\logo\full_logo.png" height="48px" />
@@ -35,7 +39,7 @@
               rounded
               type="text"
               style="margin-bottom: -8px"
-              bg-color="#FFFEEF"
+              bg-color="white"
               @keydown.enter.prevent="submitLogIn()"
             >
             </v-text-field>
@@ -52,7 +56,7 @@
               prepend-inner-icon="mdi-lock-outline"
               single-line
               rounded
-              bg-color="#FFFEEF"
+              bg-color="white"
               :type="show1 ? 'text' : 'password'"
               :append-inner-icon="!show1 ? 'mdi-eye' : 'mdi-eye-off'"
               @click:append-inner="show1 = !show1"
@@ -76,7 +80,7 @@
               rounded
               type="text"
               style="margin-bottom: -16px"
-              bg-color="#FFFEEF"
+              bg-color="white"
             >
             </v-text-field>
             <label class="label mt-3">{{
@@ -92,7 +96,7 @@
               rounded
               type="text"
               style="margin-bottom: -16px"
-              bg-color="#FFFEEF"
+              bg-color="white"
             >
             </v-text-field>
 
@@ -115,7 +119,7 @@
               density="compact"
               prepend-inner-icon="mdi-lock-outline"
               rounded
-              bg-color="#FFFEEF"
+              bg-color="white"
               style="margin-bottom: -16px"
               :type="show2 ? 'text' : 'password'"
               :append-inner-icon="!show2 ? 'mdi-eye' : 'mdi-eye-off'"
@@ -137,7 +141,7 @@
               density="compact"
               prepend-inner-icon="mdi-lock-outline"
               rounded
-              bg-color="#FFFEEF"
+              bg-color="white"
               :type="show3 ? 'text' : 'password'"
               :append-inner-icon="!show3 ? 'mdi-eye' : 'mdi-eye-off'"
               @click:append-inner="show3 = !show3"
@@ -202,7 +206,7 @@
       text-align: center;
       font-size: smaller;
       font-weight: lighter;
-      background-color: #fffde7;
+      background-color: var(--primary-light-variant);
     "
   >
     Powered by

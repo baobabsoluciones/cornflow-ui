@@ -1,16 +1,20 @@
 <template>
   <v-app>
-    <core-app-drawer style="position: fixed !important" />
+    <core-app-drawer
+      style="position: fixed !important; z-index: 900 !important"
+    />
     <core-app-view />
-    <MAppBarTab
-      :key="tabsKey"
-      :tabs="tabsData"
-      createTitle="Create"
-      @close="removeTab"
-      @create="createTab"
-      @select="selectTab"
-    >
-    </MAppBarTab>
+    <Suspense>
+      <MAppBarTab
+        :key="tabsKey"
+        :tabs="tabsData"
+        createTitle="Create"
+        @close="removeTab"
+        @create="createTab"
+        @select="selectTab"
+      >
+      </MAppBarTab>
+    </Suspense>
   </v-app>
 </template>
 
