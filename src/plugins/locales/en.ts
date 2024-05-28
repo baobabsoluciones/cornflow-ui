@@ -193,6 +193,8 @@ export default {
     parameter: 'Parameter',
     value: 'Value',
     key: 'Key',
+    true: 'True',
+    false: 'False',
     deleteTitle: 'Delete item',
     deleteMessage: 'Are you sure you want to delete this item?',
     deleteButton: 'Delete',

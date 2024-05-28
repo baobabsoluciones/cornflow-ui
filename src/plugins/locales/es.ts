@@ -199,6 +199,8 @@ export default {
     parameter: 'Parámetro',
     value: 'Valor',
     key: 'Clave',
+    true: 'Verdadero',
+    false: 'Falso',
     deleteTitle: 'Eliminar registro',
     deleteMessage: '¿Estás seguro de que quieres eliminar este registro?',
     deleteButton: 'Eliminar',

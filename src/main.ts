@@ -37,7 +37,6 @@ import { MDataTable } from 'mango-vue'
 import { MCheckboxOptions } from 'mango-vue'
 import { MTabTable } from 'mango-vue'
 
-
 const pinia = createPinia()
 const app = createApp(App)
 
@@ -58,7 +57,6 @@ app.component('MInputField', MInputField)
 app.component('MDataTable', MDataTable)
 app.component('MCheckboxOptions', MCheckboxOptions)
 app.component('MTabTable', MTabTable)
-
 
 app.use(pinia)
 app.mount('#app')

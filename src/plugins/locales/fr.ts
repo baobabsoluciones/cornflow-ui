@@ -194,6 +194,8 @@ export default {
     parameter: 'Paramètre',
     value: 'Valeur',
     key: 'Clé',
+    true: 'Vrai',
+    false: 'Faux',
   },
   settings: {
     currentPassword: 'Mot de passe actuel',

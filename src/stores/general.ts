@@ -108,8 +108,6 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
-    
-
     async fetchLoadedExecution(id: string) {
       try {
         const loadedExecution = await this.executionRepository.loadExecution(id)
@@ -311,6 +309,23 @@ export const useGeneralStore = defineStore('general', {
       return propSortable
     },
 
+    isTablePropertyFilterable(collection, table, item): boolean {
+      const propFilterable = this.getTableJsonSchemaProperty(
+        collection,
+        table,
+        item,
+      ).filterable
+      if (propFilterable === undefined) {
+        const tableFilterable = this.getTableJsonSchemaProperty(
+          collection,
+          table,
+          item,
+        ).filterable
+        return tableFilterable !== undefined ? tableFilterable : false
+      }
+      return propFilterable
+    },
+
     getTablePropertyTitle(collection, table, item, lang = 'en'): string {
       const title = this.getTableJsonSchemaProperty(
         collection,
@@ -349,8 +364,7 @@ export const useGeneralStore = defineStore('general', {
         title: this.getTablePropertyTitle(collection, table, header, lang),
         value: header,
         sortable: this.isTablePropertySortable(collection, table, header),
-        filterable: this.getTableJsonSchemaProperty(collection, table, header)
-          .filterable,
+        filterable: this.isTablePropertyFilterable(collection, table, header),
         type:
           this.getTableJsonSchemaProperty(collection, table, header).type ===
           'integer'
@@ -381,6 +395,164 @@ export const useGeneralStore = defineStore('general', {
       ]
     },
 
+    getFilterNames(collection, table, type, lang = 'en'): any {
+      const filters = this.getTableHeaders(collection, table)
+      return filters.reduce((acc, header) => {
+        const headerType = this.getTableJsonSchemaProperty(
+          collection,
+          table,
+          header,
+        ).type
+
+        acc[header] = {
+          title: this.getTablePropertyTitle(collection, table, header, lang),
+          filterable: this.isTablePropertyFilterable(collection, table, header),
+          type: this.getFilterType(headerType),
+          selected: this.isFilterSelected(type, table, header),
+          required: this.getTableJsonSchema(
+            collection,
+            table,
+          ).items.required?.includes(header),
+        }
+        if (acc[header].type == 'checkbox') {
+          acc[header].options = this.getFilterOptions(type, table, header)
+
+          if (
+            acc[header].options[0]?.label &&
+            !isNaN(new Date(acc[header].options[0].label).getTime())
+          ) {
+            acc[header].min = this.getFilterMinDate(type, table, header)
+            acc[header].max = this.getFilterMaxDate(type, table, header)
+            acc[header].type = 'daterange'
+          }
+
+          if (headerType == 'boolean') {
+            acc[header].type = 'checkbox'
+            acc[header].options = [
+              {
+                label: i18n.global.t('inputOutputData.true'),
+                value: 'true',
+                checked: this.isFilterChecked(type, table, header, 'true'),
+              },
+              {
+                label: i18n.global.t('inputOutputData.false'),
+                value: 'false',
+                checked: this.isFilterChecked(type, table, header, 'false'),
+              },
+            ]
+          }
+        } else if (acc[header].type == 'range') {
+          acc[header].min = this.getFilterMinValue(type, table, header)
+          acc[header].max = this.getFilterMaxValue(type, table, header)
+        }
+        return acc
+      }, {})
+    },
+
+    getFilterType(headerType): string {
+      let filterType = ''
+      let type = Array.isArray(headerType) ? headerType[0] : headerType
+      switch (type) {
+        case 'string':
+        case 'boolean':
+          filterType = 'checkbox'
+          break
+        case 'integer':
+        case 'number':
+          filterType = 'range'
+          break
+        case 'date':
+          filterType = 'daterange'
+          break
+      }
+      return filterType
+    },
+
+    getColumnData(type, table_name, column) {
+      // Obtener los datos
+      const { data } = this.selectedExecution.experiment[type]
+
+      // Asegurarse de que data[table_name] exista
+      if (!data[table_name] || !Array.isArray(data[table_name])) {
+        return []
+      }
+
+      // Crear un conjunto para almacenar los valores únicos
+      const uniqueValuesSet = new Set()
+
+      // Recorrer los elementos del array y añadir los valores únicos al conjunto
+      data[table_name].forEach((item) => {
+        if (item.hasOwnProperty(column)) {
+          uniqueValuesSet.add(item[column])
+        }
+      })
+
+      // Convertir el conjunto a un array y devolverlo
+      return Array.from(uniqueValuesSet)
+    },
+
+    isEmptyObject(obj) {
+      return Object.keys(obj).length === 0 && obj.constructor === Object
+    },
+
+    isFilterSelected(type, table, header) {
+      const filtersPreference =
+        this.selectedExecution?.getFiltersPreference(type)
+      const tableFilters = filtersPreference
+        ? filtersPreference[table]
+        : undefined
+      const filter = tableFilters ? tableFilters[header] : undefined
+      return filter !== undefined && !this.isEmptyObject(filter)
+    },
+
+    isFilterChecked(type, table, header, value) {
+      const filtersPreference =
+        this.selectedExecution?.getFiltersPreference(type)
+      const tableFilters = filtersPreference
+        ? filtersPreference[table]
+        : undefined
+      const filter = tableFilters ? tableFilters[header] : undefined
+      const stringValue = value ? value.toString() : 'false'
+      return filter !== undefined && filter.value.includes(stringValue)
+    },
+
+    getFilterOptions(collection, table, header) {
+      const columnData = this.getColumnData(collection, table, header)
+      const uniqueValues = [...new Set(columnData)]
+
+      return uniqueValues.map((value) => ({
+        label: value,
+        value: value,
+        checked: this.isFilterChecked(collection, table, header, value),
+      }))
+    },
+
+    getFilterMinValue(collection, table, header) {
+      const columnData = this.getColumnData(collection, table, header)
+      return Math.min(...columnData)
+    },
+
+    getFilterMaxValue(collection, table, header) {
+      const columnData = this.getColumnData(collection, table, header)
+      return Math.max(...columnData)
+    },
+
+    getFilterMinDate(collection, table, header) {
+      const columnData = this.getColumnData(collection, table, header)
+      return columnData.reduce(
+        (minDate, date) => (date < minDate ? date : minDate),
+        columnData[0],
+      )
+    },
+
+    getFilterMaxDate(collection, table, header) {
+      const columnData = this.getColumnData(collection, table, header)
+      return columnData.reduce(
+        (maxDate, date) => (date > maxDate ? date : maxDate),
+        columnData[0],
+      )
+    },
+
     getConfigTableData(data: object, collection, table, lang = 'en'): any[] {
       return Object.keys(data).map((key) => ({
         displayName: this.getConfigDisplayName(collection, table, key, lang),
@@ -390,19 +562,26 @@ export const useGeneralStore = defineStore('general', {
       }))
     },
 
-    async getDataToDownload(id: string, onlySolution: boolean = false, onlyInstance: boolean = false){
-
-      let solution = false;
-      let instance = false;
-      if (onlySolution){
-        solution = true;
+    async getDataToDownload(
+      id: string,
+      onlySolution: boolean = false,
+      onlyInstance: boolean = false,
+    ) {
+      let solution = false
+      let instance = false
+      if (onlySolution) {
+        solution = true
       }
 
-      if (onlyInstance){
-        instance= true;
+      if (onlyInstance) {
+        instance = true
       }
 
-      const downloadedData = await this.executionRepository.getDataToDownload(id, solution, instance)
+      const downloadedData = await this.executionRepository.getDataToDownload(
+        id,
+        solution,
+        instance,
+      )
     },
 
     getConfigDisplayName(collection, table, key, lang = 'en'): string {

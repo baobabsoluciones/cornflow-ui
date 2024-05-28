@@ -69,60 +69,66 @@
       :selectedTable="selectedTable"
     >
       <template #actions>
-        <v-row class="d-flex mt-3">
-          <v-btn
-            icon="mdi-filter-variant"
-            color="primary"
-            density="compact"
-            style="font-size: 0.6rem !important"
-          ></v-btn>
-
+        <v-row class="mt-3">
+          <v-col cols="10">
+            <MFilterSearch
+              :filters="filters"
+              @reset="handleResetFilters"
+              @search="handleSearch"
+              @filter="handleFilters"
+            />
+          </v-col>
           <v-spacer></v-spacer>
-          <v-btn
-            v-if="!canEdit"
-            icon="mdi-microsoft-excel"
-            class="mr-4"
-            color="primary"
-            density="compact"
-            style="font-size: 0.7rem !important"
-            @click="handleDownload()"
-          ></v-btn>
-          <v-btn
-            v-if="canEdit && !editionMode"
-            color="primary"
-            icon="mdi-pencil"
-            class="mr-3"
-            density="compact"
-            style="font-size: 0.6rem !important"
-            @click="editionMode = true"
+          <v-col
+            cols="2"
+            style="margin: 0 !important; justify-content: end; display: flex"
           >
-          </v-btn>
-          <v-btn
-            v-if="canEdit && editionMode"
-            color="primary"
-            icon="mdi-content-save-edit"
-            density="compact"
-            style="font-size: 0.6rem !important"
-            class="mr-3"
-            @click="openSaveModal"
-          >
-          </v-btn>
-          <v-btn
-            icon="mdi-content-save-off"
-            v-if="canEdit && editionMode"
-            color="primary"
-            class="mr-3"
-            density="compact"
-            style="font-size: 0.6rem !important"
-            @click="cancelEdit"
-          >
-          </v-btn>
+            <v-btn
+              v-if="!canEdit"
+              icon="mdi-microsoft-excel"
+              class="mr-4"
+              color="primary"
+              density="compact"
+              style="font-size: 0.7rem !important"
+              @click="handleDownload()"
+            ></v-btn>
+            <v-btn
+              v-if="canEdit && !editionMode"
+              color="primary"
+              icon="mdi-pencil"
+              class="mr-3"
+              density="compact"
+              style="font-size: 0.6rem !important"
+              @click="editionMode = true"
+            >
+            </v-btn>
+            <v-btn
+              v-if="canEdit && editionMode"
+              color="primary"
+              icon="mdi-content-save-edit"
+              density="compact"
+              style="font-size: 0.6rem !important"
+              class="mr-3"
+              @click="openSaveModal"
+            >
+            </v-btn>
+            <v-btn
+              icon="mdi-content-save-off"
+              v-if="canEdit && editionMode"
+              color="primary"
+              class="mr-3"
+              density="compact"
+              style="font-size: 0.6rem !important"
+              @click="cancelEdit"
+            >
+            </v-btn>
+          </v-col>
         </v-row>
       </template>
       <template #table="{ tabSelected }">
         <v-row class="mt-8">
           <MDataTable
-            :items="formattedTableData"
+            :items="filteredDataTable"
             :headers="headers"
             :options="{ density: 'compact' }"
             :editionMode="editionMode"
@@ -200,11 +206,11 @@
 import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
 import { LoadedExecution } from '@/models/LoadedExecution'
+import useFilters from '@/utils/useFilters'
 
 export default {
   emits: ['saveChanges', 'resolve'],
-  components: {
-  },
+  components: {},
   props: {
     execution: {
       type: Object,
@@ -238,12 +244,16 @@ export default {
       data: null,
       formattedTableData: [],
       showDataChecksTable: false,
+      searchText: '',
+      filtersSelected: {},
+      filters: {},
     }
   },
   created() {
     this.showSnackbar = inject('showSnackbar')
     if (this.execution instanceof LoadedExecution) {
       this.selectedTable = this.execution.getSelectedTablePreference(this.type)
+      this.handleTabSelected(this.selectedTable)
     }
   },
   watch: {
@@ -262,6 +272,7 @@ export default {
           ? JSON.parse(JSON.stringify(this.execution.experiment[this.type]))
           : JSON.parse(JSON.stringify(this.execution[this.type]))
         this.data = executionInstance
+        this.loadFilters()
       },
       deep: true,
     },
@@ -383,6 +394,13 @@ export default {
       }
       return []
     },
+    filteredDataTable() {
+      return useFilters(
+        this.formattedTableData,
+        this.searchText,
+        this.filtersSelected[this.selectedTable],
+      )
+    },
   },
   methods: {
     async confirmDelete() {
@@ -400,10 +418,42 @@ export default {
     createItem() {
       this.formattedTableData.unshift({})
     },
+    loadFilters() {
+      this.filters = this.getFilters()
+
+      this.filtersSelected = this.execution.getFiltersPreference(this.type)
+
+      if (!this.filtersSelected[this.selectedTable]) {
+        this.filtersSelected[this.selectedTable] = {}
+      }
+
+      // Update the selected attribute in the filters computed property
+      for (let key in this.filters) {
+        if (this.filters.hasOwnProperty(key)) {
+          this.filters[key].selected = this.filtersSelected.hasOwnProperty(key)
+        }
+      }
+    },
+    getFilters() {
+      return Array.isArray(this.data?.data[this.selectedTable])
+        ? this.generalStore.getFilterNames(
+            this.tableType,
+            this.selectedTable,
+            this.type,
+          )
+        : {}
+    },
     handleTabSelected(newTab) {
       this.selectedTable = newTab
+      this.filters = this.getFilters()
+
+      if (!this.filtersSelected[this.selectedTable]) {
+        this.filtersSelected[this.selectedTable] = {}
+      }
+
       if (this.execution instanceof LoadedExecution) {
-        this.execution?.setSelectedTablePreference(newTab, this.type)
+        this.execution.setSelectedTablePreference(newTab, this.type)
+        this.execution.setFiltersPreference(this.filtersSelected, this.type)
       }
     },
     handleDataChecksTabSelected(newTab) {
@@ -434,6 +484,69 @@ export default {
         solution = true
       }
       this.execution.experiment.downloadExcel(undefined, instance, solution)
+    },
+    handleSearch(search) {
+      this.searchText = search
+    },
+    handleFilters(filter) {
+      const newFilters = {
+        ...this.filtersSelected[this.selectedTable],
+      }
+
+      if (filter.value.length === 0) {
+        if (newFilters.hasOwnProperty(filter.key)) {
+          delete newFilters[filter.key]
+        }
+      } else {
+        newFilters[filter.key] = {
+          type: filter.type,
+          value: filter.value,
+        }
+      }
+
+      this.filtersSelected[this.selectedTable] = newFilters
+      this.filtersSelected = { ...this.filtersSelected } // Create a new object
+      if (this.execution instanceof LoadedExecution) {
+        this.execution.setFiltersPreference(this.filtersSelected, this.type)
+      }
+
+      // Update the selected attribute in the filters computed property
+      for (let key in this.filters) {
+        if (this.filters.hasOwnProperty(key)) {
+          this.filters[key].selected = newFilters.hasOwnProperty(key)
+
+          // Update the checked attribute for each option in filters[key].options
+          if (this.filters[key].options) {
+            this.filters[key].options.forEach((option) => {
+              option.checked =
+                newFilters[key] && newFilters[key].value.includes(option.value)
+            })
+          }
+        }
+      }
+    },
+    handleResetFilters() {
+      // Iterate over all the filter keys and set their selected attribute to false
+      for (let key in this.filters) {
+        if (this.filters.hasOwnProperty(key)) {
+          this.filters[key].selected = false
+
+          // Iterate over all options of each key and set checked to false
+          if (this.filters[key].options) {
+            this.filters[key].options.forEach((option) => {
+              option.checked = false
+            })
+          }
+        }
+      }
+
+      // Set filtersSelected to an empty object
+      this.filtersSelected = {}
+
+      // Set the filters in the execution method
+      if (this.execution instanceof LoadedExecution) {
+        this.execution.setFiltersPreference(this.filtersSelected, this.type)
+      }
     },
   },
 }

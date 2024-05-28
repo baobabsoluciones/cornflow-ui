@@ -1,8 +1,8 @@
 import { ExperimentCore } from './Experiment'
 
 type UIPreferences = {
-  inputData: { selectedTable: null | string; filters: null | string }
-  outputData: { selectedTable: null | string; filters: null | string }
+  inputData: { selectedTable: null | string; filters: null | object }
+  outputData: { selectedTable: null | string; filters: null | object }
   dashboard: null | any
 }
 
@@ -36,8 +36,8 @@ export class LoadedExecution {
     this.messageState = message
     this.config = config
     this.uiPreferences = {
-      inputData: { selectedTable: null, filters: null },
-      outputData: { selectedTable: null, filters: null },
+      inputData: { selectedTable: null, filters: {} },
+      outputData: { selectedTable: null, filters: {} },
       dashboard: null,
     }
   }
@@ -47,7 +47,7 @@ export class LoadedExecution {
     this.uiPreferences[preferenceType].selectedTable = table
   }
 
-  setFiltersPreference(filters: string, type: 'instance' | 'solution') {
+  setFiltersPreference(filters: any, type: 'instance' | 'solution') {
     const preferenceType = type === 'instance' ? 'inputData' : 'outputData'
     this.uiPreferences[preferenceType].filters = filters
   }
