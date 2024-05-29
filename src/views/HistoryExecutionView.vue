@@ -14,22 +14,22 @@
       @date-range-changed="dateOptionSelected = $event"
     >
       <template #custom-checkbox>
-        <v-row>
-          <v-col cols="12">
+        <div style="margin-top: -10px !important; display: flex">
+          <v-col class="v-col-s-6 v-col-md-6 v-col-xl-3">
             <v-text-field
               :label="$t('versionHistory.from')"
               type="date"
               v-model="customSelectedDates.startDate"
             ></v-text-field>
           </v-col>
-          <v-col cols="12" style="margin-top: -35px !important">
+          <v-col class="v-col-s-6 v-col-md-6 v-col-xl-3">
             <v-text-field
               :label="$t('versionHistory.to')"
               type="date"
               v-model="customSelectedDates.endDate"
             ></v-text-field>
           </v-col>
-        </v-row>
+        </div>
       </template>
       <template v-slot:table="slotProps">
         <ProjectExecutionsTable
@@ -75,7 +75,7 @@ export default {
     this.showSnackbar = inject('showSnackbar')
   },
   mounted() {
-    this.dateOptionSelected = this.labels[0].value
+    this.dateOptionSelected = null
   },
   activated() {
     this.fetchData()
@@ -180,9 +180,7 @@ export default {
     },
     selectedDates: {
       handler() {
-        if (this.selectedDates.startDate && this.selectedDates.endDate) {
-          this.fetchData()
-        }
+        this.fetchData()
       },
       deep: true,
     },

@@ -1,6 +1,6 @@
 <template>
   <div class="view-container">
-    <TitleView
+    <MTitleView
       :icon="'mdi-view-dashboard'"
       :title="title"
       :description="description"
@@ -16,7 +16,6 @@
 </template>
 
 <script>
-import TitleView from '@/components/core/TitleView.vue'
 import ExecutionInfoCard from '@/components/project-execution/ExecutionInfoCard.vue'
 import DashboardMain from '@/app/components/DashboardMain.vue'
 import { useGeneralStore } from '@/stores/general'
@@ -24,7 +23,6 @@ import { inject } from 'vue'
 
 export default {
   components: {
-    TitleView,
     ExecutionInfoCard,
     DashboardMain,
   },

@@ -106,6 +106,32 @@
       </template>
     </MAppDrawer>
   </Suspense>
+  <MBaseModal
+    v-model="confirmSignOutModal"
+    :closeOnOutsideClick="false"
+    :title="$t('logOut.title')"
+    :buttons="[
+      {
+        text: $t('logOut.accept'),
+        action: 'save',
+        class: 'primary-btn',
+      },
+      {
+        text: $t('logOut.cancel'),
+        action: 'cancel',
+        class: 'secondary-btn',
+      },
+    ]"
+    @save="signOut"
+    @cancel="confirmSignOutModal = false"
+    @close="confirmSignOutModal = false"
+  >
+    <template #content>
+      <v-row class="d-flex justify-center pr-2 pl-2 pb-5 pt-3">
+        <span> {{ $t('logOut.message') }}</span>
+      </v-row>
+    </template>
+  </MBaseModal>
 </template>
 
 <script lang="ts">
@@ -122,6 +148,7 @@ export default defineComponent({
     mini: true,
     hover: true,
     store: useGeneralStore(),
+    confirmSignOutModal: false,
   }),
   watch: {},
   computed: {
@@ -149,15 +176,6 @@ export default defineComponent({
     executionPages() {
       return [
         {
-          title: 'Dashboard',
-          icon: 'mdi-view-dashboard',
-          to: '/dashboard',
-          subPages:
-            this.store.appDashboardPages.length > 0
-              ? this.store.appDashboardPages
-              : null,
-        },
-        {
           title: this.$t('inputOutputData.title'),
           icon: 'mdi-application-cog',
           subPages: [
@@ -173,6 +191,15 @@ export default defineComponent({
             },
           ],
         },
+        {
+          title: 'Dashboard',
+          icon: 'mdi-view-dashboard',
+          to: '/dashboard',
+          subPages:
+            this.store.appDashboardPages.length > 0
+              ? this.store.appDashboardPages
+              : null,
+        },
       ]
     },
     actions() {
@@ -180,12 +207,15 @@ export default defineComponent({
         {
           title: 'Logout',
           icon: 'mdi-logout',
-          action: this.signOut,
+          action: this.confirmSignOut,
         },
       ]
     },
   },
   methods: {
+    confirmSignOut() {
+      this.confirmSignOutModal = true
+    },
     signOut() {
       AuthService.logout()
       this.$router.push('/sign-in')

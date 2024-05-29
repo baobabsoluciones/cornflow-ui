@@ -15,19 +15,23 @@
     <template v-slot:solver="{ item }">
       {{ item.config.solver }}
     </template>
-    <template v-slot:solution="{ item }">
-      <v-icon size="small">
-        {{ item.state === 1 || item.state === 2 ? 'mdi-check' : 'mdi-close' }}
-      </v-icon>
-    </template>
     <template v-slot:state="{ item }">
       <v-chip size="x-small" :color="stateInfo[item.state].color" value="chip">
         {{ stateInfo[item.state].code }}
         <v-tooltip activator="parent" location="bottom">
           <div style="font-size: 11px">
-            {{ item.message }}
+            {{ stateInfo[item.state].message }}
           </div>
         </v-tooltip>
+      </v-chip>
+    </template>
+    <template v-slot:solution="{ item }">
+      <v-chip
+        size="x-small"
+        :color="solutionStateInfo[item.solution_state].color"
+        value="chip"
+      >
+        {{ solutionStateInfo[item.solution_state].code }}
       </v-chip>
     </template>
     <template v-slot:excel="{ item }">
@@ -77,8 +81,7 @@ import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
 
 export default {
-  components: {
-  },
+  components: {},
   props: {
     executionsByDate: {
       type: Array,
@@ -149,57 +152,111 @@ export default {
         },
       ]
     },
+    solutionStateInfo() {
+      return {
+        1: {
+          color: 'green',
+          message: this.$t('executionTable.optimal'),
+          code: this.$t('executionTable.optimal'),
+        },
+        5: {
+          color: 'orange',
+          message: this.$t('executionTable.timeLimit'),
+          code: this.$t('executionTable.timeLimit'),
+        },
+        '-1': {
+          color: 'red',
+          message: this.$t('executionTable.infeasible'),
+          code: this.$t('executionTable.infeasible'),
+        },
+        '-3': {
+          color: 'grey',
+          message: this.$t('executionTable.unknown'),
+          code: this.$t('executionTable.unknown'),
+        },
+        0: {
+          color: 'purple',
+          message: this.$t('executionTable.notSolved'),
+          code: this.$t('executionTable.notSolved'),
+        },
+        '-2': {
+          color: 'red',
+          message: this.$t('executionTable.unbounded'),
+          code: this.$t('executionTable.unbounded'),
+        },
+        2: {
+          color: 'green',
+          message: this.$t('executionTable.feasible'),
+          code: this.$t('executionTable.feasible'),
+        },
+        3: {
+          color: 'orange',
+          message: this.$t('executionTable.memoryLimit'),
+          code: this.$t('executionTable.memoryLimit'),
+        },
+        4: {
+          color: 'orange',
+          message: this.$t('executionTable.nodeLimit'),
+          code: this.$t('executionTable.nodeLimit'),
+        },
+        '-5': {
+          color: 'red',
+          message: this.$t('executionTable.licensingProblem'),
+          code: this.$t('executionTable.licensingProblem'),
+        },
+      }
+    },
     stateInfo() {
       return {
         1: {
           color: 'green',
-          message: 'The execution has been solved correctly.',
-          code: 'Success',
+          message: this.$t('executionTable.executionSolvedCorrectly'),
+          code: this.$t('executionTable.success'),
         },
         0: {
           color: 'purple',
-          message: 'The execution is currently running.',
-          code: 'Loading',
+          message: this.$t('executionTable.executionRunning'),
+          code: this.$t('executionTable.loading'),
         },
         '-1': {
           color: 'red',
-          message: 'The execution has found an error.',
-          code: 'Error',
+          message: this.$t('executionTable.executionError'),
+          code: this.$t('executionTable.error'),
         },
         '-2': {
           color: 'red',
-          message: 'The execution has stopped running.',
-          code: 'Error',
+          message: this.$t('executionTable.executionStopped'),
+          code: this.$t('executionTable.error'),
         },
         '-3': {
           color: 'red',
-          message: "The execution couldn't start running.",
-          code: 'Error',
+          message: this.$t('executionTable.executionNotStarted'),
+          code: this.$t('executionTable.error'),
         },
         '-4': {
           color: 'red',
-          message: "The execution wasn't run by user choice.",
-          code: 'Error',
+          message: this.$t('executionTable.executionNotRun'),
+          code: this.$t('executionTable.error'),
         },
         '-5': {
           color: 'red',
-          message: 'The execution has an unknown error.',
-          code: 'Error',
+          message: this.$t('executionTable.executionUnknownError'),
+          code: this.$t('executionTable.error'),
         },
         '-6': {
           color: 'red',
-          message: 'The execution executed ok but failed while saving it.',
-          code: 'Error',
+          message: this.$t('executionTable.executionFailedSaving'),
+          code: this.$t('executionTable.error'),
         },
         2: {
           color: 'green',
-          message: 'The execution was loaded manually.',
-          code: 'Success',
+          message: this.$t('executionTable.executionLoadedManually'),
+          code: this.$t('executionTable.success'),
         },
         '-7': {
           color: 'red',
-          message: 'The execution is currently queued.',
-          code: 'Loading',
+          message: this.$t('executionTable.executionQueued'),
+          code: this.$t('executionTable.loading'),
         },
       }
     },

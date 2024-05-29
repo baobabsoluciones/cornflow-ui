@@ -3,7 +3,7 @@
     <v-alert
       v-if="data?.dataChecks && Object.keys(data.dataChecks).length > 0"
       :class="{ 'mb-3': !showDataChecksTable }"
-      type="error"
+      color="var(--secondary)"
       elevation="2"
       icon="mdi-alert"
       density="compact"
