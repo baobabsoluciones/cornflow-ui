@@ -260,4 +260,10 @@ export default {
     passWordRuleNoSpace: "Un mot de passe ne peut contenir d'espaces",
     passwordRuleNotMatch: 'Les mots de passe ne correspondent pas',
   },
+  helpMenu: {
+    help: "Centre d'aide",
+    licences: 'Licences',
+    close: 'Fermer',
+    download: "Télécharger le manuel de l'utilisateur",
+  },
 }

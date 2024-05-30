@@ -263,4 +263,10 @@ export default {
     passWordRuleNoSpace: 'A password can not contain any spaces',
     passwordRuleNotMatch: 'Passwords do not match',
   },
+  helpMenu: {
+    help: 'Help center',
+    licences: 'Licenses',
+    close: 'Close',
+    download: 'Download user manual',
+  },
 }

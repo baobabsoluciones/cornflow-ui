@@ -11,6 +11,7 @@ import { LoadedExecution } from '@/models/LoadedExecution'
 import SchemaRepository from '@/repositories/SchemaRepository'
 import UserRepository from '@/repositories/UserRepository'
 import ExecutionRepository from '@/repositories/ExecutionRepository'
+import LicenceRepository from '@/repositories/LicenceRepository'
 
 import { toISOStringLocal } from '@/utils/data_io'
 import i18n from '@/plugins/i18n'
@@ -20,10 +21,12 @@ export const useGeneralStore = defineStore('general', {
     schemaRepository: new SchemaRepository(),
     executionRepository: new ExecutionRepository(),
     userRepository: new UserRepository(),
+    licenceRepository: new LicenceRepository(),
     notifications: [] as {
       message: string
       type: 'success' | 'warning' | 'info' | 'error'
     }[],
+    licences: [],
     user: {},
     logo: logo,
     fullLogo: fullLogo,
@@ -43,6 +46,7 @@ export const useGeneralStore = defineStore('general', {
     async initializeData() {
       await this.fetchUser()
       await this.setSchema()
+      await this.fetchLicences()
     },
 
     async fetchUser() {
@@ -51,6 +55,14 @@ export const useGeneralStore = defineStore('general', {
         this.user = await this.userRepository.getUserById(userId)
       } catch (error) {
         console.error('Error getting user', error)
+      }
+    },
+
+    async fetchLicences() {
+      try {
+        this.licences = await this.licenceRepository.getLicences()
+      } catch (error) {
+        console.error('Error getting licences', error)
       }
     },
 
@@ -601,8 +613,13 @@ export const useGeneralStore = defineStore('general', {
     getLogo(): string {
       return this.logo
     },
+
     getUser(): any {
       return this.user
+    },
+
+    getLicences(): any {
+      return this.licences
     },
 
     getSchemaName(): string {
