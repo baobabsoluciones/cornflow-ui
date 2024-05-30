@@ -269,4 +269,10 @@ export default {
     passWordRuleNoSpace: 'Una contraseña no puede contener espacios',
     passwordRuleNotMatch: 'Las contraseñas no coinciden',
   },
+  helpMenu: {
+    help: 'Centro de ayuda',
+    licences: 'Licencias',
+    close: 'Cerrar',
+    download: 'Descargar manual de usuario',
+  },
 }
