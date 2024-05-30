@@ -1,10 +1,16 @@
 <template>
   <div class="view-container">
-    <MTitleView
-      :icon="'mdi-table-arrow-right'"
-      :title="title"
-      :description="description"
-    />
+    <div class="d-flex align-end">
+      <MTitleView
+        :icon="'mdi-table-arrow-left'"
+        :title="title"
+        :description="description"
+      />
+      <ExecutionInfoMenu
+        v-if="selectedExecution"
+        :selectedExecution="selectedExecution"
+      />
+    </div>
     <ExecutionInfoCard
       :selectedExecution="selectedExecution"
       :type="'solution'"
@@ -22,6 +28,7 @@
 
 <script>
 import ExecutionInfoCard from '@/components/project-execution/ExecutionInfoCard.vue'
+import ExecutionInfoMenu from '@/components/project-execution/ExecutionInfoMenu.vue'
 import InputOutputDataTable from '@/components/input-data/InputOutputDataTable.vue'
 import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
@@ -29,6 +36,7 @@ import { inject } from 'vue'
 export default {
   components: {
     ExecutionInfoCard,
+    ExecutionInfoMenu,
     InputOutputDataTable,
   },
   data() {

@@ -1,10 +1,16 @@
 <template>
   <div class="view-container">
-    <MTitleView
-      :icon="'mdi-view-dashboard'"
-      :title="title"
-      :description="description"
-    />
+    <div class="d-flex align-end">
+      <MTitleView
+        :icon="'mdi-table-arrow-left'"
+        :title="title"
+        :description="description"
+      />
+      <ExecutionInfoMenu
+        v-if="selectedExecution"
+        :selectedExecution="selectedExecution"
+      />
+    </div>
     <ExecutionInfoCard :selectedExecution="selectedExecution">
     </ExecutionInfoCard>
     <DashboardMain
@@ -17,13 +23,16 @@
 
 <script>
 import ExecutionInfoCard from '@/components/project-execution/ExecutionInfoCard.vue'
+import ExecutionInfoMenu from '@/components/project-execution/ExecutionInfoMenu.vue'
 import DashboardMain from '@/app/components/DashboardMain.vue'
 import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
+import { Execution } from '@/models/Execution'
 
 export default {
   components: {
     ExecutionInfoCard,
+    ExecutionInfoMenu,
     DashboardMain,
   },
   data() {
