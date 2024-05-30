@@ -1,6 +1,6 @@
 <template>
   <div class="view-container">
-    <TitleView
+    <MTitleView
       :icon="'mdi-account-cog'"
       :title="title"
       :description="description"
@@ -115,15 +115,12 @@
 </template>
 
 <script>
-import TitleView from '@/components/core/TitleView.vue'
 import { useGeneralStore } from '@/stores/general'
 import { useI18n } from 'vue-i18n'
 import { inject } from 'vue'
 
 export default {
-  components: {
-    TitleView,
-  },
+  components: {},
   data() {
     return {
       generalStore: useGeneralStore(),

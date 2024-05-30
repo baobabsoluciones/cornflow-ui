@@ -13,9 +13,19 @@ export default class ExecutionRepository {
   ): Promise<Execution[]> {
     const queryParams = {
       schema: name,
-      creation_date_gte: dateFrom,
-      creation_date_lte: dateTo,
       limit: 100,
+    }
+
+    if (dateTo) {
+      queryParams.creation_date_lte = dateTo
+    }
+
+    if (dateFrom) {
+      queryParams.creation_date_gte = dateFrom
+    }
+
+    if (!dateTo && !dateFrom) {
+      queryParams.limit = 15
     }
 
     const response = await client.get('/execution/', queryParams)
@@ -29,6 +39,7 @@ export default class ExecutionRepository {
             execution.created_at,
             execution.config,
             execution.state,
+            execution.log.status_code,
             execution.name,
             execution.description,
             execution.indicators,
@@ -83,7 +94,11 @@ export default class ExecutionRepository {
     }
   }
 
-  async getDataToDownload(id: string, onlySolution: boolean = true, onlyInstance: boolean = true): Promise<any> {
+  async getDataToDownload(
+    id: string,
+    onlySolution: boolean = true,
+    onlyInstance: boolean = true,
+  ): Promise<any> {
     const response = await client.get(`/execution/${id}/data/`)
 
     if (response.status === 200) {
@@ -105,19 +120,17 @@ export default class ExecutionRepository {
 
         const experiment = new Experiment(instance, solution)
 
-
         experiment.downloadExcel(undefined, onlySolution, onlyInstance)
 
-        if (onlySolution){
-          return experiment.solution;
+        if (onlySolution) {
+          return experiment.solution
         }
 
-        if (onlyInstance){
-          return experiment.instance;
+        if (onlyInstance) {
+          return experiment.instance
         }
-        
-        return experiment;
 
+        return experiment
       } else {
         throw new Error('Error loading instance')
       }

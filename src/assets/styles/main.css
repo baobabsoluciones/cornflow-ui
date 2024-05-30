@@ -16,6 +16,10 @@ h5 {
   font-weight: 500;
 }
 
+a {
+  color: var(--primary-variant) !important;
+}
+
 .primary-btn {
   background-color: var(--primary-variant) !important;
   color: white !important;

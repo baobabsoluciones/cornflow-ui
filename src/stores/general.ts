@@ -43,7 +43,6 @@ export const useGeneralStore = defineStore('general', {
     async initializeData() {
       await this.fetchUser()
       await this.setSchema()
-      await this.fetchLastExecutions()
     },
 
     async fetchUser() {
@@ -77,31 +76,23 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
-    async fetchLastExecutions() {
-      try {
-        const toDate = new Date()
-        const fromDate = new Date()
-        fromDate.setDate(toDate.getDate() - 30)
-
-        const executions = await this.executionRepository.getExecutions(
-          this.getSchemaName,
-          toISOStringLocal(fromDate),
-          toISOStringLocal(toDate, true),
-        )
-        this.lastExecutions = executions
-      } catch (error) {
-        console.error('Error getting last executions', error)
-      }
-    },
-
     async fetchExecutionsByDateRange(fromDate: Date, toDate: Date) {
       try {
-        if (!fromDate || !toDate) return
-        const executions = await this.executionRepository.getExecutions(
-          this.getSchemaName,
-          toISOStringLocal(fromDate),
-          toISOStringLocal(toDate, true),
-        )
+        let executions = []
+        if (!fromDate || !toDate) {
+          executions = await this.executionRepository.getExecutions(
+            this.getSchemaName,
+            null,
+            null,
+          )
+        } else {
+          executions = await this.executionRepository.getExecutions(
+            this.getSchemaName,
+            toISOStringLocal(fromDate),
+            toISOStringLocal(toDate, true),
+          )
+        }
+
         return executions
       } catch (error) {
         console.error('Error getting executions by date range', error)

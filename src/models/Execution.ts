@@ -3,6 +3,7 @@ export class Execution {
   createdAt: string
   config: object
   state: number
+  solution_state: number
   name: string
   description: string
   indicators: string
@@ -17,6 +18,7 @@ export class Execution {
     createdAt: string,
     config: object,
     state: number,
+    solution_state: number,
     name: string,
     description: string,
     indicators: string,
@@ -30,6 +32,7 @@ export class Execution {
     this.createdAt = createdAt
     this.config = config
     this.state = state
+    this.solution_state = solution_state
     this.name = name
     this.description = description
     this.indicators = indicators

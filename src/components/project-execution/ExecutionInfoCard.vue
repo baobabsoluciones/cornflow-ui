@@ -53,8 +53,7 @@ export default {
       default: 'instance',
     },
   },
-  components: {
-  },
+  components: {},
   setup(props) {
     const { t } = useI18n()
     const router = useRouter()
@@ -71,16 +70,32 @@ export default {
     }
 
     const iconInfoCard = computed(() => {
-      return props.selectedExecution ? 'mdi-check-circle' : 'mdi-alert-circle'
+      return props.selectedExecution
+        ? props.type === 'solution' &&
+          props.selectedExecution &&
+          !props.selectedExecution.hasSolution()
+          ? 'mdi-alert-circle'
+          : 'mdi-check-circle'
+        : 'mdi-alert-circle'
     })
 
     const iconColorInfoCard = computed(() => {
-      return props.selectedExecution ? 'var(--success)' : 'var(--warning)'
+      return props.selectedExecution
+        ? props.type === 'solution' &&
+          props.selectedExecution &&
+          !props.selectedExecution.hasSolution()
+          ? 'var(--warning)'
+          : 'var(--success)'
+        : 'var(--warning)'
     })
 
     const titleInfoCard = computed(() => {
       return props.selectedExecution
-        ? t('projectExecution.infoCard.executionCreated')
+        ? props.type === 'solution' &&
+          props.selectedExecution &&
+          !props.selectedExecution.hasSolution()
+          ? t('projectExecution.infoCard.noSolutionFoundTitle')
+          : t('projectExecution.infoCard.executionCreated')
         : t('projectExecution.infoCard.noExecutionSelected')
     })
 

@@ -8,11 +8,22 @@
       <MAppBarTab
         :key="tabsKey"
         :tabs="tabsData"
-        createTitle="Create"
+        :createTitle="$t('projectExecution.create')"
         @close="removeTab"
         @create="createTab"
         @select="selectTab"
       >
+        <template #actions>
+          <div class="d-flex align-center" style="min-width: 200px !important">
+            <v-img height="20" src="@/app/assets/logo/baobab_logo.png" />
+            <div class="mr-2">
+              Powered by
+              <a href="https://baobabsoluciones.es/" target="_blank"
+                >baobab soluciones</a
+              >
+            </div>
+          </div>
+        </template>
       </MAppBarTab>
     </Suspense>
   </v-app>
@@ -71,7 +82,7 @@ const selectTab = (executionTab) => {
       currentRoute === '/project-execution' ||
       currentRoute === '/history-execution'
     ) {
-      router.push('/dashboard') // Go to the dashboard
+      router.push('/input-data') // Go to the input data
     } else {
       generalStore.incrementUploadComponentKey()
     }
