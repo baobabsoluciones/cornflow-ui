@@ -237,6 +237,7 @@ export default {
     deleteMessage: '¿Estás seguro de que quieres eliminar este registro?',
     deleteButton: 'Eliminar',
     cancelButton: 'Cancelar',
+    errorDownloadingExcel: 'Se produjo un error al descargar el Excel',
   },
   settings: {
     currentPassword: 'Contraseña actual',

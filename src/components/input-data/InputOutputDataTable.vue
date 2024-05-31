@@ -435,7 +435,8 @@ export default {
       }
     },
     getFilters() {
-      return Array.isArray(this.data?.data[this.selectedTable])
+      return this.execution instanceof LoadedExecution &&
+        Array.isArray(this.data?.data[this.selectedTable])
         ? this.generalStore.getFilterNames(
             this.tableType,
             this.selectedTable,
@@ -474,7 +475,7 @@ export default {
       this.editionMode = false
       this.openConfirmationSaveModal = false
     },
-    handleDownload() {
+    async handleDownload() {
       const { href } = this.$route
       let instance = false
       let solution = false
@@ -483,7 +484,16 @@ export default {
       } else if (href === '/output-data') {
         solution = true
       }
-      this.execution.experiment.downloadExcel(undefined, instance, solution)
+      const filename = this.execution.name.toLowerCase().replace(/ /g, '_')
+      try {
+        await this.execution.experiment.downloadExcel(
+          filename,
+          instance,
+          solution,
+        )
+      } catch (error) {
+        this.showSnackbar($t('inputOutputData.errorDownloadingExcel'), 'error')
+      }
     },
     handleSearch(search) {
       this.searchText = search

@@ -277,7 +277,11 @@ export default {
       this.deletedItem = null
     },
     async handleDownload(item) {
-      this.generalStore.getDataToDownload(item.id, true, true)
+      try {
+        await this.generalStore.getDataToDownload(item.id, true, true)
+      } catch (error) {
+        this.showSnackbar(this.$t('executionTable.errorDownloading'), 'error')
+      }
     },
   },
 }

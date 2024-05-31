@@ -231,6 +231,7 @@ export default {
     deleteMessage: 'Are you sure you want to delete this item?',
     deleteButton: 'Delete',
     cancelButton: 'Cancel',
+    errorDownloadingExcel: 'An error occurred while downloading the excel',
   },
   settings: {
     currentPassword: 'Current password',

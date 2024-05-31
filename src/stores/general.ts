@@ -580,11 +580,11 @@ export const useGeneralStore = defineStore('general', {
         instance = true
       }
 
-      const downloadedData = await this.executionRepository.getDataToDownload(
-        id,
-        solution,
-        instance,
-      )
+      try {
+        await this.executionRepository.getDataToDownload(id, solution, instance)
+      } catch (error) {
+        throw error
+      }
     },
 
     getConfigDisplayName(collection, table, key, lang = 'en'): string {

@@ -227,6 +227,8 @@ export default {
     key: 'Clé',
     true: 'Vrai',
     false: 'Faux',
+    errorDownloadingExcel:
+      "Une erreur s'est produite lors du téléchargement de l'Excel",
   },
   settings: {
     currentPassword: 'Mot de passe actuel',
