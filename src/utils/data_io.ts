@@ -39,7 +39,33 @@ const loadExcel = function (file, schema) {
     const useFirstColumnAsKeys = tabType === 'object'
     return readTable(file, tab, useFirstColumnAsKeys).then((table) => {
       if (tabType === 'array') {
-        return table
+        return table.map((row) => {
+          return Object.fromEntries(
+            Object.entries(row).map(([key, value]) => {
+              // Convert dates to ISO strings
+              if (value instanceof Date) {
+                const hours = value.getUTCHours()
+                const minutes = value.getUTCMinutes()
+                if (hours === 0 && minutes === 0) {
+                  return [key, value.toISOString().split('T')[0]] // 'YYYY-MM-DD'
+                } else {
+                  return [
+                    key,
+                    value.toISOString().slice(0, 16).replace('T', ' '),
+                  ] // 'YYYY-MM-DD HH:mm'
+                }
+              } else if (Number.isNaN(value)) {
+                // Convert NaN to null
+                return [key, null]
+              } else if (typeof value === 'number' && value % 1 !== 0) {
+                // Round numbers to 4 decimal places
+                return [key, parseFloat(value.toFixed(4))]
+              } else {
+                return [key, value]
+              }
+            }),
+          )
+        })
       }
       // for objects, merge all objects in the table array into a single object
       const obj = Object.assign({}, ...table)
@@ -60,7 +86,7 @@ async function schemaDataToTable(wb, data) {
   // Convert the data object to an array of key-value pairs
   var dataArray = Object.entries(data).map(([sheetName, sheetData]) => {
     if (!Array.isArray(sheetData)) {
-      sheetData = [sheetData] // Si sheetData no es un array, lo convertimos en uno
+      sheetData = [sheetData] // If it's not an array, convert it to an array
     }
     return [sheetName, sheetData]
   })
@@ -215,4 +241,5 @@ export {
   formatDateForHeaders,
   formatDate,
   getLetterFromNumber,
+  getNumberFromLetter,
 }

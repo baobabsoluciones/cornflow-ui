@@ -99,43 +99,47 @@ export default class ExecutionRepository {
     onlySolution: boolean = true,
     onlyInstance: boolean = true,
   ): Promise<any> {
-    const response = await client.get(`/execution/${id}/data/`)
+    try {
+      const response = await client.get(`/execution/${id}/data/`)
 
-    if (response.status === 200) {
-      const execution = response.content
-      const instanceRepository = new InstanceRepository()
-      const instance = await instanceRepository.getInstance(
-        execution.instance_id,
-      )
-      if (instance) {
-        const { Solution, Experiment } = useGeneralStore().appConfig
-        const solution = new Solution(
-          execution.id,
-          execution.data,
-          useGeneralStore().schemaConfig.solutionSchema,
-          useGeneralStore().schemaConfig.solutionChecksSchema,
-          useGeneralStore().getSchemaName,
-          execution.checks,
+      if (response.status === 200) {
+        const execution = response.content
+        const instanceRepository = new InstanceRepository()
+        const instance = await instanceRepository.getInstance(
+          execution.instance_id,
         )
+        if (instance) {
+          const { Solution, Experiment } = useGeneralStore().appConfig
+          const solution = new Solution(
+            execution.id,
+            execution.data,
+            useGeneralStore().schemaConfig.solutionSchema,
+            useGeneralStore().schemaConfig.solutionChecksSchema,
+            useGeneralStore().getSchemaName,
+            execution.checks,
+          )
 
-        const experiment = new Experiment(instance, solution)
+          const experiment = new Experiment(instance, solution)
+          const filename = execution.name.toLowerCase().replace(/ /g, '_')
+          await experiment.downloadExcel(filename, onlySolution, onlyInstance)
 
-        experiment.downloadExcel(undefined, onlySolution, onlyInstance)
+          if (onlySolution) {
+            return experiment.solution
+          }
 
-        if (onlySolution) {
-          return experiment.solution
+          if (onlyInstance) {
+            return experiment.instance
+          }
+
+          return experiment
+        } else {
+          throw new Error('Error loading instance')
         }
-
-        if (onlyInstance) {
-          return experiment.instance
-        }
-
-        return experiment
       } else {
-        throw new Error('Error loading instance')
+        throw new Error('Error loading execution')
       }
-    } else {
-      throw new Error('Error loading execution')
+    } catch (error) {
+      throw error
     }
   }
 
