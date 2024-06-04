@@ -3,13 +3,37 @@
     class="mt-4 d-flex justify-center"
     v-if="!executionLaunched && !executionIsLoading"
   >
-    <InputDataTable
-      :execution="newExecution"
-      canEdit
-      canResolve
-      @save-changes="updateInstance"
-      @resolve="createExecution"
-    ></InputDataTable>
+    <v-col>
+      <v-row class="justify-start">
+        <v-list density="compact" min-width="250" rounded="lg" slim>
+          <v-list-item prepend-icon="mdi-calendar-month-outline">
+            <v-list-item-title class="small-font">
+              {{ newExecution.name }}
+            </v-list-item-title>
+          </v-list-item>
+          <v-list-item prepend-icon="mdi-text" v-if="newExecution.description">
+            <v-list-item-title class="small-font">
+              {{ newExecution.description }}
+            </v-list-item-title>
+          </v-list-item>
+          <v-list-item prepend-icon="mdi-timelapse">
+            <v-list-item-title class="small-font">
+              {{ newExecution.timeLimit + `s max.` }}
+            </v-list-item-title>
+          </v-list-item>
+          <v-list-item prepend-icon="mdi-wrench-outline">
+            <v-list-item-title class="small-font">
+              {{ newExecution.selectedSolver + ` solver` }}
+            </v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-row>
+      <v-row class="justify-center">
+        <v-btn @click="createExecution()" variant="outlined" class="mt-5">
+          {{ $t('projectExecution.steps.step7.resolve') }}
+        </v-btn>
+      </v-row>
+    </v-col>
   </div>
   <div v-else-if="executionIsLoading" class="d-flex justify-center mt-5">
     <v-progress-circular indeterminate></v-progress-circular>
@@ -19,14 +43,14 @@
       >mdi-check-circle-outline</v-icon
     >
     <p class="text-center mt-3" style="font-size: 0.9rem">
-      {{ $t('projectExecution.steps.step6.successMessage') }}
+      {{ $t('projectExecution.steps.step7.successMessage') }}
     </p>
     <v-btn
       @click="$emit('resetAndLoadNewExecution')"
       variant="outlined"
       class="mt-10"
     >
-      {{ $t('projectExecution.steps.step6.loadNewExecution') }}
+      {{ $t('projectExecution.steps.step7.loadNewExecution') }}
     </v-btn>
   </div>
 </template>
@@ -34,10 +58,9 @@
 <script>
 import { inject } from 'vue'
 import { useGeneralStore } from '@/stores/general'
-import InputDataTable from '@/components/input-data/InputOutputDataTable.vue'
 
 export default {
-  components: { InputDataTable },
+  components: {},
   props: {
     newExecution: {
       type: Object,
@@ -56,9 +79,6 @@ export default {
     this.showSnackbar = inject('showSnackbar')
   },
   methods: {
-    updateInstance(newInstance) {
-      this.$emit('update:instance', newInstance)
-    },
     async createExecution() {
       try {
         this.executionIsLoading = true
@@ -100,3 +120,8 @@ export default {
   },
 }
 </script>
+<style>
+.small-font {
+  font-size: 0.9rem;
+}
+</style>

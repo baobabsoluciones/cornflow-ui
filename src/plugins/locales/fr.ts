@@ -6,6 +6,9 @@ export default {
     continueButton: 'Continuer',
     previousButton: 'Précédent',
     snackbar: {
+      instanceDataChecksSuccess: 'Vérification des données réussie',
+      instanceDataChecksError:
+        'Une erreur est survenue lors de la vérification des données',
       successCreate: 'Exécution créée avec succès',
       errorCreate: "Une erreur est survenue lors de la création de l'exécution",
       succesSearch: 'Recherche terminée avec succès',
@@ -64,22 +67,6 @@ export default {
         },
       },
       step3: {
-        title: 'Sélectionner le solveur',
-        description: "Sélectionnez le solveur à utiliser pour l'exécution",
-        titleContent: 'Sélectionnez un solveur',
-        subtitleContent:
-          "Le solveur que vous sélectionnez sera l'algorithme utilisé pour trouver la solution",
-      },
-      step4: {
-        title: 'Limiter le temps',
-        description: "Sélectionnez le temps maximum pour l'exécution",
-        titleContent: 'Remplissez les informations suivantes',
-        subtitleContent: "Sélectionnez la durée souhaitée pour l'exécution",
-        timeLimitPlaceholder: 'Veuillez insérer',
-        time: 'Temps',
-        secondsSuffix: 'sec',
-      },
-      step5: {
         title: 'Nom et description',
         description: "Nommez et décrivez l'exécution",
         titleContent: 'Remplissez les informations suivantes',
@@ -89,6 +76,22 @@ export default {
         descriptionTitleField: 'Description',
         namePlaceholder: 'Veuillez insérer un nom',
         descriptionPlaceholder: 'Veuillez insérer une description',
+      },
+      step4: {
+        title: 'Sélectionner le solveur',
+        description: "Sélectionnez le solveur à utiliser pour l'exécution",
+        titleContent: 'Sélectionnez un solveur',
+        subtitleContent:
+          "Le solveur que vous sélectionnez sera l'algorithme utilisé pour trouver la solution",
+      },
+      step5: {
+        title: 'Limiter le temps',
+        description: "Sélectionnez le temps maximum pour l'exécution",
+        titleContent: 'Remplissez les informations suivantes',
+        subtitleContent: "Sélectionnez la durée souhaitée pour l'exécution",
+        timeLimitPlaceholder: 'Veuillez insérer',
+        time: 'Temps',
+        secondsSuffix: 'sec',
       },
       step6: {
         title: 'Confirmer',

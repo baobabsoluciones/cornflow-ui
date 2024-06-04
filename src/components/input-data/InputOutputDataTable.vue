@@ -1,6 +1,38 @@
 <template>
   <div>
     <v-alert
+      v-if="
+        checksLaunched &&
+        checksFinished &&
+        (!data?.dataChecks || Object.keys(data.dataChecks).length === 0)
+      "
+      class="mb-3"
+      color="green"
+      elevation="2"
+      icon="mdi-check"
+      density="compact"
+      style="font-size: 0.85rem !important"
+    >
+      {{ $t('inputOutputData.dataChecksPassedMessage') }}
+    </v-alert>
+    <v-alert
+      v-if="checksLaunched && !checksFinished"
+      class="mb-3"
+      color="blue"
+      elevation="2"
+      icon="mdi-alert"
+      density="compact"
+      style="font-size: 0.85rem !important"
+    >
+      <v-progress-circular
+        indeterminate
+        color="white"
+        size="14"
+        class="mr-2"
+      ></v-progress-circular>
+      {{ $t('inputOutputData.dataChecksLoadingMessage') }}
+    </v-alert>
+    <v-alert
       v-if="data?.dataChecks && Object.keys(data.dataChecks).length > 0"
       :class="{ 'mb-3': !showDataChecksTable }"
       color="var(--secondary)"
@@ -37,12 +69,6 @@
     >
       <template #actions>
         <v-row class="d-flex mt-3">
-          <v-btn
-            icon="mdi-filter-variant"
-            color="primary"
-            density="compact"
-            style="font-size: 0.6rem !important"
-          ></v-btn>
           <v-spacer></v-spacer>
           <v-icon
             class="modal_icon_title mr-8"
@@ -136,13 +162,14 @@
             @deleteItem="deleteItem"
           />
         </v-row>
-        <v-row class="mt-5 mb-2 justify-center" v-if="canResolve">
+        <v-row class="mt-5 mb-2 justify-center" v-if="canCheckData">
           <v-btn
-            @click="$emit('resolve')"
+            @click="emitCheckData()"
             variant="outlined"
             prepend-icon="mdi-play"
+            :disabled="editionMode || (checksLaunched && !checksFinished)"
           >
-            {{ $t('projectExecution.steps.step6.resolve') }}
+            {{ $t('projectExecution.steps.step4.check') }}
           </v-btn>
         </v-row>
       </template>
@@ -225,7 +252,12 @@ export default {
       required: false,
       default: false,
     },
-    canResolve: {
+    canCheckData: {
+      type: Boolean,
+      required: false,
+      default: false,
+    },
+    checksFinished: {
       type: Boolean,
       required: false,
       default: false,
@@ -235,6 +267,7 @@ export default {
     return {
       generalStore: useGeneralStore(),
       showSnackbar: null,
+      checksLaunched: false,
       selectedTable: null,
       checkSelectedTable: '',
       editionMode: false,
@@ -411,6 +444,11 @@ export default {
       this.openConfirmationDeleteModal = false
       this.deletedItem = null
     },
+    emitCheckData() {
+      this.data.dataChecks = null
+      this.checksLaunched = true
+      this.$emit('check-data')
+    },
     deleteItem(index) {
       this.openConfirmationDeleteModal = true
       this.deletedIndexItem = index
@@ -420,8 +458,9 @@ export default {
     },
     loadFilters() {
       this.filters = this.getFilters()
-
-      this.filtersSelected = this.execution.getFiltersPreference(this.type)
+      if (this.execution instanceof LoadedExecution) {
+        this.filtersSelected = this.execution.getFiltersPreference(this.type)
+      }
 
       if (!this.filtersSelected[this.selectedTable]) {
         this.filtersSelected[this.selectedTable] = {}
