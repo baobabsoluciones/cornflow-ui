@@ -2,16 +2,16 @@
   <MDragNDropFile
     downloadIcon="mdi-upload"
     :description="
-      $t('projectExecution.steps.step2.loadInstance.dragAndDropDescription')
+      $t('projectExecution.steps.step3.loadInstance.dragAndDropDescription')
     "
     :uploadedFile="selectedFile"
     :formatsAllowed="['json', 'xlsx']"
     :errors="instanceErrors"
     :downloadButtonTitle="
-      $t('projectExecution.steps.step2.loadInstance.uploadFile')
+      $t('projectExecution.steps.step3.loadInstance.uploadFile')
     "
     :invalidFileText="
-      $t('projectExecution.steps.step2.loadInstance.invalidFileFormat')
+      $t('projectExecution.steps.step3.loadInstance.invalidFileFormat')
     "
     @file-selected="onFileSelected"
   />
@@ -23,9 +23,7 @@ import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
 
 export default {
-  components: {
-    
-  },
+  components: {},
   props: {
     instance: {
       type: Instance,
@@ -121,7 +119,7 @@ export default {
             .join('')
           throw new Error(
             this.$t(
-              'projectExecution.steps.step2.loadInstance.instanceSchemaError',
+              'projectExecution.steps.step3.loadInstance.instanceSchemaError',
             ),
           )
         }
@@ -131,7 +129,7 @@ export default {
         this.$emit('instance-selected', this.selectedInstance)
         this.instanceErrors = null
         this.showSnackbar(
-          this.$t('projectExecution.steps.step2.loadInstance.instanceLoaded'),
+          this.$t('projectExecution.steps.step3.loadInstance.instanceLoaded'),
         )
 
         return Promise.resolve({})
@@ -140,7 +138,7 @@ export default {
           this.instanceErrors.length > 0
             ? this.instanceErrors
             : this.$t(
-                'projectExecution.steps.step2.loadInstance.unexpectedError',
+                'projectExecution.steps.step3.loadInstance.unexpectedError',
               )
         this.showSnackbar(error, 'error')
         throw new Error(error.message)

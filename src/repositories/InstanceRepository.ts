@@ -24,6 +24,22 @@ export default class InstanceRepository {
     }
   }
 
+  async launchInstanceDataChecks(id: string) {
+    const response = await client.post(
+      `/data-check/instance/${id}/`,
+      {},
+      {
+        'Content-Type': 'application/json',
+      },
+    )
+
+    if (response.status === 201) {
+      return response.content
+    } else {
+      throw new Error('Error launching instance data checks')
+    }
+  }
+
   async createInstance(data) {
     const json = {
       data: data.instance.data,

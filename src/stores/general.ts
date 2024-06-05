@@ -11,6 +11,7 @@ import { LoadedExecution } from '@/models/LoadedExecution'
 import SchemaRepository from '@/repositories/SchemaRepository'
 import UserRepository from '@/repositories/UserRepository'
 import ExecutionRepository from '@/repositories/ExecutionRepository'
+import InstanceRepository from '@/repositories/InstanceRepository'
 import LicenceRepository from '@/repositories/LicenceRepository'
 
 import { toISOStringLocal } from '@/utils/data_io'
@@ -20,6 +21,7 @@ export const useGeneralStore = defineStore('general', {
   state: () => ({
     schemaRepository: new SchemaRepository(),
     executionRepository: new ExecutionRepository(),
+    instanceRepository: new InstanceRepository(),
     userRepository: new UserRepository(),
     licenceRepository: new LicenceRepository(),
     notifications: [] as {
@@ -121,6 +123,46 @@ export const useGeneralStore = defineStore('general', {
         return false
       } catch (error) {
         console.error('Error getting loaded execution', error)
+      }
+    },
+
+    async createInstance(data) {
+      try {
+        const response = await this.instanceRepository.createInstance(data)
+        return response
+      } catch (error) {
+        console.error('Error creating instance', error)
+        return false
+      }
+    },
+
+    async getInstanceById(id: string) {
+      try {
+        const instance = await this.instanceRepository.getInstance(id)
+        return instance
+      } catch (error) {
+        console.error('Error getting instance', error)
+      }
+    },
+
+    async getInstanceDataChecksById(id: string) {
+      try {
+        const dataChecks =
+          await this.instanceRepository.launchInstanceDataChecks(id)
+        const executionId = dataChecks.id
+
+        let execution
+        do {
+          execution = await this.executionRepository.loadExecution(executionId)
+          if (execution && execution.state !== 1) {
+            await new Promise((resolve) => setTimeout(resolve, 3000))
+          }
+        } while (execution && execution.state !== 1)
+
+        const instance = await this.instanceRepository.getInstance(id)
+        return instance
+      } catch (error) {
+        console.error('Error getting instance data checks', error)
       }
     },
 

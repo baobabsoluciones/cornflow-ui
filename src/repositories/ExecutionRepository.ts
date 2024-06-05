@@ -144,8 +144,14 @@ export default class ExecutionRepository {
   }
 
   async createExecution(execution: any) {
-    const instanceRepository = new InstanceRepository()
-    const instance = await instanceRepository.createInstance(execution)
+    let instance
+    // If instance already exists use it, otherwise create a new one
+    if (execution.instance.id) {
+      instance = execution.instance
+    } else {
+      const instanceRepository = new InstanceRepository()
+      instance = await instanceRepository.createInstance(execution)
+    }
 
     if (instance) {
       const json = {

@@ -44,8 +44,20 @@
         <template
           v-else-if="index === 1 && optionSelected === 'createExecution'"
         >
+          <CreateExecutionNameDescription
+            v-if="index === 1 && optionSelected === 'createExecution'"
+            :name="newExecution.name"
+            :description="newExecution.description"
+            @update:name="newExecution.name = $event"
+            @update:description="newExecution.description = $event"
+          />
+        </template>
+
+        <!-- Template for create execution step 3 -->
+        <template v-else-if="index === 2">
           <CreateExecutionLoadInstance
             :fileSelected="instanceFile"
+            :newExecution="newExecution"
             @fileSelected="handleInstanceFileSelected"
             @instanceSelected="handleInstanceSelected"
             class="mt-4"
@@ -53,8 +65,16 @@
           </CreateExecutionLoadInstance>
         </template>
 
-        <!-- Template for create execution step 3 -->
-        <template v-else-if="index === 2">
+        <!-- Template for create execution step 4 -->
+        <template v-else-if="index === 3">
+          <CreateExecutionCheckData
+            :newExecution="newExecution"
+            @update:instance="handleInstanceSelected"
+          />
+        </template>
+
+        <!-- Template for create execution step 5 -->
+        <template v-else-if="index === 4">
           <MCheckboxOptions
             :options="solvers"
             :multiple="false"
@@ -63,58 +83,29 @@
           />
         </template>
 
-        <!-- Template for create execution step 4 -->
-        <template v-else-if="index === 3">
+        <!-- Template for create execution step 6 -->
+        <template v-else-if="index === 5">
           <div style="width: 40%">
             <MInputField
               class="mt-4"
               v-model="newExecution.timeLimit"
-              :title="$t('projectExecution.steps.step4.time')"
+              :title="$t('projectExecution.steps.step6.time')"
               :placeholder="
-                $t('projectExecution.steps.step4.timeLimitPlaceholder')
+                $t('projectExecution.steps.step6.timeLimitPlaceholder')
               "
               type="number"
-              :suffix="$t('projectExecution.steps.step4.secondsSuffix')"
+              :suffix="$t('projectExecution.steps.step6.secondsSuffix')"
               prependInnerIcon="mdi-clock-time-four-outline"
             >
             </MInputField>
           </div>
         </template>
 
-        <template v-else-if="index === 4">
-          <div class="input-fields-container">
-            <div class="input-field">
-              <MInputField
-                v-model="newExecution.name"
-                :title="$t('projectExecution.steps.step5.nameTitleField')"
-                :placeholder="
-                  $t('projectExecution.steps.step5.namePlaceholder')
-                "
-                type="text"
-              />
-            </div>
-            <div class="input-field">
-              <MInputField
-                v-model="newExecution.description"
-                :title="
-                  $t('projectExecution.steps.step5.descriptionTitleField')
-                "
-                :placeholder="
-                  $t('projectExecution.steps.step5.descriptionPlaceholder')
-                "
-                type="text"
-                prependInnerIcon="mdi-text"
-              />
-            </div>
-          </div>
-        </template>
-
-        <!-- Template for create execution step 6 -->
-        <template v-else-if="index === 5">
+        <!-- Template for create execution step 7 -->
+        <template v-else-if="index === 6">
           <CreateExecutionResolve
             :newExecution="newExecution"
             @resetAndLoadNewExecution="resetAndLoadNewExecution"
-            @update:instance="handleInstanceSelected"
           ></CreateExecutionResolve>
         </template>
       </template>
@@ -151,7 +142,9 @@
 
 <script>
 import CreateExecutionStepOne from '@/components/project-execution/CreateExecutionStepOne.vue'
+import CreateExecutionNameDescription from '@/components/project-execution/CreateExecutionNameDescription.vue'
 import CreateExecutionLoadInstance from '@/components/project-execution/CreateExecutionLoadInstance.vue'
+import CreateExecutionCheckData from '@/components/project-execution/CreateExecutionCheckData.vue'
 import CreateExecutionResolve from '@/components/project-execution/CreateExecutionResolve.vue'
 import DateRangePicker from '@/components/core/DateRangePicker.vue'
 import ProjectExecutionsTable from '@/components/project-execution/ProjectExecutionsTable.vue'
@@ -163,8 +156,10 @@ export default {
     DateRangePicker,
     ProjectExecutionsTable,
     CreateExecutionStepOne,
+    CreateExecutionNameDescription,
     CreateExecutionResolve,
     CreateExecutionLoadInstance,
+    CreateExecutionCheckData,
   },
   data() {
     return {
@@ -302,16 +297,16 @@ export default {
       return (
         (this.currentStep === 1 &&
           this.optionSelected === 'createExecution' &&
-          !this.newExecution.instance) ||
+          !this.newExecution.name) ||
         (this.currentStep === 2 &&
           this.optionSelected === 'createExecution' &&
-          !this.newExecution.selectedSolver) ||
-        (this.currentStep === 3 &&
-          this.optionSelected === 'createExecution' &&
-          !this.newExecution.timeLimit) ||
+          !this.newExecution.instance) ||
         (this.currentStep === 4 &&
           this.optionSelected === 'createExecution' &&
-          !this.newExecution.name)
+          !this.newExecution.selectedSolver) ||
+        (this.currentStep === 5 &&
+          this.optionSelected === 'createExecution' &&
+          !this.newExecution.timeLimit)
       )
     },
     disablePrevButton() {
@@ -410,19 +405,17 @@ export default {
               'projectExecution.steps.step6.subtitleContent',
             ),
           },
+          {
+            title: this.$t('projectExecution.steps.step7.title'),
+            subtitle: this.$t('projectExecution.steps.step7.description'),
+            titleContent: this.$t('projectExecution.steps.step7.titleContent'),
+            subtitleContent: this.$t(
+              'projectExecution.steps.step7.subtitleContent',
+            ),
+          },
         ]
       }
     },
   },
 }
 </script>
-<style scoped>
-.input-fields-container {
-  display: flex;
-  justify-content: space-between;
-}
-
-.input-field {
-  width: 45%;
-}
-</style>

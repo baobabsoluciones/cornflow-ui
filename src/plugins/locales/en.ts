@@ -7,6 +7,8 @@ export default {
     previousButton: 'Previous',
     create: 'Add new',
     snackbar: {
+      instanceDataChecksSuccess: 'Data verification completed successfully',
+      instanceDataChecksError: 'An error occurred while verifying the data',
       successCreate: 'Execution created successfully',
       errorCreate: 'An error occurred while creating the execution',
       succesSearch: 'Search succesfully completed',
@@ -44,6 +46,17 @@ export default {
         search: 'Search',
       },
       step2: {
+        title: 'Name and description',
+        description: 'Name and describe the execution',
+        titleContent: 'Fill the following information',
+        subtitleContent:
+          'Please provide a name and a brief description for the execution to be created. This will aid in searching and identifying it. We recommend keeping them brief and as concise as possible',
+        nameTitleField: 'Name',
+        descriptionTitleField: 'Description',
+        namePlaceholder: 'Please insert a name',
+        descriptionPlaceholder: 'Please insert a description',
+      },
+      step3: {
         title: 'Load instance',
         description: 'Load a file with the instance data',
         titleContent: 'Load instance',
@@ -59,14 +72,22 @@ export default {
           unexpectedError: 'An unexpected error occurred. Please try again.',
         },
       },
-      step3: {
+      step4: {
+        title: 'Check data',
+        description: 'View and check data',
+        titleContent: 'Check data',
+        subtitleContent:
+          'View the data of the instance loaded and edit it if needed. Optionally, you can check if the data has inconsistencies. Notice that if you don’t check and correct the data if needed, the execution may not be able to find a solution.',
+        check: 'Check data',
+      },
+      step5: {
         title: 'Select solver',
         description: 'Select the solver to use for the execution',
         titleContent: 'Select a solver',
         subtitleContent:
           'The solver you select will be the algorithm used to find the solution',
       },
-      step4: {
+      step6: {
         title: 'Limit time',
         description: 'Select the maximum time for the execution',
         titleContent: 'Fill the following information',
@@ -75,25 +96,14 @@ export default {
         time: 'Time',
         secondsSuffix: 'sec',
       },
-      step5: {
-        title: 'Name and description',
-        description: 'Name and describe the execution',
-        titleContent: 'Fill the following information',
-        subtitleContent:
-          'Please provide a name and a brief description for the execution to be created. This will aid in searching and identifying it. We recommend keeping them brief and as concise as possible',
-        nameTitleField: 'Name',
-        descriptionTitleField: 'Description',
-        namePlaceholder: 'Please insert a name',
-        descriptionPlaceholder: 'Please insert a description',
-      },
-      step6: {
+      step7: {
         title: 'Confirm',
         description: 'Confirm the execution data and start the execution',
         titleContent: 'Execution resolution confirmation',
         subtitleContent:
           'If you choose to resolve the execution, the model will automatically initiate resolution and will take the estimated time to finish. You can access its status by opening the tab with the assigned name on the bottom horizontal bar.',
-        resolve: 'Resolve',
         review: 'Review',
+        resolve: 'Resolve',
         successMessage:
           'The execution has been launched successfully. A new tab has been opened on the bottom bar. You can click on this tab to open it.',
         errorMessage:
@@ -222,6 +232,9 @@ export default {
       'Data verification inconsistencies have been detected, which may result in incorrect solutions or, in some cases, the inability to find a solution.',
     dataChecksSolutionMessage:
       'Data verification inconsistencies have been detected for the solution.',
+    dataChecksPassedMessage: 'Data verification has completed successfully.',
+    dataChecksLoadingMessage:
+      'Data verification is in progress. Please wait...',
     parameter: 'Parameter',
     value: 'Value',
     key: 'Key',

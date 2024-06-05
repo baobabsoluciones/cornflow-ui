@@ -7,6 +7,9 @@ export default {
     previousButton: 'Anterior',
     create: 'Añadir nuevo',
     snackbar: {
+      instanceDataChecksSuccess: 'Verificación de datos finalizado con éxito',
+      instanceDataChecksError:
+        'Ha ocurrido un error en la verificación de datos',
       successCreate: 'Ejecución creada con éxito',
       errorCreate: 'Ocurrió un error al crear la ejecución',
       succesSearch: 'Búsqueda completada con éxito',
@@ -45,6 +48,17 @@ export default {
         search: 'Buscar',
       },
       step2: {
+        title: 'Nombre y descripción',
+        description: 'Nombra y describe la ejecución',
+        titleContent: 'Completa la siguiente información',
+        subtitleContent:
+          'Por favor, proporciona un nombre y una breve descripción para la ejecución que se va a crear. Esto ayudará a buscarla e identificarla. Te recomendamos que sean breves y lo más concisos posible',
+        nameTitleField: 'Nombre',
+        descriptionTitleField: 'Descripción',
+        namePlaceholder: 'Por favor, inserta un nombre',
+        descriptionPlaceholder: 'Por favor, inserta una descripción',
+      },
+      step3: {
         title: 'Cargar instancia',
         description: 'Carga un archivo con los datos de la instancia',
         titleContent: 'Cargar instancia',
@@ -63,14 +77,22 @@ export default {
           unexpectedError: 'Ocurrió un error inesperado. Inténtalo de nuevo.',
         },
       },
-      step3: {
-        title: 'Seleccionar solucionador',
-        description: 'Selecciona el solucionador a usar para la ejecución',
-        titleContent: 'Selecciona un solucionador',
-        subtitleContent:
-          'El solucionador que selecciones será el algoritmo utilizado para encontrar la solución',
-      },
       step4: {
+        title: 'Verificar datos',
+        description: 'Revisa y verifica los datos de la instancia',
+        titleContent: 'Verificar datos',
+        subtitleContent:
+          'Revisa los datos de la instancia cargada y editalos si es necesario. Opcionalmente, puedes comprobar si los datos tienen inconsistencias. Ten en cuenta que si no compruebas y corriges los datos si es necesario, es posible que la ejecución no pueda encontrar una solución',
+        check: 'Verificaro datos',
+      },
+      step5: {
+        title: 'Seleccionar solver',
+        description: 'Selecciona el solver a usar para la ejecución',
+        titleContent: 'Selecciona un solver',
+        subtitleContent:
+          'El solver que selecciones será el algoritmo utilizado para encontrar la solución',
+      },
+      step6: {
         title: 'Limitar tiempo',
         description: 'Selecciona el tiempo máximo para la ejecución',
         titleContent: 'Completa la siguiente información',
@@ -80,18 +102,7 @@ export default {
         time: 'Tiempo',
         secondsSuffix: 'seg',
       },
-      step5: {
-        title: 'Nombre y descripción',
-        description: 'Nombra y describe la ejecución',
-        titleContent: 'Completa la siguiente información',
-        subtitleContent:
-          'Por favor, proporciona un nombre y una breve descripción para la ejecución que se va a crear. Esto ayudará a buscarla e identificarla. Te recomendamos que sean breves y lo más concisos posible',
-        nameTitleField: 'Nombre',
-        descriptionTitleField: 'Descripción',
-        namePlaceholder: 'Por favor, inserta un nombre',
-        descriptionPlaceholder: 'Por favor, inserta una descripción',
-      },
-      step6: {
+      step7: {
         title: 'Confirmar',
         description: 'Confirma los datos de la ejecución e inicia la ejecución',
         titleContent: 'Confirmación de la resolución de la ejecución',
@@ -228,6 +239,10 @@ export default {
       'Se han detectado inconsistencias en la verificación de datos, lo que puede dar lugar a soluciones incorrectas o, en algunos casos, a la imposibilidad de encontrar una solución.',
     dataChecksSolutionMessage:
       'Se han detectado inconsistencias en la verificación de datos para la solución.',
+    dataChecksPassedMessage:
+      'La verificación de datos ha finalizado correctamente',
+    dataChecksLoadingMessage:
+      'La verificación de datos está en curso. Por favor, espere...',
     parameter: 'Parámetro',
     value: 'Valor',
     key: 'Clave',
