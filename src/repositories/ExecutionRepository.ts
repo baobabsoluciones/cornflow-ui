@@ -32,24 +32,24 @@ export default class ExecutionRepository {
 
     if (response.status === 200) {
       const executions = response.content
-      return executions.map(
-        (execution: any) =>
-          new Execution(
-            execution.message,
-            execution.created_at,
-            execution.config,
-            execution.state,
-            execution.log.status_code,
-            execution.name,
-            execution.description,
-            execution.indicators,
-            execution.data_hash,
-            execution.schema,
-            execution.instance_id,
-            execution.id,
-            execution.user_id,
-          ),
-      )
+      return executions.map((execution: any) => {
+        const logStatusCode = execution.log ? execution.log.status_code : '-3'
+        return new Execution(
+          execution.message,
+          execution.created_at,
+          execution.config,
+          execution.state,
+          logStatusCode,
+          execution.name,
+          execution.description,
+          execution.indicators,
+          execution.data_hash,
+          execution.schema,
+          execution.instance_id,
+          execution.id,
+          execution.user_id,
+        )
+      })
     } else {
       throw new Error('Error getting executions')
     }
