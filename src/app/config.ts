@@ -5,6 +5,7 @@
  *
  * The `core` property of the `app` object is used to define the core functionalities of your application.
  * Each core functionality is a class that extends the `BaseCore` class and implements the required methods.
+ * Also, the core functionality can have additional properties in 'parameters' such as `isPilotVersion`, `showTimeLimit`, and `enableSignup` for enabling or disabling the sign-up functionality.
  *
  * The `dashboardPages` array is used to define the navigation menu items and their corresponding routes for dashboard subpages.
  * Each page is an object with `title`, `icon`, `to`, and `pos` properties.
@@ -102,6 +103,7 @@ const app = {
     parameters: {
       isPilotVersion: false,
       showTimeLimit: true,
+      enableSignup: true,
       schema: 'rostering',
       name: 'Rostering',
     },

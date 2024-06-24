@@ -162,7 +162,7 @@
               @click="submitLogIn()"
             />
           </v-row>
-          <v-row justify="center">
+          <v-row justify="center" v-if="enableSignUp">
             <span style="color: gray"
               >{{ $t('logIn.question') }}
               <a
@@ -225,6 +225,7 @@
 <script>
 import AuthService from '@/services/AuthService'
 import { inject } from 'vue'
+import { useGeneralStore } from '@/stores/general'
 
 export default {
   data() {
@@ -234,6 +235,7 @@ export default {
       show2: false,
       show3: false,
       showSnackbar: null,
+      store: useGeneralStore(),
       password: '',
       username: '',
       newUser: {
@@ -285,6 +287,11 @@ export default {
   created() {
     this.showSnackbar = inject('showSnackbar')
   },
+  computed: {
+    enableSignUp() {
+      return this.store.appConfig.parameters.enableSignup
+    },
+  },
   methods: {
     async submitLogIn() {
       const isAuthenticated = await AuthService.login(
@@ -299,6 +306,9 @@ export default {
       }
     },
     async submitSignUp() {
+      if (!this.enableSignUp) {
+        return
+      }
       const isRegistered = await AuthService.signup(
         this.newUser.email,
         this.newUser.username,
