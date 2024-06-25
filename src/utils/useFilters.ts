@@ -1,4 +1,21 @@
-import { c } from 'node_modules/vite/dist/node/types.d-aGj9QkWt'
+// Define a type for each filter type
+interface CheckboxFilter {
+  type: 'checkbox'
+  value: string[]
+}
+
+interface RangeFilter {
+  type: 'range'
+  value: [number, number]
+}
+
+interface DateRangeFilter {
+  type: 'daterange'
+  value: [string, string]
+}
+
+// Union type for all filter types
+type Filter = CheckboxFilter | RangeFilter | DateRangeFilter
 
 export default function useFilters(
   data,
@@ -8,7 +25,7 @@ export default function useFilters(
 ) {
   // Check if the elements of the array are some other object
   // and applies 'some' again to see if any of its attributes match the search string.
-  const deepSearch = (value, searchText) => {
+  const deepSearch = (value, searchText, innerKey?: string) => {
     if (value === null || value === undefined) {
       return false
     } else if (typeof value === 'object') {
@@ -29,7 +46,7 @@ export default function useFilters(
       )
     // Check if the data matches the selected filters
     const matchesFilters = Object.entries(filtersSelected || {}).every(
-      ([filterKey, filter]) => {
+      ([filterKey, filter]: [string, Filter]) => {
         if (!filter) {
           return true
         }

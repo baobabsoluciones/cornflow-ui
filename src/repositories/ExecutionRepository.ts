@@ -11,7 +11,12 @@ export default class ExecutionRepository {
     dateFrom: string,
     dateTo: string,
   ): Promise<Execution[]> {
-    const queryParams = {
+    const queryParams: {
+      schema: string
+      limit: number
+      creation_date_lte?: string
+      creation_date_gte?: string
+    } = {
       schema: name,
       limit: 100,
     }
