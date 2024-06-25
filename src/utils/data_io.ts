@@ -12,7 +12,7 @@ const readTable = function (
       if (useFirstColumnAsKeys) {
         // If the first column should be used as the keys, create an object for each row
         // where the key is the value from the first column and the value is the value from the second column.
-        return rows.map((row) => ({ [row[0]]: row[1] }))
+        return rows.map((row) => ({ [row[0].toString()]: row[1] }))
       } else {
         // Otherwise, treat the first row as the header row and use it to create the keys for the objects.
         const cols = rows.shift()
@@ -34,7 +34,7 @@ const readTable = function (
 const loadExcel = function (file, schema) {
   const tables = Object.keys(schema.properties)
   const required = schema.required ? schema.required : tables
-  const readTab = function (tab) {
+  const readTab = function (tab, isRequired) {
     const tabType = schema.properties[tab].type
     const useFirstColumnAsKeys = tabType === 'object'
     return readTable(file, tab, useFirstColumnAsKeys).then((table) => {
@@ -84,12 +84,14 @@ const loadExcel = function (file, schema) {
 // this function writes all sheets according to the schema
 async function schemaDataToTable(wb, data) {
   // Convert the data object to an array of key-value pairs
-  var dataArray = Object.entries(data).map(([sheetName, sheetData]) => {
-    if (!Array.isArray(sheetData)) {
-      sheetData = [sheetData] // If it's not an array, convert it to an array
-    }
-    return [sheetName, sheetData]
-  })
+  var dataArray = Object.entries(data).map(
+    ([sheetName, sheetData]: [string, Array<any>]) => {
+      if (!Array.isArray(sheetData)) {
+        sheetData = [sheetData] // If it's not an array, convert it to an array
+      }
+      return [sheetName, sheetData]
+    },
+  )
 
   // Iterate over each sheet in the data
   for (const [sheetName, sheetData] of dataArray) {
@@ -101,12 +103,14 @@ async function schemaDataToTable(wb, data) {
     // Push the headers into the tableData array as the first row
     tableData.push(headers)
     // Iterate over each row of data
-    sheetData.forEach((row) => {
-      // Map each value in the row to the corresponding header
-      const rowData = headers.map((header) => row[header])
-      // Push the row of data into the tableData array
-      tableData.push(rowData)
-    })
+    if (Array.isArray(sheetData)) {
+      sheetData.forEach((row) => {
+        // Map each value in the row to the corresponding header
+        const rowData = headers.map((header) => row[header])
+        // Push the row of data into the tableData array
+        tableData.push(rowData)
+      })
+    }
     // Remove the headers row from tableData
     var tableDataNoHeaders = tableData.slice(1)
     // Set the starting cell for the table
@@ -186,7 +190,7 @@ const toISOStringLocal = function (date, isEndDate = false) {
 const formatDateForHeaders = function (date, locale = i18n.global.locale) {
   const today = new Date()
   const itemDate = new Date(date)
-  const options = {
+  const options: Intl.DateTimeFormatOptions = {
     weekday: 'long',
     year: 'numeric',
     month: 'long',

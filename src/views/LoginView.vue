@@ -1,5 +1,5 @@
 <template>
-  <LogInSignUp/>
+  <LogInSignUp />
 </template>
 
 <script>
@@ -70,7 +70,6 @@ export default {
 <style lang="scss">
 .sign-in {
   position: relative;
-  background-image: url('@/assets/login_view.jpeg');
   background-repeat: no-repeat;
   min-height: 100vh;
   background-size: 100% 100%;

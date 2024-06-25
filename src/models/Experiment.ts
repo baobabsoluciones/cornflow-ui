@@ -2,7 +2,7 @@ import { schemaDataToTable } from '@/utils/data_io'
 import { InstanceCore } from './Instance'
 import { SolutionCore } from './Solution'
 
-import ExcelJS from 'exceljs'
+import * as ExcelJS from 'exceljs'
 
 export class ExperimentCore {
   instance: InstanceCore
