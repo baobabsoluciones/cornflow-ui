@@ -1,5 +1,5 @@
 // Composables
-import { createRouter, RouteRecordRaw, createWebHistory } from 'vue-router'
+import { createRouter, RouteRecordRaw, createWebHashHistory } from 'vue-router'
 import IndexView from '@/views/IndexView.vue'
 import LoginView from '@/views/LoginView.vue'
 import ProjectExecutionView from '@/views/ProjectExecutionView.vue'
@@ -68,8 +68,28 @@ const routes: RouteRecordRaw[] = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(process.env.BASE_URL),
+  history: createWebHashHistory(), // This enables hash mode
   routes,
+})
+
+router.beforeEach((to, from, next) => {
+  const isAuthenticated = AuthService.isAuthenticated()
+  const isSignInPage = to.path === '/sign-in'
+  const isTargetingAuthRequiredPage = to.path !== '/sign-in'
+
+  if (!isAuthenticated && isTargetingAuthRequiredPage) {
+    // If the user is not authenticated and trying to access a page that requires authentication, redirect to sign-in
+    next('/sign-in')
+  } else if (isAuthenticated && isSignInPage) {
+    // If the user is authenticated but trying to access the sign-in page, redirect to the project execution page
+    next('/project-execution')
+  } else if (to.path === '/' && isAuthenticated) {
+    // If the user is authenticated and trying to access the root path, redirect to the project execution page
+    next('/project-execution')
+  } else {
+    // In all other cases, proceed as normal
+    next()
+  }
 })
 
 export default router
