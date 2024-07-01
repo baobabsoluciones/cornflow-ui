@@ -58,8 +58,10 @@
           <CreateExecutionLoadInstance
             :fileSelected="instanceFile"
             :newExecution="newExecution"
+            :existingInstanceErrors="existingInstanceErrors"
             @fileSelected="handleInstanceFileSelected"
             @instanceSelected="handleInstanceSelected"
+            @update:existingInstanceErrors="existingInstanceErrors = $event"
             class="mt-4"
           >
           </CreateExecutionLoadInstance>

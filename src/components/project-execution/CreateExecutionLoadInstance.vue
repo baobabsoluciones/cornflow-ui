@@ -33,6 +33,10 @@ export default {
       type: File,
       default: null,
     },
+    existingInstanceErrors: {
+      type: String,
+      default: null,
+    }
   },
   created() {
     this.showSnackbar = inject('showSnackbar')
@@ -41,7 +45,7 @@ export default {
     return {
       selectedFile: null,
       selectedInstance: null,
-      instanceErrors: null,
+      instanceErrors: this.existingInstanceErrors,
       store: useGeneralStore(),
       showSnackbar: null,
     }
@@ -53,6 +57,12 @@ export default {
       },
       immediate: true,
     },
+    existingInstanceErrors: {
+      handler(newErrors) {
+        this.instanceErrors = newErrors
+      },
+      immediate: true
+    }
   },
   methods: {
     onFileSelected(file) {
@@ -117,6 +127,7 @@ export default {
           this.instanceErrors = errors
             .map((error) => `<li>${error.instancePath} - ${error.message}</li>`)
             .join('')
+            this.$emit('update:exisistingInstanceErrors', this.instanceErrors)
           throw new Error(
             this.$t(
               'projectExecution.steps.step3.loadInstance.instanceSchemaError',
@@ -128,6 +139,7 @@ export default {
         this.selectedInstance = instance
         this.$emit('instance-selected', this.selectedInstance)
         this.instanceErrors = null
+        this.$emit('update:existingInstanceErrors', this.instanceErrors)
         this.showSnackbar(
           this.$t('projectExecution.steps.step3.loadInstance.instanceLoaded'),
         )
@@ -140,6 +152,7 @@ export default {
             : this.$t(
                 'projectExecution.steps.step3.loadInstance.unexpectedError',
               )
+        this.$emit('update:existingInstanceErrors', this.instanceErrors)
         this.showSnackbar(error, 'error')
         throw new Error(error.message)
       }
