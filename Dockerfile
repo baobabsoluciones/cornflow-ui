@@ -16,7 +16,7 @@ RUN npm install
 COPY . .
 
 # build vue app
-RUN npm run build:cloud
+RUN npm run build
 
 FROM nginx:stable-alpine as cdn
 
