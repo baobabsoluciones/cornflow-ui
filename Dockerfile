@@ -11,6 +11,7 @@ COPY package*.json ./
 
 # install deps
 RUN npm install
+RUN npm install @rollup/rollup-linux-x64-gnu --save-optional
 
 # copy files and folder to workdir (/usr/src/app)
 COPY . .
