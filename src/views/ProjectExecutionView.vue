@@ -184,6 +184,7 @@ export default {
         name: null,
         description: null,
       },
+      existingInstanceErrors: null,
     }
   },
   created() {
@@ -302,7 +303,7 @@ export default {
           !this.newExecution.name) ||
         (this.currentStep === 2 &&
           this.optionSelected === 'createExecution' &&
-          !this.newExecution.instance) ||
+          (!this.newExecution.instance || this.existingInstanceErrors)) ||
         (this.currentStep === 4 &&
           this.optionSelected === 'createExecution' &&
           !this.newExecution.selectedSolver) ||

@@ -54,18 +54,27 @@ export default {
     fileSelected: {
       handler(newFile) {
         this.selectedFile = newFile
+        console.log('fileSelected changed:', newFile);
       },
       immediate: true,
     },
     existingInstanceErrors: {
       handler(newErrors) {
         this.instanceErrors = newErrors
+        console.log('existingInstanceErrors changed:', newErrors);
       },
       immediate: true
     }
   },
   methods: {
     onFileSelected(file) {
+
+      // Reset states before processing the new file
+      this.selectedFile = null
+      this.selectedInstance = null
+      this.instanceErrors = null
+      this.$emit('update:existingInstanceErrors', this.instanceErrors)
+      
       this.selectedFile = file
 
       const extension = file.name.split('.').pop()
