@@ -280,7 +280,10 @@ export default {
       try {
         await this.generalStore.getDataToDownload(item.id, true, true)
       } catch (error) {
-        this.showSnackbar(this.$t('executionTable.errorDownloading'), 'error')
+        this.showSnackbar(
+          this.$t('inputOutputData.errorDownloadingExcel'),
+          'error',
+        )
       }
     },
   },

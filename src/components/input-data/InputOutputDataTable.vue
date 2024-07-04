@@ -515,12 +515,11 @@ export default {
       this.openConfirmationSaveModal = false
     },
     async handleDownload() {
-      const { href } = this.$route
       let instance = false
       let solution = false
-      if (href === '/input-data') {
+      if (this.type === 'instance') {
         instance = true
-      } else if (href === '/output-data') {
+      } else if (this.type === 'solution') {
         solution = true
       }
       const filename = this.execution.name.toLowerCase().replace(/ /g, '_')
