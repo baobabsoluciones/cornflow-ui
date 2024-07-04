@@ -14,7 +14,11 @@
     <ExecutionInfoCard :selectedExecution="selectedExecution">
     </ExecutionInfoCard>
     <DashboardMain
-      v-if="selectedExecution && selectedExecution.state == 1"
+      v-if="
+        selectedExecution &&
+        selectedExecution.state == 1 &&
+        selectedExecution.hasSolution()
+      "
       :execution="selectedExecution"
     >
     </DashboardMain>
@@ -27,7 +31,6 @@ import ExecutionInfoMenu from '@/components/project-execution/ExecutionInfoMenu.
 import DashboardMain from '@/app/components/DashboardMain.vue'
 import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
-import { Execution } from '@/models/Execution'
 
 export default {
   components: {
