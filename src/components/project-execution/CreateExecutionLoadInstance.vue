@@ -33,6 +33,10 @@ export default {
       type: File,
       default: null,
     },
+    existingInstanceErrors: {
+      type: String,
+      default: null,
+    }
   },
   created() {
     this.showSnackbar = inject('showSnackbar')
@@ -41,7 +45,7 @@ export default {
     return {
       selectedFile: null,
       selectedInstance: null,
-      instanceErrors: null,
+      instanceErrors: this.existingInstanceErrors,
       store: useGeneralStore(),
       showSnackbar: null,
     }
@@ -50,12 +54,27 @@ export default {
     fileSelected: {
       handler(newFile) {
         this.selectedFile = newFile
+        console.log('fileSelected changed:', newFile);
       },
       immediate: true,
     },
+    existingInstanceErrors: {
+      handler(newErrors) {
+        this.instanceErrors = newErrors
+        console.log('existingInstanceErrors changed:', newErrors);
+      },
+      immediate: true
+    }
   },
   methods: {
     onFileSelected(file) {
+
+      // Reset states before processing the new file
+      this.selectedFile = null
+      this.selectedInstance = null
+      this.instanceErrors = null
+      this.$emit('update:existingInstanceErrors', this.instanceErrors)
+      
       this.selectedFile = file
 
       const extension = file.name.split('.').pop()
@@ -117,6 +136,7 @@ export default {
           this.instanceErrors = errors
             .map((error) => `<li>${error.instancePath} - ${error.message}</li>`)
             .join('')
+            this.$emit('update:exisistingInstanceErrors', this.instanceErrors)
           throw new Error(
             this.$t(
               'projectExecution.steps.step3.loadInstance.instanceSchemaError',
@@ -128,6 +148,7 @@ export default {
         this.selectedInstance = instance
         this.$emit('instance-selected', this.selectedInstance)
         this.instanceErrors = null
+        this.$emit('update:existingInstanceErrors', this.instanceErrors)
         this.showSnackbar(
           this.$t('projectExecution.steps.step3.loadInstance.instanceLoaded'),
         )
@@ -140,6 +161,7 @@ export default {
             : this.$t(
                 'projectExecution.steps.step3.loadInstance.unexpectedError',
               )
+        this.$emit('update:existingInstanceErrors', this.instanceErrors)
         this.showSnackbar(error, 'error')
         throw new Error(error.message)
       }
