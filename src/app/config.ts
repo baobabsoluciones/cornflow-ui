@@ -5,7 +5,7 @@
  *
  * The `core` property of the `app` object is used to define the core functionalities of your application.
  * Each core functionality is a class that extends the `BaseCore` class and implements the required methods.
- * Also, the core functionality can have additional properties in 'parameters' such as `isPilotVersion`, `showTimeLimit`, and `enableSignup` for enabling or disabling the sign-up functionality.
+ * Also, the core functionality can have additional properties in 'parameters' such as `isPilotVersion`, `showTimeLimit`, `logStates`, and `enableSignup` for enabling or disabling the sign-up functionality.
  *
  * The `dashboardPages` array is used to define the navigation menu items and their corresponding routes for dashboard subpages.
  * Each page is an object with `title`, `icon`, `to`, and `pos` properties.
@@ -30,8 +30,12 @@
  *       showTimeLimit: true,
  *       schema: 'default',
  *       name: 'Default',
- *       logo: 'path/to',
- *       expandedLogo: 'path/to'
+ *      logStates: {
+ *       1: {
+ *        message: 'Optimal',
+ *       code: 'Optimal',
+ *       },
+ *      },
  *     },
  *   },
  *   dashboardPages: [
@@ -94,6 +98,7 @@
 import { Instance } from '@/app/models/Instance.ts'
 import { Solution } from '@/app/models/Solution.ts'
 import { Experiment } from '@/app/models/Experiment.ts'
+import i18n from '@/plugins/i18n'
 
 const app = {
   core: {
@@ -106,6 +111,48 @@ const app = {
       enableSignup: true,
       schema: 'rostering',
       name: 'Rostering',
+      logStates: {
+        1: {
+          code: i18n.global.t('executionTable.optimal'),
+          message: i18n.global.t('executionTable.optimalTooltip'),
+        },
+        5: {
+          code: i18n.global.t('executionTable.timeLimit'),
+          message: i18n.global.t('executionTable.timeLimitTooltip'),
+        },
+        '-1': {
+          code: i18n.global.t('executionTable.infeasible'),
+          message: i18n.global.t('executionTable.infeasibleTooltip'),
+        },
+        '-3': {
+          code: i18n.global.t('executionTable.unknown'),
+          message: i18n.global.t('executionTable.unknownTooltip'),
+        },
+        0: {
+          code: i18n.global.t('executionTable.notSolved'),
+          message: i18n.global.t('executionTable.notSolvedTooltip'),
+        },
+        '-2': {
+          code: i18n.global.t('executionTable.unbounded'),
+          message: i18n.global.t('executionTable.unboundedTooltip'),
+        },
+        2: {
+          code: i18n.global.t('executionTable.feasible'),
+          message: i18n.global.t('executionTable.feasibleTooltip'),
+        },
+        3: {
+          code: i18n.global.t('executionTable.memoryLimit'),
+          message: i18n.global.t('executionTable.memoryLimitTooltip'),
+        },
+        4: {
+          code: i18n.global.t('executionTable.nodeLimit'),
+          message: i18n.global.t('executionTable.nodeLimitTooltip'),
+        },
+        '-5': {
+          code: i18n.global.t('executionTable.licensingProblem'),
+          message: i18n.global.t('executionTable.licensingProblemTooltip'),
+        },
+      },
     },
   },
   dashboardPages: [],

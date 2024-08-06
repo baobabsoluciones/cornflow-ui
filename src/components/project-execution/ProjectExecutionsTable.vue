@@ -28,10 +28,15 @@
     <template v-slot:solution="{ item }">
       <v-chip
         size="x-small"
-        :color="solutionStateInfo[item.solution_state].color"
+        :color="item.solution_state.sol_code === 2 ? 'green' : 'red'"
         value="chip"
       >
-        {{ solutionStateInfo[item.solution_state].code }}
+        {{ solutionStateInfo[item.solution_state.status_code].code }}
+        <v-tooltip activator="parent" location="bottom">
+          <div style="font-size: 11px">
+            {{ solutionStateInfo[item.solution_state.status_code].message }}
+          </div>
+        </v-tooltip>
       </v-chip>
     </template>
     <template v-slot:excel="{ item }">
@@ -131,7 +136,7 @@ export default {
           width: '8%',
         },
         {
-          title: this.$t('executionTable.status'),
+          title: this.$t('executionTable.state'),
           value: 'state',
           width: '12%',
         },
@@ -153,58 +158,7 @@ export default {
       ]
     },
     solutionStateInfo() {
-      return {
-        1: {
-          color: 'green',
-          message: this.$t('executionTable.optimal'),
-          code: this.$t('executionTable.optimal'),
-        },
-        5: {
-          color: 'orange',
-          message: this.$t('executionTable.timeLimit'),
-          code: this.$t('executionTable.timeLimit'),
-        },
-        '-1': {
-          color: 'red',
-          message: this.$t('executionTable.infeasible'),
-          code: this.$t('executionTable.infeasible'),
-        },
-        '-3': {
-          color: 'grey',
-          message: this.$t('executionTable.unknown'),
-          code: this.$t('executionTable.unknown'),
-        },
-        0: {
-          color: 'purple',
-          message: this.$t('executionTable.notSolved'),
-          code: this.$t('executionTable.notSolved'),
-        },
-        '-2': {
-          color: 'red',
-          message: this.$t('executionTable.unbounded'),
-          code: this.$t('executionTable.unbounded'),
-        },
-        2: {
-          color: 'green',
-          message: this.$t('executionTable.feasible'),
-          code: this.$t('executionTable.feasible'),
-        },
-        3: {
-          color: 'orange',
-          message: this.$t('executionTable.memoryLimit'),
-          code: this.$t('executionTable.memoryLimit'),
-        },
-        4: {
-          color: 'orange',
-          message: this.$t('executionTable.nodeLimit'),
-          code: this.$t('executionTable.nodeLimit'),
-        },
-        '-5': {
-          color: 'red',
-          message: this.$t('executionTable.licensingProblem'),
-          code: this.$t('executionTable.licensingProblem'),
-        },
-      }
+      return this.generalStore.appConfig.parameters.logStates
     },
     stateInfo() {
       return {
