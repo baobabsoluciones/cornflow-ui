@@ -38,7 +38,7 @@ export default class ExecutionRepository {
     if (response.status === 200) {
       const executions = response.content
       return executions.map((execution: any) => {
-        const logStatusCode = execution.log ? execution.log.status_code : '-3'
+        const logStatusCode = execution.log ? execution.log : '-3'
         return new Execution(
           execution.message,
           execution.created_at,
