@@ -101,9 +101,9 @@ export default {
         description: 'Confirm the execution data and start the execution',
         titleContent: 'Execution resolution confirmation',
         subtitleContent:
-          'If you choose to resolve the execution, the model will automatically initiate resolution and will take the estimated time to finish. You can access its status by opening the tab with the assigned name on the bottom horizontal bar.',
+          'If you choose to solve the execution, the model will automatically initiate resolution and will take the estimated time to finish. You can access its status by opening the tab with the assigned name on the bottom horizontal bar.',
         review: 'Review',
-        resolve: 'Resolve',
+        resolve: 'Solve',
         successMessage:
           'The execution has been launched successfully. A new tab has been opened on the bottom bar. You can click on this tab to open it.',
         errorMessage:
