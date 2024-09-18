@@ -95,6 +95,9 @@ async function schemaDataToTable(wb, data) {
 
   // Iterate over each sheet in the data
   for (const [sheetName, sheetData] of dataArray) {
+    if (sheetData.length === 0) {
+      continue
+    }
     // Add a worksheet with the sheet name to the workbook
     const worksheet = wb.addWorksheet(sheetName)
     const tableData = []

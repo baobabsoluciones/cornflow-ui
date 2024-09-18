@@ -28,7 +28,7 @@ export class ExperimentCore {
     // we write the "header tables" from schema
 
     // then we write the instance tables
-    if (saveInstance && this.instance != null) {
+    if (saveInstance && this.instance != null && this.instance.data != null) {
       workbook = new ExcelJS.Workbook()
       schemaDataToTable(workbook, this.instance.data)
       // we generate the excel file
@@ -42,7 +42,7 @@ export class ExperimentCore {
       link.click()
       console.log('Excel file generated correctly:', 'instance')
     }
-    if (saveSolution && this.solution != null) {
+    if (saveSolution && this.solution != null && this.solution.data != null) {
       workbook = new ExcelJS.Workbook()
       schemaDataToTable(workbook, this.solution.data)
       // we generate the excel file
