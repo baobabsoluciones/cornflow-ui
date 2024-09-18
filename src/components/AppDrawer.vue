@@ -278,4 +278,9 @@ h4 {
   color: var(--accent) !important;
   caret-color: var(--accent) !important;
 }
+
+.non-clickable {
+  color: var(--primary-variant) !important;
+}
+
 </style>
