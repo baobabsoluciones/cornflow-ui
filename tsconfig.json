@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "allowJs": true,
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "preserve",
+    "allowImportingTsExtensions": true,
+    // Disabling strict type-checking options
+    "strict": false, // This disables all strict type-checking options
+    "noImplicitAny": false, // Allows implicit 'any' types
+    "strictNullChecks": false, // When false, null and undefined are allowed to be assigned to any type
+    "strictFunctionTypes": false, // Disables strict checking of function types
+    "strictBindCallApply": false, // Allow incorrect arguments in bind, call, and apply
+    "strictPropertyInitialization": false, // Do not check class property initialization
+    "noImplicitThis": false, // Allow 'this' expressions with an implied 'any' type
+    "alwaysStrict": false // Parse in strict mode but emit "use strict" for each source file
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}
