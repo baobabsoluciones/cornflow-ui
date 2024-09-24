@@ -22,6 +22,9 @@ export class ExperimentCore {
     saveInstance = true,
     saveSolution = true,
   ) {
+    // Sanitize the filename by replacing points with hyphens
+    const sanitizedFilename = filename.replace(/\./g, '-')
+
     // we create the object for the file
     var workbook
 
@@ -38,7 +41,7 @@ export class ExperimentCore {
       })
       const link = document.createElement('a')
       link.href = window.URL.createObjectURL(blob)
-      link.download = `instance_${filename}`
+      link.download = `instance_${sanitizedFilename}`
       link.click()
       console.log('Excel file generated correctly:', 'instance')
     }
@@ -52,7 +55,7 @@ export class ExperimentCore {
       })
       const link = document.createElement('a')
       link.href = window.URL.createObjectURL(blob)
-      link.download = `solution_${filename}`
+      link.download = `solution_${sanitizedFilename}`
       link.click()
       console.log('Excel file generated correctly: solution')
     }
