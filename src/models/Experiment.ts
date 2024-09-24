@@ -30,7 +30,7 @@ export class ExperimentCore {
     // then we write the instance tables
     if (saveInstance && this.instance != null && this.instance.data != null) {
       workbook = new ExcelJS.Workbook()
-      schemaDataToTable(workbook, this.instance.data)
+      schemaDataToTable(workbook, this.instance.data, this.instance.schema)
       // we generate the excel file
       const excelBuffer = await workbook.xlsx.writeBuffer()
       const blob = new Blob([excelBuffer], {
@@ -44,7 +44,7 @@ export class ExperimentCore {
     }
     if (saveSolution && this.solution != null && this.solution.data != null) {
       workbook = new ExcelJS.Workbook()
-      schemaDataToTable(workbook, this.solution.data)
+      schemaDataToTable(workbook, this.solution.data, this.solution.schema)
       // we generate the excel file
       const excelBuffer = await workbook.xlsx.writeBuffer()
       const blob = new Blob([excelBuffer], {

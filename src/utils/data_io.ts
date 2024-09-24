@@ -82,83 +82,94 @@ const loadExcel = function (file, schema) {
 }
 
 // this function writes all sheets according to the schema
-async function schemaDataToTable(wb, data) {
-  // Convert the data object to an array of key-value pairs
-  var dataArray = Object.entries(data).map(
-    ([sheetName, sheetData]: [string, Array<any>]) => {
-      if (!Array.isArray(sheetData)) {
-        sheetData = [sheetData] // If it's not an array, convert it to an array
-      }
-      return [sheetName, sheetData]
-    },
-  )
+async function schemaDataToTable(wb, data, schema = null) {
+  var dataArray = Object.entries(data).map(([sheetName, sheetData]) => {
+    if (!Array.isArray(sheetData)) {
+      sheetData = [sheetData]
+    }
+    return [sheetName, sheetData]
+  })
 
-  // Iterate over each sheet in the data
-  for (const [sheetName, sheetData] of dataArray) {
+  for (let [sheetName, sheetData] of dataArray) {
     if (sheetData.length === 0) {
-      continue
+      if (schema?.properties?.[sheetName]?.items?.required) {
+        const headers = schema.properties[sheetName].items.required
+        sheetData = [
+          headers.reduce((acc, header) => {
+            acc[header] = null
+            return acc
+          }, {}),
+        ]
+      } else {
+        continue
+      }
     }
-    // Add a worksheet with the sheet name to the workbook
+
     const worksheet = wb.addWorksheet(sheetName)
-    const tableData = []
-    // Get the headers from the first row of data
-    const headers = Object.keys(sheetData[0])
-    // Push the headers into the tableData array as the first row
-    tableData.push(headers)
-    // Iterate over each row of data
-    if (Array.isArray(sheetData)) {
-      sheetData.forEach((row) => {
-        // Map each value in the row to the corresponding header
-        const rowData = headers.map((header) => row[header])
-        // Push the row of data into the tableData array
-        tableData.push(rowData)
+
+    if (schema?.properties?.[sheetName]?.type === 'object') {
+      const tableData = Object.entries(sheetData[0])
+      worksheet.addRows(tableData)
+      worksheet.getColumn(1).width = 20
+      worksheet.getColumn(2).width = 30
+
+      // Aplicar estilos sin crear una tabla
+      tableData.forEach((row, index) => {
+        ;['A', 'B'].forEach((col) => {
+          const cell = worksheet.getCell(`${col}${index + 1}`)
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: index % 2 === 0 ? 'FFFFFFFF' : 'FFF2F2F2' },
+          }
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' },
+          }
+        })
       })
-    }
-    // Remove the headers row from tableData
-    var tableDataNoHeaders = tableData.slice(1)
-    // Set the starting cell for the table
-    var startCell = 'A1'
-    // Add a table to the worksheet with specified options
-    worksheet.addTable({
-      name: sheetName,
-      ref: startCell,
-      headerRow: true,
-      totalsRow: false,
-      style: {
-        theme: 'TableStyleMedium14',
-        showRowStripes: true,
-        showColumnStripes: false,
-      },
-      columns: headers.map((header) => ({ name: header })),
-      rows: tableDataNoHeaders,
-    })
-    // Calculate the maximum header length
-    let maxHeaderLength = 0
-    // Iterate over each header to find the maximum length
-    headers.forEach((header) => {
-      const headerLength = header.length
-      if (headerLength > maxHeaderLength) {
-        maxHeaderLength = headerLength
-      }
-    })
-    // Add extra width to the calculated column width
-    const extraWidth = 1
-    const columnWidth = maxHeaderLength + extraWidth
-    // Get the table reference and split it into start and end cells
-    const columns = worksheet.getTable(sheetName).table
-    var refScplit = columns.tableRef.split(':')
-    // Get the start and end cells' row and column numbers
-    const startCellRange = worksheet.getCell(refScplit[0])
-    const endCell = worksheet.getCell(refScplit[1])
-    const startRow = startCellRange.row
-    const startColumn = getNumberFromLetter(refScplit[0].replace(/[0-9]/g, ''))
-    const endRow = endCell.row
-    const endColumn = getNumberFromLetter(refScplit[1].replace(/[0-9]/g, ''))
-    // Set the width of each column in the table
-    for (let row = startRow; row <= endRow; row++) {
-      for (let col = startColumn; col <= endColumn; col++) {
-        worksheet.getColumn(col).width = columnWidth
-      }
+    } else {
+      const headers = Object.keys(sheetData[0])
+      const tableData = [
+        headers,
+        ...sheetData.map((row) => headers.map((header) => row[header])),
+      ]
+      worksheet.addRows(tableData)
+
+      headers.forEach((header, index) => {
+        worksheet.getColumn(index + 1).width = header.length + 5
+      })
+
+      // Aplicar estilos sin crear una tabla
+      tableData.forEach((row, rowIndex) => {
+        row.forEach((_, colIndex) => {
+          const cell = worksheet.getCell(rowIndex + 1, colIndex + 1)
+          if (rowIndex === 0) {
+            // Estilo para la fila de encabezado
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FFD3D3D3' },
+            }
+            cell.font = { bold: true }
+          } else {
+            // Estilo para las filas de datos
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: rowIndex % 2 === 0 ? 'FFFFFFFF' : 'FFF2F2F2' },
+            }
+          }
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' },
+          }
+        })
+      })
     }
   }
 }
@@ -220,15 +231,11 @@ function formatDate(dateString) {
 }
 
 function getNumberFromLetter(letter) {
-  let result = 0
-  const uppercaseLetter = letter.toUpperCase()
-  for (let i = 0; i < uppercaseLetter.length; i++) {
-    const charCode = uppercaseLetter.charCodeAt(i)
-    const number = charCode - 64
-    const positionValue = Math.pow(26, uppercaseLetter.length - i - 1)
-    result += number * positionValue
+  let number = 0
+  for (let i = 0; i < letter.length; i++) {
+    number = number * 26 + (letter.charCodeAt(i) - 'A'.charCodeAt(0) + 1)
   }
-  return result
+  return number
 }
 
 function getLetterFromNumber(number) {
