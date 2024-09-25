@@ -43,6 +43,7 @@ export const useGeneralStore = defineStore('general', {
     selectedExecution: null,
     autoLoadInterval: null,
     uploadComponentKey: 0,
+    tabBarKey: 0,
   }),
   actions: {
     async initializeData() {
@@ -283,6 +284,10 @@ export const useGeneralStore = defineStore('general', {
 
     incrementUploadComponentKey() {
       this.uploadComponentKey++
+    },
+
+    incrementTabBarKey() {
+      return this.tabBarKey++
     },
 
     getTableDataKeys(collection: string, data: object): any[] {
