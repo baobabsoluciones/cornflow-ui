@@ -241,6 +241,7 @@ export default {
     },
     async confirmDelete() {
       this.$emit('deleteExecution', this.deletedItem)
+      this.openConfirmationDeleteModal = false
     },
     async cancelDelete() {
       this.openConfirmationDeleteModal = false

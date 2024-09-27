@@ -41,7 +41,7 @@ import { ref, computed, defineExpose, Suspense } from 'vue'
 const generalStore = useGeneralStore()
 const router = useRouter()
 let tabsData = computed(() => generalStore.getLoadedExecutionTabs)
-let tabsKey = ref(0)
+let tabsKey = computed(() => generalStore.tabBarKey)
 
 defineExpose({
   tabsData,
@@ -74,7 +74,7 @@ const selectTab = (executionTab) => {
     generalStore.getLoadedExecutionTabs.forEach((tab) => {
       tab.selected = false
     })
-    tabsKey.value++
+    generalStore.incrementTabBarKey()
   } else {
     generalStore.setSelectedExecution(executionTab.value)
     // Check if the current route matches 'project-execution' or 'history-execution'
@@ -90,7 +90,7 @@ const selectTab = (executionTab) => {
     generalStore.getLoadedExecutionTabs.forEach((tab) => {
       tab.selected = tab.value === executionTab.value
     })
-    tabsKey.value++
+    generalStore.incrementTabBarKey()
   }
 }
 

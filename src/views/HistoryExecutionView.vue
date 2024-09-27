@@ -233,6 +233,11 @@ export default {
         )
 
         if (loadedResult) {
+          this.generalStore.setSelectedExecution(execution.id)
+          this.generalStore.getLoadedExecutionTabs.forEach((tab) => {
+            tab.selected = tab.value === execution.id
+          })
+          this.generalStore.incrementTabBarKey()
           this.showSnackbar(this.$t('projectExecution.snackbar.successLoad'))
         } else {
           this.showSnackbar(
