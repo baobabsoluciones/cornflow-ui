@@ -125,7 +125,7 @@ export default {
     },
   },
   watch: {
-    dateOptionSelected(newVal) {
+    dateOptionSelected(newVal, oldVal) {
       const today = new Date()
       const yesterday = new Date(today)
       yesterday.setDate(yesterday.getDate() - 1)
@@ -162,6 +162,15 @@ export default {
           this.selectedDates.endDate = null
           this.data = []
           break
+      }
+
+      // Fetch data if custom option is selected and no dates are selected, otherwise data is setted to empty
+      if (
+        oldVal === 'custom' &&
+        this.selectedDates.startDate === null &&
+        this.selectedDates.endDate === null
+      ) {
+        this.fetchData()
       }
     },
     customSelectedDates: {
