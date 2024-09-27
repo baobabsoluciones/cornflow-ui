@@ -46,10 +46,26 @@
     </template>
     <template v-slot:actions="{ item }">
       <span>
-        <v-icon size="small" class="mr-2" @click="loadExecution(item)"
-          >mdi-tray-arrow-up</v-icon
-        >
-        <v-icon size="small" @click="deleteExecution(item)">mdi-delete</v-icon>
+        <span>
+          <v-icon size="small" class="mr-2" @click="loadExecution(item)">
+            mdi-tray-arrow-up
+          </v-icon>
+          <v-tooltip activator="parent" location="bottom">
+            <span>
+              {{ $t('executionTable.loadExecution') }}
+            </span>
+          </v-tooltip>
+        </span>
+        <span>
+          <v-icon size="small" @click="deleteExecution(item)">
+            mdi-delete
+          </v-icon>
+          <v-tooltip activator="parent" location="bottom">
+            <span>
+              {{ $t('executionTable.deleteExecution') }}
+            </span>
+          </v-tooltip>
+        </span>
       </span>
     </template>
   </MDataTable>
