@@ -160,6 +160,8 @@
             :editionMode="editionMode"
             @create-item="createItem"
             @deleteItem="deleteItem"
+            @resetCurrentPage="resetCurrentPage"
+            @update:resetCurrentPage="resetCurrentPage = $event"
           />
         </v-row>
         <v-row class="mt-5 mb-2 justify-center" v-if="canCheckData">
@@ -280,6 +282,7 @@ export default {
       searchText: '',
       filtersSelected: {},
       filters: {},
+      resetCurrentPage: false,
     }
   },
   created() {
@@ -485,6 +488,7 @@ export default {
     },
     handleTabSelected(newTab) {
       this.selectedTable = newTab
+      this.resetCurrentPage = true // Reset the current page of the new selected table to 1
       this.filters = this.getFilters()
 
       if (!this.filtersSelected[this.selectedTable]) {
