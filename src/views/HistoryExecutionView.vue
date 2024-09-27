@@ -14,12 +14,6 @@
       @date-range-changed="dateOptionSelected = $event"
     >
       <template #custom-checkbox>
-        <MFilterSearch
-          :filters="filters"
-          @reset="handleResetFilters"
-          @search="handleSearch"
-          @filter="handleFilters"
-        />
         <div style="margin-top: -10px !important; display: flex">
           <v-col class="v-col-s-6 v-col-md-6 v-col-xl-3">
             <v-text-field
@@ -63,64 +57,6 @@ export default {
   data() {
     return {
       data: [],
-      filters: {
-        id: {
-          title: 'Employee id.',
-          filterable: true,
-          type: 'range',
-          selected: false,
-          required: true,
-          min: 1,
-          max: 14,
-        },
-        name: {
-          title: 'Employee name',
-          filterable: true,
-          type: 'checkbox',
-          selected: false,
-          required: true,
-          options: [
-            { label: 'Juan', value: 'Juan', checked: false },
-            { label: 'Pedro', value: 'Pedro', checked: false },
-            { label: 'Maria', value: 'Maria', checked: false },
-            { label: 'Jose', value: 'Jose', checked: false },
-            { label: 'Luis', value: 'Luis', checked: false },
-            { label: 'Ana', value: 'Ana', checked: false },
-            { label: 'Rosa', value: 'Rosa', checked: false },
-            { label: 'Lorena', value: 'Lorena', checked: false },
-            { label: 'Luisa', value: 'Luisa', checked: false },
-            { label: 'Miguel', value: 'Miguel', checked: false },
-            { label: 'Carlos', value: 'Carlos', checked: false },
-            { label: 'Sofia', value: 'Sofia', checked: false },
-            { label: 'Sara', value: 'Sara', checked: false },
-            { label: 'Sandra', value: 'Sandra', checked: false },
-          ],
-        },
-        manager: {
-          title: 'Manager',
-          filterable: true,
-          type: 'checkbox',
-          selected: false,
-          required: true,
-          options: [
-            { label: 'True', value: 'true', checked: false },
-            { label: 'False', value: 'false', checked: false },
-          ],
-          min: false,
-          max: true,
-        },
-        manager_tasks: {
-          title: 'Manager tasks',
-          filterable: false,
-          type: 'checkbox',
-          selected: false,
-          required: false,
-          options: [
-            { label: 'True', value: 'true', checked: false },
-            { label: 'False', value: 'false', checked: false },
-          ],
-        },
-      },
       generalStore: useGeneralStore(),
       dateOptionSelected: null,
       selectedDates: {
