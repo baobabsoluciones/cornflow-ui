@@ -120,7 +120,7 @@ export default {
     },
   },
   executionTable: {
-    date: 'Date',
+    date: 'Temps',
     name: 'Nom',
     description: 'Description',
     state: 'Statut',
@@ -164,6 +164,8 @@ export default {
     success: 'Succès',
     error: 'Erreur',
     loading: 'Chargement',
+    loadExecution: 'Load execution',
+    deleteExecution: 'Delete execution',
   },
   logIn: {
     subtitle: 'Connectez-vous pour commencer !',
@@ -212,7 +214,7 @@ export default {
   versionHistory: {
     title: 'Historique des versions',
     description:
-      'Vous pouvez ici trouver un résumé de toutes les versions que vous avez réalisées pour les différents projets exécutés',
+      'Dans cette section, vous trouverez un résumé de toutes les versions que vous avez réalisées pour les différents projets exécutés. Vous pouvez charger autant d´exécutions que vous le souhaitez à partir de la colonne des actions. Chaque exécution s´ouvrira dans un nouvel onglet en bas de l´écran, et la dernière exécution chargée sera sélectionnée par défaut.',
     yesterday: 'Hier',
     today: "Aujourd'hui",
     last7days: '7 derniers jours',

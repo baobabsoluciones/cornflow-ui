@@ -22,6 +22,9 @@ export class ExperimentCore {
     saveInstance = true,
     saveSolution = true,
   ) {
+    // Sanitize the filename by replacing points with hyphens
+    const sanitizedFilename = filename.replace(/\./g, '-')
+
     // we create the object for the file
     var workbook
 
@@ -30,7 +33,7 @@ export class ExperimentCore {
     // then we write the instance tables
     if (saveInstance && this.instance != null && this.instance.data != null) {
       workbook = new ExcelJS.Workbook()
-      schemaDataToTable(workbook, this.instance.data)
+      schemaDataToTable(workbook, this.instance.data, this.instance.schema)
       // we generate the excel file
       const excelBuffer = await workbook.xlsx.writeBuffer()
       const blob = new Blob([excelBuffer], {
@@ -38,13 +41,13 @@ export class ExperimentCore {
       })
       const link = document.createElement('a')
       link.href = window.URL.createObjectURL(blob)
-      link.download = `instance_${filename}`
+      link.download = `instance_${sanitizedFilename}`
       link.click()
       console.log('Excel file generated correctly:', 'instance')
     }
     if (saveSolution && this.solution != null && this.solution.data != null) {
       workbook = new ExcelJS.Workbook()
-      schemaDataToTable(workbook, this.solution.data)
+      schemaDataToTable(workbook, this.solution.data, this.solution.schema)
       // we generate the excel file
       const excelBuffer = await workbook.xlsx.writeBuffer()
       const blob = new Blob([excelBuffer], {
@@ -52,7 +55,7 @@ export class ExperimentCore {
       })
       const link = document.createElement('a')
       link.href = window.URL.createObjectURL(blob)
-      link.download = `solution_${filename}`
+      link.download = `solution_${sanitizedFilename}`
       link.click()
       console.log('Excel file generated correctly: solution')
     }

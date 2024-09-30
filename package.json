@@ -1,7 +1,7 @@
 {
   "name": "cornflow-ui",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -24,7 +24,8 @@
     "vue-i18n": "^9.9.0",
     "vue-router": "^4.3.0",
     "vuetify": "^3.5.17",
-    "webfontloader": "^1.6.28"
+    "webfontloader": "^1.6.28",
+    "rollup": ">=4.22.4"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.5",
@@ -33,9 +34,10 @@
     "jsdom": "^24.1.0",
     "vitest": "^2.0.5",
     "@types/node": "^20.11.24",
+    "rollup": "^4.22.4",
     "sass": "^1.71.1",
     "typescript": "^5.2.2",
     "vite": "^5.0.8",
-    "vue-tsc": "^1.8.25"
+    "vue-tsc": "^2.1.6"
   }
 }

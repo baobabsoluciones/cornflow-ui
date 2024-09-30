@@ -28,7 +28,7 @@
         <template
           v-else-if="index === 1 && optionSelected === 'searchExecution'"
         >
-          <div>
+          <div ref="dateRangePicker">
             <DateRangePicker
               :startDateTitle="
                 $t('projectExecution.steps.step2Search.startDate')
@@ -121,23 +121,29 @@
         "
         v-slot:[`step-1-continue-button`]
       >
-        <v-btn color="primary" class="mt-5" @click="searchByDates"
+        <v-btn color="primary" @click="searchByDates"
           >{{ $t('projectExecution.steps.step2Search.search') }}
           <v-icon right>mdi-arrow-right</v-icon>
         </v-btn>
       </template>
     </MFormSteps>
     <v-card
-      class="ma-5 mt-10"
+      class="mt-8"
       elevation="5"
       rounded="lg"
+      ref="executionTable"
       v-if="optionSelected === 'searchExecution' && searchExecution"
     >
-      <ProjectExecutionsTable
-        :executionsByDate="executionsByDate"
-        @loadExecution="loadExecution"
-        @deleteExecution="deleteExecution"
-      ></ProjectExecutionsTable>
+      <v-row class="mt-3 ml-4" v-if="!formatDateByTime">
+        <MFilterSearch @search="handleSearch" />
+      </v-row>
+      <v-row class="mb-3 mx-2">
+        <ProjectExecutionsTable
+          :executionsByDate="executionsByDateFiltered"
+          @loadExecution="loadExecution"
+          @deleteExecution="deleteExecution"
+        ></ProjectExecutionsTable>
+      </v-row>
     </v-card>
   </div>
 </template>
@@ -168,6 +174,7 @@ export default {
       optionSelected: null,
       searchExecution: false,
       executionsByDate: [],
+      executionsByDateFiltered: [],
       selectedDates: {
         startDate: null,
         endDate: null,
@@ -185,6 +192,7 @@ export default {
         description: null,
       },
       existingInstanceErrors: null,
+      searchExecutionText: '',
     }
   },
   created() {
@@ -218,7 +226,15 @@ export default {
         if (result) {
           this.showSnackbar(this.$t('projectExecution.snackbar.succesSearch'))
           this.executionsByDate = result
+          this.executionsByDateFiltered = result
+          this.handleSearch(this.searchExecutionText)
           this.searchExecution = true
+          this.$nextTick(() => {
+            const executionTable = this.$refs.executionTable
+            if (executionTable && executionTable.$el) {
+              executionTable.$el.scrollIntoView({ behavior: 'smooth' })
+            }
+          })
         } else {
           this.showSnackbar(this.$t('projectExecution.snackbar.noDataSearch'))
         }
@@ -276,6 +292,20 @@ export default {
       Object.assign(this.$data, this.$options.data())
       this.showSnackbar = inject('showSnackbar')
     },
+    handleSearch(searchText) {
+      this.searchExecutionText = searchText
+      const searchTextLower = searchText.toLowerCase()
+      if (searchTextLower === '') {
+        this.executionsByDateFiltered = this.executionsByDate
+        return
+      }
+
+      this.executionsByDateFiltered = this.executionsByDate.filter(
+        (execution) =>
+          execution.name.toLowerCase().includes(searchTextLower) ||
+          execution.description.toLowerCase().includes(searchTextLower),
+      )
+    },
   },
   watch: {
     currentStep(newVal, oldVal) {
@@ -286,6 +316,12 @@ export default {
           endDate: null,
         }
         this.searchExecution = false
+        this.$nextTick(() => {
+          const datePickerCards = this.$refs.dateRangePicker
+          if (datePickerCards) {
+            datePickerCards.scrollIntoView({ behavior: 'smooth' })
+          }
+        })
       }
     },
   },

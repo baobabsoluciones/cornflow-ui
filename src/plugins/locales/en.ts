@@ -126,7 +126,7 @@ export default {
     },
   },
   executionTable: {
-    date: 'Date',
+    date: 'Time',
     name: 'Name',
     description: 'Description',
     state: 'State',
@@ -172,6 +172,8 @@ export default {
     success: 'Success',
     error: 'Error',
     loading: 'Loading',
+    loadExecution: 'Load execution',
+    deleteExecution: 'Delete execution',
   },
   logIn: {
     subtitle: 'Log in to get started!',
@@ -217,7 +219,7 @@ export default {
   versionHistory: {
     title: 'Version history',
     description:
-      'Here you can find a summary of all the versions you have made for the different projects executed',
+      'In this section, you will find a summary of all the versions you have completed for the different executed projects. You can load as many executions as you want from the actions column. Each execution will open in a new tab at the bottom of the screen, and the most recently loaded execution will be selected by default.',
     yesterday: 'Yesterday',
     today: 'Today',
     last7days: 'Last 7 days',
