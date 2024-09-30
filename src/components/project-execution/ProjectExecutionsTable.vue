@@ -15,6 +15,9 @@
     <template v-slot:solver="{ item }">
       {{ item.config.solver }}
     </template>
+    <template v-slot:timeLimit="{ item }">
+      {{ item.config.timeLimit }} sec
+    </template>
     <template v-slot:state="{ item }">
       <v-chip size="x-small" :color="stateInfo[item.state].color" value="chip">
         {{ stateInfo[item.state].code }}
@@ -46,10 +49,26 @@
     </template>
     <template v-slot:actions="{ item }">
       <span>
-        <v-icon size="small" class="mr-2" @click="loadExecution(item)"
-          >mdi-tray-arrow-up</v-icon
-        >
-        <v-icon size="small" @click="deleteExecution(item)">mdi-delete</v-icon>
+        <span>
+          <v-icon size="small" class="mr-2" @click="loadExecution(item)">
+            mdi-tray-arrow-up
+          </v-icon>
+          <v-tooltip activator="parent" location="bottom">
+            <span>
+              {{ $t('executionTable.loadExecution') }}
+            </span>
+          </v-tooltip>
+        </span>
+        <span>
+          <v-icon size="small" @click="deleteExecution(item)">
+            mdi-delete
+          </v-icon>
+          <v-tooltip activator="parent" location="bottom">
+            <span>
+              {{ $t('executionTable.deleteExecution') }}
+            </span>
+          </v-tooltip>
+        </span>
       </span>
     </template>
   </MDataTable>
@@ -122,33 +141,49 @@ export default {
         {
           title: this.$t('executionTable.date'),
           value: 'createdAt',
-          width: '15%',
+          width: '12%',
+          sortable: !this.formatDateByTime,
         },
-        { title: this.$t('executionTable.name'), value: 'name', width: '20%' },
+        {
+          title: this.$t('executionTable.name'),
+          value: 'name',
+          width: '18%',
+          sortable: !this.formatDateByTime,
+        },
         {
           title: this.$t('executionTable.description'),
           value: 'description',
           width: '20%',
+          sortable: !this.formatDateByTime,
         },
         {
           title: this.$t('executionTable.excel'),
           value: 'excel',
-          width: '8%',
+          width: '9%',
         },
         {
           title: this.$t('executionTable.state'),
           value: 'state',
           width: '12%',
+          sortable: !this.formatDateByTime,
         },
         {
           title: this.$t('executionTable.solver'),
           value: 'solver',
           width: '13%',
+          sortable: !this.formatDateByTime,
+        },
+        {
+          title: this.$t('executionTable.timeLimit'),
+          value: 'timeLimit',
+          width: '12%',
+          sortable: !this.formatDateByTime,
         },
         {
           title: this.$t('executionTable.solution'),
           value: 'solution',
           width: '10%',
+          sortable: !this.formatDateByTime,
         },
         {
           title: this.$t('executionTable.actions'),

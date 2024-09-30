@@ -1,6 +1,6 @@
 <template>
-  <v-row class="mt-4 justify-space-around">
-    <v-col class="v-col-s-12 v-col-4">
+  <v-row class="mt-1 justify-space-around">
+    <v-col class="v-col-s-12 v-col-6">
       <h5 class="mb-2">{{ startDateTitle }}</h5>
       <v-date-picker
         hide-header
@@ -10,7 +10,7 @@
         :max="endDate || today"
       ></v-date-picker>
     </v-col>
-    <v-col class="v-col-s-12 v-col-4">
+    <v-col class="v-col-s-12 v-col-6">
       <h5 class="mb-2">{{ endDateTitle }}</h5>
       <v-date-picker
         hide-header
