@@ -113,7 +113,7 @@ async function schemaDataToTable(wb, data, schema = null) {
       worksheet.getColumn(1).width = 20
       worksheet.getColumn(2).width = 30
 
-      // Aplicar estilos sin crear una tabla
+      // Apply styles to the table
       tableData.forEach((row, index) => {
         ;['A', 'B'].forEach((col) => {
           const cell = worksheet.getCell(`${col}${index + 1}`)
@@ -142,12 +142,12 @@ async function schemaDataToTable(wb, data, schema = null) {
         worksheet.getColumn(index + 1).width = header.length + 5
       })
 
-      // Aplicar estilos sin crear una tabla
+      // Apply styles without creating the table
       tableData.forEach((row, rowIndex) => {
         row.forEach((_, colIndex) => {
           const cell = worksheet.getCell(rowIndex + 1, colIndex + 1)
           if (rowIndex === 0) {
-            // Estilo para la fila de encabezado
+            // Style for header row
             cell.fill = {
               type: 'pattern',
               pattern: 'solid',
@@ -155,7 +155,7 @@ async function schemaDataToTable(wb, data, schema = null) {
             }
             cell.font = { bold: true }
           } else {
-            // Estilo para las filas de datos
+            // Style for data rows
             cell.fill = {
               type: 'pattern',
               pattern: 'solid',
