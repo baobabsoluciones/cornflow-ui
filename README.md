@@ -160,6 +160,8 @@ To create a new project based on this base project, follow these steps:
    - `views`: This directory should contain all the custom views needed for the application.
    - `components`: This directory should contain any additional components that are not in the core components.
    - `store/app.ts`: This file should define any additional store-specific configurations for the application.
+   - `tests`: This file should contain all unit tests for additional components.
+   - `plugins/locales`: This folder contains three files (`en.ts`, `es.ts`, `fr.ts`) to add any text needed in the app views and components. Be careful not to duplicate the names with the original locales files (`src/plugins/locales`).
 
 4. Additionally, favicon can be replaced by a new one in public/favicon.png
 
