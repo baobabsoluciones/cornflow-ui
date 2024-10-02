@@ -158,8 +158,10 @@
             :headers="headers"
             :options="{ density: 'compact' }"
             :editionMode="editionMode"
+            :resetCurrentPage="resetPage"
             @create-item="createItem"
             @deleteItem="deleteItem"
+            @update:resetCurrentPage="handleResetPage"
           />
         </v-row>
         <v-row class="mt-5 mb-2 justify-center" v-if="canCheckData">
@@ -280,6 +282,7 @@ export default {
       searchText: '',
       filtersSelected: {},
       filters: {},
+      resetPage: false,
     }
   },
   created() {
@@ -290,6 +293,13 @@ export default {
     }
   },
   watch: {
+    selectedTable: {
+      handler(newVal, oldVal) {
+        if (newVal !== oldVal) {
+          this.resetPage = true
+        }
+      },
+    },
     showDataChecksTable: {
       handler() {
         if (!this.showDataChecksTable) {
@@ -498,6 +508,9 @@ export default {
     },
     handleDataChecksTabSelected(newTab) {
       this.checkSelectedTable = newTab
+    },
+    handleResetPage() {
+      this.resetPage = false
     },
     openSaveModal() {
       this.openConfirmationSaveModal = true

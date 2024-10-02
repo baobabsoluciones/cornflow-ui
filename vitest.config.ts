@@ -2,8 +2,6 @@ import { fileURLToPath } from 'url'
 import vue from '@vitejs/plugin-vue'
 
 export default {
-  rootDir: './src', // where your source code is located
-  testDir: './tests', // where your tests are located
   testMatch: '**/*.spec.ts', // pattern to find test files
   plugins: [vue()],
   resolve: {
@@ -28,6 +26,11 @@ export default {
         inline: ['vuetify'],
       },
     },
+    include: [
+      './tests/**/*.spec.ts', // specific tests
+      './src/app/tests/**/*.spec.ts', // global tests
+    ],
     // silent: true, // disable warnings
   },
+  testDir: '.', // set the root directory for tests
 }
