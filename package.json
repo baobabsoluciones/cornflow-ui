@@ -15,17 +15,17 @@
     "ajv": "^8.12.0",
     "exceljs": "^4.4.0",
     "jsonschema": "^1.4.1",
-    "mango-vue": "^0.1.7",
+    "mango-vue": "^0.1.9",
     "pinia": "^2.1.7",
     "prettier": "^3.2.5",
     "read-excel-file": "^5.7.1",
+    "rollup": ">=4.22.4",
     "vite-plugin-vuetify": "^2.0.2",
     "vue": "^3.3.11",
     "vue-i18n": "^9.9.0",
     "vue-router": "^4.3.0",
     "vuetify": "^3.5.17",
-    "webfontloader": "^1.6.28",
-    "rollup": ">=4.22.4"
+    "webfontloader": "^1.6.28"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.5",
