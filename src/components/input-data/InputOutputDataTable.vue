@@ -152,7 +152,7 @@
         </v-row>
       </template>
       <template #table="{ tabSelected }">
-        <v-row class="mt-8">
+        <v-row class="mt-4">
           <MDataTable
             :items="filteredDataTable"
             :headers="headers"
@@ -281,6 +281,7 @@ export default {
       showDataChecksTable: false,
       searchText: '',
       filtersSelected: {},
+      originalFilters: {},
       filters: {},
       resetPage: false,
     }
@@ -467,7 +468,8 @@ export default {
       this.formattedTableData.unshift({})
     },
     loadFilters() {
-      this.filters = this.getFilters()
+      this.originalFilters = this.getFilters()
+      this.filters = JSON.parse(JSON.stringify(this.originalFilters))
       if (this.execution instanceof LoadedExecution) {
         this.filtersSelected = this.execution.getFiltersPreference(this.type)
       }
@@ -479,7 +481,8 @@ export default {
       // Update the selected attribute in the filters computed property
       for (let key in this.filters) {
         if (this.filters.hasOwnProperty(key)) {
-          this.filters[key].selected = this.filtersSelected.hasOwnProperty(key)
+          this.filters[key].selected =
+            this.filtersSelected[this.selectedTable].hasOwnProperty(key)
         }
       }
     },
@@ -495,11 +498,7 @@ export default {
     },
     handleTabSelected(newTab) {
       this.selectedTable = newTab
-      this.filters = this.getFilters()
-
-      if (!this.filtersSelected[this.selectedTable]) {
-        this.filtersSelected[this.selectedTable] = {}
-      }
+      this.loadFilters()
 
       if (this.execution instanceof LoadedExecution) {
         this.execution.setSelectedTablePreference(newTab, this.type)
@@ -550,68 +549,62 @@ export default {
       this.searchText = search
     },
     handleFilters(filter) {
-      const newFilters = {
-        ...this.filtersSelected[this.selectedTable],
-      }
-
-      if (filter.value.length === 0) {
-        if (newFilters.hasOwnProperty(filter.key)) {
-          delete newFilters[filter.key]
+      try {
+        const newFilters = {
+          ...this.filtersSelected[this.selectedTable],
         }
-      } else {
-        newFilters[filter.key] = {
-          type: filter.type,
-          value: filter.value,
-        }
-      }
 
-      this.filtersSelected[this.selectedTable] = newFilters
-      this.filtersSelected = { ...this.filtersSelected } // Create a new object
-      if (this.execution instanceof LoadedExecution) {
-        this.execution.setFiltersPreference(this.filtersSelected, this.type)
-      }
-
-      // Update the selected attribute in the filters computed property
-      for (let key in this.filters) {
-        if (this.filters.hasOwnProperty(key)) {
-          this.filters[key].selected = newFilters.hasOwnProperty(key)
-
-          // Update the checked attribute for each option in filters[key].options
-          if (this.filters[key].options) {
-            this.filters[key].options.forEach((option) => {
-              option.checked =
-                newFilters[key] && newFilters[key].value.includes(option.value)
-            })
+        if (filter.value.length === 0) {
+          if (newFilters.hasOwnProperty(filter.key)) {
+            delete newFilters[filter.key]
+          }
+        } else {
+          newFilters[filter.key] = {
+            type: filter.type,
+            value: filter.value,
           }
         }
+
+        this.filtersSelected[this.selectedTable] = newFilters
+        this.filtersSelected = { ...this.filtersSelected } // Create a new object
+        if (this.execution instanceof LoadedExecution) {
+          this.execution.setFiltersPreference(this.filtersSelected, this.type)
+        }
+
+        // Update the selected attribute in the filters computed property
+        for (let key in this.filters) {
+          if (this.filters.hasOwnProperty(key)) {
+            this.filters[key].selected = newFilters.hasOwnProperty(key)
+
+            // Update the checked attribute for each option in filters[key].options
+            if (this.filters[key].options) {
+              this.filters[key].options.forEach((option) => {
+                option.checked =
+                  newFilters.hasOwnProperty(key) &&
+                  newFilters[key].value.includes(option.value)
+              })
+            }
+          }
+        }
+      } catch (error) {
+        console.error('An unexpected error occurred in handleFilters:', error)
       }
     },
     handleResetFilters() {
-      // Iterate over all the filter keys and set their selected attribute to false
-      for (let key in this.filters) {
-        if (this.filters.hasOwnProperty(key)) {
-          this.filters[key].selected = false
-
-          // Iterate over all options of each key and set checked to false
-          if (this.filters[key].options) {
-            this.filters[key].options.forEach((option) => {
-              option.checked = false
-            })
-          }
-        }
-      }
-
-      // Set filtersSelected to an empty object
+      // Reset filtersSelected to an empty object
       this.filtersSelected = {}
 
       // Set the filters in the execution method
       if (this.execution instanceof LoadedExecution) {
         this.execution.setFiltersPreference(this.filtersSelected, this.type)
       }
+      // Reset filters to originalFilters
+      this.filters = JSON.parse(JSON.stringify(this.originalFilters))
     },
   },
 }
 </script>
+
 <style scoped>
 ::v-deep .v-table {
   height: 55vh;
