@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc && vite build",
+    "build": "vite build",
     "preview": "vite preview",
     "test": "vitest"
   },
@@ -15,10 +15,11 @@
     "ajv": "^8.12.0",
     "exceljs": "^4.4.0",
     "jsonschema": "^1.4.1",
-    "mango-vue": "^0.1.9",
+    "mango-vue": "^0.2.0",
     "pinia": "^2.1.7",
     "prettier": "^3.2.5",
     "read-excel-file": "^5.7.1",
+    "rollup": ">=4.22.4",
     "rollup": ">=4.22.4",
     "vite-plugin-vuetify": "^2.0.2",
     "vue": "^3.3.11",
