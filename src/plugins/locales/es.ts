@@ -184,6 +184,8 @@ export default {
   },
   logIn: {
     subtitle: '¡Inicia sesión para empezar!',
+    azure_button: 'Iniciar sesión con Azure',
+    cognito_button: 'Iniciar sesión con AWS',
     username_textfield_label: 'Nombre de usuario',
     password_textfield_label: 'Contraseña',
     button_label: 'Iniciar sesión',
@@ -191,6 +193,7 @@ export default {
     alternative: 'Registrarse',
     snackbar_message_success: 'Inicio de sesión exitoso',
     snackbar_message_error: 'Credenciales incorrectas',
+    processing_auth: 'Procesando autenticación...',
   },
   logOut: {
     title: 'Cerrar sesión',

@@ -21,7 +21,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/',
     redirect: '/project-execution',
-    name: 'Project execution',
+    name: 'Home',
     component: IndexView,
     beforeEnter: (to, from, next) => {
       if (!AuthService.isAuthenticated() && to.name !== 'Sign In') {
@@ -64,11 +64,11 @@ const routes: RouteRecordRaw[] = [
       },
       ...dashboardRoutes,
     ],
-  },
+  }
 ]
 
 const router = createRouter({
-  history: createWebHashHistory(), // This enables hash mode
+  history: createWebHashHistory(),
   routes,
 })
 
@@ -78,16 +78,12 @@ router.beforeEach((to, from, next) => {
   const isTargetingAuthRequiredPage = to.path !== '/sign-in'
 
   if (!isAuthenticated && isTargetingAuthRequiredPage) {
-    // If the user is not authenticated and trying to access a page that requires authentication, redirect to sign-in
     next('/sign-in')
   } else if (isAuthenticated && isSignInPage) {
-    // If the user is authenticated but trying to access the sign-in page, redirect to the project execution page
     next('/project-execution')
   } else if (to.path === '/' && isAuthenticated) {
-    // If the user is authenticated and trying to access the root path, redirect to the project execution page
     next('/project-execution')
   } else {
-    // In all other cases, proceed as normal
     next()
   }
 })

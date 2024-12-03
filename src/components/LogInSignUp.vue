@@ -14,7 +14,7 @@
         </v-col>
       </v-card-title>
       <divider />
-      <v-card-subtitle v-if="!signUpMode">
+      <v-card-subtitle v-if="!signUpMode" :class="{ 'text-center': !isCornflowAuth }">
         {{ $t('logIn.subtitle') }}
       </v-card-subtitle>
       <v-card-subtitle v-else>
@@ -23,7 +23,7 @@
       <divider />
 
       <v-card-text>
-        <v-form v-if="!signUpMode">
+        <v-form v-if="!signUpMode && isCornflowAuth">
           <div class="form-content">
             <label class="label">{{
               $t('logIn.username_textfield_label')
@@ -65,7 +65,8 @@
             </v-text-field>
           </div>
         </v-form>
-        <v-form v-else>
+
+        <v-form v-else-if="signUpMode && isCornflowAuth">
           <div class="form-content">
             <label class="label mt-3">{{
               $t('signUp.email_textfield_label')
@@ -151,8 +152,33 @@
         </v-form>
       </v-card-text>
       <v-card-actions>
-        <v-col flex v-if="!signUpMode">
-          <v-row justify="center">
+        <v-col flex>
+          <v-row justify="center" v-if="isAzureAuth">
+            <MButton
+              :label="$t('logIn.azure_button')"
+              color="#0078d4"
+              rounded="xl"
+              :variant="'flat'"
+              style="margin-top: -32px; margin-bottom: 16px"
+              @click="submitLogIn()"
+            >
+
+            </MButton>
+          </v-row>
+
+          <v-row justify="center" v-else-if="isCognitoAuth">
+            <MButton
+              :label="$t('logIn.cognito_button')"
+              color="#FF9900"
+              rounded="xl"
+              :variant="'flat'"
+              style="margin-top: -32px; margin-bottom: 16px"
+              @click="submitLogIn()"
+            >
+            </MButton>
+          </v-row>
+
+          <v-row justify="center" v-else>
             <MButton
               :label="$t('logIn.button_label')"
               color="#0460bf"
@@ -162,7 +188,8 @@
               @click="submitLogIn()"
             />
           </v-row>
-          <v-row justify="center" v-if="enableSignUp">
+
+          <v-row justify="center" v-if="enableSignUp && isCornflowAuth">
             <span style="color: gray"
               >{{ $t('logIn.question') }}
               <a
@@ -171,30 +198,6 @@
                 style="color: inherit; font-weight: inherit"
                 >{{ $t('logIn.alternative') }}</a
               >
-            </span>
-          </v-row>
-        </v-col>
-        <v-col v-else>
-          <v-row justify="center">
-            <MButton
-              :label="$t('signUp.button_label')"
-              color="#0460bf"
-              rounded="xl"
-              :variant="'flat'"
-              style="margin-top: -32px; margin-bottom: 16px"
-              @click="submitSignUp()"
-            />
-          </v-row>
-          <v-row justify="center">
-            <span style="color: gray"
-              >{{ $t('signUp.question') }}
-              <a
-                href="#"
-                @click="signUpMode = false"
-                style="color: inherit; font-weight: inherit"
-              >
-                {{ $t('signUp.alternative') }}
-              </a>
             </span>
           </v-row>
         </v-col>
@@ -223,9 +226,10 @@
   </footer>
 </template>
 <script>
-import AuthService from '@/services/AuthService'
 import { inject } from 'vue'
 import { useGeneralStore } from '@/stores/general'
+import auth from '@/services/AuthServiceFactory'
+import config from '@/config'
 
 export default {
   data() {
@@ -291,17 +295,35 @@ export default {
     enableSignUp() {
       return this.store.appConfig.parameters.enableSignup
     },
+    isAzureAuth() {
+      return config.auth.type === 'azure'
+    },
+    isCognitoAuth() {
+      return config.auth.type === 'cognito'
+    },
+    isCornflowAuth() {
+      return config.auth.type === 'cornflow'
+    }
   },
   methods: {
     async submitLogIn() {
-      const isAuthenticated = await AuthService.login(
-        this.username,
-        this.password,
-      )
-      if (isAuthenticated) {
-        this.$router.push('/')
-        this.showSnackbar(this.$t('logIn.snackbar_message_success'), 'success')
-      } else {
+      try {
+        let isAuthenticated;
+        
+        if (!this.isCornflowAuth) {
+          isAuthenticated = await auth.login()
+        } else {
+          isAuthenticated = await auth.login(this.username, this.password)
+        }
+
+        if (isAuthenticated) {
+          this.$router.push('/')
+          this.showSnackbar(this.$t('logIn.snackbar_message_success'), 'success')
+        } else {
+          this.showSnackbar(this.$t('logIn.snackbar_message_error'), 'error')
+        }
+      } catch (error) {
+        console.error('Login error:', error)
         this.showSnackbar(this.$t('logIn.snackbar_message_error'), 'error')
       }
     },
@@ -309,7 +331,7 @@ export default {
       if (!this.enableSignUp) {
         return
       }
-      const isRegistered = await AuthService.signup(
+      const isRegistered = await auth.signup(
         this.newUser.email,
         this.newUser.username,
         this.newUser.password,
@@ -331,5 +353,8 @@ export default {
 }
 .justify-center {
   justify-content: center;
+}
+.text-center {
+  text-align: center;
 }
 </style>
