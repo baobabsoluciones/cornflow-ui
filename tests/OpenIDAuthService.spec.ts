@@ -16,12 +16,15 @@ const mockConfig = vi.hoisted(() => ({
   },
 }))
 
-// Mock API module
+// Mock API module with proper response format
 vi.mock('@/api/Api', () => ({
   default: {
     post: vi.fn().mockImplementation(() => Promise.resolve({
-      token: 'backend-token',
-      id: 'user-id'
+      status: 200,
+      content: {
+        token: 'backend-token',
+        id: 'user-id'
+      }
     }))
   }
 }))
@@ -84,7 +87,7 @@ describe('OpenIDAuthService', () => {
       const mockToken = createMockToken({ sub: 'user123' })
       const msalInstance = {
         initialize: vi.fn().mockResolvedValue(undefined),
-        loginPopup: vi.fn().mockResolvedValue({ idToken: mockToken }),
+        loginPopup: vi.fn(),
         logout: vi.fn(),
       }
       vi.mocked(PublicClientApplication).mockImplementation(() => msalInstance as any)
@@ -109,7 +112,12 @@ describe('OpenIDAuthService', () => {
       const mockToken = createMockToken({ sub: 'user123' })
       const msalInstance = {
         initialize: vi.fn().mockResolvedValue(undefined),
-        loginPopup: vi.fn().mockResolvedValue({ idToken: mockToken }),
+        loginPopup: vi.fn().mockResolvedValue({ 
+          idToken: mockToken,
+          account: {
+            username: 'test@example.com'
+          }
+        }),
         logout: vi.fn(),
       }
       vi.mocked(PublicClientApplication).mockImplementation(() => msalInstance as any)
@@ -181,7 +189,7 @@ describe('OpenIDAuthService', () => {
     })
 
     test('login success with Cognito', async () => {
-      const mockToken = createMockToken({ sub: 'user123' })
+      const mockToken = createMockToken({ sub: 'user123', email: 'test@example.com' })
       
       vi.mocked(signIn).mockImplementation(() => Promise.resolve({
         isSignedIn: true,
@@ -194,7 +202,10 @@ describe('OpenIDAuthService', () => {
         tokens: {
           idToken: {
             toString: () => mockToken,
-            payload: { sub: 'user123' }
+            payload: { 
+              sub: 'user123',
+              email: 'test@example.com'
+            }
           }
         }
       } as any))
