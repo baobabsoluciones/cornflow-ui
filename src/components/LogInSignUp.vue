@@ -194,6 +194,7 @@
               >{{ $t('logIn.question') }}
               <a
                 href="#"
+                data-test="signup-link"
                 @click="signUpMode = true"
                 style="color: inherit; font-weight: inherit"
                 >{{ $t('logIn.alternative') }}</a

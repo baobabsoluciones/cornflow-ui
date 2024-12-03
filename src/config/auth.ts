@@ -9,12 +9,12 @@ export interface OpenIDConfig {
 }
 
 export interface AuthConfig {
-  type: 'cornflow' | 'openid';
+  type: 'cornflow' | 'openid' | 'azure' | 'cognito';
   openId?: OpenIDConfig;
 }
 
 const auth: AuthConfig = {
-  type: process.env.VUE_APP_AUTH_TYPE || 'cornflow',
+  type: (process.env.VUE_APP_AUTH_TYPE as AuthConfig['type']) || 'cornflow',
   openId: process.env.VUE_APP_AUTH_TYPE === 'openid' ? {
     clientId: process.env.VUE_APP_OPENID_CLIENT_ID || '',
     clientSecret: process.env.VUE_APP_OPENID_CLIENT_SECRET || '',
