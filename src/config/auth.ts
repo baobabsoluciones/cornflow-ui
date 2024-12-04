@@ -1,29 +1,19 @@
-export interface OpenIDConfig {
-  clientId: string;
-  clientSecret: string;
-  authorizationEndpoint: string;
-  tokenEndpoint: string;
-  redirectUri: string;
-  scope: string;
-  logoutUrl?: string;
-}
-
 export interface AuthConfig {
-  type: 'cornflow' | 'openid' | 'azure' | 'cognito';
-  openId?: OpenIDConfig;
+  type: 'cornflow' | 'azure' | 'cognito';
+  clientId?: string;
+  userPoolId?: string;
+  authority?: string;
+  redirectUri?: string;
+  domain?: string;
 }
 
 const auth: AuthConfig = {
-  type: (process.env.VUE_APP_AUTH_TYPE as AuthConfig['type']) || 'cornflow',
-  openId: process.env.VUE_APP_AUTH_TYPE === 'openid' ? {
-    clientId: process.env.VUE_APP_OPENID_CLIENT_ID || '',
-    clientSecret: process.env.VUE_APP_OPENID_CLIENT_SECRET || '',
-    authorizationEndpoint: process.env.VUE_APP_OPENID_AUTH_ENDPOINT || '',
-    tokenEndpoint: process.env.VUE_APP_OPENID_TOKEN_ENDPOINT || '',
-    redirectUri: process.env.VUE_APP_OPENID_REDIRECT_URI || '',
-    scope: process.env.VUE_APP_OPENID_SCOPE || 'openid profile email',
-    logoutUrl: process.env.VUE_APP_OPENID_LOGOUT_URL,
-  } : undefined
+  type: (import.meta.env.VITE_APP_AUTH_TYPE as AuthConfig['type']) || 'cornflow',
+  clientId: import.meta.env.VITE_APP_AUTH_CLIENT_ID,
+  userPoolId: import.meta.env.VITE_APP_AUTH_USER_POOL_ID,
+  authority: import.meta.env.VITE_APP_AUTH_AUTHORITY,
+  redirectUri: import.meta.env.VITE_APP_AUTH_REDIRECT_URI,
+  domain: `https://${import.meta.env.VITE_APP_AUTH_DOMAIN}`,
 };
 
 export default auth;

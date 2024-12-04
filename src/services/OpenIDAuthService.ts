@@ -1,7 +1,7 @@
 import { AuthProvider } from '@/interfaces/AuthProvider'
 import { PublicClientApplication, Configuration } from '@azure/msal-browser'
 import { Amplify } from 'aws-amplify'
-import { signIn, signOut, getCurrentUser, fetchAuthSession } from 'aws-amplify/auth'
+import { signInWithRedirect, signOut, fetchAuthSession } from 'aws-amplify/auth'
 import client from '@/api/Api'
 import config from '@/config'
 
@@ -43,23 +43,36 @@ export class OpenIDAuthService implements AuthProvider {
 
   private async initializeCognito() {
     try {
-      Amplify.configure({
+      const redirectUrls = [window.location.origin];
+      
+      if (!config.auth.domain) {
+        throw new Error('Cognito domain is not configured');
+      }
+
+      const cognitoConfig = {
         Auth: {
           Cognito: {
-            region: config.auth.region,
             userPoolId: config.auth.userPoolId,
             userPoolClientId: config.auth.clientId,
-            oauth: {
-              redirectSignIn: config.auth.redirectUri,
-              redirectSignOut: window.location.origin,
+            signUpVerificationMethod: 'code',
+            loginWith: {
+              oauth: {
+                domain: config.auth.domain,
+                scopes: ['openid', 'email', 'profile'],
+                redirectSignIn: redirectUrls,
+                redirectSignOut: redirectUrls,
+                responseType: 'code'
+              }
             }
           }
         }
-      })
-      this.initialized = true
+      };
+
+      Amplify.configure(cognitoConfig);
+      this.initialized = true;
     } catch (error) {
-      console.error('Failed to initialize Cognito:', error)
-      throw error
+      console.error('Failed to initialize Cognito:', error);
+      throw error;
     }
   }
 
@@ -136,7 +149,7 @@ export class OpenIDAuthService implements AuthProvider {
         }
 
         try {
-          const user = await signIn()
+          await signInWithRedirect()
           const session = await fetchAuthSession()
           const idToken = session.tokens?.idToken?.toString()
 

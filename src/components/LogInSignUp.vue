@@ -311,10 +311,10 @@ export default {
       try {
         let isAuthenticated;
         
-        if (!this.isCornflowAuth) {
-          isAuthenticated = await auth.login()
-        } else {
+        if (this.isCornflowAuth) {
           isAuthenticated = await auth.login(this.username, this.password)
+        } else {
+          isAuthenticated = await auth.login()
         }
 
         if (isAuthenticated) {

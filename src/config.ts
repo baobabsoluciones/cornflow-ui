@@ -6,6 +6,7 @@ export default {
     authority: import.meta.env.VITE_APP_AUTH_AUTHORITY,
     redirectUri: import.meta.env.VITE_APP_AUTH_REDIRECT_URI,
     region: import.meta.env.VITE_APP_AUTH_REGION,
-    userPoolId: import.meta.env.VITE_APP_AUTH_USER_POOL_ID
+    userPoolId: import.meta.env.VITE_APP_AUTH_USER_POOL_ID,
+    domain: import.meta.env.VITE_APP_AUTH_DOMAIN
   }
 };
