@@ -108,7 +108,7 @@ const app = {
     parameters: {
       isPilotVersion: false,
       showTimeLimit: true,
-      enableSignup: true,
+      enableSignup: false,
       schema: 'rostering',
       name: 'Rostering',
       logStates: {

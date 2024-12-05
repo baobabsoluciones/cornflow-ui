@@ -177,6 +177,8 @@ export default {
   },
   logIn: {
     subtitle: 'Log in to get started!',
+    azure_button: 'Login with Azure',
+    cognito_button: 'Login with AWS',
     username_textfield_label: 'Username',
     password_textfield_label: 'Password',
     button_label: 'Log in',
@@ -184,6 +186,7 @@ export default {
     alternative: 'Sign up',
     snackbar_message_success: 'Successfully logged in',
     snackbar_message_error: 'Incorrect credentials',
+    processing_auth: 'Processing authentication...',
   },
   logOut: {
     title: 'Log out',

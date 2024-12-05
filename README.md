@@ -12,6 +12,7 @@ To create a new project based on this base project, follow these steps:
 
    - `VUE_APP_18N_LOCALE`: The main language of the application.
    - `VUE_APP_BASE_URL`: The backend base URL for the application endpoints.
+   - `VITE_APP_AUTH_TYPE`: The authentication type for the application. Possible values are `cornflow`, `azure`, and `cognito`. More information about authentication can be found in the [Authentication](#authentication) section.
 
 3. **Configure the Application**: Navigate to the `src/app` directory and configure the following files:
 
@@ -168,6 +169,33 @@ To create a new project based on this base project, follow these steps:
 It's important not to edit any other file or folders. Only the folders, files and images just mentioned can be edited.
 
 \*\*Note: To save dashboard preferences for a single execution, including filters, checks, and date ranges, utilize the `setDashboardPreference` method from the `LoadedExecution.ts` class. Subsequently, retrieve these preferences using the `getDashboardPreference` method. The data type is custom, allowing for flexible usage as needed.
+
+## Authentication
+
+The application supports three authentication methods. Note that for any of these methods to work, the server must be properly configured to accept the corresponding authentication type.
+
+### 1. Cornflow Authentication (Default)
+```env
+VITE_APP_AUTH_TYPE=cornflow
+```
+- No additional configuration needed
+
+### 2. Azure OpenID Authentication
+```env
+VITE_APP_AUTH_TYPE=azure
+VITE_APP_AUTH_CLIENT_ID=your_azure_client_id
+VITE_APP_AUTH_AUTHORITY=your_azure_authority
+```
+
+### 3. AWS Cognito Authentication
+```env
+VITE_APP_AUTH_TYPE=cognito
+VITE_APP_AUTH_CLIENT_ID=your_cognito_client_id
+VITE_APP_AUTH_REGION=your_cognito_region
+VITE_APP_AUTH_USER_POOL_ID=your_cognito_user_pool_id
+```
+
+The authentication type can be changed by modifying the `VITE_APP_AUTH_TYPE` variable in the `.env` file.
 
 ## Installing
 

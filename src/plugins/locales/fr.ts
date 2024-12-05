@@ -169,6 +169,8 @@ export default {
   },
   logIn: {
     subtitle: 'Connectez-vous pour commencer !',
+    azure_button: 'Se connecter avec Azure',
+    cognito_button: 'Se connecter avec AWS',
     username_textfield_label: "Nom d'utilisateur",
     password_textfield_label: 'Mot de passe',
     button_label: 'Se connecter',
@@ -176,6 +178,7 @@ export default {
     alternative: "S'inscrire",
     snackbar_message_success: 'Connexion réussie',
     snackbar_message_error: 'Identifiants incorrects',
+    processing_auth: "Traitement de l'authentification...",
   },
   logOut: {
     title: 'Déconnexion',
