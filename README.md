@@ -13,7 +13,7 @@ To create a new project based on this base project, follow these steps:
    - `VUE_APP_18N_LOCALE`: The main language of the application.
    - `VUE_APP_I18N_FALLBACK_LOCALE`: The fallback language of the application.
    - `VITE_APP_BACKEND_URL`: The backend base URL for the application endpoints.
-   - `VITE_APP_AUTH_TYPE`: The authentication type for the application. Possible values are `cornflow`, `azure`, and `cognito`.
+   - `VITE_APP_AUTH_TYPE`: The authentication type for the application. Possible values are `cornflow`, `azure`, and `cognito`. More information about authentication can be found in the [Authentication](#authentication) section.
    - `VITE_APP_SCHEMA`: The schema name for the application (e.g., 'rostering').
    - `VITE_APP_NAME`: The display name of the application.
 
