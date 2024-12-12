@@ -8,10 +8,10 @@ import DashboardView from '@/views/DashboardView.vue'
 import InputDataView from '@/views/InputDataView.vue'
 import OutputDataView from '@/views/OutputDataView.vue'
 import UserSettingsView from '@/views/UserSettingsView.vue'
-import AuthService from '@/services/AuthService'
-import config from '@/app/config'
+import auth from '@/services/AuthServiceFactory'
+import config from '@/config'
 
-const dashboardRoutes = config.getDashboardRoutes()
+const dashboardRoutes = config.dashboardRoutes || []
 
 const routes: RouteRecordRaw[] = [
   {
@@ -24,9 +24,7 @@ const routes: RouteRecordRaw[] = [
     name: 'Home',
     component: IndexView,
     beforeEnter: (to, from, next) => {
-      if (!AuthService.isAuthenticated() && to.name !== 'Sign In') {
-        console.log(to.name)
-        console.log('No está autenticado, al sign in')
+      if (!auth.isAuthenticated() && to.name !== 'Sign In') {
         next('/sign-in')
       }
       next()
@@ -72,12 +70,26 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach((to, from, next) => {
-  const isAuthenticated = AuthService.isAuthenticated()
+router.beforeEach(async (to, from, next) => {
+  const isAuthenticated = auth.isAuthenticated()
   const isSignInPage = to.path === '/sign-in'
   const isTargetingAuthRequiredPage = to.path !== '/sign-in'
+  const isExternalAuth = config.auth.type !== 'cornflow'
 
   if (!isAuthenticated && isTargetingAuthRequiredPage) {
+    if (isExternalAuth) {
+      try {
+        const loginResult = await auth.login()
+        if (!loginResult) {
+          next('/sign-in')
+        }
+        // Don't call next() here as we're being redirected
+      } catch (error) {
+        console.error('Login failed:', error)
+        next('/sign-in')
+      }
+      return
+    }
     next('/sign-in')
   } else if (isAuthenticated && isSignInPage) {
     next('/project-execution')

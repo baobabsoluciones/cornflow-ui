@@ -8,16 +8,21 @@ import config from '@/config'
 export class OpenIDAuthService implements AuthProvider {
   private msalInstance: PublicClientApplication | null = null
   private initialized: boolean = false
+  private handlingRedirect: boolean = false
+  private loginAttempted: boolean = false
+  private initializationPromise: Promise<void> | null = null
 
   constructor(private provider: 'azure' | 'cognito') {
     if (provider === 'azure') {
-      this.initializeAzure()
+      this.initializationPromise = this.initializeAzure()
     } else if (provider === 'cognito') {
-      this.initializeCognito()
+      this.initializationPromise = this.initializeCognito()
     }
   }
 
   private async initializeAzure() {
+    if (this.initialized) return
+
     try {
       const msalConfig: Configuration = {
         auth: {
@@ -35,8 +40,25 @@ export class OpenIDAuthService implements AuthProvider {
       this.msalInstance = new PublicClientApplication(msalConfig)
       await this.msalInstance.initialize()
       this.initialized = true
+
+      if (!this.handlingRedirect) {
+        this.handlingRedirect = true
+        try {
+          const response = await this.msalInstance.handleRedirectPromise()
+          console.log('Redirect Response:', response)
+          if (response) {
+            await this.handleAuthResponse(response)
+          }
+        } catch (error) {
+          console.error('Failed to handle redirect:', error)
+          this.loginAttempted = true
+        } finally {
+          this.handlingRedirect = false
+        }
+      }
     } catch (error) {
       console.error('Failed to initialize MSAL:', error)
+      this.handlingRedirect = false
       throw error
     }
   }
@@ -78,7 +100,15 @@ export class OpenIDAuthService implements AuthProvider {
 
   private decodeToken(token: string): any {
     try {
+      if (!token) {
+        console.error('No token provided to decode')
+        return null
+      }
       const base64Url = token.split('.')[1]
+      if (!base64Url) {
+        console.error('Invalid token format')
+        return null
+      }
       const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
       const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
         return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
@@ -92,57 +122,31 @@ export class OpenIDAuthService implements AuthProvider {
 
   async login(): Promise<boolean> {
     try {
+      if (this.initializationPromise) {
+        await this.initializationPromise
+      }
+
       if (this.provider === 'azure' && this.msalInstance) {
-        if (!this.initialized) {
-          await this.initializeAzure()
+        if (this.handlingRedirect) {
+          return false
+        }
+
+        if (this.isAuthenticated()) {
+          return true
+        }
+
+        if (this.loginAttempted) {
+          return false
         }
 
         const loginRequest = {
-          scopes: ['openid', 'profile', 'email']
+          scopes: ['openid', 'profile', 'email', 'User.Read'],
+          prompt: 'select_account'
         }
 
-        const authResult = await this.msalInstance.loginPopup(loginRequest)
-        
-        if (authResult) {
-          try {
-            const tokenClaims = this.decodeToken(authResult.idToken)
-
-            sessionStorage.setItem('openIdToken', authResult.idToken)
-            const response = await client.post(
-              '/login/',
-              { 
-                token: authResult.idToken,
-              },
-              { 'Content-Type': 'application/json' }
-            )
-
-            if (response.status === 200) {
-              const backendToken = response.content.token
-              
-              sessionStorage.setItem('isAuthenticated', 'true')
-              sessionStorage.setItem('token', backendToken)
-              sessionStorage.setItem('userId', response.content.id)
-              
-              if (tokenClaims) {
-                sessionStorage.setItem('username', tokenClaims.preferred_username || '')
-                sessionStorage.setItem('name', tokenClaims.name || '')
-                sessionStorage.setItem('email', tokenClaims.email || '')
-                sessionStorage.setItem('given_name', tokenClaims.given_name || '')
-                sessionStorage.setItem('family_name', tokenClaims.family_name || '')
-              }
-              
-              client.getHeaders = () => ({
-                Accept: 'application/json',
-                Authorization: `access_token ${backendToken}`
-              })
-
-              return true
-            }
-          } catch (error) {
-            console.error('Backend authentication failed:', error)
-            throw error
-          }
-        }
+        this.loginAttempted = true
+        await this.msalInstance.loginRedirect(loginRequest)
+        return true
       } else if (this.provider === 'cognito') {
         if (!this.initialized) {
           await this.initializeCognito()
@@ -201,12 +205,107 @@ export class OpenIDAuthService implements AuthProvider {
       }
       return false
     } catch (error) {
+      this.loginAttempted = true
       console.error('OpenIDAuthService: Login failed:', error)
       throw error
     }
   }
 
+  private async handleAuthResponse(response: any) {
+    if (response) {
+      try {
+        console.log('Auth Response:', {
+          hasIdToken: !!response.idToken,
+          hasAccessToken: !!response.accessToken,
+          account: response.account
+        })
+
+        const token = response.idToken || response.accessToken
+        const tokenClaims = this.decodeToken(token)
+        
+        if (!tokenClaims) {
+          this.loginAttempted = false
+          await this.retryAuthentication()
+          return
+        }
+
+        console.log('Token Claims:', tokenClaims)
+
+        sessionStorage.setItem('openIdToken', token)
+        
+        try {
+          const backendResponse = await client.post(
+            '/login/',
+            { 
+              token: token,
+              provider: 'azure',
+              grant_type: 'authorization_code'
+            },
+            { 
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            }
+          )
+
+          if (backendResponse.status === 200) {
+            const backendToken = backendResponse.content.token
+            
+            sessionStorage.setItem('isAuthenticated', 'true')
+            sessionStorage.setItem('token', backendToken)
+            sessionStorage.setItem('userId', backendResponse.content.id)
+            
+            if (tokenClaims) {
+              sessionStorage.setItem('username', tokenClaims.preferred_username || tokenClaims.email || '')
+              sessionStorage.setItem('name', tokenClaims.name || '')
+              sessionStorage.setItem('email', tokenClaims.email || tokenClaims.preferred_username || '')
+              sessionStorage.setItem('given_name', tokenClaims.given_name || '')
+              sessionStorage.setItem('family_name', tokenClaims.family_name || '')
+            }
+            
+            client.getHeaders = () => ({
+              Accept: 'application/json',
+              Authorization: `access_token ${backendToken}`
+            })
+
+            window.location.replace('/')
+          } else {
+            console.error('Backend Response:', backendResponse)
+            await this.retryAuthentication()
+          }
+        } catch (error) {
+          console.error('Backend authentication failed:', error)
+          if (error.response?.status === 400) {
+            await this.retryAuthentication()
+          } else {
+            throw error
+          }
+        }
+      } catch (error) {
+        console.error('Authentication error:', error)
+        await this.retryAuthentication()
+      }
+    }
+  }
+
+  private async retryAuthentication() {
+    this.loginAttempted = false
+    
+    sessionStorage.removeItem('openIdToken')
+    sessionStorage.removeItem('token')
+    sessionStorage.setItem('isAuthenticated', 'false')
+
+    if (this.provider === 'azure' && this.msalInstance) {
+      await this.msalInstance.loginRedirect({
+        scopes: ['openid', 'profile', 'email', 'User.Read'],
+        prompt: 'select_account'
+      })
+    } else if (this.provider === 'cognito') {
+      await signInWithRedirect()
+    }
+  }
+
   logout(): void {
+    this.loginAttempted = false
     sessionStorage.setItem('isAuthenticated', 'false')
     sessionStorage.removeItem('openIdToken')
     sessionStorage.removeItem('token')
@@ -218,7 +317,7 @@ export class OpenIDAuthService implements AuthProvider {
     sessionStorage.removeItem('family_name')
     
     if (this.provider === 'azure' && this.msalInstance) {
-      this.msalInstance.logout({
+      this.msalInstance.logoutRedirect({
         postLogoutRedirectUri: window.location.origin
       })
     } else if (this.provider === 'cognito') {
