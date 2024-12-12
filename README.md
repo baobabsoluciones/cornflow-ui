@@ -11,12 +11,15 @@ To create a new project based on this base project, follow these steps:
 2. **Configure the .env File**: Edit the `.env` file to set the following variables:
 
    - `VUE_APP_18N_LOCALE`: The main language of the application.
-   - `VUE_APP_BASE_URL`: The backend base URL for the application endpoints.
-   - `VITE_APP_AUTH_TYPE`: The authentication type for the application. Possible values are `cornflow`, `azure`, and `cognito`. More information about authentication can be found in the [Authentication](#authentication) section.
+   - `VUE_APP_I18N_FALLBACK_LOCALE`: The fallback language of the application.
+   - `VITE_APP_BACKEND_URL`: The backend base URL for the application endpoints.
+   - `VITE_APP_AUTH_TYPE`: The authentication type for the application. Possible values are `cornflow`, `azure`, and `cognito`.
+   - `VITE_APP_SCHEMA`: The schema name for the application (e.g., 'rostering').
+   - `VITE_APP_NAME`: The display name of the application.
 
 3. **Configure the Application**: Navigate to the `src/app` directory and configure the following files:
 
-   - `config.ts`: This is the main configuration file for the application. Here, you should define an object that specifies the core functionalities, dashboard layout, dashboard pages, and dashboard routes for the application. See the example below:
+   - `config.ts`: This is the main configuration file for the application. Here, you should define an object that specifies the core functionalities, dashboard layout, dashboard pages, and dashboard routes for the application. The schema and name will be automatically read from environment variables. See the example below:
 
    ```typescript
    {
