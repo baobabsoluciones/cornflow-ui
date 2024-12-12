@@ -4,6 +4,7 @@
     style="height: 100vh; background-color: var(--primary-light-variant)"
   >
     <v-card
+      v-if="isCornflowAuth"
       flat
       width="25%"
       style="background-color: var(--primary-light-variant)"
@@ -14,7 +15,7 @@
         </v-col>
       </v-card-title>
       <divider />
-      <v-card-subtitle v-if="!signUpMode" :class="{ 'text-center': !isCornflowAuth }">
+      <v-card-subtitle v-if="!signUpMode">
         {{ $t('logIn.subtitle') }}
       </v-card-subtitle>
       <v-card-subtitle v-else>
@@ -23,7 +24,7 @@
       <divider />
 
       <v-card-text>
-        <v-form v-if="!signUpMode && isCornflowAuth">
+        <v-form v-if="!signUpMode">
           <div class="form-content">
             <label class="label">{{
               $t('logIn.username_textfield_label')
@@ -66,7 +67,7 @@
           </div>
         </v-form>
 
-        <v-form v-else-if="signUpMode && isCornflowAuth">
+        <v-form v-else>
           <div class="form-content">
             <label class="label mt-3">{{
               $t('signUp.email_textfield_label')
@@ -153,32 +154,7 @@
       </v-card-text>
       <v-card-actions>
         <v-col flex>
-          <v-row justify="center" v-if="isAzureAuth">
-            <MButton
-              :label="$t('logIn.azure_button')"
-              color="#0078d4"
-              rounded="xl"
-              :variant="'flat'"
-              style="margin-top: -32px; margin-bottom: 16px"
-              @click="submitLogIn()"
-            >
-
-            </MButton>
-          </v-row>
-
-          <v-row justify="center" v-else-if="isCognitoAuth">
-            <MButton
-              :label="$t('logIn.cognito_button')"
-              color="#FF9900"
-              rounded="xl"
-              :variant="'flat'"
-              style="margin-top: -32px; margin-bottom: 16px"
-              @click="submitLogIn()"
-            >
-            </MButton>
-          </v-row>
-
-          <v-row justify="center" v-else>
+          <v-row justify="center">
             <MButton
               :label="$t('logIn.button_label')"
               color="#0460bf"
@@ -189,7 +165,7 @@
             />
           </v-row>
 
-          <v-row justify="center" v-if="enableSignUp && isCornflowAuth">
+          <v-row justify="center" v-if="enableSignUp">
             <span style="color: gray"
               >{{ $t('logIn.question') }}
               <a
@@ -203,6 +179,29 @@
           </v-row>
         </v-col>
       </v-card-actions>
+    </v-card>
+    <v-card
+      v-else
+      flat
+      width="25%"
+      class="d-flex flex-column align-center"
+      style="background-color: var(--primary-light-variant)"
+    >
+      <v-card-title>
+        <v-col>
+          <v-img contain src="@\app\assets\logo\full_logo.png" height="48px" />
+        </v-col>
+      </v-card-title>
+      <v-card-text class="text-center">
+        {{ $t('logIn.redirecting') }}
+      </v-card-text>
+      <div class="d-flex justify-center align-center" style="flex: 1;">
+        <v-progress-circular
+          indeterminate
+          color="primary"
+          class="mb-4"
+        ></v-progress-circular>
+      </div>
     </v-card>
   </div>
   <footer
@@ -291,6 +290,9 @@ export default {
   },
   created() {
     this.showSnackbar = inject('showSnackbar')
+    if (!this.isCornflowAuth) {
+      this.initiateExternalAuth()
+    }
   },
   computed: {
     enableSignUp() {
@@ -342,6 +344,14 @@ export default {
         this.signUpMode = false
       } else {
         this.showSnackbar(this.$t('signUp.snackbar_message_error'), 'error')
+      }
+    },
+    async initiateExternalAuth() {
+      try {
+        await auth.login()
+      } catch (error) {
+        console.error('External auth login failed:', error)
+        this.showSnackbar(this.$t('logIn.snackbar_message_error'), 'error')
       }
     },
   },
