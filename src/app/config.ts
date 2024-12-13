@@ -109,8 +109,8 @@ const app = {
       isPilotVersion: false,
       showTimeLimit: true,
       enableSignup: false,
-      schema: 'rostering',
-      name: 'Rostering',
+      schema: import.meta.env.VITE_APP_SCHEMA || 'rostering',
+      name: import.meta.env.VITE_APP_NAME || 'Rostering',
       logStates: {
         1: {
           code: i18n.global.t('executionTable.optimal'),

@@ -670,7 +670,7 @@ export const useGeneralStore = defineStore('general', {
     },
 
     getSchemaName(): string {
-      return this.appConfig.parameters.schema
+      return import.meta.env.VITE_APP_SCHEMA || this.appConfig.parameters.schema
     },
 
     getSchemaConfig(): SchemaConfig {
