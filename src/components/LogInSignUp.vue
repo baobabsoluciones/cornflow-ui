@@ -228,7 +228,7 @@
 <script>
 import { inject } from 'vue'
 import { useGeneralStore } from '@/stores/general'
-import auth from '@/services/AuthServiceFactory'
+import getAuthService from '@/services/AuthServiceFactory'
 import config from '@/config'
 
 export default {
@@ -286,10 +286,17 @@ export default {
         match: (value) =>
           value === this.newUser.password || this.$t('rules.password_match'),
       },
+      auth: null,
     }
   },
-  created() {
+  async created() {
     this.showSnackbar = inject('showSnackbar')
+    console.log('Auth config:', config.auth)
+    
+    // Get initialized auth service
+    this.auth = await getAuthService()
+    console.log('Auth service initialized:', this.auth.constructor.name)
+    
     if (!this.isCornflowAuth) {
       this.initiateExternalAuth()
     }
@@ -299,24 +306,30 @@ export default {
       return this.store.appConfig.parameters.enableSignup
     },
     isAzureAuth() {
-      return config.auth.type === 'azure'
+      const isAzure = config.auth.type === 'azure'
+      console.log('Is Azure auth:', isAzure)
+      return isAzure
     },
     isCognitoAuth() {
-      return config.auth.type === 'cognito'
+      const isCognito = config.auth.type === 'cognito'
+      console.log('Is Cognito auth:', isCognito)
+      return isCognito
     },
     isCornflowAuth() {
-      return config.auth.type === 'cornflow'
+      const isCornflow = config.auth.type === 'cornflow'
+      console.log('Is Cornflow auth:', isCornflow)
+      return isCornflow
     }
   },
   methods: {
     async submitLogIn() {
       try {
-        let isAuthenticated;
+        let isAuthenticated
         
         if (this.isCornflowAuth) {
-          isAuthenticated = await auth.login(this.username, this.password)
+          isAuthenticated = await this.auth.login(this.username, this.password)
         } else {
-          isAuthenticated = await auth.login()
+          isAuthenticated = await this.auth.login()
         }
 
         if (isAuthenticated) {
@@ -334,7 +347,7 @@ export default {
       if (!this.enableSignUp) {
         return
       }
-      const isRegistered = await auth.signup(
+      const isRegistered = await this.auth.signup(
         this.newUser.email,
         this.newUser.username,
         this.newUser.password,
@@ -348,7 +361,11 @@ export default {
     },
     async initiateExternalAuth() {
       try {
-        await auth.login()
+        console.log('Initiating external auth...')
+        console.log('Auth type:', config.auth.type)
+        console.log('Is Cornflow:', this.isCornflowAuth)
+        
+        await this.auth.login()
       } catch (error) {
         console.error('External auth login failed:', error)
         this.showSnackbar(this.$t('logIn.snackbar_message_error'), 'error')

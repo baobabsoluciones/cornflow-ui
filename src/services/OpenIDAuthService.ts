@@ -122,11 +122,31 @@ export class OpenIDAuthService implements AuthProvider {
 
   async login(): Promise<boolean> {
     try {
+      console.log('OpenIDAuthService login called for provider:', this.provider);
+      
       if (this.initializationPromise) {
-        await this.initializationPromise
+        console.log('Waiting for initialization...');
+        await this.initializationPromise;
+        console.log('Initialization complete');
       }
 
-      if (this.provider === 'azure' && this.msalInstance) {
+      if (this.provider === 'cognito') {
+        console.log('Starting Cognito login flow');
+        if (!this.initialized) {
+          console.log('Initializing Cognito...');
+          await this.initializeCognito();
+        }
+
+        try {
+          console.log('Calling signInWithRedirect...');
+          await signInWithRedirect();
+          // Note: Code after this point won't execute due to redirect
+          return true;
+        } catch (error) {
+          console.error('Cognito authentication failed:', error);
+          throw error;
+        }
+      } else if (this.provider === 'azure' && this.msalInstance) {
         if (this.handlingRedirect) {
           return false
         }
@@ -147,61 +167,6 @@ export class OpenIDAuthService implements AuthProvider {
         this.loginAttempted = true
         await this.msalInstance.loginRedirect(loginRequest)
         return true
-      } else if (this.provider === 'cognito') {
-        if (!this.initialized) {
-          await this.initializeCognito()
-        }
-
-        try {
-          await signInWithRedirect()
-          const session = await fetchAuthSession()
-          const idToken = session.tokens?.idToken?.toString()
-
-          if (!idToken) {
-            throw new Error('No ID token found in session')
-          }
-
-          try {
-            const response = await client.post(
-              '/login/',
-              { 
-                token: idToken,
-              },
-              { 'Content-Type': 'application/json' }
-            )
-
-            if (response.status === 200) {
-              const backendToken = response.content.token
-              const tokenClaims = this.decodeToken(idToken)
-              
-              sessionStorage.setItem('isAuthenticated', 'true')
-              sessionStorage.setItem('token', backendToken)
-              sessionStorage.setItem('userId', response.content.id)
-              sessionStorage.setItem('openIdToken', idToken)
-              
-              if (tokenClaims) {
-                sessionStorage.setItem('username', tokenClaims['cognito:username'] || '')
-                sessionStorage.setItem('email', tokenClaims.email || '')
-                sessionStorage.setItem('name', tokenClaims.name || '')
-                sessionStorage.setItem('given_name', tokenClaims.given_name || '')
-                sessionStorage.setItem('family_name', tokenClaims.family_name || '')
-              }
-
-              client.getHeaders = () => ({
-                Accept: 'application/json',
-                Authorization: `access_token ${backendToken}`
-              })
-
-              return true
-            }
-          } catch (error) {
-            console.error('Backend authentication failed:', error)
-            throw error
-          }
-        } catch (error) {
-          console.error('Cognito authentication failed:', error)
-          throw error
-        }
       }
       return false
     } catch (error) {
