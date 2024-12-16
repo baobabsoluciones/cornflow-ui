@@ -2,15 +2,26 @@ import session from '@/services/AuthService'
 import { RequestOptions } from '@/interfaces/RequestOptions'
 import config from '../config'
 
-export const makeClient = ({ baseUrl = config.backend }) => {
-  const getHeaders = () => ({
-    Accept: 'application/json',
-    Authorization: `access_token ${session.getToken()}`,
-  })
+class ApiClient {
+  private baseUrl: string;
 
-  const request = (url = '', options: RequestOptions = {}) => {
-    console.log('request', url, baseUrl)
-    const completeUrl = new URL(baseUrl + url)
+  constructor() {
+    this.baseUrl = config.backend || '';
+  }
+
+  private getHeaders() {
+    return {
+      Accept: 'application/json',
+      Authorization: `access_token ${session.getToken()}`,
+    }
+  }
+
+  updateBaseUrl(newUrl: string) {
+    this.baseUrl = newUrl;
+  }
+
+  private async request(url = '', options: RequestOptions = {}) {
+    const completeUrl = new URL(this.baseUrl + url)
     if (options.params) {
       completeUrl.search = new URLSearchParams(options.params).toString()
     }
@@ -18,7 +29,7 @@ export const makeClient = ({ baseUrl = config.backend }) => {
     return fetch(completeUrl.toString(), {
       ...options,
       headers: {
-        ...getHeaders(),
+        ...this.getHeaders(),
         ...options.headers,
       },
       body:
@@ -31,29 +42,33 @@ export const makeClient = ({ baseUrl = config.backend }) => {
     )
   }
 
-  const get = (url: string, queryParams = {}, getHeaders = {}) =>
-    request(url, { method: 'GET', params: queryParams, headers: getHeaders })
+  get(url: string, queryParams = {}, getHeaders = {}) {
+    return this.request(url, { method: 'GET', params: queryParams, headers: getHeaders })
+  }
 
-  const post = (url: string, data: object, postHeaders = {}) =>
-    request(url, { method: 'POST', body: data, headers: postHeaders })
+  post(url: string, data: object, postHeaders = {}) {
+    return this.request(url, { method: 'POST', body: data, headers: postHeaders })
+  }
 
-  const put = (url: string, data: object, putHeaders = {}) =>
-    request(url, { method: 'PUT', body: data, headers: putHeaders })
+  put(url: string, data: object, putHeaders = {}) {
+    return this.request(url, { method: 'PUT', body: data, headers: putHeaders })
+  }
 
-  const patch = (url: string, data: object, patchHeaders = {}) =>
-    request(url, { method: 'PATCH', body: data, headers: patchHeaders })
+  patch(url: string, data: object, patchHeaders = {}) {
+    return this.request(url, { method: 'PATCH', body: data, headers: patchHeaders })
+  }
 
-  const remove = (url: string, deleteHeaders = {}) =>
-    request(url, { method: 'DELETE', headers: deleteHeaders })
-
-  return {
-    getHeaders,
-    get,
-    post,
-    put,
-    patch,
-    remove,
+  remove(url: string, deleteHeaders = {}) {
+    return this.request(url, { method: 'DELETE', headers: deleteHeaders })
   }
 }
 
-export default makeClient({ baseUrl: config.backend })
+const apiClient = new ApiClient();
+
+// Update the baseUrl when config is initialized
+config.initConfig().then(() => {
+  console.log('Updating API baseUrl with:', config.backend);
+  apiClient.updateBaseUrl(config.backend);
+});
+
+export default apiClient;

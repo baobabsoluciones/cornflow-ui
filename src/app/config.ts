@@ -99,6 +99,7 @@ import { Instance } from '@/app/models/Instance.ts'
 import { Solution } from '@/app/models/Solution.ts'
 import { Experiment } from '@/app/models/Experiment.ts'
 import i18n from '@/plugins/i18n'
+import config from '@/config'
 
 const app = {
   core: {
@@ -109,8 +110,8 @@ const app = {
       isPilotVersion: false,
       showTimeLimit: true,
       enableSignup: false,
-      schema: import.meta.env.VITE_APP_SCHEMA || 'rostering',
-      name: import.meta.env.VITE_APP_NAME || 'Rostering',
+      schema: config.schema,
+      name: config.name,
       logStates: {
         1: {
           code: i18n.global.t('executionTable.optimal'),

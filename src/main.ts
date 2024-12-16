@@ -37,26 +37,40 @@ import { MDataTable } from 'mango-vue'
 import { MCheckboxOptions } from 'mango-vue'
 import { MTabTable } from 'mango-vue'
 
-const pinia = createPinia()
-const app = createApp(App)
+import config from '@/config'
 
-registerPlugins(app)
+async function initApp() {
+  console.log('Starting app initialization...');
+  
+  // Initialize config first
+  await config.initConfig();
+  console.log('Config initialized');
 
-app.component('MAppDrawer', MAppDrawer)
-app.component('MFilterSearch', MFilterSearch)
-app.component('MButton', MButton)
-app.component('MFormSteps', MFormSteps)
-app.component('MDragNDropFile', MDragNDropFile)
-app.component('MBaseModal', MBaseModal)
-app.component('MTitleView', MTitleView)
-app.component('MAppBarTab', MAppBarTab)
-app.component('MInfoCard', MInfoCard)
-app.component('MPanelData', MPanelData)
-app.component('MSnackbar', MSnackbar)
-app.component('MInputField', MInputField)
-app.component('MDataTable', MDataTable)
-app.component('MCheckboxOptions', MCheckboxOptions)
-app.component('MTabTable', MTabTable)
+  const app = createApp(App);
+  const pinia = createPinia()
 
-app.use(pinia)
-app.mount('#app')
+  registerPlugins(app)
+
+  app.component('MAppDrawer', MAppDrawer)
+  app.component('MFilterSearch', MFilterSearch)
+  app.component('MButton', MButton)
+  app.component('MFormSteps', MFormSteps)
+  app.component('MDragNDropFile', MDragNDropFile)
+  app.component('MBaseModal', MBaseModal)
+  app.component('MTitleView', MTitleView)
+  app.component('MAppBarTab', MAppBarTab)
+  app.component('MInfoCard', MInfoCard)
+  app.component('MPanelData', MPanelData)
+  app.component('MSnackbar', MSnackbar)
+  app.component('MInputField', MInputField)
+  app.component('MDataTable', MDataTable)
+  app.component('MCheckboxOptions', MCheckboxOptions)
+  app.component('MTabTable', MTabTable)
+
+  app.use(pinia)
+  app.mount('#app')
+}
+
+initApp().catch(error => {
+  console.error('Failed to initialize app:', error);
+});
