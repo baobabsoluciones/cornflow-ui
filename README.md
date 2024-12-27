@@ -9,10 +9,10 @@ To create a new project based on this base project, follow these steps:
 1. **Copy the base project**: Copy and paste all the code from this repository into your new repository.
 
 2. **Configure the core values**: 
-The application can be configured in two ways:
+The application can be configured in two ways, controlled by the `useConfigJson` parameter in `src/app/config.ts`:
 
-- Environment variables (.env)
-Configure the application using environment variables in the `.env` file:
+- Using environment variables (.env)
+Set `useConfigJson: false` in `src/app/config.ts` and configure using environment variables in the `.env` file:
 ```env
 VUE_APP_18N_LOCALE=en
 VUE_APP_I18N_FALLBACK_LOCALE=en
@@ -20,11 +20,10 @@ VITE_APP_BACKEND_URL=https://your-backend-url
 VITE_APP_AUTH_TYPE=cornflow
 VITE_APP_SCHEMA=rostering
 VITE_APP_NAME=Rostering
-VITE_APP_USE_CONFIG_JSON=false
 ```
 
-- JSON configuration (values.json)
-Alternatively, you can use a JSON configuration file by setting `VITE_APP_USE_CONFIG_JSON=true` in your `.env` file and providing a `values.json` file:
+- Using JSON configuration (values.json)
+Set `useConfigJson: true` in `src/app/config.ts` and provide configuration through a `values.json` file:
 
 ```json
 {
@@ -41,17 +40,17 @@ Alternatively, you can use a JSON configuration file by setting `VITE_APP_USE_CO
 }
 ```
 
-For local development:
+For local development with JSON configuration:
 1. Copy `public/values.template.json` to `public/values.json`
 2. Edit `public/values.json` with your specific configuration values
-3. Set `VITE_APP_USE_CONFIG_JSON=true` in your `.env` file
+3. Set `useConfigJson: true` in `src/app/config.ts`
 
-For production:
+For production with JSON configuration:
 1. Copy `values.template.json` to your domain root as `values.json`
 2. Edit with your production configuration values
-3. Set `VITE_APP_USE_CONFIG_JSON=true` in your `.env` file
+3. Set `useConfigJson: true` in `src/app/config.ts`
 
-When `VITE_APP_USE_CONFIG_JSON` is true, the application will load configuration from the JSON file instead of environment variables.
+When `useConfigJson` is true in `src/app/config.ts`, the application will load configuration from the JSON file and ignore any environment variables.
 
 3. **Configure the application**: Navigate to the `src/app` directory and configure the following files:
 
@@ -214,12 +213,12 @@ It's important not to edit any other file or folders. Only the folders, files an
 The application supports three authentication methods. Note that for any of these methods to work, the server must be properly configured to accept the corresponding authentication type.
 
 ### 1. Cornflow authentication (Default)
-Using environment variables:
+Using environment variables (when useConfigJson: false):
 ```env
 VITE_APP_AUTH_TYPE=cornflow
 ```
 
-Using values.json:
+Using values.json (when useConfigJson: true):
 ```json
 {
   "auth_type": "cornflow"
@@ -227,14 +226,14 @@ Using values.json:
 ```
 
 ### 2. Azure OpenID authentication
-Using environment variables:
+Using environment variables (when useConfigJson: false):
 ```env
 VITE_APP_AUTH_TYPE=azure
 VITE_APP_AUTH_CLIENT_ID=your_azure_client_id
 VITE_APP_AUTH_AUTHORITY=your_azure_authority
 ```
 
-Using values.json:
+Using values.json (when useConfigJson: true):
 ```json
 {
   "auth_type": "azure",
@@ -246,7 +245,7 @@ Using values.json:
 ```
 
 ### 3. AWS Cognito authentication
-Using environment variables:
+Using environment variables (when useConfigJson: false):
 ```env
 VITE_APP_AUTH_TYPE=cognito
 VITE_APP_AUTH_CLIENT_ID=your_cognito_client_id
@@ -254,7 +253,7 @@ VITE_APP_AUTH_REGION=your_cognito_region
 VITE_APP_AUTH_USER_POOL_ID=your_cognito_user_pool_id
 ```
 
-Using values.json:
+Using values.json (when useConfigJson: true):
 ```json
 {
   "auth_type": "cognito",
@@ -266,7 +265,7 @@ Using values.json:
 }
 ```
 
-The authentication type can be changed by modifying the `VITE_APP_AUTH_TYPE` variable in the `.env` file or the `auth_type` field in the `values.json` file.
+The authentication type is configured either through environment variables or the values.json file, depending on the `useConfigJson` setting in `src/app/config.ts`.
 
 ## Installing
 

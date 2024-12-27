@@ -1,3 +1,5 @@
+import config from "@/app/config";
+
 interface ConfigValues {
     backend_url: string;
     auth_type: string;
@@ -33,7 +35,7 @@ interface ConfigValues {
     async getConfig(): Promise<ConfigValues> {
       if (this.values) return this.values;
       
-      const useConfigJson = import.meta.env.VITE_APP_USE_CONFIG_JSON === 'true';
+      const useConfigJson = config.getCore().parameters.useConfigJson
       
       if (!useConfigJson) {
         // Return env-based config
