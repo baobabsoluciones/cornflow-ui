@@ -187,7 +187,7 @@ export default {
     snackbar_message_success: 'Successfully logged in',
     snackbar_message_error: 'Incorrect credentials',
     processing_auth: 'Processing authentication...',
-    redirecting: 'Redirecting to login...',
+    redirecting: 'Redirecting to external authentication... If the redirection does not happen automatically, please contact technical support for assistance.',
   },
   logOut: {
     title: 'Log out',

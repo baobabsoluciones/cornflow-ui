@@ -192,16 +192,15 @@
           <v-img contain src="@\app\assets\logo\full_logo.png" height="48px" />
         </v-col>
       </v-card-title>
-      <v-card-text class="text-center">
-        {{ $t('logIn.redirecting') }}
-      </v-card-text>
-      <div class="d-flex justify-center align-center" style="flex: 1;">
+      <div class="d-flex justify-center align-center mt-4">
         <v-progress-circular
           indeterminate
           color="primary"
-          class="mb-4"
         ></v-progress-circular>
       </div>
+      <v-card-text class="text-center">
+        {{ $t('logIn.redirecting') }}
+      </v-card-text>
     </v-card>
   </div>
   <footer

@@ -179,6 +179,7 @@ export default {
     snackbar_message_success: 'Connexion réussie',
     snackbar_message_error: 'Identifiants incorrects',
     processing_auth: "Traitement de l'authentification...",
+    redirecting: "Redirection vers l'authentification externe... Si la redirection ne se produit pas automatiquement, veuillez contacter le support technique pour obtenir de l'aide.",
   },
   logOut: {
     title: 'Déconnexion',
