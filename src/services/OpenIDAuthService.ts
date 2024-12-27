@@ -45,7 +45,6 @@ export class OpenIDAuthService implements AuthProvider {
         this.handlingRedirect = true
         try {
           const response = await this.msalInstance.handleRedirectPromise()
-          console.log('Redirect Response:', response)
           if (response) {
             await this.handleAuthResponse(response)
           }
@@ -143,7 +142,6 @@ export class OpenIDAuthService implements AuthProvider {
 
   async login(): Promise<boolean> {
     try {
-      console.log('OpenIDAuthService login called for provider:', this.provider);
       
       if (this.initializationPromise) {
         await this.initializationPromise;
