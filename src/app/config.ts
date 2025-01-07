@@ -5,7 +5,7 @@
  *
  * The `core` property of the `app` object is used to define the core functionalities of your application.
  * Each core functionality is a class that extends the `BaseCore` class and implements the required methods.
- * Also, the core functionality can have additional properties in 'parameters' such as `isPilotVersion`, `showTimeLimit`, `logStates`, and `enableSignup` for enabling or disabling the sign-up functionality.
+ * Also, the core functionality can have additional properties in 'parameters' such as `isPilotVersion`, `showTimeLimit`, `logStates`, `useConfigJson` that if true it gets the config variables from a values json and if false from the environment variables file, and `enableSignup` for enabling or disabling the sign-up functionality.
  *
  * The `dashboardPages` array is used to define the navigation menu items and their corresponding routes for dashboard subpages.
  * Each page is an object with `title`, `icon`, `to`, and `pos` properties.
@@ -30,6 +30,7 @@
  *       showTimeLimit: true,
  *       schema: 'default',
  *       name: 'Default',
+ *       useConfigJson: false,
  *      logStates: {
  *       1: {
  *        message: 'Optimal',
@@ -112,6 +113,7 @@ const app = {
       enableSignup: false,
       schema: config.schema,
       name: config.name,
+      useConfigJson: false,
       logStates: {
         1: {
           code: i18n.global.t('executionTable.optimal'),

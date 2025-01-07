@@ -15,9 +15,7 @@ const config = {
   },
   async initConfig() {
     try {
-      console.log('Starting config initialization...');
       const values = await configService.getConfig();
-      console.log('Loaded config values:', values);
       
       this.backend = values.backend_url;
       this.schema = values.schema;
@@ -44,13 +42,6 @@ const config = {
           type: 'cornflow'
         };
       }
-      
-      console.log('Final config:', {
-        backend: this.backend,
-        schema: this.schema,
-        name: this.name,
-        auth: this.auth
-      });
     } catch (error) {
       console.error('Error initializing config:', error);
     }

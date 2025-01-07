@@ -45,7 +45,6 @@ export class OpenIDAuthService implements AuthProvider {
         this.handlingRedirect = true
         try {
           const response = await this.msalInstance.handleRedirectPromise()
-          console.log('Redirect Response:', response)
           if (response) {
             await this.handleAuthResponse(response)
           }
@@ -64,6 +63,8 @@ export class OpenIDAuthService implements AuthProvider {
   }
 
   private async initializeCognito() {
+    if (this.initialized) return
+
     try {
       const redirectUrls = [window.location.origin];
       
@@ -87,13 +88,32 @@ export class OpenIDAuthService implements AuthProvider {
               }
             }
           }
-        }
+        } 
       };
 
       Amplify.configure(cognitoConfig);
       this.initialized = true;
+
+      if (!this.handlingRedirect) {
+        this.handlingRedirect = true;
+        try {
+          const session = await fetchAuthSession();
+          if (session.tokens?.idToken) {
+            await this.handleAuthResponse({
+              idToken: session.tokens.idToken.toString(),
+              provider: 'cognito'
+            });
+          }
+        } catch (error) {
+          console.error('Failed to handle Cognito redirect:', error);
+          this.loginAttempted = true;
+        } finally {
+          this.handlingRedirect = false;
+        }
+      }
     } catch (error) {
       console.error('Failed to initialize Cognito:', error);
+      this.handlingRedirect = false;
       throw error;
     }
   }
@@ -122,132 +142,115 @@ export class OpenIDAuthService implements AuthProvider {
 
   async login(): Promise<boolean> {
     try {
-      console.log('OpenIDAuthService login called for provider:', this.provider);
       
       if (this.initializationPromise) {
-        console.log('Waiting for initialization...');
         await this.initializationPromise;
-        console.log('Initialization complete');
       }
 
-      if (this.provider === 'cognito') {
-        console.log('Starting Cognito login flow');
-        if (!this.initialized) {
-          console.log('Initializing Cognito...');
-          await this.initializeCognito();
-        }
+      if (this.handlingRedirect) {
+        return false;
+      }
 
-        try {
-          console.log('Calling signInWithRedirect...');
-          await signInWithRedirect();
-          // Note: Code after this point won't execute due to redirect
-          return true;
-        } catch (error) {
-          console.error('Cognito authentication failed:', error);
-          throw error;
-        }
-      } else if (this.provider === 'azure' && this.msalInstance) {
-        if (this.handlingRedirect) {
-          return false
-        }
+      if (this.isAuthenticated()) {
+        return true;
+      }
 
-        if (this.isAuthenticated()) {
-          return true
-        }
+      if (this.loginAttempted) {
+        return false;
+      }
 
-        if (this.loginAttempted) {
-          return false
-        }
-
+      if (this.provider === 'azure' && this.msalInstance) {
         const loginRequest = {
           scopes: ['openid', 'profile', 'email', 'User.Read'],
           prompt: 'select_account'
-        }
+        };
 
-        this.loginAttempted = true
-        await this.msalInstance.loginRedirect(loginRequest)
-        return true
+        this.loginAttempted = true;
+        await this.msalInstance.loginRedirect(loginRequest);
+        return true;
+      } else if (this.provider === 'cognito') {
+        this.loginAttempted = true;
+        await signInWithRedirect({ provider: { custom: 'AzureAD' } });
+        return true;
       }
-      return false
+
+      return false;
     } catch (error) {
-      this.loginAttempted = true
-      console.error('OpenIDAuthService: Login failed:', error)
-      throw error
+      this.loginAttempted = true;
+      console.error('OpenIDAuthService: Login failed:', error);
+      throw error;
     }
   }
 
   private async handleAuthResponse(response: any) {
     if (response) {
       try {
-        console.log('Auth Response:', {
-          hasIdToken: !!response.idToken,
-          hasAccessToken: !!response.accessToken,
-          account: response.account
-        })
-
-        const token = response.idToken || response.accessToken
-        const tokenClaims = this.decodeToken(token)
+          const token = response.idToken || response.accessToken;
+        const tokenClaims = this.decodeToken(token);
         
         if (!tokenClaims) {
-          this.loginAttempted = false
-          await this.retryAuthentication()
-          return
+          this.loginAttempted = false;
+          await this.retryAuthentication();
+          return;
         }
 
-        console.log('Token Claims:', tokenClaims)
-
-        sessionStorage.setItem('openIdToken', token)
+        sessionStorage.setItem('openIdToken', token);
         
         try {
           const backendResponse = await client.post(
             '/login/',
             { 
               token: token,
-              provider: 'azure',
-              grant_type: 'authorization_code'
             },
             { 
               'Content-Type': 'application/json',
               'Accept': 'application/json'
             }
-          )
+          );
 
           if (backendResponse.status === 200) {
-            const backendToken = backendResponse.content.token
+            const backendToken = backendResponse.content.token;
             
-            sessionStorage.setItem('isAuthenticated', 'true')
-            sessionStorage.setItem('token', backendToken)
-            sessionStorage.setItem('userId', backendResponse.content.id)
+            sessionStorage.setItem('isAuthenticated', 'true');
+            sessionStorage.setItem('token', backendToken);
+            sessionStorage.setItem('userId', backendResponse.content.id);
             
             if (tokenClaims) {
-              sessionStorage.setItem('username', tokenClaims.preferred_username || tokenClaims.email || '')
-              sessionStorage.setItem('name', tokenClaims.name || '')
-              sessionStorage.setItem('email', tokenClaims.email || tokenClaims.preferred_username || '')
-              sessionStorage.setItem('given_name', tokenClaims.given_name || '')
-              sessionStorage.setItem('family_name', tokenClaims.family_name || '')
+              sessionStorage.setItem('username', 
+                tokenClaims['cognito:username'] || 
+                tokenClaims.preferred_username || 
+                tokenClaims.email || 
+                '');
+              sessionStorage.setItem('email', 
+                tokenClaims.email || 
+                tokenClaims.preferred_username || 
+                '');
+              sessionStorage.setItem('name', tokenClaims.name || '');
+              sessionStorage.setItem('given_name', tokenClaims.given_name || '');
+              sessionStorage.setItem('family_name', tokenClaims.family_name || '');
             }
             
             client.getHeaders = () => ({
               Accept: 'application/json',
               Authorization: `access_token ${backendToken}`
-            })
+            });
 
-            window.location.replace('/')
+            window.location.replace('/');
           } else {
-            console.error('Backend Response:', backendResponse)
-            await this.retryAuthentication()
+            console.error('Backend Response:', backendResponse);
+            await this.retryAuthentication();
           }
         } catch (error) {
-          console.error('Backend authentication failed:', error)
+          console.error('Backend authentication failed:', error);
           if (error.response?.status === 400) {
-            await this.retryAuthentication()
+            await this.retryAuthentication();
           } else {
-            throw error
+            throw error;
           }
         }
       } catch (error) {
-        console.error('Authentication error:', error)
-        await this.retryAuthentication()
+        console.error('Authentication error:', error);
+        await this.retryAuthentication();
       }
     }
   }
@@ -265,7 +268,7 @@ export class OpenIDAuthService implements AuthProvider {
         prompt: 'select_account'
       })
     } else if (this.provider === 'cognito') {
-      await signInWithRedirect()
+      await signInWithRedirect({provider:{ custom: 'AzureAD'}})
     }
   }
 

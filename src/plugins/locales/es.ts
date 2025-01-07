@@ -194,6 +194,7 @@ export default {
     snackbar_message_success: 'Inicio de sesión exitoso',
     snackbar_message_error: 'Credenciales incorrectas',
     processing_auth: 'Procesando autenticación...',
+    redirecting: 'Redirigiendo a la autenticación externa... Si la redirección no ocurre automáticamente, por favor contacte con el servicio técnico para obtener ayuda.',
   },
   logOut: {
     title: 'Cerrar sesión',

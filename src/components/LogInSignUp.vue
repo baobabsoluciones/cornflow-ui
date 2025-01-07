@@ -192,16 +192,15 @@
           <v-img contain src="@\app\assets\logo\full_logo.png" height="48px" />
         </v-col>
       </v-card-title>
-      <v-card-text class="text-center">
-        {{ $t('logIn.redirecting') }}
-      </v-card-text>
-      <div class="d-flex justify-center align-center" style="flex: 1;">
+      <div class="d-flex justify-center align-center mt-4">
         <v-progress-circular
           indeterminate
           color="primary"
-          class="mb-4"
         ></v-progress-circular>
       </div>
+      <v-card-text class="text-center">
+        {{ $t('logIn.redirecting') }}
+      </v-card-text>
     </v-card>
   </div>
   <footer
@@ -291,11 +290,9 @@ export default {
   },
   async created() {
     this.showSnackbar = inject('showSnackbar')
-    console.log('Auth config:', config.auth)
     
     // Get initialized auth service
     this.auth = await getAuthService()
-    console.log('Auth service initialized:', this.auth.constructor.name)
     
     if (!this.isCornflowAuth) {
       this.initiateExternalAuth()
@@ -307,17 +304,14 @@ export default {
     },
     isAzureAuth() {
       const isAzure = config.auth.type === 'azure'
-      console.log('Is Azure auth:', isAzure)
       return isAzure
     },
     isCognitoAuth() {
       const isCognito = config.auth.type === 'cognito'
-      console.log('Is Cognito auth:', isCognito)
       return isCognito
     },
     isCornflowAuth() {
       const isCornflow = config.auth.type === 'cornflow'
-      console.log('Is Cornflow auth:', isCornflow)
       return isCornflow
     }
   },
@@ -360,11 +354,7 @@ export default {
       }
     },
     async initiateExternalAuth() {
-      try {
-        console.log('Initiating external auth...')
-        console.log('Auth type:', config.auth.type)
-        console.log('Is Cornflow:', this.isCornflowAuth)
-        
+      try {      
         await this.auth.login()
       } catch (error) {
         console.error('External auth login failed:', error)
