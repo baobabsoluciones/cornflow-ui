@@ -39,7 +39,6 @@
               single-line
               rounded
               type="text"
-              style="margin-bottom: -8px"
               bg-color="white"
               @keydown.enter.prevent="submitLogIn()"
             >
