@@ -1,0 +1,17 @@
+{
+    "backend_url": "https://your-backend-url",
+    "auth_type": "cornflow",
+    "schema": "rostering",
+    "name": "Rostering",
+    "cognito": {
+      "region": "your-region",
+      "user_pool_id": "your-user-pool-id",
+      "client_id": "your-client-id",
+      "domain": "your-domain"
+    },
+    "azure": {
+      "client_id": "your-client-id",
+      "authority": "your-authority",
+      "redirect_uri": "your-redirect-uri"
+    }
+  }

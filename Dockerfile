@@ -1,5 +1,36 @@
 FROM node:20-alpine as build
 
+
+# Accept build args
+ARG VUE_APP_I18N_LOCALE
+ARG VUE_APP_I18N_FALLBACK_LOCALE
+ARG VITE_APP_BACKEND_URL
+ARG VITE_APP_AUTH_TYPE
+ARG VITE_APP_SCHEMA
+ARG VITE_APP_NAME
+
+
+# Set environment variables
+RUN if [ -n "$VUE_APP_I18N_LOCALE" ]; then \
+      echo "ENV VUE_APP_I18N_LOCALE=$VUE_APP_I18N_LOCALE" >> /etc/environment; \
+    fi;
+RUN if [ -n "$VUE_APP_I18N_FALLBACK_LOCALE" ]; then \
+      echo "ENV VUE_APP_I18N_FALLBACK_LOCALE=$VUE_APP_I18N_FALLBACK_LOCALE" >> /etc/environment; \
+    fi
+RUN if [ -n "$VITE_APP_BACKEND_URL" ]; then \
+      echo "ENV VITE_APP_BACKEND_URL=$VITE_APP_BACKEND_URL" >> /etc/environment; \
+    fi;
+RUN if [ -n "$VITE_APP_AUTH_TYPE" ]; then \
+      echo "ENV VITE_APP_AUTH_TYPE=$VITE_APP_AUTH_TYPE" >> /etc/environment; \
+    fi;
+RUN if [ -n "$VITE_APP_SCHEMA" ]; then \
+      echo "ENV VITE_APP_SCHEMA=$VITE_APP_SCHEMA" >> /etc/environment; \
+    fi;
+RUN if [ -n "$VITE_APP_NAME" ]; then \
+      echo "ENV VITE_APP_NAME=$VITE_APP_NAME" >> /etc/environment; \
+    fi
+
+
 # install python for gyp pkg
 RUN apk --no-cache add --virtual builds-deps build-base python3
 

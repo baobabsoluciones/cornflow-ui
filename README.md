@@ -2,20 +2,59 @@
 
 Cornflow-UI is a Vue.js application that serves as the user interface for Cornflow. This is the base project, and it provides the general structure and functionalities for creating new applications.
 
-## Creating a New Project
+## Creating a new project
 
 To create a new project based on this base project, follow these steps:
 
-1. **Copy the Base Project**: Copy and paste all the code from this repository into your new repository.
+1. **Copy the base project**: Copy and paste all the code from this repository into your new repository.
 
-2. **Configure the .env File**: Edit the `.env` file to set the following variables:
+2. **Configure the core values**: 
+The application can be configured in two ways, controlled by the `useConfigJson` parameter in `src/app/config.ts`:
 
-   - `VUE_APP_18N_LOCALE`: The main language of the application.
-   - `VUE_APP_BASE_URL`: The backend base URL for the application endpoints.
+- Using environment variables (.env)
+Set `useConfigJson: false` in `src/app/config.ts` and configure using environment variables in the `.env` file:
+```env
+VUE_APP_18N_LOCALE=en
+VUE_APP_I18N_FALLBACK_LOCALE=en
+VITE_APP_BACKEND_URL=https://your-backend-url
+VITE_APP_AUTH_TYPE=cornflow
+VITE_APP_SCHEMA=rostering
+VITE_APP_NAME=Rostering
+```
 
-3. **Configure the Application**: Navigate to the `src/app` directory and configure the following files:
+- Using JSON configuration (values.json)
+Set `useConfigJson: true` in `src/app/config.ts` and provide configuration through a `values.json` file:
 
-   - `config.ts`: This is the main configuration file for the application. Here, you should define an object that specifies the core functionalities, dashboard layout, dashboard pages, and dashboard routes for the application. See the example below:
+```json
+{
+  "backend_url": "https://your-backend-url",
+  "auth_type": "cornflow",
+  "schema": "rostering",
+  "name": "Rostering",
+  "cognito": {
+    "region": "your-region",
+    "user_pool_id": "your-user-pool-id",
+    "client_id": "your-client-id",
+    "domain": "your-domain"
+  }
+}
+```
+
+For local development with JSON configuration:
+1. Copy `public/values.template.json` to `public/values.json`
+2. Edit `public/values.json` with your specific configuration values
+3. Set `useConfigJson: true` in `src/app/config.ts`
+
+For production with JSON configuration:
+1. Copy `values.template.json` to your domain root as `values.json`
+2. Edit with your production configuration values
+3. Set `useConfigJson: true` in `src/app/config.ts`
+
+When `useConfigJson` is true in `src/app/config.ts`, the application will load configuration from the JSON file and ignore any environment variables.
+
+3. **Configure the application**: Navigate to the `src/app` directory and configure the following files:
+
+   - `config.ts`: This is the main configuration file for the application. Here, you should define an object that specifies the core functionalities, dashboard layout, dashboard pages, and dashboard routes for the application. The schema and name will be automatically read from the main config file. See the example below:
 
    ```typescript
    {
@@ -26,8 +65,8 @@ To create a new project based on this base project, follow these steps:
        AppConfig: {
        isPilotVersion: false,
        showTimeLimit: true,
-       schema: 'rostering',
-       name: 'Rostering',
+       schema: config.schema,
+       name: config.name,
        logo: 'path/to',
        expandedLogo: 'path/to'
        },
@@ -168,6 +207,65 @@ To create a new project based on this base project, follow these steps:
 It's important not to edit any other file or folders. Only the folders, files and images just mentioned can be edited.
 
 \*\*Note: To save dashboard preferences for a single execution, including filters, checks, and date ranges, utilize the `setDashboardPreference` method from the `LoadedExecution.ts` class. Subsequently, retrieve these preferences using the `getDashboardPreference` method. The data type is custom, allowing for flexible usage as needed.
+
+## Authentication
+
+The application supports three authentication methods. Note that for any of these methods to work, the server must be properly configured to accept the corresponding authentication type.
+
+### 1. Cornflow authentication (Default)
+Using environment variables (when useConfigJson: false):
+```env
+VITE_APP_AUTH_TYPE=cornflow
+```
+
+Using values.json (when useConfigJson: true):
+```json
+{
+  "auth_type": "cornflow"
+}
+```
+
+### 2. Azure OpenID authentication
+Using environment variables (when useConfigJson: false):
+```env
+VITE_APP_AUTH_TYPE=azure
+VITE_APP_AUTH_CLIENT_ID=your_azure_client_id
+VITE_APP_AUTH_AUTHORITY=your_azure_authority
+```
+
+Using values.json (when useConfigJson: true):
+```json
+{
+  "auth_type": "azure",
+  "azure": {
+    "client_id": "your_azure_client_id",
+    "authority": "your_azure_authority"
+  }
+}
+```
+
+### 3. AWS Cognito authentication
+Using environment variables (when useConfigJson: false):
+```env
+VITE_APP_AUTH_TYPE=cognito
+VITE_APP_AUTH_CLIENT_ID=your_cognito_client_id
+VITE_APP_AUTH_REGION=your_cognito_region
+VITE_APP_AUTH_USER_POOL_ID=your_cognito_user_pool_id
+```
+
+Using values.json (when useConfigJson: true):
+```json
+{
+  "auth_type": "cognito",
+  "cognito": {
+    "client_id": "your_cognito_client_id",
+    "region": "your_cognito_region",
+    "user_pool_id": "your_cognito_user_pool_id"
+  }
+}
+```
+
+The authentication type is configured either through environment variables or the values.json file, depending on the `useConfigJson` setting in `src/app/config.ts`.
 
 ## Installing
 

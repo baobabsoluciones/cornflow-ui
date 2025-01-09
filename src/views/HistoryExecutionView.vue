@@ -32,10 +32,9 @@
         </div>
       </template>
       <template v-slot:table="slotProps">
-        <!-- TODO: Change show footers to false when updating to new mango version tht fixes this-->
         <ProjectExecutionsTable
           :executionsByDate="slotProps.itemData"
-          :showFooter="true"
+          :showFooter="false"
           :showHeaders="slotProps.showHeaders"
           :formatDateByTime="true"
           @loadExecution="loadExecution"
