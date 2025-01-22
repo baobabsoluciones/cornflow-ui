@@ -1,7 +1,7 @@
 import { AuthProvider } from '@/interfaces/AuthProvider'
-import { PublicClientApplication, Configuration } from '@azure/msal-browser'
+import { PublicClientApplication, Configuration, SilentRequest } from '@azure/msal-browser'
 import { Amplify } from 'aws-amplify'
-import { signInWithRedirect, signOut, fetchAuthSession } from 'aws-amplify/auth'
+import { signInWithRedirect, signOut, fetchAuthSession, getCurrentUser } from 'aws-amplify/auth'
 import client from '@/api/Api'
 import config from '@/config'
 import { ResourcesConfig } from '@aws-amplify/core'
@@ -12,6 +12,8 @@ export class OpenIDAuthService implements AuthProvider {
   private handlingRedirect: boolean = false
   private loginAttempted: boolean = false
   private initializationPromise: Promise<void> | null = null
+  private refreshPromise: Promise<string | null> | null = null
+  private refreshTimeout: NodeJS.Timeout | null = null
 
   constructor(private provider: 'azure' | 'cognito') {
     console.log("OpenIDAuthService constructor")
@@ -97,19 +99,32 @@ export class OpenIDAuthService implements AuthProvider {
       Amplify.configure(cognitoConfig);
       this.initialized = true;
 
-      try {
-        const session = await fetchAuthSession();
-        if (session.tokens?.idToken) {
-          await this.handleAuthResponse({
-            idToken: session.tokens.idToken.toString(),
-            provider: 'cognito'
-          });
+      // Only check session if we're not in the middle of a login flow
+      const isExternalAuthInitiated = sessionStorage.getItem('externalAuthInitiated') === 'true';
+      if (!this.handlingRedirect && !isExternalAuthInitiated) {
+        this.handlingRedirect = true;
+        try {
+          const session = await fetchAuthSession();
+          if (session.tokens?.idToken) {
+            await this.handleAuthResponse({
+              idToken: session.tokens.idToken.toString(),
+              provider: 'cognito'
+            });
+          } else {
+            console.log('No valid session found during initialization');
+            // Don't reset flags here as we might be in the middle of a login flow
+          }
+        } catch (error) {
+          console.log('Initial session check:', error);
+          // Don't reset flags here as we might be in the middle of a login flow
+        } finally {
+          this.handlingRedirect = false;
         }
-      } catch (error) {
-        console.log('Initial session check:', error);
       }
     } catch (error) {
       console.error('Failed to initialize Cognito:', error);
+      this.loginAttempted = false;
+      this.handlingRedirect = false;
       throw error;
     }
   }
@@ -240,6 +255,78 @@ export class OpenIDAuthService implements AuthProvider {
     }
   }
 
+  private async refreshToken(): Promise<string | null> {
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    this.refreshPromise = (async () => {
+      try {
+        if (this.provider === 'azure' && this.msalInstance) {
+          const account = this.msalInstance.getAllAccounts()[0];
+          if (!account) {
+            console.log('No account found for silent token refresh');
+            return null;
+          }
+
+          const silentRequest: SilentRequest = {
+            scopes: ['openid', 'profile', 'email', 'User.Read'],
+            account: account
+          };
+
+          const response = await this.msalInstance.acquireTokenSilent(silentRequest);
+          if (response) {
+            await this.handleAuthResponse(response);
+            return response.idToken;
+          }
+        } else if (this.provider === 'cognito') {
+          const user = await getCurrentUser();
+          if (!user) {
+            console.log('No user found for silent token refresh');
+            return null;
+          }
+
+          const session = await fetchAuthSession();
+          if (session.tokens?.idToken) {
+            await this.handleAuthResponse({
+              idToken: session.tokens.idToken.toString(),
+              provider: 'cognito'
+            });
+            return session.tokens.idToken.toString();
+          }
+        }
+        return null;
+      } catch (error) {
+        console.error('Silent token refresh failed:', error);
+        return null;
+      } finally {
+        this.refreshPromise = null;
+      }
+    })();
+
+    return this.refreshPromise;
+  }
+
+  private scheduleTokenRefresh(token: string) {
+    if (this.refreshTimeout) {
+      clearTimeout(this.refreshTimeout);
+    }
+
+    const tokenClaims = this.decodeToken(token);
+    if (!tokenClaims || !tokenClaims.exp) return;
+
+    const expirationTime = tokenClaims.exp * 1000;
+    const currentTime = Date.now();
+    const timeUntilExpiry = expirationTime - currentTime;
+    
+    // Refresh 5 minutes before expiration
+    const refreshDelay = Math.max(0, timeUntilExpiry - 5 * 60 * 1000);
+    
+    this.refreshTimeout = setTimeout(async () => {
+      await this.refreshToken();
+    }, refreshDelay);
+  }
+
   private async handleAuthResponse(response: any) {
     if (!response) {
       console.error('No auth response received');
@@ -259,6 +346,8 @@ export class OpenIDAuthService implements AuthProvider {
         return;
       } else {
         sessionStorage.setItem('openIdToken', token);
+        // Schedule refresh for the new token
+        this.scheduleTokenRefresh(token);
       }
 
       // Call backend to validate token and user info
@@ -315,6 +404,10 @@ export class OpenIDAuthService implements AuthProvider {
   }
 
   logout(): void {
+    if (this.refreshTimeout) {
+      clearTimeout(this.refreshTimeout);
+      this.refreshTimeout = null;
+    }
     this.loginAttempted = false
     sessionStorage.setItem('isAuthenticated', 'false')
     sessionStorage.removeItem('openIdToken')
@@ -373,6 +466,10 @@ export class OpenIDAuthService implements AuthProvider {
   }
 
   async getValidToken(): Promise<string | null> {
-    return this.getToken();
+    const token = this.getToken();
+    if (!token || this.isTokenExpired(token)) {
+      return this.refreshToken();
+    }
+    return token;
   }
 }

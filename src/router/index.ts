@@ -95,26 +95,45 @@ router.beforeEach(async (to, from, next) => {
     const isTargetingAuthRequiredPage = to.path !== '/sign-in'
     const isExternalAuth = config.auth.type !== 'cornflow'
 
+    // If we're already on sign-in page and it's external auth, just proceed
+    if (isSignInPage && isExternalAuth) {
+      next()
+      return
+    }
+
+    // If not authenticated and trying to access protected route
     if (!isAuthenticated && isTargetingAuthRequiredPage) {
       if (isExternalAuth) {
-        try {
-          const loginResult = await auth.login()
-          if (!loginResult) {
+        // For external auth, check if we're already in auth flow
+        const isAuthInitiated = sessionStorage.getItem('externalAuthInitiated') === 'true'
+        if (isAuthInitiated) {
+          // If auth is already initiated, just go to sign-in page
+          next('/sign-in')
+        } else {
+          // Start auth flow and go to sign-in page
+          try {
+            sessionStorage.setItem('externalAuthInitiated', 'true')
+            await auth.login()
+            // Always navigate to sign-in as login() will handle redirect
+            next('/sign-in')
+          } catch (error) {
+            console.error('Login failed:', error)
+            sessionStorage.removeItem('externalAuthInitiated')
             next('/sign-in')
           }
-          // Don't call next() here as we're being redirected
-        } catch (error) {
-          console.error('Login failed:', error)
-          next('/sign-in')
         }
-        return
+      } else {
+        // For non-external auth, just redirect to sign-in
+        next('/sign-in')
       }
-      next('/sign-in')
     } else if (isAuthenticated && isSignInPage) {
+      // If authenticated and trying to access sign-in page, redirect to home
       next('/project-execution')
     } else if (to.path === '/' && isAuthenticated) {
+      // If authenticated and accessing root, redirect to project execution
       next('/project-execution')
     } else {
+      // In all other cases, proceed normally
       next()
     }
   } catch (error) {

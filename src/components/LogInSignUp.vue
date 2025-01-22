@@ -351,11 +351,18 @@ export default {
       }
     },
     async initiateExternalAuth() {
-      try {      
+      // Only initiate external auth if we haven't already
+      if (sessionStorage.getItem('externalAuthInitiated') === 'true') {
+        return;
+      }
+      
+      try {
+        sessionStorage.setItem('externalAuthInitiated', 'true');
         await this.auth.login()
       } catch (error) {
         console.error('External auth login failed:', error)
         this.showSnackbar(this.$t('logIn.snackbar_message_error'), 'error')
+        sessionStorage.removeItem('externalAuthInitiated');
       }
     },
   },
