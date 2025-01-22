@@ -46,6 +46,11 @@ class AuthService {
     const isAuthenticated = sessionStorage.getItem('isAuthenticated') === 'true'
     return isAuthenticated
   }
+
+  async getValidToken(): Promise<string | null> {
+    // Default implementation: return existing token
+    return this.getToken();
+  }
 }
 
 export default new AuthService()

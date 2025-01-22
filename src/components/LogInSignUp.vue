@@ -328,8 +328,6 @@ export default {
         if (isAuthenticated) {
           this.$router.push('/')
           this.showSnackbar(this.$t('logIn.snackbar_message_success'), 'success')
-        } else {
-          this.showSnackbar(this.$t('logIn.snackbar_message_error'), 'error')
         }
       } catch (error) {
         console.error('Login error:', error)

@@ -8,7 +8,7 @@ const config = {
     type: import.meta.env.VITE_APP_AUTH_TYPE || 'cornflow',
     clientId: import.meta.env.VITE_APP_AUTH_CLIENT_ID,
     authority: import.meta.env.VITE_APP_AUTH_AUTHORITY,
-    redirectUri: import.meta.env.VITE_APP_AUTH_REDIRECT_URI,
+    redirectUri: import.meta.env.VITE_APP_AUTH_REDIRECT_URI || window.location.origin,
     region: import.meta.env.VITE_APP_AUTH_REGION,
     userPoolId: import.meta.env.VITE_APP_AUTH_USER_POOL_ID,
     domain: import.meta.env.VITE_APP_AUTH_DOMAIN
@@ -28,7 +28,8 @@ const config = {
           clientId: values.cognito.client_id,
           region: values.cognito.region,
           userPoolId: values.cognito.user_pool_id,
-          domain: values.cognito.domain
+          domain: values.cognito.domain,
+          redirectUri: window.location.origin
         };
       } else if (values.auth_type === 'azure' && values.azure) {
         this.auth = {
