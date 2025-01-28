@@ -38,6 +38,7 @@ import { MCheckboxOptions } from 'mango-vue'
 import { MTabTable } from 'mango-vue'
 
 import config from '@/config'
+import appConfig from '@/app/config'
 
 async function initApp() {
   console.log('Starting app initialization...');
@@ -45,6 +46,9 @@ async function initApp() {
   // Initialize config first
   await config.initConfig();
   console.log('Config initialized');
+  
+  // Update app config with initialized values
+  appConfig.updateConfig();
 
   const app = createApp(App);
   const pinia = createPinia()

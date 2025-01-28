@@ -102,7 +102,8 @@ import { Experiment } from '@/app/models/Experiment.ts'
 import i18n from '@/plugins/i18n'
 import config from '@/config'
 
-const app = {
+// Create a function to get the app configuration
+const createAppConfig = () => ({
   core: {
     Experiment: Experiment,
     Instance: Instance,
@@ -161,30 +162,43 @@ const app = {
   dashboardPages: [],
   dashboardRoutes: [],
   dashboardLayout: [],
-}
+})
 
 class Config {
-  private config: typeof app
+  private config: ReturnType<typeof createAppConfig> | null = null
 
   constructor() {
-    this.config = app
+    // Don't initialize in constructor
+  }
+
+  // Initialize or update config
+  updateConfig() {
+    this.config = createAppConfig()
+  }
+
+  private ensureConfig() {
+    if (!this.config) {
+      this.config = createAppConfig()
+    }
+    return this.config
   }
 
   getCore() {
-    return this.config.core
+    return this.ensureConfig().core
   }
 
   getDashboardPages() {
-    return this.config.dashboardPages
+    return this.ensureConfig().dashboardPages
   }
 
   getDashboardRoutes() {
-    return this.config.dashboardRoutes
+    return this.ensureConfig().dashboardRoutes
   }
 
   getDashboardLayout() {
-    return this.config.dashboardLayout
+    return this.ensureConfig().dashboardLayout
   }
 }
 
-export default new Config()
+const appConfig = new Config()
+export default appConfig
