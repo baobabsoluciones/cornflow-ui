@@ -106,6 +106,7 @@ import { inject } from 'vue'
 
 export default {
   components: {},
+  emits: ['loadExecution', 'deleteExecution'],
   props: {
     executionsByDate: {
       type: Array,
