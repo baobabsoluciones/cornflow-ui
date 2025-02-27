@@ -2,7 +2,7 @@
   <v-app>
     <core-app-drawer class="app-drawer" />
     <core-app-view />
-    <Suspense>
+    <div class="tab-container">
       <MAppBarTab
         :key="tabsKey"
         :tabs="tabsData"
@@ -23,7 +23,7 @@
           </div>
         </template>
       </MAppBarTab>
-    </Suspense>
+    </div>
   </v-app>
 </template>
 
@@ -103,5 +103,11 @@ if (AuthService.isAuthenticated()) {
 .app-drawer {
   position: fixed !important;
   z-index: 900 !important;
+}
+
+.tab-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 </style>
