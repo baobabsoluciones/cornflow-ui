@@ -273,8 +273,35 @@ export default defineComponent({
   text-overflow: ellipsis; /* Adds '...' when the text overflows */
 }
 
+.d-flex.align-center {
+  width: 100%;
+  min-height: 40px; /* Ensure consistent height */
+  transition: all 0.3s ease; /* Smooth transition */
+}
+
 h4 {
   font-size: 0.9em !important;
+  white-space: nowrap; /* Prevent text wrapping */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0; /* Remove any margin that might cause shifting */
+  line-height: 1.2; /* Consistent line height */
+  transition: opacity 0.3s ease; /* Smooth fade in/out */
+}
+
+.v-list-item {
+  min-height: 40px; /* Consistent height for list items */
+  transition: all 0.3s ease;
+}
+
+.v-list-item__content {
+  transition: all 0.3s ease;
+}
+
+/* Ensure icons maintain position during transition */
+.v-icon {
+  flex-shrink: 0;
+  transition: all 0.3s ease;
 }
 
 .page-selected {
