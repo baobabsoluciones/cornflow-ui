@@ -254,43 +254,43 @@ export default defineComponent({
   color: white;
   margin-right: 10px;
   margin-left: 12px;
-  flex-shrink: 0; /* Prevents the avatar from shrinking */
+  flex-shrink: 0;
 }
 
 .user-info {
   display: flex;
   flex-direction: column;
-  flex-grow: 1; /* Allows the user info to take up the remaining space */
-  overflow: hidden; /* Hides the overflow */
+  flex-grow: 1;
+  overflow: hidden;
 }
 
 .user-detail {
   font-size: 0.8em;
   color: var(--subtitle);
   margin-right: 5px;
-  white-space: nowrap; /* Prevents the text from wrapping to the next line */
-  overflow: hidden; /* Hides the overflow */
-  text-overflow: ellipsis; /* Adds '...' when the text overflows */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .d-flex.align-center {
   width: 100%;
-  min-height: 40px; /* Ensure consistent height */
-  transition: all 0.3s ease; /* Smooth transition */
+  min-height: 40px;
+  transition: all 0.3s ease;
 }
 
 h4 {
   font-size: 0.9em !important;
-  white-space: nowrap; /* Prevent text wrapping */
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin: 0; /* Remove any margin that might cause shifting */
-  line-height: 1.2; /* Consistent line height */
-  transition: opacity 0.3s ease; /* Smooth fade in/out */
+  margin: 0;
+  line-height: 1.2;
+  transition: opacity 0.3s ease;
 }
 
 .v-list-item {
-  min-height: 40px; /* Consistent height for list items */
+  min-height: 40px;
   transition: all 0.3s ease;
 }
 
@@ -298,7 +298,6 @@ h4 {
   transition: all 0.3s ease;
 }
 
-/* Ensure icons maintain position during transition */
 .v-icon {
   flex-shrink: 0;
   transition: all 0.3s ease;
@@ -312,5 +311,4 @@ h4 {
 .non-clickable {
   color: var(--primary-variant) !important;
 }
-
 </style>
