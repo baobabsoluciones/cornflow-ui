@@ -1,111 +1,113 @@
 <template>
-  <Suspense>
-    <MAppDrawer
-      :visible="true"
-      :width="250"
-      @update:rail="mini = !mini"
-      style="position: fixed !important"
-    >
-      <template #logo>
-        <div class="mt-2">
-          <v-img
-            position="left"
-            height="30"
-            class="ml-3"
-            v-if="mini"
-            src="@/app/assets/logo/logo.png"
-          />
-          <v-img
-            height="30"
-            position="left"
-            class="ml-3"
-            v-else
-            src="@/app/assets/logo/full_logo.png"
-          />
-        </div>
-      </template>
-      <template #user>
-        <div
-          class="user-container"
-          v-if="user && user.name"
-          @click="navigateTo('user-settings')"
-        >
-          <div class="avatar" :style="{ backgroundColor: 'var(--primary)' }">
-            {{ user.name[0].toUpperCase() }}
+  <div :style="$attrs.style">
+    <Suspense>
+      <MAppDrawer
+        :visible="true"
+        :width="250"
+        @update:rail="mini = !mini"
+        style="position: fixed !important"
+      >
+        <template #logo>
+          <div class="mt-2">
+            <v-img
+              position="left"
+              height="30"
+              class="ml-3"
+              v-if="mini"
+              src="@/app/assets/logo/logo.png"
+            />
+            <v-img
+              height="30"
+              position="left"
+              class="ml-3"
+              v-else
+              src="@/app/assets/logo/full_logo.png"
+            />
           </div>
-          <div v-if="!mini" class="user-info">
-            <div class="user-detail">{{ user.name }}</div>
-            <div class="user-detail">{{ user.email }}</div>
-          </div>
-        </div>
-      </template>
-      <template #menu>
-        <template v-for="generalItem in generalPages" :key="generalItem.title">
-          <v-list-item
-            :base-color="'var(--title)'"
-            :color="'var(--accent)'"
-            :class="{ 'non-clickable': !generalItem.to }"
-            :to="generalItem.to"
-          >
-            <div class="d-flex align-center">
-              <v-icon v-if="generalItem.icon" left>{{
-                generalItem.icon
-              }}</v-icon>
-              <h4 class="ml-4" v-if="!mini">{{ generalItem.title }}</h4>
-            </div>
-          </v-list-item>
         </template>
-        <v-divider class="mb-2 mt-2"></v-divider>
-        <template v-for="item in executionPages" :key="item.title">
-          <v-list-item
-            :base-color="'var(--title)'"
-            :color="'var(--accent)'"
-            :class="{
-              'non-clickable': !item.to,
-              'page-selected': isSubPageActive(item.subPages),
-            }"
-            :to="item.to"
+        <template #user>
+          <div
+            class="user-container"
+            v-if="user && user.name"
+            @click="navigateTo('user-settings')"
           >
-            <div class="d-flex align-center">
-              <v-icon v-if="item.icon" left>{{ item.icon }}</v-icon>
-              <h4 class="ml-4" v-if="!mini">{{ item.title }}</h4>
+            <div class="avatar" :style="{ backgroundColor: 'var(--primary)' }">
+              {{ user.name[0].toUpperCase() }}
             </div>
-          </v-list-item>
-          <template v-if="item.subPages && !mini">
-            <v-list class="subpages">
-              <v-list-item
-                :base-color="'var(--subtitle)'"
-                :color="'var(--accent)'"
-                v-for="subPage in item.subPages"
-                :key="subPage.title"
-                :to="subPage.to"
-                :title="subPage.title"
-                :prepend-icon="subPage.icon"
-              >
-                <template #title>
-                  <span style="font-size: 0.9rem">{{ subPage.title }}</span>
-                </template>
-              </v-list-item>
-            </v-list>
+            <div v-if="!mini" class="user-info">
+              <div class="user-detail">{{ user.name }}</div>
+              <div class="user-detail">{{ user.email }}</div>
+            </div>
+          </div>
+        </template>
+        <template #menu>
+          <template v-for="generalItem in generalPages" :key="generalItem.title">
+            <v-list-item
+              :base-color="'var(--title)'"
+              :color="'var(--accent)'"
+              :class="{ 'non-clickable': !generalItem.to }"
+              :to="generalItem.to"
+            >
+              <div class="d-flex align-center">
+                <v-icon v-if="generalItem.icon" left>{{
+                  generalItem.icon
+                }}</v-icon>
+                <h4 class="ml-4" v-if="!mini">{{ generalItem.title }}</h4>
+              </div>
+            </v-list-item>
+          </template>
+          <v-divider class="mb-2 mt-2"></v-divider>
+          <template v-for="item in executionPages" :key="item.title">
+            <v-list-item
+              :base-color="'var(--title)'"
+              :color="'var(--accent)'"
+              :class="{
+                'non-clickable': !item.to,
+                'page-selected': isSubPageActive(item.subPages),
+              }"
+              :to="item.to"
+            >
+              <div class="d-flex align-center">
+                <v-icon v-if="item.icon" left>{{ item.icon }}</v-icon>
+                <h4 class="ml-4" v-if="!mini">{{ item.title }}</h4>
+              </div>
+            </v-list-item>
+            <template v-if="item.subPages && !mini">
+              <v-list class="subpages">
+                <v-list-item
+                  :base-color="'var(--subtitle)'"
+                  :color="'var(--accent)'"
+                  v-for="subPage in item.subPages"
+                  :key="subPage.title"
+                  :to="subPage.to"
+                  :title="subPage.title"
+                  :prepend-icon="subPage.icon"
+                >
+                  <template #title>
+                    <span style="font-size: 0.9rem">{{ subPage.title }}</span>
+                  </template>
+                </v-list-item>
+              </v-list>
+            </template>
           </template>
         </template>
-      </template>
-      <template #actions>
-        <template v-for="action in actions" :key="action.title">
-          <v-list-item
-            :base-color="'var(--title)'"
-            :color="'var(--accent)'"
-            @click="action.action"
-          >
-            <div class="d-flex align-center">
-              <v-icon v-if="action.icon" left>{{ action.icon }}</v-icon>
-              <h4 class="ml-4" v-if="!mini">{{ action.title }}</h4>
-            </div>
-          </v-list-item>
+        <template #actions>
+          <template v-for="action in actions" :key="action.title">
+            <v-list-item
+              :base-color="'var(--title)'"
+              :color="'var(--accent)'"
+              @click="action.action"
+            >
+              <div class="d-flex align-center">
+                <v-icon v-if="action.icon" left>{{ action.icon }}</v-icon>
+                <h4 class="ml-4" v-if="!mini">{{ action.title }}</h4>
+              </div>
+            </v-list-item>
+          </template>
         </template>
-      </template>
-    </MAppDrawer>
-  </Suspense>
+      </MAppDrawer>
+    </Suspense>
+  </div>
   <MBaseModal
     v-model="confirmSignOutModal"
     :closeOnOutsideClick="false"
@@ -143,6 +145,7 @@ export default defineComponent({
   name: 'CoreAppDrawer',
   components: {},
   props: {},
+  inheritAttrs: false,
   data: () => ({
     model: 1,
     mini: true,

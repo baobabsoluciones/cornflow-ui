@@ -1,8 +1,6 @@
 <template>
   <v-app>
-    <core-app-drawer
-      style="position: fixed !important; z-index: 900 !important"
-    />
+    <core-app-drawer class="app-drawer" />
     <core-app-view />
     <Suspense>
       <MAppBarTab
@@ -101,4 +99,9 @@ if (AuthService.isAuthenticated()) {
 }
 </script>
 
-<style></style>
+<style>
+.app-drawer {
+  position: fixed !important;
+  z-index: 900 !important;
+}
+</style>
