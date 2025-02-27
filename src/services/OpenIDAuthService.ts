@@ -4,6 +4,7 @@ import { Amplify } from 'aws-amplify'
 import { signInWithRedirect, signOut, fetchAuthSession } from 'aws-amplify/auth'
 import client from '@/api/Api'
 import config from '@/config'
+import router from '@/router'
 
 export class OpenIDAuthService implements AuthProvider {
   private msalInstance: PublicClientApplication | null = null
@@ -77,14 +78,14 @@ export class OpenIDAuthService implements AuthProvider {
           Cognito: {
             userPoolId: config.auth.userPoolId,
             userPoolClientId: config.auth.clientId,
-            signUpVerificationMethod: 'code',
+            signUpVerificationMethod: 'code' as const,
             loginWith: {
               oauth: {
                 domain: config.auth.domain,
                 scopes: ['openid', 'email', 'profile'],
                 redirectSignIn: redirectUrls,
                 redirectSignOut: redirectUrls,
-                responseType: 'code'
+                responseType: 'code' as const
               }
             }
           }
@@ -193,18 +194,15 @@ export class OpenIDAuthService implements AuthProvider {
           await this.retryAuthentication();
           return;
         }
-
-        sessionStorage.setItem('openIdToken', token);
         
         try {
           const backendResponse = await client.post(
             '/login/',
-            { 
-              token: token,
-            },
+            {},
             { 
               'Content-Type': 'application/json',
-              'Accept': 'application/json'
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${token}`
             }
           );
 
@@ -232,10 +230,10 @@ export class OpenIDAuthService implements AuthProvider {
             
             client.getHeaders = () => ({
               Accept: 'application/json',
-              Authorization: `access_token ${backendToken}`
+              Authorization: `Bearer ${backendToken}`
             });
 
-            window.location.replace('/');
+            router.push('/project-execution');
           } else {
             console.error('Backend Response:', backendResponse);
             await this.retryAuthentication();
@@ -258,7 +256,6 @@ export class OpenIDAuthService implements AuthProvider {
   private async retryAuthentication() {
     this.loginAttempted = false
     
-    sessionStorage.removeItem('openIdToken')
     sessionStorage.removeItem('token')
     sessionStorage.setItem('isAuthenticated', 'false')
 
@@ -301,4 +298,23 @@ export class OpenIDAuthService implements AuthProvider {
   getEmail = () => sessionStorage.getItem('email')
   getGivenName = () => sessionStorage.getItem('given_name')
   getFamilyName = () => sessionStorage.getItem('family_name')
+
+  public async makeAuthenticatedRequest(url: string, options: RequestInit = {}): Promise<Response> {
+    const token = await this.getToken();
+    
+    const headers = new Headers(options.headers || {});
+    headers.set('Authorization', `Bearer ${token}`);
+    
+    return fetch(url, {
+      ...options,
+      headers
+    });
+  }
+
+  private setAuthHeader(headers: Headers): void {
+    const token = this.getToken();
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+  }
 }

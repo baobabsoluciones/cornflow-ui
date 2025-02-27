@@ -2,8 +2,8 @@ import configService from '@/services/ConfigService';
 
 const config = {
   backend: import.meta.env.VITE_APP_BACKEND_URL || '',
-  schema: import.meta.env.VITE_APP_SCHEMA || 'rostering',
-  name: import.meta.env.VITE_APP_NAME || 'Rostering',
+  schema: import.meta.env.VITE_APP_SCHEMA,
+  name: import.meta.env.VITE_APP_NAME,
   auth: {
     type: import.meta.env.VITE_APP_AUTH_TYPE || 'cornflow',
     clientId: import.meta.env.VITE_APP_AUTH_CLIENT_ID,
@@ -20,6 +20,8 @@ const config = {
       this.backend = values.backend_url;
       this.schema = values.schema;
       this.name = values.name;
+      
+      console.log('Config initialized with schema:', this.schema);
       
       // More detailed auth configuration
       if (values.auth_type === 'cognito' && values.cognito) {

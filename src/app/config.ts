@@ -114,7 +114,7 @@ const createAppConfig = () => ({
       enableSignup: false,
       schema: config.schema,
       name: config.name,
-      useConfigJson: false,
+      useConfigJson: true,
       logStates: {
         1: {
           code: i18n.global.t('executionTable.optimal'),
