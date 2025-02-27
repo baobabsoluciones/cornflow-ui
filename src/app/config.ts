@@ -112,9 +112,9 @@ const createAppConfig = () => ({
       isPilotVersion: false,
       showTimeLimit: true,
       enableSignup: false,
+      useConfigJson: true,
       schema: config.schema,
       name: config.name,
-      useConfigJson: true,
       logStates: {
         1: {
           code: i18n.global.t('executionTable.optimal'),

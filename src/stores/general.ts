@@ -47,6 +47,10 @@ export const useGeneralStore = defineStore('general', {
   }),
   actions: {
     async initializeData() {
+      // Ensure the API client has the token loaded
+      const apiClient = await import('@/api/Api')
+      apiClient.default.initializeToken?.()
+      
       await this.fetchUser()
       await this.setSchema()
       await this.fetchLicences()
@@ -670,7 +674,7 @@ export const useGeneralStore = defineStore('general', {
     },
 
     getSchemaName(): string {
-      return import.meta.env.VITE_APP_SCHEMA || this.appConfig.parameters.schema
+      return this.appConfig.parameters.schema
     },
 
     getSchemaConfig(): SchemaConfig {

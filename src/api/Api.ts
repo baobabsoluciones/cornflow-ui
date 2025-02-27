@@ -12,6 +12,12 @@ class ApiClient {
 
   constructor() {
     this.baseUrl = config.backend || ''
+    this.initializeToken()
+  }
+
+  public initializeToken() {
+    // Load token from sessionStorage during initialization
+    this.authToken = sessionStorage.getItem('token')
   }
 
   updateBaseUrl(newUrl: string) {
@@ -23,8 +29,15 @@ class ApiClient {
       'Content-Type': 'application/json',
     };
 
+    // Load token from sessionStorage if not already set
+    if (!this.authToken) {
+      this.authToken = sessionStorage.getItem('token');
+    }
+
     if (this.authToken) {
       headers['Authorization'] = `Bearer ${this.authToken}`;
+    } else {
+      console.warn('No Authorization header added - no token available');
     }
 
     return headers;
@@ -119,19 +132,6 @@ class ApiClient {
 
   delete(url: string, deleteHeaders = {}) {
     return this.request(url, { method: 'DELETE', headers: deleteHeaders })
-  }
-
-  // Si existe un método específico para login
-  public async login(credentials: LoginCredentials): Promise<LoginResponse> {
-    // ... existing code ...
-    
-    // Asegurarse de que cuando se guarda el token, se use correctamente en las peticiones
-    if (response.token) {
-      this.authToken = response.token;
-      // Si hay algún almacenamiento local del token, asegurarse de que se guarda correctamente
-    }
-    
-    // ... existing code ...
   }
 }
 
