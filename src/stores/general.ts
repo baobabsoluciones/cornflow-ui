@@ -17,6 +17,10 @@ import LicenceRepository from '@/repositories/LicenceRepository'
 import { toISOStringLocal } from '@/utils/data_io'
 import i18n from '@/plugins/i18n'
 
+// Import utility functions
+import * as tableUtils from '@/utils/tableUtils'
+import * as filterUtils from '@/utils/filterUtils'
+
 export const useGeneralStore = defineStore('general', {
   state: () => ({
     schemaRepository: new SchemaRepository(),
@@ -294,326 +298,30 @@ export const useGeneralStore = defineStore('general', {
       return this.tabBarKey++
     },
 
-    getTableDataKeys(collection: string, data: object): any[] {
-      const schemaChecks = this.schemaConfig[collection]
-      const schemaKeys = [...schemaChecks.required]
-      const keys = Object.keys(data)
-
-      return Array.from(new Set([...schemaKeys, ...keys]))
-    },
-
+    // Table methods - delegated to tableUtils
     getTableDataNames(collection: string, data: object, lang = 'en'): any[] {
-      return this.getTableDataKeys(collection, data).map((el) => {
-        const title = this.getTableDataName(collection, el, lang)
-        return { text: title ?? el, value: el }
-      })
+      return tableUtils.getTableDataNames(this.schemaConfig, collection, data, lang)
     },
 
-    getTableDataName(collection: string, key: string, lang = 'en'): string {
-      const title = this.schemaConfig[collection].properties[key].title
-      if (typeof title === 'string') {
-        return title
-      } else if (typeof title === 'object') {
-        return title[lang] ?? title.en ?? key
-      }
-      return key
-    },
-
-    getTableJsonSchema(collection: string, table): any {
-      return this.schemaConfig[collection].properties[table]
-    },
-
-    getTableOption(collection: string, table, option): any {
-      return this.getTableJsonSchema(collection, table)[option]
-    },
-
-    showTable(collection: string, table: string): boolean {
-      const show = this.getTableOption(collection, table, 'show')
-      return show !== undefined ? show : true
-    },
-
-    getTableHeader(collection, table): any[] {
-      const items = this.getTableJsonSchema(collection, table).items
-      const keys = Object.keys(items.properties)
-      const required = items.required || []
-
-      return Array.from(new Set([...required, ...keys]))
-    },
-
-    getTableJsonSchemaProperty(collection, table, property): any {
-      return this.getTableJsonSchema(collection, table).items.properties[
-        property
-      ]
-    },
-
-    isTablePropertySortable(collection, table, item): boolean {
-      const propSortable = this.getTableJsonSchemaProperty(
-        collection,
-        table,
-        item,
-      ).sortable
-      if (propSortable === undefined) {
-        const tableSortable = this.getTableJsonSchemaProperty(
-          collection,
-          table,
-          item,
-        ).sortable
-        return tableSortable !== undefined ? tableSortable : true
-      }
-      return propSortable
-    },
-
-    isTablePropertyFilterable(collection, table, item): boolean {
-      const propFilterable = this.getTableJsonSchemaProperty(
-        collection,
-        table,
-        item,
-      ).filterable
-      if (propFilterable === undefined) {
-        const tableFilterable = this.getTableJsonSchemaProperty(
-          collection,
-          table,
-          item,
-        ).filterable
-        return tableFilterable !== undefined ? tableFilterable : false
-      }
-      return propFilterable
-    },
-
-    getTablePropertyTitle(collection, table, item, lang = 'en'): string {
-      const title = this.getTableJsonSchemaProperty(
-        collection,
-        table,
-        item,
-      ).title
-      if (typeof title === 'string') {
-        return title
-      } else if (typeof title === 'object') {
-        return title[lang] || title.en || item
-      }
-      return item
-    },
-
-    getTableHeaders(collection, table): any[] {
-      const items = this.getTableJsonSchema(collection, table).items
-      const keys = Object.keys(items.properties)
-      let result = items.required?.slice()
-
-      if (!result || result.length === 0) {
-        result = keys
-      } else {
-        keys.forEach((el) => {
-          if (!result.includes(el)) {
-            result.push(el)
-          }
-        })
-      }
-
-      return result
+    getHeadersFromData(data): any[] {
+      return tableUtils.getHeadersFromData(data)
     },
 
     getTableHeadersData(collection, table, lang = 'en'): any[] {
-      const headers = this.getTableHeaders(collection, table)
-      return headers.map((header) => ({
-        title: this.getTablePropertyTitle(collection, table, header, lang),
-        value: header,
-        sortable: this.isTablePropertySortable(collection, table, header),
-        filterable: this.isTablePropertyFilterable(collection, table, header),
-        type:
-          this.getTableJsonSchemaProperty(collection, table, header).type ===
-          'integer'
-            ? 'number'
-            : this.getTableJsonSchemaProperty(collection, table, header).type,
-        required: this.getTableJsonSchema(
-          collection,
-          table,
-        ).items.required?.includes(header),
-      }))
+      return tableUtils.getTableHeadersData(this.schemaConfig, collection, table, lang)
     },
 
     getConfigTableHeadersData(): any[] {
-      return [
-        {
-          title: i18n.global.t('inputOutputData.parameter'),
-          value: 'displayName',
-          sortable: true,
-          disabled: true,
-          config: true,
-        },
-        {
-          title: i18n.global.t('inputOutputData.value'),
-          value: 'value',
-          sortable: true,
-          config: true,
-        },
-      ]
+      return tableUtils.getConfigTableHeadersData()
     },
 
+    // Filter methods - delegated to filterUtils
     getFilterNames(collection, table, type, lang = 'en'): any {
-      const filters = this.getTableHeaders(collection, table)
-      return filters.reduce((acc, header) => {
-        const headerType = this.getTableJsonSchemaProperty(
-          collection,
-          table,
-          header,
-        ).type
-
-        acc[header] = {
-          title: this.getTablePropertyTitle(collection, table, header, lang),
-          filterable: this.isTablePropertyFilterable(collection, table, header),
-          type: this.getFilterType(headerType),
-          selected: this.isFilterSelected(type, table, header),
-          required: this.getTableJsonSchema(
-            collection,
-            table,
-          ).items.required?.includes(header),
-        }
-        if (acc[header].type == 'checkbox') {
-          acc[header].options = this.getFilterOptions(type, table, header)
-
-          if (
-            acc[header].options[0]?.label &&
-            !isNaN(new Date(acc[header].options[0].label).getTime())
-          ) {
-            acc[header].min = this.getFilterMinDate(type, table, header)
-            acc[header].max = this.getFilterMaxDate(type, table, header)
-            acc[header].type = 'daterange'
-          }
-
-          if (headerType == 'boolean') {
-            acc[header].type = 'checkbox'
-            acc[header].options = [
-              {
-                label: i18n.global.t('inputOutputData.true'),
-                value: 'true',
-                checked: this.isFilterChecked(type, table, header, 'true'),
-              },
-              {
-                label: i18n.global.t('inputOutputData.false'),
-                value: 'false',
-                checked: this.isFilterChecked(type, table, header, 'false'),
-              },
-            ]
-          }
-        } else if (acc[header].type == 'range') {
-          acc[header].min = this.getFilterMinValue(type, table, header)
-          acc[header].max = this.getFilterMaxValue(type, table, header)
-        }
-        return acc
-      }, {})
-    },
-
-    getFilterType(headerType): string {
-      let filterType = ''
-      let type = Array.isArray(headerType) ? headerType[0] : headerType
-      switch (type) {
-        case 'string':
-        case 'boolean':
-          filterType = 'checkbox'
-          break
-        case 'integer':
-        case 'number':
-          filterType = 'range'
-          break
-        case 'date':
-          filterType = 'daterange'
-          break
-      }
-      return filterType
-    },
-
-    getColumnData(type, table_name, column) {
-      // Obtener los datos
-      const { data } = this.selectedExecution.experiment[type]
-
-      // Asegurarse de que data[table_name] exista
-      if (!data[table_name] || !Array.isArray(data[table_name])) {
-        return []
-      }
-
-      // Crear un conjunto para almacenar los valores únicos
-      const uniqueValuesSet = new Set()
-
-      // Recorrer los elementos del array y añadir los valores únicos al conjunto
-      data[table_name].forEach((item) => {
-        if (item.hasOwnProperty(column)) {
-          uniqueValuesSet.add(item[column])
-        }
-      })
-
-      // Convertir el conjunto a un array y devolverlo
-      return Array.from(uniqueValuesSet)
-    },
-
-    isEmptyObject(obj) {
-      return Object.keys(obj).length === 0 && obj.constructor === Object
-    },
-
-    isFilterSelected(type, table, header) {
-      const filtersPreference =
-        this.selectedExecution?.getFiltersPreference(type)
-      const tableFilters = filtersPreference
-        ? filtersPreference[table]
-        : undefined
-      const filter = tableFilters ? tableFilters[header] : undefined
-      return filter !== undefined && !this.isEmptyObject(filter)
-    },
-
-    isFilterChecked(type, table, header, value) {
-      const filtersPreference =
-        this.selectedExecution?.getFiltersPreference(type)
-      const tableFilters = filtersPreference
-        ? filtersPreference[table]
-        : undefined
-      const filter = tableFilters ? tableFilters[header] : undefined
-      const stringValue = value ? value.toString() : 'false'
-      return filter !== undefined && filter.value.includes(stringValue)
-    },
-
-    getFilterOptions(collection, table, header) {
-      const columnData = this.getColumnData(collection, table, header)
-      const uniqueValues = [...new Set(columnData)]
-
-      return uniqueValues.map((value) => ({
-        label: value,
-        value: value,
-        checked: this.isFilterChecked(collection, table, header, value),
-      }))
-    },
-
-    getFilterMinValue(collection, table, header) {
-      const columnData = this.getColumnData(collection, table, header)
-      return Math.min(...columnData)
-    },
-
-    getFilterMaxValue(collection, table, header) {
-      const columnData = this.getColumnData(collection, table, header)
-      return Math.max(...columnData)
-    },
-
-    getFilterMinDate(collection, table, header) {
-      const columnData = this.getColumnData(collection, table, header)
-      return columnData.reduce(
-        (minDate, date) => (date < minDate ? date : minDate),
-        columnData[0],
-      )
-    },
-
-    getFilterMaxDate(collection, table, header) {
-      const columnData = this.getColumnData(collection, table, header)
-      return columnData.reduce(
-        (maxDate, date) => (date > maxDate ? date : maxDate),
-        columnData[0],
-      )
+      return filterUtils.getFilterNames(this.schemaConfig, this.selectedExecution, collection, table, type, lang)
     },
 
     getConfigTableData(data: object, collection, table, lang = 'en'): any[] {
-      return Object.keys(data).map((key) => ({
-        displayName: this.getConfigDisplayName(collection, table, key, lang),
-        type: this.getConfigType(collection, table, key),
-        value: data[key],
-        key: key,
-      }))
+      return tableUtils.getConfigTableData(this.schemaConfig, data, collection, table, lang)
     },
 
     async getDataToDownload(
@@ -636,24 +344,6 @@ export const useGeneralStore = defineStore('general', {
       } catch (error) {
         throw error
       }
-    },
-
-    getConfigDisplayName(collection, table, key, lang = 'en'): string {
-      const title = this.getTableJsonSchema(collection, table).properties[key]
-        .title
-      if (typeof title === 'string') {
-        return title
-      } else if (typeof title === 'object') {
-        return title[lang] || title.en || key
-      }
-      return key
-    },
-
-    getConfigType(collection, table, key): string {
-      return this.getTableJsonSchema(collection, table).properties[key].type ==
-        'integer'
-        ? 'number'
-        : this.getTableJsonSchema(collection, table).properties[key].type
     },
   },
   getters: {

@@ -398,6 +398,14 @@ export default {
               this.selectedTable,
             )
           : this.generalStore.getConfigTableHeadersData()
+
+          if (headers.length === 0) {
+            const headers = this.generalStore.getHeadersFromData(
+            this.data.data[this.selectedTable][0],
+            )
+            return headers
+          } 
+
         return headers
       }
       return []
