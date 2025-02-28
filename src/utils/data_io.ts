@@ -76,10 +76,7 @@ const loadExcel = async function (file, schema) {
         return [tab, table]
       })
       .catch(error => {
-        if (isRequired) {
           throw error
-        }
-        return [tab, []]
       })
   }
 
