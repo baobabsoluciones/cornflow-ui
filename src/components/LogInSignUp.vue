@@ -4,7 +4,7 @@
     style="height: 100vh; background-color: var(--primary-light-variant)"
   >
     <v-card
-      v-if="isCornflowAuth"
+      v-if="isCornflowAuth || isFromLogout"
       flat
       width="25%"
       style="background-color: var(--primary-light-variant)"
@@ -15,7 +15,7 @@
         </v-col>
       </v-card-title>
       <divider />
-      <v-card-subtitle v-if="!signUpMode">
+      <v-card-subtitle v-if="!signUpMode" :class="{ 'text-center': isFromLogout }">
         {{ $t('logIn.subtitle') }}
       </v-card-subtitle>
       <v-card-subtitle v-else>
@@ -24,7 +24,7 @@
       <divider />
 
       <v-card-text>
-        <v-form v-if="!signUpMode">
+        <v-form v-if="!signUpMode && isCornflowAuth">
           <div class="form-content">
             <label class="label">{{
               $t('logIn.username_textfield_label')
@@ -65,7 +65,16 @@
             </v-text-field>
           </div>
         </v-form>
-
+        <div v-else-if="!signUpMode && isFromLogout" class="d-flex flex-column align-center">
+          <MButton
+            :label="loginButtonLabel"
+            color="#0460bf"
+            rounded="xl"
+            :variant="'flat'"
+            style="margin-top: 16px; margin-bottom: 16px"
+            @click="initiateExternalAuth"
+          />
+        </div>
         <v-form v-else>
           <div class="form-content">
             <label class="label mt-3">{{
@@ -153,7 +162,7 @@
       </v-card-text>
       <v-card-actions>
         <v-col flex>
-          <v-row justify="center">
+          <v-row justify="center" v-if="isCornflowAuth">
             <MButton
               :label="$t('logIn.button_label')"
               color="#0460bf"
@@ -164,7 +173,7 @@
             />
           </v-row>
 
-          <v-row justify="center" v-if="enableSignUp">
+          <v-row justify="center" v-if="enableSignUp && isCornflowAuth">
             <span style="color: gray"
               >{{ $t('logIn.question') }}
               <a
@@ -228,6 +237,7 @@ import { inject } from 'vue'
 import { useGeneralStore } from '@/stores/general'
 import getAuthService from '@/services/AuthServiceFactory'
 import config from '@/config'
+import { useRoute } from 'vue-router'
 
 export default {
   data() {
@@ -285,15 +295,18 @@ export default {
           value === this.newUser.password || this.$t('rules.password_match'),
       },
       auth: null,
+      isFromLogout: false,
     }
   },
   async created() {
     this.showSnackbar = inject('showSnackbar')
+    const route = useRoute()
+    this.isFromLogout = route.query.from === 'logout'
     
     // Get initialized auth service
     this.auth = await getAuthService()
     
-    if (!this.isCornflowAuth) {
+    if (!this.isCornflowAuth && !this.isFromLogout) {
       this.initiateExternalAuth()
     }
   },
@@ -312,6 +325,14 @@ export default {
     isCornflowAuth() {
       const isCornflow = config.auth.type === 'cornflow'
       return isCornflow
+    },
+    loginButtonLabel() {
+      if (this.isAzureAuth) {
+        return this.$t('logIn.azure_button')
+      } else if (this.isCognitoAuth) {
+        return this.$t('logIn.cognito_button')
+      }
+      return this.$t('logIn.button_label')
     }
   },
   methods: {

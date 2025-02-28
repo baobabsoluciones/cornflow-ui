@@ -201,6 +201,7 @@ export default {
     message: '¿Está seguro de que desea cerrar sesión?',
     accept: 'Cerrar sesión',
     cancel: 'Cancelar',
+    snackbar_message_success: 'Sesión cerrada con éxito',
   },
   signUp: {
     subtitle: 'Ingresa tus datos para registrarte',

@@ -77,7 +77,7 @@ export default {
         description: 'View and check data',
         titleContent: 'Check data',
         subtitleContent:
-          'View the data of the instance loaded and edit it if needed. Optionally, you can check if the data has inconsistencies. Notice that if you don’t check and correct the data if needed, the execution may not be able to find a solution.',
+          'View the data of the instance loaded and edit it if needed. Optionally, you can check if the data has inconsistencies. Notice that if you don´t check and correct the data if needed, the execution may not be able to find a solution.',
         check: 'Check data',
       },
       step5: {
@@ -194,6 +194,7 @@ export default {
     message: 'Are you sure you want to log out?',
     accept: 'Log me out',
     cancel: 'Cancel',
+    snackbar_message_success: 'Successfully logged out',
   },
   signUp: {
     subtitle: 'Enter your details to register',
