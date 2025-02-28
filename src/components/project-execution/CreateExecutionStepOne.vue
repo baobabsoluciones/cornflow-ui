@@ -31,8 +31,7 @@ export default {
   },
   props: {
     optionSelected: {
-      type: String,
-      required: true,
+      type: String || null,
     },
   },
   methods: {
