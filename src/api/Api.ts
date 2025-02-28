@@ -45,12 +45,12 @@ class ApiClient {
 
   private isTokenExpired(): boolean {
     if (!this.tokenExpiration) return true
-    // Añadimos un margen de 5 minutos para evitar problemas con tokens a punto de expirar
+    // Add a 5-minute margin to avoid issues with tokens about to expire
     return Date.now() >= (this.tokenExpiration - 5 * 60 * 1000)
   }
 
   private async refreshToken(): Promise<void> {
-    // Si ya hay un refresco en curso, esperamos a que termine
+    // If a refresh is already in progress, wait for it to complete
     if (this.refreshingToken) {
       return this.refreshTokenPromise
     }
@@ -58,14 +58,14 @@ class ApiClient {
     this.refreshingToken = true
     this.refreshTokenPromise = (async () => {
       try {
-        // Solo refrescamos el token de Cognito si estamos usando autenticación externa
+        // Only refresh Cognito token if using external authentication
         if (config.auth.type === 'cognito' || config.auth.type === 'azure') {
           const session = await fetchAuthSession()
           if (!session.tokens?.idToken) {
             throw new Error('No ID token available')
           }
-          // Guardamos la expiración del token
-          this.tokenExpiration = session.tokens.idToken.payload.exp * 1000 // Convertimos a milisegundos
+          // Save token expiration
+          this.tokenExpiration = session.tokens.idToken.payload.exp * 1000 // Convert to milliseconds
         } else {
           throw new Error('Token refresh not supported for this auth type')
         }
@@ -84,7 +84,7 @@ class ApiClient {
       completeUrl.search = new URLSearchParams(options.params).toString()
     }
 
-    // Si el token está expirado y no es una petición de login, refrescamos
+    // If token is expired and it's not a login request, refresh it
     if ((config.auth.type === 'cognito' || config.auth.type === 'azure') && 
         !url.includes('/login/') && 
         this.isTokenExpired()) {
