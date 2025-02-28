@@ -112,7 +112,7 @@ const createAppConfig = () => ({
       isPilotVersion: false,
       showTimeLimit: true,
       enableSignup: false,
-      useConfigJson: true,
+      useConfigJson: false,
       schema: config.schema,
       name: config.name,
       logStates: {
