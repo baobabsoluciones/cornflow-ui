@@ -137,9 +137,11 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, Suspense } from 'vue'
+import { defineComponent, Suspense, inject } from 'vue'
 import { useGeneralStore } from '@/stores/general'
 import AuthService from '@/services/AuthService'
+import getAuthService from '@/services/AuthServiceFactory'
+import config from '@/config'
 
 export default defineComponent({
   name: 'CoreAppDrawer',
@@ -152,7 +154,13 @@ export default defineComponent({
     hover: true,
     store: useGeneralStore(),
     confirmSignOutModal: false,
+    auth: null,
+    showSnackbar: null,
   }),
+  async created() {
+    this.showSnackbar = inject('showSnackbar')
+    this.auth = await getAuthService()
+  },
   watch: {},
   computed: {
     user() {
@@ -219,9 +227,19 @@ export default defineComponent({
     confirmSignOut() {
       this.confirmSignOutModal = true
     },
-    signOut() {
-      AuthService.logout()
-      this.$router.push('/sign-in')
+    async signOut() {
+      try {
+        await this.auth.logout()
+        this.$router.push('/sign-in')
+        if (this.showSnackbar) {
+          this.showSnackbar(this.$t('logOut.snackbar_message_success'), 'success')
+        }
+      } catch (error) {
+        console.error('Logout error:', error)
+        if (this.showSnackbar) {
+          this.showSnackbar(this.$t('logOut.snackbar_message_error'), 'error')
+        }
+      }
     },
     isSubPageActive(subPages) {
       return subPages?.some((subPage) => this.$route.path === subPage.to)

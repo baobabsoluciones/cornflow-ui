@@ -1,7 +1,8 @@
 export interface RequestOptions {
-  method ?: string;
-  mode ?: string;
-  body ?: object;
-  params ?: Record<string, string>;
-  headers ?: object;
+  method?: string;
+  mode?: RequestMode;
+  body?: any;
+  params?: Record<string, string>;
+  headers?: Record<string, string>;
+  _retried?: boolean;
 }

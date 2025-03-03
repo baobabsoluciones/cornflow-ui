@@ -5,7 +5,6 @@
 </template>
 <script lang="ts">
 import { defineComponent } from 'vue';
-import AuthService from '@/services/AuthService'
 import { inject } from 'vue';
 
 export default defineComponent({
@@ -19,13 +18,6 @@ export default defineComponent({
     this.showSnackbar = inject('showSnackbar');
   },
   computed: {
-  },
-  methods: {
-    async signOut() {
-      await AuthService.logout();
-      this.$router.push('/sign-in');
-      this.showSnackbar('Sesión cerrada correctamente');
-    },
   },
 });
 </script>
