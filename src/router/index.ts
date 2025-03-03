@@ -10,8 +10,9 @@ import OutputDataView from '@/views/OutputDataView.vue'
 import UserSettingsView from '@/views/UserSettingsView.vue'
 import getAuthService from '@/services/AuthServiceFactory'
 import config from '@/config'
+import appConfig from '@/app/config'
 
-const dashboardRoutes = config.dashboardRoutes || []
+const dashboardRoutes = appConfig.getDashboardRoutes() || []
 
 let authService = null
 
@@ -101,6 +102,7 @@ router.beforeEach(async (to, from, next) => {
     const isTargetingAuthRequiredPage = to.path !== '/sign-in'
     const isExternalAuth = config.auth.type !== 'cornflow'
 
+    // If not authenticated and going to a protected page
     if (!isAuthenticated && isTargetingAuthRequiredPage) {
       if (isExternalAuth) {
         try {
@@ -108,21 +110,32 @@ router.beforeEach(async (to, from, next) => {
           if (!loginResult) {
             next('/sign-in')
           }
-          // Don't call next() here as we're being redirected
+          // We don't call next() here as we are being redirected
+          return
         } catch (error) {
           console.error('Login failed:', error)
           next('/sign-in')
+          return
         }
-        return
       }
       next('/sign-in')
-    } else if (isAuthenticated && isSignInPage) {
-      next('/project-execution')
-    } else if (to.path === '/' && isAuthenticated) {
-      next('/project-execution')
-    } else {
-      next()
+      return
     }
+
+    // If authenticated and going to the login page, redirect to project-execution
+    if (isAuthenticated && isSignInPage) {
+      next('/project-execution')
+      return
+    }
+
+    // If authenticated and going to the root, redirect to project-execution
+    if (isAuthenticated && to.path === '/') {
+      next('/project-execution')
+      return
+    }
+
+    // In any other case, allow navigation
+    next()
   } catch (error) {
     console.error('Router guard error:', error)
     next('/sign-in')

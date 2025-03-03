@@ -51,6 +51,10 @@ export const useGeneralStore = defineStore('general', {
   }),
   actions: {
     async initializeData() {
+      // Ensure the API client has the token loaded
+      const apiClient = await import('@/api/Api')
+      apiClient.default.initializeToken?.()
+      
       await this.fetchUser()
       await this.setSchema()
       await this.fetchLicences()
