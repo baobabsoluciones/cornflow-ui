@@ -620,32 +620,5 @@ export default {
 }
 </script>
 <style scoped>
-.input-output-data-container {
-  position: relative;
-  width: 100%;
-  height: 100%;
-}
-
-.alert-section {
-  position: relative;
-  z-index: 1;
-}
-
-.data-checks-section {
-  position: relative;
-  z-index: 2;
-}
-
-.main-table-section {
-  position: relative;
-  z-index: 1;
-}
-
-::v-deep .v-table {
-  height: 55vh;
-}
-
-::v-deep .data-checks-table.v-table {
-  min-height: 40vh !important;
-}
+@import '@/assets/styles/components/input-data/InputOutputDataTable.css';
 </style>

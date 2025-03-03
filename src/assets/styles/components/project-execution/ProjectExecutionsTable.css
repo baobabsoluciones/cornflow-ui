@@ -1,0 +1,112 @@
+.table-wrapper {
+  width: 100%; /* Set to 100% of screen width */
+  overflow: hidden;
+  position: relative;
+}
+
+.table-container {
+  width: 100%;
+  overflow-x: auto !important;
+  display: block;
+  max-width: 100%;
+  position: relative;
+  -webkit-overflow-scrolling: touch; /* For better scrolling on iOS */
+  scrollbar-width: thin; /* For Firefox */
+}
+
+.table-container::-webkit-scrollbar {
+  height: 8px; /* Height of the scrollbar */
+  display: block !important;
+}
+
+.table-container::-webkit-scrollbar-track {
+  background: #f1f1f1; /* Track color */
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  background: #888; /* Handle color */
+  border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+  background: #555; /* Handle color on hover */
+}
+
+/* For all screen sizes */
+.fixed-width :deep(table) {
+  table-layout: fixed !important;
+  width: 100% !important; /* Use full available width of the container */
+}
+
+/* Column proportions - consistent across all screen sizes */
+.fixed-width :deep(table) th:nth-child(1),
+.fixed-width :deep(table) td:nth-child(1) {
+  width: 9% !important;
+}
+
+.fixed-width :deep(table) th:nth-child(2),
+.fixed-width :deep(table) td:nth-child(2) {
+  width: 13% !important;
+}
+
+.fixed-width :deep(table) th:nth-child(3),
+.fixed-width :deep(table) td:nth-child(3) {
+  width: 21% !important;
+}
+
+.fixed-width :deep(table) th:nth-child(4),
+.fixed-width :deep(table) td:nth-child(4) {
+  width: 9% !important;
+}
+
+.fixed-width :deep(table) th:nth-child(5),
+.fixed-width :deep(table) td:nth-child(5) {
+  width: 9% !important;
+}
+
+.fixed-width :deep(table) th:nth-child(6),
+.fixed-width :deep(table) td:nth-child(6) {
+  width: 14% !important;
+}
+
+.fixed-width :deep(table) th:nth-child(7),
+.fixed-width :deep(table) td:nth-child(7) {
+  width: 9% !important;
+}
+
+.fixed-width :deep(table) th:nth-child(8),
+.fixed-width :deep(table) td:nth-child(8) {
+  width: 9% !important;
+}
+
+.fixed-width :deep(table) th:nth-child(9),
+.fixed-width :deep(table) td:nth-child(9) {
+  width: 11% !important;
+}
+
+/* For very small screens, ensure horizontal scrolling works */
+@media (max-width: 768px) {
+  .table-wrapper {
+    width: 100%; /* Use full screen space on very small devices */
+  }
+  
+  .execution-table {
+    min-width: 900px !important; /* Minimum width to ensure all columns are visible with scrolling */
+  }
+}
+
+.fixed-width :deep(th),
+.fixed-width :deep(td) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 8px !important; /* Ensure consistent padding */
+}
+
+.cell-content {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  display: block;
+} 
