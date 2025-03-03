@@ -82,7 +82,7 @@
           </v-row>
         </template>
         <template #table>
-          <v-row class="mt-8">
+          <v-row class="mt-8" style="overflow-x: auto !important;">
             <MDataTable
               key="data-checks-table"
               class="data-checks-table"
@@ -414,7 +414,7 @@ export default {
       if (this.data?.dataChecks) {
         return this.generalStore.getTableDataNames(
           this.checksTableType,
-          this.data.dataChecks,
+          this.data.dataChecks
         )
       }
       return []
@@ -646,6 +646,6 @@ export default {
 }
 
 ::v-deep .data-checks-table.v-table {
-  height: 25vh !important;
+  min-height: 40vh !important;
 }
 </style>

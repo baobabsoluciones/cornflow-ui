@@ -23,8 +23,16 @@ export function getTableVisible(schemaConfig, collection: string, table: string)
 /**
  * Gets the display names for table data
  */
-export function getTableDataNames(schemaConfig, collection: string, data: object, lang = 'en'): any[] {
-  return getTableDataKeys(schemaConfig, collection, data)
+export function getTableDataNames(
+  schemaConfig, 
+  collection: string, 
+  data: object, 
+  lang = 'en'
+): any[] {
+  // Always use only keys from the data object
+  const keys = Object.keys(data);
+  
+  return keys
     .map((el) => {
       const title = getTableDataName(schemaConfig, collection, el, lang)
       return {
