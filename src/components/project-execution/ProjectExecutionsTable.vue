@@ -1,11 +1,12 @@
 <template>
   <div class="table-wrapper">
-    <div class="table-container" :class="{ 'fixed-width': useFixedWidth }">
+    <div class="table-container" :class="{ 'fixed-width': useFixedWidth, 'no-headers': !showHeaders }">
       <MDataTable
         :headers="headerExecutions"
         :items="executionsByDate"
         :showFooter="showFooter"
         :showHeaders="showHeaders"
+        :hideDefaultHeader="!showHeaders"
         class="execution-table"
       >
         <template v-slot:createdAt="{ item }">
@@ -174,59 +175,58 @@ export default {
   },
   computed: {
     headerExecutions() {
-      const columnWidth = this.useFixedWidth ? '120px' : null;
       return [
         {
           title: this.$t('executionTable.date'),
           value: 'createdAt',
-          width: this.useFixedWidth ? '120px' : '10%',
+          width: this.useFixedWidth ? '9%' : '10%',
           sortable: !this.formatDateByTime,
         },
         {
           title: this.$t('executionTable.name'),
           value: 'name',
-          width: this.useFixedWidth ? '160px' : '18%',
+          width: this.useFixedWidth ? '13%' : '18%',
           sortable: !this.formatDateByTime,
         },
         {
           title: this.$t('executionTable.description'),
           value: 'description',
-          width: this.useFixedWidth ? '200px' : '20%',
+          width: this.useFixedWidth ? '21%' : '20%',
           sortable: !this.formatDateByTime,
         },
         {
           title: this.$t('executionTable.excel'),
           value: 'excel',
-          width: this.useFixedWidth ? '120px' : '10%',
+          width: this.useFixedWidth ? '9%' : '10%',
         },
         {
           title: this.$t('executionTable.state'),
           value: 'state',
-          width: this.useFixedWidth ? '120px' : '12%',
+          width: this.useFixedWidth ? '9%' : '12%',
           sortable: !this.formatDateByTime,
         },
         {
           title: this.$t('executionTable.solver'),
           value: 'solver',
-          width: this.useFixedWidth ? '160px' : '15%',
+          width: this.useFixedWidth ? '14%' : '15%',
           sortable: !this.formatDateByTime,
         },
         {
           title: this.$t('executionTable.timeLimit'),
           value: 'timeLimit',
-          width: this.useFixedWidth ? '120px' : '12%',
+          width: this.useFixedWidth ? '9%' : '12%',
           sortable: !this.formatDateByTime,
         },
         {
           title: this.$t('executionTable.solution'),
           value: 'solution',
-          width: this.useFixedWidth ? '120px' : '10%',
+          width: this.useFixedWidth ? '9%' : '10%',
           sortable: !this.formatDateByTime,
         },
         {
           title: this.$t('executionTable.actions'),
           value: 'actions',
-          width: this.useFixedWidth ? '120px' : '10%',
+          width: this.useFixedWidth ? '11%' : '10%',
         },
       ]
     },

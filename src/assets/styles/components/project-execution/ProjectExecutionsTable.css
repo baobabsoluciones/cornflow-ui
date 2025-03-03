@@ -1,7 +1,8 @@
 .table-wrapper {
-  width: 100%; /* Set to 100% of screen width */
+  width: 100%;
   overflow: hidden;
   position: relative;
+  margin-bottom: 0;
 }
 
 .table-container {
@@ -10,88 +11,67 @@
   display: block;
   max-width: 100%;
   position: relative;
-  -webkit-overflow-scrolling: touch; /* For better scrolling on iOS */
-  scrollbar-width: thin; /* For Firefox */
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+/* Special styling for tables without headers */
+.table-container.no-headers {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.table-container.no-headers :deep(.v-table) {
+  margin-top: 0;
+  padding-top: 0;
 }
 
 .table-container::-webkit-scrollbar {
-  height: 8px; /* Height of the scrollbar */
+  height: 8px;
   display: block !important;
 }
 
 .table-container::-webkit-scrollbar-track {
-  background: #f1f1f1; /* Track color */
+  background: #f1f1f1;
 }
 
 .table-container::-webkit-scrollbar-thumb {
-  background: #888; /* Handle color */
+  background: #888;
   border-radius: 4px;
 }
 
 .table-container::-webkit-scrollbar-thumb:hover {
-  background: #555; /* Handle color on hover */
+  background: #555;
 }
 
-/* For all screen sizes */
 .fixed-width :deep(table) {
   table-layout: fixed !important;
-  width: 100% !important; /* Use full available width of the container */
+  width: 100% !important;
 }
 
-/* Column proportions - consistent across all screen sizes */
-.fixed-width :deep(table) th:nth-child(1),
-.fixed-width :deep(table) td:nth-child(1) {
-  width: 9% !important;
+/* Remove header space for tables without headers */
+.table-container :deep(.v-table__wrapper table thead.v-data-table-header--hidden) {
+  display: none !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
-.fixed-width :deep(table) th:nth-child(2),
-.fixed-width :deep(table) td:nth-child(2) {
-  width: 13% !important;
+/* Adjust spacing for tables without headers */
+.table-container :deep(.v-table__wrapper table tbody tr:first-child td) {
+  border-top: none;
 }
 
-.fixed-width :deep(table) th:nth-child(3),
-.fixed-width :deep(table) td:nth-child(3) {
-  width: 21% !important;
+/* Ensure consistent spacing between tables */
+.execution-table {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
 }
 
-.fixed-width :deep(table) th:nth-child(4),
-.fixed-width :deep(table) td:nth-child(4) {
-  width: 9% !important;
-}
-
-.fixed-width :deep(table) th:nth-child(5),
-.fixed-width :deep(table) td:nth-child(5) {
-  width: 9% !important;
-}
-
-.fixed-width :deep(table) th:nth-child(6),
-.fixed-width :deep(table) td:nth-child(6) {
-  width: 14% !important;
-}
-
-.fixed-width :deep(table) th:nth-child(7),
-.fixed-width :deep(table) td:nth-child(7) {
-  width: 9% !important;
-}
-
-.fixed-width :deep(table) th:nth-child(8),
-.fixed-width :deep(table) td:nth-child(8) {
-  width: 9% !important;
-}
-
-.fixed-width :deep(table) th:nth-child(9),
-.fixed-width :deep(table) td:nth-child(9) {
-  width: 11% !important;
-}
-
-/* For very small screens, ensure horizontal scrolling works */
 @media (max-width: 768px) {
-  .table-wrapper {
-    width: 100%; /* Use full screen space on very small devices */
-  }
-  
   .execution-table {
-    min-width: 900px !important; /* Minimum width to ensure all columns are visible with scrolling */
+    min-width: 900px !important;
   }
 }
 
@@ -100,7 +80,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 8px !important; /* Ensure consistent padding */
+  padding: 8px !important;
 }
 
 .cell-content {
@@ -109,4 +89,4 @@
   white-space: nowrap;
   max-width: 100%;
   display: block;
-} 
+}
