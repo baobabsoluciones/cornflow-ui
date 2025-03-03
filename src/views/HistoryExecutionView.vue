@@ -37,6 +37,7 @@
           :showFooter="false"
           :showHeaders="slotProps.showHeaders"
           :formatDateByTime="true"
+          :useFixedWidth="true"
           @loadExecution="loadExecution"
           @deleteExecution="deleteExecution"
         ></ProjectExecutionsTable>

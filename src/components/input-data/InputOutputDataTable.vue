@@ -160,7 +160,7 @@
           </v-row>
         </template>
         <template #table>
-          <v-row class="mt-8">
+          <v-row class="mt-8" style="overflow-x: auto !important;">
             <MDataTable
               :items="filteredDataTable"
               :headers="headers"
