@@ -3,6 +3,11 @@
 ## [1.1.3] - 04-03-2025
 
 ### Added
+- **Bugfix: export excel with hidden tables and columns**  
+  Fixed an issue where hidden tables and columns were still being exported in the Excel file.  
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #108
+
 - **New mango vue release**  
   Implemented a new version of mango vue, introducing updated features and improved functionality.  
   *Contributors:* [@HelenaCA](#) 
