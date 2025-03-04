@@ -1,6 +1,42 @@
 # Changelog
 
-## [1.1.2] - 07-01-2025
+## [1.1.3] - 04-03-2025
+
+### Added
+- **New mango vue release**  
+  Implemented a new version of mango vue, introducing updated features and improved functionality.  
+  *Contributors:* [@HelenaCA](#) 
+  *Commit ID:* #107
+
+- **Cognito Auth improvements**  
+  - Enhanced OpenID authentication for proper refresh token functionality
+  - Updated authentication to use Bearer token instead of access_token
+  - Improved configuration handling with values.json and .env fallback
+  - Enhanced sign out functionality for OpenID enabled systems
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #106
+
+- **Schema visibility management**  
+  - Added visible prop in schema for tables and columns visibility control
+  - Improved instance table handling for non-schema tables
+  - Refactored table/schema management logic into composables
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #105
+
+### Fixed
+- **UI Component Warnings**  
+  - Resolved app drawer warnings
+  - Fixed app tab warnings
+  - Improved drawer text styling
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #104
+
+- **Input Output Datatable Rendering**  
+  Fixed conflicts in InputOutputDatatable component rendering with other views.  
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #101
+
+## [1.1.2] - 07-01-2025 
 
 ### Added
 - **Authentication openID improvements**  
