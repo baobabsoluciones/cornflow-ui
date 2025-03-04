@@ -82,7 +82,7 @@
           </v-row>
         </template>
         <template #table>
-          <v-row class="mt-8">
+          <v-row class="mt-8" style="overflow-x: auto !important;">
             <MDataTable
               key="data-checks-table"
               class="data-checks-table"
@@ -160,7 +160,7 @@
           </v-row>
         </template>
         <template #table>
-          <v-row class="mt-8">
+          <v-row class="mt-8" style="overflow-x: auto !important;">
             <MDataTable
               :items="filteredDataTable"
               :headers="headers"
@@ -414,7 +414,7 @@ export default {
       if (this.data?.dataChecks) {
         return this.generalStore.getTableDataNames(
           this.checksTableType,
-          this.data.dataChecks,
+          this.data.dataChecks
         )
       }
       return []
@@ -620,32 +620,5 @@ export default {
 }
 </script>
 <style scoped>
-.input-output-data-container {
-  position: relative;
-  width: 100%;
-  height: 100%;
-}
-
-.alert-section {
-  position: relative;
-  z-index: 1;
-}
-
-.data-checks-section {
-  position: relative;
-  z-index: 2;
-}
-
-.main-table-section {
-  position: relative;
-  z-index: 1;
-}
-
-::v-deep .v-table {
-  height: 55vh;
-}
-
-::v-deep .data-checks-table.v-table {
-  height: 25vh !important;
-}
+@import '@/assets/styles/components/input-data/InputOutputDataTable.css';
 </style>
