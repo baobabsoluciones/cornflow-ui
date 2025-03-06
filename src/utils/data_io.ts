@@ -1,5 +1,6 @@
 import readXlsxFile from 'read-excel-file'
 import i18n from '@/plugins/i18n'
+import { getTableVisible, getTablePropertyVisible } from '@/utils/tableUtils'
 
 const readTable = function (
   file,
@@ -86,7 +87,7 @@ const loadExcel = async function (file, schema) {
 }
 
 // this function writes all sheets according to the schema
-async function schemaDataToTable(wb, data, schema = null) {
+async function schemaDataToTable(wb: any, data: Record<string, any>, schema: Record<string, any> | null = null) {
   var dataArray = Object.entries(data).map(([sheetName, sheetData]) => {
     if (!Array.isArray(sheetData)) {
       sheetData = [sheetData]
@@ -95,11 +96,16 @@ async function schemaDataToTable(wb, data, schema = null) {
   })
 
   for (let [sheetName, sheetData] of dataArray) {
+    // Skip tables that are not visible
+    if (schema && schema.properties?.[sheetName]?.visible === false) {
+      continue
+    }
+
     if (sheetData.length === 0) {
       if (schema?.properties?.[sheetName]?.items?.required) {
         const headers = schema.properties[sheetName].items.required
         sheetData = [
-          headers.reduce((acc, header) => {
+          headers.reduce((acc: Record<string, any>, header: string) => {
             acc[header] = null
             return acc
           }, {}),
@@ -112,7 +118,13 @@ async function schemaDataToTable(wb, data, schema = null) {
     const worksheet = wb.addWorksheet(sheetName)
 
     if (schema?.properties?.[sheetName]?.type === 'object') {
-      const tableData = Object.entries(sheetData[0])
+      // Filter out non-visible properties for object type
+      const tableData = Object.entries(sheetData[0] as Record<string, any>)
+        .filter(([key]) => {
+          const propertySchema = schema?.properties?.[sheetName]?.properties?.[key]
+          return !schema || propertySchema?.visible !== false
+        })
+      
       worksheet.addRows(tableData)
       worksheet.getColumn(1).width = 20
       worksheet.getColumn(2).width = 30
@@ -135,7 +147,13 @@ async function schemaDataToTable(wb, data, schema = null) {
         })
       })
     } else {
-      const headers = Object.keys(sheetData[0])
+      // Filter out non-visible headers for array type
+      const allHeaders = Object.keys(sheetData[0])
+      const headers = allHeaders.filter(header => {
+        const propertySchema = schema?.properties?.[sheetName]?.items?.properties?.[header]
+        return !schema || propertySchema?.visible !== false
+      })
+      
       const tableData = [
         headers,
         ...sheetData.map((row) => headers.map((header) => row[header])),
