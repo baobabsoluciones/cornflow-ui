@@ -1,10 +1,8 @@
 <template>
   <v-app>
-    <core-app-drawer
-      style="position: fixed !important; z-index: 900 !important"
-    />
+    <core-app-drawer class="app-drawer" />
     <core-app-view />
-    <Suspense>
+    <div class="tab-container">
       <MAppBarTab
         :key="tabsKey"
         :tabs="tabsData"
@@ -25,18 +23,17 @@
           </div>
         </template>
       </MAppBarTab>
-    </Suspense>
+    </div>
   </v-app>
 </template>
 
 <script setup>
 import { useGeneralStore } from '@/stores/general'
 import AuthService from '@/services/AuthService'
-import CoreAppHeader from '@/components/AppHeader.vue'
 import CoreAppDrawer from '@/components/AppDrawer.vue'
 import CoreAppView from '@/components/AppView.vue'
 import { useRouter } from 'vue-router'
-import { ref, computed, defineExpose, Suspense } from 'vue'
+import { computed, defineExpose } from 'vue'
 
 const generalStore = useGeneralStore()
 const router = useRouter()
@@ -101,4 +98,15 @@ if (AuthService.isAuthenticated()) {
 }
 </script>
 
-<style></style>
+<style>
+.app-drawer {
+  position: fixed !important;
+  z-index: 900 !important;
+}
+
+.tab-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+</style>

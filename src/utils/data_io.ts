@@ -1,5 +1,6 @@
 import readXlsxFile from 'read-excel-file'
 import i18n from '@/plugins/i18n'
+import { getTableVisible, getTablePropertyVisible } from '@/utils/tableUtils'
 
 const readTable = function (
   file,
@@ -31,58 +32,62 @@ const readTable = function (
     })
 }
 
-const loadExcel = function (file, schema) {
-  const tables = Object.keys(schema.properties)
-  const required = schema.required ? schema.required : tables
-  const readTab = function (tab, isRequired) {
-    const tabType = schema.properties[tab].type
-    const useFirstColumnAsKeys = tabType === 'object'
-    return readTable(file, tab, useFirstColumnAsKeys).then((table) => {
-      if (tabType === 'array') {
-        return table.map((row) => {
-          return Object.fromEntries(
-            Object.entries(row).map(([key, value]) => {
-              // Convert dates to ISO strings
-              if (value instanceof Date) {
-                const hours = value.getUTCHours()
-                const minutes = value.getUTCMinutes()
-                if (hours === 0 && minutes === 0) {
-                  return [key, value.toISOString().split('T')[0]] // 'YYYY-MM-DD'
-                } else {
-                  return [
-                    key,
-                    value.toISOString().slice(0, 16).replace('T', ' '),
-                  ] // 'YYYY-MM-DD HH:mm'
+const loadExcel = async function (file, schema) {
+  // Get all sheets from Excel file
+  const allSheets = await readXlsxFile(file, { getSheets: true })
+  const sheetNames = allSheets.map(sheet => sheet.name)
+  const schemaTableNames = Object.keys(schema.properties)
+  const required = schema.required || []
+  
+  const readTab = function (tab) {
+    const isInSchema = schemaTableNames.includes(tab)
+    const tabSchema = isInSchema ? schema.properties[tab] : null
+    const isRequired = required.includes(tab)
+    
+    // For tables in schema, use schema settings
+    const useFirstColumnAsKeys = isInSchema && tabSchema?.type === 'object'
+    
+    return readTable(file, tab, useFirstColumnAsKeys, isRequired)
+      .then(table => {
+        if (Array.isArray(table)) {
+          return [tab, table.map(row => {
+            return Object.fromEntries(
+              Object.entries(row).map(([key, value]) => {
+                if (value instanceof Date) {
+                  const hours = value.getUTCHours()
+                  const minutes = value.getUTCMinutes()
+                  if (hours === 0 && minutes === 0) {
+                    return [key, value.toISOString().split('T')[0]]
+                  } else {
+                    return [key, value.toISOString().slice(0, 16).replace('T', ' ')]
+                  }
+                } 
+                else if (Number.isNaN(value)) {
+                  return [key, null]
                 }
-              } else if (Number.isNaN(value)) {
-                // Convert NaN to null
-                return [key, null]
-              } else if (typeof value === 'number' && value % 1 !== 0) {
-                // Round numbers to 4 decimal places
-                return [key, parseFloat(value.toFixed(4))]
-              } else {
+                else if (typeof value === 'number' && value % 1 !== 0) {
+                  return [key, parseFloat(value.toFixed(4))]
+                }
                 return [key, value]
-              }
-            }),
-          )
-        })
-      }
-      // for objects, merge all objects in the table array into a single object
-      const obj = Object.assign({}, ...table)
-      return obj
-    })
+              })
+            )
+          })]
+        }
+        // Handle object type tables
+        return [tab, table]
+      })
+      .catch(error => {
+          throw error
+      })
   }
-  const promises = []
-  tables.forEach((el) => {
-    promises.push(readTab(el, required.includes(el)))
-  })
-  return Promise.all(promises).then((values) => {
-    return Object.fromEntries(tables.map((tab, i) => [tab, values[i]]))
-  })
+
+  // Process all sheets, including those not in schema
+  const results = await Promise.all(sheetNames.map(tab => readTab(tab)))
+  return Object.fromEntries(results)
 }
 
 // this function writes all sheets according to the schema
-async function schemaDataToTable(wb, data, schema = null) {
+async function schemaDataToTable(wb: any, data: Record<string, any>, schema: Record<string, any> | null = null) {
   var dataArray = Object.entries(data).map(([sheetName, sheetData]) => {
     if (!Array.isArray(sheetData)) {
       sheetData = [sheetData]
@@ -91,11 +96,16 @@ async function schemaDataToTable(wb, data, schema = null) {
   })
 
   for (let [sheetName, sheetData] of dataArray) {
+    // Skip tables that are not visible
+    if (schema && schema.properties?.[sheetName]?.visible === false) {
+      continue
+    }
+
     if (sheetData.length === 0) {
       if (schema?.properties?.[sheetName]?.items?.required) {
         const headers = schema.properties[sheetName].items.required
         sheetData = [
-          headers.reduce((acc, header) => {
+          headers.reduce((acc: Record<string, any>, header: string) => {
             acc[header] = null
             return acc
           }, {}),
@@ -108,7 +118,13 @@ async function schemaDataToTable(wb, data, schema = null) {
     const worksheet = wb.addWorksheet(sheetName)
 
     if (schema?.properties?.[sheetName]?.type === 'object') {
-      const tableData = Object.entries(sheetData[0])
+      // Filter out non-visible properties for object type
+      const tableData = Object.entries(sheetData[0] as Record<string, any>)
+        .filter(([key]) => {
+          const propertySchema = schema?.properties?.[sheetName]?.properties?.[key]
+          return !schema || propertySchema?.visible !== false
+        })
+      
       worksheet.addRows(tableData)
       worksheet.getColumn(1).width = 20
       worksheet.getColumn(2).width = 30
@@ -131,7 +147,13 @@ async function schemaDataToTable(wb, data, schema = null) {
         })
       })
     } else {
-      const headers = Object.keys(sheetData[0])
+      // Filter out non-visible headers for array type
+      const allHeaders = Object.keys(sheetData[0])
+      const headers = allHeaders.filter(header => {
+        const propertySchema = schema?.properties?.[sheetName]?.items?.properties?.[header]
+        return !schema || propertySchema?.visible !== false
+      })
+      
       const tableData = [
         headers,
         ...sheetData.map((row) => headers.map((header) => row[header])),

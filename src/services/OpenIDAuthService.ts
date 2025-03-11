@@ -4,6 +4,7 @@ import { Amplify } from 'aws-amplify'
 import { signInWithRedirect, signOut, fetchAuthSession } from 'aws-amplify/auth'
 import client from '@/api/Api'
 import config from '@/config'
+import router from '@/router'
 
 export class OpenIDAuthService implements AuthProvider {
   private msalInstance: PublicClientApplication | null = null
@@ -62,7 +63,7 @@ export class OpenIDAuthService implements AuthProvider {
     }
   }
 
-  private async initializeCognito() {
+  private async initializeCognito(skipSessionCheck: boolean = false) {
     if (this.initialized) return
 
     try {
@@ -77,14 +78,14 @@ export class OpenIDAuthService implements AuthProvider {
           Cognito: {
             userPoolId: config.auth.userPoolId,
             userPoolClientId: config.auth.clientId,
-            signUpVerificationMethod: 'code',
+            signUpVerificationMethod: 'code' as const,
             loginWith: {
               oauth: {
                 domain: config.auth.domain,
                 scopes: ['openid', 'email', 'profile'],
                 redirectSignIn: redirectUrls,
                 redirectSignOut: redirectUrls,
-                responseType: 'code'
+                responseType: 'code' as const
               }
             }
           }
@@ -94,7 +95,7 @@ export class OpenIDAuthService implements AuthProvider {
       Amplify.configure(cognitoConfig);
       this.initialized = true;
 
-      if (!this.handlingRedirect) {
+      if (!skipSessionCheck && !this.handlingRedirect) {
         this.handlingRedirect = true;
         try {
           const session = await fetchAuthSession();
@@ -193,18 +194,15 @@ export class OpenIDAuthService implements AuthProvider {
           await this.retryAuthentication();
           return;
         }
-
-        sessionStorage.setItem('openIdToken', token);
         
         try {
           const backendResponse = await client.post(
             '/login/',
-            { 
-              token: token,
-            },
+            {},
             { 
               'Content-Type': 'application/json',
-              'Accept': 'application/json'
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${token}`
             }
           );
 
@@ -232,10 +230,10 @@ export class OpenIDAuthService implements AuthProvider {
             
             client.getHeaders = () => ({
               Accept: 'application/json',
-              Authorization: `access_token ${backendToken}`
+              Authorization: `Bearer ${backendToken}`
             });
 
-            window.location.replace('/');
+            router.push('/project-execution');
           } else {
             console.error('Backend Response:', backendResponse);
             await this.retryAuthentication();
@@ -258,7 +256,6 @@ export class OpenIDAuthService implements AuthProvider {
   private async retryAuthentication() {
     this.loginAttempted = false
     
-    sessionStorage.removeItem('openIdToken')
     sessionStorage.removeItem('token')
     sessionStorage.setItem('isAuthenticated', 'false')
 
@@ -273,23 +270,41 @@ export class OpenIDAuthService implements AuthProvider {
   }
 
   logout(): void {
-    this.loginAttempted = false
-    sessionStorage.setItem('isAuthenticated', 'false')
-    sessionStorage.removeItem('openIdToken')
-    sessionStorage.removeItem('token')
-    sessionStorage.removeItem('userId')
-    sessionStorage.removeItem('username')
-    sessionStorage.removeItem('name')
-    sessionStorage.removeItem('email')
-    sessionStorage.removeItem('given_name')
-    sessionStorage.removeItem('family_name')
+    this.loginAttempted = false;
+    this.initialized = false;
+    this.handlingRedirect = false;
+    
+    // Clear all session data
+    sessionStorage.clear();
+    localStorage.clear();
+    
+    // Clear specific session items
+    sessionStorage.setItem('isAuthenticated', 'false');
+    sessionStorage.removeItem('openIdToken');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('userId');
+    sessionStorage.removeItem('username');
+    sessionStorage.removeItem('name');
+    sessionStorage.removeItem('email');
+    sessionStorage.removeItem('given_name');
+    sessionStorage.removeItem('family_name');
     
     if (this.provider === 'azure' && this.msalInstance) {
       this.msalInstance.logoutRedirect({
-        postLogoutRedirectUri: window.location.origin
-      })
+        postLogoutRedirectUri: window.location.origin + '/sign-in?from=logout'
+      });
     } else if (this.provider === 'cognito') {
-      signOut()
+      // Sign out from Cognito with global option
+      signOut({ global: true }).then(() => {
+        // Reset all service state
+        this.initialized = false;
+        this.handlingRedirect = false;
+        this.loginAttempted = false;
+        this.initializationPromise = null;
+        
+        // Navigate after state reset
+        router.push({ path: '/sign-in', query: { from: 'logout' } });
+      });
     }
   }
 
@@ -301,4 +316,23 @@ export class OpenIDAuthService implements AuthProvider {
   getEmail = () => sessionStorage.getItem('email')
   getGivenName = () => sessionStorage.getItem('given_name')
   getFamilyName = () => sessionStorage.getItem('family_name')
+
+  public async makeAuthenticatedRequest(url: string, options: RequestInit = {}): Promise<Response> {
+    const token = await this.getToken();
+    
+    const headers = new Headers(options.headers || {});
+    headers.set('Authorization', `Bearer ${token}`);
+    
+    return fetch(url, {
+      ...options,
+      headers
+    });
+  }
+
+  private setAuthHeader(headers: Headers): void {
+    const token = this.getToken();
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+  }
 }

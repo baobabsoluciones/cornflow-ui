@@ -1,181 +1,190 @@
 <template>
-  <div>
-    <v-alert
-      v-if="
-        checksLaunched &&
-        checksFinished &&
-        (!data?.dataChecks || Object.keys(data.dataChecks).length === 0)
-      "
-      class="mb-3"
-      color="green"
-      elevation="2"
-      icon="mdi-check"
-      density="compact"
-      style="font-size: 0.85rem !important"
-    >
-      {{ $t('inputOutputData.dataChecksPassedMessage') }}
-    </v-alert>
-    <v-alert
-      v-if="checksLaunched && !checksFinished"
-      class="mb-3"
-      color="blue"
-      elevation="2"
-      icon="mdi-alert"
-      density="compact"
-      style="font-size: 0.85rem !important"
-    >
-      <v-progress-circular
-        indeterminate
-        color="white"
-        size="14"
-        class="mr-2"
-      ></v-progress-circular>
-      {{ $t('inputOutputData.dataChecksLoadingMessage') }}
-    </v-alert>
-    <v-alert
-      v-if="data?.dataChecks && Object.keys(data.dataChecks).length > 0"
-      :class="{ 'mb-3': !showDataChecksTable }"
-      color="var(--secondary)"
-      elevation="2"
-      icon="mdi-alert"
-      density="compact"
-      style="font-size: 0.85rem !important"
-    >
-      {{
-        type === 'instance'
-          ? $t('inputOutputData.dataChecksInstanceMessage')
-          : $t('inputOutputData.dataChecksSolutionMessage')
-      }}
-      <v-spacer></v-spacer>
-      <v-btn
-        text
-        class="mt-2"
-        @click="showDataChecksTable = !showDataChecksTable"
-        style="font-size: 0.6rem !important"
+  <div class="input-output-data-container">
+    <!-- Alerts Section -->
+    <div v-if="checksLaunched && checksFinished && (!data?.dataChecks || Object.keys(data.dataChecks).length === 0)" class="alert-section">
+      <v-alert
+        class="mb-3"
+        color="green"
+        elevation="2"
+        icon="mdi-check"
+        density="compact"
+        style="font-size: 0.85rem !important"
+      >
+        {{ $t('inputOutputData.dataChecksPassedMessage') }}
+      </v-alert>
+    </div>
+
+    <div v-if="checksLaunched && !checksFinished" class="alert-section">
+      <v-alert
+        class="mb-3"
+        color="blue"
+        elevation="2"
+        icon="mdi-alert"
+        density="compact"
+        style="font-size: 0.85rem !important"
+      >
+        <v-progress-circular
+          indeterminate
+          color="white"
+          size="14"
+          class="mr-2"
+        ></v-progress-circular>
+        {{ $t('inputOutputData.dataChecksLoadingMessage') }}
+      </v-alert>
+    </div>
+
+    <div v-if="data?.dataChecks && Object.keys(data.dataChecks).length > 0" class="alert-section">
+      <v-alert
+        :class="{ 'mb-3': !showDataChecksTable }"
+        color="var(--secondary)"
+        elevation="2"
+        icon="mdi-alert"
+        density="compact"
+        style="font-size: 0.85rem !important"
       >
         {{
-          showDataChecksTable
-            ? $t('inputOutputData.hideDetails')
-            : $t('inputOutputData.viewDetails')
+          type === 'instance'
+            ? $t('inputOutputData.dataChecksInstanceMessage')
+            : $t('inputOutputData.dataChecksSolutionMessage')
         }}
-      </v-btn>
-    </v-alert>
-    <MTabTable
-      key="data-checks-tabs"
-      class="mb-3"
-      v-if="showDataChecksTable"
-      :tabsData="dataChecksTabsData"
-      @update:selectedTab="handleDataChecksTabSelected"
-    >
-      <template #actions>
-        <v-row class="d-flex mt-3">
-          <v-spacer></v-spacer>
-          <v-icon
-            class="modal_icon_title mr-8"
-            @click="showDataChecksTable = false"
-            >mdi-close</v-icon
-          >
-        </v-row>
-      </template>
-      <template #table="{ tabSelected }">
-        <v-row class="mt-8">
-          <MDataTable
-            key="data-checks-table"
-            class="data-checks-table"
-            :items="dataChecksTableData"
-            :headers="dataChecksHeaders"
-            :options="{ density: 'compact' }"
-          />
-        </v-row>
-      </template>
-    </MTabTable>
-    <MTabTable
-      :tabsData="tabsData"
-      @update:selectedTab="handleTabSelected"
-      :selectedTable="selectedTable"
-    >
-      <template #actions>
-        <v-row class="mt-3">
-          <v-col cols="10">
-            <MFilterSearch
-              :filters="filters"
-              @reset="handleResetFilters"
-              @search="handleSearch"
-              @filter="handleFilters"
+        <v-spacer></v-spacer>
+        <v-btn
+          text
+          class="mt-2"
+          @click="showDataChecksTable = !showDataChecksTable"
+          style="font-size: 0.6rem !important"
+        >
+          {{
+            showDataChecksTable
+              ? $t('inputOutputData.hideDetails')
+              : $t('inputOutputData.viewDetails')
+          }}
+        </v-btn>
+      </v-alert>
+    </div>
+
+    <!-- Data Checks Table Section -->
+    <div v-if="showDataChecksTable" class="data-checks-section">
+      <MTabTable
+        key="data-checks-tabs"
+        class="mb-3"
+        :tabsData="dataChecksTabsData"
+        @update:selectedTab="handleDataChecksTabSelected"
+      >
+        <template #actions>
+          <v-row class="d-flex mt-3">
+            <v-spacer></v-spacer>
+            <v-icon
+              class="modal_icon_title mr-8"
+              @click="showDataChecksTable = false"
+              >mdi-close</v-icon
+            >
+          </v-row>
+        </template>
+        <template #table>
+          <v-row class="mt-8" style="overflow-x: auto !important;">
+            <MDataTable
+              key="data-checks-table"
+              class="data-checks-table"
+              :items="dataChecksTableData"
+              :headers="dataChecksHeaders"
+              :options="{ density: 'compact' }"
             />
-          </v-col>
-          <v-spacer></v-spacer>
-          <v-col
-            cols="2"
-            style="margin: 0 !important; justify-content: end; display: flex"
-          >
-            <v-btn
-              v-if="!canEdit"
-              icon="mdi-microsoft-excel"
-              class="mr-4"
-              color="primary"
-              density="compact"
-              style="font-size: 0.7rem !important"
-              @click="handleDownload()"
-            ></v-btn>
-            <v-btn
-              v-if="canEdit && !editionMode"
-              color="primary"
-              icon="mdi-pencil"
-              class="mr-3"
-              density="compact"
-              style="font-size: 0.6rem !important"
-              @click="editionMode = true"
+          </v-row>
+        </template>
+      </MTabTable>
+    </div>
+
+    <!-- Main Data Table Section -->
+    <div class="main-table-section">
+      <MTabTable
+        :tabsData="tabsData"
+        @update:selectedTab="handleTabSelected"
+        :selectedTable="selectedTable"
+      >
+        <template #actions>
+          <v-row class="mt-3">
+            <v-col cols="10">
+              <MFilterSearch
+                :filters="filters"
+                @reset="handleResetFilters"
+                @search="handleSearch"
+                @filter="handleFilters"
+              />
+            </v-col>
+            <v-spacer></v-spacer>
+            <v-col
+              cols="2"
+              style="margin: 0 !important; justify-content: end; display: flex"
             >
-            </v-btn>
+              <v-btn
+                v-if="!canEdit"
+                icon="mdi-microsoft-excel"
+                class="mr-4"
+                color="primary"
+                density="compact"
+                style="font-size: 0.7rem !important"
+                @click="handleDownload()"
+              ></v-btn>
+              <v-btn
+                v-if="canEdit && !editionMode"
+                color="primary"
+                icon="mdi-pencil"
+                class="mr-3"
+                density="compact"
+                style="font-size: 0.6rem !important"
+                @click="editionMode = true"
+              >
+              </v-btn>
+              <v-btn
+                v-if="canEdit && editionMode"
+                color="primary"
+                icon="mdi-content-save-edit"
+                density="compact"
+                style="font-size: 0.6rem !important"
+                class="mr-3"
+                @click="openSaveModal"
+              >
+              </v-btn>
+              <v-btn
+                icon="mdi-content-save-off"
+                v-if="canEdit && editionMode"
+                color="primary"
+                class="mr-3"
+                density="compact"
+                style="font-size: 0.6rem !important"
+                @click="cancelEdit"
+              >
+              </v-btn>
+            </v-col>
+          </v-row>
+        </template>
+        <template #table>
+          <v-row class="mt-8" style="overflow-x: auto !important;">
+            <MDataTable
+              :items="filteredDataTable"
+              :headers="headers"
+              :options="{ density: 'compact' }"
+              :editionMode="editionMode"
+              @create-item="createItem"
+              @deleteItem="deleteItem"
+            />
+          </v-row>
+          <v-row v-if="canCheckData" class="mt-5 mb-2 justify-center">
             <v-btn
-              v-if="canEdit && editionMode"
-              color="primary"
-              icon="mdi-content-save-edit"
-              density="compact"
-              style="font-size: 0.6rem !important"
-              class="mr-3"
-              @click="openSaveModal"
+              @click="emitCheckData()"
+              variant="outlined"
+              prepend-icon="mdi-play"
+              :disabled="editionMode || (checksLaunched && !checksFinished)"
             >
+              {{ $t('projectExecution.steps.step4.check') }}
             </v-btn>
-            <v-btn
-              icon="mdi-content-save-off"
-              v-if="canEdit && editionMode"
-              color="primary"
-              class="mr-3"
-              density="compact"
-              style="font-size: 0.6rem !important"
-              @click="cancelEdit"
-            >
-            </v-btn>
-          </v-col>
-        </v-row>
-      </template>
-      <template #table="{ tabSelected }">
-        <v-row class="mt-4">
-          <MDataTable
-            :items="filteredDataTable"
-            :headers="headers"
-            :options="{ density: 'compact' }"
-            :editionMode="editionMode"
-            :resetCurrentPage="resetPage"
-            @create-item="createItem"
-            @deleteItem="deleteItem"
-            @update:resetCurrentPage="handleResetPage"
-          />
-        </v-row>
-        <v-row class="mt-5 mb-2 justify-center" v-if="canCheckData">
-          <v-btn
-            @click="emitCheckData()"
-            variant="outlined"
-            prepend-icon="mdi-play"
-            :disabled="editionMode || (checksLaunched && !checksFinished)"
-          >
-            {{ $t('projectExecution.steps.step4.check') }}
-          </v-btn>
-        </v-row>
-      </template>
-    </MTabTable>
+          </v-row>
+        </template>
+      </MTabTable>
+    </div>
+
+    <!-- Modals -->
     <MBaseModal
       v-model="openConfirmationSaveModal"
       :closeOnOutsideClick="false"
@@ -198,10 +207,11 @@
     >
       <template #content>
         <v-row class="d-flex justify-center pr-2 pl-2 pb-5 pt-3">
-          <span> {{ $t('inputOutputData.savingMessage') }}</span>
+          <span>{{ $t('inputOutputData.savingMessage') }}</span>
         </v-row>
       </template>
     </MBaseModal>
+
     <MBaseModal
       v-model="openConfirmationDeleteModal"
       :closeOnOutsideClick="false"
@@ -224,7 +234,7 @@
     >
       <template #content>
         <v-row class="d-flex justify-center pr-2 pl-2 pb-5 pt-3">
-          <span> {{ $t('inputOutputData.deleteMessage') }}</span>
+          <span>{{ $t('inputOutputData.deleteMessage') }}</span>
         </v-row>
       </template>
     </MBaseModal>
@@ -397,6 +407,14 @@ export default {
               this.selectedTable,
             )
           : this.generalStore.getConfigTableHeadersData()
+
+          if (headers.length === 0) {
+            const headers = this.generalStore.getHeadersFromData(
+            this.data.data[this.selectedTable][0],
+            )
+            return headers
+          } 
+
         return headers
       }
       return []
@@ -405,7 +423,7 @@ export default {
       if (this.data?.dataChecks) {
         return this.generalStore.getTableDataNames(
           this.checksTableType,
-          this.data.dataChecks,
+          this.data.dataChecks
         )
       }
       return []
@@ -606,10 +624,5 @@ export default {
 </script>
 
 <style scoped>
-::v-deep .v-table {
-  height: 55vh;
-}
-::v-deep .data-checks-table.v-table {
-  height: 25vh !important;
-}
+@import '@/assets/styles/components/input-data/InputOutputDataTable.css';
 </style>

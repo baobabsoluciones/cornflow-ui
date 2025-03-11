@@ -37,6 +37,7 @@
           :showFooter="false"
           :showHeaders="slotProps.showHeaders"
           :formatDateByTime="true"
+          :useFixedWidth="true"
           @loadExecution="loadExecution"
           @deleteExecution="deleteExecution"
         ></ProjectExecutionsTable>
@@ -243,9 +244,23 @@ export default {
 
         if (loadedResult) {
           this.generalStore.setSelectedExecution(execution.id)
-          this.generalStore.getLoadedExecutionTabs.forEach((tab) => {
-            tab.selected = tab.value === execution.id
-          })
+          // Update tabs and ensure they are properly initialized
+          const existingTab = this.generalStore.getLoadedExecutionTabs.find(
+            (tab) => tab.value === execution.id
+          )
+          
+          if (!existingTab) {
+            this.generalStore.addLoadedExecutionTab({
+              value: execution.id,
+              selected: true,
+              name: execution.name || `Execution ${execution.id}`,
+            })
+          } else {
+            this.generalStore.getLoadedExecutionTabs.forEach((tab) => {
+              tab.selected = tab.value === execution.id
+            })
+          }
+          
           this.generalStore.incrementTabBarKey()
           this.showSnackbar(this.$t('projectExecution.snackbar.successLoad'))
         } else {
