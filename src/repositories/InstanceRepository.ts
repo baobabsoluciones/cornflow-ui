@@ -36,7 +36,7 @@ export default class InstanceRepository {
     if (response.status === 201) {
       return response.content
     } else {
-      throw new Error('Error launching instance data checks')
+      throw new Error(`Error launching instance data checks: Status ${response.status} - ${response?.content?.message || 'Unknown error'}`)
     }
   }
 

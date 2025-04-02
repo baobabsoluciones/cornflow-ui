@@ -3,6 +3,7 @@
     <InputDataTable
       :execution="newExecution"
       :checksFinished="checksFinished"
+      :checksError="checksError"
       canEdit
       canCheckData
       @save-changes="updateInstance"
@@ -29,6 +30,7 @@ export default {
       showSnackbar: null,
       generalStore: useGeneralStore(),
       checksFinished: false,
+      checksError: false,
     }
   },
   created() {
@@ -40,37 +42,43 @@ export default {
     },
     async createInstance() {
       try {
+        // Reset status flags
         this.checksFinished = false
+        this.checksError = false
+        
+        // Step 1: Create the instance
         const result = await this.generalStore.createInstance(this.newExecution)
-
-        if (result) {
-          const instance = await this.generalStore.getInstanceDataChecksById(
-            result.id,
+        if (!result) {
+          this.checksError = true
+          this.showSnackbar(
+            this.$t('projectExecution.snackbar.instanceCreationError'),
+            'error'
           )
+          return
+        }
 
-          if (instance) {
-            this.showSnackbar(
-              this.$t('projectExecution.snackbar.instanceDataChecksSuccess'),
-            )
-            this.checksFinished = true
-            this.$emit('update:instance', instance)
-          } else {
-            this.showSnackbar(
-              this.$t('projectExecution.snackbar.instanceDataChecksError'),
-              'error',
-            )
-          }
+        // Step 2: Launch data checks
+        const instance = await this.generalStore.getInstanceDataChecksById(result.id)
+        if (instance) {
+          this.checksFinished = true
+          this.showSnackbar(
+            this.$t('projectExecution.snackbar.instanceDataChecksSuccess')
+          )
+          this.$emit('update:instance', instance)
         } else {
+          this.checksError = true
           this.showSnackbar(
             this.$t('projectExecution.snackbar.instanceDataChecksError'),
-            'error',
+            'error'
           )
         }
       } catch (error) {
+        this.checksError = true
         this.showSnackbar(
           this.$t('projectExecution.snackbar.instanceDataChecksError'),
-          'error',
+          'error'
         )
+        console.error('Data check error:', error)
       }
     },
   },

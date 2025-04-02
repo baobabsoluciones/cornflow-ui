@@ -14,7 +14,7 @@
       </v-alert>
     </div>
 
-    <div v-if="checksLaunched && !checksFinished" class="alert-section">
+    <div v-if="checksLaunched && !checksFinished && !checksError" class="alert-section">
       <v-alert
         class="mb-3"
         color="blue"
@@ -30,6 +30,19 @@
           class="mr-2"
         ></v-progress-circular>
         {{ $t('inputOutputData.dataChecksLoadingMessage') }}
+      </v-alert>
+    </div>
+
+    <div v-if="checksError" class="alert-section">
+      <v-alert
+        class="mb-3"
+        color="error"
+        elevation="2"
+        icon="mdi-alert-circle"
+        density="compact"
+        style="font-size: 0.85rem !important"
+      >
+        {{ $t('inputOutputData.dataChecksFailedMessage') }}
       </v-alert>
     </div>
 
@@ -270,6 +283,11 @@ export default {
       default: false,
     },
     checksFinished: {
+      type: Boolean,
+      required: false,
+      default: false,
+    },
+    checksError: {
       type: Boolean,
       required: false,
       default: false,

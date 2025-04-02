@@ -10,6 +10,7 @@ export default {
       instanceDataChecksSuccess: 'Verificación de datos finalizado con éxito',
       instanceDataChecksError:
         'Ha ocurrido un error en la verificación de datos',
+      instanceCreationError: 'Ha ocurrido un error al crear la instancia',
       successCreate: 'Ejecución creada con éxito',
       errorCreate: 'Ocurrió un error al crear la ejecución',
       succesSearch: 'Búsqueda completada con éxito',
@@ -262,6 +263,8 @@ export default {
       'La verificación de datos ha finalizado correctamente',
     dataChecksLoadingMessage:
       'La verificación de datos está en curso. Por favor, espere...',
+    dataChecksFailedMessage:
+      'El proceso de verificación de datos ha fallado. Por favor, intente de nuevo o contacte con soporte.',
     parameter: 'Parámetro',
     value: 'Valor',
     key: 'Clave',
