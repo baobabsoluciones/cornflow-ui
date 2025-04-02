@@ -65,6 +65,7 @@ When `useConfigJson` is true in `src/app/config.ts`, the application will load c
        AppConfig: {
        isPilotVersion: false,
        showTimeLimit: true,
+       useHashMode: false,
        schema: config.schema,
        name: config.name,
        logo: 'path/to',
@@ -266,6 +267,26 @@ Using values.json (when useConfigJson: true):
 ```
 
 The authentication type is configured either through environment variables or the values.json file, depending on the `useConfigJson` setting in `src/app/config.ts`.
+
+## Router Configuration
+
+The application supports two routing modes:
+
+### 1. HTML5 History Mode (Default)
+This is the default routing mode that creates clean URLs without the hash (#). It requires proper server configuration to handle the URLs correctly.
+
+### 2. Hash Mode
+If you're deploying in an environment where you don't have control over the server configuration or are experiencing issues with route handling, you can enable hash mode by setting `useHashMode: true` in the core parameters in `src/app/config.ts`:
+
+```typescript
+parameters: {
+  // other parameters
+  useHashMode: true,
+  // other parameters
+}
+```
+
+When hash mode is enabled, all routes will include a hash (#) in the URL (e.g., `http://example.com/#/project-execution` instead of `http://example.com/project-execution`).
 
 ## Installing
 
