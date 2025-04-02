@@ -195,6 +195,7 @@ export default {
     snackbar_message_error: 'Credenciales incorrectas',
     processing_auth: 'Procesando autenticación...',
     redirecting: 'Redirigiendo a la autenticación externa... Si la redirección no ocurre automáticamente, por favor contacte con el servicio técnico para obtener ayuda.',
+    session_expired: 'Tu sesión ha expirado. Por favor, inicia sesión de nuevo.',
   },
   logOut: {
     title: 'Cerrar sesión',

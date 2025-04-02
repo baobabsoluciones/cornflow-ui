@@ -188,6 +188,7 @@ export default {
     snackbar_message_error: 'Incorrect credentials',
     processing_auth: 'Processing authentication...',
     redirecting: 'Redirecting to external authentication... If the redirection does not happen automatically, please contact technical support for assistance.',
+    session_expired: 'Your session has expired. Please sign in again.',
   },
   logOut: {
     title: 'Log out',
