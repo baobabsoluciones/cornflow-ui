@@ -25,6 +25,7 @@ export default {
       required: true,
     },
   },
+  emits: ['update:instance', 'checks-launching'],
   data() {
     return {
       showSnackbar: null,
@@ -46,6 +47,9 @@ export default {
         this.checksFinished = false
         this.checksError = false
         
+        // Notify parent that checks are launching
+        this.$emit('checks-launching', true)
+        
         // Step 1: Create the instance
         const result = await this.generalStore.createInstance(this.newExecution)
         if (!result) {
@@ -54,6 +58,7 @@ export default {
             this.$t('projectExecution.snackbar.instanceCreationError'),
             'error'
           )
+          this.$emit('checks-launching', false) // Notify parent that checks are done
           return
         }
 
@@ -72,6 +77,9 @@ export default {
             'error'
           )
         }
+        
+        // Notify parent that checks are done
+        this.$emit('checks-launching', false)
       } catch (error) {
         this.checksError = true
         this.showSnackbar(
@@ -79,6 +87,9 @@ export default {
           'error'
         )
         console.error('Data check error:', error)
+        
+        // Notify parent that checks are done
+        this.$emit('checks-launching', false)
       }
     },
   },

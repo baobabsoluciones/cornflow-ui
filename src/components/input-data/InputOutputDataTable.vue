@@ -188,7 +188,7 @@
               @click="emitCheckData()"
               variant="outlined"
               prepend-icon="mdi-play"
-              :disabled="editionMode || (checksLaunched && !checksFinished)"
+              :disabled="editionMode || (checksLaunched && !checksFinished) || checksError"
             >
               {{ $t('projectExecution.steps.step4.check') }}
             </v-btn>
