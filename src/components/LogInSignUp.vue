@@ -302,11 +302,19 @@ export default {
     this.showSnackbar = inject('showSnackbar')
     const route = useRoute()
     this.isFromLogout = route.query.from === 'logout'
+    const isTokenExpired = route.query.expired === 'true'
+    
+    // Clear auth data from localStorage on login page load
+    // This is important to handle cases where tokens are expired
+    this.clearLocalStorageAuthData();
     
     // Get initialized auth service
     this.auth = await getAuthService()
     
-    if (!this.isCornflowAuth && !this.isFromLogout) {
+    // Force logout if token expired or explicitly logged out
+    if (isTokenExpired) {
+      await this.handleExpiredToken()
+    } else if (!this.isCornflowAuth && !this.isFromLogout) {
       this.initiateExternalAuth()
     }
   },
@@ -374,13 +382,62 @@ export default {
       }
     },
     async initiateExternalAuth() {
-      try {      
+      try {  
+        // Clear any existing auth data in localStorage before trying to log in
+        this.clearLocalStorageAuthData();    
         await this.auth.login()
       } catch (error) {
         console.error('External auth login failed:', error)
         this.showSnackbar(this.$t('logIn.snackbar_message_error'), 'error')
       }
     },
+    async handleExpiredToken() {
+      try {
+        // Clear auth state on client
+        this.auth.logout()
+        
+        // Show explicit message for expired token
+        this.showSnackbar(this.$t('logIn.session_expired') || 'Your session has expired. Please sign in again.', 'warning')
+        
+        // Set flag to prevent automatic redirect, forcing user to click login
+        this.isFromLogout = true
+      } catch (error) {
+        console.error('Failed to handle expired token:', error)
+        // Still try to redirect
+        this.initiateExternalAuth()
+      }
+    },
+    
+    /**
+     * Clears authentication-related data from localStorage
+     * This helps prevent authentication issues with external providers
+     */
+    clearLocalStorageAuthData() {
+      // Get all localStorage keys
+      const keys = Object.keys(localStorage);
+      
+      // Patterns to match auth-related items in localStorage
+      const authPatterns = [
+        'CognitoIdentityServiceProvider',
+        'amplify-signin-with-hostedUI',
+        'amplify', 
+        'MSAL',
+        'msal.',
+        'microsoft.',
+        'azure.',
+        'auth.',
+        'refresh_token',
+        'id_token',
+        'access_token'
+      ];
+            
+      // Remove all matching items
+      keys.forEach(key => {
+        if (authPatterns.some(pattern => key.toLowerCase().includes(pattern.toLowerCase()))) {
+          localStorage.removeItem(key);
+        }
+      });
+    }
   },
 }
 </script>

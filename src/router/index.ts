@@ -1,5 +1,5 @@
 // Composables
-import { createRouter, RouteRecordRaw, createWebHistory } from 'vue-router'
+import { createRouter, RouteRecordRaw, createWebHistory, createWebHashHistory } from 'vue-router'
 import IndexView from '@/views/IndexView.vue'
 import LoginView from '@/views/LoginView.vue'
 import ProjectExecutionView from '@/views/ProjectExecutionView.vue'
@@ -90,7 +90,7 @@ const routes: RouteRecordRaw[] = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: appConfig.getCore().parameters.useHashMode ? createWebHashHistory() : createWebHistory(),
   routes,
 })
 
