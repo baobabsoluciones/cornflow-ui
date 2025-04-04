@@ -156,8 +156,7 @@ export const useGeneralStore = defineStore('general', {
 
     async getInstanceDataChecksById(id: string) {
       try {
-        const dataChecks =
-          await this.instanceRepository.launchInstanceDataChecks(id)
+        const dataChecks = await this.instanceRepository.launchInstanceDataChecks(id)
         const executionId = dataChecks.id
 
         let execution
@@ -172,6 +171,7 @@ export const useGeneralStore = defineStore('general', {
         return instance
       } catch (error) {
         console.error('Error getting instance data checks', error)
+        return null // Explicitly return null to indicate an error
       }
     },
 

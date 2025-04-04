@@ -72,6 +72,7 @@
           <CreateExecutionCheckData
             :newExecution="newExecution"
             @update:instance="handleInstanceSelected"
+            @checks-launching="checksLaunching = $event"
           />
         </template>
 
@@ -193,6 +194,7 @@ export default {
       },
       existingInstanceErrors: null,
       searchExecutionText: '',
+      checksLaunching: false,
     }
   },
   created() {
@@ -340,6 +342,9 @@ export default {
         (this.currentStep === 2 &&
           this.optionSelected === 'createExecution' &&
           (!this.newExecution.instance || this.existingInstanceErrors)) ||
+        (this.currentStep === 3 &&
+          this.optionSelected === 'createExecution' &&
+          this.checksLaunching) ||
         (this.currentStep === 4 &&
           this.optionSelected === 'createExecution' &&
           !this.newExecution.selectedSolver) ||

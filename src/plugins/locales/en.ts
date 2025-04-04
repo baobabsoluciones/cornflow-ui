@@ -9,6 +9,7 @@ export default {
     snackbar: {
       instanceDataChecksSuccess: 'Data verification completed successfully',
       instanceDataChecksError: 'An error occurred while verifying the data',
+      instanceCreationError: 'An error occurred while creating the instance',
       successCreate: 'Execution created successfully',
       errorCreate: 'An error occurred while creating the execution',
       succesSearch: 'Search succesfully completed',
@@ -253,6 +254,8 @@ export default {
     dataChecksPassedMessage: 'Data verification has completed successfully.',
     dataChecksLoadingMessage:
       'Data verification is in progress. Please wait...',
+    dataChecksFailedMessage:
+      'Data verification process failed. Please try again or contact support.',
     parameter: 'Parameter',
     value: 'Value',
     key: 'Key',
