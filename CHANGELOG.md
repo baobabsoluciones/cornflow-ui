@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.1.4] - 09-04-2025
+
+### Added
+- **Feature/improve checks flow**  
+  Fixed an issue with the checks flow: When running checks, there are three possible outcomes: all checks pass, some checks fail, or the checks encounter a critical error. Previously, when a DAG was triggered for checks and failed, the frontend didn't capture this failure, leaving the issue unnoticed. Now, this information is properly retrieved, preventing further progress if the DAG encounters a failure.  
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #114
+
+- **Feature/cognito fixes**  
+  - Better redirect handling for cognito auth (delete all session storage and local storage data when sign out or before login)
+  - Improved history execution style table
+  - Added hash mode in config to be able to decide if hash mode is active or not in routing
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #113
+
 ## [1.1.3] - 04-03-2025
 
 ### Added
