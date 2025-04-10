@@ -10,6 +10,7 @@ export default {
       instanceDataChecksSuccess: 'Verificación de datos finalizado con éxito',
       instanceDataChecksError:
         'Ha ocurrido un error en la verificación de datos',
+      instanceCreationError: 'Ha ocurrido un error al crear la instancia',
       successCreate: 'Ejecución creada con éxito',
       errorCreate: 'Ocurrió un error al crear la ejecución',
       succesSearch: 'Búsqueda completada con éxito',
@@ -195,6 +196,7 @@ export default {
     snackbar_message_error: 'Credenciales incorrectas',
     processing_auth: 'Procesando autenticación...',
     redirecting: 'Redirigiendo a la autenticación externa... Si la redirección no ocurre automáticamente, por favor contacte con el servicio técnico para obtener ayuda.',
+    session_expired: 'Tu sesión ha expirado. Por favor, inicia sesión de nuevo.',
   },
   logOut: {
     title: 'Cerrar sesión',
@@ -261,6 +263,8 @@ export default {
       'La verificación de datos ha finalizado correctamente',
     dataChecksLoadingMessage:
       'La verificación de datos está en curso. Por favor, espere...',
+    dataChecksFailedMessage:
+      'El proceso de verificación de datos ha fallado. Por favor, intente de nuevo o contacte con soporte.',
     parameter: 'Parámetro',
     value: 'Valor',
     key: 'Clave',

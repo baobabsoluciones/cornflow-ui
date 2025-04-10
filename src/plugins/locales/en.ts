@@ -9,6 +9,7 @@ export default {
     snackbar: {
       instanceDataChecksSuccess: 'Data verification completed successfully',
       instanceDataChecksError: 'An error occurred while verifying the data',
+      instanceCreationError: 'An error occurred while creating the instance',
       successCreate: 'Execution created successfully',
       errorCreate: 'An error occurred while creating the execution',
       succesSearch: 'Search succesfully completed',
@@ -188,6 +189,7 @@ export default {
     snackbar_message_error: 'Incorrect credentials',
     processing_auth: 'Processing authentication...',
     redirecting: 'Redirecting to external authentication... If the redirection does not happen automatically, please contact technical support for assistance.',
+    session_expired: 'Your session has expired. Please sign in again.',
   },
   logOut: {
     title: 'Log out',
@@ -252,6 +254,8 @@ export default {
     dataChecksPassedMessage: 'Data verification has completed successfully.',
     dataChecksLoadingMessage:
       'Data verification is in progress. Please wait...',
+    dataChecksFailedMessage:
+      'Data verification process failed. Please try again or contact support.',
     parameter: 'Parameter',
     value: 'Value',
     key: 'Key',

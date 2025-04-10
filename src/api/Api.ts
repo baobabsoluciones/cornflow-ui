@@ -92,6 +92,8 @@ class ApiClient {
         await this.refreshToken()
       } catch (error) {
         console.error('Token refresh failed:', error)
+        // If refresh token fails, redirect to login
+        this.handleAuthFailure()
         throw error
       }
     }
@@ -110,12 +112,83 @@ class ApiClient {
         mode: 'cors',
       })
 
-      const content = await response.json()
+      // Check for 401 Unauthorized response, which indicates expired or invalid token
+      if (response.status === 401 && !url.includes('/login/')) {
+        console.warn('Received 401 Unauthorized response, session may have expired')
+        this.handleAuthFailure()
+        throw new Error('Unauthorized: Session expired')
+      }
+      
+      // Try to parse response content
+      let content;
+      try {
+        content = await response.json()
+      } catch (e) {
+        content = { message: 'Could not parse response' }
+      }
+      
       return { status: response.status, content }
     } catch (error) {
       console.error('Request failed:', error)
+      // Only handle auth failures if not already handling a login request
+      if (!url.includes('/login/') && error.message?.includes('Unauthorized')) {
+        this.handleAuthFailure()
+      }
       throw error
     }
+  }
+
+  /**
+   * Handles authentication failure by clearing session and redirecting to login
+   */
+  private handleAuthFailure() {
+    // Clear session storage
+    sessionStorage.removeItem('token')
+    sessionStorage.setItem('isAuthenticated', 'false')
+    this.authToken = null
+
+    // Clear auth-related data from localStorage
+    this.clearLocalStorageAuthData()
+
+    // Use setTimeout to ensure this runs after the current execution context
+    setTimeout(() => {
+      // Import dynamically to avoid circular dependency
+      import('@/router').then(({ default: router }) => {
+        // Redirect to sign-in page with expired flag
+        router.push({ path: '/sign-in', query: { expired: 'true' } })
+      })
+    }, 0)
+  }
+
+  /**
+   * Clears authentication-related data from localStorage
+   * This helps prevent authentication issues with external providers
+   */
+  private clearLocalStorageAuthData(): void {
+    // Get all localStorage keys
+    const keys = Object.keys(localStorage);
+    
+    // Patterns to match auth-related items in localStorage
+    const authPatterns = [
+      'CognitoIdentityServiceProvider',
+      'amplify-signin-with-hostedUI',
+      'amplify', 
+      'MSAL',
+      'msal.',
+      'microsoft.',
+      'azure.',
+      'auth.',
+      'refresh_token',
+      'id_token',
+      'access_token'
+    ];
+    
+    // Remove all matching items
+    keys.forEach(key => {
+      if (authPatterns.some(pattern => key.toLowerCase().includes(pattern.toLowerCase()))) {
+        localStorage.removeItem(key);
+      }
+    });
   }
 
   get(url: string, queryParams = {}, getHeaders = {}) {
@@ -130,7 +203,7 @@ class ApiClient {
     return this.request(url, { method: 'PUT', body: data, headers: putHeaders })
   }
 
-  delete(url: string, deleteHeaders = {}) {
+  remove(url: string, deleteHeaders = {}) {
     return this.request(url, { method: 'DELETE', headers: deleteHeaders })
   }
 }

@@ -143,6 +143,8 @@ export class OpenIDAuthService implements AuthProvider {
 
   async login(): Promise<boolean> {
     try {
+      // First clear any stale auth data before attempting login
+      this.clearLocalStorageAuthData();
       
       if (this.initializationPromise) {
         await this.initializationPromise;
@@ -179,6 +181,10 @@ export class OpenIDAuthService implements AuthProvider {
     } catch (error) {
       this.loginAttempted = true;
       console.error('OpenIDAuthService: Login failed:', error);
+      
+      // Clear any partial authentication data that might be causing issues
+      this.clearLocalStorageAuthData();
+      
       throw error;
     }
   }
@@ -228,10 +234,8 @@ export class OpenIDAuthService implements AuthProvider {
               sessionStorage.setItem('family_name', tokenClaims.family_name || '');
             }
             
-            client.getHeaders = () => ({
-              Accept: 'application/json',
-              Authorization: `Bearer ${backendToken}`
-            });
+            // Reinitialize the API client with the new token
+            client.initializeToken();
 
             router.push('/project-execution');
           } else {
@@ -255,17 +259,37 @@ export class OpenIDAuthService implements AuthProvider {
 
   private async retryAuthentication() {
     this.loginAttempted = false
+    this.initialized = false
     
+    // Clear session data
     sessionStorage.removeItem('token')
+    sessionStorage.removeItem('openIdToken')
     sessionStorage.setItem('isAuthenticated', 'false')
-
-    if (this.provider === 'azure' && this.msalInstance) {
+    
+    // Clear local storage auth data
+    this.clearLocalStorageAuthData()
+    
+    // For cognito, we need to handle this differently
+    if (this.provider === 'cognito') {
+      try {
+        // Try to sign out first - this helps clear Cognito browser state
+        await signOut({ global: true })
+        
+        // Reinitialize with skipSessionCheck to avoid loops
+        await this.initializeCognito(true)
+        
+        // Redirect through router to ensure query params are set
+        router.push({ path: '/sign-in', query: { expired: 'true' } })
+      } catch (error) {
+        console.error('Failed to retry authentication with Cognito:', error)
+        // If that fails, force hard redirect to sign-in page
+        window.location.href = window.location.origin + '/sign-in?expired=true'
+      }
+    } else if (this.provider === 'azure' && this.msalInstance) {
       await this.msalInstance.loginRedirect({
         scopes: ['openid', 'profile', 'email', 'User.Read'],
         prompt: 'select_account'
       })
-    } else if (this.provider === 'cognito') {
-      await signInWithRedirect({provider:{ custom: 'AzureAD'}})
     }
   }
 
@@ -276,7 +300,9 @@ export class OpenIDAuthService implements AuthProvider {
     
     // Clear all session data
     sessionStorage.clear();
-    localStorage.clear();
+    
+    // Clear specific Cognito/Azure entries from localStorage
+    this.clearLocalStorageAuthData();
     
     // Clear specific session items
     sessionStorage.setItem('isAuthenticated', 'false');
@@ -304,8 +330,47 @@ export class OpenIDAuthService implements AuthProvider {
         
         // Navigate after state reset
         router.push({ path: '/sign-in', query: { from: 'logout' } });
+      }).catch((error) => {
+        console.error('Error during Cognito sign out:', error);
+        // Even if there's an error, clear state and redirect
+        this.initialized = false;
+        this.handlingRedirect = false;
+        this.loginAttempted = false;
+        this.initializationPromise = null;
+        router.push({ path: '/sign-in', query: { from: 'logout' } });
       });
     }
+  }
+
+  /**
+   * Clears authentication-related data from localStorage
+   * This is important to handle expired tokens and avoid issues with Cognito/Azure auth
+   */
+  private clearLocalStorageAuthData(): void {
+    // Get all localStorage keys
+    const keys = Object.keys(localStorage);
+    
+    // Patterns to match auth-related items in localStorage
+    const authPatterns = [
+      'CognitoIdentityServiceProvider',
+      'amplify-signin-with-hostedUI',
+      'amplify', 
+      'MSAL',
+      'msal.',
+      'microsoft.',
+      'azure.',
+      'auth.',
+      'refresh_token',
+      'id_token',
+      'access_token'
+    ];
+    
+    // Remove all matching items
+    keys.forEach(key => {
+      if (authPatterns.some(pattern => key.toLowerCase().includes(pattern.toLowerCase()))) {
+        localStorage.removeItem(key);
+      }
+    });
   }
 
   getToken = () => sessionStorage.getItem('token')

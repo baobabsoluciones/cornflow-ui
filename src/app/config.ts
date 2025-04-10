@@ -113,6 +113,7 @@ const createAppConfig = () => ({
       showTimeLimit: true,
       enableSignup: false,
       useConfigJson: false,
+      useHashMode: true,
       schema: config.schema,
       name: config.name,
       logStates: {
