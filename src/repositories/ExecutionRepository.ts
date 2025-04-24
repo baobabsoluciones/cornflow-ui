@@ -53,6 +53,8 @@ export default class ExecutionRepository {
           execution.instance_id,
           execution.id,
           execution.user_id,
+          execution.user_name,
+          execution.updated_at,
         )
       })
     } else {
