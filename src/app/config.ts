@@ -5,7 +5,15 @@
  *
  * The `core` property of the `app` object is used to define the core functionalities of your application.
  * Each core functionality is a class that extends the `BaseCore` class and implements the required methods.
- * Also, the core functionality can have additional properties in 'parameters' such as `isPilotVersion`, `showTimeLimit`, `logStates`, `useConfigJson` that if true it gets the config variables from a values json and if false from the environment variables file, and `enableSignup` for enabling or disabling the sign-up functionality.
+ * Also, the core functionality can have additional properties in 'parameters' such as:
+ * - `isPilotVersion`: Controls if pilot version features are enabled
+ * - `showTimeLimit`: Controls if time limit is shown for executions
+ * - `logStates`: Defines states and messages for execution logs
+ * - `useConfigJson`: If true, gets config variables from values.json, if false from environment variables
+ * - `enableSignup`: Enables or disables the sign-up functionality
+ * - `showExtraProjectExecutionColumns`: Controls visibility of additional columns in the project execution table
+ *   - `showUserName`: Shows or hides the username column
+ *   - `showEndCreationDate`: Shows or hides the end creation date column
  *
  * The `dashboardPages` array is used to define the navigation menu items and their corresponding routes for dashboard subpages.
  * Each page is an object with `title`, `icon`, `to`, and `pos` properties.
@@ -31,6 +39,10 @@
  *       schema: 'default',
  *       name: 'Default',
  *       useConfigJson: false,
+ *       showExtraProjectExecutionColumns: {
+ *         showUserName: false,
+ *         showEndCreationDate: true,
+ *       },
  *      logStates: {
  *       1: {
  *        message: 'Optimal',
@@ -116,6 +128,10 @@ const createAppConfig = () => ({
       useHashMode: true,
       schema: config.schema,
       name: config.name,
+      showExtraProjectExecutionColumns: {
+        showUserName: false,
+        showEndCreationDate: false,
+      },
       logStates: {
         1: {
           code: i18n.global.t('executionTable.optimal'),

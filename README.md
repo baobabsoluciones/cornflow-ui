@@ -69,7 +69,11 @@ When `useConfigJson` is true in `src/app/config.ts`, the application will load c
        schema: config.schema,
        name: config.name,
        logo: 'path/to',
-       expandedLogo: 'path/to'
+       expandedLogo: 'path/to',
+       showExtraProjectExecutionColumns: {
+         showUserName: false,     
+         showEndCreationDate: false 
+       }
        },
        dashboardLayout: [
        {
