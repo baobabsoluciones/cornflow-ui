@@ -18,10 +18,10 @@
       <template v-for="(step, index) in steps" v-slot:[`step-${index}-content`]>
         <!-- Template for step 1 -->
         <template v-if="index === 0">
-          <CreateExecutionStepOne
+          <CreateExecutionCreateOrSearch
             :optionSelected="optionSelected"
             @update:optionSelected="optionSelected = $event"
-          ></CreateExecutionStepOne>
+          ></CreateExecutionCreateOrSearch>
         </template>
 
         <!-- Template for search execution step 2 -->
@@ -106,10 +106,10 @@
 
         <!-- Template for create execution step 7 -->
         <template v-else-if="index === 6">
-          <CreateExecutionResolve
+          <CreateExecutionSolve
             :newExecution="newExecution"
             @resetAndLoadNewExecution="resetAndLoadNewExecution"
-          ></CreateExecutionResolve>
+          ></CreateExecutionSolve>
         </template>
       </template>
 
@@ -150,11 +150,11 @@
 </template>
 
 <script>
-import CreateExecutionStepOne from '@/components/project-execution/CreateExecutionStepOne.vue'
+import CreateExecutionCreateOrSearch from '@/components/project-execution/CreateExecutionCreateOrSearch.vue'
 import CreateExecutionNameDescription from '@/components/project-execution/CreateExecutionNameDescription.vue'
 import CreateExecutionLoadInstance from '@/components/project-execution/CreateExecutionLoadInstance.vue'
 import CreateExecutionCheckData from '@/components/project-execution/CreateExecutionCheckData.vue'
-import CreateExecutionResolve from '@/components/project-execution/CreateExecutionResolve.vue'
+import CreateExecutionSolve from '@/components/project-execution/CreateExecutionSolve.vue'
 import DateRangePicker from '@/components/core/DateRangePicker.vue'
 import ProjectExecutionsTable from '@/components/project-execution/ProjectExecutionsTable.vue'
 import { useGeneralStore } from '@/stores/general'
@@ -164,9 +164,9 @@ export default {
   components: {
     DateRangePicker,
     ProjectExecutionsTable,
-    CreateExecutionStepOne,
+    CreateExecutionCreateOrSearch,
     CreateExecutionNameDescription,
-    CreateExecutionResolve,
+    CreateExecutionSolve,
     CreateExecutionLoadInstance,
     CreateExecutionCheckData,
   },

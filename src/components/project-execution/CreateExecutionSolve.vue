@@ -82,6 +82,7 @@ export default {
     async createExecution() {
       try {
         this.executionIsLoading = true
+        
         const result = await this.generalStore.createExecution(
           this.newExecution,
         )
