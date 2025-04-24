@@ -134,6 +134,8 @@ export default {
   },
   executionTable: {
     date: 'Hora',
+    endDate: 'Fin',
+    userName: 'Usuario',
     name: 'Nombre',
     description: 'Descripción',
     state: 'Estado',

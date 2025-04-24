@@ -128,6 +128,8 @@ export default {
   },
   executionTable: {
     date: 'Time',
+    endDate: 'End Time',
+    userName: 'User',
     name: 'Name',
     description: 'Description',
     state: 'State',
