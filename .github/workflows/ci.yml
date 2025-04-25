@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - master
+      - develop
+  push:
+    branches:
+      - master
+      - develop
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '21.x'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm install
+      - name: Run unit tests with coverage
+        run: npm run test:coverage
+      - name: Upload test coverage
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests  # Run after unit tests have completed successfully
+    
+    env:
+      # Set environment variables from GitHub secrets
+      TEST_USERNAME: ${{ secrets.TEST_USERNAME }}
+      TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+      VITE_APP_BACKEND_URL: ${{ secrets.BACKEND_URL }}
+      CI: true
+      PORT: 3000
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '21.x'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm install
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+      - name: Create app .env file
+        run: |
+          cat > .env << EOF
+          VITE_APP_BACKEND_URL=${{ secrets.BACKEND_URL }}
+          VITE_APP_AUTH_TYPE=cornflow
+          EOF
+      - name: Create E2E test .env file
+        run: |
+          mkdir -p tests/e2e
+          cat > tests/e2e/.env << EOF
+          TEST_USERNAME=${{ secrets.TEST_USERNAME }}
+          TEST_PASSWORD=${{ secrets.TEST_PASSWORD }}
+          CI=true
+          DEBUG=pw:api
+          EOF
+      # Check useHashMode in config.ts and set environment variable
+      - name: Set hash mode environment variable
+        run: |
+          if grep -q "useHashMode: true" ./src/app/config.ts; then
+            echo "USE_HASH_MODE=true" >> $GITHUB_ENV
+          else
+            echo "USE_HASH_MODE=false" >> $GITHUB_ENV
+          fi
+      - name: Run Playwright tests
+        run: npm run test:e2e:with-server
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7 

@@ -1,6 +1,7 @@
 # Environment files
 .env
 .env.*
+!.env.example
 public/values.json
 
 # Build directories
@@ -37,3 +38,9 @@ lerna-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Playwright
+playwright-report/
+test-results/
+**/playwright/.cache/
+tests/e2e/.env

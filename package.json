@@ -7,7 +7,15 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest"
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:codegen": "playwright codegen http://localhost:${PORT:-3000}",
+    "test:e2e:manual-server": "echo 'Make sure your dev server is running at http://localhost:${PORT:-3000} before running tests' && playwright test",
+    "test:e2e:with-server": "start-server-and-test dev http://localhost:${PORT:-3000} test:e2e"
   },
   "dependencies": {
     "@aws-amplify/auth": "^6.0.12",
@@ -32,13 +40,16 @@
     "webfontloader": "^1.6.28"
   },
   "devDependencies": {
+    "@playwright/test": "^1.52.0",
     "@types/node": "^20.11.24",
     "@vitejs/plugin-vue": "^5.0.5",
     "@vitest/coverage-v8": "^2.1.9",
     "@vue/test-utils": "^2.4.0-alpha.2",
+    "dotenv": "^16.5.0",
     "jsdom": "^24.1.0",
     "rollup": "^4.22.4",
     "sass": "^1.71.1",
+    "start-server-and-test": "^2.0.11",
     "typescript": "^5.2.2",
     "vite": "^5.0.8",
     "vitest": "^2.1.9",

@@ -1,5 +1,7 @@
 # Cornflow-UI
 
+![Tests](https://github.com/HelenaCanana/cornflow-ui/actions/workflows/tests.yml/badge.svg)
+
 Cornflow-UI is a Vue.js application that serves as the user interface for Cornflow. This is the base project, and it provides the general structure and functionalities for creating new applications.
 
 ## Creating a new project
@@ -305,3 +307,98 @@ When hash mode is enabled, all routes will include a hash (#) in the URL (e.g., 
 - Edit the `.env` file to put the URL of the Cornflow server
 - Run `npm run dev` to start a local development server
 - A new tab will be opened in your browser
+
+## Testing
+
+The project includes both unit tests with Vitest and end-to-end (E2E) tests with Playwright.
+
+### Unit testing
+
+Run unit tests with:
+
+```bash
+npm run test
+```
+
+### End-to-end testing with Playwright
+
+The project is configured with Playwright for comprehensive E2E testing. Playwright allows you to automate browser interactions and verify your application's behavior from a user's perspective.
+
+#### Setup
+
+Playwright is already configured in the project. The tests and configuration files are located in:
+- `playwright.config.ts` - Main configuration file
+- `tests/e2e/` - E2E test files
+- `tests/e2e/pages/` - Page Object Models
+- `tests/e2e/auth-utils.ts` - Authentication utilities
+
+#### Setting up test credentials
+
+For tests involving authentication, you need to set up test credentials:
+
+1. Copy the example environment file:
+   ```bash
+   cp tests/e2e/.env.example tests/e2e/.env
+   ```
+
+2. Edit the `.env` file with valid test credentials:
+   ```
+   TEST_USERNAME=your_test_username
+   TEST_PASSWORD=your_test_password
+   ```
+
+3. **IMPORTANT**: Never commit the `.env` file with real credentials to version control.
+
+#### Running E2E tests
+
+You can run the E2E tests using these npm scripts:
+
+```bash
+# The easiest way - start the server and run tests in one command:
+npm run test:e2e:with-server
+
+# Or manually:
+# First, start the development server in a separate terminal
+npm run dev
+
+# Then, in another terminal, run your tests:
+# Run all E2E tests headlessly (default)
+npm run test:e2e
+
+# Run E2E tests with visible browsers
+npm run test:e2e:headed
+
+# Run E2E tests with the Playwright UI
+npm run test:e2e:ui
+
+# Run E2E tests in debug mode
+npm run test:e2e:debug
+
+# Generate tests using Playwright's codegen tool
+npm run test:e2e:codegen
+
+# For clarity, use this script which reminds you to start the server first
+npm run test:e2e:manual-server
+```
+
+For more detailed information about E2E testing, see the [E2E Testing README](tests/e2e/README.md).
+
+## Continuous Integration
+
+The project is configured with GitHub Actions for continuous integration. The workflow automatically runs both unit tests and E2E tests on pull requests and pushes to the `master` and `develop` branches.
+
+### GitHub Actions Workflows
+
+- **Tests Workflow**: Runs both unit and E2E tests to ensure the application works as expected.
+  - Unit tests verify that individual components and functions work correctly in isolation
+  - E2E tests ensure the application works as expected from an end-user perspective
+
+### Setting Up CI
+
+To use the GitHub Actions workflows, you need to configure repository secrets for test credentials and environment variables:
+
+1. **TEST_USERNAME**: Test account username
+2. **TEST_PASSWORD**: Test account password
+3. **BACKEND_URL**: URL of the backend API server
+
+For detailed setup instructions and troubleshooting, see the [GitHub Actions documentation](.github/GITHUB_ACTIONS.md).
