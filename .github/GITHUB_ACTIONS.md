@@ -1,8 +1,8 @@
-# GitHub Actions Workflows
+# GitHub actions workflows
 
 This document provides an overview of the GitHub Actions workflows in this repository.
 
-## Tests Workflow
+## Tests workflow
 
 The comprehensive testing workflow (`tests.yml`) runs both unit tests and end-to-end tests to ensure code quality and application functionality. This workflow is triggered when:
 - A pull request is opened, synchronized, or reopened targeting the `develop` or `master` branches
@@ -11,10 +11,10 @@ The comprehensive testing workflow (`tests.yml`) runs both unit tests and end-to
 
 The workflow consists of two sequential jobs:
 
-1. **Unit Tests**: Runs Vitest unit tests first
-2. **E2E Tests**: Runs Playwright end-to-end tests after unit tests pass
+1. **Unit tests**: Runs Vitest unit tests first
+2. **E2E tests**: Runs Playwright end-to-end tests after unit tests pass
 
-### Required Secrets
+### Required secrets
 
 For the workflow to run successfully, you need to configure the following secrets in your GitHub repository:
 
@@ -22,7 +22,7 @@ For the workflow to run successfully, you need to configure the following secret
 2. **TEST_PASSWORD**: The password for the test account
 3. **BACKEND_URL**: The URL of the backend API server for testing
 
-### How to Configure Secrets
+### How to configure secrets
 
 1. Go to your GitHub repository
 2. Click on "Settings" tab
@@ -34,7 +34,7 @@ For the workflow to run successfully, you need to configure the following secret
    - Click "Add secret"
    - Repeat for each secret
 
-### Unit Tests Job
+### Unit tests job
 
 The unit tests job:
 1. Checks out the code
@@ -43,7 +43,7 @@ The unit tests job:
 4. Runs Vitest unit tests with `npm run test`
 5. Uploads test coverage reports as artifacts
 
-### E2E Tests Job
+### E2E tests job
 
 The E2E tests job:
 1. Checks out the code
@@ -55,11 +55,11 @@ The E2E tests job:
 7. Runs the Playwright tests
 8. Uploads test results as artifacts (available even if tests fail)
 
-### Viewing Test Results
+### Viewing test results
 
 If tests fail, you can view the detailed reports:
 
-#### Unit Test Coverage Report
+#### Unit test coverage report
 
 1. Go to the workflow run
 2. Scroll down to the "Artifacts" section
@@ -67,7 +67,7 @@ If tests fail, you can view the detailed reports:
 4. Extract the downloaded zip file
 5. Open the HTML report in your browser
 
-#### E2E Test Report
+#### E2E test report
 
 1. Go to the workflow run
 2. Scroll down to the "Artifacts" section
@@ -75,7 +75,7 @@ If tests fail, you can view the detailed reports:
 4. Extract the downloaded zip file
 5. Open the HTML report in your browser
 
-## Adapting the Workflow
+## Adapting the workflow
 
 If you need to modify the workflow:
 
