@@ -98,14 +98,42 @@ jobs:
           else
             echo "USE_HASH_MODE=false" >> $GITHUB_ENV
           fi
-      - name: Start dev server
-        run: npm run dev &
-      - name: Wait for server to start
+      # Comment out the webServer section in playwright.config.ts to avoid conflicts
+      - name: Modify Playwright config for CI
         run: |
-          echo "Waiting for server to start..."
+          if [ -f "playwright.config.ts" ]; then
+            # Comment out the entire webServer section
+            sed -i '/webServer: {/,/},/s/^/\/\/ /' playwright.config.ts
+          fi
+      # Kill any process that might be using port 3000
+      - name: Ensure port is free
+        run: |
+          lsof -i :3000 || true
+          pkill -f "node.*vite" || true
+          sleep 2
+      # Run test script with webServer disabled
+      - name: Run E2E tests with custom configuration
+        run: |
+          # Start server in background
+          npm run dev &
+          # Store the process ID
+          SERVER_PID=$!
+          # Give the server time to start
           sleep 15
-      - name: Run Playwright tests
-        run: npm run test:e2e
+          echo "Development server started with PID: $SERVER_PID"
+          
+          # Run tests
+          npm run test:e2e || TEST_EXIT_CODE=$?
+          
+          # Kill the server process
+          echo "Shutting down development server (PID: $SERVER_PID)"
+          kill $SERVER_PID || true
+          
+          # If tests failed, exit with the same code
+          if [ -n "$TEST_EXIT_CODE" ]; then
+            echo "Tests failed with exit code: $TEST_EXIT_CODE"
+            exit $TEST_EXIT_CODE
+          fi
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
