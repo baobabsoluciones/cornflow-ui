@@ -6,12 +6,12 @@
     >
       <MDataTable
         :headers="headerExecutions"
-        :items="executionsByDate"
+        :items="processedExecutions"
         :showFooter="showFooter"
         :showHeaders="showHeaders"
         :hideDefaultHeader="!showHeaders"
         class="execution-table"
-        :key="'execution-table-' + tableId"
+        :key="tableKey"
       >
         <template v-slot:createdAt="{ item }">
           <div class="cell-content">
@@ -20,6 +20,25 @@
                 formatDateByTime ? item.time : new Date(item.createdAt).toISOString().split('T')[0]
               }}
             </span>
+          </div>
+        </template>
+        <template v-slot:finishedAt="{ item }">
+          <div class="cell-content">
+            <span>
+              {{ item.finishedAt ? new Date(item.finishedAt).toISOString().split('T')[0] : '-' }}
+            </span>
+          </div>
+        </template>
+        <template v-slot:userName="{ item }">
+          <div class="cell-content">
+            <span>{{ item.userName || '-' }}</span>
+            <v-tooltip
+              activator="parent"
+              location="bottom"
+              v-if="item.userName && item.userName.length > 15"
+            >
+              <span>{{ item.userName }}</span>
+            </v-tooltip>
           </div>
         </template>
         <template v-slot:name="{ item }">
@@ -48,27 +67,27 @@
         </template>
         <template v-slot:solver="{ item }">
           <div class="cell-content">
-            <span>{{ item.config.solver }}</span>
+            <span>{{ getSolverName(item) }}</span>
             <v-tooltip
               activator="parent"
               location="bottom"
-              v-if="item.config.solver && item.config.solver.length > 15"
+              v-if="getSolverName(item) && getSolverName(item).length > 15"
             >
-              <span>{{ item.config.solver }}</span>
+              <span>{{ getSolverName(item) }}</span>
             </v-tooltip>
           </div>
         </template>
         <template v-slot:timeLimit="{ item }">
           <div class="cell-content">
-            <span>{{ item.config.timeLimit }} sec</span>
+            <span>{{ getTimeLimit(item) }} sec</span>
           </div>
         </template>
         <template v-slot:state="{ item }">
-          <v-chip size="x-small" :color="stateInfo[item.state].color" value="chip">
-            {{ stateInfo[item.state].code }}
+          <v-chip size="x-small" :color="getStateInfo(item.state).color" value="chip">
+            {{ getStateInfo(item.state).code }}
             <v-tooltip activator="parent" location="bottom">
               <div style="font-size: 11px">
-                {{ stateInfo[item.state].message }}
+                {{ getStateInfo(item.state).message }}
               </div>
             </v-tooltip>
           </v-chip>
@@ -76,24 +95,24 @@
         <template v-slot:solution="{ item }">
           <v-chip
             size="x-small"
-            :color="item.solution_state.sol_code === 2 ? 'green' : 'red'"
+            :color="getSolutionColor(item.solution_state)"
             value="chip"
           >
-            {{ solutionStateInfo[item.solution_state.status_code].code }}
+            {{ getSolutionCode(item.solution_state) }}
             <v-tooltip activator="parent" location="bottom">
               <div style="font-size: 11px">
-                {{ solutionStateInfo[item.solution_state.status_code].message }}
+                {{ getSolutionMessage(item.solution_state) }}
               </div>
             </v-tooltip>
           </v-chip>
         </template>
         <template v-slot:excel="{ item }">
-          <v-icon size="small" @click="handleDownload(item)">mdi-microsoft-excel</v-icon>
+          <v-icon size="small" @click="handleDownloadClick(item)">mdi-microsoft-excel</v-icon>
         </template>
         <template v-slot:actions="{ item }">
           <span>
             <span>
-              <v-icon size="small" class="mr-2" @click="loadExecution(item)">
+              <v-icon size="small" class="mr-2" @click="loadExecutionClick(item)">
                 mdi-tray-arrow-up
               </v-icon>
               <v-tooltip activator="parent" location="bottom">
@@ -131,7 +150,7 @@
         class: 'secondary-btn',
       },
     ]"
-    @delete="confirmDelete"
+    @delete="confirmDeleteClick"
     @cancel="cancelDelete"
     @close="openConfirmationDeleteModal = false"
   >
@@ -143,226 +162,80 @@
   </MBaseModal>
 </template>
 
-<script>
-import { useGeneralStore } from '@/stores/general';
+<script setup lang="ts">
 import { inject } from 'vue';
+import { useProjectExecutionsTable } from '@/composables/project-execution-table/useProjectExecutionsTable';
+import { useI18n } from 'vue-i18n';
 
-export default {
-  components: {},
-  emits: ['loadExecution', 'deleteExecution'],
-  props: {
-    executionsByDate: {
-      type: Array,
-      required: true,
-    },
-    formatDateByTime: {
-      type: Boolean,
-      default: false,
-    },
-    showFooter: {
-      type: Boolean,
-      default: true,
-    },
-    showHeaders: {
-      type: Boolean,
-      default: true,
-    },
-    useFixedWidth: {
-      type: Boolean,
-      default: true,
-    },
-  },
-  data() {
-    return {
-      showSnackbar: null,
-      openConfirmationDeleteModal: false,
-      deletedItem: null,
-      generalStore: useGeneralStore(),
-      tableId:
-        Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
-    };
-  },
-  created() {
-    this.showSnackbar = inject('showSnackbar');
-  },
-  mounted() {
-    this.addColgroup();
-  },
-  updated() {
-    this.addColgroup();
-  },
-  computed: {
-    headerExecutions() {
-      return [
-        {
-          title: this.$t('executionTable.date'),
-          value: 'createdAt',
-          width: '9%',
-          sortable: !this.formatDateByTime,
-          fixedWidth: true,
-        },
-        {
-          title: this.$t('executionTable.name'),
-          value: 'name',
-          width: '13%',
-          sortable: !this.formatDateByTime,
-          fixedWidth: true,
-        },
-        {
-          title: this.$t('executionTable.description'),
-          value: 'description',
-          width: '21%',
-          sortable: !this.formatDateByTime,
-          fixedWidth: true,
-        },
-        {
-          title: this.$t('executionTable.excel'),
-          value: 'excel',
-          width: '9%',
-          fixedWidth: true,
-        },
-        {
-          title: this.$t('executionTable.state'),
-          value: 'state',
-          width: '9%',
-          sortable: !this.formatDateByTime,
-          fixedWidth: true,
-        },
-        {
-          title: this.$t('executionTable.solver'),
-          value: 'solver',
-          width: '14%',
-          sortable: !this.formatDateByTime,
-          fixedWidth: true,
-        },
-        {
-          title: this.$t('executionTable.timeLimit'),
-          value: 'timeLimit',
-          width: '9%',
-          sortable: !this.formatDateByTime,
-          fixedWidth: true,
-        },
-        {
-          title: this.$t('executionTable.solution'),
-          value: 'solution',
-          width: '9%',
-          sortable: !this.formatDateByTime,
-          fixedWidth: true,
-        },
-        {
-          title: this.$t('executionTable.actions'),
-          value: 'actions',
-          width: '11%',
-          fixedWidth: true,
-        },
-      ];
-    },
-    solutionStateInfo() {
-      return this.generalStore.appConfig.parameters.logStates;
-    },
-    stateInfo() {
-      return {
-        1: {
-          color: 'green',
-          message: this.$t('executionTable.executionSolvedCorrectly'),
-          code: this.$t('executionTable.success'),
-        },
-        0: {
-          color: 'purple',
-          message: this.$t('executionTable.executionRunning'),
-          code: this.$t('executionTable.loading'),
-        },
-        '-1': {
-          color: 'red',
-          message: this.$t('executionTable.executionError'),
-          code: this.$t('executionTable.error'),
-        },
-        '-2': {
-          color: 'red',
-          message: this.$t('executionTable.executionStopped'),
-          code: this.$t('executionTable.error'),
-        },
-        '-3': {
-          color: 'red',
-          message: this.$t('executionTable.executionNotStarted'),
-          code: this.$t('executionTable.error'),
-        },
-        '-4': {
-          color: 'red',
-          message: this.$t('executionTable.executionNotRun'),
-          code: this.$t('executionTable.error'),
-        },
-        '-5': {
-          color: 'red',
-          message: this.$t('executionTable.executionUnknownError'),
-          code: this.$t('executionTable.error'),
-        },
-        '-6': {
-          color: 'red',
-          message: this.$t('executionTable.executionFailedSaving'),
-          code: this.$t('executionTable.error'),
-        },
-        2: {
-          color: 'green',
-          message: this.$t('executionTable.executionLoadedManually'),
-          code: this.$t('executionTable.success'),
-        },
-        '-7': {
-          color: 'red',
-          message: this.$t('executionTable.executionQueued'),
-          code: this.$t('executionTable.loading'),
-        },
-      };
-    },
-  },
-  methods: {
-    addColgroup() {
-      this.$nextTick(() => {
-        // Add colgroup to enforce column widths
-        const tables = document.querySelectorAll('.execution-table table');
-        tables.forEach((table) => {
-          // Check if colgroup already exists
-          if (!table.querySelector('colgroup')) {
-            const colgroup = document.createElement('colgroup');
+// Setup i18n
+const { t } = useI18n();
 
-            // Create columns with specific widths
-            const widths = ['9%', '13%', '21%', '9%', '9%', '14%', '9%', '9%', '11%'];
-
-            widths.forEach((width) => {
-              const col = document.createElement('col');
-              col.style.width = width;
-              colgroup.appendChild(col);
-            });
-
-            // Insert colgroup at the beginning of the table
-            table.insertBefore(colgroup, table.firstChild);
-          }
-        });
-      });
-    },
-    async loadExecution(execution) {
-      this.$emit('loadExecution', execution);
-    },
-    async deleteExecution(item) {
-      this.deletedItem = item;
-      this.openConfirmationDeleteModal = true;
-    },
-    async confirmDelete() {
-      this.$emit('deleteExecution', this.deletedItem);
-      this.openConfirmationDeleteModal = false;
-    },
-    async cancelDelete() {
-      this.openConfirmationDeleteModal = false;
-      this.deletedItem = null;
-    },
-    async handleDownload(item) {
-      try {
-        await this.generalStore.getDataToDownload(item.id, true, true);
-      } catch (error) {
-        this.showSnackbar(this.$t('inputOutputData.errorDownloadingExcel'), 'error');
-      }
-    },
+// Define props
+const props = defineProps({
+  executionsByDate: {
+    type: Array,
+    required: true,
   },
+  formatDateByTime: {
+    type: Boolean,
+    default: false,
+  },
+  showFooter: {
+    type: Boolean,
+    default: true,
+  },
+  showHeaders: {
+    type: Boolean,
+    default: true,
+  },
+  useFixedWidth: {
+    type: Boolean,
+    default: true,
+  },
+});
+
+// Define emits
+const emit = defineEmits(['loadExecution', 'deleteExecution']);
+
+// Inject snackbar function
+const showSnackbar: (message: string, type: string) => void = inject('showSnackbar') as (message: string, type: string) => void;
+
+// Use our composable with type assertion
+const {
+  openConfirmationDeleteModal,
+  deletedItem,
+  processedExecutions,
+  headerExecutions,
+  tableKey,
+  addColgroup,
+  loadExecution,
+  deleteExecution,
+  confirmDelete,
+  cancelDelete,
+  handleDownload,
+  getStateInfo,
+  getSolutionColor,
+  getSolutionCode,
+  getSolutionMessage,
+  getSolverName,
+  getTimeLimit,
+} = useProjectExecutionsTable(props as any);
+
+// Event handlers that use emits
+const loadExecutionClick = (execution: any) => {
+  emit('loadExecution', execution);
+};
+
+const confirmDeleteClick = () => {
+  emit('deleteExecution', deletedItem.value);
+  openConfirmationDeleteModal.value = false;
+};
+
+const handleDownloadClick = async (item: any) => {
+  const result = await handleDownload(item);
+  if (result && typeof result === 'object' && 'error' in result) {
+    showSnackbar(t('inputOutputData.errorDownloadingExcel'), 'error');
+  }
 };
 </script>
 
