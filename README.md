@@ -213,6 +213,45 @@ It's important not to edit any other file or folders. Only the folders, files an
 
 \*\*Note: To save dashboard preferences for a single execution, including filters, checks, and date ranges, utilize the `setDashboardPreference` method from the `LoadedExecution.ts` class. Subsequently, retrieve these preferences using the `getDashboardPreference` method. The data type is custom, allowing for flexible usage as needed.
 
+## Custom File Processors
+
+The application supports custom file processing for instances based on filename prefixes. This feature is useful when you need to handle files with special formats or structures before merging them with other files to create an instance.
+
+### Configuration
+
+Custom file processing is entirely optional. By default, the system will merge all uploaded files without any special processing. If you don't need custom file processing, you can leave the `fileProcessors` object empty or omit it entirely.
+
+If you do need custom processing for specific file types, add a `fileProcessors` object to the core parameters in `src/app/config.ts`:
+
+```typescript
+parameters: {
+  // other parameters
+  fileProcessors: {
+    'mtrx': 'processMatrix',
+    'config': 'processConfig'
+  },
+  // other parameters
+}
+```
+
+Each key in the `fileProcessors` object is a filename prefix that triggers special processing, and each value is the name of a processor method to use.
+
+### Implementation
+
+The actual processing logic must be implemented in the `src/app/composables/useFileProcessors.ts` file. You need to add your processor methods to the `processors` object in this file. 
+
+Each processor method should:
+1. Accept parameters: file, fileContent, extension, and schemas
+2. Parse the file content based on its format (JSON or XLSX)
+3. Transform the data into a format that represents a part of the complete instance data
+4. Return a new Instance object with this partial data that will later be merged with other files
+
+Important: The processor methods don't create the final, complete instance. Instead, they each process a specific part of the data needed for the complete instance. After all files are processed, the system will automatically merge all the processed parts to create the complete instance.
+
+For example, in a scheduling application, one file might contain employee data, another might contain shift requirements, and a third might contain constraints. Each file would be processed separately and then merged to create the complete instance.
+
+The system automatically detects files that match the configured prefixes and processes them using the corresponding methods before merging all the processed parts into the final instance. Files that don't match any configured prefix are processed using the standard method.
+
 ## Authentication
 
 The application supports three authentication methods. Note that for any of these methods to work, the server must be properly configured to accept the corresponding authentication type.

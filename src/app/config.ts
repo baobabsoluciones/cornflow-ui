@@ -14,6 +14,13 @@
  * - `showExtraProjectExecutionColumns`: Controls visibility of additional columns in the project execution table
  *   - `showUserName`: Shows or hides the username column
  *   - `showEndCreationDate`: Shows or hides the end creation date column
+ * - `fileProcessors` (optional): Defines custom processors for files with specific prefixes before merging instances
+ *   - Each key is a file prefix (e.g., 'mtrx')
+ *   - Each value is the name of the processor method to use (e.g., 'processMatrix')
+ *   - The actual processor methods must be implemented in the 'src/app/composables/useFileProcessors.ts' file
+ *   - Each processor handles a specific part of the instance data, and all parts are merged after processing
+ *   - This allows for handling files with special formats or structures before merging them into a single instance
+ *   - If not provided or empty, files will be merged as-is without special processing
  *
  * The `dashboardPages` array is used to define the navigation menu items and their corresponding routes for dashboard subpages.
  * Each page is an object with `title`, `icon`, `to`, and `pos` properties.
@@ -48,6 +55,10 @@
  *        message: 'Optimal',
  *       code: 'Optimal',
  *       },
+ *      },
+ *      fileProcessors: {
+ *        'mtrx': 'processMatrix',
+ *        'config': 'processConfig'
  *      },
  *     },
  *   },
@@ -131,6 +142,13 @@ const createAppConfig = () => ({
       showExtraProjectExecutionColumns: {
         showUserName: false,
         showEndCreationDate: false,
+      },
+      fileProcessors: {
+        // Optional: Define filename prefixes that need special processing and their corresponding processor methods
+        // If not defined or empty, files will be processed and merged without special handling
+        // These processor methods must be implemented in the src/app/composables/useFileProcessors.ts file
+        // Each processor handles a specific part of the instance data, and all parts are merged after processing
+        // Example: 'mtrx': 'processMatrix' - files starting with 'mtrx' will be processed by the processMatrix method
       },
       logStates: {
         1: {

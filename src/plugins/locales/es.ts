@@ -64,10 +64,10 @@ export default {
         description: 'Carga un archivo con los datos de la instancia',
         titleContent: 'Cargar instancia',
         subtitleContent:
-          'Selecciona un archivo para cargar los datos de la instancia',
+          'Selecciona uno o varios archivos para cargar los datos de la instancia. Cuando finalices la carga, pulsa el botón de abajo para cargar los datos de la instancia. Si se seleccionan varios archivos, los datos se combinarán en una sola instancia.',
         loadInstance: {
           dragAndDropDescription:
-            'Arrastra y suelta tu archivo de instancia aquí',
+            'Arrastra y suelta tu archivo / archivos de instancia aquí',
           uploadFile: 'Subir archivo',
           noSchemaError:
             'No se encontró ningún esquema: ¿estás conectado al servidor?',
