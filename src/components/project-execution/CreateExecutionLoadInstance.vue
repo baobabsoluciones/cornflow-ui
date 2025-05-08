@@ -7,7 +7,7 @@
         t('projectExecution.steps.step3.loadInstance.dragAndDropDescription')
       "
       :uploadedFiles="selectedFiles"
-      :formatsAllowed="['json', 'xlsx']"
+      :formatsAllowed="['json', 'xlsx', 'csv']"
       :errors="instanceErrors"
       :downloadButtonTitle="
         t('projectExecution.steps.step3.loadInstance.uploadFile')
@@ -180,6 +180,14 @@ const parseFile = async (file, extension, skipValidation = false) => {
           instance = new Instance(
             null,
             jsonData,
+            schemas.instanceSchema,
+            schemas.instanceChecksSchema,
+            schemas.name,
+          )
+        } else if (extension === 'csv') {
+          instance = await Instance.fromCsv(
+            fileReader.result,
+            file.name,
             schemas.instanceSchema,
             schemas.instanceChecksSchema,
             schemas.name,
