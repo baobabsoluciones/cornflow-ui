@@ -157,6 +157,7 @@ const parseFile = async (file, extension, skipValidation = false) => {
             )
             
             if (specialInstance) {
+              selectedInstance.value = specialInstance
               resolve(specialInstance)
               return
             }
@@ -194,6 +195,8 @@ const parseFile = async (file, extension, skipValidation = false) => {
           )
         }
         
+        selectedInstance.value = instance
+        
         // Skip schema validation if we're processing multiple files
         if (!skipValidation) {
           const errors = instance.checkSchema()
@@ -203,9 +206,9 @@ const parseFile = async (file, extension, skipValidation = false) => {
               .map((error) => `<li>${error.instancePath} - ${error.message}</li>`)
               .join('')
             emit('update:existingInstanceErrors', instanceErrors.value)
-            throw new Error(
+            
               t('projectExecution.steps.step3.loadInstance.instanceSchemaError')
-            )
+            return
           }
         }
         
@@ -301,6 +304,8 @@ const mergeInstances = async () => {
       schemas.name
     )
     
+    selectedInstance.value = mergedInstance
+        
     // Validate the merged instance
     const errors = mergedInstance.checkSchema()
     if (errors && errors.length > 0) {
@@ -308,13 +313,13 @@ const mergeInstances = async () => {
         .map((error) => `<li>${error.instancePath} - ${error.message}</li>`)
         .join('')
       emit('update:existingInstanceErrors', instanceErrors.value)
+      emit('instanceSelected', selectedInstance.value)
       throw new Error(
         t('projectExecution.steps.step3.loadInstance.instanceSchemaError')
       )
     }
     
-    // Set as selected instance and notify parent
-    selectedInstance.value = mergedInstance
+    // Notify parent of the valid instance
     emit('instanceSelected', selectedInstance.value)
     instanceErrors.value = null
     emit('update:existingInstanceErrors', instanceErrors.value)
@@ -360,6 +365,14 @@ const processFiles = async () => {
         // Only show errors for individual files if we're not processing multiple files
         if (!isMultipleFiles) {
           showSnackbar(error.message || error, 'error')
+          
+          if (selectedInstance.value) {
+            emit('instanceSelected', selectedInstance.value)
+            showSnackbar(
+              t('projectExecution.steps.step3.loadInstance.instanceLoadedWithErrors'),
+              'warning'
+            )
+          }
           return // Exit early if single file processing fails
         }
       }
@@ -371,11 +384,17 @@ const processFiles = async () => {
     
     // Merge instances if there are multiple
     if (processedInstances.value.length > 1) {
-      await mergeInstances()
+      try {
+        await mergeInstances()
+      } catch (error) {
+        console.error('Merge error:', error)
+      }
     } else if (processedInstances.value.length === 1) {
       // If only one instance, validate and use it directly
       const instance = processedInstances.value[0]
       
+      selectedInstance.value = instance
+
       // Only validate schema if we didn't already do it during parsing
       if (isMultipleFiles) {
         const schemas = store.getSchemaConfig
@@ -386,20 +405,30 @@ const processFiles = async () => {
             .map((error) => `<li>${error.instancePath} - ${error.message}</li>`)
             .join('')
           emit('update:existingInstanceErrors', instanceErrors.value)
-          throw new Error(
-            t('projectExecution.steps.step3.loadInstance.instanceSchemaError')
+          emit('instanceSelected', selectedInstance.value)
+          showSnackbar(
+            t('projectExecution.steps.step3.loadInstance.instanceLoadedWithErrors'),
+            'warning'
           )
+          return
         }
       }
       
-      selectedInstance.value = instance
       emit('instanceSelected', selectedInstance.value)
       showSnackbar(
         t('projectExecution.steps.step3.loadInstance.instanceLoaded'),
       )
     }
   } catch (error) {
-    showSnackbar(error.message || error, 'error')
+    if (selectedInstance.value) {
+      emit('instanceSelected', selectedInstance.value)
+      showSnackbar(
+        t('projectExecution.steps.step3.loadInstance.instanceLoadedWithErrors'),
+        'warning'
+      )
+    } else {
+      showSnackbar(error.message || error, 'error')
+    }
   }
 }
 </script>
