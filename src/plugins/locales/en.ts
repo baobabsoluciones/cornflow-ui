@@ -74,6 +74,8 @@ export default {
           selectedFiles: 'Selected Files',
           invalidFileFormat: 'Invalid file format. Please try again.',
           unexpectedError: 'An unexpected error occurred. Please try again.',
+          instanceLoadedWithErrors: 'Instance loaded with errors',
+          noValidInstancesError: 'No valid instances found in the uploaded files',
         },
       },
       step4: {

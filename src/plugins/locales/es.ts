@@ -76,6 +76,9 @@ export default {
           invalidFileFormat:
             'Formato de archivo no válido. Inténtalo de nuevo.',
           unexpectedError: 'Ocurrió un error inesperado. Inténtalo de nuevo.',
+          instancesLoaded: 'Instancias combinadas y cargadas con éxito',
+          instanceLoadedWithErrors: 'Instancia cargada con errores',
+          noValidInstancesError: 'No se encontraron instancias válidas en los archivos cargados',
         },
       },
       step4: {
