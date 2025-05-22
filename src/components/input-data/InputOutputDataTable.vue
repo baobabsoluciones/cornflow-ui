@@ -116,7 +116,21 @@
         :selectedTable="selectedTable"
       >
         <template #actions>
-          <v-row class="mt-3">
+          <!-- Check Data Button Row -->
+          <v-row v-if="canCheckData" class="mt-2 mb-2 d-flex justify-center">
+            <v-btn
+              @click="emitCheckData()"
+              variant="outlined"
+              prepend-icon="mdi-play"
+              :disabled="editionMode || (checksLaunched && !checksFinished) || checksError"
+              size="small"
+            >
+              {{ $t('projectExecution.steps.step4.check') }}
+            </v-btn>
+          </v-row>
+          
+          <!-- Search and Edit Controls Row -->
+          <v-row class="mt-2">
             <v-col cols="10">
               <MFilterSearch
                 :filters="filters"
@@ -182,16 +196,6 @@
               @create-item="createItem"
               @deleteItem="deleteItem"
             />
-          </v-row>
-          <v-row v-if="canCheckData" class="mt-5 mb-2 justify-center">
-            <v-btn
-              @click="emitCheckData()"
-              variant="outlined"
-              prepend-icon="mdi-play"
-              :disabled="editionMode || (checksLaunched && !checksFinished) || checksError"
-            >
-              {{ $t('projectExecution.steps.step4.check') }}
-            </v-btn>
           </v-row>
         </template>
       </MTabTable>

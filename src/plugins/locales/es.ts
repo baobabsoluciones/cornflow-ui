@@ -64,10 +64,10 @@ export default {
         description: 'Carga un archivo con los datos de la instancia',
         titleContent: 'Cargar instancia',
         subtitleContent:
-          'Selecciona un archivo para cargar los datos de la instancia',
+          'Selecciona uno o varios archivos para cargar los datos de la instancia. Cuando finalices la carga, pulsa el botón de abajo para cargar los datos de la instancia. Si se seleccionan varios archivos, los datos se combinarán en una sola instancia.',
         loadInstance: {
           dragAndDropDescription:
-            'Arrastra y suelta tu archivo de instancia aquí',
+            'Arrastra y suelta tu archivo / archivos de instancia aquí',
           uploadFile: 'Subir archivo',
           noSchemaError:
             'No se encontró ningún esquema: ¿estás conectado al servidor?',
@@ -76,6 +76,10 @@ export default {
           invalidFileFormat:
             'Formato de archivo no válido. Inténtalo de nuevo.',
           unexpectedError: 'Ocurrió un error inesperado. Inténtalo de nuevo.',
+          instancesLoaded: 'Instancias combinadas y cargadas con éxito',
+          instanceLoadedWithErrors: 'Instancia cargada con errores',
+          noValidInstancesError: 'No se encontraron instancias válidas en los archivos cargados',
+          downloadExcel: 'Descargar Excel',
         },
       },
       step4: {
@@ -94,13 +98,12 @@ export default {
           'El solver que selecciones será el algoritmo utilizado para encontrar la solución',
       },
       step6: {
-        title: 'Limitar tiempo',
-        description: 'Selecciona el tiempo máximo para la ejecución',
-        titleContent: 'Completa la siguiente información',
-        subtitleContent:
-          'Selecciona cuánto tiempo quieres que dure la ejecución',
+        title: 'Parámetros de ejecución',
+        description: 'Configura los parámetros de ejecución',
+        titleContent: 'Configurar parámetros de ejecución',
+        subtitleContent: 'Establece los parámetros que controlarán el comportamiento de la ejecución. Estos parámetros se pueden configurar según tus necesidades.',
         timeLimitPlaceholder: 'Por favor, inserta un límite de tiempo',
-        time: 'Tiempo',
+        time: 'Límite de tiempo',
         secondsSuffix: 'seg',
       },
       step7: {

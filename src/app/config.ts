@@ -14,6 +14,42 @@
  * - `showExtraProjectExecutionColumns`: Controls visibility of additional columns in the project execution table
  *   - `showUserName`: Shows or hides the username column
  *   - `showEndCreationDate`: Shows or hides the end creation date column
+ *   - `showTimeLimit`: Shows or hides the time limit column
+ * - `solverConfig`: Controls solver selection step and default solver.
+ *   - `showSolverStep`: boolean. If true, shows the solver selection step. If false, skips the step and uses `defaultSolver`.
+ *   - `defaultSolver`: string. The solver to use if `showSolverStep` is false. Used in ProjectExecutionView.vue to set newExecution.config.solver.
+ * - `configFieldsConfig`: Controls the config fields step and value loading.
+ *   - `showConfigFieldsStep`: boolean. If true, shows the config fields step. If false, skips the step and loads values automatically.
+ *   - `autoLoadValues`: boolean. If true, loads config field values from the instance (or default) when the step is skipped. Used in ProjectExecutionView.vue to call loadConfigFieldValues after instance is loaded or before steps that need config values.
+ * - `configFields`: Array of configuration fields for execution parameters. Each field can have:
+ *   - `key`: Unique identifier for the field
+ *   - `title`: Translation key for the field title
+ *   - `placeholder`: Translation key for the field placeholder
+ *   - `suffix`: Translation key for the field suffix (e.g., units)
+ *   - `icon`: Material Design icon name
+ *   - `type`: Field type ('number' | 'float' | 'boolean' | 'text' | 'select')
+ *   - `source`: Optional source for the parameter (table name in instance.data, e.g., 'eParametros')
+ *   - `param`: Optional parameter name for the source (key or ID to look up in the source table/array)
+ *   - `lookupType`: string (optional). How to look up the value in the source. Supported:
+ *       - 'arrayByValue': Looks for an object in the array where [lookupParam] === param, returns [lookupValue].
+ *       - If null or not set, searches directly as key[value] for source[param].
+ *   - `lookupParam`: string (optional, for arrayByValue). The property to match in the array (e.g., 'ID').
+ *   - `lookupValue`: string (optional, for arrayByValue). The property to return from the found object (e.g., 'VALOR').
+ *   - `default`: Optional default value
+ *   - `options`: Required for 'select' type, array of {label, value} pairs
+ *   Each field type has specific validation and rendering:
+ *   - `number`: Integer input with optional suffix
+ *   - `float`: Decimal input with optional suffix
+ *   - `boolean`: Switch component
+ *   - `text`: Text input
+ *   - `select`: Dropdown with predefined options
+ * - `fileProcessors` (optional): Defines custom processors for files with specific prefixes before merging instances
+ *   - Each key is a file prefix (e.g., 'mtrx')
+ *   - Each value is the name of the processor method to use (e.g., 'processMatrix')
+ *   - The actual processor methods must be implemented in the 'src/app/composables/useFileProcessors.ts' file
+ *   - Each processor handles a specific part of the instance data, and all parts are merged after processing
+ *   - This allows for handling files with special formats or structures before merging them into a single instance
+ *   - If not provided or empty, files will be merged as-is without special processing
  *
  * The `dashboardPages` array is used to define the navigation menu items and their corresponding routes for dashboard subpages.
  * Each page is an object with `title`, `icon`, `to`, and `pos` properties.
@@ -33,15 +69,15 @@
  *     Experiment: Experiment,
  *     Instance: Instance,
  *     Solution: Solution,
- *     AppConfig: {
+ *     parameters: {
  *       isPilotVersion: false,
- *       showTimeLimit: true,
  *       schema: 'default',
  *       name: 'Default',
  *       useConfigJson: false,
  *       showExtraProjectExecutionColumns: {
  *         showUserName: false,
  *         showEndCreationDate: true,
+ *         showTimeLimit: true,
  *       },
  *      logStates: {
  *       1: {
@@ -49,6 +85,41 @@
  *       code: 'Optimal',
  *       },
  *      },
+ *      fileProcessors: {
+ *        'mtrx': 'processMatrix',
+ *        'config': 'processConfig'
+ *      },
+ *      showExtraProjectExecutionColumns: {
+ *        showUserName: false,
+ *        showEndCreationDate: false,
+ *        showTimeLimit: true,
+ *     },
+ *     solverConfig: {
+ *         showSolverStep: false,
+ *         defaultSolver: 'mip.gurobi',
+ *     },
+ *      configFieldsConfig: {
+ *         showConfigFieldsStep: false,
+ *         autoLoadValues: true,
+ *      },
+ *      configFields: [
+ *        {
+ *          key: 'timeLimit',
+ *          title: 'projectExecution.steps.step6.timeLimit',
+ *          placeholder: 'projectExecution.steps.step6.timeLimitPlaceholder',
+ *          suffix: 'projectExecution.steps.step6.secondsSuffix',
+ *          icon: 'mdi-timer-sand',
+ *          type: 'number',
+ *        },
+ *        {
+ *          key: 'cornflow',
+ *          title: 'projectExecution.steps.step6.cornflow',
+ *          placeholder: 'projectExecution.steps.step6.cornflowPlaceholder',
+ *          icon: 'mdi-cloud-check',
+ *          type: 'boolean',
+ *          default: true
+ *        }
+ *      ]
  *     },
  *   },
  *   dashboardPages: [
@@ -131,6 +202,28 @@ const createAppConfig = () => ({
       showExtraProjectExecutionColumns: {
         showUserName: false,
         showEndCreationDate: false,
+        showTimeLimit: true,
+      },
+      solverConfig: {
+        showSolverStep: true,
+        defaultSolver: 'mip.gurobi',
+      },
+      configFieldsConfig: {
+        showConfigFieldsStep: true,
+        autoLoadValues: false,
+      },
+      configFields: [
+        {
+          key: 'timeLimit',
+          title: 'projectExecution.steps.step6.time',
+          placeholder: 'projectExecution.steps.step6.timeLimitPlaceholder',
+          suffix: 'projectExecution.steps.step6.secondsSuffix',
+          icon: 'mdi-timer-sand',
+          type: 'number',
+        },
+      ],
+      fileProcessors: {
+        // Define filename prefixes that need special processing and their corresponding processor methods
       },
       logStates: {
         1: {

@@ -164,10 +164,7 @@ export default class ExecutionRepository {
       const json = {
         name: execution.name,
         description: execution.description ? execution.description : '',
-        config: {
-          timeLimit: parseInt(execution.timeLimit),
-          solver: execution.selectedSolver,
-        },
+        config: execution.config,
         schema: useGeneralStore().getSchemaName,
         instance_id: instance.id,
       }

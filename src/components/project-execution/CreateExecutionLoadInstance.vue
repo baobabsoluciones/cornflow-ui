@@ -1,173 +1,332 @@
 <template>
-  <MDragNDropFile
-    downloadIcon="mdi-upload"
-    :description="
-      $t('projectExecution.steps.step3.loadInstance.dragAndDropDescription')
-    "
-    :uploadedFile="selectedFile"
-    :formatsAllowed="['json', 'xlsx']"
-    :errors="instanceErrors"
-    :downloadButtonTitle="
-      $t('projectExecution.steps.step3.loadInstance.uploadFile')
-    "
-    :invalidFileText="
-      $t('projectExecution.steps.step3.loadInstance.invalidFileFormat')
-    "
-    @file-selected="onFileSelected"
-  />
+  <div>
+    <MDragNDropFile
+      multiple
+      downloadIcon="mdi-upload"
+      :description="
+        t('projectExecution.steps.step3.loadInstance.dragAndDropDescription')
+      "
+      :uploadedFiles="selectedFiles"
+      :formatsAllowed="['json', 'xlsx', 'csv']"
+      :errors="instanceErrors"
+      :downloadButtonTitle="
+        t('projectExecution.steps.step3.loadInstance.uploadFile')
+      "
+      :invalidFileText="
+        t('projectExecution.steps.step3.loadInstance.invalidFileFormat')
+      "
+      @files-selected="onFileSelected"
+    />
+    
+    <div class="d-flex justify-center mt-4">
+      <v-btn 
+        color="primary" 
+        :disabled="selectedFiles.length === 0 || isCheckingSchema" 
+        @click="processFiles"
+        class="load-instance-btn"
+        elevation="2"
+        large
+      >
+        <v-icon left>mdi-upload-multiple</v-icon>
+        {{ t('projectExecution.steps.step3.loadInstance.loadInstance') }}
+        <span class="ml-1" v-if="selectedFiles.length > 0">
+          ({{ selectedFiles.length }} {{ selectedFiles.length === 1 ? 'file' : 'files' }})
+        </span>
+      </v-btn>
+    </div>
+  
+    <!-- Loading Spinner -->
+    <div class="d-flex justify-center mt-2" v-if="isCheckingSchema">
+      <v-progress-circular indeterminate color="primary" size="32" />
+    </div>
+  
+  </div>
 </template>
 
-<script>
+<script setup lang="ts">
+import { ref, watch, inject, onMounted, defineProps, defineEmits } from 'vue'
 import { Instance } from '@/app/models/Instance'
 import { useGeneralStore } from '@/stores/general'
-import { inject } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useFileProcessors } from '@/app/composables/useFileProcessors'
 
-export default {
-  components: {},
-  props: {
-    instance: {
-      type: Instance,
-      default: null,
-    },
-    fileSelected: {
-      type: File,
-      default: null,
-    },
-    existingInstanceErrors: {
-      type: String,
-      default: null,
-    }
-  },
-  created() {
-    this.showSnackbar = inject('showSnackbar')
-  },
-  data() {
-    return {
-      selectedFile: null,
-      selectedInstance: null,
-      instanceErrors: this.existingInstanceErrors,
-      store: useGeneralStore(),
-      showSnackbar: null,
-    }
-  },
-  watch: {
-    fileSelected: {
-      handler(newFile) {
-        this.selectedFile = newFile
-        console.log('fileSelected changed:', newFile);
-      },
-      immediate: true,
-    },
-    existingInstanceErrors: {
-      handler(newErrors) {
-        this.instanceErrors = newErrors
-        console.log('existingInstanceErrors changed:', newErrors);
-      },
-      immediate: true
-    }
-  },
-  methods: {
-    onFileSelected(file) {
+const { t } = useI18n()
+const { processFileByPrefix, needsSpecialProcessing } = useFileProcessors()
 
-      // Reset states before processing the new file
-      this.selectedFile = null
-      this.selectedInstance = null
-      this.instanceErrors = null
-      this.$emit('update:existingInstanceErrors', this.instanceErrors)
+const props = defineProps({
+  instance: {
+    type: Instance,
+    default: null,
+  },
+  fileSelected: {
+    type: File,
+    default: null,
+  },
+  existingInstanceErrors: {
+    type: String,
+    default: null,
+  },
+  newExecution: {
+    type: Object,
+    default: () => ({}),
+  }
+})
+
+const emit = defineEmits(['update:existingInstanceErrors', 'fileSelected', 'instanceSelected'])
+
+// State
+const selectedFiles = ref([])
+const selectedInstance = ref(null)
+const instanceErrors = ref(props.existingInstanceErrors)
+const store = useGeneralStore()
+const showSnackbar = inject('showSnackbar') as ((message: string, color?: string) => void) | undefined
+const processedInstances = ref([])
+const isCheckingSchema = ref(false)
+
+// Initialize with fileSelected if provided
+onMounted(() => {
+  if (props.fileSelected) {
+    selectedFiles.value = [props.fileSelected]
+  }
+})
+
+// Watchers
+watch(() => props.existingInstanceErrors, (newErrors) => {
+  instanceErrors.value = newErrors
+}, { immediate: true })
+
+// Methods
+const onFileSelected = (files) => {
+  // Reset states before processing the new files
+  instanceErrors.value = null
+  emit('update:existingInstanceErrors', instanceErrors.value)
+  
+  // Update our files array with what came from the component
+  selectedFiles.value = [...files]
+}
+
+const processFiles = async () => {
+  if (selectedFiles.value.length === 0) {
+    return
+  }
+
+  try {
+    isCheckingSchema.value = true
+    processedInstances.value = []
+    instanceErrors.value = null
+    emit('update:existingInstanceErrors', instanceErrors.value)
       
-      this.selectedFile = file
-
+    // Process each file
+    for (const file of selectedFiles.value) {
       const extension = file.name.split('.').pop()
-
-      return new Promise((resolve, reject) => {
-        var fileReader = new FileReader()
-        fileReader.onload = () => {
-          return resolve(this.uploadInstance(fileReader.result, extension))
-        }
-        fileReader.onerror = reject
-        if (extension === 'xlsx') {
-          return fileReader.readAsArrayBuffer(file)
-        } else {
-          return fileReader.readAsText(file)
-        }
-      })
-    },
-    /**
-     * Uploads an instance file and validates it against the schema.
-     * @param {string} fileContent - The content of the file to upload.
-     * @param {string} ext - The extension of the file to upload.
-     * @throws Will throw an error if the schema is not found or if the instance does not comply with the schema.
-     */
-    async uploadInstance(fileContent, ext) {
       try {
-        const { Instance } = this.store.appConfig
-        const schemas = this.store.getSchemaConfig
-
-        // Check if the schema exists
-        if (schemas.instanceSchema == null) {
-          throw new Error(
-            this.$t('projectExecution.steps.step2.loadInstance.noSchemaError'),
-          )
+        const instance = await parseFile(file, extension)
+        if (instance) {
+          processedInstances.value.push(instance)
         }
-
-        let instance
-
-        if (ext === 'xlsx') {
-          instance = await Instance.fromExcel(
-            fileContent,
-            schemas.instanceSchema,
-            schemas.name,
-          )
-        } else if (ext === 'json') {
-          const jsonData = JSON.parse(fileContent)
-          instance = new Instance(
-            null,
-            jsonData,
-            schemas.instanceSchema,
-            schemas.instanceChecksSchema,
-            schemas.name,
-          )
-        }
-
-        // Validate the instance against the schema
-        const errors = instance.checkSchema()
-
-        if (errors && errors.length > 0) {
-          this.instanceErrors = errors
-            .map((error) => `<li>${error.instancePath} - ${error.message}</li>`)
-            .join('')
-            this.$emit('update:exisistingInstanceErrors', this.instanceErrors)
-          throw new Error(
-            this.$t(
-              'projectExecution.steps.step3.loadInstance.instanceSchemaError',
-            ),
-          )
-        }
-
-        // If the instance is valid, set it as the selected instance and show a success message
-        this.selectedInstance = instance
-        this.$emit('instance-selected', this.selectedInstance)
-        this.instanceErrors = null
-        this.$emit('update:existingInstanceErrors', this.instanceErrors)
-        this.showSnackbar(
-          this.$t('projectExecution.steps.step3.loadInstance.instanceLoaded'),
-        )
-
-        return Promise.resolve({})
       } catch (error) {
-        this.instanceErrors =
-          this.instanceErrors.length > 0
-            ? this.instanceErrors
-            : this.$t(
-                'projectExecution.steps.step3.loadInstance.unexpectedError',
-              )
-        this.$emit('update:existingInstanceErrors', this.instanceErrors)
-        this.showSnackbar(error, 'error')
-        throw new Error(error.message)
+        console.error(`Error processing file ${file.name}:`, error)
+        if (!instanceErrors.value) {
+          if (showSnackbar) {
+            showSnackbar(error.message || error, 'error')
+          }
+          return // Exit early if file processing fails
+        }
       }
-    },
-  },
+    }
+    
+    if (processedInstances.value.length === 0) {
+      throw new Error(t('projectExecution.steps.step3.loadInstance.noValidInstancesError'))
+    }
+    
+    const finalInstance = processedInstances.value.length > 1 ? await mergeInstances() : processedInstances.value[0]
+    selectedInstance.value = finalInstance
+
+    // Validate the instance
+    try {
+      const errors = await finalInstance.checkSchema()
+      if (errors && errors.length > 0) {
+        instanceErrors.value = `<p><strong>Merged instance:</strong></p>` + errors
+          .map((error) => `<li>${error.instancePath} - ${error.message}</li>`)
+          .join('')
+        emit('update:existingInstanceErrors', instanceErrors.value)
+        if (showSnackbar) {
+          showSnackbar(
+            t('projectExecution.steps.step3.loadInstance.instanceSchemaError'),
+            'error'
+          )
+        }
+        return // Exit if there are validation errors
+      }
+    } catch (error) {
+      console.error('Schema validation error:', error)
+      instanceErrors.value = `<p><strong>Error validating instance:</strong></p><li>${error.message}</li>`
+      emit('update:existingInstanceErrors', instanceErrors.value)
+      if (showSnackbar) {
+        showSnackbar(
+          t('projectExecution.steps.step3.loadInstance.instanceSchemaError'),
+          'error'
+        )
+      }
+      return // Exit if there's an error in validation
+    }
+
+    // Only proceed if there are no errors
+    emit('instanceSelected', selectedInstance.value)
+    instanceErrors.value = null
+    emit('update:existingInstanceErrors', instanceErrors.value)
+    if (showSnackbar) {
+      showSnackbar(
+        t('projectExecution.steps.step3.loadInstance.instancesLoaded')
+      )
+    }
+  } catch (error) {
+    console.error('Error in processFiles:', error)
+    if (showSnackbar) {
+      showSnackbar(error.message || error, 'error')
+    }
+  } finally {
+    isCheckingSchema.value = false
+  }
+}
+
+const parseFile = async (file, extension) => {
+  return new Promise((resolve, reject) => {
+    const fileReader = new FileReader()
+    
+    fileReader.onload = async () => {
+      try {
+        // Check if this file needs special processing based on its filename
+        if (needsSpecialProcessing(file.name)) {
+          try {
+            const specialInstance = await processFileByPrefix(
+              file,
+              fileReader.result,
+              extension,
+              store.getSchemaConfig
+            )
+            
+            if (specialInstance) {
+              selectedInstance.value = specialInstance
+              resolve(specialInstance)
+              return
+            }
+          } catch (processingError) {
+            console.error(`Error in special processing for ${file.name}:`, processingError)
+          }
+        }
+        
+        // Standard processing
+        const instance = await createInstanceFromData(fileReader.result, extension, file)                
+        resolve(instance)
+      } catch (error) {
+          instanceErrors.value =
+            (instanceErrors.value && instanceErrors.value.length > 0)
+              ? instanceErrors.value
+              : `<p><strong>${file.name}:</strong> ${t('projectExecution.steps.step3.loadInstance.unexpectedError')}</p>`
+          emit('update:existingInstanceErrors', instanceErrors.value)
+        reject(error)
+      }
+    }
+    
+    fileReader.onerror = (error) => {
+      reject(new Error(t('projectExecution.steps.step3.loadInstance.fileReadError')))
+    }
+    
+    if (extension === 'xlsx') {
+      fileReader.readAsArrayBuffer(file)
+    } else {
+      fileReader.readAsText(file)
+    }
+  })
+}
+
+const createInstanceFromData = (data, extension, file) => {
+  const { Instance } = store.appConfig
+  const schemas = store.getSchemaConfig
+
+  if (extension === 'xlsx') {
+    return Instance.fromExcel(
+      data,
+      schemas.instanceSchema,
+      store.appConfig.parameters.schema
+    )
+  } else if (extension === 'json') {
+    const jsonData = JSON.parse(data)
+    return new Instance(
+      null,
+      jsonData,
+      schemas.instanceSchema,
+      schemas.instanceChecksSchema,
+      store.appConfig.parameters.schema
+    )
+  } else if (extension === 'csv') {
+    return Instance.fromCsv(
+      data,
+      file.name,
+      schemas.instanceSchema,
+      schemas.instanceChecksSchema,
+      store.appConfig.parameters.schema
+    )
+  }
+  throw new Error(t('projectExecution.steps.step3.loadInstance.unsupportedFileFormat'))
+}
+
+const mergeInstances = async () => {
+  try {
+    const { Instance } = store.appConfig
+    const schemas = store.getSchemaConfig
+
+    // Collect all data from instances to merge
+    const allData = processedInstances.value.map(instance => instance.data as Record<string, any>)
+    // Merge all instances data - enhance the merging logic
+    const mergedData: Record<string, any> = {}
+    const allKeys = new Set<string>()
+    for (const data of allData) {
+      for (const key in data) {
+        allKeys.add(key)
+      }
+    }
+    for (const key of allKeys) {
+      const values = allData.filter(data => data[key] !== undefined).map(data => data[key])
+      if (values.length === 0) {
+        continue
+      } else if (values.length === 1) {
+        mergedData[key] = values[0]
+      } else {
+        const firstValue = values[0]
+        if (Array.isArray(firstValue)) {
+          mergedData[key] = values.flat()
+        } else if (typeof firstValue === 'object' && firstValue !== null) {
+          mergedData[key] = {}
+          for (const value of values) {
+            if (value && typeof value === 'object') {
+              Object.assign(mergedData[key], value)
+            }
+          }
+        } else {
+          mergedData[key] = values.find(v => v !== null && v !== undefined) || firstValue
+        }
+      }
+    }
+    // Create a new instance with the merged data
+    return new Instance(
+      null,
+      mergedData,
+      schemas.instanceSchema,
+      schemas.instanceChecksSchema,
+      store.appConfig.parameters.schema
+    )
+  } catch (error) {
+    instanceErrors.value =
+      (instanceErrors.value && instanceErrors.value.length > 0)
+        ? instanceErrors.value
+        : t('projectExecution.steps.step3.loadInstance.unexpectedError')
+    emit('update:existingInstanceErrors', instanceErrors.value)
+    if (showSnackbar) {
+      showSnackbar(error.message || error, 'error')
+    }
+    throw error
+  }
 }
 </script>
-
-<style></style>

@@ -80,6 +80,7 @@ class ApiClient {
 
   private async request(url = '', options: RequestOptions = {}) {
     const completeUrl = new URL(this.baseUrl + url)
+    
     if (options.params) {
       completeUrl.search = new URLSearchParams(options.params).toString()
     }
@@ -191,20 +192,20 @@ class ApiClient {
     });
   }
 
-  get(url: string, queryParams = {}, getHeaders = {}) {
-    return this.request(url, { method: 'GET', params: queryParams, headers: getHeaders })
+  get(url: string, queryParams = {}, getHeaders = {}, isExternal: boolean = false) {
+    return this.request(url, { method: 'GET', params: queryParams, headers: getHeaders, isExternal })
   }
 
-  post(url: string, data: object, postHeaders = {}) {
-    return this.request(url, { method: 'POST', body: data, headers: postHeaders })
+  post(url: string, data: object, postHeaders = {}, isExternal: boolean = false) {
+    return this.request(url, { method: 'POST', body: data, headers: postHeaders, isExternal })
   }
 
-  put(url: string, data: object, putHeaders = {}) {
-    return this.request(url, { method: 'PUT', body: data, headers: putHeaders })
+  put(url: string, data: object, putHeaders = {}, isExternal: boolean = false) {
+    return this.request(url, { method: 'PUT', body: data, headers: putHeaders, isExternal })
   }
 
-  remove(url: string, deleteHeaders = {}) {
-    return this.request(url, { method: 'DELETE', headers: deleteHeaders })
+  remove(url: string, deleteHeaders = {}, isExternal: boolean = false) {
+    return this.request(url, { method: 'DELETE', headers: deleteHeaders, isExternal })
   }
 }
 

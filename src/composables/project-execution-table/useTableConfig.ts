@@ -22,11 +22,12 @@ export function useTableConfig(props: {
       showExtraColumns = generalStore.appConfig.parameters?.showExtraProjectExecutionColumns;
     } catch (error) {
       console.error('Error accessing extra columns configuration:', error);
-      showExtraColumns = { showEndCreationDate: false, showUserName: false };
+      showExtraColumns = { showEndCreationDate: false, showUserName: false, showTimeLimit: false };
     }
     
     const hasEndDate = showExtraColumns?.showEndCreationDate || false;
     const hasUserName = showExtraColumns?.showUserName || false;
+    const hasTimeLimit = showExtraColumns?.showTimeLimit || false;
     const extraColumnsCount = (hasEndDate ? 1 : 0) + (hasUserName ? 1 : 0);
     
     // Adjust widths based on number of extra columns shown
@@ -116,14 +117,22 @@ export function useTableConfig(props: {
         width: solverWidth,
         sortable: !props.formatDateByTime,
         fixedWidth: true,
-      },
-      {
+      }
+    );
+
+    // Add timeLimit column only if enabled
+    if (hasTimeLimit) {
+      headers.push({
         title: t('executionTable.timeLimit'),
         value: 'timeLimit',
         width: '7%',
         sortable: !props.formatDateByTime,
         fixedWidth: true,
-      },
+      });
+    }
+
+    // Add solution and actions columns
+    headers.push(
       {
         title: t('executionTable.solution'),
         value: 'solution',

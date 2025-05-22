@@ -62,7 +62,7 @@ When `useConfigJson` is true in `src/app/config.ts`, the application will load c
        Experiment: ExperimentRostering,
        Instance: InstanceRostering,
        Solution: SolutionRostering,
-       AppConfig: {
+       parameters: {
        isPilotVersion: false,
        showTimeLimit: true,
        useHashMode: false,
@@ -72,8 +72,8 @@ When `useConfigJson` is true in `src/app/config.ts`, the application will load c
        expandedLogo: 'path/to',
        showExtraProjectExecutionColumns: {
          showUserName: false,     
-         showEndCreationDate: false 
-       }
+         showEndCreationDate: false,
+         showTimeLimit: true,
        },
        dashboardLayout: [
        {
@@ -194,6 +194,63 @@ When `useConfigJson` is true in `src/app/config.ts`, the application will load c
            component: () => import('@/app/views/RosteringSkillDemandView'),
        },
        ],
+      solverConfig: {
+        showSolverStep: false,
+        defaultSolver: 'mip.gurobi',
+      },
+      configFieldsConfig: {
+        showConfigFieldsStep: false,
+        autoLoadValues: true,
+      },
+      configFields: [
+        {
+          key: 'timeLimit_3',
+          title: 'projectExecution.steps.step6.timeLimit_3',
+          placeholder: 'projectExecution.steps.step6.timeLimit_3Placeholder',
+          suffix: 'projectExecution.steps.step6.minutesSuffix',
+          icon: 'mdi-timer-sand',
+          type: 'number',
+          source: 'eParametros',
+          param: 'minutos_modelo_3',
+          lookupType: 'arrayByValue',
+          lookupParam: 'ID',
+          lookupValue: 'VALOR',
+        },
+        {
+          key: 'timeLimit_4',
+          title: 'projectExecution.steps.step6.timeLimit_4',
+          placeholder: 'projectExecution.steps.step6.timeLimit_4Placeholder',
+          suffix: 'projectExecution.steps.step6.minutesSuffix',
+          icon: 'mdi-timer-sand-full',
+          type: 'number',
+          source: 'eParametros',
+          param: 'minutos_modelo_4',
+          lookupType: 'arrayByValue',
+          lookupParam: 'ID',
+          lookupValue: 'VALOR',
+        },
+        {
+          key: 'gapRel',
+          title: 'projectExecution.steps.step6.gapRel',
+          placeholder: 'projectExecution.steps.step6.gapRelPlaceholder',
+          suffix: 'projectExecution.steps.step6.percentageSuffix',
+          icon: 'mdi-percent',
+          type: 'float',
+          source: 'eParametros',
+          param: 'gap',
+          lookupType: 'arrayByValue',
+          lookupParam: 'ID',
+          lookupValue: 'VALOR',
+        },
+        {
+          key: 'cornflow',
+          title: 'projectExecution.steps.step6.cornflow',
+          placeholder: 'projectExecution.steps.step6.cornflowPlaceholder',
+          icon: 'mdi-cloud-check',
+          type: 'boolean',
+          default: true
+        }
+      ],
    },
    }
    ```
@@ -212,6 +269,103 @@ When `useConfigJson` is true in `src/app/config.ts`, the application will load c
 It's important not to edit any other file or folders. Only the folders, files and images just mentioned can be edited.
 
 \*\*Note: To save dashboard preferences for a single execution, including filters, checks, and date ranges, utilize the `setDashboardPreference` method from the `LoadedExecution.ts` class. Subsequently, retrieve these preferences using the `getDashboardPreference` method. The data type is custom, allowing for flexible usage as needed.
+
+## Custom File Processors
+
+The application supports custom file processing for instances based on filename prefixes. This feature is useful when you need to handle files with special formats or structures before merging them with other files to create an instance.
+
+### Configuration
+
+Custom file processing is entirely optional. By default, the system will merge all uploaded files without any special processing. If you don't need custom file processing, you can leave the `fileProcessors` object empty or omit it entirely.
+
+If you do need custom processing for specific file types, add a `fileProcessors` object to the core parameters in `src/app/config.ts`:
+
+```typescript
+parameters: {
+  // other parameters
+  fileProcessors: {
+    'mtrx': 'processMatrix',
+    'config': 'processConfig'
+  },
+  // other parameters
+}
+```
+
+Each key in the `fileProcessors` object is a filename prefix that triggers special processing, and each value is either:
+- A string with the name of a single processor method to use
+- An array of processor method names to apply in sequence
+
+The special prefix `'all'` can be used to apply processors to all files regardless of their names.
+
+### Implementation
+
+The actual processing logic must be implemented in the `src/app/composables/useFileProcessors.ts` file. You need to add your processor methods to the `processors` object in this file. 
+
+Each processor method should:
+1. Accept parameters: file, fileContent, extension, and schemas
+2. Parse the file content based on its format (JSON, XLSX, or CSV)
+3. Transform the data into a format that represents a part of the complete instance data
+4. Return a new Instance object with this partial data that will later be merged with other files
+
+When multiple processors are specified for a prefix (or for the 'all' prefix), they are applied in sequence, with each processor receiving the output of the previous one.
+
+Important: The processor methods don't create the final, complete instance. Instead, they each process a specific part of the data needed for the complete instance. After all files are processed, the system will automatically merge all the processed parts to create the complete instance.
+
+For example, in a scheduling application, one file might contain employee data, another might contain shift requirements, and a third might contain constraints. Each file would be processed separately and then merged to create the complete instance.
+
+The system automatically detects files that match the configured prefixes and processes them using the corresponding methods before merging all the processed parts into the final instance. Files that don't match any configured prefix are processed using the standard method.
+
+## Create project execution steps customization
+
+### Solver step: solverConfig
+Controls the solver selection step and default solver for executions.
+- `showSolverStep` (boolean):
+  - If true, shows the solver selection step to the user.
+  - If false, skips the step and uses the value in `defaultSolver` automatically.
+- `defaultSolver` (string):
+  - The solver to use if `showSolverStep` is false.
+  - Used in the execution config as `newExecution.config.solver`.
+
+### Configuration parameters step: configFieldsConfig
+Controls the config fields step and value loading for execution parameters.
+- `showConfigFieldsStep` (boolean):
+  - If true, shows the config fields step to the user.
+  - If false, skips the step and loads values automatically from the instance or defaults.
+- `autoLoadValues` (boolean):
+  - If true, loads config field values from the instance (or default) when the step is skipped.
+  - Used in ProjectExecutionView.vue to call value loading after the instance is loaded or before steps that need config values.
+
+### Configuration parameters step:configFields
+Defines the configuration fields for execution parameters. Each field can have:
+- `key` (string): Unique identifier for the field (used as config property).
+- `title` (string): Translation key for the field label.
+- `placeholder` (string): Translation key for the field placeholder.
+- `suffix` (string): Translation key for the field suffix (e.g., units).
+- `icon` (string): Material Design icon name.
+- `type` ('number' | 'float' | 'boolean' | 'text' | 'select'): Field type.
+- `source` (string, optional): Table name in instance.data to get the value from (e.g., 'eParametros').
+- `param` (string, optional): Key or ID to look up in the source table/array.
+- `lookupType` (string, optional): How to look up the value in the source. Supported:
+  - 'arrayByValue': Looks for an object in the array where [lookupParam] === param, returns [lookupValue].
+  - If null, searches directly as key[value] for source[param].
+- `lookupParam` (string, optional, for arrayByValue): The property to match in the array (e.g., 'ID').
+- `lookupValue` (string, optional, for arrayByValue): The property to return from the found object (e.g., 'VALOR').
+- `default` (any, optional): Default value if not found in the instance.
+- `options` (Array<{label: string, value: any}>, for select type): Options for select fields.
+
+### Implementation in ProjectExecutionView.vue:
+- `solverConfig` is used to determine if the solver step is shown and to set the default solver.
+- `configFieldsConfig` is used to determine if the config fields step is shown and to auto-load values.
+- `configFields` is used to render the config fields step, auto-load values from the instance, and display the config summary in the confirmation step.
+
+- `assets/logo`: This directory should contain the logo images for the application. The name should be the same as the default ones (logo.png and full_logo.png)
+- `assets/style/variables.css`: This file should define the main colors of the application. Mantain the variable names and only change the colors.
+- `models`: This directory should define the instance, solution, experiment, and execution models for the application.
+- `views`: This directory should contain all the custom views needed for the application.
+- `components`: This directory should contain any additional components that are not in the core components.
+- `store/app.ts`: This file should define any additional store-specific configurations for the application.
+- `tests`: This file should contain all unit tests for additional components.
+- `plugins/locales`: This folder contains three files (`en.ts`, `es.ts`, `fr.ts`) to add any text needed in the app views and components. Be careful not to duplicate the names with the original locales files (`src/plugins/locales`).
 
 ## Authentication
 
