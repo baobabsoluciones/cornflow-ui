@@ -16,14 +16,27 @@
               {{ newExecution.description }}
             </v-list-item-title>
           </v-list-item>
-          <v-list-item prepend-icon="mdi-timelapse">
-            <v-list-item-title class="small-font">
-              {{ newExecution.timeLimit + `s max.` }}
-            </v-list-item-title>
+          <v-list-item
+            v-for="field in configFields"
+            :key="field.key"
+            :prepend-icon="field.icon || defaultIcon"
+          >
+            <template v-if="field.type === 'boolean'">
+              <v-list-item-title class="small-font d-flex align-center">
+                <span class="mr-2">{{ $t(field.title) }}:</span>
+                <v-icon color="success" v-if="newExecution.config[field.key]">mdi-check-circle</v-icon>
+                <v-icon color="error" v-else>mdi-close-circle</v-icon>
+              </v-list-item-title>
+            </template>
+            <template v-else>
+              <v-list-item-title class="small-font">
+                {{ $t(field.title) }}: {{ newExecution.config[field.key] }}<span v-if="field.suffix">{{ $t(field.suffix) }}</span>
+              </v-list-item-title>
+            </template>
           </v-list-item>
-          <v-list-item prepend-icon="mdi-wrench-outline">
+          <v-list-item prepend-icon="mdi-wrench-outline" v-if="newExecution.config.solver">
             <v-list-item-title class="small-font">
-              {{ newExecution.selectedSolver + ` solver` }}
+              {{ newExecution.config.solver + ` solver` }}
             </v-list-item-title>
           </v-list-item>
         </v-list>
@@ -56,7 +69,7 @@
 </template>
 
 <script>
-import { inject } from 'vue'
+import { inject, computed } from 'vue'
 import { useGeneralStore } from '@/stores/general'
 
 export default {
@@ -73,7 +86,13 @@ export default {
       executionLaunched: false,
       showSnackbar: null,
       generalStore: useGeneralStore(),
+      defaultIcon: 'mdi-tune',
     }
+  },
+  computed: {
+    configFields() {
+      return this.generalStore.appConfig.parameters.configFields || []
+    },
   },
   created() {
     this.showSnackbar = inject('showSnackbar')
@@ -82,10 +101,7 @@ export default {
     async createExecution() {
       try {
         this.executionIsLoading = true
-        
-        const result = await this.generalStore.createExecution(
-          this.newExecution,
-        )
+        const result = await this.generalStore.createExecution(this.newExecution)
         if (result) {
           const loadedResult = await this.generalStore.fetchLoadedExecution(
             result.id,

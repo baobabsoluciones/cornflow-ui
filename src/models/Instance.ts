@@ -1,5 +1,6 @@
 import { loadExcel } from '../utils/data_io'
 import Ajv from 'ajv'
+import { ErrorObject } from 'ajv'
 
 export class InstanceCore {
   id: string | null
@@ -25,7 +26,7 @@ export class InstanceCore {
     this.dataChecks = dataChecks
   }
 
-  checkSchema() {
+  async checkSchema(): Promise<ErrorObject<string, Record<string, any>, unknown>[] | undefined> {
     const ajv = new Ajv({ strict: false, allErrors: true })
     const validate = ajv.compile(this.schema)
     const valid = validate(this.data)
@@ -100,7 +101,7 @@ export class InstanceCore {
         }
         
         // Determine table name from filename (without extension)
-        const tableName = fileName.split('.')[0].toLowerCase();
+        const tableName = fileName.split('.')[0];
         
         // Create data structure with table name
         const data = {

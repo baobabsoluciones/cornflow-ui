@@ -10,6 +10,7 @@
       :disablePreviousButton="disablePrevButton"
       :disableNextButton="disableNextButton"
       :currentStep.sync="currentStep"
+      :steps-column-width="'20vw'"
       :continueButtonText="$t('projectExecution.continueButton')"
       :previousButtonText="$t('projectExecution.previousButton')"
       @update:currentStep="handleStepChange"
@@ -17,7 +18,7 @@
     >
       <template v-for="(step, index) in steps" v-slot:[`step-${index}-content`]>
         <!-- Template for step 1 -->
-        <template v-if="index === 0">
+        <template v-if="step.key === 'createOrSearch'">
           <CreateExecutionCreateOrSearch
             :optionSelected="optionSelected"
             @update:optionSelected="optionSelected = $event"
@@ -26,7 +27,7 @@
 
         <!-- Template for search execution step 2 -->
         <template
-          v-else-if="index === 1 && optionSelected === 'searchExecution'"
+          v-else-if="step.key === 'searchDateRange' && optionSelected === 'searchExecution'"
         >
           <div ref="dateRangePicker">
             <DateRangePicker
@@ -42,10 +43,9 @@
 
         <!-- Template for create execution step 2 -->
         <template
-          v-else-if="index === 1 && optionSelected === 'createExecution'"
+          v-else-if="step.key === 'nameDescription' && optionSelected === 'createExecution'"
         >
           <CreateExecutionNameDescription
-            v-if="index === 1 && optionSelected === 'createExecution'"
             :name="newExecution.name"
             :description="newExecution.description"
             @update:name="newExecution.name = $event"
@@ -54,7 +54,7 @@
         </template>
 
         <!-- Template for create execution step 3 -->
-        <template v-else-if="index === 2">
+        <template v-else-if="step.key === 'loadInstance'">
           <CreateExecutionLoadInstance
             :fileSelected="instanceFile"
             :newExecution="newExecution"
@@ -68,7 +68,7 @@
         </template>
 
         <!-- Template for create execution step 4 -->
-        <template v-else-if="index === 3">
+        <template v-else-if="step.key === 'checkData'">
           <CreateExecutionCheckData
             :newExecution="newExecution"
             @update:instance="handleInstanceSelected"
@@ -77,7 +77,7 @@
         </template>
 
         <!-- Template for create execution step 5 -->
-        <template v-else-if="index === 4">
+        <template v-else-if="step.key === 'selectSolver'">
           <MCheckboxOptions
             :options="solvers"
             :multiple="false"
@@ -87,25 +87,15 @@
         </template>
 
         <!-- Template for create execution step 6 -->
-        <template v-else-if="index === 5">
-          <div style="width: 40%">
-            <MInputField
-              class="mt-4"
-              v-model="newExecution.timeLimit"
-              :title="$t('projectExecution.steps.step6.time')"
-              :placeholder="
-                $t('projectExecution.steps.step6.timeLimitPlaceholder')
-              "
-              type="number"
-              :suffix="$t('projectExecution.steps.step6.secondsSuffix')"
-              prependInnerIcon="mdi-clock-time-four-outline"
-            >
-            </MInputField>
-          </div>
+        <template v-else-if="step.key === 'configParams'">
+          <CreateExecutionConfigParams
+            v-model="newExecution"
+            class="mt-4"
+          />
         </template>
 
         <!-- Template for create execution step 7 -->
-        <template v-else-if="index === 6">
+        <template v-else-if="step.key === 'solve'">
           <CreateExecutionSolve
             :newExecution="newExecution"
             @resetAndLoadNewExecution="resetAndLoadNewExecution"
@@ -120,7 +110,7 @@
           selectedDates.startDate &&
           selectedDates.endDate
         "
-        v-slot:[`step-1-continue-button`]
+        v-slot:[`step-${getStepIndexByKey('searchDateRange')}-continue-button`]
       >
         <v-btn color="primary" @click="searchByDates"
           >{{ $t('projectExecution.steps.step2Search.search') }}
@@ -155,6 +145,7 @@ import CreateExecutionNameDescription from '@/components/project-execution/Creat
 import CreateExecutionLoadInstance from '@/components/project-execution/CreateExecutionLoadInstance.vue'
 import CreateExecutionCheckData from '@/components/project-execution/CreateExecutionCheckData.vue'
 import CreateExecutionSolve from '@/components/project-execution/CreateExecutionSolve.vue'
+import CreateExecutionConfigParams from '@/components/project-execution/CreateExecutionConfigParams.vue'
 import DateRangePicker from '@/components/core/DateRangePicker.vue'
 import ProjectExecutionsTable from '@/components/project-execution/ProjectExecutionsTable.vue'
 import { useGeneralStore } from '@/stores/general'
@@ -169,6 +160,7 @@ export default {
     CreateExecutionSolve,
     CreateExecutionLoadInstance,
     CreateExecutionCheckData,
+    CreateExecutionConfigParams,
   },
   data() {
     return {
@@ -184,11 +176,9 @@ export default {
       generalStore: useGeneralStore(),
       showSnackbar: null,
       instanceFile: null,
-      selectedSolver: [],
       newExecution: {
         instance: null,
-        selectedSolver: null,
-        timeLimit: null,
+        config: {},
         name: null,
         description: null,
       },
@@ -199,10 +189,79 @@ export default {
   },
   created() {
     this.showSnackbar = inject('showSnackbar')
+    // Set default solver if configured to not show solver step
+    if (!this.generalStore.appConfig.parameters.solverConfig?.showSolverStep) {
+      this.newExecution.config.solver = this.generalStore.appConfig.parameters.solverConfig.defaultSolver
+    }
+    // Load config field values if configured to not show config fields step
+    if (!this.generalStore.appConfig.parameters.configFieldsConfig?.showConfigFieldsStep && 
+        this.generalStore.appConfig.parameters.configFieldsConfig?.autoLoadValues) {
+      this.loadConfigFieldValues()
+    }
   },
   methods: {
-    handleStepChange(newStep) {
-      this.currentStep = newStep
+    async handleStepChange(newStep) {
+      // If we're skipping the solver step, ensure the solver is set
+      if (!this.generalStore.appConfig.parameters.solverConfig?.showSolverStep) {
+        this.newExecution.config.solver = this.generalStore.appConfig.parameters.solverConfig.defaultSolver
+      }
+      // If we're skipping the config fields step, ensure values are loaded before steps that need them
+      const nextStepKey = this.steps[newStep]?.key;
+      if (
+        !this.generalStore.appConfig.parameters.configFieldsConfig?.showConfigFieldsStep &&
+        this.generalStore.appConfig.parameters.configFieldsConfig?.autoLoadValues &&
+        (
+          nextStepKey === 'checkData' ||
+          nextStepKey === 'configParams' ||
+          nextStepKey === 'solve'
+        )
+      ) {
+        await this.loadConfigFieldValues();
+      }
+      this.currentStep = newStep;
+    },
+    async loadConfigFieldValues() {
+      const configFields = this.generalStore.appConfig.parameters.configFields || []
+      const newConfig = { ...this.newExecution.config }
+
+      for (const field of configFields) {
+        if (
+          field.source &&
+          this.newExecution.instance?.data &&
+          this.newExecution.instance.data[field.source]
+        ) {
+          let value;
+          if (field.lookupType === 'arrayByValue') {
+            const arr = this.newExecution.instance.data[field.source];
+            const found = arr.find(
+              (item) =>
+                item &&
+                item[field.lookupParam] === field.param
+            );
+            value = found ? found[field.lookupValue] : undefined;
+          } else if (Array.isArray(this.newExecution.instance.data[field.source])) {
+            value = undefined;
+          } else {
+            value = this.newExecution.instance.data[field.source][field.param];
+          }
+
+          if (value !== undefined) {
+            if (field.type === 'float') {
+              newConfig[field.key] = parseFloat(value);
+            } else if (field.type === 'number') {
+              newConfig[field.key] = parseInt(value);
+            } else {
+              newConfig[field.key] = value;
+            }
+          } else if (field.default !== undefined) {
+            newConfig[field.key] = field.default;
+          }
+        } else if (field.default !== undefined) {
+          newConfig[field.key] = field.default;
+        }
+      }
+
+      this.newExecution.config = newConfig
     },
     handleCheckboxChange({ value, option }) {
       this.optionSelected = value ? option : null
@@ -216,8 +275,15 @@ export default {
     handleInstanceFileSelected(file) {
       this.instanceFile = file
     },
-    handleInstanceSelected(instance) {
-      this.newExecution.instance = instance
+    handleInstanceSelected: async function(instance) {
+      this.newExecution.instance = instance;
+      // If config fields step is skipped, load config values now
+      if (
+        !this.generalStore.appConfig.parameters.configFieldsConfig?.showConfigFieldsStep &&
+        this.generalStore.appConfig.parameters.configFieldsConfig?.autoLoadValues
+      ) {
+        await this.loadConfigFieldValues();
+      }
     },
     async searchByDates() {
       try {
@@ -308,6 +374,9 @@ export default {
           execution.description.toLowerCase().includes(searchTextLower),
       )
     },
+    getStepIndexByKey(key) {
+      return this.steps.findIndex(step => step.key === key);
+    }
   },
   watch: {
     currentStep(newVal, oldVal) {
@@ -325,7 +394,17 @@ export default {
           }
         })
       }
+      // Ensure solver is set when transitioning between steps if showSolverStep is false
+      if (!this.generalStore.appConfig.parameters.solverConfig?.showSolverStep) {
+        this.newExecution.config.solver = this.generalStore.appConfig.parameters.solverConfig.defaultSolver
+      }
     },
+    optionSelected(newVal) {
+      // Reset solver when changing option if showSolverStep is false
+      if (!this.generalStore.appConfig.parameters.solverConfig?.showSolverStep) {
+        this.newExecution.config.solver = this.generalStore.appConfig.parameters.solverConfig.defaultSolver
+      }
+    }
   },
   computed: {
     title() {
@@ -335,22 +414,26 @@ export default {
       return this.$t('projectExecution.description')
     },
     disableNextButton() {
+      const currentStepKey = this.steps[this.currentStep]?.key
+
       return (
-        (this.currentStep === 1 &&
+        (currentStepKey === 'nameDescription' &&
           this.optionSelected === 'createExecution' &&
           !this.newExecution.name) ||
-        (this.currentStep === 2 &&
+        (currentStepKey === 'loadInstance' &&
           this.optionSelected === 'createExecution' &&
           (!this.newExecution.instance || this.existingInstanceErrors)) ||
-        (this.currentStep === 3 &&
+        (currentStepKey === 'checkData' &&
           this.optionSelected === 'createExecution' &&
           this.checksLaunching) ||
-        (this.currentStep === 4 &&
+        (this.generalStore.appConfig.parameters.solverConfig?.showSolverStep &&
+          currentStepKey === 'selectSolver' &&
           this.optionSelected === 'createExecution' &&
-          !this.newExecution.selectedSolver) ||
-        (this.currentStep === 5 &&
+          !this.newExecution.config.solver) ||
+        (this.generalStore.appConfig.parameters.configFieldsConfig?.showConfigFieldsStep &&
+          currentStepKey === 'configParams' &&
           this.optionSelected === 'createExecution' &&
-          !this.newExecution.timeLimit)
+          this.isConfigFieldsIncomplete)
       )
     },
     disablePrevButton() {
@@ -370,7 +453,7 @@ export default {
         let selectedSolver = updatedSolvers.find(
           (solver) => solver.checked === true,
         )
-        this.newExecution.selectedSolver = selectedSolver
+        this.newExecution.config.solver = selectedSolver
           ? selectedSolver.value
           : null
       },
@@ -379,6 +462,8 @@ export default {
       if (this.optionSelected === null) {
         return [
           {
+            key: 'createOrSearch',
+            order: 1,
             title: this.$t('projectExecution.steps.step1.title'),
             subtitle: this.$t('projectExecution.steps.step1.description'),
             titleContent: this.$t('projectExecution.steps.step1.titleContent'),
@@ -387,11 +472,15 @@ export default {
       } else if (this.optionSelected === 'searchExecution') {
         return [
           {
+            key: 'createOrSearch',
+            order: 1,
             title: this.$t('projectExecution.steps.step1.title'),
             subtitle: this.$t('projectExecution.steps.step1.description'),
             titleContent: this.$t('projectExecution.steps.step1.titleContent'),
           },
           {
+            key: 'searchDateRange',
+            order: 2,
             title: this.$t('projectExecution.steps.step2Search.title'),
             subtitle: this.$t('projectExecution.steps.step2Search.description'),
             titleContent: this.$t(
@@ -403,13 +492,17 @@ export default {
           },
         ]
       } else if (this.optionSelected === 'createExecution') {
-        return [
+        const baseSteps = [
           {
+            key: 'createOrSearch',
+            order: 1,
             title: this.$t('projectExecution.steps.step1.title'),
             subtitle: this.$t('projectExecution.steps.step1.description'),
             titleContent: this.$t('projectExecution.steps.step1.titleContent'),
           },
           {
+            key: 'nameDescription',
+            order: 2,
             title: this.$t('projectExecution.steps.step2.title'),
             subtitle: this.$t('projectExecution.steps.step2.description'),
             titleContent: this.$t('projectExecution.steps.step2.titleContent'),
@@ -418,6 +511,8 @@ export default {
             ),
           },
           {
+            key: 'loadInstance',
+            order: 3,
             title: this.$t('projectExecution.steps.step3.title'),
             subtitle: this.$t('projectExecution.steps.step3.description'),
             titleContent: this.$t('projectExecution.steps.step3.titleContent'),
@@ -426,6 +521,8 @@ export default {
             ),
           },
           {
+            key: 'checkData',
+            order: 4,
             title: this.$t('projectExecution.steps.step4.title'),
             subtitle: this.$t('projectExecution.steps.step4.description'),
             titleContent: this.$t('projectExecution.steps.step4.titleContent'),
@@ -433,33 +530,69 @@ export default {
               'projectExecution.steps.step4.subtitleContent',
             ),
           },
-          {
+        ]
+
+        // Add solver step if configured to show it
+        if (this.generalStore.appConfig.parameters.solverConfig?.showSolverStep) {
+          baseSteps.push({
+            key: 'selectSolver',
+            order: 5,
             title: this.$t('projectExecution.steps.step5.title'),
             subtitle: this.$t('projectExecution.steps.step5.description'),
             titleContent: this.$t('projectExecution.steps.step5.titleContent'),
             subtitleContent: this.$t(
               'projectExecution.steps.step5.subtitleContent',
             ),
-          },
-          {
+          })
+        }
+
+        // Add config fields step if configured to show it
+        if (this.generalStore.appConfig.parameters.configFieldsConfig?.showConfigFieldsStep) {
+          const nextOrder = this.generalStore.appConfig.parameters.solverConfig?.showSolverStep ? 6 : 5
+          baseSteps.push({
+            key: 'configParams',
+            order: nextOrder,
             title: this.$t('projectExecution.steps.step6.title'),
             subtitle: this.$t('projectExecution.steps.step6.description'),
             titleContent: this.$t('projectExecution.steps.step6.titleContent'),
             subtitleContent: this.$t(
               'projectExecution.steps.step6.subtitleContent',
             ),
-          },
-          {
-            title: this.$t('projectExecution.steps.step7.title'),
-            subtitle: this.$t('projectExecution.steps.step7.description'),
-            titleContent: this.$t('projectExecution.steps.step7.titleContent'),
-            subtitleContent: this.$t(
-              'projectExecution.steps.step7.subtitleContent',
-            ),
-          },
-        ]
+          })
+        }
+
+        // Add solve step with adjusted order
+        const solveOrder = this.generalStore.appConfig.parameters.solverConfig?.showSolverStep 
+          ? (this.generalStore.appConfig.parameters.configFieldsConfig?.showConfigFieldsStep ? 7 : 6)
+          : (this.generalStore.appConfig.parameters.configFieldsConfig?.showConfigFieldsStep ? 6 : 5)
+        
+        baseSteps.push({
+          key: 'solve',
+          order: solveOrder,
+          title: this.$t('projectExecution.steps.step7.title'),
+          subtitle: this.$t('projectExecution.steps.step7.description'),
+          titleContent: this.$t('projectExecution.steps.step7.titleContent'),
+          subtitleContent: this.$t(
+            'projectExecution.steps.step7.subtitleContent',
+          ),
+        })
+
+        return baseSteps
       }
     },
+    isConfigFieldsIncomplete() {
+      const fields = this.generalStore.appConfig.parameters.configFields || []
+      return fields.some(field => {
+        const value = this.newExecution.config[field.key]
+        if (field.type === 'boolean') {
+          return typeof value !== 'boolean'
+        }
+        if (field.type === 'select' || field.type === 'text') {
+          return !value
+        }
+        return value === null || value === undefined || value === ''
+      })
+    }
   },
 }
 </script>

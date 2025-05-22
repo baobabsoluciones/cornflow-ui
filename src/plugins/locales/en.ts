@@ -76,6 +76,7 @@ export default {
           unexpectedError: 'An unexpected error occurred. Please try again.',
           instanceLoadedWithErrors: 'Instance loaded with errors',
           noValidInstancesError: 'No valid instances found in the uploaded files',
+          downloadExcel: 'Download Excel',
         },
       },
       step4: {
@@ -94,12 +95,12 @@ export default {
           'The solver you select will be the algorithm used to find the solution',
       },
       step6: {
-        title: 'Limit time',
-        description: 'Select the maximum time for the execution',
-        titleContent: 'Fill the following information',
-        subtitleContent: 'Select how long you want the execution run to last',
-        timeLimitPlaceholder: 'Please insert',
-        time: 'Time',
+        title: 'Execution parameters',
+        description: 'Configure the execution parameters',
+        titleContent: 'Configure execution parameters',
+        subtitleContent: 'Set the parameters that will control the execution behavior. These parameters can be configured based on your needs.',
+        timeLimitPlaceholder: 'Please insert a time limit',
+        time: 'Time limit',
         secondsSuffix: 'sec',
       },
       step7: {

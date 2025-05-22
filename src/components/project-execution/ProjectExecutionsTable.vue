@@ -77,7 +77,7 @@
             </v-tooltip>
           </div>
         </template>
-        <template v-slot:timeLimit="{ item }">
+        <template v-slot:timeLimit="{ item }" v-if="showTimeLimit">
           <div class="cell-content">
             <span>{{ getTimeLimit(item) }} sec</span>
           </div>
@@ -166,9 +166,13 @@
 import { inject } from 'vue';
 import { useProjectExecutionsTable } from '@/composables/project-execution-table/useProjectExecutionsTable';
 import { useI18n } from 'vue-i18n';
+import { useGeneralStore } from '@/stores/general';
 
 // Setup i18n
 const { t } = useI18n();
+
+// Get general store
+const generalStore = useGeneralStore();
 
 // Define props
 const props = defineProps({
@@ -199,6 +203,9 @@ const emit = defineEmits(['loadExecution', 'deleteExecution']);
 
 // Inject snackbar function
 const showSnackbar: (message: string, type: string) => void = inject('showSnackbar') as (message: string, type: string) => void;
+
+// Get showTimeLimit setting from config
+const showTimeLimit = generalStore.appConfig.parameters.showExtraProjectExecutionColumns.showTimeLimit;
 
 // Use our composable with type assertion
 const {

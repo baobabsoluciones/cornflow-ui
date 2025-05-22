@@ -79,6 +79,7 @@ export default {
           instancesLoaded: 'Instancias combinadas y cargadas con éxito',
           instanceLoadedWithErrors: 'Instancia cargada con errores',
           noValidInstancesError: 'No se encontraron instancias válidas en los archivos cargados',
+          downloadExcel: 'Descargar Excel',
         },
       },
       step4: {
@@ -97,13 +98,12 @@ export default {
           'El solver que selecciones será el algoritmo utilizado para encontrar la solución',
       },
       step6: {
-        title: 'Limitar tiempo',
-        description: 'Selecciona el tiempo máximo para la ejecución',
-        titleContent: 'Completa la siguiente información',
-        subtitleContent:
-          'Selecciona cuánto tiempo quieres que dure la ejecución',
+        title: 'Parámetros de ejecución',
+        description: 'Configura los parámetros de ejecución',
+        titleContent: 'Configurar parámetros de ejecución',
+        subtitleContent: 'Establece los parámetros que controlarán el comportamiento de la ejecución. Estos parámetros se pueden configurar según tus necesidades.',
         timeLimitPlaceholder: 'Por favor, inserta un límite de tiempo',
-        time: 'Tiempo',
+        time: 'Límite de tiempo',
         secondsSuffix: 'seg',
       },
       step7: {
