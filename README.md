@@ -70,6 +70,7 @@ When `useConfigJson` is true in `src/app/config.ts`, the application will load c
        name: config.name,
        logo: 'path/to',
        expandedLogo: 'path/to',
+       showTablesWithoutSchema: true,
        showExtraProjectExecutionColumns: {
          showUserName: false,     
          showEndCreationDate: false,
@@ -284,8 +285,14 @@ If you do need custom processing for specific file types, add a `fileProcessors`
 parameters: {
   // other parameters
   fileProcessors: {
+    // Single processor for a prefix
     'mtrx': 'processMatrix',
-    'config': 'processConfig'
+    
+    // Multiple processors for a prefix (applied in sequence)
+    'config': ['processConfig', 'processCleanData'],
+    
+    // Special 'all' prefix to process all files regardless of their names
+    'all': ['processCleanData', 'processBooleansFromStrings']
   },
   // other parameters
 }

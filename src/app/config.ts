@@ -11,6 +11,7 @@
  * - `logStates`: Defines states and messages for execution logs
  * - `useConfigJson`: If true, gets config variables from values.json, if false from environment variables
  * - `enableSignup`: Enables or disables the sign-up functionality
+ * - `showTablesWithoutSchema`: Controls if tables that are not defined in the schema should be shown. If false, only tables defined in the schema will be shown.
  * - `showExtraProjectExecutionColumns`: Controls visibility of additional columns in the project execution table
  *   - `showUserName`: Shows or hides the username column
  *   - `showEndCreationDate`: Shows or hides the end creation date column
@@ -104,10 +105,10 @@
  *      },
  *      configFields: [
  *        {
- *          key: 'timeLimit',
- *          title: 'projectExecution.steps.step6.timeLimit',
- *          placeholder: 'projectExecution.steps.step6.timeLimitPlaceholder',
- *          suffix: 'projectExecution.steps.step6.secondsSuffix',
+ *          key: 'timeLimit_3',
+ *          title: 'projectExecution.steps.step6.timeLimit_3',
+ *          placeholder: 'projectExecution.steps.step6.timeLimit_3Placeholder',
+ *          suffix: 'projectExecution.steps.step6.minutesSuffix',
  *          icon: 'mdi-timer-sand',
  *          type: 'number',
  *        },
@@ -199,6 +200,7 @@ const createAppConfig = () => ({
       useHashMode: true,
       schema: config.schema,
       name: config.name,
+      showTablesWithoutSchema: false,
       showExtraProjectExecutionColumns: {
         showUserName: false,
         showEndCreationDate: false,
