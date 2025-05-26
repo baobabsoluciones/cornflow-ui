@@ -5,6 +5,7 @@ interface ConfigValues {
     auth_type: string;
     schema: string;
     name: string;
+    isDeveloperMode?: boolean;
     cognito?: {
       region: string;
       user_pool_id: string;

@@ -200,6 +200,7 @@ const createAppConfig = () => ({
       useHashMode: true,
       schema: config.schema,
       name: config.name,
+      isDeveloperMode: config.isDeveloperMode || false,
       showTablesWithoutSchema: false,
       showExtraProjectExecutionColumns: {
         showUserName: false,

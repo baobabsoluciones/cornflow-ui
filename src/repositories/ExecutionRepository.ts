@@ -150,36 +150,25 @@ export default class ExecutionRepository {
     }
   }
 
-  async createExecution(execution: any) {
-    let instance
-    // If instance already exists use it, otherwise create a new one
-    if (execution.instance.id) {
-      instance = execution.instance
-    } else {
-      const instanceRepository = new InstanceRepository()
-      instance = await instanceRepository.createInstance(execution)
+  async createExecution(execution: any, queryParams: string = '') {
+    try {
+      const response = await client.post(`/execution/${queryParams}`, execution)
+      return response.content
+    } catch (error) {
+      console.error('Error creating execution:', error)
+      throw error
     }
+  }
 
-    if (instance) {
-      const json = {
-        name: execution.name,
-        description: execution.description ? execution.description : '',
-        config: execution.config,
-        schema: useGeneralStore().getSchemaName,
-        instance_id: instance.id,
-      }
-
-      const response = await client.post('/execution/', json, {
-        'Content-Type': 'application/json',
+  async uploadSolutionData(executionId: string, solutionData: any) {
+    try {
+      const response = await client.put(`/execution/${executionId}/`, {
+        data: solutionData
       })
-      if (response.status === 201) {
-        const execution = response.content
-        return execution
-      } else {
-        throw new Error('Error creating execution')
-      }
-    } else {
-      throw new Error('Error creating instance')
+      return response.content
+    } catch (error) {
+      console.error('Error uploading solution data:', error)
+      throw error
     }
   }
 

@@ -116,6 +116,19 @@ export default {
         errorMessage:
           'An error occurred while creating the execution. Please try again.',
         loadNewExecution: 'Load new execution',
+        developerMode: {
+          title: 'Developer Mode',
+          normalSolve: 'Solve normally',
+          uploadSolution: 'Upload solution',
+          dragAndDropDescription: 'Drag and drop a solution file or click to browse',
+          uploadFile: 'Upload solution file',
+          invalidFileFormat: 'Invalid file format. Please upload a JSON, XLSX, or CSV file.',
+          solutionSchemaError: 'Solution file does not match the required schema',
+          unsupportedFileFormat: 'Unsupported file format',
+          fileReadError: 'Error reading file',
+          noSolutionData: 'Please upload a solution file first',
+          uploadError: 'Error uploading solution data'
+        }
       },
     },
     infoCard: {

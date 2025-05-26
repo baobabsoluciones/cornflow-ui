@@ -4,6 +4,7 @@ const config = {
   backend: '',
   schema: '',
   name: '',
+  isDeveloperMode: false,
   auth: {
     type: 'cornflow',
     clientId: '',
@@ -25,6 +26,7 @@ const config = {
         this.backend = values.backend_url;
         this.schema = values.schema;
         this.name = values.name;
+        this.isDeveloperMode = values.isDeveloperMode || false;
         
         console.log('Config initialized with schema from values.json:', this.schema);
         
@@ -54,6 +56,7 @@ const config = {
         this.backend = import.meta.env.VITE_APP_BACKEND_URL || '';
         this.schema = import.meta.env.VITE_APP_SCHEMA || '';
         this.name = import.meta.env.VITE_APP_NAME || '';
+        this.isDeveloperMode = import.meta.env.VITE_APP_IS_DEVELOPER_MODE === 'true' || false;
         this.auth = {
           type: import.meta.env.VITE_APP_AUTH_TYPE || 'cornflow',
           clientId: import.meta.env.VITE_APP_AUTH_CLIENT_ID || '',
@@ -71,6 +74,7 @@ const config = {
       this.backend = import.meta.env.VITE_APP_BACKEND_URL || '';
       this.schema = import.meta.env.VITE_APP_SCHEMA || '';
       this.name = import.meta.env.VITE_APP_NAME || '';
+      this.isDeveloperMode = import.meta.env.VITE_APP_IS_DEVELOPER_MODE === 'true' || false;
       this.auth = {
         type: import.meta.env.VITE_APP_AUTH_TYPE || 'cornflow',
         clientId: import.meta.env.VITE_APP_AUTH_CLIENT_ID || '',

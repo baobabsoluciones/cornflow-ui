@@ -175,13 +175,22 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
-    async createExecution(execution: Execution) {
+    async createExecution(execution: Execution, queryParams: string = '') {
       try {
-        const newExecution =
-          await this.executionRepository.createExecution(execution)
-        return newExecution
+        await this.executionRepository.createExecution(execution, queryParams)
+        return true
       } catch (error) {
-        console.error('Error creating execution', error)
+        console.error('Error creating execution:', error)
+        return false
+      }
+    },
+
+    async uploadSolutionData(executionId: string, solutionData: any) {
+      try {
+        await this.executionRepository.uploadSolutionData(executionId, solutionData)
+        return true
+      } catch (error) {
+        console.error('Error uploading solution data:', error)
         return false
       }
     },
