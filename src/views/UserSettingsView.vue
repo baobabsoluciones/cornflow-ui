@@ -194,7 +194,6 @@ export default {
           this.showSnackbar(this.$t('settings.snackbarMessageError'), 'error')
         }
       } catch (error) {
-        console.log(error)
         this.showSnackbar(this.$t('settings.snackbarMessageError'), 'error')
       }
     },
@@ -251,7 +250,6 @@ export default {
           this.showSnackbar(this.$t('settings.snackbarMessageError'), 'error')
         }
       } catch (error) {
-        console.log(error)
         this.showSnackbar(this.$t('settings.snackbarMessageError'), 'error')
       }
     },

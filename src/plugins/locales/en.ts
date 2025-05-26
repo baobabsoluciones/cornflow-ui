@@ -274,6 +274,8 @@ export default {
     deleteButton: 'Delete',
     cancelButton: 'Cancel',
     errorDownloadingExcel: 'An error occurred while downloading the excel',
+    generating: 'Generating...',
+    download: 'Download',
   },
   settings: {
     currentPassword: 'Current password',

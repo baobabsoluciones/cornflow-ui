@@ -146,13 +146,28 @@
             >
               <v-btn
                 v-if="!canEdit"
-                icon="mdi-microsoft-excel"
                 class="mr-4"
                 color="primary"
                 density="compact"
                 style="font-size: 0.7rem !important"
+                :disabled="isDownloading"
                 @click="handleDownload()"
-              ></v-btn>
+              >
+                <template v-if="isDownloading">
+                  <v-progress-circular
+                    indeterminate
+                    size="16"
+                    width="2"
+                    color="white"
+                    class="mr-1"
+                  ></v-progress-circular>
+                  {{ $t('inputOutputData.generating') }}
+                </template>
+                <template v-else>
+                  <v-icon>mdi-microsoft-excel</v-icon>
+                  {{ $t('inputOutputData.download') }}
+                </template>
+              </v-btn>
               <v-btn
                 v-if="canEdit && !editionMode"
                 color="primary"
@@ -316,6 +331,7 @@ export default {
       originalFilters: {},
       filters: {},
       resetPage: false,
+      isDownloading: false,
     }
   },
   created() {
@@ -576,13 +592,16 @@ export default {
       }
       const filename = this.execution.name.toLowerCase().replace(/ /g, '_')
       try {
+        this.isDownloading = true
         await this.execution.experiment.downloadExcel(
           filename,
           instance,
           solution,
         )
       } catch (error) {
-        this.showSnackbar($t('inputOutputData.errorDownloadingExcel'), 'error')
+        this.showSnackbar(this.$t('inputOutputData.errorDownloadingExcel'), 'error')
+      } finally {
+        this.isDownloading = false
       }
     },
     handleSearch(search) {

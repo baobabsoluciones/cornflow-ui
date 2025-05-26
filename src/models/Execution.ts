@@ -29,8 +29,8 @@ export class Execution {
     instanceId: string,
     id: string,
     userId: number,
-    finishedAt: string | null = null,
     userName: string | null = null,
+    finishedAt: string | null = null,
   ) {
     this.message = message
     this.createdAt = createdAt
