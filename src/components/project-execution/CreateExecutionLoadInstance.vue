@@ -125,13 +125,11 @@ const processFiles = async () => {
           processedInstances.value.push(instance)
         }
       } catch (error) {
-        console.error(`Error processing file ${file.name}:`, error)
-        if (!instanceErrors.value) {
-          if (showSnackbar) {
-            showSnackbar(error.message || error, 'error')
-          }
-          return // Exit early if file processing fails
+        if (showSnackbar) {
+          showSnackbar(error.message || error, 'error')
         }
+        isCheckingSchema.value = false
+        return // Exit immediately on any file processing error
       }
     }
     
@@ -212,7 +210,11 @@ const parseFile = async (file, extension) => {
               return
             }
           } catch (processingError) {
-            console.error(`Error in special processing for ${file.name}:`, processingError)
+            const errorMessage = `<p><strong>${file.name}:</strong> ${processingError.message}</p>`
+            instanceErrors.value = errorMessage
+            emit('update:existingInstanceErrors', instanceErrors.value)
+            reject(new Error(`${file.name}: ${processingError.message}`))
+            return
           }
         }
         
@@ -220,17 +222,18 @@ const parseFile = async (file, extension) => {
         const instance = await createInstanceFromData(fileReader.result, extension, file)                
         resolve(instance)
       } catch (error) {
-          instanceErrors.value =
-            (instanceErrors.value && instanceErrors.value.length > 0)
-              ? instanceErrors.value
-              : `<p><strong>${file.name}:</strong> ${t('projectExecution.steps.step3.loadInstance.unexpectedError')}</p>`
-          emit('update:existingInstanceErrors', instanceErrors.value)
-        reject(error)
+        const errorMessage = `<p><strong>${file.name}:</strong> ${t('projectExecution.steps.step3.loadInstance.unexpectedError')}</p>`
+        instanceErrors.value = errorMessage
+        emit('update:existingInstanceErrors', instanceErrors.value)
+        reject(new Error(`${file.name}: ${t('projectExecution.steps.step3.loadInstance.unexpectedError')}`))
       }
     }
     
     fileReader.onerror = (error) => {
-      reject(new Error(t('projectExecution.steps.step3.loadInstance.fileReadError')))
+      const errorMessage = t('projectExecution.steps.step3.loadInstance.fileReadError')
+      instanceErrors.value = `<p><strong>${file.name}:</strong> ${errorMessage}</p>`
+      emit('update:existingInstanceErrors', instanceErrors.value)
+      reject(new Error(`${file.name}: ${errorMessage}`))
     }
     
     if (extension === 'xlsx') {
