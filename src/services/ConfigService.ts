@@ -6,6 +6,7 @@ interface ConfigValues {
     schema: string;
     name: string;
     isDeveloperMode?: boolean;
+    hasExternalApp?: boolean;
     cognito?: {
       region: string;
       user_pool_id: string;

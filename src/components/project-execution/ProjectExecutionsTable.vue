@@ -95,13 +95,13 @@
         <template v-slot:solution="{ item }">
           <v-chip
             size="x-small"
-            :color="getSolutionColor(item.solution_state)"
+            :color="getSolutionInfo(item.solution_state).color"
             value="chip"
           >
-            {{ getSolutionCode(item.solution_state) }}
+            {{ getSolutionInfo(item.solution_state).code }}
             <v-tooltip activator="parent" location="bottom">
               <div style="font-size: 11px">
-                {{ getSolutionMessage(item.solution_state) }}
+                {{ getSolutionInfo(item.solution_state).message }}
               </div>
             </v-tooltip>
           </v-chip>
@@ -251,9 +251,7 @@ const {
   cancelDelete,
   handleDownload,
   getStateInfo,
-  getSolutionColor,
-  getSolutionCode,
-  getSolutionMessage,
+  getSolutionInfo,
   getSolverName,
   getTimeLimit,
 } = useProjectExecutionsTable(props as any);

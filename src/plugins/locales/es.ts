@@ -157,7 +157,7 @@ export default {
     infeasible: 'Inviable',
     infeasibleTooltip: 'La ejecución no tiene solución',
     unknown: 'Desconocido',
-    unknownTooltip: 'La ejecución ha encontrado un error desconocido',
+    unknownTooltip: 'Estado desconocido',
     notSolved: 'No resuelto',
     notSolvedTooltip: 'La ejecución no ha sido resuelta',
     unbounded: 'No acotado',
@@ -168,6 +168,8 @@ export default {
     memoryLimitTooltip: 'La ejecución ha alcanzado el límite de memoria',
     nodeLimit: 'Límite de nodos',
     nodeLimitTooltip: 'La ejecución ha alcanzado el límite de nodos',
+    notRunByUser: 'No ejecutado por el usuario',
+    notRunByUserTooltip: 'La ejecución no fue ejecutada por elección del usuario',
     licensingProblem: 'Problema de licencia',
     licensingProblemTooltip:
       'La ejecución ha encontrado un problema de licencia. Por favor, contacta con el administrador',

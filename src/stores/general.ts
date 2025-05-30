@@ -175,12 +175,13 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
-    async createExecution(execution: Execution, queryParams: string = '') {
+    async createExecution(execution: Execution, params: string = '') {
       try {
-        await this.executionRepository.createExecution(execution, queryParams)
-        return true
+        const newExecution =
+          await this.executionRepository.createExecution(execution, params)
+        return newExecution
       } catch (error) {
-        console.error('Error creating execution:', error)
+        console.error('Error creating execution', error)
         return false
       }
     },
@@ -381,7 +382,7 @@ export const useGeneralStore = defineStore('general', {
     },
 
     getExecutionSolvers(): string[] {
-      return this.schemaConfig.config.properties.solver.enum
+      return this.schemaConfig.config?.properties.solver?.enum || this.appConfig.parameters.executionSolvers
     },
 
     getLoadedExecutionTabs(): object[] {
@@ -390,6 +391,7 @@ export const useGeneralStore = defineStore('general', {
         let isLoading = false
         switch (execution.state) {
           case 1:
+         case -4:
             icon = 'mdi-checkbox-marked'
             break
           case 0:

@@ -4,7 +4,7 @@ const config = {
   backend: '',
   schema: '',
   name: '',
-  isDeveloperMode: false,
+  hasExternalApp: false,
   auth: {
     type: 'cornflow',
     clientId: '',
@@ -26,8 +26,8 @@ const config = {
         this.backend = values.backend_url;
         this.schema = values.schema;
         this.name = values.name;
-        this.isDeveloperMode = values.isDeveloperMode || false;
-        
+        this.hasExternalApp = values.hasExternalApp || false;
+
         console.log('Config initialized with schema from values.json:', this.schema);
         
         // More detailed auth configuration
@@ -56,7 +56,6 @@ const config = {
         this.backend = import.meta.env.VITE_APP_BACKEND_URL || '';
         this.schema = import.meta.env.VITE_APP_SCHEMA || '';
         this.name = import.meta.env.VITE_APP_NAME || '';
-        this.isDeveloperMode = import.meta.env.VITE_APP_IS_DEVELOPER_MODE === 'true' || false;
         this.auth = {
           type: import.meta.env.VITE_APP_AUTH_TYPE || 'cornflow',
           clientId: import.meta.env.VITE_APP_AUTH_CLIENT_ID || '',
@@ -66,6 +65,7 @@ const config = {
           userPoolId: import.meta.env.VITE_APP_AUTH_USER_POOL_ID || '',
           domain: import.meta.env.VITE_APP_AUTH_DOMAIN || ''
         };
+        this.hasExternalApp = import.meta.env.VITE_APP_EXTERNAL_APP != 0;
       }
     } catch (error) {
       console.error('Error initializing config:', error);
@@ -74,7 +74,7 @@ const config = {
       this.backend = import.meta.env.VITE_APP_BACKEND_URL || '';
       this.schema = import.meta.env.VITE_APP_SCHEMA || '';
       this.name = import.meta.env.VITE_APP_NAME || '';
-      this.isDeveloperMode = import.meta.env.VITE_APP_IS_DEVELOPER_MODE === 'true' || false;
+      this.hasExternalApp = import.meta.env.VITE_APP_EXTERNAL_APP != 0;
       this.auth = {
         type: import.meta.env.VITE_APP_AUTH_TYPE || 'cornflow',
         clientId: import.meta.env.VITE_APP_AUTH_CLIENT_ID || '',

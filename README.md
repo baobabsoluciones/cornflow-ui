@@ -2,199 +2,100 @@
 
 Cornflow-UI is a Vue.js application that serves as the user interface for Cornflow. This is the base project, and it provides the general structure and functionalities for creating new applications.
 
-## Creating a new project
+# Creating a new project
 
 To create a new project based on this base project, follow these steps:
 
-1. **Copy the base project**: Copy and paste all the code from this repository into your new repository.
+## 1. Copy the base project
+Copy and paste all the code from this repository into your new repository.
 
-2. **Configure the core values**: 
-The application can be configured in two ways, controlled by the `useConfigJson` parameter in `src/app/config.ts`:
+## 2. Configure the core values
 
-- Using environment variables (.env)
-Set `useConfigJson: false` in `src/app/config.ts` and configure using environment variables in the `.env` file:
+The application can be configured in three different ways:
+
+### 1. Environment variables (.env)
+Used when `useConfigJson: false` in `src/app/config.ts`. All configuration values should be prefixed with `VITE_APP_`:
+
 ```env
-VUE_APP_18N_LOCALE=en
-VUE_APP_I18N_FALLBACK_LOCALE=en
+# Core Configuration
 VITE_APP_BACKEND_URL=https://your-backend-url
-VITE_APP_AUTH_TYPE=cornflow
 VITE_APP_SCHEMA=rostering
 VITE_APP_NAME=Rostering
+VITE_APP_EXTERNAL_APP=false
+
+# Authentication Configuration
+VITE_APP_AUTH_TYPE=cornflow  # Options: cornflow, azure, cognito
+VITE_APP_AUTH_CLIENT_ID=your-client-id
+VITE_APP_AUTH_AUTHORITY=your-authority
+VITE_APP_AUTH_REDIRECT_URI=your-redirect-uri
+VITE_APP_AUTH_REGION=your-region
+VITE_APP_AUTH_USER_POOL_ID=your-user-pool-id
+VITE_APP_AUTH_DOMAIN=your-domain
 ```
 
-- Using JSON configuration (values.json)
-Set `useConfigJson: true` in `src/app/config.ts` and provide configuration through a `values.json` file:
+### 2. JSON configuration (values.json)
+Used when `useConfigJson: true` in `src/app/config.ts`. Create this file based on `values.template.json`:
 
 ```json
 {
-  "backend_url": "https://your-backend-url",
-  "auth_type": "cornflow",
-  "schema": "rostering",
-  "name": "Rostering",
-  "cognito": {
-    "region": "your-region",
-    "user_pool_id": "your-user-pool-id",
-    "client_id": "your-client-id",
-    "domain": "your-domain"
-  }
+    "backend_url": "https://your-backend-url",
+    "schema": "rostering",
+    "name": "Rostering",
+    "hasExternalApp": false,
+    "auth_type": "cornflow",
+    "cognito": {
+      "region": "your-region",
+      "user_pool_id": "your-user-pool-id",
+      "client_id": "your-client-id",
+      "domain": "your-domain"
+    },
+    "azure": {
+      "client_id": "your-client-id",
+      "authority": "your-authority",
+      "redirect_uri": "your-redirect-uri"
+    }
 }
 ```
 
-For local development with JSON configuration:
-1. Copy `public/values.template.json` to `public/values.json`
-2. Edit `public/values.json` with your specific configuration values
-3. Set `useConfigJson: true` in `src/app/config.ts`
+### 3. Application configuration (src/app/config.ts)
+This file contains application-specific configuration that cannot be changed through environment variables or values.json:
 
-For production with JSON configuration:
-1. Copy `values.template.json` to your domain root as `values.json`
-2. Edit with your production configuration values
-3. Set `useConfigJson: true` in `src/app/config.ts`
-
-When `useConfigJson` is true in `src/app/config.ts`, the application will load configuration from the JSON file and ignore any environment variables.
-
-3. **Configure the application**: Navigate to the `src/app` directory and configure the following files:
-
-   - `config.ts`: This is the main configuration file for the application. Here, you should define an object that specifies the core functionalities, dashboard layout, dashboard pages, and dashboard routes for the application. The schema and name will be automatically read from the main config file. See the example below:
-
-   ```typescript
-   {
-   core: {
-       Experiment: ExperimentRostering,
-       Instance: InstanceRostering,
-       Solution: SolutionRostering,
-       parameters: {
-       isPilotVersion: false,
-       showTimeLimit: true,
-       useHashMode: false,
-       schema: config.schema,
-       name: config.name,
-       logo: 'path/to',
-       expandedLogo: 'path/to',
-       showTablesWithoutSchema: true,
-       showExtraProjectExecutionColumns: {
-         showUserName: false,     
-         showEndCreationDate: false,
-         showTimeLimit: true,
-       },
-       dashboardLayout: [
-       {
-           title: 'Number of workers',
-           component: 'InfoCard',
-           cols: 4,
-           bindings: {
-           title: 'rostering-number-of-workers',
-           icon: 'people',
-           content: experiment().instance.numberEmployees,
-           },
-           style: 'height: 150px;',
-       },
-       {
-           title: 'Max. demand',
-           component: 'InfoCard',
-           cols: 4,
-           bindings: {
-           title: 'rostering-max-demand',
-           icon: 'add',
-           content: experiment().instance.maxDemand,
-           },
-           style: 'height: 150px;',
-       },
-       {
-           title: 'Min. demand',
-           component: 'InfoCard',
-           cols: 4,
-           bindings: {
-           title: 'rostering-min-demand',
-           icon: 'remove',
-           content: experiment().instance.minDemand,
-           },
-           style: 'height: 150px;',
-       },
-       {
-           title: 'Demand',
-           component: 'RosteringDemandView',
-           cols: 8,
-           bindings: {
-           preview: true,
-           },
-           style: 'height: 375px;',
-       },
-       {
-           title: 'Resources',
-           component: 'RosteringMainView',
-           cols: 4,
-           bindings: {
-           preview: true,
-           },
-           style: 'height: 375px;',
-       },
-       {
-           title: 'Skill demand',
-           component: 'RosteringSkillDemandView',
-           cols: 12,
-           bindings: {
-           preview: true,
-           },
-           style: 'height: 420px;',
-       },
-       {
-           title: 'Calendar',
-           component: 'RosteringCalendarView',
-           cols: 12,
-           bindings: {
-           preview: true,
-           },
-           style: 'height:600px;',
-       },
-       ],
-   dashboardPages: [
-       {
-           title: 'Calendar',
-           icon: 'mdi-calendar',
-           to: '/rostering',
-           pos: 13,
-       },
-       {
-           title: 'rostering-resources-chart',
-           icon: 'mdi-chart-gantt',
-           to: '/rostering-gantt',
-           pos: 14,
-       },
-       {
-           title: 'rostering-demand',
-           icon: 'mdi-chart-timeline-variant',
-           to: '/rostering-demand',
-           pos: 11,
-       },
-       {
-           title: 'rostering-skill-demand',
-           icon: 'mdi-chart-bar',
-           to: '/rostering-skill-demand',
-           pos: 12,
-       },
-       ],
-   dashboardRoutes: [
-       {
-           name: 'Calendar',
-           path: 'rostering',
-           component: () => import('@/app/views/RosteringCalendarView'),
-       },
-       {
-           name: 'rostering-resources-chart',
-           path: 'rostering-gantt',
-           component: () => import('@/app/views/RosteringMainView'),
-       },
-       {
-           name: 'rostering-demand',
-           path: 'rostering-demand',
-           component: () => import('@/app/views/RosteringDemandView'),
-       },
-       {
-           name: 'rostering-skill-demand',
-           path: 'rostering-skill-demand',
-           component: () => import('@/app/views/RosteringSkillDemandView'),
-       },
-       ],
+```typescript
+{
+  core: {
+    // Core application components
+    Experiment: ExperimentRostering,
+    Instance: InstanceRostering,
+    Solution: SolutionRostering,
+    
+    parameters: {
+      // Application behavior
+      useHashMode: false, // Controls whether route has /#/ in the url or not
+      useConfigJson: false,  // Controls whether to use values.json or env vars
+      enableSignup: false, // Enables or disables the functionality for users to sign-up from login view
+      isDeveloperMode: false // Enables or disables developer mode to upload solution
+      
+      // Schema and branding
+      schema: config.schema,  // Read from env/values.json
+      name: config.name,      // Read from env/values.json
+      logo: 'path/to',
+      expandedLogo: 'path/to',
+      
+      // Project execution table configuration
+      showTablesWithoutSchema: true, // Controls whether user wants to show tables that don't appear in the schema or not
+      showExtraProjectExecutionColumns: {
+        showUserName: false,     
+        showEndCreationDate: false,
+        showTimeLimit: true,
+      },
+      
+      // Dashboard Configuration
+      dashboardLayout: [...],
+      dashboardPages: [...],
+      dashboardRoutes: [...],
+      
+      // Create execution steps configuration
+      executionSolvers: ['mip-gurobi'] // Fallback for showing solvers if it's not coming from backend
       solverConfig: {
         showSolverStep: false,
         defaultSolver: 'mip.gurobi',
@@ -203,80 +104,138 @@ When `useConfigJson` is true in `src/app/config.ts`, the application will load c
         showConfigFieldsStep: false,
         autoLoadValues: true,
       },
-      configFields: [
-        {
-          key: 'timeLimit_3',
-          title: 'projectExecution.steps.step6.timeLimit_3',
-          placeholder: 'projectExecution.steps.step6.timeLimit_3Placeholder',
-          suffix: 'projectExecution.steps.step6.minutesSuffix',
-          icon: 'mdi-timer-sand',
-          type: 'number',
-          source: 'eParametros',
-          param: 'minutos_modelo_3',
-          lookupType: 'arrayByValue',
-          lookupParam: 'ID',
-          lookupValue: 'VALOR',
-        },
-        {
-          key: 'timeLimit_4',
-          title: 'projectExecution.steps.step6.timeLimit_4',
-          placeholder: 'projectExecution.steps.step6.timeLimit_4Placeholder',
-          suffix: 'projectExecution.steps.step6.minutesSuffix',
-          icon: 'mdi-timer-sand-full',
-          type: 'number',
-          source: 'eParametros',
-          param: 'minutos_modelo_4',
-          lookupType: 'arrayByValue',
-          lookupParam: 'ID',
-          lookupValue: 'VALOR',
-        },
-        {
-          key: 'gapRel',
-          title: 'projectExecution.steps.step6.gapRel',
-          placeholder: 'projectExecution.steps.step6.gapRelPlaceholder',
-          suffix: 'projectExecution.steps.step6.percentageSuffix',
-          icon: 'mdi-percent',
-          type: 'float',
-          source: 'eParametros',
-          param: 'gap',
-          lookupType: 'arrayByValue',
-          lookupParam: 'ID',
-          lookupValue: 'VALOR',
-        },
-        {
-          key: 'cornflow',
-          title: 'projectExecution.steps.step6.cornflow',
-          placeholder: 'projectExecution.steps.step6.cornflowPlaceholder',
-          icon: 'mdi-cloud-check',
-          type: 'boolean',
-          default: true
-        }
-      ],
-   },
-   }
-   ```
+      configFields: [...],
+      
+      // Instance file processing
+      fileProcessors: {
+        'mtrx': 'processMatrix',
+        'config': ['processConfig', 'processCleanData'],
+        'all': ['processCleanData', 'processBooleansFromStrings']
+      },
 
+      // States for execution and solution
+      executionStates: {
+        '1': {
+          color: 'green',
+          message: 'Success execution',
+          code: 'Success'
+        }
+      },
+      solutionStates: {
+         '1': {
+          color: 'green',
+          message: 'Success solution',
+          code: 'Success'
+        }
+      }
+    }
+  }
+}
+```
+
+### Configuration priority
+
+1. If `useConfigJson: true` in `src/app/config.ts`:
+   - The application will use `values.json` for configuration
+   - Environment variables will be ignored
+   - For local development, copy `public/values.template.json` to `public/values.json`
+   - For production, place `values.json` in your domain root
+
+2. If `useConfigJson: false` in `src/app/config.ts`:
+   - The application will use environment variables
+   - Create a `.env` file with the required variables for local development
+   - Define environment variables on the server for production
+   - `values.json` will be ignored
+
+3. Application configuration in `src/app/config.ts`:
+   - Always used regardless of `useConfigJson` setting
+   - Cannot be overridden by environment variables or `values.json`
+   - Contains application-specific logic and UI configuration
+
+## 3. App folder configuration
+Inside the app folder, there are several changes that can be done to configurate your client project. This folder is meant to be for all customizations done for the client.
    - `assets/logo`: This directory should contain the logo images for the application. The name should be the same as the default ones (logo.png and full_logo.png)
-   - `assets/style/variables.css`: This file should define the main colors of the application. Mantain the variable names and only change the colors.
-   - `models`: This directory should define the instance, solution, experiment, and execution models for the application.
+   - `assets/manual`: This directory should contain the user manual for the application. The names should be mantained, and if another language is added it should match with the name declared on i18n (Example: user_manual_fr for french)
+   - `app/assets/style/variables.css`: This file should define the main colors of the application. Mantain the variable names and only change the colors.
+   - `models`: This directory should define the instance, solution, experiment, and execution models for the application. It always extends the main classes but methods can be overwritten.
    - `views`: This directory should contain all the custom views needed for the application.
    - `components`: This directory should contain any additional components that are not in the core components.
    - `store/app.ts`: This file should define any additional store-specific configurations for the application.
    - `tests`: This file should contain all unit tests for additional components.
    - `plugins/locales`: This folder contains three files (`en.ts`, `es.ts`, `fr.ts`) to add any text needed in the app views and components. Be careful not to duplicate the names with the original locales files (`src/plugins/locales`).
 
-4. Additionally, favicon can be replaced by a new one in public/favicon.png
+* Additionally, favicon can be replaced by a new one in public/favicon.png
 
+## 4. Important disclaimer
 It's important not to edit any other file or folders. Only the folders, files and images just mentioned can be edited.
 
-\*\*Note: To save dashboard preferences for a single execution, including filters, checks, and date ranges, utilize the `setDashboardPreference` method from the `LoadedExecution.ts` class. Subsequently, retrieve these preferences using the `getDashboardPreference` method. The data type is custom, allowing for flexible usage as needed.
 
-## Custom File Processors
+# More information about config parameters
 
+### External application mode (hasExternalApp)
+The `hasExternalApp` parameter controls whether the application is running as an external application or as part of the main Cornflow system. This affects how API requests are handled:
+
+- When `hasExternalApp: true`:
+  - API requests will be prefixed with `/cornflow` in the URL
+  - This is useful when the application is deployed as a standalone service that needs to communicate with the main Cornflow backend
+  - Example URL: `https://your-backend-url/cornflow/api/endpoint`
+
+- When `hasExternalApp: false` (default):
+  - API requests will be made directly to the backend URL
+  - This is the standard mode when the application is part of the main Cornflow system
+  - Example URL: `https://your-backend-url/api/endpoint`
+
+This parameter can be set in either the environment variables or values.json:
+
+```env
+# Environment variables
+VITE_APP_EXTERNAL_APP=true
+```
+
+```json
+// values.json
+{
+  "hasExternalApp": true
+}
+```
+
+### Developer mode (isDeveloperMode)
+The `isDeveloperMode` parameter enables additional development and testing features in the application. When enabled, it provides special functionality for handling solutions:
+
+- When `isDeveloperMode: true`:
+  - Adds a solution upload feature in the execution creation process
+  - Allows developers to test solutions by uploading them directly instead of running the solver
+  - Supports uploading solutions in JSON, XLSX, or CSV formats
+  - Validates uploaded solutions against the solution schema
+  - Useful for testing and debugging solution formats without running actual solvers
+
+- When `isDeveloperMode: false` (default):
+  - Disables the solution upload feature
+  - Only allows normal execution through solvers
+  - Provides a standard user experience
+
+This parameter is configured directly in `src/app/config.ts` and the idea is only to be used during local development:
+
+```typescript
+// src/app/config.ts
+const createAppConfig = () => ({
+  core: {
+    parameters: {
+      isDeveloperMode: true,
+      // ... other parameters
+    }
+  }
+})
+```
+
+## Dashboard
+To save dashboard preferences for a single execution, including filters, checks, and date ranges, utilize the `setDashboardPreference` method from the `LoadedExecution.ts` class. Subsequently, retrieve these preferences using the `getDashboardPreference` method. The data type is custom, allowing for flexible usage as needed.
+
+
+## Custom file processors
 The application supports custom file processing for instances based on filename prefixes. This feature is useful when you need to handle files with special formats or structures before merging them with other files to create an instance.
 
 ### Configuration
-
 Custom file processing is entirely optional. By default, the system will merge all uploaded files without any special processing. If you don't need custom file processing, you can leave the `fileProcessors` object empty or omit it entirely.
 
 If you do need custom processing for specific file types, add a `fileProcessors` object to the core parameters in `src/app/config.ts`:
@@ -305,7 +264,6 @@ Each key in the `fileProcessors` object is a filename prefix that triggers speci
 The special prefix `'all'` can be used to apply processors to all files regardless of their names.
 
 ### Implementation
-
 The actual processing logic must be implemented in the `src/app/composables/useFileProcessors.ts` file. You need to add your processor methods to the `processors` object in this file. 
 
 Each processor method should:
@@ -323,7 +281,6 @@ For example, in a scheduling application, one file might contain employee data, 
 The system automatically detects files that match the configured prefixes and processes them using the corresponding methods before merging all the processed parts into the final instance. Files that don't match any configured prefix are processed using the standard method.
 
 ## Create project execution steps customization
-
 ### Solver step: solverConfig
 Controls the solver selection step and default solver for executions.
 - `showSolverStep` (boolean):
@@ -365,17 +322,7 @@ Defines the configuration fields for execution parameters. Each field can have:
 - `configFieldsConfig` is used to determine if the config fields step is shown and to auto-load values.
 - `configFields` is used to render the config fields step, auto-load values from the instance, and display the config summary in the confirmation step.
 
-- `assets/logo`: This directory should contain the logo images for the application. The name should be the same as the default ones (logo.png and full_logo.png)
-- `assets/style/variables.css`: This file should define the main colors of the application. Mantain the variable names and only change the colors.
-- `models`: This directory should define the instance, solution, experiment, and execution models for the application.
-- `views`: This directory should contain all the custom views needed for the application.
-- `components`: This directory should contain any additional components that are not in the core components.
-- `store/app.ts`: This file should define any additional store-specific configurations for the application.
-- `tests`: This file should contain all unit tests for additional components.
-- `plugins/locales`: This folder contains three files (`en.ts`, `es.ts`, `fr.ts`) to add any text needed in the app views and components. Be careful not to duplicate the names with the original locales files (`src/plugins/locales`).
-
 ## Authentication
-
 The application supports three authentication methods. Note that for any of these methods to work, the server must be properly configured to accept the corresponding authentication type.
 
 ### 1. Cornflow authentication (Default)
@@ -434,7 +381,6 @@ Using values.json (when useConfigJson: true):
 The authentication type is configured either through environment variables or the values.json file, depending on the `useConfigJson` setting in `src/app/config.ts`.
 
 ## Router Configuration
-
 The application supports two routing modes:
 
 ### 1. HTML5 History Mode (Default)
@@ -453,8 +399,9 @@ parameters: {
 
 When hash mode is enabled, all routes will include a hash (#) in the URL (e.g., `http://example.com/#/project-execution` instead of `http://example.com/project-execution`).
 
-## Installing
 
+# Run the application in local
+## Installing
 - Install or update npm
 - Install Nodejs
 - Open your terminal
@@ -462,7 +409,6 @@ When hash mode is enabled, all routes will include a hash (#) in the URL (e.g., 
 - Run `npm install`
 
 ## Running
-
-- Edit the `.env` file to put the URL of the Cornflow server
+- Edit the `.env` file or `values.json` to add necessary configuration
 - Run `npm run dev` to start a local development server
 - A new tab will be opened in your browser
