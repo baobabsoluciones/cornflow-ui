@@ -3,6 +3,7 @@ import { Execution } from '@/models/Execution'
 import { LoadedExecution } from '@/models/LoadedExecution'
 import { useGeneralStore } from '@/stores/general'
 import InstanceRepository from './InstanceRepository'
+import { formatDateForFilename } from '@/utils/date'
 
 export default class ExecutionRepository {
   // Get executions created on the given date range
@@ -127,7 +128,7 @@ export default class ExecutionRepository {
           )
 
           const experiment = new Experiment(instance, solution)
-          const filename = execution.name.toLowerCase().replace(/ /g, '_')
+          const filename = execution.name.toLowerCase().replace(/ /g, '_') + '-' + formatDateForFilename(execution.created_at)
           await experiment.downloadExcel(filename, onlySolution, onlyInstance)
 
           if (onlySolution) {
