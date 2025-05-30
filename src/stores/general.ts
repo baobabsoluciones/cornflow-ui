@@ -13,6 +13,7 @@ import UserRepository from '@/repositories/UserRepository'
 import ExecutionRepository from '@/repositories/ExecutionRepository'
 import InstanceRepository from '@/repositories/InstanceRepository'
 import LicenceRepository from '@/repositories/LicenceRepository'
+import VersionRepository from '@/repositories/VersionRepository'
 
 import { toISOStringLocal } from '@/utils/data_io'
 import i18n from '@/plugins/i18n'
@@ -28,6 +29,7 @@ export const useGeneralStore = defineStore('general', {
     instanceRepository: new InstanceRepository(),
     userRepository: new UserRepository(),
     licenceRepository: new LicenceRepository(),
+    versionRepository: new VersionRepository(),
     notifications: [] as {
       message: string
       type: 'success' | 'warning' | 'info' | 'error'
@@ -48,6 +50,7 @@ export const useGeneralStore = defineStore('general', {
     autoLoadInterval: null,
     uploadComponentKey: 0,
     tabBarKey: 0,
+    cornflowVersion: '',
   }),
   actions: {
     async initializeData() {
@@ -56,6 +59,7 @@ export const useGeneralStore = defineStore('general', {
       apiClient.default.initializeToken?.()
       
       await this.fetchUser()
+      await this.fetchCornflowVersion()
       await this.setSchema()
       await this.fetchLicences()
     },
@@ -66,6 +70,15 @@ export const useGeneralStore = defineStore('general', {
         this.user = await this.userRepository.getUserById(userId)
       } catch (error) {
         console.error('Error getting user', error)
+      }
+    },
+
+    async fetchCornflowVersion() {
+      try {
+        const version = await this.versionRepository.getCornflowVersion()
+        this.cornflowVersion = version
+      } catch (error) {
+        console.error('Error getting cornflow version', error)
       }
     },
 

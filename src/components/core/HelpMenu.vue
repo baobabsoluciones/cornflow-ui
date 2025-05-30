@@ -27,12 +27,11 @@
             <div class="text-caption">{{ appVersion }}</div>
           </template>
         </v-list-item>
-        <!-- TODO: Integrate backend version with backend url when have it-->
-        <!-- <v-list-item min-height="24">
+        <v-list-item min-height="24">
           <template v-slot:subtitle>
             <div class="text-caption">{{ backendVersion }}</div>
           </template>
-        </v-list-item> -->
+        </v-list-item>
       </v-list>
     </v-menu>
   </v-btn>
@@ -117,7 +116,7 @@ export default {
       return `Cornflow app version: ${version}`
     },
     backendVersion() {
-      return `Cornflow version: ${version}`
+      return `Cornflow version: ${this.store.cornflowVersion}`
     },
   },
   methods: {},

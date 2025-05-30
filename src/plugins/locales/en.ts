@@ -69,7 +69,7 @@ export default {
             'No schema was found: are you connected to the server?',
           instanceSchemaError: 'Instance does not comply with schema ',
           instanceLoaded: 'Instance loaded successfully',
-          instancesLoaded: 'Instances merged and loaded successfully',
+          instancesLoaded: 'Files merged to create the instance and loaded successfully',
           loadInstance: 'Load Instance',
           selectedFiles: 'Selected Files',
           invalidFileFormat: 'Invalid file format. Please try again.',
