@@ -66,9 +66,7 @@ export function useProjectExecutionsTable(props: ExecutionTableProps) {
     solutionStateInfo,
     stateInfo,
     getStateInfo,
-    getSolutionColor,
-    getSolutionCode,
-    getSolutionMessage
+    getSolutionInfo,
   } = useExecutionState();
   
   const {
@@ -142,9 +140,7 @@ export function useProjectExecutionsTable(props: ExecutionTableProps) {
     cancelDelete,
     handleDownload,
     getStateInfo,
-    getSolutionColor,
-    getSolutionCode,
-    getSolutionMessage,
+    getSolutionInfo,
     getSolverName,
     getTimeLimit,
     handleResize

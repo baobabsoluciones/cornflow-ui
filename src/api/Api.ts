@@ -1,6 +1,5 @@
 import config from '@/config'
 import { fetchAuthSession } from 'aws-amplify/auth'
-import session from '@/services/AuthService'
 import { RequestOptions } from '@/interfaces/RequestOptions'
 
 class ApiClient {
@@ -29,7 +28,7 @@ class ApiClient {
       'Content-Type': 'application/json',
     };
 
-    // Load token from sessionStorage if not already set
+    // Load token from sessionStorage if not already se
     if (!this.authToken) {
       this.authToken = sessionStorage.getItem('token');
     }
@@ -80,7 +79,7 @@ class ApiClient {
 
   private async request(url = '', options: RequestOptions = {}) {
     const isExternal = options.isExternal || false
-    const basePath = isExternal ? '/external' : '/cornflow'
+    const basePath = isExternal ? '/external' : config.hasExternalApp ? '/cornflow' : ''
     const completeUrl = new URL(this.baseUrl + basePath + url)
     
     if (options.params) {

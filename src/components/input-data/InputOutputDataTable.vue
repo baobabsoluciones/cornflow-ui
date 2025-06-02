@@ -278,6 +278,7 @@ import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
 import { LoadedExecution } from '@/models/LoadedExecution'
 import useFilters from '@/utils/useFilters'
+import { formatDateForFilename } from '@/utils/date'
 
 export default {
   emits: ['saveChanges', 'resolve'],
@@ -590,7 +591,9 @@ export default {
       } else if (this.type === 'solution') {
         solution = true
       }
-      const filename = this.execution.name.toLowerCase().replace(/ /g, '_')
+
+      const filename = this.execution.name.toLowerCase().replace(/ /g, '_') + '-' + formatDateForFilename(this.execution.createdAt)
+
       try {
         this.isDownloading = true
         await this.execution.experiment.downloadExcel(

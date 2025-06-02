@@ -17,6 +17,10 @@ export class ExperimentCore {
     return this.solution.hasSolution()
   }
 
+  hasInstance() {
+    return this.instance.hasInstance()
+  }
+
   async downloadExcel(
     filename = 'execution',
     saveInstance = true,

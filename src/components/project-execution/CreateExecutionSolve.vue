@@ -41,8 +41,45 @@
           </v-list-item>
         </v-list>
       </v-row>
+
+      <!-- Developer Mode Solution Upload -->
+      <v-row v-if="isDeveloperMode" class="mt-4">
+        <v-col>
+          <v-card class="pa-4">
+            <v-card-title class="text-h6">
+              {{ $t('projectExecution.steps.step7.developerMode.title') }}
+            </v-card-title>
+            <v-card-text>
+              <v-radio-group v-model="solveMode" class="mt-2">
+                <v-radio :label="$t('projectExecution.steps.step7.developerMode.normalSolve')" value="normal"></v-radio>
+                <v-radio :label="$t('projectExecution.steps.step7.developerMode.uploadSolution')" value="upload"></v-radio>
+              </v-radio-group>
+
+              <div v-if="solveMode === 'upload'" class="mt-4">
+                <MDragNDropFile
+                  :multiple="false"
+                  downloadIcon="mdi-upload"
+                  :description="$t('projectExecution.steps.step7.developerMode.dragAndDropDescription')"
+                  :uploadedFiles="solutionFile ? [solutionFile] : []"
+                  :formatsAllowed="['json', 'xlsx', 'csv']"
+                  :errors="solutionErrors"
+                  :downloadButtonTitle="$t('projectExecution.steps.step7.developerMode.uploadFile')"
+                  :invalidFileText="$t('projectExecution.steps.step7.developerMode.invalidFileFormat')"
+                  @file-selected="onSolutionFileSelected"
+                />
+              </div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
+
       <v-row class="justify-center">
-        <v-btn @click="createExecution()" variant="outlined" class="mt-5">
+        <v-btn 
+          @click="createExecution()" 
+          variant="outlined" 
+          class="mt-5"
+          :disabled="solveMode === 'upload' && !solutionFile"
+        >
           {{ $t('projectExecution.steps.step7.resolve') }}
         </v-btn>
       </v-row>
@@ -69,8 +106,9 @@
 </template>
 
 <script>
-import { inject, computed } from 'vue'
+import { inject, computed, ref } from 'vue'
 import { useGeneralStore } from '@/stores/general'
+import { Solution } from '@/app/models/Solution'
 
 export default {
   components: {},
@@ -87,49 +125,165 @@ export default {
       showSnackbar: null,
       generalStore: useGeneralStore(),
       defaultIcon: 'mdi-tune',
+      solveMode: 'normal',
+      solutionFile: null,
+      solutionErrors: null,
+      solutionData: null
     }
   },
   computed: {
     configFields() {
       return this.generalStore.appConfig.parameters.configFields || []
     },
+    isDeveloperMode() {
+      return this.generalStore.appConfig.parameters.isDeveloperMode
+    }
   },
   created() {
     this.showSnackbar = inject('showSnackbar')
   },
   methods: {
+    async onSolutionFileSelected(file) {
+      this.solutionFile = file
+      this.solutionErrors = null
+
+      try {
+        const extension = file.name.split('.').pop()
+        const solution = await this.parseSolutionFile(file, extension)
+        
+        // Validate solution schema
+        const errors = await solution.checkSchema()
+        if (errors && errors.length > 0) {
+          this.solutionErrors = errors
+            .map(error => `<li>${error.instancePath} - ${error.message}</li>`)
+            .join('')
+          this.solutionData = null
+          if (this.showSnackbar) {
+            this.showSnackbar(
+              this.$t('projectExecution.steps.step7.developerMode.solutionSchemaError'),
+              'error'
+            )
+          }
+          return
+        }
+
+        this.solutionData = solution.data
+      } catch (error) {
+        console.error('Error processing solution file:', error)
+        this.solutionErrors = `<p><strong>Error:</strong></p><li>${error.message}</li>`
+        this.solutionData = null
+        if (this.showSnackbar) {
+          this.showSnackbar(error.message || error, 'error')
+        }
+      }
+    },
+
+    async parseSolutionFile(file, extension) {
+      return new Promise((resolve, reject) => {
+        const fileReader = new FileReader()
+        
+        fileReader.onload = async () => {
+          try {
+            const { Solution } = this.generalStore.appConfig
+            const schemas = this.generalStore.getSchemaConfig
+
+            if (extension === 'xlsx') {
+              const solution = await Solution.fromExcel(
+                fileReader.result,
+                schemas.solutionSchema,
+                this.generalStore.appConfig.parameters.schema
+              )
+              resolve(solution)
+            } else if (extension === 'json') {
+              const jsonData = JSON.parse(fileReader.result)
+              const solution = new Solution(
+                null,
+                jsonData,
+                schemas.solutionSchema,
+                schemas.solutionChecksSchema,
+                this.generalStore.appConfig.parameters.schema
+              )
+              resolve(solution)
+            } else if (extension === 'csv') {
+              const solution = await Solution.fromCsv(
+                fileReader.result,
+                file.name,
+                schemas.solutionSchema,
+                schemas.solutionChecksSchema,
+                this.generalStore.appConfig.parameters.schema
+              )
+              resolve(solution)
+            } else {
+              throw new Error(this.$t('projectExecution.steps.step7.developerMode.unsupportedFileFormat'))
+            }
+          } catch (error) {
+            reject(error)
+          }
+        }
+        
+        fileReader.onerror = () => {
+          reject(new Error(this.$t('projectExecution.steps.step7.developerMode.fileReadError')))
+        }
+        
+        if (extension === 'xlsx') {
+          fileReader.readAsArrayBuffer(file)
+        } else {
+          fileReader.readAsText(file)
+        }
+      })
+    },
+
     async createExecution() {
       try {
         this.executionIsLoading = true
-        const result = await this.generalStore.createExecution(this.newExecution)
+
+        if (this.solveMode === 'upload' && !this.solutionData) {
+          throw new Error(this.$t('projectExecution.steps.step7.developerMode.noSolutionData'))
+        }
+
+        // Create execution with run=0 if uploading solution
+        const result = await this.generalStore.createExecution(
+          this.newExecution,
+          this.solveMode === 'upload' ? '?run=0' : ''
+        )
+
         if (result) {
-          const loadedResult = await this.generalStore.fetchLoadedExecution(
-            result.id,
-          )
+          if (this.solveMode === 'upload') {
+            // Upload solution data
+            const uploadResult = await this.generalStore.uploadSolutionData(
+              result.id,
+              this.solutionData
+            )
+            if (!uploadResult) {
+              throw new Error(this.$t('projectExecution.steps.step7.developerMode.uploadError'))
+            }
+          }
+
+          const loadedResult = await this.generalStore.fetchLoadedExecution(result.id)
 
           if (loadedResult) {
             this.executionIsLoading = false
             this.executionLaunched = true
             this.showSnackbar(
-              this.$t('projectExecution.snackbar.successCreate'),
+              this.$t('projectExecution.snackbar.successCreate')
             )
           } else {
             this.showSnackbar(
               this.$t('projectExecution.snackbar.errorCreate'),
-              'error',
+              'error'
             )
           }
         } else {
           this.showSnackbar(
             this.$t('projectExecution.snackbar.errorCreate'),
-            'error',
+            'error'
           )
           this.executionIsLoading = false
         }
       } catch (error) {
         this.showSnackbar(
-          this.$t('projectExecution.snackbar.errorCreate'),
-          'error',
+          error.message || this.$t('projectExecution.snackbar.errorCreate'),
+          'error'
         )
         this.executionIsLoading = false
       }

@@ -15,7 +15,7 @@
     </ExecutionInfoCard>
     <InputDataTable
       class="mt-5"
-      v-if="selectedExecution && selectedExecution.state == 1"
+      v-if="selectedExecution && selectedExecution.hasInstance()"
       :execution="selectedExecution"
     >
     </InputDataTable>

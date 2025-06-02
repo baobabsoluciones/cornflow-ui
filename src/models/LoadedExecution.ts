@@ -73,4 +73,8 @@ export class LoadedExecution {
   hasSolution() {
     return this.experiment.hasSolution()
   }
+
+  hasInstance() {
+    return this.experiment.hasInstance()
+  }
 }

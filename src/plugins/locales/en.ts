@@ -69,7 +69,7 @@ export default {
             'No schema was found: are you connected to the server?',
           instanceSchemaError: 'Instance does not comply with schema ',
           instanceLoaded: 'Instance loaded successfully',
-          instancesLoaded: 'Instances merged and loaded successfully',
+          instancesLoaded: 'Files merged to create the instance and loaded successfully',
           loadInstance: 'Load Instance',
           selectedFiles: 'Selected Files',
           invalidFileFormat: 'Invalid file format. Please try again.',
@@ -116,6 +116,19 @@ export default {
         errorMessage:
           'An error occurred while creating the execution. Please try again.',
         loadNewExecution: 'Load new execution',
+        developerMode: {
+          title: 'Developer Mode',
+          normalSolve: 'Solve normally',
+          uploadSolution: 'Upload solution',
+          dragAndDropDescription: 'Drag and drop a solution file or click to browse',
+          uploadFile: 'Upload solution file',
+          invalidFileFormat: 'Invalid file format. Please upload a JSON, XLSX, or CSV file.',
+          solutionSchemaError: 'Solution file does not match the required schema',
+          unsupportedFileFormat: 'Unsupported file format',
+          fileReadError: 'Error reading file',
+          noSolutionData: 'Please upload a solution file first',
+          uploadError: 'Error uploading solution data'
+        }
       },
     },
     infoCard: {
@@ -154,7 +167,7 @@ export default {
     infeasible: 'Infeasible',
     infeasibleTooltip: 'Infeasible solution',
     unknown: 'Unknown',
-    unknownTooltip: 'Unknown error',
+    unknownTooltip: 'Unknown status',
     notSolved: 'Not solved',
     notSolvedTooltip: 'Execution not solved',
     unbounded: 'Unbounded',
@@ -165,6 +178,8 @@ export default {
     memoryLimitTooltip: 'Memory limit',
     nodeLimit: 'Node limit',
     nodeLimitTooltip: 'Node limit',
+    notRunByUser: 'Not run',
+    notRunByUserTooltip: 'Execution not run by user choice',
     licensingProblem: 'Licensing problem',
     licensingProblemTooltip: 'Licensing problem, contact support.',
     executionSolvedCorrectly: 'The execution has been solved correctly.',

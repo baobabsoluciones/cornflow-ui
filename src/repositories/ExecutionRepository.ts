@@ -3,6 +3,7 @@ import { Execution } from '@/models/Execution'
 import { LoadedExecution } from '@/models/LoadedExecution'
 import { useGeneralStore } from '@/stores/general'
 import InstanceRepository from './InstanceRepository'
+import { formatDateForFilename } from '@/utils/date'
 
 export default class ExecutionRepository {
   // Get executions created on the given date range
@@ -127,7 +128,7 @@ export default class ExecutionRepository {
           )
 
           const experiment = new Experiment(instance, solution)
-          const filename = execution.name.toLowerCase().replace(/ /g, '_')
+          const filename = execution.name.toLowerCase().replace(/ /g, '_') + '-' + formatDateForFilename(execution.created_at)
           await experiment.downloadExcel(filename, onlySolution, onlyInstance)
 
           if (onlySolution) {
@@ -150,7 +151,7 @@ export default class ExecutionRepository {
     }
   }
 
-  async createExecution(execution: any) {
+  async createExecution(execution: any, queryParams: string = '') {
     let instance
     // If instance already exists use it, otherwise create a new one
     if (execution.instance.id) {
@@ -169,7 +170,7 @@ export default class ExecutionRepository {
         instance_id: instance.id,
       }
 
-      const response = await client.post('/execution/', json, {
+      const response = await client.post(`/execution/${queryParams}`, json, {
         'Content-Type': 'application/json',
       })
       if (response.status === 201) {
@@ -180,6 +181,18 @@ export default class ExecutionRepository {
       }
     } else {
       throw new Error('Error creating instance')
+    }
+  }
+
+  async uploadSolutionData(executionId: string, solutionData: any) {
+    try {
+      const response = await client.put(`/execution/${executionId}/`, {
+        data: solutionData
+      })
+      return response.content
+    } catch (error) {
+      console.error('Error uploading solution data:', error)
+      throw error
     }
   }
 

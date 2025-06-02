@@ -35,6 +35,14 @@ export class InstanceCore {
     }
   }
 
+  hasInstance() {
+    return (
+      this.data !== undefined &&
+      this.data !== null &&
+      Object.keys(this.data).length > 0
+    )
+  }
+
   static fromExcel(file, schema, schemaName) {
     return loadExcel(file, schema).then(
       (data) => new this(null, data, schema, {}, schemaName),
