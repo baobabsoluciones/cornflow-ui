@@ -8,6 +8,7 @@ ARG VITE_APP_BACKEND_URL
 ARG VITE_APP_AUTH_TYPE
 ARG VITE_APP_SCHEMA
 ARG VITE_APP_NAME
+ARG VITE_APP_EXTERNAL_APP
 
 
 # Set environment variables
@@ -29,6 +30,9 @@ RUN if [ -n "$VITE_APP_SCHEMA" ]; then \
 RUN if [ -n "$VITE_APP_NAME" ]; then \
       echo "ENV VITE_APP_NAME=$VITE_APP_NAME" >> /etc/environment; \
     fi
+RUN if [ -n "$VITE_APP_EXTERNAL_APP" ]; then \
+      echo "ENV VITE_APP_EXTERNAL_APP=$VITE_APP_EXTERNAL_APP" >> /etc/environment; \
+    fi;
 
 
 # install python for gyp pkg
