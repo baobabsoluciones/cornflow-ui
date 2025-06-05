@@ -1,6 +1,6 @@
 <template>
   <div class="view-container">
-    <div class="d-flex align-end">
+    <div class="d-flex align-end justify-start mb-10">
       <MTitleView
         :icon="'mdi-routes'"
         :title="title"
@@ -10,11 +10,12 @@
         v-if="selectedExecution"
         :selectedExecution="selectedExecution"
       />
+      <RouteFilterSelector v-if="selectedExecution" class="ml-10" :routes="routes" v-model:selected="selectedRoute" />
+
     </div>
     <ExecutionInfoCard :selectedExecution="selectedExecution">
     </ExecutionInfoCard>
     <div v-if="selectedExecution">
-      <RouteFilterSelector />
       <div class="routes-dashboard-layout">
         <div class="routes-dashboard-map">
           <RouteMap />
@@ -32,7 +33,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject } from 'vue'
+import { computed, inject, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import RouteFilterSelector from '../components/routesDashboard/RouteFilterSelector.vue'
 import RouteMap from '../components/routesDashboard/RouteMap.vue'
@@ -48,7 +49,12 @@ const showSnackbar = inject('showSnackbar')
 const { t } = useI18n()
 
 const selectedExecution = computed(() => generalStore.selectedExecution)
-const selectedRoute = computed(() => null)
+const selectedRoute = ref<string | null>('all')
+
+const routes = computed(() => {
+  const solution = selectedExecution.value?.experiment?.solution?.data
+  return solution?.resume_routes || []
+})
 
 const title = computed(() => t('routes.title'))
 const description = computed(() => selectedExecution.value ? selectedExecution.value.name : '')

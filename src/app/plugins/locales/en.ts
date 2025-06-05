@@ -4,7 +4,11 @@ export default {
   },
   routesDashboard: {
     filterSelector: {
-      placeholder: 'Select a route or all routes'
+      placeholder: 'Select a route or all routes',
+      label: 'Route selected',
+      hint: 'Select the route you want to view',
+      all: 'All routes',
+      route: 'Route'
     },
     map: {
       placeholder: 'Map will be displayed here'

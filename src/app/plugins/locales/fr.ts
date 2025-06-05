@@ -4,7 +4,11 @@ export default {
   },
   routesDashboard: {
     filterSelector: {
-      placeholder: 'Sélectionnez un itinéraire ou tous les itinéraires'
+      placeholder: 'Sélectionnez un itinéraire ou tous les itinéraires',
+      label: 'Itinéraire',
+      hint: 'Sélectionnez l\'itinéraire que vous souhaitez voir',
+      all: 'Tous les itinéraires',
+      route: 'Itinéraire'
     },
     map: {
       placeholder: 'La carte sera affichée ici'
