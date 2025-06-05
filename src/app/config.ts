@@ -212,9 +212,7 @@ const createAppConfig = () => ({
           type: 'number',
         },
       ],
-      fileProcessors: {
-        // Define filename prefixes that need special processing and their corresponding processor methods
-      },
+      fileProcessors: {},
       executionStates: {
         '1': {
           color: 'green',
@@ -326,8 +324,21 @@ const createAppConfig = () => ({
       },
     },
   },
-  dashboardPages: [],
-  dashboardRoutes: [],
+  dashboardPages: [
+    {
+      title: i18n.global.t('routes.title'),
+      icon: 'mdi-routes',
+      to: '/routes',
+      pos: 1
+    }
+  ],
+  dashboardRoutes: [
+    {
+      name: 'routes',
+      path: '/routes',
+      component: () => import('@/app/views/RoutesView.vue')
+    }
+  ],
   dashboardLayout: [],
 })
 

@@ -11,9 +11,15 @@ Copy and paste all the code from this repository into your new repository.
 
 ## 2. Configure the core values
 
-The application can be configured in three different ways:
+The application configuration is divided into two main types:
 
-### 1. Environment variables (.env)
+1. Variable-based configuration (can be set through either environment variables or JSON):
+   - Core values (backend URL, schema, name)
+   - Authentication settings
+   - External app configuration
+   This can be configured in two different ways:
+
+### 1.1 Environment variables (.env)
 Used when `useConfigJson: false` in `src/app/config.ts`. All configuration values should be prefixed with `VITE_APP_`:
 
 ```env
@@ -21,7 +27,7 @@ Used when `useConfigJson: false` in `src/app/config.ts`. All configuration value
 VITE_APP_BACKEND_URL=https://your-backend-url
 VITE_APP_SCHEMA=rostering
 VITE_APP_NAME=Rostering
-VITE_APP_EXTERNAL_APP=false
+VITE_APP_EXTERNAL_APP=0
 
 # Authentication Configuration
 VITE_APP_AUTH_TYPE=cornflow  # Options: cornflow, azure, cognito
@@ -33,7 +39,7 @@ VITE_APP_AUTH_USER_POOL_ID=your-user-pool-id
 VITE_APP_AUTH_DOMAIN=your-domain
 ```
 
-### 2. JSON configuration (values.json)
+### 1.2 JSON configuration (values.json)
 Used when `useConfigJson: true` in `src/app/config.ts`. Create this file based on `values.template.json`:
 
 ```json
@@ -41,7 +47,7 @@ Used when `useConfigJson: true` in `src/app/config.ts`. Create this file based o
     "backend_url": "https://your-backend-url",
     "schema": "rostering",
     "name": "Rostering",
-    "hasExternalApp": false,
+    "hasExternalApp": 0,
     "auth_type": "cornflow",
     "cognito": {
       "region": "your-region",
@@ -57,7 +63,13 @@ Used when `useConfigJson: true` in `src/app/config.ts`. Create this file based o
 }
 ```
 
-### 3. Application configuration (src/app/config.ts)
+2. Application-specific configuration (src/app/config.ts) and other files:
+   - Application behavior settings that cannot be changed through variables
+   - UI/UX preferences
+   - Feature flags and modes
+   This is always configured directly in the source code:
+
+### 2.1 Application configuration (src/app/config.ts)
 This file contains application-specific configuration that cannot be changed through environment variables or values.json:
 
 ```typescript
@@ -73,7 +85,7 @@ This file contains application-specific configuration that cannot be changed thr
       useHashMode: false, // Controls whether route has /#/ in the url or not
       useConfigJson: false,  // Controls whether to use values.json or env vars
       enableSignup: false, // Enables or disables the functionality for users to sign-up from login view
-      isDeveloperMode: false // Enables or disables developer mode to upload solution
+      isDeveloperMode: false, // Enables or disables developer mode to upload solution
       
       // Schema and branding
       schema: config.schema,  // Read from env/values.json
@@ -95,7 +107,7 @@ This file contains application-specific configuration that cannot be changed thr
       dashboardRoutes: [...],
       
       // Create execution steps configuration
-      executionSolvers: ['mip-gurobi'] // Fallback for showing solvers if it's not coming from backend
+      executionSolvers: ['mip-gurobi'], // Fallback for showing solvers if it's not coming from backend
       solverConfig: {
         showSolverStep: false,
         defaultSolver: 'mip.gurobi',
@@ -152,7 +164,7 @@ This file contains application-specific configuration that cannot be changed thr
    - Cannot be overridden by environment variables or `values.json`
    - Contains application-specific logic and UI configuration
 
-## 3. App folder configuration
+## 2.2. App folder configuration
 Inside the app folder, there are several changes that can be done to configurate your client project. This folder is meant to be for all customizations done for the client.
    - `assets/logo`: This directory should contain the logo images for the application. The name should be the same as the default ones (logo.png and full_logo.png)
    - `assets/manual`: This directory should contain the user manual for the application. The names should be mantained, and if another language is added it should match with the name declared on i18n (Example: user_manual_fr for french)
@@ -166,7 +178,7 @@ Inside the app folder, there are several changes that can be done to configurate
 
 * Additionally, favicon can be replaced by a new one in public/favicon.png
 
-## 4. Important disclaimer
+## 3. Important disclaimer
 It's important not to edit any other file or folders. Only the folders, files and images just mentioned can be edited.
 
 
@@ -175,12 +187,12 @@ It's important not to edit any other file or folders. Only the folders, files an
 ### External application mode (hasExternalApp)
 The `hasExternalApp` parameter controls whether the application is running as an external application or as part of the main Cornflow system. This affects how API requests are handled:
 
-- When `hasExternalApp: true`:
+- When `hasExternalApp: 1`:
   - API requests will be prefixed with `/cornflow` in the URL
   - This is useful when the application is deployed as a standalone service that needs to communicate with the main Cornflow backend
   - Example URL: `https://your-backend-url/cornflow/api/endpoint`
 
-- When `hasExternalApp: false` (default):
+- When `hasExternalApp: 0` (default):
   - API requests will be made directly to the backend URL
   - This is the standard mode when the application is part of the main Cornflow system
   - Example URL: `https://your-backend-url/api/endpoint`
@@ -189,13 +201,13 @@ This parameter can be set in either the environment variables or values.json:
 
 ```env
 # Environment variables
-VITE_APP_EXTERNAL_APP=true
+VITE_APP_EXTERNAL_APP=1
 ```
 
 ```json
 // values.json
 {
-  "hasExternalApp": true
+  "hasExternalApp": 1
 }
 ```
 
