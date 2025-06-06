@@ -68,6 +68,7 @@
   display: flex;
   align-items: center;
   margin-bottom: 7px;
+  width: 100%;
 }
 .popup-icon {
   font-size: 1.2em;
@@ -77,9 +78,15 @@
   font-size: 0.98em;
   color: #666;
   margin-right: 4px;
+  min-width: 90px;
+  text-align: left;
+  flex-shrink: 0;
 }
 .popup-value {
   font-size: 1.05em;
-  font-weight: 500;
+  font-weight: 700;
   color: #222;
+  margin-left: auto;
+  text-align: right;
+  min-width: 48px;
 } 

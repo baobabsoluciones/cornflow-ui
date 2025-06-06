@@ -70,6 +70,7 @@ function handleRouteClick(routeId: string) {
 watch(
   [() => props.selectedRoute, () => props.routes],
   () => {
+    console.log('invalidateSize')
     setTimeout(() => {
       if (mapRef.value && mapRef.value.leafletObject) {
         mapRef.value.leafletObject.invalidateSize();
@@ -79,12 +80,24 @@ watch(
 );
 
 onMounted(() => {
+  // Create a resize observer to handle container size changes
+  const resizeObserver = new ResizeObserver(() => {
+    if (mapRef.value && mapRef.value.leafletObject) {
+      mapRef.value.leafletObject.invalidateSize();
+    }
+  });
+
+  // Observe the map container
+  const mapContainer = document.querySelector('.route-map-container');
+  if (mapContainer) {
+    resizeObserver.observe(mapContainer);
+  }
+
+  // Initial size check after a short delay to ensure DOM is ready
   nextTick(() => {
-    setTimeout(() => {
-      if (mapRef.value && mapRef.value.leafletObject) {
-        mapRef.value.leafletObject.invalidateSize();
-      }
-    }, 200);
+    if (mapRef.value && mapRef.value.leafletObject) {
+      mapRef.value.leafletObject.invalidateSize();
+    }
   });
 });
 </script>
