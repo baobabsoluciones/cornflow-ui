@@ -11,7 +11,10 @@ export default {
       route: 'Ruta'
     },
     map: {
-      placeholder: 'El mapa se mostrará aquí'
+      placeholder: 'El mapa se mostrará aquí',
+      startTime: 'Hora de salida',
+      employees: 'Empleados',
+      stopName: 'Nombre de la parada'
     },
     globalInfo: {
       placeholder: 'La información global de la ruta se mostrará aquí'

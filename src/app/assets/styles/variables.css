@@ -14,4 +14,24 @@ body {
   --accent: #4dc3dd;
   --dark-accent: #181926;
   --disabled: #f2f4f7;
+
+  /* Route colors */
+  --route-1: #1594f1;
+  --route-1-marker: #0d6efd;
+  --route-2: #3ba780;
+  --route-2-marker: #2d8a6a;
+  --route-3: #f7be68;
+  --route-3-marker: #e5a84d;
+  --route-4: #4dc3dd;
+  --route-4-marker: #3aa8c0;
+  --route-5: #dea727;
+  --route-5-marker: #c69522;
+  --route-default: #6e6e6e;
+  --route-default-marker: #404040;
+
+  /* Info Card */
+  --info-card-background: #ffff;
+  --info-card-border: #40404027;
+  --info-card-title: #343434	;
+  --info-card-content: #404040;
 }

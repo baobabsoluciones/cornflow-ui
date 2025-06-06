@@ -1,1 +1,85 @@
-/* TODO: Add section-specific styles for the routes dashboard */ 
+/* =========================
+   RouteMap Component Styles
+   ========================= */
+.route-map-container {
+  width: 100%;
+  height: 400px;
+  min-height: 400px;
+  position: relative;
+}
+
+.leaflet-container {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 400px;
+}
+
+.custom-marker {
+  background: transparent;
+  border: none;
+}
+
+.marker-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Popup styles */
+.popup-card {
+  min-width: 170px;
+  background: #fff;
+  padding: 16px 18px 12px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.popup-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.popup-order {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.1em;
+  margin-right: 10px;
+  box-shadow: 0 1px 4px 0 rgba(16, 30, 54, 0.10);
+}
+.popup-title {
+  font-weight: 700;
+  font-size: 1.1em;
+  color: var(--primary-variant);
+}
+.popup-divider {
+  width: 100%;
+  height: 2px;
+  border-radius: 1px;
+  margin-bottom: 12px;
+  margin-top: 2px;
+}
+.popup-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 7px;
+}
+.popup-icon {
+  font-size: 1.2em;
+  margin-right: 7px;
+}
+.popup-label {
+  font-size: 0.98em;
+  color: #666;
+  margin-right: 4px;
+}
+.popup-value {
+  font-size: 1.05em;
+  font-weight: 500;
+  color: #222;
+} 

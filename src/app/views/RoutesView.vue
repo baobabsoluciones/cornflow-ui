@@ -18,7 +18,11 @@
     <div v-if="selectedExecution">
       <div class="routes-dashboard-layout">
         <div class="routes-dashboard-map">
-          <RouteMap />
+          <RouteMap
+            :routes="enrichedRoutes"
+            :selectedRoute="selectedRoute"
+            @update:selected="selectedRoute = $event"
+          />
         </div>
         <div class="routes-dashboard-info">
           <RouteGlobalInfo />
@@ -51,6 +55,8 @@ const { t } = useI18n()
 const selectedExecution = computed(() => generalStore.selectedExecution)
 const selectedRoute = ref<string | null>('all')
 
+const enrichedRoutes = computed(() => selectedExecution.value?.experiment?.getEnrichedRoutes() || [])
+
 const routes = computed(() => {
   const solution = selectedExecution.value?.experiment?.solution?.data
   return solution?.resume_routes || []
@@ -65,9 +71,13 @@ const description = computed(() => selectedExecution.value ? selectedExecution.v
   display: flex;
   flex-direction: row;
   gap: 2rem;
+  height: 400px;
+  min-height: 400px;
 }
 .routes-dashboard-map {
-  flex: 2;
+  flex: 1;
+  height: 100%;
+  min-height: 400px;
 }
 .routes-dashboard-info {
   flex: 1;

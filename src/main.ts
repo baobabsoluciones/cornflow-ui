@@ -20,6 +20,8 @@ import './app/assets/styles/main.css' // Main app custom styles
 import './app/assets/styles/variables.css' // App custom variables
 import '@/plugins'
 import 'mango-vue/dist/style.css'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 
 import { MAppDrawer } from 'mango-vue'
 import { MFilterSearch } from 'mango-vue'
@@ -39,6 +41,15 @@ import { MTabTable } from 'mango-vue'
 
 import config from '@/config'
 import appConfig from '@/app/config'
+
+// Fix Leaflet's default icon path issues with Vite
+// (must be after importing leaflet/dist/leaflet.css)
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: new URL('leaflet/dist/images/marker-icon-2x.png', import.meta.url).href,
+  iconUrl: new URL('leaflet/dist/images/marker-icon.png', import.meta.url).href,
+  shadowUrl: new URL('leaflet/dist/images/marker-shadow.png', import.meta.url).href,
+});
 
 async function initApp() {
   console.log('Starting app initialization...');
