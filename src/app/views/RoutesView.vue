@@ -25,7 +25,7 @@
           />
         </div>
         <div class="routes-dashboard-info">
-          <RouteGlobalInfo />
+          <RouteGlobalInfo :selectedRoute="selectedRoute" :routes="routes" />
         </div>
       </div>
       <div class="routes-dashboard-bottom">

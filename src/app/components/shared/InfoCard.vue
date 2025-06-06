@@ -20,8 +20,6 @@ defineProps<{
   border-radius: 16px;
   background: var(--info-card-background);
   box-shadow: 0 1px 4px 0 rgba(16, 30, 54, 0.04);
-  padding: 0;
-  margin-bottom: 2rem;
   border: 1px solid var(--info-card-border);
 }
 .info-card-title {
