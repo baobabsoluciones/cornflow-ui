@@ -13,6 +13,7 @@ import UserRepository from '@/repositories/UserRepository'
 import ExecutionRepository from '@/repositories/ExecutionRepository'
 import InstanceRepository from '@/repositories/InstanceRepository'
 import LicenceRepository from '@/repositories/LicenceRepository'
+import VersionRepository from '@/repositories/VersionRepository'
 
 import { toISOStringLocal } from '@/utils/data_io'
 import i18n from '@/plugins/i18n'
@@ -28,6 +29,7 @@ export const useGeneralStore = defineStore('general', {
     instanceRepository: new InstanceRepository(),
     userRepository: new UserRepository(),
     licenceRepository: new LicenceRepository(),
+    versionRepository: new VersionRepository(),
     notifications: [] as {
       message: string
       type: 'success' | 'warning' | 'info' | 'error'
@@ -48,6 +50,7 @@ export const useGeneralStore = defineStore('general', {
     autoLoadInterval: null,
     uploadComponentKey: 0,
     tabBarKey: 0,
+    cornflowVersion: '',
   }),
   actions: {
     async initializeData() {
@@ -56,6 +59,7 @@ export const useGeneralStore = defineStore('general', {
       apiClient.default.initializeToken?.()
       
       await this.fetchUser()
+      await this.fetchCornflowVersion()
       await this.setSchema()
       await this.fetchLicences()
     },
@@ -66,6 +70,15 @@ export const useGeneralStore = defineStore('general', {
         this.user = await this.userRepository.getUserById(userId)
       } catch (error) {
         console.error('Error getting user', error)
+      }
+    },
+
+    async fetchCornflowVersion() {
+      try {
+        const version = await this.versionRepository.getCornflowVersion()
+        this.cornflowVersion = version
+      } catch (error) {
+        console.error('Error getting cornflow version', error)
       }
     },
 
@@ -175,13 +188,23 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
-    async createExecution(execution: Execution) {
+    async createExecution(execution: Execution, params: string = '') {
       try {
         const newExecution =
-          await this.executionRepository.createExecution(execution)
+          await this.executionRepository.createExecution(execution, params)
         return newExecution
       } catch (error) {
         console.error('Error creating execution', error)
+        return false
+      }
+    },
+
+    async uploadSolutionData(executionId: string, solutionData: any) {
+      try {
+        await this.executionRepository.uploadSolutionData(executionId, solutionData)
+        return true
+      } catch (error) {
+        console.error('Error uploading solution data:', error)
         return false
       }
     },
@@ -372,7 +395,7 @@ export const useGeneralStore = defineStore('general', {
     },
 
     getExecutionSolvers(): string[] {
-      return this.schemaConfig.config.properties.solver.enum
+      return this.schemaConfig.config?.properties.solver?.enum || this.appConfig.parameters.executionSolvers
     },
 
     getLoadedExecutionTabs(): object[] {
@@ -381,6 +404,7 @@ export const useGeneralStore = defineStore('general', {
         let isLoading = false
         switch (execution.state) {
           case 1:
+         case -4:
             icon = 'mdi-checkbox-marked'
             break
           case 0:

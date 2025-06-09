@@ -21,14 +21,16 @@
             {{ selectedExecution.description }}
           </v-list-item-title>
         </v-list-item>
-        <v-list-item prepend-icon="mdi-timelapse">
-          <v-list-item-title class="small-font">
-            {{ selectedExecution.config.timeLimit + `s max.` }}
-          </v-list-item-title>
-        </v-list-item>
+        <template v-for="field in configFields" :key="field.key">
+          <v-list-item v-if="selectedExecution.config[field.key] !== undefined" :prepend-icon="field.icon">
+            <v-list-item-title class="small-font">
+              {{ $t(field.title) }}: {{ formatConfigValue(selectedExecution.config[field.key], field.type) }}{{ field.suffix ? $t(field.suffix) : '' }}
+            </v-list-item-title>
+          </v-list-item>
+        </template>
         <v-list-item prepend-icon="mdi-wrench-outline">
           <v-list-item-title class="small-font">
-            {{ selectedExecution.config.solver + ` solver` }}
+            {{ $t('projectExecution.steps.step5.title') }}: {{ selectedExecution.config.solver }}
           </v-list-item-title>
         </v-list-item>
       </v-list>
@@ -37,6 +39,7 @@
 </template>
 <script>
 import { formatDate } from '@/utils/data_io'
+import { useGeneralStore } from '@/stores/general'
 
 export default {
   props: {
@@ -45,9 +48,20 @@ export default {
       required: true,
     },
   },
-  computed: {},
+  computed: {
+    configFields() {
+      const generalStore = useGeneralStore()
+      return generalStore.appConfig.parameters.configFields
+    }
+  },
   methods: {
     formatDate,
+    formatConfigValue(value, type) {
+      if (type === 'boolean') {
+        return value ? this.$t('inputOutputData.true') : this.$t('inputOutputData.false')
+      }
+      return value
+    }
   },
 }
 </script>

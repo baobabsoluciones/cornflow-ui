@@ -64,18 +64,22 @@ export default {
         description: 'Carga un archivo con los datos de la instancia',
         titleContent: 'Cargar instancia',
         subtitleContent:
-          'Selecciona un archivo para cargar los datos de la instancia',
+          'Selecciona uno o varios archivos para cargar los datos de la instancia. Cuando finalices la carga, pulsa el botón de abajo para cargar los datos de la instancia. Si se seleccionan varios archivos, los datos se combinarán en una sola instancia.',
         loadInstance: {
-          dragAndDropDescription:
-            'Arrastra y suelta tu archivo de instancia aquí',
+          dragAndDropDescription: 'Arrastra y suelta tu archivo / archivos de instancia aquí',
           uploadFile: 'Subir archivo',
           noSchemaError:
             'No se encontró ningún esquema: ¿estás conectado al servidor?',
           instanceSchemaError: 'La instancia no cumple con el esquema',
           instanceLoaded: 'Instancia cargada con éxito',
-          invalidFileFormat:
-            'Formato de archivo no válido. Inténtalo de nuevo.',
-          unexpectedError: 'Ocurrió un error inesperado. Inténtalo de nuevo.',
+          instancesLoaded: 'Archivos combinados para crear la instancia y cargados con éxito',
+          loadInstance: 'Cargar instancia',
+          selectedFiles: 'Archivos seleccionados',
+          invalidFileFormat: 'Formato de archivo no válido. Por favor, inténtalo de nuevo.',
+          unexpectedError: 'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.',
+          instanceLoadedWithErrors: 'Instancia cargada con errores',
+          noValidInstancesError: 'No se encontraron instancias válidas en los archivos cargados',
+          downloadExcel: 'Descargar Excel',
         },
       },
       step4: {
@@ -84,7 +88,7 @@ export default {
         titleContent: 'Verificar datos',
         subtitleContent:
           'Revisa los datos de la instancia cargada y editalos si es necesario. Opcionalmente, puedes comprobar si los datos tienen inconsistencias. Ten en cuenta que si no compruebas y corriges los datos si es necesario, es posible que la ejecución no pueda encontrar una solución',
-        check: 'Verificaro datos',
+        check: 'Verificar datos',
       },
       step5: {
         title: 'Seleccionar solver',
@@ -94,13 +98,12 @@ export default {
           'El solver que selecciones será el algoritmo utilizado para encontrar la solución',
       },
       step6: {
-        title: 'Limitar tiempo',
-        description: 'Selecciona el tiempo máximo para la ejecución',
-        titleContent: 'Completa la siguiente información',
-        subtitleContent:
-          'Selecciona cuánto tiempo quieres que dure la ejecución',
+        title: 'Parámetros de ejecución',
+        description: 'Configura los parámetros de ejecución',
+        titleContent: 'Configurar parámetros de ejecución',
+        subtitleContent: 'Establece los parámetros que controlarán el comportamiento de la ejecución. Estos parámetros se pueden configurar según tus necesidades.',
         timeLimitPlaceholder: 'Por favor, inserta un límite de tiempo',
-        time: 'Tiempo',
+        time: 'Límite de tiempo',
         secondsSuffix: 'seg',
       },
       step7: {
@@ -134,6 +137,8 @@ export default {
   },
   executionTable: {
     date: 'Hora',
+    endDate: 'Fin',
+    userName: 'Usuario',
     name: 'Nombre',
     description: 'Descripción',
     state: 'Estado',
@@ -149,10 +154,10 @@ export default {
     optimalTooltip: 'La ejecución ha encontrado una solución óptima',
     timeLimit: 'Límite de tiempo',
     timeLimitTooltip: 'La ejecución ha alcanzado el límite de tiempo',
-    infeasible: 'Inviable',
+    infeasible: 'Infactible',
     infeasibleTooltip: 'La ejecución no tiene solución',
     unknown: 'Desconocido',
-    unknownTooltip: 'La ejecución ha encontrado un error desconocido',
+    unknownTooltip: 'Estado desconocido',
     notSolved: 'No resuelto',
     notSolvedTooltip: 'La ejecución no ha sido resuelta',
     unbounded: 'No acotado',
@@ -163,6 +168,8 @@ export default {
     memoryLimitTooltip: 'La ejecución ha alcanzado el límite de memoria',
     nodeLimit: 'Límite de nodos',
     nodeLimitTooltip: 'La ejecución ha alcanzado el límite de nodos',
+    notRunByUser: 'No ejecutado por el usuario',
+    notRunByUserTooltip: 'La ejecución no fue ejecutada por elección del usuario',
     licensingProblem: 'Problema de licencia',
     licensingProblemTooltip:
       'La ejecución ha encontrado un problema de licencia. Por favor, contacta con el administrador',
@@ -274,7 +281,9 @@ export default {
     deleteMessage: '¿Estás seguro de que quieres eliminar este registro?',
     deleteButton: 'Eliminar',
     cancelButton: 'Cancelar',
-    errorDownloadingExcel: 'Se produjo un error al descargar el Excel',
+    errorDownloadingExcel: 'Se ha producido un error al descargar el excel',
+    generating: 'Generando...',
+    download: 'Descargar',
   },
   settings: {
     currentPassword: 'Contraseña actual',

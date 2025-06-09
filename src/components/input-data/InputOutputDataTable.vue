@@ -116,7 +116,21 @@
         :selectedTable="selectedTable"
       >
         <template #actions>
-          <v-row class="mt-3">
+          <!-- Check Data Button Row -->
+          <v-row v-if="canCheckData" class="mt-2 mb-2 d-flex justify-center">
+            <v-btn
+              @click="emitCheckData()"
+              variant="outlined"
+              prepend-icon="mdi-play"
+              :disabled="editionMode || (checksLaunched && !checksFinished) || checksError"
+              size="small"
+            >
+              {{ $t('projectExecution.steps.step4.check') }}
+            </v-btn>
+          </v-row>
+          
+          <!-- Search and Edit Controls Row -->
+          <v-row class="mt-2">
             <v-col cols="10">
               <MFilterSearch
                 :filters="filters"
@@ -132,13 +146,28 @@
             >
               <v-btn
                 v-if="!canEdit"
-                icon="mdi-microsoft-excel"
                 class="mr-4"
                 color="primary"
                 density="compact"
                 style="font-size: 0.7rem !important"
+                :disabled="isDownloading"
                 @click="handleDownload()"
-              ></v-btn>
+              >
+                <template v-if="isDownloading">
+                  <v-progress-circular
+                    indeterminate
+                    size="16"
+                    width="2"
+                    color="white"
+                    class="mr-1"
+                  ></v-progress-circular>
+                  {{ $t('inputOutputData.generating') }}
+                </template>
+                <template v-else>
+                  <v-icon>mdi-microsoft-excel</v-icon>
+                  {{ $t('inputOutputData.download') }}
+                </template>
+              </v-btn>
               <v-btn
                 v-if="canEdit && !editionMode"
                 color="primary"
@@ -182,16 +211,6 @@
               @create-item="createItem"
               @deleteItem="deleteItem"
             />
-          </v-row>
-          <v-row v-if="canCheckData" class="mt-5 mb-2 justify-center">
-            <v-btn
-              @click="emitCheckData()"
-              variant="outlined"
-              prepend-icon="mdi-play"
-              :disabled="editionMode || (checksLaunched && !checksFinished) || checksError"
-            >
-              {{ $t('projectExecution.steps.step4.check') }}
-            </v-btn>
           </v-row>
         </template>
       </MTabTable>
@@ -259,6 +278,7 @@ import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
 import { LoadedExecution } from '@/models/LoadedExecution'
 import useFilters from '@/utils/useFilters'
+import { formatDateForFilename } from '@/utils/date'
 
 export default {
   emits: ['saveChanges', 'resolve'],
@@ -312,6 +332,7 @@ export default {
       originalFilters: {},
       filters: {},
       resetPage: false,
+      isDownloading: false,
     }
   },
   created() {
@@ -570,15 +591,20 @@ export default {
       } else if (this.type === 'solution') {
         solution = true
       }
-      const filename = this.execution.name.toLowerCase().replace(/ /g, '_')
+
+      const filename = this.execution.name.toLowerCase().replace(/ /g, '_') + '-' + formatDateForFilename(this.execution.createdAt)
+
       try {
+        this.isDownloading = true
         await this.execution.experiment.downloadExcel(
           filename,
           instance,
           solution,
         )
       } catch (error) {
-        this.showSnackbar($t('inputOutputData.errorDownloadingExcel'), 'error')
+        this.showSnackbar(this.$t('inputOutputData.errorDownloadingExcel'), 'error')
+      } finally {
+        this.isDownloading = false
       }
     },
     handleSearch(search) {

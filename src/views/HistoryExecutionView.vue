@@ -38,6 +38,7 @@
           :showHeaders="slotProps.showHeaders"
           :formatDateByTime="true"
           :useFixedWidth="true"
+          :loadingExecutions="loadingExecutions"
           @loadExecution="loadExecution"
           @deleteExecution="deleteExecution"
         ></ProjectExecutionsTable>
@@ -69,6 +70,7 @@ export default {
         endDate: null,
       },
       showSnackbar: null,
+      loadingExecutions: new Set(),
     }
   },
   created() {
@@ -237,6 +239,7 @@ export default {
       return Object.values(formattedData)
     },
     async loadExecution(execution) {
+      this.loadingExecutions.add(execution.id);
       try {
         const loadedResult = await this.generalStore.fetchLoadedExecution(
           execution.id,
@@ -274,6 +277,8 @@ export default {
           this.$t('projectExecution.snackbar.errorLoad'),
           'error',
         )
+      } finally {
+        this.loadingExecutions.delete(execution.id);
       }
     },
     async deleteExecution(execution) {

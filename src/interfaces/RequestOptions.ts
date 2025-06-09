@@ -5,4 +5,5 @@ export interface RequestOptions {
   params?: Record<string, string>;
   headers?: Record<string, string>;
   _retried?: boolean;
+  isExternal?: boolean;
 }

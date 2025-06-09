@@ -1,6 +1,5 @@
 import config from '@/config'
 import { fetchAuthSession } from 'aws-amplify/auth'
-import session from '@/services/AuthService'
 import { RequestOptions } from '@/interfaces/RequestOptions'
 
 class ApiClient {
@@ -29,7 +28,7 @@ class ApiClient {
       'Content-Type': 'application/json',
     };
 
-    // Load token from sessionStorage if not already set
+    // Load token from sessionStorage if not already se
     if (!this.authToken) {
       this.authToken = sessionStorage.getItem('token');
     }
@@ -79,7 +78,10 @@ class ApiClient {
   }
 
   private async request(url = '', options: RequestOptions = {}) {
-    const completeUrl = new URL(this.baseUrl + url)
+    const isExternal = options.isExternal || false
+    const basePath = isExternal ? '/external' : config.hasExternalApp ? '/cornflow' : ''
+    const completeUrl = new URL(this.baseUrl + basePath + url)
+    
     if (options.params) {
       completeUrl.search = new URLSearchParams(options.params).toString()
     }
@@ -92,7 +94,6 @@ class ApiClient {
         await this.refreshToken()
       } catch (error) {
         console.error('Token refresh failed:', error)
-        // If refresh token fails, redirect to login
         this.handleAuthFailure()
         throw error
       }
@@ -112,25 +113,27 @@ class ApiClient {
         mode: 'cors',
       })
 
-      // Check for 401 Unauthorized response, which indicates expired or invalid token
       if (response.status === 401 && !url.includes('/login/')) {
         console.warn('Received 401 Unauthorized response, session may have expired')
         this.handleAuthFailure()
         throw new Error('Unauthorized: Session expired')
       }
       
-      // Try to parse response content
       let content;
-      try {
-        content = await response.json()
-      } catch (e) {
-        content = { message: 'Could not parse response' }
+      const contentType = response.headers.get('Content-Type');
+      if (contentType && contentType.includes('application/json')) {
+        try {
+          content = await response.json();
+        } catch (e) {
+          content = { message: 'Could not parse response' };
+        }
+      } else {
+        content = await response.blob();
       }
       
       return { status: response.status, content }
     } catch (error) {
       console.error('Request failed:', error)
-      // Only handle auth failures if not already handling a login request
       if (!url.includes('/login/') && error.message?.includes('Unauthorized')) {
         this.handleAuthFailure()
       }
@@ -191,20 +194,20 @@ class ApiClient {
     });
   }
 
-  get(url: string, queryParams = {}, getHeaders = {}) {
-    return this.request(url, { method: 'GET', params: queryParams, headers: getHeaders })
+  get(url: string, queryParams = {}, getHeaders = {}, isExternal: boolean = false) {
+    return this.request(url, { method: 'GET', params: queryParams, headers: getHeaders, isExternal })
   }
 
-  post(url: string, data: object, postHeaders = {}) {
-    return this.request(url, { method: 'POST', body: data, headers: postHeaders })
+  post(url: string, data: object, postHeaders = {}, isExternal: boolean = false) {
+    return this.request(url, { method: 'POST', body: data, headers: postHeaders, isExternal })
   }
 
-  put(url: string, data: object, putHeaders = {}) {
-    return this.request(url, { method: 'PUT', body: data, headers: putHeaders })
+  put(url: string, data: object, putHeaders = {}, isExternal: boolean = false) {
+    return this.request(url, { method: 'PUT', body: data, headers: putHeaders, isExternal })
   }
 
-  remove(url: string, deleteHeaders = {}) {
-    return this.request(url, { method: 'DELETE', headers: deleteHeaders })
+  remove(url: string, deleteHeaders = {}, isExternal: boolean = false) {
+    return this.request(url, { method: 'DELETE', headers: deleteHeaders, isExternal })
   }
 }
 
