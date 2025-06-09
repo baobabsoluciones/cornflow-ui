@@ -20,10 +20,19 @@ export default {
       placeholder: 'Route global information will be shown here'
     },
     stopsHorizontal: {
+      title: 'Stops',
+      duration: 'Duration',
+      capacity: 'Capacity',
       placeholder: 'Stops for the selected route will be shown here'
     },
     allRoutesHorizontal: {
-      placeholder: 'All routes will be shown here'
+      title: 'All Routes Overview',
+      placeholder: 'All routes will be shown here',
+      stops: 'Stops',
+      capacity: 'Capacity',
+      time: 'Time',
+      duration: 'Duration',
+      distance: 'Distance'
     }
   }
 }

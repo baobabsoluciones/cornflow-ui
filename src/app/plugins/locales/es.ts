@@ -20,10 +20,19 @@ export default {
       placeholder: 'La información global de la ruta se mostrará aquí'
     },
     stopsHorizontal: {
+      title: 'Paradas',
+      duration: 'Duración',
+      capacity: 'Capacidad',
       placeholder: 'Las paradas de la ruta seleccionada se mostrarán aquí'
     },
     allRoutesHorizontal: {
-      placeholder: 'Todas las rutas se mostrarán aquí'
+      title: 'Vista General de Todas las Rutas',
+      placeholder: 'Todas las rutas se mostrarán aquí',
+      stops: 'Paradas',
+      capacity: 'Capacidad',
+      time: 'Tiempo',
+      duration: 'Duración',
+      distance: 'Distancia'
     }
   }
 }

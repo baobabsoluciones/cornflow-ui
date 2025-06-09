@@ -29,8 +29,8 @@
         </div>
       </div>
       <div class="routes-dashboard-bottom">
-        <RouteStopsHorizontal v-if="selectedRoute" />
-        <AllRoutesHorizontal v-else />
+        <RouteStopsHorizontal v-if="selectedRoute !== 'all'" :selectedRoute="selectedRoute" :enrichedRoutes="enrichedRoutes" />
+        <AllRoutesHorizontal v-else :routes="routes" />
       </div>
     </div>
   </div>
@@ -71,13 +71,10 @@ const description = computed(() => selectedExecution.value ? selectedExecution.v
   display: flex;
   flex-direction: row;
   gap: 2rem;
-  height: 400px;
-  min-height: 400px;
+  flex: 2;
 }
 .routes-dashboard-map {
   flex: 1;
-  height: 100%;
-  min-height: 400px;
 }
 .routes-dashboard-info {
   flex: 1;
@@ -86,5 +83,6 @@ const description = computed(() => selectedExecution.value ? selectedExecution.v
 }
 .routes-dashboard-bottom {
   margin-top: 2rem;
+  flex: 1;
 }
 </style> 
