@@ -167,7 +167,6 @@ This file contains application-specific configuration that cannot be changed thr
 ## 2.2. App folder configuration
 Inside the app folder, there are several changes that can be done to configurate your client project. This folder is meant to be for all customizations done for the client.
    - `assets/logo`: This directory should contain the logo images for the application. The name should be the same as the default ones (logo.png and full_logo.png)
-   - `assets/manual`: This directory should contain the user manual for the application. The names should be mantained, and if another language is added it should match with the name declared on i18n (Example: user_manual_fr for french)
    - `app/assets/style/variables.css`: This file should define the main colors of the application. Mantain the variable names and only change the colors.
    - `models`: This directory should define the instance, solution, experiment, and execution models for the application. It always extends the main classes but methods can be overwritten.
    - `views`: This directory should contain all the custom views needed for the application.
@@ -177,6 +176,11 @@ Inside the app folder, there are several changes that can be done to configurate
    - `plugins/locales`: This folder contains three files (`en.ts`, `es.ts`, `fr.ts`) to add any text needed in the app views and components. Be careful not to duplicate the names with the original locales files (`src/plugins/locales`).
 
 * Additionally, favicon can be replaced by a new one in public/favicon.png
+
+5. **User manuals**: Place your user manual PDF files in the `public/manual` directory with the following naming convention:
+   - `user_manual_en.pdf` for English
+   - `user_manual_es.pdf` for Spanish
+   - `user_manual_fr.pdf` for French
 
 ## 3. Important disclaimer
 It's important not to edit any other file or folders. Only the folders, files and images just mentioned can be edited.
