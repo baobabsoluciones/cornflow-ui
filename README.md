@@ -360,6 +360,7 @@ Using environment variables (when useConfigJson: false):
 VITE_APP_AUTH_TYPE=azure
 VITE_APP_AUTH_CLIENT_ID=your_azure_client_id
 VITE_APP_AUTH_AUTHORITY=your_azure_authority
+VITE_APP_AUTH_REDIRECT_URI=your-redirect-uri
 ```
 
 Using values.json (when useConfigJson: true):

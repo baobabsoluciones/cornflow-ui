@@ -107,7 +107,7 @@ export default {
   computed: {
     manualFile() {
       const lang = this.$i18n.locale
-      return `/manual/user_manual_${lang}.pdf`
+      return `${import.meta.env.BASE_URL}manual/user_manual_${lang}.pdf`
     },
     licences() {
       return this.store.getLicences
