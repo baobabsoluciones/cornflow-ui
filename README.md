@@ -102,6 +102,7 @@ This file contains application-specific configuration that cannot be changed thr
       },
       
       // Dashboard Configuration
+      showDashboardMainView: false, // Controls if the dashboard main view should be shown. If false, the dashboard will be shown as a list of pages.
       dashboardLayout: [...],
       dashboardPages: [...],
       dashboardRoutes: [...],

@@ -13,7 +13,7 @@
  * - `name`: The name of the application (comes from values.json or environment variables)
  * - `hasExternalApp`: Controls if the application has an external app (comes from values.json or environment variables)
  *  * - `isDeveloperMode`: Controls if the application is in developer mode
-
+ *  * - `showDashboardMainView`: Controls if the dashboard main view should be shown. If false, the dashboard will be shown as a list of pages.
  *  * - `showTablesWithoutSchema`: Controls if tables that are not defined in the schema should be shown. If false, only tables defined in the schema will be shown.
  * - `showExtraProjectExecutionColumns`: Controls visibility of additional columns in the project execution table
  *   - `showUserName`: Shows or hides the username column
@@ -93,6 +93,8 @@
  *       useHashMode: true,
  *       schema: config.schema,
  *       name: config.name,
+ *       hasExternalApp: config.hasExternalApp,
+ *       showDashboardMainView: true,
  *       showTablesWithoutSchema: false,
  *       showExtraProjectExecutionColumns: {
  *         showUserName: false,
@@ -185,9 +187,10 @@ const createAppConfig = () => ({
       useHashMode: true,
       schema: config.schema,
       name: config.name,
-      isDeveloperMode: true,
+      isDeveloperMode: false,
       hasExternalApp: config.hasExternalApp,
       showTablesWithoutSchema: false,
+      showDashboardMainView: true,
       showExtraProjectExecutionColumns: {
         showUserName: false,
         showEndCreationDate: false,
