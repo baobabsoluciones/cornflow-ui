@@ -3,7 +3,7 @@
     "auth_type": "cornflow",
     "schema": "rostering",
     "name": "Rostering",
-    "hasExternalApp": false,
+    "hasExternalApp": 0,
     "cognito": {
       "region": "your-region",
       "user_pool_id": "your-user-pool-id",
