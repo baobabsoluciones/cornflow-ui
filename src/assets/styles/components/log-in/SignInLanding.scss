@@ -1,0 +1,522 @@
+// Variables for better maintainability
+$primary-light-variant: var(--primary-light-variant);
+$primary-color: var(--primary);
+$title-color: var(--title);
+$secondary-color: var(--secondary);
+
+// Responsive breakpoints
+$mobile: 768px;
+$tablet: 1024px;
+$desktop: 1200px;
+
+// Common values
+$panel-gap: 4px;
+$card-radius: 16px;
+$form-max-width: 350px;
+$transition-smooth: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+$transition-card-move: all 1.2s cubic-bezier(0.4, 1.4, 0.6, 1);
+
+// Mixins
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin absolute-full {
+  position: absolute;
+  inset: 0;
+}
+
+@mixin panel-positioning($gap: $panel-gap) {
+  width: 100%;
+  height: 100%;
+  padding: $gap;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.signin-landing {
+  position: relative;
+  min-height: 100vh;
+  height: 100vh; // Force exact viewport height
+  background: #fafbfc;
+  overflow: hidden; // Prevent vertical scrolling
+
+  .v-btn {
+    color: white;
+  }
+
+  // Allow scrolling on very short screens
+  @media (max-height: 500px) {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  // Left panel - animated cards section
+  .left-panel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 60%;
+    height: 100vh;
+    overflow: hidden;
+    z-index: 1;
+
+    @media (max-width: $tablet) {
+      width: 45%;
+    }
+
+    @media (max-width: $mobile) {
+      width: 35%;
+      height: 100vh;
+      position: absolute; // Keep as side panel but smaller
+    }
+  }
+
+  .background-image {
+    @include absolute-full;
+    background: url('@/app/assets/login_background.png') center/cover no-repeat;
+    z-index: 1;
+  }
+
+  .overlay {
+    @include absolute-full;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 2;
+  }
+
+  // Add a solid background layer that extends beyond the panel
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -2px; // Extend slightly to cover any line
+    width: 2px;
+    height: 100%;
+    background: $primary-light-variant;
+    z-index: 5;
+
+    @media (max-width: $mobile) {
+      display: none;
+    }
+  }
+
+  .mask-grid {
+    @include absolute-full;
+    z-index: 3;
+    pointer-events: none;
+
+    &-inner {
+      @include panel-positioning;
+
+      > .card-move {
+        position: relative;
+        z-index: 4;
+        pointer-events: auto;
+        width: 100%;
+        height: 100%;
+      }
+    }
+  }
+
+  .panel-svg {
+    @include absolute-full;
+    z-index: 3;
+    pointer-events: none;
+  }
+
+  // Animated cards
+  .animated-card {
+    cursor: pointer;
+    user-select: none;
+    position: absolute;
+    z-index: 4;
+    border-radius: #{$card-radius}px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.10);
+    transition: $transition-smooth;
+  }
+
+  .card-icon {
+    margin-bottom: 6px;
+    @include flex-center;
+  }
+
+  .card-text {
+    font-size: clamp(0.8rem, 1.5vw, 1.2rem); // Responsive font size
+    font-weight: 600;
+    color: white;
+    text-align: center;
+    white-space: pre-line;
+    letter-spacing: 0.1em;
+
+    @media (max-width: $tablet) {
+      font-size: clamp(0.7rem, 1.2vw, 1rem);
+    }
+  }
+
+  .card-image {
+    width: 80%;
+    height: 80%;
+    @include flex-center;
+    margin-bottom: 8px;
+
+    img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    &-half {
+      height: 40%;
+    }
+
+    &-small {
+      width: auto !important;
+      height: 60% !important;
+    }
+  }
+
+  // Right panel - form section
+  .right-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 40%;
+    height: 100vh;
+    background: $primary-light-variant;
+    @include flex-center;
+    z-index: 2;
+
+    @media (max-width: $tablet) {
+      width: 55%;
+    }
+
+    @media (max-width: $mobile) {
+      width: 65%;
+      right: 0;
+      position: absolute;
+    }
+  }
+
+  .form-container {
+    &.minimal-form {
+      width: 100%;
+      max-width: $form-max-width;
+      margin: 0 auto;
+      padding: 48px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+
+      @media (max-width: $mobile) {
+        padding: 16px 12px;
+        max-width: none;
+        min-height: 100vh;
+        justify-content: center;
+      }
+
+      // Compact layout for short screens
+      @media (max-height: 700px) {
+        padding: 20px 20px;
+        gap: 0.5rem;
+      }
+
+      // Extra compact for very short screens
+      @media (max-height: 600px) {
+        padding: 16px 20px;
+        gap: 0.25rem;
+      }
+    }
+  }
+
+  .app-logo {
+    color: $title-color;
+    font-size: clamp(1.8rem, 2.2rem, 2.5rem);
+    text-align: center;
+    margin-bottom: 2.5rem;
+    letter-spacing: 0.04em;
+    font-weight: 400;
+
+    @media (max-width: $mobile) {
+      margin-bottom: 2rem;
+    }
+
+    // Compact spacing for short screens
+    @media (max-height: 700px) {
+      font-size: clamp(1.5rem, 1.8rem, 2rem);
+      margin-bottom: 1.5rem;
+    }
+
+    @media (max-height: 600px) {
+      font-size: clamp(1.2rem, 1.5rem, 1.8rem);
+      margin-bottom: 1rem;
+    }
+
+    &-bold {
+      font-weight: bold;
+      letter-spacing: -0.02em;
+    }
+
+    &-normal {
+      font-weight: normal;
+      margin-left: 0.3em;
+      letter-spacing: -0.02em;
+    }
+  }
+
+  .login-form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+
+    :deep(.v-field) {
+      background-color: white;
+    }
+
+    // Compact form spacing for short screens
+    @media (max-height: 700px) {
+      gap: 0.3rem;
+    }
+
+    @media (max-height: 600px) {
+      gap: 0.2rem;
+    }
+  }
+
+  .main-signin-btn {
+    margin-top: 18px;
+    font-size: 1rem;
+    font-weight: 400;
+    height: 42px;
+    letter-spacing: 0.04em;
+    text-transform: none;
+
+    @media (max-width: $mobile) {
+      height: 48px; // Bigger touch target on mobile
+    }
+
+    // Compact spacing for short screens
+    @media (max-height: 700px) {
+      margin-top: 12px;
+    }
+
+    @media (max-height: 600px) {
+      margin-top: 8px;
+    }
+  }
+
+  // Divider section
+  .divider-container {
+    display: flex;
+    align-items: center;
+    margin: 24px 0;
+    width: 100%;
+
+    // Compact spacing for short screens
+    @media (max-height: 700px) {
+      margin: 16px 0;
+    }
+
+    @media (max-height: 600px) {
+      margin: 12px 0;
+    }
+  }
+
+  .divider-line {
+    flex: 1;
+    height: 1px;
+    background-color: #e0e0e0;
+  }
+
+  .divider-text {
+    margin: 0 16px;
+    font-size: 0.875rem;
+    color: #666;
+    font-weight: 500;
+  }
+
+  // Social buttons
+  .social-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .social-btn {
+    width: 100%;
+    height: 42px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-transform: none;
+    border: 1px solid #dadce0;
+    background-color: white;
+    @include flex-center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 4px; // Added border radius
+
+    &:hover {
+      background-color: #f8f9fa;
+      box-shadow: 0 1px 6px rgba(0, 0, 0, 0.15);
+      transform: translateY(-1px); // Subtle lift effect
+    }
+
+    @media (max-width: $mobile) {
+      height: 48px; // Bigger touch target on mobile
+    }
+
+    &.google-btn {
+      color: #3c4043;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    &.microsoft-btn {
+      color: #5e5e5e;
+      border: 1px solid #8c8c8c;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+  }
+
+  .logo-image {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+    flex-shrink: 0; // Prevent logo from shrinking
+  }
+
+  // Animations
+  .card-move-enter-active,
+  .card-move-leave-active {
+    transition: $transition-card-move;
+  }
+
+  .card-move-enter-from,
+  .card-move-leave-to {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  .card-mask {
+    @include absolute-full;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.18;
+  }
+
+  .dots-mask {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+}
+
+// Additional responsive improvements for very small screens
+@media (max-width: 480px) {
+  .signin-landing {
+    .left-panel {
+      width: 30% !important;
+    }
+    
+    .right-panel {
+      width: 70% !important;
+    }
+    
+    .card-text {
+      font-size: 0.6rem !important;
+    }
+  }
+}
+
+// Landscape/wide screen optimizations
+@media (orientation: landscape) and (max-height: 800px) {
+  .signin-landing {
+    .left-panel {
+      width: 55%; // More space for cards in landscape
+    }
+    
+    .right-panel {
+      width: 45.5%; // Less space for form in landscape
+    }
+    
+    .form-container.minimal-form {
+      padding: 16px 20px !important;
+      gap: 0.3rem;
+    }
+    
+    .app-logo {
+      font-size: clamp(1.4rem, 1.6rem, 1.8rem) !important;
+      margin-bottom: 1rem !important;
+    }
+    
+    .divider-container {
+      margin: 12px 0 !important;
+    }
+    
+    .main-signin-btn {
+      margin-top: 8px !important;
+    }
+  }
+}
+
+// Extra compact for very short wide screens
+@media (orientation: landscape) and (max-height: 600px) {
+  .signin-landing {
+    .left-panel {
+      width: 60%;
+    }
+    
+    .right-panel {
+      width: 40%;
+    }
+    
+    .form-container.minimal-form {
+      padding: 8px 16px !important;
+      gap: 0.2rem;
+    }
+    
+    .app-logo {
+      font-size: clamp(1.2rem, 1.4rem, 1.6rem) !important;
+      margin-bottom: 0.5rem !important;
+    }
+    
+    .divider-container {
+      margin: 8px 0 !important;
+    }
+    
+    .social-buttons {
+      gap: 8px !important;
+    }
+    
+    .social-btn {
+      height: 36px !important;
+      font-size: 0.8rem !important;
+    }
+  }
+}
+
+// High DPI displays optimization
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 2dppx) {
+  .background-image {
+    background-image: url('@/app/assets/login_background@2x.png'); // If available
+  }
+}
+
+// Reduce motion for accessibility
+@media (prefers-reduced-motion: reduce) {
+  .animated-card,
+  .card-move-enter-active,
+  .card-move-leave-active,
+  .social-btn {
+    transition: none;
+  }
+} 

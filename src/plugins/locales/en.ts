@@ -203,6 +203,8 @@ export default {
     subtitle: 'Log in to get started!',
     azure_button: 'Login with Azure',
     cognito_button: 'Login with AWS',
+    google_button: 'Continue with Google',
+    microsoft_button: 'Continue with Microsoft',
     username_textfield_label: 'Username',
     password_textfield_label: 'Password',
     button_label: 'Log in',
