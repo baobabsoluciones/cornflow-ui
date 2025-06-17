@@ -100,24 +100,9 @@ router.beforeEach(async (to, from, next) => {
     const isAuthenticated = auth.isAuthenticated()
     const isSignInPage = to.path === '/sign-in'
     const isTargetingAuthRequiredPage = to.path !== '/sign-in'
-    const isExternalAuth = config.auth.type !== 'cornflow'
 
     // If not authenticated and going to a protected page
     if (!isAuthenticated && isTargetingAuthRequiredPage) {
-      if (isExternalAuth) {
-        try {
-          const loginResult = await auth.login()
-          if (!loginResult) {
-            next('/sign-in')
-          }
-          // We don't call next() here as we are being redirected
-          return
-        } catch (error) {
-          console.error('Login failed:', error)
-          next('/sign-in')
-          return
-        }
-      }
       next('/sign-in')
       return
     }

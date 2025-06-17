@@ -215,6 +215,12 @@ export default {
     processing_auth: 'Processing authentication...',
     redirecting: 'Redirecting to external authentication... If the redirection does not happen automatically, please contact technical support for assistance.',
     session_expired: 'Your session has expired. Please sign in again.',
+    or_divider: 'OR',
+    form_login_disabled: 'Username and password login is not available with this authentication method. Please use the social login buttons.',
+    google_not_configured: 'Google authentication is not configured',
+    google_not_available: 'Google authentication service is not available',
+    microsoft_not_configured: 'Microsoft authentication is not configured',
+    microsoft_not_available: 'Microsoft authentication service is not available',
   },
   logOut: {
     title: 'Log out',

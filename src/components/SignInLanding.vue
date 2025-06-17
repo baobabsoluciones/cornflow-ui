@@ -54,7 +54,7 @@
               <div v-if="card.icon" class="card-icon">
                 <v-icon :icon="card.icon" size="20" />
               </div>
-              <div v-if="card.text" class="card-text">{{ $t(card.text) }}</div>
+              <div v-if="card.text" class="card-text">{{ t(card.text) }}</div>
             </div>
           </transition-group>
         </div>
@@ -68,26 +68,26 @@
         <v-form @submit.prevent="submitLogIn()" class="login-form">
           <MInputField
             v-model="username"
-            :title="$t('logIn.username_textfield_label')"
-            :placeholder="$t('logIn.username_textfield_label')"
+            :title="t('logIn.username_textfield_label')"
+            :placeholder="t('logIn.username_textfield_label')"
             type="text"
             :rules="[rules.required]"
           />
           <MInputField
             v-model="password"
-            :title="$t('logIn.password_textfield_label')"
-            :placeholder="$t('logIn.password_textfield_label')"
+            :title="t('logIn.password_textfield_label')"
+            :placeholder="t('logIn.password_textfield_label')"
             type="password"
             :rules="[rules.required]"
           />
           <v-btn type="submit" color="var(--primary)" class="form-btn main-signin-btn" rounded="sm" block>
-            {{ $t('logIn.button_label') }}
+            {{ t('logIn.button_label') }}
           </v-btn>
         </v-form>
         
         <div class="divider-container">
           <div class="divider-line"></div>
-          <span class="divider-text">OR</span>
+          <span class="divider-text">{{ t('logIn.or_divider') }}</span>
           <div class="divider-line"></div>
         </div>
         
@@ -95,16 +95,18 @@
           <button
             class="social-btn google-btn"
             @click="initiateGoogleAuth"
+            :title="t('logIn.google_button')"
           >
             <img src="@/app/assets/logo/google_logo.png" alt="Google" class="logo-image" />
-            <span>Continue with Google</span>
+            <span>{{ t('logIn.google_button') }}</span>
           </button>
           <button
             class="social-btn microsoft-btn"
             @click="initiateMicrosoftAuth"
+            :title="t('logIn.microsoft_button')"
           >
             <img src="@/app/assets/logo/microsoft_logo.png" alt="Microsoft" class="logo-image" />
-            <span>Continue with Microsoft</span>
+            <span>{{ t('logIn.microsoft_button') }}</span>
           </button>
         </div>
       </div>
@@ -116,7 +118,8 @@
 import { ref, reactive, computed, onMounted, inject } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGeneralStore } from '@/stores/general'
-import getAuthService from '@/services/AuthServiceFactory'
+import getAuthService, { getAllAuthServices, getSpecificAuthService, isAuthServiceAvailable } from '@/services/AuthServiceFactory'
+import type { AuthServices } from '@/services/AuthServiceFactory'
 import { useRouter } from 'vue-router'
 import type { CSSProperties } from 'vue'
 import config from '@/config'
@@ -133,43 +136,98 @@ const rules = {
   required: (value: string) => !!value || t('rules.required'),
 }
 
-let auth: any = null
+// Auth services
+let authServices: AuthServices | null = null
+let defaultAuth: any = null
+
+// Button availability
+const isGoogleAvailable = ref(false)
+const isMicrosoftAvailable = ref(false)
+
 onMounted(async () => {
-  auth = await getAuthService()
+  try {
+    // Initialize all auth services
+    authServices = await getAllAuthServices()
+    defaultAuth = await getAuthService()
+    
+    // Check which services are available
+    isGoogleAvailable.value = isAuthServiceAvailable('cognito')
+    isMicrosoftAvailable.value = isAuthServiceAvailable('azure')
+    
+    console.log('Auth services initialized:', {
+      cognito: !!authServices.cognito,
+      azure: !!authServices.azure,
+      cornflow: !!authServices.cornflow
+    })
+  } catch (error) {
+    console.error('Failed to initialize auth services:', error)
+    showSnackbar?.(t('logIn.snackbar_message_error'), 'error')
+  }
 })
 
 const submitLogIn = async () => {
   try {
-    const isAuthenticated = await auth.login(username.value, password.value)
+    if (!defaultAuth) {
+      showSnackbar?.(t('logIn.snackbar_message_error'), 'error')
+      return
+    }
+    
+    // Check if auth type is cornflow, if not prevent form login
+    if (config.auth.type !== 'cornflow') {
+      showSnackbar?.(t('logIn.form_login_disabled'), 'error')
+      return
+    }
+    
+    const isAuthenticated = await defaultAuth.login(username.value, password.value)
     if (isAuthenticated) {
       router.push('/')
-      showSnackbar(t('logIn.snackbar_message_success'), 'success')
+      showSnackbar?.(t('logIn.snackbar_message_success'), 'success')
     } else {
-      showSnackbar(t('logIn.snackbar_message_error'), 'error')
+      showSnackbar?.(t('logIn.snackbar_message_error'), 'error')
     }
   } catch (error) {
     console.error('Login error:', error)
-    showSnackbar(t('logIn.snackbar_message_error'), 'error')
+    showSnackbar?.(t('logIn.snackbar_message_error'), 'error')
   }
 }
 
 const initiateGoogleAuth = async () => {
   try {
-    // Handle Google authentication
-    await auth.login('google')
+    if (!isGoogleAvailable.value) {
+      showSnackbar?.(t('logIn.google_not_configured'), 'error')
+      return
+    }
+    
+    const cognitoAuth = await getSpecificAuthService('cognito')
+    if (!cognitoAuth) {
+      showSnackbar?.(t('logIn.google_not_available'), 'error')
+      return
+    }
+    
+    await cognitoAuth.login()
   } catch (error) {
     console.error('Google auth login failed:', error)
-    showSnackbar(t('logIn.snackbar_message_error'), 'error')
+    showSnackbar?.(t('logIn.snackbar_message_error'), 'error')
   }
 }
 
 const initiateMicrosoftAuth = async () => {
   try {
-    // Handle Microsoft authentication
-    await auth.login('microsoft')
+    if (!isMicrosoftAvailable.value) {
+      showSnackbar?.(t('logIn.microsoft_not_configured'), 'error')
+      return
+    }
+    
+    const azureAuth = await getSpecificAuthService('azure')
+    if (!azureAuth) {
+      showSnackbar?.(t('logIn.microsoft_not_available'), 'error')
+      return
+    }
+    
+    await azureAuth.login()
   } catch (error) {
     console.error('Microsoft auth login failed:', error)
-    showSnackbar(t('logIn.snackbar_message_error'), 'error')
+    showSnackbar?.(t('logIn.snackbar_message_error'), 'error')
   }
 }
 
