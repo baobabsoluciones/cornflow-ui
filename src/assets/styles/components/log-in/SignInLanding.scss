@@ -5,9 +5,18 @@ $title-color: var(--title);
 $secondary-color: var(--secondary);
 
 // Responsive breakpoints
+$small-mobile: 768px;
 $mobile: 768px;
 $tablet: 1024px;
 $desktop: 1200px;
+$large-desktop: 1920px;
+$ultra-wide: 2560px;
+
+// Base scale factor for consistent proportions
+$base-scale: 1;
+$medium-scale: 1.15;
+$large-scale: 1.3;
+$ultra-scale: 1.6;
 
 // Common values
 $panel-gap: 4px;
@@ -37,11 +46,9 @@ $transition-card-move: all 1.2s cubic-bezier(0.4, 1.4, 0.6, 1);
 }
 
 .signin-landing {
-  position: relative;
+  display: flex;
   min-height: 100vh;
-  height: 100vh; // Force exact viewport height
   background: #fafbfc;
-  overflow: hidden; // Prevent vertical scrolling
 
   .v-btn {
     color: white;
@@ -56,13 +63,13 @@ $transition-card-move: all 1.2s cubic-bezier(0.4, 1.4, 0.6, 1);
 
   // Left panel - animated cards section
   .left-panel {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 60%;
-    height: 100vh;
+    position: relative;
+    flex: 0 0 60%;
+    min-width: 0;
     overflow: hidden;
-    z-index: 1;
+    display: flex;
+    align-items: stretch;
+    justify-content: stretch;
 
     @media (max-width: $tablet) {
       width: 45%;
@@ -73,17 +80,24 @@ $transition-card-move: all 1.2s cubic-bezier(0.4, 1.4, 0.6, 1);
       height: 100vh;
       position: absolute; // Keep as side panel but smaller
     }
+
+    // Hide left panel completely on small screens
+    @media (max-width: $small-mobile) {
+      display: none;
+    }
   }
 
   .background-image {
-    @include absolute-full;
+    position: absolute;
+    inset: 0;
     background: url('@/app/assets/login_background.png') center/cover no-repeat;
     z-index: 1;
   }
 
   .overlay {
-    @include absolute-full;
-    background: rgba(0, 0, 0, 0.45);
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
     z-index: 2;
   }
 
@@ -98,18 +112,25 @@ $transition-card-move: all 1.2s cubic-bezier(0.4, 1.4, 0.6, 1);
     background: $primary-light-variant;
     z-index: 5;
 
-    @media (max-width: $mobile) {
+    @media (max-width: $small-mobile) {
       display: none;
     }
   }
 
   .mask-grid {
-    @include absolute-full;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
     z-index: 3;
     pointer-events: none;
 
     &-inner {
-      @include panel-positioning;
+      width: 100%;
+      height: 100%;
+      padding: 4px; /* Same as PANEL_GAP */
+      box-sizing: border-box;
+      position: relative;
 
       > .card-move {
         position: relative;
@@ -122,7 +143,10 @@ $transition-card-move: all 1.2s cubic-bezier(0.4, 1.4, 0.6, 1);
   }
 
   .panel-svg {
-    @include absolute-full;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
     z-index: 3;
     pointer-events: none;
   }
@@ -133,37 +157,41 @@ $transition-card-move: all 1.2s cubic-bezier(0.4, 1.4, 0.6, 1);
     user-select: none;
     position: absolute;
     z-index: 4;
-    border-radius: #{$card-radius}px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.10);
-    transition: $transition-smooth;
   }
 
   .card-icon {
     margin-bottom: 6px;
-    @include flex-center;
+    display: flex;
+    justify-content: center;
   }
 
   .card-text {
-    font-size: clamp(0.8rem, 1.5vw, 1.2rem); // Responsive font size
+    font-size: calc(1.5rem * #{$base-scale});
     font-weight: 600;
     color: white;
     text-align: center;
     white-space: pre-line;
     letter-spacing: 0.1em;
 
-    @media (max-width: $tablet) {
-      font-size: clamp(0.7rem, 1.2vw, 1rem);
+    @media (min-width: $large-desktop) {
+      font-size: calc(1.5rem * #{$large-scale});
+    }
+
+    @media (min-width: $ultra-wide) {
+      font-size: calc(1.5rem * #{$ultra-scale});
+    }
+
+    @media (max-width: $small-mobile) {
+      font-size: clamp(0.8rem, 1.2vw, 1.2rem);
     }
   }
 
   .card-image {
     width: 80%;
     height: 80%;
-    @include flex-center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     margin-bottom: 8px;
 
     img {
@@ -184,14 +212,12 @@ $transition-card-move: all 1.2s cubic-bezier(0.4, 1.4, 0.6, 1);
 
   // Right panel - form section
   .right-panel {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 40%;
-    height: 100vh;
-    background: $primary-light-variant;
-    @include flex-center;
-    z-index: 2;
+    flex: 0 0 40%;
+    background: var(--primary-light-variant);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: -2px 0 24px rgba(0,0,0,0.04);
 
     @media (max-width: $tablet) {
       width: 55%;
@@ -202,20 +228,38 @@ $transition-card-move: all 1.2s cubic-bezier(0.4, 1.4, 0.6, 1);
       right: 0;
       position: absolute;
     }
+
+    // Take full width on small screens when left panel is hidden
+    @media (max-width: $small-mobile) {
+      width: 100%;
+      position: static;
+      flex: 1;
+      box-shadow: none;
+    }
   }
 
   .form-container {
     &.minimal-form {
       width: 100%;
-      max-width: $form-max-width;
+      max-width: calc(380px * #{$base-scale});
       margin: 0 auto;
-      padding: 48px 20px;
+      padding: calc(48px * #{$base-scale}) 0;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
 
-      @media (max-width: $mobile) {
+      @media (min-width: $large-desktop) {
+        max-width: calc(380px * #{$large-scale});
+        padding: calc(48px * #{$large-scale}) 0;
+      }
+
+      @media (min-width: $ultra-wide) {
+        max-width: calc(380px * #{$ultra-scale});
+        padding: calc(48px * #{$ultra-scale}) 0;
+      }
+
+      @media (max-width: $small-mobile) {
         padding: 16px 12px;
         max-width: none;
         min-height: 100vh;
@@ -224,39 +268,50 @@ $transition-card-move: all 1.2s cubic-bezier(0.4, 1.4, 0.6, 1);
 
       // Compact layout for short screens
       @media (max-height: 700px) {
-        padding: 20px 20px;
+        padding: calc(32px * #{$base-scale}) 20px;
         gap: 0.5rem;
       }
 
       // Extra compact for very short screens
       @media (max-height: 600px) {
-        padding: 16px 20px;
+        padding: calc(24px * #{$base-scale}) 20px;
         gap: 0.25rem;
       }
     }
   }
 
   .app-logo {
-    color: $title-color;
-    font-size: clamp(1.8rem, 2.2rem, 2.5rem);
+    color: var(--title);
+    font-size: calc(2.8rem * #{$base-scale});
     text-align: center;
-    margin-bottom: 2.5rem;
+    margin-bottom: calc(2.5rem * #{$base-scale});
     letter-spacing: 0.04em;
     font-weight: 400;
 
-    @media (max-width: $mobile) {
-      margin-bottom: 2rem;
+    @media (min-width: $desktop) and (max-width: 1599px) {
+      font-size: calc(2.8rem * #{$medium-scale});
+      margin-bottom: calc(2.5rem * #{$medium-scale});
     }
 
-    // Compact spacing for short screens
-    @media (max-height: 700px) {
-      font-size: clamp(1.5rem, 1.8rem, 2rem);
-      margin-bottom: 1.5rem;
+    @media (min-width: $large-desktop) {
+      font-size: calc(2.8rem * #{$large-scale});
+      margin-bottom: calc(2.5rem * #{$large-scale});
     }
 
-    @media (max-height: 600px) {
-      font-size: clamp(1.2rem, 1.5rem, 1.8rem);
-      margin-bottom: 1rem;
+    @media (min-width: $ultra-wide) {
+      font-size: calc(2.8rem * #{$ultra-scale});
+      margin-bottom: calc(2.5rem * #{$ultra-scale});
+    }
+
+    @media (max-width: $small-mobile) {
+      font-size: clamp(1.6rem, 2.5vw, 2.2rem);
+      margin-bottom: clamp(1.5rem, 2vw, 2rem);
+    }
+
+    // Only apply compact spacing for very short screens
+    @media (max-height: 500px) {
+      font-size: calc(2.2rem * #{$base-scale});
+      margin-bottom: calc(2rem * #{$base-scale});
     }
 
     &-bold {
@@ -275,41 +330,186 @@ $transition-card-move: all 1.2s cubic-bezier(0.4, 1.4, 0.6, 1);
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: calc(0.75rem * #{$base-scale});
 
+    // Form field styling with proportional scaling
     :deep(.v-field) {
       background-color: white;
+      font-size: calc(1rem * #{$base-scale}) !important;
+      
+      .v-field__input {
+        font-size: calc(1rem * #{$base-scale}) !important;
+        padding: calc(12px * #{$base-scale}) calc(16px * #{$base-scale}) !important;
+        min-height: calc(48px * #{$base-scale}) !important;
+      }
+
+      .v-field__outline {
+        --v-field-border-width: calc(1px * #{$base-scale});
+      }
     }
 
-    // Compact form spacing for short screens
-    @media (max-height: 700px) {
-      gap: 0.3rem;
+    // Form field labels
+    :deep(.v-label) {
+      font-size: calc(0.9rem * #{$base-scale}) !important;
     }
 
-    @media (max-height: 600px) {
-      gap: 0.2rem;
+    // MInputField title labels
+    :deep(.title-input) {
+      font-size: calc(0.9rem * #{$base-scale}) !important;
+    }
+
+    // Form field placeholders
+    :deep(.v-field__input input::placeholder) {
+      font-size: calc(1rem * #{$base-scale}) !important;
+    }
+
+    // Icons in form fields (like password visibility toggle)
+    :deep(.v-field__append-inner .v-icon) {
+      font-size: calc(20px * #{$base-scale}) !important;
+    }
+
+    @media (min-width: $large-desktop) {
+      gap: calc(0.75rem * #{$large-scale});
+      
+      :deep(.v-field) {
+        font-size: calc(1rem * #{$large-scale}) !important;
+        
+        .v-field__input {
+          font-size: calc(1rem * #{$large-scale}) !important;
+          padding: calc(12px * #{$large-scale}) calc(16px * #{$large-scale}) !important;
+          min-height: calc(48px * #{$large-scale}) !important;
+        }
+
+        .v-field__outline {
+          --v-field-border-width: calc(1px * #{$large-scale});
+        }
+      }
+
+      :deep(.v-label) {
+        font-size: calc(0.9rem * #{$large-scale}) !important;
+      }
+
+      :deep(.title-input) {
+        font-size: calc(0.9rem * #{$large-scale}) !important;
+      }
+
+      :deep(.v-field__input input::placeholder) {
+        font-size: calc(1rem * #{$large-scale}) !important;
+      }
+
+      :deep(.v-field__append-inner .v-icon) {
+        font-size: calc(20px * #{$large-scale}) !important;
+      }
+    }
+
+    @media (min-width: $ultra-wide) {
+      gap: calc(0.75rem * #{$ultra-scale});
+      
+      :deep(.v-field) {
+        font-size: calc(1rem * #{$ultra-scale}) !important;
+        
+        .v-field__input {
+          font-size: calc(1rem * #{$ultra-scale}) !important;
+          padding: calc(12px * #{$ultra-scale}) calc(16px * #{$ultra-scale}) !important;
+          min-height: calc(48px * #{$ultra-scale}) !important;
+        }
+
+        .v-field__outline {
+          --v-field-border-width: calc(1px * #{$ultra-scale});
+        }
+      }
+
+      :deep(.v-label) {
+        font-size: calc(0.9rem * #{$ultra-scale}) !important;
+      }
+
+      :deep(.title-input) {
+        font-size: calc(0.9rem * #{$ultra-scale}) !important;
+      }
+
+      :deep(.v-field__input input::placeholder) {
+        font-size: calc(1rem * #{$ultra-scale}) !important;
+      }
+
+      :deep(.v-field__append-inner .v-icon) {
+        font-size: calc(20px * #{$ultra-scale}) !important;
+      }
+    }
+
+    @media (max-width: $small-mobile) {
+      gap: clamp(0.5rem, 0.5vw, 0.75rem);
+      
+      :deep(.v-field) {
+        font-size: clamp(0.9rem, 1vw, 1rem) !important;
+        
+        .v-field__input {
+          font-size: clamp(0.9rem, 1vw, 1rem) !important;
+          padding: clamp(10px, 1vw, 12px) clamp(14px, 1.2vw, 16px) !important;
+          min-height: clamp(44px, 4vw, 48px) !important;
+        }
+      }
+
+      :deep(.v-label) {
+        font-size: clamp(0.85rem, 0.9vw, 0.9rem) !important;
+      }
+
+      :deep(.title-input) {
+        font-size: clamp(0.85rem, 0.9vw, 0.9rem) !important;
+      }
+
+      :deep(.v-field__input input::placeholder) {
+        font-size: clamp(0.9rem, 1vw, 1rem) !important;
+      }
+
+      :deep(.v-field__append-inner .v-icon) {
+        font-size: clamp(18px, 1.5vw, 20px) !important;
+      }
+    }
+
+    // Only compact for very short screens
+    @media (max-height: 500px) {
+      gap: calc(0.5rem * #{$base-scale});
     }
   }
 
   .main-signin-btn {
-    margin-top: 18px;
-    font-size: 1rem;
-    font-weight: 400;
-    height: 42px;
-    letter-spacing: 0.04em;
-    text-transform: none;
+    margin-top: calc(1.5rem * #{$base-scale}) !important;
+    font-size: calc(1rem * #{$base-scale}) !important;
+    font-weight: 400 !important;
+    height: calc(48px * #{$base-scale}) !important;
+    letter-spacing: 0.04em !important;
+    text-transform: none !important;
+    
+    // Proportional padding
+    padding: calc(12px * #{$base-scale}) calc(20px * #{$base-scale}) !important;
 
-    @media (max-width: $mobile) {
-      height: 48px; // Bigger touch target on mobile
+    @media (min-width: $large-desktop) {
+      margin-top: calc(1.5rem * #{$large-scale}) !important;
+      font-size: calc(1rem * #{$large-scale}) !important;
+      height: calc(48px * #{$large-scale}) !important;
+      padding: calc(12px * #{$large-scale}) calc(20px * #{$large-scale}) !important;
     }
 
-    // Compact spacing for short screens
-    @media (max-height: 700px) {
-      margin-top: 12px;
+    @media (min-width: $ultra-wide) {
+      margin-top: calc(1.5rem * #{$ultra-scale}) !important;
+      font-size: calc(1rem * #{$ultra-scale}) !important;
+      height: calc(48px * #{$ultra-scale}) !important;
+      padding: calc(12px * #{$ultra-scale}) calc(20px * #{$ultra-scale}) !important;
     }
 
-    @media (max-height: 600px) {
-      margin-top: 8px;
+    @media (max-width: $small-mobile) {
+      margin-top: clamp(1rem, 1.5vw, 1.5rem) !important;
+      font-size: clamp(0.9rem, 1.2vw, 1rem) !important;
+      height: clamp(44px, 4vw, 48px) !important;
+      padding: clamp(10px, 1vw, 12px) clamp(18px, 2vw, 20px) !important;
+    }
+
+    // Only compact spacing for very short screens
+    @media (max-height: 500px) {
+      margin-top: calc(1rem * #{$base-scale}) !important;
+      font-size: calc(0.9rem * #{$base-scale}) !important;
+      height: calc(44px * #{$base-scale}) !important;
+      padding: calc(10px * #{$base-scale}) calc(16px * #{$base-scale}) !important;
     }
   }
 
@@ -317,16 +517,24 @@ $transition-card-move: all 1.2s cubic-bezier(0.4, 1.4, 0.6, 1);
   .divider-container {
     display: flex;
     align-items: center;
-    margin: 24px 0;
+    margin: calc(1.8rem * #{$base-scale}) 0;
     width: 100%;
 
-    // Compact spacing for short screens
-    @media (max-height: 700px) {
-      margin: 16px 0;
+    @media (min-width: $large-desktop) {
+      margin: calc(1.8rem * #{$large-scale}) 0;
     }
 
-    @media (max-height: 600px) {
-      margin: 12px 0;
+    @media (min-width: $ultra-wide) {
+      margin: calc(1.8rem * #{$ultra-scale}) 0;
+    }
+
+    @media (max-width: $small-mobile) {
+      margin: clamp(1.2rem, 2vw, 1.8rem) 0;
+    }
+
+    // Only compact for very short screens
+    @media (max-height: 500px) {
+      margin: calc(1.2rem * #{$base-scale}) 0;
     }
   }
 
@@ -337,67 +545,139 @@ $transition-card-move: all 1.2s cubic-bezier(0.4, 1.4, 0.6, 1);
   }
 
   .divider-text {
-    margin: 0 16px;
-    font-size: 0.875rem;
+    margin: 0 calc(1rem * #{$base-scale});
+    font-size: calc(0.875rem * #{$base-scale});
     color: #666;
     font-weight: 500;
+
+    @media (min-width: $large-desktop) {
+      margin: 0 calc(1rem * #{$large-scale});
+      font-size: calc(0.875rem * #{$large-scale});
+    }
+
+    @media (min-width: $ultra-wide) {
+      margin: 0 calc(1rem * #{$ultra-scale});
+      font-size: calc(0.875rem * #{$ultra-scale});
+    }
+
+    @media (max-width: $small-mobile) {
+      margin: 0 clamp(0.8rem, 1.2vw, 1rem);
+      font-size: clamp(0.8rem, 0.9vw, 0.875rem);
+    }
   }
 
   // Social buttons
   .social-buttons {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: calc(0.875rem * #{$base-scale});
     width: 100%;
+
+    @media (min-width: $large-desktop) {
+      gap: calc(0.875rem * #{$large-scale});
+    }
+
+    @media (min-width: $ultra-wide) {
+      gap: calc(0.875rem * #{$ultra-scale});
+    }
+
+    @media (max-width: $small-mobile) {
+      gap: clamp(0.75rem, 1vw, 0.875rem);
+    }
   }
 
   .social-btn {
     width: 100%;
-    height: 42px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    text-transform: none;
-    border: 1px solid #dadce0;
-    background-color: white;
+    height: calc(46px * #{$base-scale}) !important;
+    font-size: calc(0.875rem * #{$base-scale}) !important;
+    font-weight: 500 !important;
+    text-transform: none !important;
+    border: calc(1px * #{$base-scale}) solid #dadce0 !important;
+    background-color: white !important;
     @include flex-center;
-    gap: 12px;
+    gap: calc(0.875rem * #{$base-scale}) !important;
     cursor: pointer;
     transition: all 0.2s ease;
-    border-radius: 4px; // Added border radius
+    border-radius: calc(4px * #{$base-scale}) !important;
+    padding: calc(12px * #{$base-scale}) calc(16px * #{$base-scale}) !important;
+
+    @media (min-width: $large-desktop) {
+      height: calc(46px * #{$large-scale}) !important;
+      font-size: calc(0.875rem * #{$large-scale}) !important;
+      border: calc(1px * #{$large-scale}) solid #dadce0 !important;
+      gap: calc(0.875rem * #{$large-scale}) !important;
+      border-radius: calc(4px * #{$large-scale}) !important;
+      padding: calc(12px * #{$large-scale}) calc(16px * #{$large-scale}) !important;
+    }
+
+    @media (min-width: $ultra-wide) {
+      height: calc(46px * #{$ultra-scale}) !important;
+      font-size: calc(0.875rem * #{$ultra-scale}) !important;
+      border: calc(1px * #{$ultra-scale}) solid #dadce0 !important;
+      gap: calc(0.875rem * #{$ultra-scale}) !important;
+      border-radius: calc(4px * #{$ultra-scale}) !important;
+      padding: calc(12px * #{$ultra-scale}) calc(16px * #{$ultra-scale}) !important;
+    }
+
+    @media (max-width: $small-mobile) {
+      height: clamp(42px, 3.5vw, 46px) !important;
+      font-size: clamp(0.8rem, 1vw, 0.875rem) !important;
+      gap: clamp(0.75rem, 1vw, 0.875rem) !important;
+      padding: clamp(10px, 1vw, 12px) clamp(14px, 1.5vw, 16px) !important;
+    }
 
     &:hover {
-      background-color: #f8f9fa;
+      background-color: #f8f9fa !important;
       box-shadow: 0 1px 6px rgba(0, 0, 0, 0.15);
       transform: translateY(-1px); // Subtle lift effect
     }
 
-    @media (max-width: $mobile) {
-      height: 48px; // Bigger touch target on mobile
-    }
-
     &.google-btn {
-      color: #3c4043;
+      color: #3c4043 !important;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
     &.microsoft-btn {
-      color: #5e5e5e;
-      border: 1px solid #8c8c8c;
+      color: #5e5e5e !important;
+      border: calc(1px * #{$base-scale}) solid #8c8c8c !important;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+      @media (min-width: $large-desktop) {
+        border: calc(1px * #{$large-scale}) solid #8c8c8c !important;
+      }
+
+      @media (min-width: $ultra-wide) {
+        border: calc(1px * #{$ultra-scale}) solid #8c8c8c !important;
+      }
     }
   }
 
   .logo-image {
-    width: 18px;
-    height: 18px;
+    width: calc(18px * #{$base-scale});
+    height: calc(18px * #{$base-scale});
     object-fit: contain;
     flex-shrink: 0; // Prevent logo from shrinking
+
+    @media (min-width: $large-desktop) {
+      width: calc(18px * #{$large-scale});
+      height: calc(18px * #{$large-scale});
+    }
+
+    @media (min-width: $ultra-wide) {
+      width: calc(18px * #{$ultra-scale});
+      height: calc(18px * #{$ultra-scale});
+    }
+
+    @media (max-width: $small-mobile) {
+      width: clamp(16px, 1.5vw, 18px);
+      height: clamp(16px, 1.5vw, 18px);
+    }
   }
 
   // Animations
   .card-move-enter-active,
   .card-move-leave-active {
-    transition: $transition-card-move;
+    transition: all 1.2s cubic-bezier(.4,1.4,.6,1);
   }
 
   .card-move-enter-from,
@@ -407,7 +687,8 @@ $transition-card-move: all 1.2s cubic-bezier(0.4, 1.4, 0.6, 1);
   }
 
   .card-mask {
-    @include absolute-full;
+    position: absolute;
+    inset: 0;
     z-index: 1;
     pointer-events: none;
     opacity: 0.18;
@@ -420,8 +701,8 @@ $transition-card-move: all 1.2s cubic-bezier(0.4, 1.4, 0.6, 1);
   }
 }
 
-// Additional responsive improvements for very small screens
-@media (max-width: 480px) {
+// Additional responsive improvements for very small screens (only when left panel is visible)
+@media (max-width: 480px) and (min-width: 601px) {
   .signin-landing {
     .left-panel {
       width: 30% !important;
@@ -453,11 +734,6 @@ $transition-card-move: all 1.2s cubic-bezier(0.4, 1.4, 0.6, 1);
       gap: 0.3rem;
     }
     
-    .app-logo {
-      font-size: clamp(1.4rem, 1.6rem, 1.8rem) !important;
-      margin-bottom: 1rem !important;
-    }
-    
     .divider-container {
       margin: 12px 0 !important;
     }
@@ -465,6 +741,11 @@ $transition-card-move: all 1.2s cubic-bezier(0.4, 1.4, 0.6, 1);
     .main-signin-btn {
       margin-top: 8px !important;
     }
+  }
+
+  .signin-landing .app-logo {
+    font-size: 2.2em !important;
+    margin-bottom: 1rem !important;
   }
 }
 
