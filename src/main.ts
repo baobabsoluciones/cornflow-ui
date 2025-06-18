@@ -39,6 +39,7 @@ import { MTabTable } from 'mango-vue'
 
 import config from '@/config'
 import appConfig from '@/app/config'
+import { setDefaultLanguage } from '@/plugins/i18n'
 
 async function initApp() {
   console.log('Starting app initialization...');
@@ -49,6 +50,12 @@ async function initApp() {
   
   // Update app config with initialized values
   appConfig.updateConfig();
+  
+  // Set the default language from config
+  const defaultLanguage = appConfig.getCore().parameters.defaultLanguage;
+  if (defaultLanguage === 'en' || defaultLanguage === 'es' || defaultLanguage === 'fr') {
+    setDefaultLanguage(defaultLanguage);
+  }
 
   const app = createApp(App);
   const pinia = createPinia()

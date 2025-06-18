@@ -9,6 +9,8 @@
  * - `enableSignup`: Enables or disables the sign-up functionality
  * - `useConfigJson`: If true, gets config variables from values.json, if false from environment variables
  * - `useHashMode`: Controls if the application uses hash mode for routing
+ * - `defaultLanguage`: Sets the default language for i18n (e.g., 'en', 'es', 'fr')
+ * - `valuesJsonPath`: Path to the values.json file for production (default: '/values.json')
  * - `schema`: The schema to use for the application (comes from values.json or environment variables)
  * - `name`: The name of the application (comes from values.json or environment variables)
  * - `hasExternalApp`: Controls if the application has an external app (comes from values.json or environment variables)
@@ -185,6 +187,8 @@ const createAppConfig = () => ({
       enableSignup: false,
       useConfigJson: false,
       useHashMode: true,
+      defaultLanguage: 'es',
+      valuesJsonPath: '/values.json',
       schema: config.schema,
       name: config.name,
       isDeveloperMode: false,
