@@ -65,7 +65,8 @@ interface ConfigValues {
   
       this.loadPromise = new Promise<ConfigValues>((resolve, reject) => {
         const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        const configUrl = isLocalhost ? '/values.json' : `https://${window.location.hostname}/values.json`;
+        const valuesJsonPath = config.getCore().parameters.valuesJsonPath;
+        const configUrl = isLocalhost ? valuesJsonPath : `https://${window.location.hostname}${valuesJsonPath}`;
         
         fetch(configUrl)
           .then(response => response.json())

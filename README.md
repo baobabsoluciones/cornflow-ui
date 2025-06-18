@@ -86,6 +86,8 @@ This file contains application-specific configuration that cannot be changed thr
       useConfigJson: false,  // Controls whether to use values.json or env vars
       enableSignup: false, // Enables or disables the functionality for users to sign-up from login view
       isDeveloperMode: false, // Enables or disables developer mode to upload solution
+      defaultLanguage: 'en', // Sets the default language for i18n ('en', 'es', 'fr')
+      valuesJsonPath: '/values.json', // Path to the values.json file for production
       
       // Schema and branding
       schema: config.schema,  // Read from env/values.json
@@ -416,6 +418,39 @@ parameters: {
 ```
 
 When hash mode is enabled, all routes will include a hash (#) in the URL (e.g., `http://example.com/#/project-execution` instead of `http://example.com/project-execution`).
+
+## Internationalization Configuration
+The application supports multiple languages (English, Spanish, and French). You can configure the default language by setting the `defaultLanguage` parameter in `src/app/config.ts`:
+
+```typescript
+parameters: {
+  // other parameters
+  defaultLanguage: 'es', // 'en' for English, 'es' for Spanish, 'fr' for French
+  // other parameters
+}
+```
+
+Available language codes:
+- `'en'` - English (default)
+- `'es'` - Spanish
+- `'fr'` - French
+
+## Values.json Path Configuration
+When using JSON configuration (`useConfigJson: true`), you can customize the path where the application looks for the `values.json` file by setting the `valuesJsonPath` parameter in `src/app/config.ts`:
+
+```typescript
+parameters: {
+  // other parameters
+  valuesJsonPath: '/config/values.json', // Custom path to values.json
+  // other parameters
+}
+```
+
+The default value is `/values.json`. The application will:
+- For localhost: Use the path as-is (e.g., `/config/values.json`)
+- For production: Prepend the hostname (e.g., `https://example.com/config/values.json`)
+
+This is useful when you need to place the configuration file in a different location than the root of your domain.
 
 
 # Run the application in local
