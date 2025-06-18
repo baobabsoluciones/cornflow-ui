@@ -241,7 +241,7 @@ $transition-card-move: all 1.2s cubic-bezier(0.4, 1.4, 0.6, 1);
   .form-container {
     &.minimal-form {
       width: 100%;
-      max-width: calc(280px * #{$base-scale});
+      max-width: calc(380px * #{$base-scale});
       margin: 0 auto;
       padding: calc(40px * #{$base-scale}) 0;
       display: flex;
@@ -250,12 +250,12 @@ $transition-card-move: all 1.2s cubic-bezier(0.4, 1.4, 0.6, 1);
       justify-content: center;
 
       @media (min-width: $large-desktop) {
-        max-width: calc(280px * #{$large-scale});
+        max-width: calc(380px * #{$large-scale});
         padding: calc(40px * #{$large-scale}) 0;
       }
 
       @media (min-width: $ultra-wide) {
-        max-width: calc(280px * #{$ultra-scale});
+        max-width: calc(380px * #{$ultra-scale});
         padding: calc(40px * #{$ultra-scale}) 0;
       }
 
