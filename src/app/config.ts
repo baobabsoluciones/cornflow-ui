@@ -330,6 +330,12 @@ const createAppConfig = () => ({
       icon: 'mdi-routes',
       to: '/routes',
       pos: 1
+    },
+    {
+      title: i18n.global.t('employees.title'),
+      icon: 'mdi-account-group',
+      to: '/employees',
+      pos: 2
     }
   ],
   dashboardRoutes: [
@@ -337,6 +343,11 @@ const createAppConfig = () => ({
       name: 'routes',
       path: '/routes',
       component: () => import('@/app/views/RoutesView.vue')
+    },
+    {
+      name: 'employees',
+      path: '/employees',
+      component: () => import('@/app/views/EmployeesView.vue')
     }
   ],
   dashboardLayout: [],
