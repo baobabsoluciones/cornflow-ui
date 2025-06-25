@@ -138,6 +138,7 @@ function getStopColor(colorIndex: number) {
   font-weight: 600;
   color: #222;
   margin-top: 0.1em;
+  text-align: center;
 }
 .all-stops-placeholder {
   color: #aaa;
