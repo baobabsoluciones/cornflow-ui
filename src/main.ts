@@ -41,12 +41,9 @@ import config from '@/config'
 import appConfig from '@/app/config'
 import { setDefaultLanguage } from '@/plugins/i18n'
 
-async function initApp() {
-  console.log('Starting app initialization...');
-  
+async function initApp() {  
   // Initialize config first
   await config.initConfig();
-  console.log('Config initialized');
   
   // Update app config with initialized values
   appConfig.updateConfig();

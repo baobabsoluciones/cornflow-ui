@@ -4,7 +4,7 @@
 
 <script>
 import { inject } from 'vue'
-import LogInSignUp from '@/components/LogInSignUp.vue'
+import LogInSignUp from '@/components/SignInLanding.vue'
 
 export default {
   components: {

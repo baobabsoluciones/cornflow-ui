@@ -142,7 +142,9 @@ This file contains application-specific configuration that cannot be changed thr
           message: 'Success solution',
           code: 'Success'
         }
-      }
+      },
+      hasMicrosoftAuth: true,  // Controls if Microsoft authentication button is shown
+      hasGoogleAuth: false,    // Controls if Google authentication button is shown
     }
   }
 }
@@ -343,6 +345,18 @@ Defines the configuration fields for execution parameters. Each field can have:
 
 ## Authentication
 The application supports three authentication methods. Note that for any of these methods to work, the server must be properly configured to accept the corresponding authentication type.
+
+### Authentication configuration
+In addition to the authentication type configuration, you can control which authentication methods are visible in the login page through the following parameters in `src/app/config.ts`:
+
+```typescript
+parameters: {
+  hasMicrosoftAuth: true,  // Controls if Microsoft authentication button is shown
+  hasGoogleAuth: false,    // Controls if Google authentication button is shown
+}
+```
+
+These parameters work independently of the authentication type configuration, allowing you to show or hide specific authentication methods in the UI.
 
 ### 1. Cornflow authentication (Default)
 Using environment variables (when useConfigJson: false):
