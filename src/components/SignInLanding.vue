@@ -93,6 +93,7 @@
         
         <div class="social-buttons">
           <button
+            v-if="isGoogleAvailable"
             class="social-btn google-btn"
             @click="initiateGoogleAuth"
             :title="t('logIn.google_button')"
@@ -101,6 +102,7 @@
             <span>{{ t('logIn.google_button') }}</span>
           </button>
           <button
+            v-if="isMicrosoftAvailable"
             class="social-btn microsoft-btn"
             @click="initiateMicrosoftAuth"
             :title="t('logIn.microsoft_button')"
@@ -150,9 +152,9 @@ onMounted(async () => {
     authServices = await getAllAuthServices()
     defaultAuth = await getAuthService()
     
-    // Check which services are available
-    isGoogleAvailable.value = isAuthServiceAvailable('cognito')
-    isMicrosoftAvailable.value = isAuthServiceAvailable('azure')
+    // Check which services are available based on config parameters
+    isGoogleAvailable.value = store.appConfig.parameters.hasGoogleAuth
+    isMicrosoftAvailable.value = store.appConfig.parameters.hasMicrosoftAuth
     
     console.log('Auth services initialized:', {
       cognito: !!authServices.cognito,
@@ -172,13 +174,20 @@ const submitLogIn = async () => {
       return
     }
     
-    // Check if auth type is cornflow, if not prevent form login
-    if (config.auth.type !== 'cornflow') {
-      showSnackbar?.(t('logIn.form_login_disabled'), 'error')
+    // Check if username and password are filled for cornflow auth
+    if (!username.value || !password.value) {
+      showSnackbar?.(t('rules.required'), 'error')
       return
     }
     
-    const isAuthenticated = await defaultAuth.login(username.value, password.value)
+    // Always use cornflow auth for username/password login
+    const cornflowAuth = await getSpecificAuthService('cornflow')
+    if (!cornflowAuth) {
+      showSnackbar?.(t('logIn.snackbar_message_error'), 'error')
+      return
+    }
+    
+    const isAuthenticated = await cornflowAuth.login(username.value, password.value)
     if (isAuthenticated) {
       router.push('/')
       showSnackbar?.(t('logIn.snackbar_message_success'), 'success')
@@ -198,13 +207,17 @@ const initiateGoogleAuth = async () => {
       return
     }
     
-    const cognitoAuth = await getSpecificAuthService('cognito')
-    if (!cognitoAuth) {
+    // Get the appropriate auth service based on config type
+    const authService = config.auth.type === 'cognito' 
+      ? await getSpecificAuthService('cognito')
+      : await getSpecificAuthService('azure')
+      
+    if (!authService) {
       showSnackbar?.(t('logIn.google_not_available'), 'error')
       return
     }
     
-    await cognitoAuth.login()
+    await authService.login()
   } catch (error) {
     console.error('Google auth login failed:', error)
     showSnackbar?.(t('logIn.snackbar_message_error'), 'error')
@@ -218,13 +231,17 @@ const initiateMicrosoftAuth = async () => {
       return
     }
     
-    const azureAuth = await getSpecificAuthService('azure')
-    if (!azureAuth) {
+    // Get the appropriate auth service based on config type
+    const authService = config.auth.type === 'cognito' 
+      ? await getSpecificAuthService('cognito')
+      : await getSpecificAuthService('azure')
+      
+    if (!authService) {
       showSnackbar?.(t('logIn.microsoft_not_available'), 'error')
       return
     }
     
-    await azureAuth.login()
+    await authService.login()
   } catch (error) {
     console.error('Microsoft auth login failed:', error)
     showSnackbar?.(t('logIn.snackbar_message_error'), 'error')

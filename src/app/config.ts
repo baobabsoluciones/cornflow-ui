@@ -12,9 +12,10 @@
  * - `schema`: The schema to use for the application (comes from values.json or environment variables)
  * - `name`: The name of the application (comes from values.json or environment variables)
  * - `hasExternalApp`: Controls if the application has an external app (comes from values.json or environment variables)
- *  * - `isDeveloperMode`: Controls if the application is in developer mode
- *  * - `showDashboardMainView`: Controls if the dashboard main view should be shown. If false, the dashboard will be shown as a list of pages.
- *  * - `showTablesWithoutSchema`: Controls if tables that are not defined in the schema should be shown. If false, only tables defined in the schema will be shown.
+ * - `isDeveloperMode`: Controls if the application is in developer mode
+ * - `hasMicrosoftAuth`: Controls if Microsoft authentication is enabled in the login page
+ * - `hasGoogleAuth`: Controls if Google authentication is enabled in the login page
+ * - `showTablesWithoutSchema`: Controls if tables that are not defined in the schema should be shown. If false, only tables defined in the schema will be shown.
  * - `showExtraProjectExecutionColumns`: Controls visibility of additional columns in the project execution table
  *   - `showUserName`: Shows or hides the username column
  *   - `showEndCreationDate`: Shows or hides the end creation date column
@@ -42,7 +43,7 @@
  *   - `lookupValue`: string (optional, for arrayByValue). The property to return from the found object (e.g., 'VALOR').
  *   - `default`: Optional default value
  *   - `options`: Required for 'select' type, array of {label, value} pairs
- *   Each field type has specific validation and rendering:
+ * Each field type has specific validation and rendering:
  *   - `number`: Integer input with optional suffix
  *   - `float`: Decimal input with optional suffix
  *   - `boolean`: Switch component
@@ -93,8 +94,6 @@
  *       useHashMode: true,
  *       schema: config.schema,
  *       name: config.name,
- *       hasExternalApp: config.hasExternalApp,
- *       showDashboardMainView: true,
  *       showTablesWithoutSchema: false,
  *       showExtraProjectExecutionColumns: {
  *         showUserName: false,
@@ -183,14 +182,15 @@ const createAppConfig = () => ({
     Solution: Solution,
     parameters: {
       enableSignup: false,
-      useConfigJson: false,
-      useHashMode: true,
+      useConfigJson: true,
+      useHashMode: false,
       schema: config.schema,
       name: config.name,
+      hasMicrosoftAuth: true,
+      hasGoogleAuth: false,
       isDeveloperMode: false,
       hasExternalApp: config.hasExternalApp,
       showTablesWithoutSchema: false,
-      showDashboardMainView: true,
       showExtraProjectExecutionColumns: {
         showUserName: false,
         showEndCreationDate: false,
