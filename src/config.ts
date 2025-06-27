@@ -27,8 +27,6 @@ const config = {
         this.schema = values.schema;
         this.name = values.name;
         this.hasExternalApp = values.hasExternalApp || false;
-
-        console.log('Config initialized with schema from values.json:', this.schema);
         
         // More detailed auth configuration
         if (values.auth_type === 'cognito' && values.cognito) {

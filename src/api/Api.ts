@@ -215,7 +215,6 @@ const apiClient = new ApiClient()
 
 // Update the baseUrl when config is initialized
 config.initConfig().then(() => {
-  console.log('Updating API baseUrl with:', config.backend)
   apiClient.updateBaseUrl(config.backend)
 })
 

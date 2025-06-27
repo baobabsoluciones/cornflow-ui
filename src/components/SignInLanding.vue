@@ -155,12 +155,6 @@ onMounted(async () => {
     // Check which services are available based on config parameters
     isGoogleAvailable.value = store.appConfig.parameters.hasGoogleAuth
     isMicrosoftAvailable.value = store.appConfig.parameters.hasMicrosoftAuth
-    
-    console.log('Auth services initialized:', {
-      cognito: !!authServices.cognito,
-      azure: !!authServices.azure,
-      cornflow: !!authServices.cornflow
-    })
   } catch (error) {
     console.error('Failed to initialize auth services:', error)
     showSnackbar?.(t('logIn.snackbar_message_error'), 'error')
