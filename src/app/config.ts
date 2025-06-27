@@ -187,7 +187,7 @@ const createAppConfig = () => ({
       schema: config.schema,
       name: config.name,
       hasMicrosoftAuth: true,
-      hasGoogleAuth: false,
+      hasGoogleAuth: true,
       isDeveloperMode: false,
       hasExternalApp: config.hasExternalApp,
       showTablesWithoutSchema: false,
