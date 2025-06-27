@@ -175,13 +175,22 @@ export const useGeneralStore = defineStore('general', {
         let execution
         do {
           execution = await this.executionRepository.loadExecution(executionId)
-          if (execution && execution.state !== 1) {
+          // Only continue waiting if execution is still running (state 0) or queued (state -7)
+          if (execution && (execution.state === 0 || execution.state === -7)) {
             await new Promise((resolve) => setTimeout(resolve, 3000))
           }
-        } while (execution && execution.state !== 1)
+        } while (execution && (execution.state === 0 || execution.state === -7))
 
-        const instance = await this.instanceRepository.getInstance(id)
-        return instance
+        // Check if execution completed successfully
+        // Success states: 1 (solved correctly), 2 (loaded manually), -4 (not run by user)
+        if (execution && (execution.state === 1 || execution.state === 2 || execution.state === -4)) {
+          const instance = await this.instanceRepository.getInstance(id)
+          return instance
+        } else {
+          // Execution failed - return null to indicate failure
+          console.warn(`Data checks failed with execution state: ${execution?.state}`)
+          return null
+        }
       } catch (error) {
         console.error('Error getting instance data checks', error)
         return null // Explicitly return null to indicate an error
