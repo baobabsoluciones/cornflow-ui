@@ -299,6 +299,9 @@ export default {
     errorDownloadingExcel: 'An error occurred while downloading the excel',
     generating: 'Generating...',
     download: 'Download',
+    downloadDataChecks: 'Download excel',
+    generatingDataChecks: 'Generating data checks...',
+    errorDownloadingDataChecks: 'An error occurred while downloading the data checks',
   },
   settings: {
     currentPassword: 'Current password',
