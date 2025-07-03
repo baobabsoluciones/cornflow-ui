@@ -1,4 +1,5 @@
 import i18n from '@/plugins/i18n'
+import appConfig from '@/app/config'
 
 /**
  * Gets the keys for a table from both schema and data
@@ -31,14 +32,17 @@ export function getTableDataNames(
 ): any[] {
   // Always use only keys from the data object
   const keys = Object.keys(data);
+  const showTablesWithoutSchema = appConfig.getCore().parameters.showTablesWithoutSchema;
   
   return keys
     .map((el) => {
       const title = getTableDataName(schemaConfig, collection, el, lang)
+      const isInSchema = !!schemaConfig[collection]?.properties[el]
+      const isVisible = getTableVisible(schemaConfig, collection, el)
       return {
         text: title ?? el,
         value: el,
-        visible: getTableVisible(schemaConfig, collection, el)
+        visible: isVisible && (isInSchema || showTablesWithoutSchema)
       }
     })
     .filter(table => table.visible)

@@ -79,7 +79,7 @@ const selectTab = (executionTab) => {
       currentRoute === '/project-execution' ||
       currentRoute === '/history-execution'
     ) {
-      router.push('/input-data') // Go to the input data
+      router.push('/output-data') // Go to the output data
     } else {
       generalStore.incrementUploadComponentKey()
     }

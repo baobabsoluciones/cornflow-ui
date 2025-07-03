@@ -13,6 +13,7 @@ import UserRepository from '@/repositories/UserRepository'
 import ExecutionRepository from '@/repositories/ExecutionRepository'
 import InstanceRepository from '@/repositories/InstanceRepository'
 import LicenceRepository from '@/repositories/LicenceRepository'
+import VersionRepository from '@/repositories/VersionRepository'
 
 import { toISOStringLocal } from '@/utils/data_io'
 import i18n from '@/plugins/i18n'
@@ -28,6 +29,7 @@ export const useGeneralStore = defineStore('general', {
     instanceRepository: new InstanceRepository(),
     userRepository: new UserRepository(),
     licenceRepository: new LicenceRepository(),
+    versionRepository: new VersionRepository(),
     notifications: [] as {
       message: string
       type: 'success' | 'warning' | 'info' | 'error'
@@ -48,6 +50,7 @@ export const useGeneralStore = defineStore('general', {
     autoLoadInterval: null,
     uploadComponentKey: 0,
     tabBarKey: 0,
+    cornflowVersion: '',
   }),
   actions: {
     async initializeData() {
@@ -56,6 +59,7 @@ export const useGeneralStore = defineStore('general', {
       apiClient.default.initializeToken?.()
       
       await this.fetchUser()
+      await this.fetchCornflowVersion()
       await this.setSchema()
       await this.fetchLicences()
     },
@@ -66,6 +70,15 @@ export const useGeneralStore = defineStore('general', {
         this.user = await this.userRepository.getUserById(userId)
       } catch (error) {
         console.error('Error getting user', error)
+      }
+    },
+
+    async fetchCornflowVersion() {
+      try {
+        const version = await this.versionRepository.getCornflowVersion()
+        this.cornflowVersion = version
+      } catch (error) {
+        console.error('Error getting cornflow version', error)
       }
     },
 
@@ -162,26 +175,45 @@ export const useGeneralStore = defineStore('general', {
         let execution
         do {
           execution = await this.executionRepository.loadExecution(executionId)
-          if (execution && execution.state !== 1) {
+          // Only continue waiting if execution is still running (state 0) or queued (state -7)
+          if (execution && (execution.state === 0 || execution.state === -7)) {
             await new Promise((resolve) => setTimeout(resolve, 3000))
           }
-        } while (execution && execution.state !== 1)
+        } while (execution && (execution.state === 0 || execution.state === -7))
 
-        const instance = await this.instanceRepository.getInstance(id)
-        return instance
+        // Check if execution completed successfully
+        // Success states: 1 (solved correctly), 2 (loaded manually), -4 (not run by user)
+        if (execution && (execution.state === 1 || execution.state === 2 || execution.state === -4)) {
+          const instance = await this.instanceRepository.getInstance(id)
+          return instance
+        } else {
+          // Execution failed - return null to indicate failure
+          console.warn(`Data checks failed with execution state: ${execution?.state}`)
+          return null
+        }
       } catch (error) {
         console.error('Error getting instance data checks', error)
         return null // Explicitly return null to indicate an error
       }
     },
 
-    async createExecution(execution: Execution) {
+    async createExecution(execution: Execution, params: string = '') {
       try {
         const newExecution =
-          await this.executionRepository.createExecution(execution)
+          await this.executionRepository.createExecution(execution, params)
         return newExecution
       } catch (error) {
         console.error('Error creating execution', error)
+        return false
+      }
+    },
+
+    async uploadSolutionData(executionId: string, solutionData: any) {
+      try {
+        await this.executionRepository.uploadSolutionData(executionId, solutionData)
+        return true
+      } catch (error) {
+        console.error('Error uploading solution data:', error)
         return false
       }
     },
@@ -372,7 +404,7 @@ export const useGeneralStore = defineStore('general', {
     },
 
     getExecutionSolvers(): string[] {
-      return this.schemaConfig.config.properties.solver.enum
+      return this.schemaConfig.config?.properties.solver?.enum || this.appConfig.parameters.executionSolvers
     },
 
     getLoadedExecutionTabs(): object[] {
@@ -381,6 +413,7 @@ export const useGeneralStore = defineStore('general', {
         let isLoading = false
         switch (execution.state) {
           case 1:
+         case -4:
             icon = 'mdi-checkbox-marked'
             break
           case 0:

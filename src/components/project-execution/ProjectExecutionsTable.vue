@@ -17,7 +17,7 @@
           <div class="cell-content">
             <span>
               {{
-                formatDateByTime ? item.time : new Date(item.createdAt).toISOString().split('T')[0]
+                formatDateByTime ? formatToHHmm(item.createdAt) : new Date(item.createdAt).toISOString().split('T')[0]
               }}
             </span>
           </div>
@@ -25,7 +25,7 @@
         <template v-slot:finishedAt="{ item }">
           <div class="cell-content">
             <span>
-              {{ item.finishedAt ? new Date(item.finishedAt).toISOString().split('T')[0] : '-' }}
+              {{ item.finishedAt ? (formatDateByTime ? formatToHHmm(item.finishedAt) : new Date(item.finishedAt).toISOString().split('T')[0]) : '-' }}
             </span>
           </div>
         </template>
@@ -77,7 +77,7 @@
             </v-tooltip>
           </div>
         </template>
-        <template v-slot:timeLimit="{ item }">
+        <template v-slot:timeLimit="{ item }" v-if="showTimeLimit">
           <div class="cell-content">
             <span>{{ getTimeLimit(item) }} sec</span>
           </div>
@@ -95,26 +95,52 @@
         <template v-slot:solution="{ item }">
           <v-chip
             size="x-small"
-            :color="getSolutionColor(item.solution_state)"
+            :color="getSolutionInfo(item.solution_state).color"
             value="chip"
           >
-            {{ getSolutionCode(item.solution_state) }}
+            {{ getSolutionInfo(item.solution_state).code }}
             <v-tooltip activator="parent" location="bottom">
               <div style="font-size: 11px">
-                {{ getSolutionMessage(item.solution_state) }}
+                {{ getSolutionInfo(item.solution_state).message }}
               </div>
             </v-tooltip>
           </v-chip>
         </template>
         <template v-slot:excel="{ item }">
-          <v-icon size="small" @click="handleDownloadClick(item)">mdi-microsoft-excel</v-icon>
+          <v-icon 
+            v-if="!item.isDownloading" 
+            size="small" 
+            @click="handleDownloadClick(item)"
+          >
+            mdi-microsoft-excel
+          </v-icon>
+          <v-progress-circular
+            v-else
+            indeterminate
+            size="20"
+            width="2"
+            color="primary"
+          ></v-progress-circular>
         </template>
         <template v-slot:actions="{ item }">
           <span>
             <span>
-              <v-icon size="small" class="mr-2" @click="loadExecutionClick(item)">
+              <v-icon 
+                v-if="!loadingExecutions.has(item.id)" 
+                size="small" 
+                class="mr-2" 
+                @click="loadExecutionClick(item)"
+              >
                 mdi-tray-arrow-up
               </v-icon>
+              <v-progress-circular
+                v-else
+                indeterminate
+                size="20"
+                width="2"
+                color="primary"
+                class="mr-2"
+              ></v-progress-circular>
               <v-tooltip activator="parent" location="bottom">
                 <span>
                   {{ $t('executionTable.loadExecution') }}
@@ -166,9 +192,13 @@
 import { inject } from 'vue';
 import { useProjectExecutionsTable } from '@/composables/project-execution-table/useProjectExecutionsTable';
 import { useI18n } from 'vue-i18n';
+import { useGeneralStore } from '@/stores/general';
 
 // Setup i18n
 const { t } = useI18n();
+
+// Get general store
+const generalStore = useGeneralStore();
 
 // Define props
 const props = defineProps({
@@ -192,6 +222,10 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  loadingExecutions: {
+    type: Set,
+    default: () => new Set(),
+  },
 });
 
 // Define emits
@@ -199,6 +233,9 @@ const emit = defineEmits(['loadExecution', 'deleteExecution']);
 
 // Inject snackbar function
 const showSnackbar: (message: string, type: string) => void = inject('showSnackbar') as (message: string, type: string) => void;
+
+// Get showTimeLimit setting from config
+const showTimeLimit = generalStore.appConfig.parameters.showExtraProjectExecutionColumns.showTimeLimit;
 
 // Use our composable with type assertion
 const {
@@ -214,9 +251,7 @@ const {
   cancelDelete,
   handleDownload,
   getStateInfo,
-  getSolutionColor,
-  getSolutionCode,
-  getSolutionMessage,
+  getSolutionInfo,
   getSolverName,
   getTimeLimit,
 } = useProjectExecutionsTable(props as any);
@@ -232,11 +267,22 @@ const confirmDeleteClick = () => {
 };
 
 const handleDownloadClick = async (item: any) => {
-  const result = await handleDownload(item);
-  if (result && typeof result === 'object' && 'error' in result) {
-    showSnackbar(t('inputOutputData.errorDownloadingExcel'), 'error');
+  item.isDownloading = true;
+  try {
+    const result = await handleDownload(item);
+    if (result && typeof result === 'object' && 'error' in result) {
+      showSnackbar(t('inputOutputData.errorDownloadingExcel'), 'error');
+    }
+  } finally {
+    item.isDownloading = false;
   }
 };
+
+// Utility function to format time as HH:mm
+function formatToHHmm(dateString: string): string {
+  const date = new Date(dateString)
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+}
 </script>
 
 <style scoped>

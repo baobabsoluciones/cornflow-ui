@@ -1,5 +1,42 @@
 # Changelog
 
+## [1.2.0] - 09-06-2025
+
+### Added
+- **Feature/manual user in public**  
+  - Moved user manual PDF files from src/app/assets/manual/ to public/manual/ for better production deployment
+  - Updated manual file path in HelpMenu.vue
+  - Updated README.md documentation
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #125
+
+- **Feature/developer mode**  
+  - Implemented isDeveloperMode config variable to enable developer mode for creating executions with solution files without solving
+  - Implemented isExternalApp .env or values.json variable for better backend endpoint definition
+  - Added cornflow version in the help center menu
+  - Updated README with new functionality documentation
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #122
+
+- **Feature/multiple excel import**  
+  - Added support for uploading multiple files when uploading an instance
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #120
+
+- **Feature/new config value extra table fields**  
+  - Added possibility to show new columns in Project execution table (username and end time)
+  - Improved code maintainability through refactoring
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #117
+
+### Changed
+- **Schema visibility improvements**  
+  - Added parameter in config.ts to toggle visibility of tables without json schema
+  - Improved handling of .zip type responses
+  - Added loading spinners for file downloads and execution loading
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #121
+
 ## [1.1.4] - 09-04-2025
 
 ### Added

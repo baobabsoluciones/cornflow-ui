@@ -17,6 +17,10 @@ export class ExperimentCore {
     return this.solution.hasSolution()
   }
 
+  hasInstance() {
+    return this.instance.hasInstance()
+  }
+
   async downloadExcel(
     filename = 'execution',
     saveInstance = true,
@@ -43,7 +47,6 @@ export class ExperimentCore {
       link.href = window.URL.createObjectURL(blob)
       link.download = `instance_${sanitizedFilename}`
       link.click()
-      console.log('Excel file generated correctly:', 'instance')
     }
     if (saveSolution && this.solution != null && this.solution.data != null) {
       workbook = new ExcelJS.Workbook()
@@ -57,7 +60,6 @@ export class ExperimentCore {
       link.href = window.URL.createObjectURL(blob)
       link.download = `solution_${sanitizedFilename}`
       link.click()
-      console.log('Excel file generated correctly: solution')
     }
   }
 }

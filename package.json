@@ -1,7 +1,7 @@
 {
   "name": "cornflow-ui",
   "private": true,
-  "version": "1.1.4",
+  "version": "1.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -27,7 +27,7 @@
     "aws-amplify": "^6.0.12",
     "exceljs": "^4.4.0",
     "jsonschema": "^1.4.1",
-    "mango-vue": "^0.2.3",
+    "mango-vue": "^0.2.7",
     "pinia": "^2.1.7",
     "prettier": "^3.2.5",
     "read-excel-file": "^5.7.1",

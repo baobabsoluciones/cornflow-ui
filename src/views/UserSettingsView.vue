@@ -118,6 +118,7 @@
 import { useGeneralStore } from '@/stores/general'
 import { useI18n } from 'vue-i18n'
 import { inject } from 'vue'
+import config from '@/config'
 
 export default {
   components: {},
@@ -157,6 +158,9 @@ export default {
   },
   created() {
     this.showSnackbar = inject('showSnackbar')
+    if (config.auth.type !== 'cornflow' && this.selectedTab === 'user-profile') {
+      this.selectedTab = 'user-settings'
+    }
   },
   updated() {
     this.resetPasswordFields()
@@ -194,7 +198,6 @@ export default {
           this.showSnackbar(this.$t('settings.snackbarMessageError'), 'error')
         }
       } catch (error) {
-        console.log(error)
         this.showSnackbar(this.$t('settings.snackbarMessageError'), 'error')
       }
     },
@@ -209,16 +212,21 @@ export default {
       )
     },
     userTabs() {
-      return [
+      const tabs = [
         {
           text: this.$t('settings.userSettings'),
           value: 'user-settings',
-        },
-        {
+        }
+      ]
+
+      if (config.auth.type === 'cornflow') {
+        tabs.push({
           text: this.$t('settings.userProfile'),
           value: 'user-profile',
-        },
-      ]
+        })
+      }
+
+      return tabs
     },
     title() {
       return this.$t('settings.user')
@@ -251,7 +259,6 @@ export default {
           this.showSnackbar(this.$t('settings.snackbarMessageError'), 'error')
         }
       } catch (error) {
-        console.log(error)
         this.showSnackbar(this.$t('settings.snackbarMessageError'), 'error')
       }
     },
