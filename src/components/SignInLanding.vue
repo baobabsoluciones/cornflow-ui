@@ -324,10 +324,14 @@ function cardStyle(card: AnimatedCard): CSSProperties {
   const gapPercent = (PANEL_GAP / SVG_PADDED_SIZE) * 100;
   const col = card.gridPosition.col - 1;
   const row = card.gridPosition.row - 1;
+  
+  // Calculate the border radius as a percentage of the panel width to match SVG exactly
+  const borderRadiusPercent = (CARD_RADIUS / PANEL_SIZE) * 100;
+  
   // Offset by one gap for the padding
   return {
     background: card.color,
-    borderRadius: CARD_RADIUS + 'px',
+    borderRadius: `${borderRadiusPercent}%`,
     position: 'absolute',
     left: `calc(${gapPercent}% + ${(col * (panelWidthPercent + gapPercent))}%)`,
     top: `calc(${gapPercent}% + ${(row * (panelWidthPercent + gapPercent))}%)`,
