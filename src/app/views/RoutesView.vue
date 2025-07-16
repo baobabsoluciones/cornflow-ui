@@ -10,7 +10,7 @@
         v-if="selectedExecution"
         :selectedExecution="selectedExecution"
       />
-      <RouteFilterSelector v-if="selectedExecution" class="ml-10" :routes="routes" v-model:selected="selectedRoute" />
+      <RouteFilterSelector v-if="selectedExecution" class="ml-10" :routes="routes" :selected="selectedRoute" @update:selected="selectedRoute = $event" />
 
     </div>
     <ExecutionInfoCard :selectedExecution="selectedExecution">

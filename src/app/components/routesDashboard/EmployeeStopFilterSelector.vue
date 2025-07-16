@@ -6,6 +6,7 @@ import type { EmployeeStop } from '@/app/composables/routesDashboard/useEmployee
 
 const props = defineProps<{
   stops: EmployeeStop[]
+  selected?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -14,7 +15,8 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-const selected = ref<string | null>('all')
+// Initialize with prop value or default to 'all'
+const internalSelected = ref<string | null>(props.selected || 'all')
 
 const stopOptions = computed(() => [
   { title: t('employeesDashboard.filterSelector.all'), value: 'all' },
@@ -24,15 +26,26 @@ const stopOptions = computed(() => [
   }))
 ])
 
-watch(selected, (val) => {
-  emit('update:selected', val)
+// Watch for changes in the internal selection and emit to parent
+watch(internalSelected, (newValue) => {
+  emit('update:selected', newValue)
 })
+
+// Watch for changes in the prop and update internal state
+watch(
+  () => props.selected,
+  (newValue) => {
+    if (newValue !== internalSelected.value) {
+      internalSelected.value = newValue || 'all'
+    }
+  }
+)
 </script>
 
 <template>
   <div class="employee-stop-filter-selector">
     <MInputField
-      v-model="selected"
+      v-model="internalSelected"
       :isSelect="true"
       :options="stopOptions"
       :title="t('employeesDashboard.filterSelector.label')"

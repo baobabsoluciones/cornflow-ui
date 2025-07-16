@@ -5,6 +5,7 @@ import { MInputField } from 'mango-vue'
 
 const props = defineProps<{
   routes: Array<any>
+  selected?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -13,7 +14,8 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-const selected = ref<string | null>('all')
+// Initialize with prop value or default to 'all'
+const internalSelected = ref<string | null>(props.selected || 'all')
 
 const routeOptions = computed(() => [
   { title: t('routesDashboard.filterSelector.all'), value: 'all' },
@@ -23,15 +25,26 @@ const routeOptions = computed(() => [
   }))
 ])
 
-watch(selected, (val) => {
-  emit('update:selected', val)
+// Watch for changes in the internal selection and emit to parent
+watch(internalSelected, (newValue) => {
+  emit('update:selected', newValue)
 })
+
+// Watch for changes in the prop and update internal state
+watch(
+  () => props.selected,
+  (newValue) => {
+    if (newValue !== internalSelected.value) {
+      internalSelected.value = newValue || 'all'
+    }
+  }
+)
 </script>
 
 <template>
   <div class="route-filter-selector">
     <MInputField
-      v-model="selected"
+      v-model="internalSelected"
       :isSelect="true"
       :options="routeOptions"
       :title="t('routesDashboard.filterSelector.label')"

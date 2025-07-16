@@ -14,7 +14,8 @@
         v-if="selectedExecution" 
         class="ml-10" 
         :stops="employeeStops" 
-        v-model:selected="selectedStop" 
+        :selected="selectedStop"
+        @update:selected="selectedStop = $event" 
       />
     </div>
     <ExecutionInfoCard :selectedExecution="selectedExecution">
