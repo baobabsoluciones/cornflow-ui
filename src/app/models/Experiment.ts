@@ -57,6 +57,7 @@ export class Experiment extends ExperimentCore{
           name: stop.cod_bus_stop,
           lat: busStop ? busStop.latitud : null,
           lng: busStop ? busStop.longitud : null,
+          address: busStop ? busStop.address : null,
           stop_index: stopInfo?.stop_index ?? null,
           horary: stopInfo?.horary ?? null,
           capacity_used: stopInfo?.capacity_used ?? null

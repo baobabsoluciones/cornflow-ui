@@ -3,7 +3,7 @@ import { computed, ref, watchEffect } from 'vue'
 export interface Route {
   cod_route: string
   polyline: [number, number][]
-  stops?: Array<{ id: string; name: string; lat: number; lng: number; horary: string; capacity_used: number }>
+  stops?: Array<{ id: string; name: string; lat: number; lng: number; address: string; horary: string; capacity_used: number }>
   colorIndex?: number
 }
 
@@ -21,6 +21,7 @@ export function useRouteMap(routes: Route[], selectedRoute: string | null) {
     latlng: [number, number];
     color: string;
     order: number;
+    address: string;
     horary: string;
     capacity_used: number;
   }>>([])
@@ -81,6 +82,7 @@ export function useRouteMap(routes: Route[], selectedRoute: string | null) {
           latlng: [stop.lat, stop.lng] as [number, number],
           color: colors.markerColor,
           order: stopIndex + 1,
+          address: stop.address,
           horary: stop.horary,
           capacity_used: stop.capacity_used
         }))
@@ -95,6 +97,7 @@ export function useRouteMap(routes: Route[], selectedRoute: string | null) {
         latlng: [stop.lat, stop.lng] as [number, number],
         color: colors.markerColor,
         order: stopIndex + 1,
+        address: stop.address,
         horary: stop.horary,
         capacity_used: stop.capacity_used
       })) || []

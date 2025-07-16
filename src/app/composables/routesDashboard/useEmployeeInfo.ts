@@ -44,17 +44,17 @@ export function useEmployeeInfo(stops: Ref<EmployeeStop[]>, selectedStop: Ref<st
     return selectedStopInfo.value.employees
   })
 
-  // Generate mock data for employee roles and departments
-  const generateMockEmployeeData = (employeeId: string): Pick<Employee, 'role' | 'department' | 'contactInfo'> => {
+  // Generate mock data for employee roles and contact info only
+  // Department should come from real instance data
+  const generateMockEmployeeData = (employeeId: string, realDepartment?: string): Pick<Employee, 'role' | 'department' | 'contactInfo'> => {
     const roles = ['Manager', 'Developer', 'Designer', 'Analyst', 'Coordinator']
-    const departments = ['Engineering', 'Design', 'Operations', 'Marketing', 'HR']
     
     // Use a deterministic index based on the employee ID to keep consistent mocked data
     const index = parseInt(employeeId.replace(/\D/g, '')) || 0
     
     return {
       role: roles[index % roles.length],
-      department: departments[index % departments.length],
+      department: realDepartment || 'Unknown', // Use real department from instance data
       contactInfo: `${employeeId.toLowerCase()}@company.com`
     }
   }

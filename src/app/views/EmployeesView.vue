@@ -26,6 +26,7 @@
             :stops="employeeStops"
             :selectedStop="selectedStop"
             @update:selected="selectedStop = $event"
+            @employee-click="handleEmployeeClick"
           />
         </div>
         <div class="employees-dashboard-info">
@@ -51,7 +52,7 @@ import AllStopsHorizontal from '../components/routesDashboard/AllStopsHorizontal
 import ExecutionInfoCard from '@/components/project-execution/ExecutionInfoCard.vue'
 import ExecutionInfoMenu from '@/components/project-execution/ExecutionInfoMenu.vue'
 import { useGeneralStore } from '@/stores/general'
-import type { EmployeeStop } from '@/app/composables/routesDashboard/useEmployeeMap'
+import type { EmployeeStop, Employee } from '@/app/composables/routesDashboard/useEmployeeMap'
 import { useEmployeeInfo } from '@/app/composables/routesDashboard/useEmployeeInfo'
 
 const generalStore = useGeneralStore()
@@ -60,6 +61,12 @@ const { t } = useI18n()
 
 const selectedExecution = computed(() => generalStore.selectedExecution)
 const selectedStop = ref<string | null>('all')
+
+// Handle employee click from map
+function handleEmployeeClick(employee: Employee) {
+  console.log('Employee clicked:', employee)
+  // Future: Could open employee detail modal or navigate to employee details
+}
 
 // Generate mock employee stop data based on solution data
 const employeeStops = computed((): EmployeeStop[] => {
@@ -93,13 +100,25 @@ const employeeStops = computed((): EmployeeStop[] => {
   )
   
   // Add employees to their assigned stops
-  employees_busStop_assignation.forEach(assignment => {
+  employees_busStop_assignation.forEach((assignment: any) => {
     const stop = stopMap.get(assignment.cod_bus_stop)
-    const employee = employeeMap.get(assignment.employee)
+    const employee = employeeMap.get(assignment.employee) as any
     
     if (stop && employee) {
-      const { generateMockEmployeeData } = useEmployeeInfo([], null)
-      const mockData = generateMockEmployeeData(employee.employee)
+      // Generate mock data only for role and contactInfo, use real department
+      const generateMockEmployeeData = (employeeId: string, realDepartment: string) => {
+        const roles = ['Manager', 'Developer', 'Designer', 'Analyst', 'Coordinator']
+        
+        const index = parseInt(employeeId.replace(/\D/g, '')) || 0
+        
+        return {
+          role: roles[index % roles.length],
+          department: realDepartment || 'Unknown', // Use real department from instance data
+          contactInfo: `${employeeId.toLowerCase()}@company.com`
+        }
+      }
+      
+      const mockData = generateMockEmployeeData(employee.employee, employee.department)
       
       stop.employees.push({
         id: employee.employee,
