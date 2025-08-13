@@ -5,6 +5,7 @@ const config = {
   schema: '',
   name: '',
   hasExternalApp: false,
+  isStagingEnvironment: false,
   auth: {
     type: 'cornflow',
     clientId: '',
@@ -26,7 +27,8 @@ const config = {
         this.backend = values.backend_url;
         this.schema = values.schema;
         this.name = values.name;
-        this.hasExternalApp = values.hasExternalApp || false;
+        this.hasExternalApp = values.hasExternalApp || config.hasExternalApp;
+        this.isStagingEnvironment = values.isStagingEnvironment || config.isStagingEnvironment;
         
         // More detailed auth configuration
         if (values.auth_type === 'cognito' && values.cognito) {
@@ -63,7 +65,8 @@ const config = {
           userPoolId: import.meta.env.VITE_APP_AUTH_USER_POOL_ID || '',
           domain: import.meta.env.VITE_APP_AUTH_DOMAIN || ''
         };
-        this.hasExternalApp = import.meta.env.VITE_APP_EXTERNAL_APP != 0;
+        this.hasExternalApp = import.meta.env.VITE_APP_EXTERNAL_APP != 0 || config.hasExternalApp;
+        this.isStagingEnvironment = import.meta.env.VITE_APP_IS_STAGING_ENVIRONMENT == 1 || config.isStagingEnvironment;
       }
     } catch (error) {
       console.error('Error initializing config:', error);
@@ -73,6 +76,7 @@ const config = {
       this.schema = import.meta.env.VITE_APP_SCHEMA || '';
       this.name = import.meta.env.VITE_APP_NAME || '';
       this.hasExternalApp = import.meta.env.VITE_APP_EXTERNAL_APP != 0;
+      this.isStagingEnvironment = import.meta.env.VITE_APP_IS_STAGING_ENVIRONMENT == 1; 
       this.auth = {
         type: import.meta.env.VITE_APP_AUTH_TYPE || 'cornflow',
         clientId: import.meta.env.VITE_APP_AUTH_CLIENT_ID || '',

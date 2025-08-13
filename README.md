@@ -28,6 +28,7 @@ VITE_APP_BACKEND_URL=https://your-backend-url
 VITE_APP_SCHEMA=rostering
 VITE_APP_NAME=Rostering
 VITE_APP_EXTERNAL_APP=0
+VITE_APP_IS_STAGING_ENVIRONMENT=0
 
 # Authentication Configuration
 VITE_APP_AUTH_TYPE=cornflow  # Options: cornflow, azure, cognito
@@ -48,6 +49,7 @@ Used when `useConfigJson: true` in `src/app/config.ts`. Create this file based o
     "schema": "rostering",
     "name": "Rostering",
     "hasExternalApp": 0,
+    "isStagingEnvironment": 0,
     "auth_type": "cornflow",
     "cognito": {
       "region": "your-region",
@@ -101,6 +103,7 @@ This file contains application-specific configuration that cannot be changed thr
         showUserName: false,     
         showEndCreationDate: false,
         showTimeLimit: true,
+        showUserFullName: false,
       },
       
       // Dashboard Configuration
@@ -217,6 +220,32 @@ VITE_APP_EXTERNAL_APP=1
 // values.json
 {
   "hasExternalApp": 1
+}
+```
+
+### Staging environment mode (isStagingEnvironment)
+The `isStagingEnvironment` parameter controls whether to display a warning banner at the top of the application indicating that you are in a staging environment.
+
+- When `isStagingEnvironment: 1`:
+  - Shows a marquee warning banner at the top of the application with the text "🚧 [Staging Warning Message] 🚧"
+  - The banner has a light red background and is clearly visible to users
+  - Helps users easily identify when they are working in a staging environment
+
+- When `isStagingEnvironment: 0` (default):
+  - No warning banner is displayed
+  - Normal production view is shown
+
+This parameter can be set in either the environment variables or values.json:
+
+```env
+# Environment variables
+VITE_APP_IS_STAGING_ENVIRONMENT=1
+```
+
+```json
+// values.json
+{
+  "isStagingEnvironment": 1
 }
 ```
 

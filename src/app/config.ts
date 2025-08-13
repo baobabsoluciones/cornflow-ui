@@ -22,6 +22,7 @@
  *   - `showUserName`: Shows or hides the username column
  *   - `showEndCreationDate`: Shows or hides the end creation date column
  *   - `showTimeLimit`: Shows or hides the time limit column
+ *   - `showUserFullName`: Shows or hides the user full name column
  * - `solverConfig`: Controls solver selection step and default solver.
  *   - `showSolverStep`: boolean. If true, shows the solver selection step. If false, skips the step and uses `defaultSolver`.
  *   - `defaultSolver`: string. The solver to use if `showSolverStep` is false. Used in ProjectExecutionView.vue to set newExecution.config.solver.
@@ -184,7 +185,7 @@ const createAppConfig = () => ({
     Solution: Solution,
     parameters: {
       enableSignup: false,
-      useConfigJson: true,
+      useConfigJson: false,
       useHashMode: false,
       defaultLanguage: 'es',
       valuesJsonPath: '/values.json',
@@ -199,6 +200,7 @@ const createAppConfig = () => ({
         showUserName: false,
         showEndCreationDate: false,
         showTimeLimit: true,
+        showUserFullName: false,
       },
       solverConfig: {
         showSolverStep: true,

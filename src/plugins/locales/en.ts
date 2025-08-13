@@ -144,11 +144,14 @@ export default {
       noSolutionMessage:
         'The execution has been succesfully created but no solution has been found',
     },
+    stagingWarning: 
+    'You are currently working in a staging environment. This environment is intended for testing and development purposes only. For real executions, please switch to the production environment.',
   },
   executionTable: {
     date: 'Time',
     endDate: 'End Time',
     userName: 'User',
+    userFullName: 'User',
     name: 'Name',
     description: 'Description',
     state: 'State',

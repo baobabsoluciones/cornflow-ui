@@ -134,11 +134,14 @@ export default {
       noSolutionMessage:
         'La ejecución se ha creado correctamente, pero no se ha encontrado ninguna solución',
     },
+     stagingWarning: 
+      'Estás en un entorno de pruebas, destinado solamente a desarrollo y testeo. Para ejecuciones reales, por favor utiliza el entorno de producción.'
   },
   executionTable: {
     date: 'Hora',
     endDate: 'Fin',
     userName: 'Usuario',
+    userFullName: 'Usuario',
     name: 'Nombre',
     description: 'Descripción',
     state: 'Estado ejecución',

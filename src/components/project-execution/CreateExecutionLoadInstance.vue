@@ -44,7 +44,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, inject, onMounted, defineProps, defineEmits } from 'vue'
+import { ref, watch, inject, onMounted } from 'vue'
 import { Instance } from '@/app/models/Instance'
 import { useGeneralStore } from '@/stores/general'
 import { useI18n } from 'vue-i18n'
