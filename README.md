@@ -496,6 +496,123 @@ The default value is `/values.json`. The application will:
 This is useful when you need to place the configuration file in a different location than the root of your domain.
 
 
+# Unit testing
+
+The application includes a comprehensive unit testing setup using Vitest and Vue Test Utils. Tests are organized in a specific structure to separate core functionality from application-specific tests.
+
+## Test structure
+
+Unit tests are located in the `tests/unit/` directory, which is organized as follows:
+
+```
+tests/unit/
+├── core/           # Core tests (DO NOT MODIFY)
+│   ├── components/ # Tests for core Vue components
+│   ├── services/   # Tests for core services
+│   ├── stores/     # Tests for Pinia stores
+│   ├── repositories/ # Tests for data repositories
+│   ├── views/      # Tests for core views
+│   ├── setup.ts    # Test setup configuration
+│   └── vuetify-setup.ts # Vuetify test configuration
+└── app/            # Application-specific tests
+    └── (your custom tests go here)
+```
+
+### Core Tests (`tests/unit/core/`)
+- **DO NOT MODIFY** these tests as they are part of the core framework
+- Contains tests for all core functionality including:
+  - Components (authentication, navigation, etc.)
+  - Services (auth services, API clients, etc.)
+  - Stores (Pinia state management)
+  - Repositories (data access layer)
+  - Views (core application views)
+
+### App Tests (`tests/unit/app/`)
+- This is where you should add **your application-specific tests**
+- Tests for custom components, services, and functionality specific to your client application
+- Follow the same structure as core tests for consistency
+
+## Running tests
+
+The following npm scripts are available for testing:
+
+```bash
+# Run all tests
+npm run test
+
+# Run tests with coverage report
+npm run test:coverage
+
+# Run tests with UI interface
+npm run test:ui
+
+# Run tests in watch mode (development)
+npm run test -- --watch
+```
+
+## Coverage reports
+
+The test coverage is configured with the following thresholds:
+- **Branches**: 80%
+- **Functions**: 80%
+- **Lines**: 80%
+- **Statements**: 80%
+
+Coverage reports are generated in multiple formats:
+- **Text**: Console output
+- **JSON**: Machine-readable format
+- **HTML**: Visual report in `coverage/` directory
+
+## Writing Tests
+
+When writing new tests for your application:
+
+1. **Place tests in the correct location**:
+   - Core functionality tests: `tests/unit/core/` (DO NOT MODIFY)
+   - Your app tests: `tests/unit/app/`
+
+2. **Follow naming conventions**:
+   - Test files should end with `.spec.ts`
+   - Use descriptive test names
+   - Group related tests using `describe` blocks
+
+3. **Use the provided setup**:
+   - Tests automatically use the core setup files
+   - Vuetify components are pre-configured
+   - Common mocks and utilities are available
+
+4. **Example test structure**:
+```typescript
+import { describe, test, expect, vi, beforeEach } from 'vitest'
+import { mount } from '@vue/test-utils'
+import YourComponent from '@/app/components/YourComponent.vue'
+import vuetify from '../../core/vuetify-setup'
+
+describe('YourComponent', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  test('renders correctly', () => {
+    const wrapper = mount(YourComponent, {
+      global: {
+        plugins: [vuetify]
+      }
+    })
+    
+    expect(wrapper.exists()).toBe(true)
+  })
+})
+```
+
+## Testing best practices
+
+- **Isolation**: Each test should be independent and not rely on other tests
+- **Mocking**: Mock external dependencies and API calls
+- **Coverage**: Aim for high test coverage, especially for critical functionality
+- **Clarity**: Write clear, descriptive test names and assertions
+- **Maintenance**: Keep tests up to date with code changes
+
 # Run the application in local
 ## Installing
 - Install or update npm

@@ -1,14 +1,14 @@
 <template>
-  <LogInSignUp />
+  <SignInLanding />
 </template>
 
 <script>
 import { inject } from 'vue'
-import LogInSignUp from '@/components/SignInLanding.vue'
+import SignInLanding from '@/components/SignInLanding.vue'
 
 export default {
   components: {
-    LogInSignUp,
+    SignInLanding,
   },
   data() {
     return {
