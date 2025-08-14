@@ -1,5 +1,4 @@
 import config from '@/config'
-import { fetchAuthSession } from 'aws-amplify/auth'
 import { RequestOptions } from '@/interfaces/RequestOptions'
 
 class ApiClient {
@@ -8,6 +7,7 @@ class ApiClient {
   private refreshTokenPromise: Promise<void> | null = null
   private tokenExpiration: number | null = null
   private authToken: string | null = null
+  private refreshTimer: NodeJS.Timeout | null = null
 
   constructor() {
     this.baseUrl = config.backend || ''
@@ -17,6 +17,44 @@ class ApiClient {
   public initializeToken() {
     // Load token from sessionStorage during initialization
     this.authToken = sessionStorage.getItem('token')
+    
+    // Load token expiration if available
+    const tokenExpiration = sessionStorage.getItem('tokenExpiration')
+    if (tokenExpiration) {
+      this.tokenExpiration = parseInt(tokenExpiration, 10)
+      // Start proactive refresh timer if we have expiration info
+      this.scheduleTokenRefresh()
+    }
+  }
+
+  /**
+   * Schedules automatic token refresh before expiration
+   * This makes token renewal completely transparent to the user
+   */
+  private scheduleTokenRefresh() {
+    // Clear any existing timer
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer)
+      this.refreshTimer = null
+    }
+
+    if (!this.tokenExpiration || (config.auth.type !== 'cognito' && config.auth.type !== 'azure')) {
+      return // Don't schedule if no expiration or not external auth
+    }
+
+    const now = Date.now()
+    const timeUntilRefresh = this.tokenExpiration - now - (15 * 60 * 1000) // Refresh 15 minutes before expiry
+
+    if (timeUntilRefresh > 0) {
+      this.refreshTimer = setTimeout(async () => {
+        try {
+          await this.refreshToken()
+        } catch (error) {
+          console.error('Scheduled token refresh failed:', error)
+          // Don't handle as auth failure here since user might not even be using the app
+        }
+      }, timeUntilRefresh)
+    }
   }
 
   updateBaseUrl(newUrl: string) {
@@ -28,7 +66,7 @@ class ApiClient {
       'Content-Type': 'application/json',
     };
 
-    // Load token from sessionStorage if not already se
+    // Load token from sessionStorage if not already set
     if (!this.authToken) {
       this.authToken = sessionStorage.getItem('token');
     }
@@ -43,9 +81,18 @@ class ApiClient {
   }
 
   private isTokenExpired(): boolean {
-    if (!this.tokenExpiration) return true
-    // Add a 5-minute margin to avoid issues with tokens about to expire
-    return Date.now() >= (this.tokenExpiration - 5 * 60 * 1000)
+    if (!this.tokenExpiration) {
+      // If no expiration info, check if we have it in sessionStorage
+      const tokenExpiration = sessionStorage.getItem('tokenExpiration')
+      if (tokenExpiration) {
+        this.tokenExpiration = parseInt(tokenExpiration, 10)
+      } else {
+        return false // Don't assume expiration if we don't have the info
+      }
+    }
+    
+    // Add a 10-minute margin to refresh proactively before expiration
+    return Date.now() >= (this.tokenExpiration - 10 * 60 * 1000)
   }
 
   private async refreshToken(): Promise<void> {
@@ -57,14 +104,56 @@ class ApiClient {
     this.refreshingToken = true
     this.refreshTokenPromise = (async () => {
       try {
-        // Only refresh Cognito token if using external authentication
+        // Only refresh external auth tokens (Azure/Cognito), not Cornflow tokens
         if (config.auth.type === 'cognito' || config.auth.type === 'azure') {
-          const session = await fetchAuthSession()
-          if (!session.tokens?.idToken) {
-            throw new Error('No ID token available')
+          // Dynamically import to avoid circular dependency
+          const getAuthService = await import('@/services/AuthServiceFactory')
+          const authService = await getAuthService.default()
+          
+          if (authService.refreshToken) {
+            const refreshResult = await authService.refreshToken()
+            if (refreshResult) {
+              // Update the stored token expiration in both memory and sessionStorage
+              this.tokenExpiration = refreshResult.expiresAt
+              sessionStorage.setItem('tokenExpiration', refreshResult.expiresAt.toString())
+              
+              // For external auth, we need to exchange the refreshed token with backend
+              try {
+                const backendResponse = await fetch(this.baseUrl + (config.hasExternalApp ? '/cornflow' : '') + '/login/', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${refreshResult.token}`
+                  },
+                  body: JSON.stringify({}),
+                  mode: 'cors'
+                })
+                
+                if (backendResponse.ok) {
+                  const backendData = await backendResponse.json()
+                  if (backendData.token) {
+                    // Update the backend token in sessionStorage and memory
+                    sessionStorage.setItem('token', backendData.token)
+                    this.authToken = backendData.token
+                    sessionStorage.setItem('originalToken', refreshResult.token)
+                    
+                    // Schedule the next automatic refresh
+                    this.scheduleTokenRefresh()
+                  }
+                } else {
+                  throw new Error('Backend token exchange failed')
+                }
+              } catch (error) {
+                console.error('Failed to exchange refreshed token with backend:', error)
+                throw error
+              }
+            } else {
+              throw new Error('Token refresh returned null')
+            }
+          } else {
+            throw new Error('Auth service does not support token refresh')
           }
-          // Save token expiration
-          this.tokenExpiration = session.tokens.idToken.payload.exp * 1000 // Convert to milliseconds
         } else {
           throw new Error('Token refresh not supported for this auth type')
         }
@@ -145,10 +234,19 @@ class ApiClient {
    * Handles authentication failure by clearing session and redirecting to login
    */
   private handleAuthFailure() {
+    // Clear any active refresh timer
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer)
+      this.refreshTimer = null
+    }
+
     // Clear session storage
     sessionStorage.removeItem('token')
+    sessionStorage.removeItem('tokenExpiration')
+    sessionStorage.removeItem('originalToken')
     sessionStorage.setItem('isAuthenticated', 'false')
     this.authToken = null
+    this.tokenExpiration = null
 
     // Clear auth-related data from localStorage
     this.clearLocalStorageAuthData()

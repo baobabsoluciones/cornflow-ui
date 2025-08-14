@@ -102,6 +102,7 @@
  *         showUserName: false,
  *         showEndCreationDate: false,
  *         showTimeLimit: true,
+ *         showUserFullName: false,
  *       },
  *       solverConfig: {
  *         showSolverStep: !config.isDeveloperMode,
