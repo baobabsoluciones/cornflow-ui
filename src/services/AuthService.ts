@@ -46,6 +46,11 @@ class AuthService {
     const isAuthenticated = sessionStorage.getItem('isAuthenticated') === 'true'
     return isAuthenticated
   }
+
+  // Cornflow doesn't support token refresh from front-end side, tokens are managed by the backend
+  async refreshToken(): Promise<{ token: string; expiresAt: number } | null> {
+    return null
+  }
 }
 
 export default new AuthService()

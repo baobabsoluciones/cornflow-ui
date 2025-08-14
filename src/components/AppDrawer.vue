@@ -167,7 +167,9 @@ export default defineComponent({
   computed: {
     user() {
       return {
-        name: this.store.getUser.username,
+        name: appConfig.getCore().parameters.showUserFullName
+          ? this.store.getUser.fullName
+          : this.store.getUser.username,
         email: this.store.getUser.email,
       }
     },

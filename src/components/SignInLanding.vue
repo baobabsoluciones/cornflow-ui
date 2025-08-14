@@ -24,22 +24,6 @@
               </mask>
             </defs>
             <rect :x="0" :y="0" :width="SVG_PADDED_SIZE" :height="SVG_PADDED_SIZE" fill="var(--primary-light-variant)" mask="url(#panel-mask)" />
-            <!-- Removed panel borders that might be causing the line -->
-            <!--
-            <g>
-              <rect v-for="panel in panelPositions"
-                :key="`panel-border-${panel.row}-${panel.col}`"
-                :x="PANEL_GAP + (panel.col-1)*(PANEL_SIZE+PANEL_GAP)"
-                :y="PANEL_GAP + (panel.row-1)*(PANEL_SIZE+PANEL_GAP)"
-                :width="PANEL_SIZE"
-                :height="PANEL_SIZE"
-                :rx="CARD_RADIUS" :ry="CARD_RADIUS"
-                fill="none"
-                stroke="var(--primary-light-variant)"
-                stroke-width="3"
-              />
-            </g>
-            -->
           </svg>
           <transition-group name="card-move" tag="div">
             <div

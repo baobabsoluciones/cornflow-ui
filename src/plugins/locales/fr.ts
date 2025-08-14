@@ -107,20 +107,25 @@ step6: {
 },
 },
 infoCard: {
-createNewExecution: 'Créer une nouvelle exécution',
-loadFromHistory: "Charger depuis l'historique",
-executionCreated: 'Exécution créée avec succès',
-noExecutionSelected: 'Aucune exécution sélectionnée',
-solutionWillLoadMessage:
-  'La solution sera chargée automatiquement dans cette vue lorsque la résolution sera terminée',
-loadExecutionMessage:
-  "Vous pouvez charger une exécution depuis la vue de l'historique ou en créer une nouvelle et la sélectionner dans la barre d'onglets inférieure",
-noSolutionMessage:
-  "L'exécution a été créée avec succès, mais aucune solution n'a été trouvée",
-},
+  createNewExecution: 'Créer une nouvelle exécution',
+  loadFromHistory: "Charger depuis l'historique",
+  executionCreated: 'Exécution créée avec succès',
+  noExecutionSelected: 'Aucune exécution sélectionnée',
+  solutionWillLoadMessage:
+    'La solution sera chargée automatiquement dans cette vue lorsque la résolution sera terminée',
+  loadExecutionMessage:
+    "Vous pouvez charger une exécution depuis la vue de l'historique ou en créer une nouvelle et la sélectionner dans la barre d'onglets inférieure",
+  noSolutionMessage:
+    "L'exécution a été créée avec succès, mais aucune solution n'a été trouvée",
+  },
+stagingWarning:
+'Vous travaillez actuellement dans un environnement de test. Cet environnement est destiné uniquement aux tests et au développement. Pour des exécutions réelles, veuillez utiliser l\'environnement de production.',
 },
 executionTable: {
 date: 'Temps',
+endDate: 'Date de fin',
+userName: 'Utilisateur',
+userFullName: 'Utilisateur',
 name: 'Nom',
 description: 'Description',
 state: 'Statut',

@@ -7,6 +7,7 @@ interface ConfigValues {
     name: string;
     isDeveloperMode?: boolean;
     hasExternalApp?: boolean;
+    isStagingEnvironment?: boolean;
     cognito?: {
       region: string;
       user_pool_id: string;

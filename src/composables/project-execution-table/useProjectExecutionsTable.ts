@@ -17,6 +17,7 @@ interface Execution {
   name: string;
   description: string;
   userName: string | null;
+  userFullName: string | null;
   config: {
     solver?: string;
     timeLimit?: number | string;

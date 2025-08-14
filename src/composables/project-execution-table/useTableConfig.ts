@@ -28,7 +28,8 @@ export function useTableConfig(props: {
     const hasEndDate = showExtraColumns?.showEndCreationDate || false;
     const hasUserName = showExtraColumns?.showUserName || false;
     const hasTimeLimit = showExtraColumns?.showTimeLimit || false;
-    const extraColumnsCount = (hasEndDate ? 1 : 0) + (hasUserName ? 1 : 0);
+    const hasUserFullName = showExtraColumns?.showUserFullName || false;
+    const extraColumnsCount = (hasEndDate ? 1 : 0) + (hasUserName ? 1 : 0) + (hasTimeLimit ? 1 : 0) + (hasUserFullName ? 1 : 0);
     
     // Adjust widths based on number of extra columns shown
     let descWidth = '21%';
@@ -80,7 +81,16 @@ export function useTableConfig(props: {
         fixedWidth: true,
       });
     }
-    
+    if (hasUserFullName) {
+      headers.push({
+        title: t('executionTable.userFullName'),
+        value: 'userFullName',
+        width: '9%',
+        sortable: !props.formatDateByTime,
+        fixedWidth: true,
+      });
+    }
+        
     // Add remaining columns
     headers.push(
       {

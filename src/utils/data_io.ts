@@ -17,23 +17,27 @@ const readTable = function (
       } else {
         // Otherwise, treat the first row as the header row and use it to create the keys for the objects.
         const cols = rows.shift()
-           // Format date headers to maintain original format
-           const formattedCols = cols.map(col => {
-            if (col instanceof Date) {
-              const hours = col.getUTCHours()
-              const minutes = col.getUTCMinutes()
-              if (hours === 0 && minutes === 0) {
-                // Format as YYYY/mm/dd to maintain the desired format
-                const year = col.getFullYear()
-                const month = String(col.getMonth() + 1).padStart(2, '0')
-                const day = String(col.getDate()).padStart(2, '0')
-                return `${day}/${month}/${year}`
-              } else {
-                return col.toISOString().slice(0, 16).replace('T', ' ')
-              }
+        // If cols is undefined (empty sheet), return empty array
+        if (!cols) {
+          return []
+        }
+        
+        const formattedCols = cols.map(col => {
+          if (col instanceof Date) {
+            const hours = col.getUTCHours()
+            const minutes = col.getUTCMinutes()
+            if (hours === 0 && minutes === 0) {
+              // Format as YYYY/mm/dd to maintain the desired format
+              const year = col.getFullYear()
+              const month = String(col.getMonth() + 1).padStart(2, '0')
+              const day = String(col.getDate()).padStart(2, '0')
+              return `${day}/${month}/${year}`
+            } else {
+              return col.toISOString().slice(0, 16).replace('T', ' ')
             }
-            return col
-          })
+          }
+          return col
+        })
         return rows.map((row) =>
           Object.fromEntries(formattedCols.map((col, i) => [col, row[i]])),
         )

@@ -1,3 +1,5 @@
+import getUserFullName from "@/utils/user"
+
 export class Execution {
   message: string
   createdAt: string
@@ -14,6 +16,7 @@ export class Execution {
   id: string
   userId: number
   userName: string | null
+  userFullName: string | null
 
   constructor(
     message: string,
@@ -30,6 +33,8 @@ export class Execution {
     id: string,
     userId: number,
     userName: string | null = null,
+    userFirstName: string | null = null,
+    userLastName: string | null = null,
     finishedAt: string | null = null,
   ) {
     this.message = message
@@ -47,5 +52,6 @@ export class Execution {
     this.id = id
     this.userId = userId
     this.userName = userName
+    this.userFullName = getUserFullName(userFirstName, userLastName)
   }
 }
