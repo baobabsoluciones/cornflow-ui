@@ -1,0 +1,145 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - master
+      - develop
+  push:
+    branches:
+      - master
+      - develop
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '21.x'
+      - name: Generate package-lock.json
+        run: npm i --package-lock-only
+      - name: Set up npm cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      - name: Install dependencies
+        run: npm ci || npm install
+      - name: Run unit tests with coverage
+        run: npm run test:coverage
+      - name: Upload test coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests  # Run after unit tests have completed successfully
+    
+    env:
+      # Set environment variables from GitHub secrets
+      TEST_USERNAME: ${{ secrets.TEST_USERNAME }}
+      TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+      VITE_APP_BACKEND_URL: ${{ secrets.BACKEND_URL }}
+      CI: true
+      PORT: 3000
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '21.x'
+      - name: Generate package-lock.json
+        run: npm i --package-lock-only
+      - name: Set up npm cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      - name: Install dependencies
+        run: npm ci || npm install
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+      - name: Create app .env file
+        run: |
+          cat > .env << EOF
+          VITE_APP_BACKEND_URL=${{ secrets.BACKEND_URL }}
+          VITE_APP_AUTH_TYPE=cornflow
+          EOF
+      - name: Create E2E test .env file
+        run: |
+          mkdir -p tests/e2e
+          cat > tests/e2e/.env << EOF
+          TEST_USERNAME=${{ secrets.TEST_USERNAME }}
+          TEST_PASSWORD=${{ secrets.TEST_PASSWORD }}
+          CI=true
+          DEBUG=pw:api
+          EOF
+      # Check useHashMode in config.ts and set environment variable
+      - name: Set hash mode environment variable
+        run: |
+          if grep -q "useHashMode: true" ./src/app/config.ts; then
+            echo "USE_HASH_MODE=true" >> $GITHUB_ENV
+          else
+            echo "USE_HASH_MODE=false" >> $GITHUB_ENV
+          fi
+      # Comment out the webServer section in playwright.config.ts to avoid conflicts
+      - name: Modify Playwright config for CI
+        run: |
+          if [ -f "playwright.config.ts" ]; then
+            # Comment out the entire webServer section
+            sed -i '/webServer: {/,/},/s/^/\/\/ /' playwright.config.ts
+          fi
+      # Kill any process that might be using port 3000
+      - name: Ensure port is free
+        run: |
+          lsof -i :3000 || true
+          pkill -f "node.*vite" || true
+          sleep 2
+      # Run test script with webServer disabled
+      - name: Run E2E tests with custom configuration
+        run: |
+          # Start server in background
+          npm run dev &
+          # Store the process ID
+          SERVER_PID=$!
+          # Give the server time to start
+          sleep 15
+          echo "Development server started with PID: $SERVER_PID"
+          
+          # Run tests
+          npm run test:e2e || TEST_EXIT_CODE=$?
+          
+          # Kill the server process
+          echo "Shutting down development server (PID: $SERVER_PID)"
+          kill $SERVER_PID || true
+          
+          # If tests failed, exit with the same code
+          if [ -n "$TEST_EXIT_CODE" ]; then
+            echo "Tests failed with exit code: $TEST_EXIT_CODE"
+            exit $TEST_EXIT_CODE
+          fi
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7 

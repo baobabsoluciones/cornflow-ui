@@ -1,36 +1,35 @@
 import { fileURLToPath } from 'url'
+import { defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
+import vuetify from 'vite-plugin-vuetify'
+import { URL } from 'node:url'
 
-export default {
-  testMatch: '**/*.spec.ts', // pattern to find test files
-  plugins: [vue()],
+export default defineConfig({
+  plugins: [
+    vue(),
+    vuetify({ autoImport: true }),
+  ],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
-  server: {
-    hmr: false, // disable hot module replacement
-  },
-  coverage: true, // enable code coverage
   test: {
     globals: true,
     environment: 'jsdom',
+    setupFiles: ['./tests/unit/setup.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
     },
-    setupFiles: ['./tests/setup.ts'], // setup file to configure the testing environment
     server: {
       deps: {
         inline: ['vuetify'],
       },
     },
     include: [
-      './tests/**/*.spec.ts', // specific tests
-      './src/app/tests/**/*.spec.ts', // global tests
+      './tests/unit/**/*.spec.ts',
+      './src/**/*.spec.ts',
     ],
-    // silent: true, // disable warnings
   },
-  testDir: '.', // set the root directory for tests
-}
+})
