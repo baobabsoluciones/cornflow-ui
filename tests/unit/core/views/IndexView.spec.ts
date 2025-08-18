@@ -51,7 +51,7 @@ vi.mock('@/components/AppView.vue', () => ({
 }))
 
 // Mock Mango UI components
-vi.mock('mango-ui', () => ({
+vi.mock('mango-vue', () => ({
   MAppBarTab: {
     name: 'MAppBarTab',
     props: ['tabs', 'createTitle'],
