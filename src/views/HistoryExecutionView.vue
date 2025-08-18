@@ -221,6 +221,11 @@ export default {
     },
     formatData(rawData) {
       const formattedData = rawData.reduce((acc, item) => {
+        // Check if createdAt exists and is a valid string
+        if (!item.createdAt || typeof item.createdAt !== 'string') {
+          return acc
+        }
+        
         const date = item.createdAt.split('T')[0]
         if (!acc[date]) {
           acc[date] = {
@@ -228,7 +233,10 @@ export default {
             data: [],
           }
         }
-        const timeParts = item.createdAt.split('T')[1].split(':')
+        const timeParts = item.createdAt.split('T')[1]?.split(':')
+        if (!timeParts || timeParts.length < 2) {
+          return acc
+        }
         const formattedTime = `${timeParts[0]}:${String(timeParts[1]).padStart(2, '0')}`
         acc[date].data.push({
           time: formattedTime,

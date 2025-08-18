@@ -61,7 +61,7 @@ export default {
       return 'Dashboard'
     },
     description() {
-      return this.selectedExecution ? this.selectedExecution.name : ''
+      return this.selectedExecution ? this.selectedExecution.name || '' : ''
     },
   },
   methods: {},
