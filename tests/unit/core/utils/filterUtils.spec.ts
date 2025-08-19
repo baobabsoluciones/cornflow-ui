@@ -28,13 +28,15 @@ vi.mock('@/plugins/i18n', () => ({
   }
 }))
 
-vi.mock('./tableUtils', () => ({
+const mockTableUtils = vi.hoisted(() => ({
   isTablePropertyFilterable: vi.fn(),
   getTableHeaders: vi.fn(),
   getTableJsonSchema: vi.fn(),
   getTableJsonSchemaProperty: vi.fn(),
   getTablePropertyTitle: vi.fn()
 }))
+
+vi.mock('@/utils/tableUtils', () => mockTableUtils)
 
 describe('filterUtils', () => {
   beforeEach(() => {
@@ -660,165 +662,450 @@ describe('filterUtils', () => {
     })
   })
 
-  // Note: getFilterNames tests removed due to complex dependency mocking requirements
-  // This function requires extensive tableUtils mocking that is difficult to maintain in tests
-  // The core functionality is tested through the individual helper functions above
-  
-  describe.skip('getFilterNames', () => {
-    beforeEach(async () => {
-      const tableUtilsModule = await import('@/utils/tableUtils')
-      const { isTablePropertyFilterable, getTableHeaders, getTableJsonSchemaProperty, getTablePropertyTitle, getTableJsonSchema } = tableUtilsModule
-      
-      getTableHeaders.mockReturnValue(['name', 'age', 'active', 'created_date'])
-      getTableJsonSchema.mockReturnValue({
-        items: {
-          required: ['name']
-        }
-      })
-      getTableJsonSchemaProperty.mockImplementation((schemaConfig, collection, table, header) => {
-        const properties = {
-          name: { type: 'string' },
-          age: { type: 'integer' },
-          active: { type: 'boolean' },
-          created_date: { type: 'string' }
-        }
-        return properties[header] || {}
-      })
-      getTablePropertyTitle.mockImplementation((schemaConfig, collection, table, header, lang) => {
-        const titles = {
-          name: lang === 'es' ? 'Nombre' : 'Name',
-          age: 'Age',
-          active: 'Active',
-          created_date: 'Created Date'
-        }
-        return titles[header] || header
-      })
-      isTablePropertyFilterable.mockImplementation((schemaConfig, collection, table, header) => {
-        return ['name', 'age', 'active'].includes(header)
-      })
-    })
-
-    test('returns filter configuration for each header', () => {
-      const selectedExecution = {
-        experiment: {
-          input: {
-            data: {
-              users: [
-                { name: 'John', age: 25, active: true, created_date: '2023-01-01' },
-                { name: 'Jane', age: 30, active: false, created_date: '2023-02-01' }
-              ]
-            }
-          }
-        },
-        getFiltersPreference: vi.fn().mockReturnValue({})
-      }
-
-      const result = getFilterNames({}, selectedExecution, 'input', 'users', 'input')
-
-      expect(result).toHaveProperty('name')
-      expect(result.name).toEqual({
-        title: 'Name',
-        filterable: true,
-        type: 'checkbox',
-        selected: false,
-        required: true,
-        options: [
-          { label: 'John', value: 'John', checked: false },
-          { label: 'Jane', value: 'Jane', checked: false }
-        ]
-      })
-
-      expect(result).toHaveProperty('age')
-      expect(result.age).toEqual({
-        title: 'Age',
-        filterable: true,
-        type: 'range',
-        selected: false,
-        required: false,
-        min: 25,
-        max: 30
-      })
-
-      expect(result).toHaveProperty('active')
-      expect(result.active).toEqual({
-        title: 'Active',
-        filterable: true,
-        type: 'checkbox',
-        selected: false,
-        required: false,
-        options: [
-          { label: 'True', value: 'true', checked: false },
-          { label: 'False', value: 'false', checked: false }
-        ]
-      })
-    })
-
-    test('detects date range for date-like strings', () => {
-      const selectedExecution = {
-        experiment: {
-          input: {
-            data: {
-              events: [
-                { event_date: '2023-01-01' },
-                { event_date: '2023-12-31' }
-              ]
-            }
-          }
-        },
-        getFiltersPreference: vi.fn().mockReturnValue({})
-      }
-
-      const { getTableHeaders, getTableJsonSchemaProperty, getTablePropertyTitle, isTablePropertyFilterable } = require('./tableUtils')
-      
-      getTableHeaders.mockReturnValue(['event_date'])
-      getTableJsonSchemaProperty.mockReturnValue({ type: 'string' })
-      getTablePropertyTitle.mockReturnValue('Event Date')
-      isTablePropertyFilterable.mockReturnValue(true)
-
-      const result = getFilterNames({}, selectedExecution, 'input', 'events', 'input')
-
-      expect(result.event_date.type).toBe('daterange')
-      expect(result.event_date.min).toBe('2023-01-01')
-      expect(result.event_date.max).toBe('2023-12-31')
-    })
-
-    test('uses localized titles', () => {
-      const selectedExecution = {
-        experiment: {
-          input: {
-            data: {
-              users: [{ name: 'John' }]
-            }
-          }
-        },
-        getFiltersPreference: vi.fn().mockReturnValue({})
-      }
-
-      const result = getFilterNames({}, selectedExecution, 'input', 'users', 'input', 'es')
-
-      expect(result.name.title).toBe('Nombre')
-    })
-
-    test('marks filters as selected when they have values', () => {
-      const selectedExecution = {
-        experiment: {
-          input: {
-            data: {
-              users: [{ name: 'John', age: 25 }]
-            }
-          }
-        },
+  describe('getFilterNames', () => {
+    test('returns comprehensive filter configuration', () => {
+      const mockSchemaConfig = { mock: 'schemaConfig' }
+      const mockSelectedExecution = {
         getFiltersPreference: vi.fn().mockReturnValue({
-          users: {
-            name: { value: ['John'] }
+          testTable: {
+            stringCol: { value: ['test'] },
+            numberCol: { value: [10, 20] }
+          }
+        }),
+        experiment: {
+          instance: {
+            data: {
+              testTable: [
+                { stringCol: 'test1', numberCol: 10, boolCol: true },
+                { stringCol: 'test2', numberCol: 20, boolCol: false }
+              ]
+            }
+          }
+        }
+      }
+
+      mockTableUtils.getTableHeaders.mockReturnValue(['stringCol', 'numberCol', 'boolCol'])
+      mockTableUtils.getTableJsonSchemaProperty.mockImplementation((schema, collection, table, header) => {
+        const types = {
+          stringCol: { type: 'string' },
+          numberCol: { type: 'number' },
+          boolCol: { type: 'boolean' }
+        }
+        return types[header] || { type: 'string' }
+      })
+      mockTableUtils.getTablePropertyTitle.mockImplementation((schema, collection, table, header) => {
+        return `Title for ${header}`
+      })
+      mockTableUtils.isTablePropertyFilterable.mockReturnValue(true)
+      mockTableUtils.getTableJsonSchema.mockReturnValue({
+        items: {
+          required: ['stringCol']
+        }
+      })
+
+      const result = getFilterNames(mockSchemaConfig, mockSelectedExecution, 'instance', 'testTable', 'instance', 'en')
+
+      expect(result).toBeDefined()
+      expect(result.stringCol).toBeDefined()
+      expect(result.stringCol.title).toBe('Title for stringCol')
+      expect(result.stringCol.type).toBe('checkbox')
+      expect(result.stringCol.filterable).toBe(true)
+      expect(result.stringCol.required).toBe(true)
+
+      expect(result.numberCol).toBeDefined()
+      expect(result.numberCol.type).toBe('range')
+      expect(result.numberCol.required).toBe(false)
+
+      expect(result.boolCol).toBeDefined()
+      expect(result.boolCol.type).toBe('checkbox')
+    })
+
+    test('handles boolean filter options correctly', () => {
+      const mockSchemaConfig = { mock: 'schemaConfig' }
+      const mockSelectedExecution = {
+        getFiltersPreference: vi.fn().mockReturnValue({}),
+        experiment: {
+          instance: {
+            data: {
+              testTable: [
+                { boolCol: true },
+                { boolCol: false }
+              ]
+            }
+          }
+        }
+      }
+
+      mockTableUtils.getTableHeaders.mockReturnValue(['boolCol'])
+      mockTableUtils.getTableJsonSchemaProperty.mockReturnValue({ type: 'boolean' })
+      mockTableUtils.getTablePropertyTitle.mockReturnValue('Boolean Column')
+      mockTableUtils.isTablePropertyFilterable.mockReturnValue(true)
+      mockTableUtils.getTableJsonSchema.mockReturnValue({
+        items: { required: [] }
+      })
+
+      const result = getFilterNames(mockSchemaConfig, mockSelectedExecution, 'instance', 'testTable', 'instance', 'en')
+
+      expect(result.boolCol.type).toBe('checkbox')
+      expect(result.boolCol.options).toHaveLength(2)
+      expect(result.boolCol.options[0].label).toBe('True')
+      expect(result.boolCol.options[0].value).toBe('true')
+      expect(result.boolCol.options[1].label).toBe('False')
+      expect(result.boolCol.options[1].value).toBe('false')
+    })
+
+    test('detects date columns and converts to daterange type', () => {
+      const mockSchemaConfig = { mock: 'schemaConfig' }
+      const mockSelectedExecution = {
+        getFiltersPreference: vi.fn().mockReturnValue({}),
+        experiment: {
+          instance: {
+            data: {
+              testTable: [
+                { dateCol: '2023-01-15T10:00:00Z' },
+                { dateCol: '2023-01-20T10:00:00Z' }
+              ]
+            }
+          }
+        }
+      }
+
+      mockTableUtils.getTableHeaders.mockReturnValue(['dateCol'])
+      mockTableUtils.getTableJsonSchemaProperty.mockReturnValue({ type: 'string' })
+      mockTableUtils.getTablePropertyTitle.mockReturnValue('Date Column')
+      mockTableUtils.isTablePropertyFilterable.mockReturnValue(true)
+      mockTableUtils.getTableJsonSchema.mockReturnValue({
+        items: { required: [] }
+      })
+
+      const result = getFilterNames(mockSchemaConfig, mockSelectedExecution, 'instance', 'testTable', 'instance', 'en')
+
+      expect(result.dateCol.type).toBe('daterange')
+      expect(result.dateCol.min).toBeDefined()
+      expect(result.dateCol.max).toBeDefined()
+    })
+
+    test('handles range type filters', () => {
+      const mockSchemaConfig = { mock: 'schemaConfig' }
+      const mockSelectedExecution = {
+        getFiltersPreference: vi.fn().mockReturnValue({}),
+        experiment: {
+          instance: {
+            data: {
+              testTable: [
+                { numberCol: 10 },
+                { numberCol: 20 },
+                { numberCol: 5 }
+              ]
+            }
+          }
+        }
+      }
+
+      mockTableUtils.getTableHeaders.mockReturnValue(['numberCol'])
+      mockTableUtils.getTableJsonSchemaProperty.mockReturnValue({ type: 'number' })
+      mockTableUtils.getTablePropertyTitle.mockReturnValue('Number Column')
+      mockTableUtils.isTablePropertyFilterable.mockReturnValue(true)
+      mockTableUtils.getTableJsonSchema.mockReturnValue({
+        items: { required: [] }
+      })
+
+      const result = getFilterNames(mockSchemaConfig, mockSelectedExecution, 'instance', 'testTable', 'instance', 'en')
+
+      expect(result.numberCol.type).toBe('range')
+      expect(result.numberCol.min).toBe(5)
+      expect(result.numberCol.max).toBe(20)
+    })
+
+    test('handles non-filterable columns', () => {
+      const mockSchemaConfig = { mock: 'schemaConfig' }
+      const mockSelectedExecution = {
+        getFiltersPreference: vi.fn().mockReturnValue({}),
+        experiment: {
+          instance: {
+            data: {
+              testTable: [{ nonFilterableCol: 'data' }]
+            }
+          }
+        }
+      }
+
+      mockTableUtils.getTableHeaders.mockReturnValue(['nonFilterableCol'])
+      mockTableUtils.getTableJsonSchemaProperty.mockReturnValue({ type: 'string' })
+      mockTableUtils.getTablePropertyTitle.mockReturnValue('Non Filterable Column')
+      mockTableUtils.isTablePropertyFilterable.mockReturnValue(false)
+      mockTableUtils.getTableJsonSchema.mockReturnValue({
+        items: { required: [] }
+      })
+
+      const result = getFilterNames(mockSchemaConfig, mockSelectedExecution, 'instance', 'testTable', 'instance', 'en')
+
+      expect(result.nonFilterableCol.filterable).toBe(false)
+    })
+
+    test('handles different language parameter', () => {
+      const mockSchemaConfig = { mock: 'schemaConfig' }
+      const mockSelectedExecution = {
+        getFiltersPreference: vi.fn().mockReturnValue({}),
+        experiment: {
+          instance: {
+            data: {
+              testTable: [{ testCol: 'data' }]
+            }
+          }
+        }
+      }
+
+      mockTableUtils.getTableHeaders.mockReturnValue(['testCol'])
+      mockTableUtils.getTableJsonSchemaProperty.mockReturnValue({ type: 'string' })
+      mockTableUtils.getTablePropertyTitle.mockImplementation((schema, collection, table, header, lang) => {
+        return lang === 'es' ? 'Título en español' : 'English Title'
+      })
+      mockTableUtils.isTablePropertyFilterable.mockReturnValue(true)
+      mockTableUtils.getTableJsonSchema.mockReturnValue({
+        items: { required: [] }
+      })
+
+      const resultEn = getFilterNames(mockSchemaConfig, mockSelectedExecution, 'instance', 'testTable', 'instance', 'en')
+      const resultEs = getFilterNames(mockSchemaConfig, mockSelectedExecution, 'instance', 'testTable', 'instance', 'es')
+
+      expect(resultEn.testCol.title).toBe('English Title')
+      expect(resultEs.testCol.title).toBe('Título en español')
+    })
+
+    test('handles empty headers array', () => {
+      const mockSchemaConfig = { mock: 'schemaConfig' }
+      const mockSelectedExecution = {
+        getFiltersPreference: vi.fn().mockReturnValue({}),
+        experiment: {
+          instance: {
+            data: {
+              testTable: []
+            }
+          }
+        }
+      }
+
+      mockTableUtils.getTableHeaders.mockReturnValue([])
+
+      const result = getFilterNames(mockSchemaConfig, mockSelectedExecution, 'instance', 'testTable', 'instance', 'en')
+
+      expect(result).toEqual({})
+    })
+
+    test('handles array type headers', () => {
+      const mockSchemaConfig = { mock: 'schemaConfig' }
+      const mockSelectedExecution = {
+        getFiltersPreference: vi.fn().mockReturnValue({}),
+        experiment: {
+          instance: {
+            data: {
+              testTable: [{ arrayCol: 'data' }]
+            }
+          }
+        }
+      }
+
+      mockTableUtils.getTableHeaders.mockReturnValue(['arrayCol'])
+      mockTableUtils.getTableJsonSchemaProperty.mockReturnValue({ type: ['string', 'null'] })
+      mockTableUtils.getTablePropertyTitle.mockReturnValue('Array Column')
+      mockTableUtils.isTablePropertyFilterable.mockReturnValue(true)
+      mockTableUtils.getTableJsonSchema.mockReturnValue({
+        items: { required: [] }
+      })
+
+      const result = getFilterNames(mockSchemaConfig, mockSelectedExecution, 'instance', 'testTable', 'instance', 'en')
+
+      expect(result.arrayCol.type).toBe('checkbox') // Should use first type in array
+    })
+
+    test('handles missing required array in schema', () => {
+      const mockSchemaConfig = { mock: 'schemaConfig' }
+      const mockSelectedExecution = {
+        getFiltersPreference: vi.fn().mockReturnValue({}),
+        experiment: {
+          instance: {
+            data: {
+              testTable: [{ testCol: 'data' }]
+            }
+          }
+        }
+      }
+
+      mockTableUtils.getTableHeaders.mockReturnValue(['testCol'])
+      mockTableUtils.getTableJsonSchemaProperty.mockReturnValue({ type: 'string' })
+      mockTableUtils.getTablePropertyTitle.mockReturnValue('Test Column')
+      mockTableUtils.isTablePropertyFilterable.mockReturnValue(true)
+      mockTableUtils.getTableJsonSchema.mockReturnValue({
+        items: {} // No required array
+      })
+
+      const result = getFilterNames(mockSchemaConfig, mockSelectedExecution, 'instance', 'testTable', 'instance', 'en')
+
+      expect(result.testCol.required).toBeUndefined()
+    })
+  })
+
+  describe('Additional getFilterMinDate Coverage', () => {
+    test('should return minimum date from column data', () => {
+      const mockSelectedExecution = {
+        experiment: {
+          instance: {
+            data: {
+              testTable: [
+                { dateCol: '2023-01-15' },
+                { dateCol: '2023-01-10' },
+                { dateCol: '2023-01-20' }
+              ]
+            }
+          }
+        }
+      }
+
+      const result = getFilterMinDate(mockSelectedExecution, 'instance', 'testTable', 'dateCol')
+      expect(result).toBe('2023-01-10')
+    })
+
+    test('should handle empty data array', () => {
+      const mockSelectedExecution = {
+        experiment: {
+          instance: {
+            data: {
+              testTable: []
+            }
+          }
+        }
+      }
+
+      const result = getFilterMinDate(mockSelectedExecution, 'instance', 'testTable', 'dateCol')
+      expect(result).toBeUndefined()
+    })
+  })
+
+  describe('Additional getFilterMaxDate Coverage', () => {
+    test('should return maximum date from column data', () => {
+      const mockSelectedExecution = {
+        experiment: {
+          instance: {
+            data: {
+              testTable: [
+                { dateCol: '2023-01-15' },
+                { dateCol: '2023-01-10' },
+                { dateCol: '2023-01-20' }
+              ]
+            }
+          }
+        }
+      }
+
+      const result = getFilterMaxDate(mockSelectedExecution, 'instance', 'testTable', 'dateCol')
+      expect(result).toBe('2023-01-20')
+    })
+
+    test('should handle Date objects', () => {
+      const date1 = new Date('2023-01-15')
+      const date2 = new Date('2023-01-20')
+      const date3 = new Date('2023-01-10')
+
+      const mockSelectedExecution = {
+        experiment: {
+          instance: {
+            data: {
+              testTable: [
+                { dateCol: date1 },
+                { dateCol: date2 },
+                { dateCol: date3 }
+              ]
+            }
+          }
+        }
+      }
+
+      const result = getFilterMaxDate(mockSelectedExecution, 'instance', 'testTable', 'dateCol')
+      expect(result).toEqual(date2)
+    })
+  })
+
+  describe('Additional Edge Cases', () => {
+    test('getColumnData should handle missing table data gracefully', () => {
+      const mockSelectedExecution = {
+        experiment: {
+          instance: {
+            data: {} // No table data
+          }
+        }
+      }
+
+      const result = getColumnData(mockSelectedExecution, 'instance', 'missingTable', 'column')
+      expect(result).toEqual([])
+    })
+
+    test('getColumnData should handle non-array table data', () => {
+      const mockSelectedExecution = {
+        experiment: {
+          instance: {
+            data: {
+              testTable: 'not an array'
+            }
+          }
+        }
+      }
+
+      const result = getColumnData(mockSelectedExecution, 'instance', 'testTable', 'column')
+      expect(result).toEqual([])
+    })
+
+    test('isFilterSelected should handle missing execution', () => {
+      const result = isFilterSelected(null, 'instance', 'table', 'header')
+      expect(result).toBe(false)
+    })
+
+    test('isFilterChecked should handle missing execution', () => {
+      const result = isFilterChecked(null, 'instance', 'table', 'header', 'value')
+      expect(result).toBe(false)
+    })
+
+    test('isFilterChecked should handle null/undefined values', () => {
+      const mockSelectedExecution = {
+        getFiltersPreference: vi.fn().mockReturnValue({
+          testTable: {
+            testHeader: { value: ['false'] }
           }
         })
       }
 
-      const result = getFilterNames({}, selectedExecution, 'input', 'users', 'input')
+      const resultNull = isFilterChecked(mockSelectedExecution, 'instance', 'testTable', 'testHeader', null)
+      const resultUndefined = isFilterChecked(mockSelectedExecution, 'instance', 'testTable', 'testHeader', undefined)
 
-      expect(result.name.selected).toBe(true)
-      expect(result.age.selected).toBe(false)
+      expect(resultNull).toBe(true) // null converts to 'false'
+      expect(resultUndefined).toBe(true) // undefined converts to 'false'
+    })
+
+    test('getFilterNames should handle missing options gracefully', () => {
+      const mockSchemaConfig = { mock: 'schemaConfig' }
+      const mockSelectedExecution = {
+        getFiltersPreference: vi.fn().mockReturnValue({}),
+        experiment: {
+          instance: {
+            data: {
+              testTable: [] // Empty data
+            }
+          }
+        }
+      }
+
+      mockTableUtils.getTableHeaders.mockReturnValue(['emptyCol'])
+      mockTableUtils.getTableJsonSchemaProperty.mockReturnValue({ type: 'string' })
+      mockTableUtils.getTablePropertyTitle.mockReturnValue('Empty Column')
+      mockTableUtils.isTablePropertyFilterable.mockReturnValue(true)
+      mockTableUtils.getTableJsonSchema.mockReturnValue({
+        items: { required: [] }
+      })
+
+      const result = getFilterNames(mockSchemaConfig, mockSelectedExecution, 'instance', 'testTable', 'instance', 'en')
+
+      expect(result.emptyCol).toBeDefined()
+      expect(result.emptyCol.options).toEqual([])
     })
   })
 })

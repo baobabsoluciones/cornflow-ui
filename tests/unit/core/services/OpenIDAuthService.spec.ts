@@ -92,7 +92,7 @@ const createStorageMock = () => {
     setItem: vi.fn((key: string, value: string) => { storage[key] = value }),
     removeItem: vi.fn((key: string) => delete storage[key]),
     clear: vi.fn(() => Object.keys(storage).forEach(key => delete storage[key])),
-    get length() { return Object.keys(storage).length },
+    length: 0, // Make length a regular property instead of getter
     key: vi.fn((index: number) => Object.keys(storage)[index] || null)
   }
 }
@@ -371,6 +371,43 @@ describe('OpenIDAuthService - Enhanced Coverage', () => {
       vi.restoreAllMocks()
     })
 
+    test('clearLocalStorageAuthData removes localStorage items matching patterns', () => {
+      const spyOnKeys = vi.spyOn(Object, 'keys').mockReturnValue([
+        'CognitoIdentityServiceProvider.test.test.idToken',
+        'amplify-signin-with-hostedUI',
+        'amplifyKey',
+        'msal.test',
+        'MSAL.test',
+        'microsoft.test',
+        'azure.config',
+        'auth.data',
+        'refresh_token',
+        'id_token',
+        'access_token',
+        'normalKey'
+      ])
+      
+      azureService['clearLocalStorageAuthData']()
+      
+      // Check that auth-related items were removed
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('CognitoIdentityServiceProvider.test.test.idToken')
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('amplify-signin-with-hostedUI')
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('amplifyKey')
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('msal.test')
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('MSAL.test')
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('microsoft.test')
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('azure.config')
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('auth.data')
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('refresh_token')
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('id_token')
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('access_token')
+      
+      // Check that non-auth items were not removed
+      expect(localStorageMock.removeItem).not.toHaveBeenCalledWith('normalKey')
+      
+      spyOnKeys.mockRestore()
+    })
+
     test('getTokenStatus returns comprehensive token information', () => {
       const expiration = Date.now() + 3600000
       sessionStorageMock.getItem.mockImplementation((key) => {
@@ -386,6 +423,70 @@ describe('OpenIDAuthService - Enhanced Coverage', () => {
       expect(status.tokenExpiration).toEqual(new Date(expiration))
       expect(status.timeUntilExpiration).toBeGreaterThan(0)
       expect(status.shouldRefreshSoon).toBe(false)
+    })
+
+    test('getTokenStatus returns correct token status when token exists', () => {
+      const futureExpiration = Date.now() + (30 * 60 * 1000) // 30 minutes from now
+      const futureRefreshExpiration = Date.now() + (48 * 60 * 60 * 1000) // 48 hours from now
+      
+      sessionStorageMock.getItem.mockImplementation((key) => {
+        if (key === 'token') return 'test-token'
+        if (key === 'tokenExpiration') return futureExpiration.toString()
+        if (key === 'refreshTokenExpiration') return futureRefreshExpiration.toString()
+        return null
+      })
+      
+      const status = azureService.getTokenStatus()
+      
+      expect(status.hasToken).toBe(true)
+      expect(status.tokenExpiration).toEqual(new Date(futureExpiration))
+      expect(status.refreshTokenExpiration).toEqual(new Date(futureRefreshExpiration))
+      expect(status.timeUntilExpiration).toBeGreaterThan(0)
+      expect(status.timeUntilRefreshExpiration).toBeGreaterThan(0)
+      expect(status.shouldRefreshSoon).toBe(false)
+      expect(status.refreshTokenExpiresSoon).toBe(false)
+    })
+
+    test('getTokenStatus indicates when token should refresh soon', () => {
+      const soonExpiration = Date.now() + (10 * 60 * 1000) // 10 minutes from now
+      
+      sessionStorageMock.getItem.mockImplementation((key) => {
+        if (key === 'token') return 'test-token'
+        if (key === 'tokenExpiration') return soonExpiration.toString()
+        return null
+      })
+      
+      const status = azureService.getTokenStatus()
+      
+      expect(status.shouldRefreshSoon).toBe(true)
+    })
+
+    test('getTokenStatus indicates when refresh token expires soon', () => {
+      const refreshSoonExpiration = Date.now() + (12 * 60 * 60 * 1000) // 12 hours from now
+      
+      sessionStorageMock.getItem.mockImplementation((key) => {
+        if (key === 'token') return 'test-token'
+        if (key === 'refreshTokenExpiration') return refreshSoonExpiration.toString()
+        return null
+      })
+      
+      const status = azureService.getTokenStatus()
+      
+      expect(status.refreshTokenExpiresSoon).toBe(true)
+    })
+
+    test('getTokenStatus handles missing token data', () => {
+      sessionStorageMock.getItem.mockImplementation(() => null)
+      
+      const status = azureService.getTokenStatus()
+      
+      expect(status.hasToken).toBe(false)
+      expect(status.tokenExpiration).toBeNull()
+      expect(status.refreshTokenExpiration).toBeNull()
+      expect(status.timeUntilExpiration).toBeNull()
+      expect(status.timeUntilRefreshExpiration).toBeNull()
+      expect(status.shouldRefreshSoon).toBe(false)
+      expect(status.refreshTokenExpiresSoon).toBe(false)
     })
 
     test('makeAuthenticatedRequest adds authorization header', async () => {
@@ -407,6 +508,273 @@ describe('OpenIDAuthService - Enhanced Coverage', () => {
       const callArgs = vi.mocked(fetch).mock.calls[0]
       const headers = callArgs[1]?.headers as Headers
       expect(headers.get('Authorization')).toBe('Bearer test-token')
+    })
+  })
+
+  describe('Token Refresh - Additional Coverage', () => {
+    test('refreshToken succeeds with Azure token successfully', async () => {
+      azureService['provider'] = 'azure'
+      azureService['msalInstance'] = mockMsalInstance as any
+      
+      const mockAccount = { homeAccountId: 'test-account' }
+      const mockResponse = {
+        idToken: createMockToken(),
+        expiresOn: new Date(Date.now() + 3600000)
+      }
+      
+      mockMsalInstance.getAllAccounts.mockReturnValue([mockAccount])
+      mockMsalInstance.acquireTokenSilent.mockResolvedValue(mockResponse)
+      
+      const result = await azureService.refreshToken()
+      
+      expect(result).toBeDefined()
+      expect(result?.token).toBe(mockResponse.idToken)
+      expect(result?.expiresAt).toBeGreaterThan(Date.now())
+      
+      expect(mockMsalInstance.acquireTokenSilent).toHaveBeenCalledWith({
+        scopes: ['openid', 'profile', 'email', 'User.Read'],
+        account: mockAccount,
+        forceRefresh: false
+      })
+    })
+
+    test('refreshToken handles Azure token refresh with force refresh fallback', async () => {
+      azureService['provider'] = 'azure'
+      azureService['msalInstance'] = mockMsalInstance as any
+      
+      const mockAccount = { homeAccountId: 'test-account' }
+      const mockResponse = {
+        idToken: createMockToken(),
+        expiresOn: new Date(Date.now() + 3600000)
+      }
+      
+      mockMsalInstance.getAllAccounts.mockReturnValue([mockAccount])
+      mockMsalInstance.acquireTokenSilent
+        .mockRejectedValueOnce(new Error('Silent acquisition failed'))
+        .mockResolvedValueOnce(mockResponse)
+      
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      
+      const result = await azureService.refreshToken()
+      
+      expect(result).toBeDefined()
+      expect(result?.token).toBe(mockResponse.idToken)
+      
+      expect(mockMsalInstance.acquireTokenSilent).toHaveBeenCalledTimes(2)
+      expect(consoleWarnSpy).toHaveBeenCalledWith('Silent token acquisition failed, trying force refresh:', expect.any(Error))
+      
+      consoleWarnSpy.mockRestore()
+    })
+
+    test('refreshToken returns null when no Azure accounts found', async () => {
+      azureService['provider'] = 'azure'
+      azureService['msalInstance'] = mockMsalInstance as any
+      
+      mockMsalInstance.getAllAccounts.mockReturnValue([])
+      
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      
+      const result = await azureService.refreshToken()
+      
+      expect(result).toBeNull()
+      expect(consoleWarnSpy).toHaveBeenCalledWith('No MSAL accounts found for token refresh')
+      
+      consoleWarnSpy.mockRestore()
+    })
+
+    test('refreshToken handles Cognito token refresh', async () => {
+      cognitoService['provider'] = 'cognito'
+      
+      const result = await cognitoService.refreshToken()
+      
+      // Cognito refresh is implemented, should return a token result
+      expect(result).toBeDefined()
+      expect(result?.token).toBeDefined()
+      expect(result?.expiresAt).toBeGreaterThan(Date.now())
+    })
+
+    test('refreshToken handles refresh token errors', async () => {
+      azureService['provider'] = 'azure'
+      azureService['msalInstance'] = mockMsalInstance as any
+      
+      const mockAccount = { homeAccountId: 'test-account' }
+      
+      mockMsalInstance.getAllAccounts.mockReturnValue([mockAccount])
+      mockMsalInstance.acquireTokenSilent.mockRejectedValue(new Error('Token refresh failed'))
+      
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      
+      const result = await azureService.refreshToken()
+      
+      expect(result).toBeNull()
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Token refresh failed for azure:', expect.any(Error))
+      
+      consoleWarnSpy.mockRestore()
+      consoleErrorSpy.mockRestore()
+    })
+
+    test('refreshToken handles invalid token response', async () => {
+      azureService['provider'] = 'azure'
+      azureService['msalInstance'] = mockMsalInstance as any
+      
+      const mockAccount = { homeAccountId: 'test-account' }
+      const mockResponse = {
+        idToken: 'invalid.token.format', // This will fail decoding
+        expiresOn: new Date(Date.now() + 3600000)
+      }
+      
+      mockMsalInstance.getAllAccounts.mockReturnValue([mockAccount])
+      mockMsalInstance.acquireTokenSilent.mockResolvedValue(mockResponse)
+      
+      const result = await azureService.refreshToken()
+      
+      expect(result).toBeNull()
+    })
+  })
+
+  describe('Additional Refresh Token Utilities', () => {
+    test('isRefreshTokenNearExpiration returns true when refresh token expires within 24 hours', () => {
+      const soonExpiration = Date.now() + (12 * 60 * 60 * 1000) // 12 hours from now
+      sessionStorageMock.getItem.mockImplementation((key) => {
+        if (key === 'refreshTokenExpiration') return soonExpiration.toString()
+        return null
+      })
+      
+      const result = azureService.isRefreshTokenNearExpiration()
+      
+      expect(result).toBe(true)
+    })
+
+    test('isRefreshTokenNearExpiration returns false when refresh token expires after 24 hours', () => {
+      const laterExpiration = Date.now() + (48 * 60 * 60 * 1000) // 48 hours from now
+      sessionStorageMock.getItem.mockImplementation((key) => {
+        if (key === 'refreshTokenExpiration') return laterExpiration.toString()
+        return null
+      })
+      
+      const result = azureService.isRefreshTokenNearExpiration()
+      
+      expect(result).toBe(false)
+    })
+
+    test('isRefreshTokenNearExpiration returns false when no refresh token expiration is set', () => {
+      const result = azureService.isRefreshTokenNearExpiration()
+      
+      expect(result).toBe(false)
+    })
+
+    test('isRefreshTokenNearExpiration handles invalid expiration values', () => {
+      sessionStorageMock.getItem.mockImplementation((key) => {
+        if (key === 'refreshTokenExpiration') return 'invalid-date'
+        return null
+      })
+      
+      const result = azureService.isRefreshTokenNearExpiration()
+      
+      expect(result).toBe(false)
+    })
+  })
+
+  describe('Logout - Enhanced Coverage', () => {
+    test('logout clears all authentication state', () => {
+      sessionStorageMock.setItem('isAuthenticated', 'true')
+      sessionStorageMock.setItem('token', 'test-token')
+      sessionStorageMock.setItem('userId', 'test-user')
+      sessionStorageMock.setItem('username', 'testuser')
+      
+      azureService.logout()
+      
+      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('isAuthenticated', 'false')
+      expect(sessionStorageMock.clear).toHaveBeenCalled()
+    })
+
+    test('logout handles Azure logout correctly', async () => {
+      azureService['provider'] = 'azure'
+      azureService['msalInstance'] = mockMsalInstance as any
+      
+      azureService.logout()
+      
+      expect(mockMsalInstance.logoutRedirect).toHaveBeenCalledWith({
+        postLogoutRedirectUri: window.location.origin + '/sign-in?from=logout'
+      })
+    })
+
+    test('logout handles Cognito logout success', async () => {
+      cognitoService['provider'] = 'cognito'
+      vi.mocked(signOut).mockResolvedValue(undefined)
+      
+      cognitoService.logout()
+      
+      // Wait for async operations
+      await new Promise(resolve => setTimeout(resolve, 10))
+      
+      expect(signOut).toHaveBeenCalledWith({ global: true })
+      expect(mockPush).toHaveBeenCalledWith({ path: '/sign-in', query: { from: 'logout' } })
+    })
+
+    test('logout handles Cognito logout error', async () => {
+      cognitoService['provider'] = 'cognito'
+      
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      vi.mocked(signOut).mockRejectedValue(new Error('Logout failed'))
+      
+      cognitoService.logout()
+      
+      // Wait for async operations
+      await new Promise(resolve => setTimeout(resolve, 10))
+      
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Error during Cognito sign out:', expect.any(Error))
+      expect(mockPush).toHaveBeenCalledWith({ path: '/sign-in', query: { from: 'logout' } })
+      
+      consoleErrorSpy.mockRestore()
+    })
+  })
+
+  describe('Authentication Retry', () => {
+    test('retryAuthentication handles Cognito retry', async () => {
+      cognitoService['provider'] = 'cognito'
+      
+      await (cognitoService as any).retryAuthentication()
+      
+      expect(mockPush).toHaveBeenCalledWith({ path: '/sign-in', query: { expired: 'true' } })
+    })
+
+    test('retryAuthentication handles Cognito retry authentication error', async () => {
+      cognitoService['provider'] = 'cognito'
+      
+      // Mock initializeCognito to throw error
+      const originalInit = (cognitoService as any).initializeCognito
+      ;(cognitoService as any).initializeCognito = vi.fn().mockRejectedValue(new Error('Init failed'))
+      
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      
+      // Set up window.location.href mock
+      const originalLocation = window.location
+      delete (window as any).location
+      window.location = { ...originalLocation, href: '' } as any
+      
+      await (cognitoService as any).retryAuthentication()
+      
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to retry authentication with Cognito:', expect.any(Error))
+      expect(window.location.href).toBe(window.location.origin + '/sign-in?expired=true')
+      
+      // Restore
+      window.location = originalLocation
+      ;(cognitoService as any).initializeCognito = originalInit
+      consoleErrorSpy.mockRestore()
+    })
+
+    test('retryAuthentication handles Azure retry', async () => {
+      azureService['provider'] = 'azure'
+      azureService['msalInstance'] = mockMsalInstance as any
+      
+      await (azureService as any).retryAuthentication()
+      
+      expect(mockMsalInstance.loginRedirect).toHaveBeenCalledWith({
+        scopes: ['openid', 'profile', 'email', 'User.Read'],
+        prompt: 'select_account'
+      })
     })
   })
 
@@ -434,6 +802,37 @@ describe('OpenIDAuthService - Enhanced Coverage', () => {
       expect(azureService.getEmail()).toBe('test@example.com')
       expect(azureService.getGivenName()).toBe('Test')
       expect(azureService.getFamilyName()).toBe('User')
+    })
+
+    test('getter methods return null for missing values', () => {
+      sessionStorageMock.getItem.mockReturnValue(null)
+      
+      expect(azureService.getToken()).toBeNull()
+      expect(azureService.getUserId()).toBeNull()
+      expect(azureService.getUsername()).toBeNull()
+      expect(azureService.getName()).toBeNull()
+      expect(azureService.getEmail()).toBeNull()
+      expect(azureService.getGivenName()).toBeNull()
+      expect(azureService.getFamilyName()).toBeNull()
+      expect(azureService.isAuthenticated()).toBe(false)
+    })
+
+    test('isAuthenticated returns false for non-true values', () => {
+      sessionStorageMock.getItem.mockImplementation((key) => {
+        if (key === 'isAuthenticated') return 'false'
+        return null
+      })
+      
+      expect(azureService.isAuthenticated()).toBe(false)
+    })
+
+    test('services have correct provider configuration', () => {
+      expect(azureService['provider']).toBe('azure')
+      expect(cognitoService['provider']).toBe('cognito')
+      
+      // Verify services are properly initialized
+      expect(azureService['initializationPromise']).toBeDefined()
+      expect(cognitoService['initializationPromise']).toBeDefined()
     })
   })
 }) 
