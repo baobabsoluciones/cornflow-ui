@@ -14,14 +14,14 @@
               height="30"
               class="ml-3"
               v-if="mini"
-              src="@/app/assets/logo/logo.png"
+              :src="mainLogo"
             />
             <v-img
               height="30"
               position="left"
               class="ml-3"
               v-else
-              src="@/app/assets/logo/full_logo.png"
+              :src="fullLogo"
             />
           </div>
         </template>
@@ -144,6 +144,7 @@ import { defineComponent, Suspense, inject } from 'vue'
 import { useGeneralStore } from '@/stores/general'
 import getAuthService from '@/services/AuthServiceFactory'
 import appConfig from '@/app/config'
+import { mainLogo, fullLogo } from '@/utils/assets'
 
 export default defineComponent({
   name: 'CoreAppDrawer',
@@ -158,6 +159,8 @@ export default defineComponent({
     confirmSignOutModal: false,
     auth: null,
     showSnackbar: null,
+    mainLogo,
+    fullLogo,
   }),
   async created() {
     this.showSnackbar = inject('showSnackbar')

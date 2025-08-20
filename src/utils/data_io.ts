@@ -1,6 +1,7 @@
 import readXlsxFile from 'read-excel-file'
 import i18n from '@/plugins/i18n'
 import { getTableVisible, getTablePropertyVisible } from '@/utils/tableUtils'
+import { formatDateForExcel } from '@/utils/date'
 
 const readTable = function (
   file,
@@ -24,17 +25,7 @@ const readTable = function (
         
         const formattedCols = cols.map(col => {
           if (col instanceof Date) {
-            const hours = col.getUTCHours()
-            const minutes = col.getUTCMinutes()
-            if (hours === 0 && minutes === 0) {
-              // Format as YYYY/mm/dd to maintain the desired format
-              const year = col.getFullYear()
-              const month = String(col.getMonth() + 1).padStart(2, '0')
-              const day = String(col.getDate()).padStart(2, '0')
-              return `${day}/${month}/${year}`
-            } else {
-              return col.toISOString().slice(0, 16).replace('T', ' ')
-            }
+            return formatDateForExcel(col)
           }
           return col
         })
@@ -75,13 +66,7 @@ const loadExcel = async function (file, schema) {
             return Object.fromEntries(
               Object.entries(row).map(([key, value]) => {
                 if (value instanceof Date) {
-                  const hours = value.getUTCHours()
-                  const minutes = value.getUTCMinutes()
-                  if (hours === 0 && minutes === 0) {
-                    return [key, value.toISOString().split('T')[0]]
-                  } else {
-                    return [key, value.toISOString().slice(0, 16).replace('T', ' ')]
-                  }
+                  return [key, formatDateForExcel(value, true)]
                 } 
                 else if (Number.isNaN(value)) {
                   return [key, null]

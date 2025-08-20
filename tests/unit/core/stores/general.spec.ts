@@ -24,12 +24,15 @@ vi.mock('@/app/config', () => ({
   }
 }))
 
-vi.mock('@/app/assets/logo/logo.png', () => ({
-  default: 'logo.png'
-}))
-
-vi.mock('@/app/assets/logo/full_logo.png', () => ({
-  default: 'full_logo.png'
+vi.mock('@/utils/assets', () => ({
+  mainLogo: 'logo.png',
+  fullLogo: 'full_logo.png',
+  baobabLogo: 'baobab_full_logo.png',
+  baobabLogoSmall: 'baobab_logo.png',
+  companyLogo: 'company_logo.png',
+  googleLogo: 'google_logo.png',
+  microsoftLogo: 'microsoft_logo.png',
+  loginBackground: 'login_background.png'
 }))
 
 vi.mock('@/plugins/i18n', () => ({

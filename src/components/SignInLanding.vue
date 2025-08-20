@@ -1,5 +1,5 @@
 <template>
-  <div class="signin-landing">
+  <div class="signin-landing" :style="{ '--login-background': `url(${loginBackground})` }">
     <div class="left-panel">
       <div class="background-image" />
       <div class="overlay" />
@@ -82,7 +82,7 @@
             @click="initiateGoogleAuth"
             :title="t('logIn.google_button')"
           >
-            <img src="@/app/assets/logo/google_logo.png" alt="Google" class="logo-image" />
+            <img :src="googleLogo" alt="Google" class="logo-image" />
             <span>{{ t('logIn.google_button') }}</span>
           </button>
           <button
@@ -91,7 +91,7 @@
             @click="initiateMicrosoftAuth"
             :title="t('logIn.microsoft_button')"
           >
-            <img src="@/app/assets/logo/microsoft_logo.png" alt="Microsoft" class="logo-image" />
+            <img :src="microsoftLogo" alt="Microsoft" class="logo-image" />
             <span>{{ t('logIn.microsoft_button') }}</span>
           </button>
         </div>
@@ -105,10 +105,12 @@ import { ref, reactive, computed, onMounted, inject } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGeneralStore } from '@/stores/general'
 import getAuthService, { getAllAuthServices, getSpecificAuthService, isAuthServiceAvailable } from '@/services/AuthServiceFactory'
-import type { AuthServices } from '@/services/AuthServiceFactory'
 import { useRouter } from 'vue-router'
-import type { CSSProperties } from 'vue'
 import config from '@/config'
+import type { AuthServices } from '@/services/AuthServiceFactory'
+import type { AnimatedCard } from '@/interfaces/AnimatedCard'
+import type { CSSProperties } from 'vue'
+import { baobabLogo, companyLogo, googleLogo, microsoftLogo, loginBackground } from '@/utils/assets'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -226,15 +228,6 @@ const initiateMicrosoftAuth = async () => {
   }
 }
 
-// Animated cards logic
-interface AnimatedCard {
-  id: number
-  text: string
-  color: string
-  icon?: string
-  image?: string
-  gridPosition: { row: number; col: number }
-}
 
 // Panel positions for SVG grid (4x4, small gap)
 const GRID_COLS = 4
@@ -253,8 +246,7 @@ const panelPositions = Array.from({ length: GRID_COLS * GRID_ROWS }, (_, i) => {
   return { row, col }
 })
 
-const baobabLogo = new URL('@/app/assets/logo/baobab_full_logo.png', import.meta.url).href
-const companyLogo = new URL('@/app/assets/logo/company_logo.png', import.meta.url).href
+
 
 // Initial card positions: first 4 panels in the first column
 const cardDefs: AnimatedCard[] = [
@@ -280,7 +272,7 @@ const cardMovementSteps = [
 let movementStep = 0
 let movementInterval: NodeJS.Timeout | null = null
 
-function moveCards() {
+const moveCards = () => {
   movementStep = (movementStep + 1) % cardMovementSteps.length
   animatedCards.value = animatedCards.value.map((card, idx) => {
     const pos = cardMovementSteps[movementStep][idx]
@@ -302,7 +294,7 @@ animatedCards.value = animatedCards.value.map((card, idx) => {
 
 movementInterval = setInterval(moveCards, 2000)
 
-function cardStyle(card: AnimatedCard): CSSProperties {
+const cardStyle = (card: AnimatedCard): CSSProperties => {
   // Calculate percent-based sizes to match SVG grid, including padding
   const panelWidthPercent = (PANEL_SIZE / SVG_PADDED_SIZE) * 100;
   const gapPercent = (PANEL_GAP / SVG_PADDED_SIZE) * 100;

@@ -18,7 +18,7 @@
       >
         <template #actions>
           <div class="d-flex align-center" style="min-width: 200px !important">
-            <v-img height="20" src="@/app/assets/logo/baobab_logo.png" />
+            <v-img height="20" :src="baobabLogoSmall" />
             <div class="mr-2">
               Powered by
               <a href="https://baobabsoluciones.es/" target="_blank"
@@ -41,6 +41,7 @@ import { useRouter } from 'vue-router'
 import { computed } from 'vue'
 import {Vue3Marquee} from 'vue3-marquee'
 import config from '@/config'
+import { baobabLogoSmall } from '@/utils/assets'
 
 const generalStore = useGeneralStore()
 const router = useRouter()

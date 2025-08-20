@@ -19,6 +19,30 @@
   z-index: 1;
 }
 
+/* Typography classes */
+.alert-text-size {
+  font-size: 0.85rem !important;
+}
+
+.small-btn-text {
+  font-size: 0.6rem !important;
+}
+
+.compact-btn-text {
+  font-size: 0.7rem !important;
+}
+
+/* Layout classes */
+.action-col-flex {
+  margin: 0 !important;
+  justify-content: end;
+  display: flex;
+}
+
+.table-overflow {
+  overflow-x: auto !important;
+}
+
 /* Deep selectors for table styling */
 :deep(.v-table) {
   height: 55vh;
