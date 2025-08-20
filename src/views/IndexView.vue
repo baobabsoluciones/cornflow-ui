@@ -3,7 +3,7 @@
     <core-app-drawer class="app-drawer" />
     <core-app-view />
     <div class="tab-container">
-      <MAppBarTab
+      <PAppBarTab
         :key="tabsKey"
         :tabs="tabsData"
         :createTitle="$t('projectExecution.create')"
@@ -13,16 +13,13 @@
       >
         <template #actions>
           <div class="d-flex align-center" style="min-width: 200px !important">
-            <v-img height="20" src="@/app/assets/logo/baobab_logo.png" />
+            <img height="20" src="@/app/assets/logo/baobab_logo.png" alt="baobab" />
             <div class="mr-2">
-              Powered by
-              <a href="https://baobabsoluciones.es/" target="_blank"
-                >baobab soluciones</a
-              >
+              Powered by <a href="https://baobabsoluciones.es/" target="_blank">baobab soluciones</a>
             </div>
           </div>
         </template>
-      </MAppBarTab>
+      </PAppBarTab>
     </div>
   </v-app>
 </template>
