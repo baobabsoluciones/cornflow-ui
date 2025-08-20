@@ -19,16 +19,36 @@ export default {
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
+      exclude: [
+        'node_modules/**',
+        'tests/**',
+        'src/app/tests/**',
+        '**/*.d.ts',
+        'vite.config.ts',
+        'vitest.config.ts'
+      ],
+      include: [
+        'src/**/*.{ts,vue}'
+      ],
+      thresholds: {
+        global: {
+          branches: 80,
+          functions: 80,
+          lines: 80,
+          statements: 80
+        }
+      }
     },
-    setupFiles: ['./tests/setup.ts'], // setup file to configure the testing environment
+    setupFiles: ['./tests/unit/core/setup.ts'], // setup file to configure the testing environment
     server: {
       deps: {
         inline: ['vuetify'],
       },
     },
     include: [
-      './tests/**/*.spec.ts', // specific tests
-      './src/app/tests/**/*.spec.ts', // global tests
+      './tests/unit/core/**/*.spec.ts', // core tests (do not modify)
+      './tests/unit/app/**/*.spec.ts', // app-specific tests
+      './src/app/tests/**/*.spec.ts', // additional app tests
     ],
     // silent: true, // disable warnings
   },

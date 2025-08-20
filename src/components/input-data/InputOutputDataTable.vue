@@ -458,13 +458,13 @@ export default {
       return []
     },
     tableData() {
-      if (this.data && this.selectedTable) {
-        return this.data.data[this.selectedTable]
+      if (this.data && this.data.data && this.selectedTable) {
+        return this.data.data[this.selectedTable] || []
       }
       return []
     },
     headers() {
-      if (this.data && this.selectedTable) {
+      if (this.data && this.data.data && this.selectedTable) {
         const headers = Array.isArray(this.data.data[this.selectedTable])
           ? this.generalStore.getTableHeadersData(
               this.tableType,
@@ -472,14 +472,17 @@ export default {
             )
           : this.generalStore.getConfigTableHeadersData()
 
-          if (headers.length === 0) {
-            const headers = this.generalStore.getHeadersFromData(
-            this.data.data[this.selectedTable][0],
-            )
-            return headers
+          if (headers && headers.length === 0) {
+            const tableData = this.data.data[this.selectedTable]
+            if (Array.isArray(tableData) && tableData.length > 0 && tableData[0]) {
+              const headers = this.generalStore.getHeadersFromData(
+                tableData[0],
+              )
+              return headers
+            }
           } 
 
-        return headers
+        return headers || []
       }
       return []
     },
@@ -524,7 +527,8 @@ export default {
       return useFilters(
         this.formattedTableData,
         this.searchText,
-        this.filtersSelected[this.selectedTable],
+        (this.filtersSelected && this.selectedTable) ? 
+          this.filtersSelected[this.selectedTable] || {} : {},
       )
     },
   },

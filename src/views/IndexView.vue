@@ -38,7 +38,7 @@ import AuthService from '@/services/AuthService'
 import CoreAppDrawer from '@/components/AppDrawer.vue'
 import CoreAppView from '@/components/AppView.vue'
 import { useRouter } from 'vue-router'
-import { computed, defineExpose } from 'vue'
+import { computed } from 'vue'
 import {Vue3Marquee} from 'vue3-marquee'
 import config from '@/config'
 
