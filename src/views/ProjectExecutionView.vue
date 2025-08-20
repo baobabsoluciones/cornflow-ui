@@ -446,7 +446,7 @@ export default {
           value: solver,
           text: solver,
           description: '',
-          checked: false,
+          checked: this.newExecution.config.solver === solver,
         }))
       },
       set(newSolvers) {
