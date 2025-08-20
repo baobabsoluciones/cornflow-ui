@@ -61,14 +61,14 @@ export default {
       return 'Dashboard'
     },
     description() {
-      return this.selectedExecution ? this.selectedExecution.name : ''
+      return this.selectedExecution ? this.selectedExecution.name || '' : ''
     },
   },
   methods: {},
 }
 </script>
 <style scoped>
-::v-deep .v-table {
+:deep(.v-table) {
   height: 55vh;
 }
 </style>

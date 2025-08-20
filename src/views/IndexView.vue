@@ -1,5 +1,10 @@
 <template>
   <v-app>
+    <div class="marquee-container" v-if="showStagingWarning">
+      <Vue3Marquee :pause-on-hover="true">
+          🚧 {{ $t('projectExecution.stagingWarning') }} 🚧
+      </Vue3Marquee>
+    </div>
     <core-app-drawer class="app-drawer" />
     <core-app-view />
     <div class="tab-container">
@@ -13,7 +18,7 @@
       >
         <template #actions>
           <div class="d-flex align-center" style="min-width: 200px !important">
-            <v-img height="20" src="@/app/assets/logo/baobab_logo.png" />
+            <v-img height="20" :src="baobabLogoSmall" />
             <div class="mr-2">
               Powered by
               <a href="https://baobabsoluciones.es/" target="_blank"
@@ -33,12 +38,16 @@ import AuthService from '@/services/AuthService'
 import CoreAppDrawer from '@/components/AppDrawer.vue'
 import CoreAppView from '@/components/AppView.vue'
 import { useRouter } from 'vue-router'
-import { computed, defineExpose } from 'vue'
+import { computed } from 'vue'
+import {Vue3Marquee} from 'vue3-marquee'
+import config from '@/config'
+import { baobabLogoSmall } from '@/utils/assets'
 
 const generalStore = useGeneralStore()
 const router = useRouter()
 let tabsData = computed(() => generalStore.getLoadedExecutionTabs)
 let tabsKey = computed(() => generalStore.tabBarKey)
+let showStagingWarning = computed(() => config.isStagingEnvironment)
 
 defineExpose({
   tabsData,
@@ -79,7 +88,7 @@ const selectTab = (executionTab) => {
       currentRoute === '/project-execution' ||
       currentRoute === '/history-execution'
     ) {
-      router.push('/input-data') // Go to the input data
+      router.push('/output-data') // Go to the output data
     } else {
       generalStore.incrementUploadComponentKey()
     }
@@ -108,5 +117,18 @@ if (AuthService.isAuthenticated()) {
   width: 100%;
   display: flex;
   flex-direction: column;
+}
+
+.marquee-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;  
+  height:40px;
+  background: linear-gradient(to right, #fff5f5, #ffe6e6);
+  padding: 5px;
+  color: #000;
+  border-bottom: 2px solid #ffcccc;
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 </style>

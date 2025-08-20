@@ -9,16 +9,20 @@
  * - `enableSignup`: Enables or disables the sign-up functionality
  * - `useConfigJson`: If true, gets config variables from values.json, if false from environment variables
  * - `useHashMode`: Controls if the application uses hash mode for routing
+ * - `defaultLanguage`: Sets the default language for i18n (e.g., 'en', 'es', 'fr')
+ * - `valuesJsonPath`: Path to the values.json file for production (default: '/values.json')
  * - `schema`: The schema to use for the application (comes from values.json or environment variables)
  * - `name`: The name of the application (comes from values.json or environment variables)
  * - `hasExternalApp`: Controls if the application has an external app (comes from values.json or environment variables)
- *  * - `isDeveloperMode`: Controls if the application is in developer mode
-
- *  * - `showTablesWithoutSchema`: Controls if tables that are not defined in the schema should be shown. If false, only tables defined in the schema will be shown.
+ * - `isDeveloperMode`: Controls if the application is in developer mode
+ * - `hasMicrosoftAuth`: Controls if Microsoft authentication is enabled in the login page
+ * - `hasGoogleAuth`: Controls if Google authentication is enabled in the login page
+ * - `showTablesWithoutSchema`: Controls if tables that are not defined in the schema should be shown. If false, only tables defined in the schema will be shown.
  * - `showExtraProjectExecutionColumns`: Controls visibility of additional columns in the project execution table
  *   - `showUserName`: Shows or hides the username column
  *   - `showEndCreationDate`: Shows or hides the end creation date column
  *   - `showTimeLimit`: Shows or hides the time limit column
+ *   - `showUserFullName`: Shows or hides the user full name column
  * - `solverConfig`: Controls solver selection step and default solver.
  *   - `showSolverStep`: boolean. If true, shows the solver selection step. If false, skips the step and uses `defaultSolver`.
  *   - `defaultSolver`: string. The solver to use if `showSolverStep` is false. Used in ProjectExecutionView.vue to set newExecution.config.solver.
@@ -42,7 +46,7 @@
  *   - `lookupValue`: string (optional, for arrayByValue). The property to return from the found object (e.g., 'VALOR').
  *   - `default`: Optional default value
  *   - `options`: Required for 'select' type, array of {label, value} pairs
- *   Each field type has specific validation and rendering:
+ * Each field type has specific validation and rendering:
  *   - `number`: Integer input with optional suffix
  *   - `float`: Decimal input with optional suffix
  *   - `boolean`: Switch component
@@ -98,6 +102,7 @@
  *         showUserName: false,
  *         showEndCreationDate: false,
  *         showTimeLimit: true,
+ *         showUserFullName: false,
  *       },
  *       solverConfig: {
  *         showSolverStep: !config.isDeveloperMode,
@@ -182,16 +187,21 @@ const createAppConfig = () => ({
     parameters: {
       enableSignup: false,
       useConfigJson: false,
-      useHashMode: true,
+      useHashMode: false,
+      defaultLanguage: 'es',
+      valuesJsonPath: '/values.json',
       schema: config.schema,
       name: config.name,
-      isDeveloperMode: true,
+      hasMicrosoftAuth: true,
+      hasGoogleAuth: true,
+      isDeveloperMode: false,
       hasExternalApp: config.hasExternalApp,
       showTablesWithoutSchema: false,
       showExtraProjectExecutionColumns: {
         showUserName: false,
         showEndCreationDate: false,
         showTimeLimit: true,
+        showUserFullName: false,
       },
       solverConfig: {
         showSolverStep: true,

@@ -125,7 +125,7 @@
       ref="executionTable"
       v-if="optionSelected === 'searchExecution' && searchExecution"
     >
-      <v-row class="mt-3 ml-4" v-if="!formatDateByTime">
+      <v-row class="mt-3 ml-4">
         <MFilterSearch @search="handleSearch" />
       </v-row>
       <v-row class="mb-3 mx-2">
@@ -358,7 +358,8 @@ export default {
     },
     resetAndLoadNewExecution() {
       Object.assign(this.$data, this.$options.data())
-      this.showSnackbar = inject('showSnackbar')
+      // Reinitialize the store since we reset the data
+      this.generalStore = useGeneralStore()
     },
     handleSearch(searchText) {
       this.searchExecutionText = searchText
@@ -445,7 +446,7 @@ export default {
           value: solver,
           text: solver,
           description: '',
-          checked: false,
+          checked: this.newExecution.config.solver === solver,
         }))
       },
       set(newSolvers) {

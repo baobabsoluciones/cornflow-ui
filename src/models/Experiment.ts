@@ -47,7 +47,6 @@ export class ExperimentCore {
       link.href = window.URL.createObjectURL(blob)
       link.download = `instance_${sanitizedFilename}`
       link.click()
-      console.log('Excel file generated correctly:', 'instance')
     }
     if (saveSolution && this.solution != null && this.solution.data != null) {
       workbook = new ExcelJS.Workbook()
@@ -61,7 +60,6 @@ export class ExperimentCore {
       link.href = window.URL.createObjectURL(blob)
       link.download = `solution_${sanitizedFilename}`
       link.click()
-      console.log('Excel file generated correctly: solution')
     }
   }
 }

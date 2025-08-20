@@ -28,6 +28,7 @@ VITE_APP_BACKEND_URL=https://your-backend-url
 VITE_APP_SCHEMA=rostering
 VITE_APP_NAME=Rostering
 VITE_APP_EXTERNAL_APP=0
+VITE_APP_IS_STAGING_ENVIRONMENT=0
 
 # Authentication Configuration
 VITE_APP_AUTH_TYPE=cornflow  # Options: cornflow, azure, cognito
@@ -48,6 +49,7 @@ Used when `useConfigJson: true` in `src/app/config.ts`. Create this file based o
     "schema": "rostering",
     "name": "Rostering",
     "hasExternalApp": 0,
+    "isStagingEnvironment": 0,
     "auth_type": "cornflow",
     "cognito": {
       "region": "your-region",
@@ -86,6 +88,8 @@ This file contains application-specific configuration that cannot be changed thr
       useConfigJson: false,  // Controls whether to use values.json or env vars
       enableSignup: false, // Enables or disables the functionality for users to sign-up from login view
       isDeveloperMode: false, // Enables or disables developer mode to upload solution
+      defaultLanguage: 'en', // Sets the default language for i18n ('en', 'es', 'fr')
+      valuesJsonPath: '/values.json', // Path to the values.json file for production
       
       // Schema and branding
       schema: config.schema,  // Read from env/values.json
@@ -99,9 +103,11 @@ This file contains application-specific configuration that cannot be changed thr
         showUserName: false,     
         showEndCreationDate: false,
         showTimeLimit: true,
+        showUserFullName: false,
       },
       
       // Dashboard Configuration
+      showDashboardMainView: false, // Controls if the dashboard main view should be shown. If false, the dashboard will be shown as a list of pages.
       dashboardLayout: [...],
       dashboardPages: [...],
       dashboardRoutes: [...],
@@ -139,7 +145,9 @@ This file contains application-specific configuration that cannot be changed thr
           message: 'Success solution',
           code: 'Success'
         }
-      }
+      },
+      hasMicrosoftAuth: true,  // Controls if Microsoft authentication button is shown
+      hasGoogleAuth: false,    // Controls if Google authentication button is shown
     }
   }
 }
@@ -212,6 +220,32 @@ VITE_APP_EXTERNAL_APP=1
 // values.json
 {
   "hasExternalApp": 1
+}
+```
+
+### Staging environment mode (isStagingEnvironment)
+The `isStagingEnvironment` parameter controls whether to display a warning banner at the top of the application indicating that you are in a staging environment.
+
+- When `isStagingEnvironment: 1`:
+  - Shows a marquee warning banner at the top of the application with the text "🚧 [Staging Warning Message] 🚧"
+  - The banner has a light red background and is clearly visible to users
+  - Helps users easily identify when they are working in a staging environment
+
+- When `isStagingEnvironment: 0` (default):
+  - No warning banner is displayed
+  - Normal production view is shown
+
+This parameter can be set in either the environment variables or values.json:
+
+```env
+# Environment variables
+VITE_APP_IS_STAGING_ENVIRONMENT=1
+```
+
+```json
+// values.json
+{
+  "isStagingEnvironment": 1
 }
 ```
 
@@ -341,6 +375,18 @@ Defines the configuration fields for execution parameters. Each field can have:
 ## Authentication
 The application supports three authentication methods. Note that for any of these methods to work, the server must be properly configured to accept the corresponding authentication type.
 
+### Authentication configuration
+In addition to the authentication type configuration, you can control which authentication methods are visible in the login page through the following parameters in `src/app/config.ts`:
+
+```typescript
+parameters: {
+  hasMicrosoftAuth: true,  // Controls if Microsoft authentication button is shown
+  hasGoogleAuth: false,    // Controls if Google authentication button is shown
+}
+```
+
+These parameters work independently of the authentication type configuration, allowing you to show or hide specific authentication methods in the UI.
+
 ### 1. Cornflow authentication (Default)
 Using environment variables (when useConfigJson: false):
 ```env
@@ -360,6 +406,7 @@ Using environment variables (when useConfigJson: false):
 VITE_APP_AUTH_TYPE=azure
 VITE_APP_AUTH_CLIENT_ID=your_azure_client_id
 VITE_APP_AUTH_AUTHORITY=your_azure_authority
+VITE_APP_AUTH_REDIRECT_URI=your-redirect-uri
 ```
 
 Using values.json (when useConfigJson: true):
@@ -415,6 +462,156 @@ parameters: {
 
 When hash mode is enabled, all routes will include a hash (#) in the URL (e.g., `http://example.com/#/project-execution` instead of `http://example.com/project-execution`).
 
+## Internationalization Configuration
+The application supports multiple languages (English, Spanish, and French). You can configure the default language by setting the `defaultLanguage` parameter in `src/app/config.ts`:
+
+```typescript
+parameters: {
+  // other parameters
+  defaultLanguage: 'es', // 'en' for English, 'es' for Spanish, 'fr' for French
+  // other parameters
+}
+```
+
+Available language codes:
+- `'en'` - English (default)
+- `'es'` - Spanish
+- `'fr'` - French
+
+## Values.json Path Configuration
+When using JSON configuration (`useConfigJson: true`), you can customize the path where the application looks for the `values.json` file by setting the `valuesJsonPath` parameter in `src/app/config.ts`:
+
+```typescript
+parameters: {
+  // other parameters
+  valuesJsonPath: '/config/values.json', // Custom path to values.json
+  // other parameters
+}
+```
+
+The default value is `/values.json`. The application will:
+- For localhost: Use the path as-is (e.g., `/config/values.json`)
+- For production: Prepend the hostname (e.g., `https://example.com/config/values.json`)
+
+This is useful when you need to place the configuration file in a different location than the root of your domain.
+
+
+# Unit testing
+
+The application includes a comprehensive unit testing setup using Vitest and Vue Test Utils. Tests are organized in a specific structure to separate core functionality from application-specific tests.
+
+## Test structure
+
+Unit tests are located in the `tests/unit/` directory, which is organized as follows:
+
+```
+tests/unit/
+├── core/           # Core tests (DO NOT MODIFY)
+│   ├── components/ # Tests for core Vue components
+│   ├── services/   # Tests for core services
+│   ├── stores/     # Tests for Pinia stores
+│   ├── repositories/ # Tests for data repositories
+│   ├── views/      # Tests for core views
+│   ├── setup.ts    # Test setup configuration
+│   └── vuetify-setup.ts # Vuetify test configuration
+└── app/            # Application-specific tests
+    └── (your custom tests go here)
+```
+
+### Core Tests (`tests/unit/core/`)
+- **DO NOT MODIFY** these tests as they are part of the core framework
+- Contains tests for all core functionality including:
+  - Components (authentication, navigation, etc.)
+  - Services (auth services, API clients, etc.)
+  - Stores (Pinia state management)
+  - Repositories (data access layer)
+  - Views (core application views)
+
+### App Tests (`tests/unit/app/`)
+- This is where you should add **your application-specific tests**
+- Tests for custom components, services, and functionality specific to your client application
+- Follow the same structure as core tests for consistency
+
+## Running tests
+
+The following npm scripts are available for testing:
+
+```bash
+# Run all tests
+npm run test
+
+# Run tests with coverage report
+npm run test:coverage
+
+# Run tests with UI interface
+npm run test:ui
+
+# Run tests in watch mode (development)
+npm run test -- --watch
+```
+
+## Coverage reports
+
+The test coverage is configured with the following thresholds:
+- **Branches**: 80%
+- **Functions**: 80%
+- **Lines**: 80%
+- **Statements**: 80%
+
+Coverage reports are generated in multiple formats:
+- **Text**: Console output
+- **JSON**: Machine-readable format
+- **HTML**: Visual report in `coverage/` directory
+
+## Writing Tests
+
+When writing new tests for your application:
+
+1. **Place tests in the correct location**:
+   - Core functionality tests: `tests/unit/core/` (DO NOT MODIFY)
+   - Your app tests: `tests/unit/app/`
+
+2. **Follow naming conventions**:
+   - Test files should end with `.spec.ts`
+   - Use descriptive test names
+   - Group related tests using `describe` blocks
+
+3. **Use the provided setup**:
+   - Tests automatically use the core setup files
+   - Vuetify components are pre-configured
+   - Common mocks and utilities are available
+
+4. **Example test structure**:
+```typescript
+import { describe, test, expect, vi, beforeEach } from 'vitest'
+import { mount } from '@vue/test-utils'
+import YourComponent from '@/app/components/YourComponent.vue'
+import vuetify from '../../core/vuetify-setup'
+
+describe('YourComponent', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  test('renders correctly', () => {
+    const wrapper = mount(YourComponent, {
+      global: {
+        plugins: [vuetify]
+      }
+    })
+    
+    expect(wrapper.exists()).toBe(true)
+  })
+})
+```
+
+## Testing best practices
+
+- **Isolation**: Each test should be independent and not rely on other tests
+- **Mocking**: Mock external dependencies and API calls
+- **Coverage**: Aim for high test coverage, especially for critical functionality
+- **Clarity**: Write clear, descriptive test names and assertions
+- **Maintenance**: Keep tests up to date with code changes
 
 # Run the application in local
 ## Installing

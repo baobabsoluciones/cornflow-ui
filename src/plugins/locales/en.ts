@@ -144,11 +144,14 @@ export default {
       noSolutionMessage:
         'The execution has been succesfully created but no solution has been found',
     },
+    stagingWarning: 
+    'You are currently working in a staging environment. This environment is intended for testing and development purposes only. For real executions, please switch to the production environment.',
   },
   executionTable: {
     date: 'Time',
     endDate: 'End Time',
     userName: 'User',
+    userFullName: 'User',
     name: 'Name',
     description: 'Description',
     state: 'State',
@@ -203,6 +206,8 @@ export default {
     subtitle: 'Log in to get started!',
     azure_button: 'Login with Azure',
     cognito_button: 'Login with AWS',
+    google_button: 'Continue with Google',
+    microsoft_button: 'Continue with Microsoft',
     username_textfield_label: 'Username',
     password_textfield_label: 'Password',
     button_label: 'Log in',
@@ -213,6 +218,12 @@ export default {
     processing_auth: 'Processing authentication...',
     redirecting: 'Redirecting to external authentication... If the redirection does not happen automatically, please contact technical support for assistance.',
     session_expired: 'Your session has expired. Please sign in again.',
+    or_divider: 'OR',
+    form_login_disabled: 'Username and password login is not available with this authentication method. Please use the social login buttons.',
+    google_not_configured: 'Google authentication is not configured',
+    google_not_available: 'Google authentication service is not available',
+    microsoft_not_configured: 'Microsoft authentication is not configured',
+    microsoft_not_available: 'Microsoft authentication service is not available',
   },
   logOut: {
     title: 'Log out',
@@ -291,6 +302,9 @@ export default {
     errorDownloadingExcel: 'An error occurred while downloading the excel',
     generating: 'Generating...',
     download: 'Download',
+    downloadDataChecks: 'Download excel',
+    generatingDataChecks: 'Generating data checks...',
+    errorDownloadingDataChecks: 'An error occurred while downloading the data checks',
   },
   settings: {
     currentPassword: 'Current password',

@@ -1,6 +1,7 @@
 import readXlsxFile from 'read-excel-file'
 import i18n from '@/plugins/i18n'
 import { getTableVisible, getTablePropertyVisible } from '@/utils/tableUtils'
+import { formatDateForExcel } from '@/utils/date'
 
 const readTable = function (
   file,
@@ -17,8 +18,19 @@ const readTable = function (
       } else {
         // Otherwise, treat the first row as the header row and use it to create the keys for the objects.
         const cols = rows.shift()
+        // If cols is undefined (empty sheet), return empty array
+        if (!cols) {
+          return []
+        }
+        
+        const formattedCols = cols.map(col => {
+          if (col instanceof Date) {
+            return formatDateForExcel(col)
+          }
+          return col
+        })
         return rows.map((row) =>
-          Object.fromEntries(cols.map((col, i) => [col, row[i]])),
+          Object.fromEntries(formattedCols.map((col, i) => [col, row[i]])),
         )
       }
     })
@@ -54,13 +66,7 @@ const loadExcel = async function (file, schema) {
             return Object.fromEntries(
               Object.entries(row).map(([key, value]) => {
                 if (value instanceof Date) {
-                  const hours = value.getUTCHours()
-                  const minutes = value.getUTCMinutes()
-                  if (hours === 0 && minutes === 0) {
-                    return [key, value.toISOString().split('T')[0]]
-                  } else {
-                    return [key, value.toISOString().slice(0, 16).replace('T', ' ')]
-                  }
+                  return [key, formatDateForExcel(value, true)]
                 } 
                 else if (Number.isNaN(value)) {
                   return [key, null]

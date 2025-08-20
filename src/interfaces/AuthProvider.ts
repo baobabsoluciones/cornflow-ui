@@ -4,6 +4,7 @@ export interface AuthProvider {
   getToken(): string | null;
   getUserId(): string | null;
   isAuthenticated(): boolean;
+  refreshToken?(): Promise<{ token: string; expiresAt: number } | null>;
   getUsername?(): string | null;
   getName?(): string | null;
   getEmail?(): string | null;

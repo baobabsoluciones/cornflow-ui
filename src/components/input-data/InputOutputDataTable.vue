@@ -3,12 +3,11 @@
     <!-- Alerts Section -->
     <div v-if="checksLaunched && checksFinished && (!data?.dataChecks || Object.keys(data.dataChecks).length === 0)" class="alert-section">
       <v-alert
-        class="mb-3"
+        class="mb-3 alert-text-size"
         color="green"
         elevation="2"
         icon="mdi-check"
         density="compact"
-        style="font-size: 0.85rem !important"
       >
         {{ $t('inputOutputData.dataChecksPassedMessage') }}
       </v-alert>
@@ -16,12 +15,11 @@
 
     <div v-if="checksLaunched && !checksFinished && !checksError" class="alert-section">
       <v-alert
-        class="mb-3"
+        class="mb-3 alert-text-size"
         color="blue"
         elevation="2"
         icon="mdi-alert"
         density="compact"
-        style="font-size: 0.85rem !important"
       >
         <v-progress-circular
           indeterminate
@@ -35,12 +33,11 @@
 
     <div v-if="checksError" class="alert-section">
       <v-alert
-        class="mb-3"
+        class="mb-3 alert-text-size"
         color="error"
         elevation="2"
         icon="mdi-alert-circle"
         density="compact"
-        style="font-size: 0.85rem !important"
       >
         {{ $t('inputOutputData.dataChecksFailedMessage') }}
       </v-alert>
@@ -48,12 +45,11 @@
 
     <div v-if="data?.dataChecks && Object.keys(data.dataChecks).length > 0" class="alert-section">
       <v-alert
-        :class="{ 'mb-3': !showDataChecksTable }"
+        :class="{ 'mb-3': !showDataChecksTable, 'alert-text-size': true }"
         color="var(--secondary)"
         elevation="2"
         icon="mdi-alert"
         density="compact"
-        style="font-size: 0.85rem !important"
       >
         {{
           type === 'instance'
@@ -63,9 +59,8 @@
         <v-spacer></v-spacer>
         <v-btn
           text
-          class="mt-2"
+          class="mt-2 small-btn-text"
           @click="showDataChecksTable = !showDataChecksTable"
-          style="font-size: 0.6rem !important"
         >
           {{
             showDataChecksTable
@@ -86,6 +81,30 @@
       >
         <template #actions>
           <v-row class="d-flex mt-3">
+            <v-col cols="10">
+              <v-btn
+                color="primary"
+                density="compact"
+                class="compact-btn-text"
+                :disabled="isDownloadingDataChecks"
+                @click="handleDownloadDataChecks()"
+              >
+                <template v-if="isDownloadingDataChecks">
+                  <v-progress-circular
+                    indeterminate
+                    size="16"
+                    width="2"
+                    color="white"
+                    class="mr-1"
+                  ></v-progress-circular>
+                  {{ $t('inputOutputData.generatingDataChecks') }}
+                </template>
+                <template v-else>
+                  <v-icon class="mr-2">mdi-microsoft-excel</v-icon>
+                  {{ $t('inputOutputData.downloadDataChecks') }}
+                </template>
+              </v-btn>
+            </v-col>
             <v-spacer></v-spacer>
             <v-icon
               class="modal_icon_title mr-8"
@@ -95,7 +114,7 @@
           </v-row>
         </template>
         <template #table>
-          <v-row class="mt-8" style="overflow-x: auto !important;">
+          <v-row class="mt-8 table-overflow">
             <MDataTable
               key="data-checks-table"
               class="data-checks-table"
@@ -142,14 +161,13 @@
             <v-spacer></v-spacer>
             <v-col
               cols="2"
-              style="margin: 0 !important; justify-content: end; display: flex"
+              class="action-col-flex"
             >
               <v-btn
                 v-if="!canEdit"
-                class="mr-4"
+                class="mr-4 compact-btn-text"
                 color="primary"
                 density="compact"
-                style="font-size: 0.7rem !important"
                 :disabled="isDownloading"
                 @click="handleDownload()"
               >
@@ -172,9 +190,8 @@
                 v-if="canEdit && !editionMode"
                 color="primary"
                 icon="mdi-pencil"
-                class="mr-3"
+                class="mr-3 small-btn-text"
                 density="compact"
-                style="font-size: 0.6rem !important"
                 @click="editionMode = true"
               >
               </v-btn>
@@ -183,8 +200,7 @@
                 color="primary"
                 icon="mdi-content-save-edit"
                 density="compact"
-                style="font-size: 0.6rem !important"
-                class="mr-3"
+                class="mr-3 small-btn-text"
                 @click="openSaveModal"
               >
               </v-btn>
@@ -192,9 +208,8 @@
                 icon="mdi-content-save-off"
                 v-if="canEdit && editionMode"
                 color="primary"
-                class="mr-3"
+                class="mr-3 small-btn-text"
                 density="compact"
-                style="font-size: 0.6rem !important"
                 @click="cancelEdit"
               >
               </v-btn>
@@ -202,7 +217,7 @@
           </v-row>
         </template>
         <template #table>
-          <v-row class="mt-8" style="overflow-x: auto !important;">
+          <v-row class="mt-8 table-overflow">
             <MDataTable
               :items="filteredDataTable"
               :headers="headers"
@@ -333,6 +348,7 @@ export default {
       filters: {},
       resetPage: false,
       isDownloading: false,
+      isDownloadingDataChecks: false,
     }
   },
   created() {
@@ -433,13 +449,13 @@ export default {
       return []
     },
     tableData() {
-      if (this.data && this.selectedTable) {
-        return this.data.data[this.selectedTable]
+      if (this.data && this.data.data && this.selectedTable) {
+        return this.data.data[this.selectedTable] || []
       }
       return []
     },
     headers() {
-      if (this.data && this.selectedTable) {
+      if (this.data && this.data.data && this.selectedTable) {
         const headers = Array.isArray(this.data.data[this.selectedTable])
           ? this.generalStore.getTableHeadersData(
               this.tableType,
@@ -447,14 +463,17 @@ export default {
             )
           : this.generalStore.getConfigTableHeadersData()
 
-          if (headers.length === 0) {
-            const headers = this.generalStore.getHeadersFromData(
-            this.data.data[this.selectedTable][0],
-            )
-            return headers
+          if (headers && headers.length === 0) {
+            const tableData = this.data.data[this.selectedTable]
+            if (Array.isArray(tableData) && tableData.length > 0 && tableData[0]) {
+              const headers = this.generalStore.getHeadersFromData(
+                tableData[0],
+              )
+              return headers
+            }
           } 
 
-        return headers
+        return headers || []
       }
       return []
     },
@@ -499,7 +518,8 @@ export default {
       return useFilters(
         this.formattedTableData,
         this.searchText,
-        this.filtersSelected[this.selectedTable],
+        (this.filtersSelected && this.selectedTable) ? 
+          this.filtersSelected[this.selectedTable] || {} : {},
       )
     },
   },
@@ -662,6 +682,96 @@ export default {
       }
       // Reset filters to originalFilters
       this.filters = JSON.parse(JSON.stringify(this.originalFilters))
+    },
+    async handleDownloadDataChecks() {
+      if (!this.data?.dataChecks) {
+        this.showSnackbar(this.$t('inputOutputData.errorDownloadingDataChecks'), 'error')
+        return
+      }
+
+      try {
+        this.isDownloadingDataChecks = true
+        
+        // Create filename similar to the main download
+        const filename = this.execution.name.toLowerCase().replace(/ /g, '_') + '_data_checks'
+        
+        // Create workbook and download data checks
+        const ExcelJS = await import('exceljs')
+        const workbook = new ExcelJS.Workbook()
+        
+        // Use the same utility function that's used for main data download
+        const { schemaDataToTable } = await import('@/utils/data_io')
+        
+        // Get the appropriate schema for data checks - handle different execution structures
+        let dataChecksSchema = null
+        
+        if (this.execution.experiment) {
+          // For LoadedExecution with experiment structure
+          if (this.type === 'instance' && this.execution.experiment.instance?.checksSchema) {
+            dataChecksSchema = this.execution.experiment.instance.checksSchema
+          } else if (this.type === 'solution' && this.execution.experiment.solution?.checksSchema) {
+            dataChecksSchema = this.execution.experiment.solution.checksSchema
+          }
+        } else if (this.execution[this.type]?.checksSchema) {
+          // For direct execution structure
+          dataChecksSchema = this.execution[this.type].checksSchema
+        }
+        
+        // If no schema found, use null (will use default formatting)
+        await schemaDataToTable(workbook, this.data.dataChecks, dataChecksSchema)
+
+        // Auto-fit columns for each worksheet
+        workbook.eachSheet((worksheet) => {
+          worksheet.columns.forEach((column) => {
+            let maxLength = 0
+            column.eachCell({ includeEmpty: true }, (cell) => {
+              if (cell.value) {
+                // Handle different types of cell values
+                let cellText = ''
+                if (typeof cell.value === 'object' && cell.value !== null) {
+                  // Handle rich text or other object values
+                  cellText = cell.text || cell.value.toString()
+                } else {
+                  cellText = cell.value.toString()
+                }
+                // Calculate the length considering the font and content
+                const contentLength = cellText.length
+                // For header cells (first row), add extra space
+                if (cell.row === 1) {
+                  maxLength = Math.max(maxLength, contentLength + 4)
+                } else {
+                  maxLength = Math.max(maxLength, contentLength)
+                }
+              }
+            })
+            // Set minimum width for empty columns
+            maxLength = Math.max(maxLength, 8)
+            // Add padding and set the width, with a higher maximum for text-heavy columns
+            const padding = 4
+            const calculatedWidth = maxLength + padding
+            // Use different max widths based on typical content length
+            const maxWidth = maxLength > 50 ? 100 : (maxLength > 30 ? 75 : 50)
+            column.width = Math.min(calculatedWidth, maxWidth)
+          })
+        })
+        
+        // Generate and download the Excel file
+        const excelBuffer = await workbook.xlsx.writeBuffer()
+        const blob = new Blob([excelBuffer], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        })
+        const link = document.createElement('a')
+        link.href = window.URL.createObjectURL(blob)
+        link.download = `${filename}.xlsx`
+        link.click()
+        
+        this.showSnackbar(this.$t('inputOutputData.downloadDataChecks') + ' ' + this.$t('inputOutputData.generating'), 'success')
+      } catch (error) {
+        console.error('Error downloading data checks:', error)
+        this.showSnackbar(this.$t('inputOutputData.errorDownloadingDataChecks'), 'error')
+      } finally {
+        this.isDownloadingDataChecks = false
+      }
     },
   },
 }

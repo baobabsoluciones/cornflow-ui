@@ -1,5 +1,101 @@
 # Changelog
 
+## [1.3.0] - 20-08-2025
+
+### Added
+- **User manual and dashboard improvements**  
+  - Added download user manual with correct href functionality
+  - Added showDashboardMainView config parameter for better dashboard control
+  - Updated README documentation with new features
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #127
+
+- **New modern login page design**  
+  - Implemented new sign in landing page with modern design
+  - Added multiple ways of log-in functionality
+  - Added dynamic background image with moving cards
+  - Added prominent display of company logo and baobab logo
+  - Added new platform name displayed on login interface
+  - Positioned login form on the right side with application name title
+  - Added options to log in with Google and Microsoft when configurations are enabled
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #128
+
+- **Added default language and values json path**  
+  - Added configurable values.json path in app configuration
+  - Added configurable default language setting (defaulting to 'es')
+  - Enhanced flexibility for localization efforts
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #134
+
+- **Instance checks excel export**  
+  - Added "Download instance checks" button on instance checks view
+  - Implemented XLSX (Excel) export functionality for instance check data
+  - Enhanced analysis and reporting capabilities
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #141
+
+- **External app integration enhancements**  
+  - Added fullname display option for better user identification
+  - Added staging environment warning option for development safety
+  - Improved refresh token handling for OpenID authentication
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #145
+
+- **Comprehensive unit testing implementation**  
+  - Implemented comprehensive core unit testing with Vitest
+  - Achieved 90% test coverage
+  - Added workflow to ensure unit tests pass in CI/CD pipeline
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #146
+
+- **Package management improvements**  
+  - Added package-lock.json for better dependency management
+  - Updated all package.json library versions with exact versions (without ^)
+  - Enhanced build reproducibility and stability
+
+### Fixed
+- **Data validation error handling fix**  
+  - Fixed UI hanging indefinitely when check data fails
+  - Improved error handling for DAG data validation failures
+  - Added proper error messages instructing users to contact support
+  - Enhanced user feedback during data validation processes
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #133
+
+- **Date processing and navigation fixes**  
+  - Fixed incorrect date header handling in data processing utilities
+  - Preserved original date string formats in instance and solution data
+  - Fixed incorrect redirection after execution load (now redirects to solution tables)
+  - Improved date format consistency across the application
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #140
+
+- **Authentication-specific UI improvements**  
+  - Hidden "Change password" option when using external authentication methods
+  - Improved user interface consistency for non-Cornflow authentication
+  - Enhanced user experience by removing non-applicable options
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #142
+
+- **Excel processing improvements**  
+  - Fixed handling of empty Excel sheets in data processing
+  - Improved error handling for edge cases in file processing
+  - Enhanced stability of data import/export functionality
+
+- **Project execution workflow fix**  
+  - Fixed solver step reset when creating new project executions
+  - Improved workflow consistency in execution creation process
+  - Enhanced user experience during project setup
+
+### Changed
+- **Login interface visual improvements**  
+  - Fixed border radius styling for new login cards
+  - Improved visual consistency of login interface
+  - Enhanced overall login page aesthetics
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #143
+
 ## [1.2.0] - 09-06-2025
 
 ### Added

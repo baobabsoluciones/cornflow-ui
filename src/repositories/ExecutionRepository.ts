@@ -55,6 +55,8 @@ export default class ExecutionRepository {
           execution.id,
           execution.user_id,
           execution.username,
+          execution.first_name,
+          execution.last_name,
           execution.updated_at,
         )
       })

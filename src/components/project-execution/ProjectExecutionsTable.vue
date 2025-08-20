@@ -41,6 +41,18 @@
             </v-tooltip>
           </div>
         </template>
+        <template v-slot:userFullName="{ item }">
+          <div class="cell-content">
+            <span>{{ item.userFullName || '-' }}</span>
+            <v-tooltip
+              activator="parent"
+              location="bottom"
+              v-if="item.userFullName && item.userFullName.length > 15"
+            >
+              <span>{{ item.userFullName }}</span>
+            </v-tooltip>
+          </div>
+        </template>
         <template v-slot:name="{ item }">
           <div class="cell-content">
             <span>{{ item.name }}</span>

@@ -14,14 +14,14 @@
               height="30"
               class="ml-3"
               v-if="mini"
-              src="@/app/assets/logo/logo.png"
+              :src="mainLogo"
             />
             <v-img
               height="30"
               position="left"
               class="ml-3"
               v-else
-              src="@/app/assets/logo/full_logo.png"
+              :src="fullLogo"
             />
           </div>
         </template>
@@ -41,7 +41,10 @@
           </div>
         </template>
         <template #menu>
-          <template v-for="generalItem in generalPages" :key="generalItem.title">
+          <template
+            v-for="generalItem in generalPages"
+            :key="generalItem.title"
+          >
             <v-list-item
               :base-color="'var(--title)'"
               :color="'var(--accent)'"
@@ -139,9 +142,9 @@
 <script lang="ts">
 import { defineComponent, Suspense, inject } from 'vue'
 import { useGeneralStore } from '@/stores/general'
-import AuthService from '@/services/AuthService'
 import getAuthService from '@/services/AuthServiceFactory'
-import config from '@/config'
+import appConfig from '@/app/config'
+import { mainLogo, fullLogo } from '@/utils/assets'
 
 export default defineComponent({
   name: 'CoreAppDrawer',
@@ -156,6 +159,8 @@ export default defineComponent({
     confirmSignOutModal: false,
     auth: null,
     showSnackbar: null,
+    mainLogo,
+    fullLogo,
   }),
   async created() {
     this.showSnackbar = inject('showSnackbar')
@@ -165,7 +170,9 @@ export default defineComponent({
   computed: {
     user() {
       return {
-        name: this.store.getUser.username,
+        name: appConfig.getCore().parameters.showUserFullName
+          ? this.store.getUser.fullName
+          : this.store.getUser.username,
         email: this.store.getUser.email,
       }
     },
@@ -205,7 +212,9 @@ export default defineComponent({
         {
           title: 'Dashboard',
           icon: 'mdi-view-dashboard',
-          to: '/dashboard',
+          to: appConfig.getCore().parameters.showDashboardMainView
+            ? '/dashboard'
+            : null,
           subPages:
             this.store.appDashboardPages.length > 0
               ? this.store.appDashboardPages
@@ -232,7 +241,10 @@ export default defineComponent({
         await this.auth.logout()
         this.$router.push('/sign-in')
         if (this.showSnackbar) {
-          this.showSnackbar(this.$t('logOut.snackbar_message_success'), 'success')
+          this.showSnackbar(
+            this.$t('logOut.snackbar_message_success'),
+            'success',
+          )
         }
       } catch (error) {
         console.error('Logout error:', error)
@@ -295,10 +307,33 @@ export default defineComponent({
   width: 100%;
   min-height: 40px;
   transition: all 0.3s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 h4 {
   font-size: 0.9em !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+  line-height: 1.2;
+  transition: opacity 0.3s ease;
+}
+
+.v-list-item {
+  min-height: 40px;
+  transition: all 0.3s ease;
+}
+
+.v-list-item__content {
+  transition: all 0.3s ease;
+}
+
+.v-icon {
+  flex-shrink: 0;
+  transition: all 0.3s ease;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
