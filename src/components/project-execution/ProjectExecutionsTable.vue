@@ -2,162 +2,139 @@
   <div class="table-wrapper">
     <div
       class="table-container"
-      :class="{ 'fixed-width': useFixedWidth, 'no-headers': !showHeaders }"
+      :class="{ 'fixed-width': useFixedWidth }"
     >
-      <MDataTable
+      <PDataTable
         :headers="headerExecutions"
         :items="processedExecutions"
         :showFooter="showFooter"
         :showHeaders="showHeaders"
-        :hideDefaultHeader="!showHeaders"
-        class="execution-table"
+        :class="['execution-table', { 'no-headers': !showHeaders }]"
         :key="tableKey"
       >
-        <template v-slot:createdAt="{ item }">
+        <!-- createdAt -->
+        <template #createdAt="{ item }">
           <div class="cell-content">
             <span>
               {{
-                formatDateByTime ? formatToHHmm(item.createdAt) : new Date(item.createdAt).toISOString().split('T')[0]
+                formatDateByTime
+                  ? formatToHHmm(item.createdAt)
+                  : new Date(item.createdAt).toISOString().split('T')[0]
               }}
             </span>
           </div>
         </template>
-        <template v-slot:finishedAt="{ item }">
+
+        <!-- finishedAt -->
+        <template #finishedAt="{ item }">
           <div class="cell-content">
             <span>
-              {{ item.finishedAt ? (formatDateByTime ? formatToHHmm(item.finishedAt) : new Date(item.finishedAt).toISOString().split('T')[0]) : '-' }}
+              {{
+                item.finishedAt
+                  ? (formatDateByTime
+                      ? formatToHHmm(item.finishedAt)
+                      : new Date(item.finishedAt).toISOString().split('T')[0])
+                  : '-'
+              }}
             </span>
           </div>
         </template>
-        <template v-slot:userName="{ item }">
-          <div class="cell-content">
+
+        <!-- userName -->
+        <template #userName="{ item }">
+          <div class="cell-content" v-tooltip.bottom="item.userName">
             <span>{{ item.userName || '-' }}</span>
-            <v-tooltip
-              activator="parent"
-              location="bottom"
-              v-if="item.userName && item.userName.length > 15"
-            >
-              <span>{{ item.userName }}</span>
-            </v-tooltip>
           </div>
         </template>
-        <template v-slot:name="{ item }">
-          <div class="cell-content">
+
+        <!-- name -->
+        <template #name="{ item }">
+          <div class="cell-content" v-tooltip.bottom="item.name">
             <span>{{ item.name }}</span>
-            <v-tooltip
-              activator="parent"
-              location="bottom"
-              v-if="item.name && item.name.length > 15"
-            >
-              <span>{{ item.name }}</span>
-            </v-tooltip>
           </div>
         </template>
-        <template v-slot:description="{ item }">
-          <div class="cell-content">
+
+        <!-- description -->
+        <template #description="{ item }">
+          <div class="cell-content" v-tooltip.bottom="item.description">
             <span>{{ item.description }}</span>
-            <v-tooltip
-              activator="parent"
-              location="bottom"
-              v-if="item.description && item.description.length > 25"
-            >
-              <span>{{ item.description }}</span>
-            </v-tooltip>
           </div>
         </template>
-        <template v-slot:solver="{ item }">
-          <div class="cell-content">
+
+        <!-- solver -->
+        <template #solver="{ item }">
+          <div class="cell-content" v-tooltip.bottom="getSolverName(item)">
             <span>{{ getSolverName(item) }}</span>
-            <v-tooltip
-              activator="parent"
-              location="bottom"
-              v-if="getSolverName(item) && getSolverName(item).length > 15"
-            >
-              <span>{{ getSolverName(item) }}</span>
-            </v-tooltip>
           </div>
         </template>
-        <template v-slot:timeLimit="{ item }" v-if="showTimeLimit">
+
+        <!-- timeLimit -->
+        <template #timeLimit="{ item }" v-if="showTimeLimit">
           <div class="cell-content">
             <span>{{ getTimeLimit(item) }} sec</span>
           </div>
         </template>
-        <template v-slot:state="{ item }">
-          <v-chip size="x-small" :color="getStateInfo(item.state).color" value="chip">
-            {{ getStateInfo(item.state).code }}
-            <v-tooltip activator="parent" location="bottom">
-              <div style="font-size: 11px">
-                {{ getStateInfo(item.state).message }}
-              </div>
-            </v-tooltip>
-          </v-chip>
+
+        <!-- state -->
+        <template #state="{ item }">
+          <Tag
+            :value="getStateInfo(item.state).code"
+            class="text-xs"
+            v-tooltip.bottom="getStateInfo(item.state).message"
+            :style="getTagStyle(getStateInfo(item.state).color)"
+          />
         </template>
-        <template v-slot:solution="{ item }">
-          <v-chip
-            size="x-small"
-            :color="getSolutionInfo(item.solution_state).color"
-            value="chip"
-          >
-            {{ getSolutionInfo(item.solution_state).code }}
-            <v-tooltip activator="parent" location="bottom">
-              <div style="font-size: 11px">
-                {{ getSolutionInfo(item.solution_state).message }}
-              </div>
-            </v-tooltip>
-          </v-chip>
+
+        <!-- solution -->
+        <template #solution="{ item }">
+          <Tag
+            :value="getSolutionInfo(item.solution_state).code"
+            class="text-xs"
+            v-tooltip.bottom="getSolutionInfo(item.solution_state).message"
+            :style="getTagStyle(getSolutionInfo(item.solution_state).color)"
+          />
         </template>
-        <template v-slot:excel="{ item }">
-          <v-icon 
-            v-if="!item.isDownloading" 
-            size="small" 
+
+        <!-- excel -->
+        <template #excel="{ item }">
+          <i
+            v-if="!item.isDownloading"
+            class="mdi mdi-microsoft-excel cursor-pointer"
             @click="handleDownloadClick(item)"
-          >
-            mdi-microsoft-excel
-          </v-icon>
-          <v-progress-circular
+          ></i>
+          <ProgressSpinner
             v-else
-            indeterminate
-            size="20"
-            width="2"
-            color="primary"
-          ></v-progress-circular>
+            style="width:20px;height:20px"
+            strokeWidth="4"
+            animationDuration=".5s"
+          />
         </template>
-        <template v-slot:actions="{ item }">
-          <span>
+
+        <!-- actions -->
+        <template #actions="{ item }">
+          <span class="flex gap-2">
             <span>
-              <v-icon 
-                v-if="!loadingExecutions.has(item.id)" 
-                size="small" 
-                class="mr-2" 
+              <i
+                v-if="!loadingExecutions.has(item.id)"
+                class="mdi mdi-tray-arrow-up cursor-pointer"
                 @click="loadExecutionClick(item)"
-              >
-                mdi-tray-arrow-up
-              </v-icon>
-              <v-progress-circular
+              ></i>
+              <ProgressSpinner
                 v-else
-                indeterminate
-                size="20"
-                width="2"
-                color="primary"
-                class="mr-2"
-              ></v-progress-circular>
-              <v-tooltip activator="parent" location="bottom">
-                <span>
-                  {{ $t('executionTable.loadExecution') }}
-                </span>
-              </v-tooltip>
+                style="width:20px;height:20px"
+                strokeWidth="4"
+                animationDuration=".5s"
+              />
             </span>
             <span>
-              <v-icon size="small" @click="deleteExecution(item)"> mdi-delete </v-icon>
-              <v-tooltip activator="parent" location="bottom">
-                <span>
-                  {{ $t('executionTable.deleteExecution') }}
-                </span>
-              </v-tooltip>
+              <i
+                class="mdi mdi-trash-can-outline cursor-pointer"
+                @click="deleteExecution(item)"
+              ></i>
             </span>
           </span>
         </template>
-      </MDataTable>
+      </PDataTable>
     </div>
   </div>
   <MBaseModal
@@ -193,6 +170,9 @@ import { inject } from 'vue';
 import { useProjectExecutionsTable } from '@/composables/project-execution-table/useProjectExecutionsTable';
 import { useI18n } from 'vue-i18n';
 import { useGeneralStore } from '@/stores/general';
+
+import Tag from 'primevue/tag'
+import ProgressSpinner from 'primevue/progressspinner'
 
 // Setup i18n
 const { t } = useI18n();
@@ -279,10 +259,17 @@ const handleDownloadClick = async (item: any) => {
 };
 
 // Utility function to format time as HH:mm
-function formatToHHmm(dateString: string): string {
+const formatToHHmm = (dateString: string): string => {
   const date = new Date(dateString)
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
 }
+
+// PrimeVue Tag no mapea colores arbitrarios en :severity. Forzamos estilos inline.
+const getTagStyle = (color: string): Record<string, string> => ({
+  backgroundColor: color,
+  borderColor: color,
+  color: '#ffffff'
+})
 </script>
 
 <style scoped>

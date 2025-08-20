@@ -1,6 +1,6 @@
 <template>
   <div class="view-container">
-    <MTitleView
+    <PTitleView
       :icon="'mdi-account-cog'"
       :title="title"
       :description="description"

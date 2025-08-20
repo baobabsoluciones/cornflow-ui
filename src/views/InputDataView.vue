@@ -1,7 +1,7 @@
 <template>
   <div class="view-container">
     <div class="d-flex align-end">
-      <MTitleView
+      <PTitleView
         :icon="'mdi-table-arrow-left'"
         :title="title"
         :description="description"
