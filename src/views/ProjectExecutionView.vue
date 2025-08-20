@@ -5,11 +5,11 @@
       :title="title"
       :description="description"
     />
-    <MFormSteps
+    <PFormSteps
       :steps="steps"
+      v-model:currentStep="currentStep"
       :disablePreviousButton="disablePrevButton"
       :disableNextButton="disableNextButton"
-      :currentStep.sync="currentStep"
       :steps-column-width="'20vw'"
       :continueButtonText="$t('projectExecution.continueButton')"
       :previousButtonText="$t('projectExecution.previousButton')"
@@ -117,7 +117,7 @@
           <v-icon right>mdi-arrow-right</v-icon>
         </v-btn>
       </template>
-    </MFormSteps>
+    </PFormSteps>
     <v-card
       class="mt-8"
       elevation="5"
