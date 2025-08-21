@@ -78,7 +78,7 @@
 
     <!-- Data Checks Table Section -->
     <div v-if="showDataChecksTable" class="data-checks-section">
-      <MTabTable
+      <PTabTable
         key="data-checks-tabs"
         class="mb-3"
         :tabsData="dataChecksTabsData"
@@ -105,12 +105,12 @@
             />
           </v-row>
         </template>
-      </MTabTable>
+      </PTabTable>
     </div>
 
     <!-- Main Data Table Section -->
     <div class="main-table-section">
-      <MTabTable
+      <PTabTable
         :tabsData="tabsData"
         @update:selectedTab="handleTabSelected"
         :selectedTable="selectedTable"
@@ -213,7 +213,7 @@
             />
           </v-row>
         </template>
-      </MTabTable>
+      </PTabTable>
     </div>
 
     <!-- Modals -->

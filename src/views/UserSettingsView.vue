@@ -5,7 +5,7 @@
       :title="title"
       :description="description"
     />
-    <MTabTable
+    <PTabTable
       class="mt-5"
       style="height: 90vh !important"
       :tabsData="userTabs"
@@ -110,7 +110,7 @@
           </v-list>
         </v-col>
       </template>
-    </MTabTable>
+    </PTabTable>
   </div>
 </template>
 

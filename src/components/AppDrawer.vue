@@ -1,7 +1,7 @@
 <template>
   <div :style="$attrs.style">
     <Suspense>
-      <MAppDrawer
+      <PAppDrawer
         :visible="true"
         :width="250"
         @update:rail="mini = !mini"
@@ -105,7 +105,7 @@
             </v-list-item>
           </template>
         </template>
-      </MAppDrawer>
+      </PAppDrawer>
     </Suspense>
   </div>
   <MBaseModal
