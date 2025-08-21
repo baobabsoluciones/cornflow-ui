@@ -3,12 +3,11 @@
     <!-- Alerts Section -->
     <div v-if="checksLaunched && checksFinished && (!data?.dataChecks || Object.keys(data.dataChecks).length === 0)" class="alert-section">
       <v-alert
-        class="mb-3"
+        class="mb-3 alert-text-size"
         color="green"
         elevation="2"
         icon="mdi-check"
         density="compact"
-        style="font-size: 0.85rem !important"
       >
         {{ $t('inputOutputData.dataChecksPassedMessage') }}
       </v-alert>
@@ -16,12 +15,11 @@
 
     <div v-if="checksLaunched && !checksFinished && !checksError" class="alert-section">
       <v-alert
-        class="mb-3"
+        class="mb-3 alert-text-size"
         color="blue"
         elevation="2"
         icon="mdi-alert"
         density="compact"
-        style="font-size: 0.85rem !important"
       >
         <v-progress-circular
           indeterminate
@@ -35,12 +33,11 @@
 
     <div v-if="checksError" class="alert-section">
       <v-alert
-        class="mb-3"
+        class="mb-3 alert-text-size"
         color="error"
         elevation="2"
         icon="mdi-alert-circle"
         density="compact"
-        style="font-size: 0.85rem !important"
       >
         {{ $t('inputOutputData.dataChecksFailedMessage') }}
       </v-alert>
@@ -48,12 +45,11 @@
 
     <div v-if="data?.dataChecks && Object.keys(data.dataChecks).length > 0" class="alert-section">
       <v-alert
-        :class="{ 'mb-3': !showDataChecksTable }"
+        :class="{ 'mb-3': !showDataChecksTable, 'alert-text-size': true }"
         color="var(--secondary)"
         elevation="2"
         icon="mdi-alert"
         density="compact"
-        style="font-size: 0.85rem !important"
       >
         {{
           type === 'instance'
@@ -63,9 +59,8 @@
         <v-spacer></v-spacer>
         <v-btn
           text
-          class="mt-2"
+          class="mt-2 small-btn-text"
           @click="showDataChecksTable = !showDataChecksTable"
-          style="font-size: 0.6rem !important"
         >
           {{
             showDataChecksTable
@@ -90,7 +85,7 @@
               <v-btn
                 color="primary"
                 density="compact"
-                style="font-size: 0.7rem !important"
+                class="compact-btn-text"
                 :disabled="isDownloadingDataChecks"
                 @click="handleDownloadDataChecks()"
               >
@@ -119,7 +114,7 @@
           </v-row>
         </template>
         <template #table>
-          <v-row class="mt-8" style="overflow-x: auto !important;">
+          <v-row class="mt-8 table-overflow">
             <MDataTable
               key="data-checks-table"
               class="data-checks-table"
@@ -166,14 +161,13 @@
             <v-spacer></v-spacer>
             <v-col
               cols="2"
-              style="margin: 0 !important; justify-content: end; display: flex"
+              class="action-col-flex"
             >
               <v-btn
                 v-if="!canEdit"
-                class="mr-4"
+                class="mr-4 compact-btn-text"
                 color="primary"
                 density="compact"
-                style="font-size: 0.7rem !important"
                 :disabled="isDownloading"
                 @click="handleDownload()"
               >
@@ -196,9 +190,8 @@
                 v-if="canEdit && !editionMode"
                 color="primary"
                 icon="mdi-pencil"
-                class="mr-3"
+                class="mr-3 small-btn-text"
                 density="compact"
-                style="font-size: 0.6rem !important"
                 @click="editionMode = true"
               >
               </v-btn>
@@ -207,8 +200,7 @@
                 color="primary"
                 icon="mdi-content-save-edit"
                 density="compact"
-                style="font-size: 0.6rem !important"
-                class="mr-3"
+                class="mr-3 small-btn-text"
                 @click="openSaveModal"
               >
               </v-btn>
@@ -216,9 +208,8 @@
                 icon="mdi-content-save-off"
                 v-if="canEdit && editionMode"
                 color="primary"
-                class="mr-3"
+                class="mr-3 small-btn-text"
                 density="compact"
-                style="font-size: 0.6rem !important"
                 @click="cancelEdit"
               >
               </v-btn>
@@ -226,7 +217,7 @@
           </v-row>
         </template>
         <template #table>
-          <v-row class="mt-8" style="overflow-x: auto !important;">
+          <v-row class="mt-8 table-overflow">
             <MDataTable
               :items="filteredDataTable"
               :headers="headers"

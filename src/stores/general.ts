@@ -1,8 +1,7 @@
 import { defineStore } from 'pinia'
 import session from '@/services/AuthService'
 import config from '@/app/config'
-import logo from '@/app/assets/logo/logo.png'
-import fullLogo from '@/app/assets/logo/full_logo.png'
+import { mainLogo as logo, fullLogo } from '@/utils/assets'
 
 import { SchemaConfig } from '@/models/SchemaConfig'
 import { Execution } from '@/models/Execution'
