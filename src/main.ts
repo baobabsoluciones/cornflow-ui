@@ -11,6 +11,11 @@ import App from './App.vue'
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 
+/* PrimeVue config */
+import PrimeVue from 'primevue/config'
+import Aura from '@primeuix/themes/aura'
+import Tooltip from 'primevue/tooltip'
+
 // Plugins
 import { registerPlugins } from '@/plugins'
 
@@ -19,7 +24,8 @@ import './assets/styles/main.css' // Main styles
 import './app/assets/styles/main.css' // Main app custom styles
 import './app/assets/styles/variables.css' // App custom variables
 import '@/plugins'
-import 'mango-vue/dist/style.css'
+/* import 'mango-ui/style.css' */
+/* import '../../mango-ui/src/assets/styles/style.css' */
 
 import { MAppDrawer } from 'mango-vue'
 import { MFilterSearch } from 'mango-vue'
@@ -36,6 +42,13 @@ import { MInputField } from 'mango-vue'
 import { MDataTable } from 'mango-vue'
 import { MCheckboxOptions } from 'mango-vue'
 import { MTabTable } from 'mango-vue'
+
+import { PTitleView } from 'mango-vue'
+import { PDataTable } from 'mango-vue'
+import { PFormSteps } from 'mango-vue'
+import { PAppBarTab } from 'mango-vue'
+import { PAppDrawer } from 'mango-vue'
+import { PTabTable } from 'mango-vue'
 
 import config from '@/config'
 import appConfig from '@/app/config'
@@ -71,7 +84,20 @@ async function initApp() {
   app.component('MCheckboxOptions', MCheckboxOptions)
   app.component('MTabTable', MTabTable)
 
+  app.component('PTitleView', PTitleView)
+  app.component('PDataTable', PDataTable)
+  app.component('PFormSteps', PFormSteps)
+  app.component('PAppBarTab', PAppBarTab)
+  app.component('PAppDrawer', PAppDrawer)
+  app.component('PTabTable', PTabTable)
+
   app.use(pinia)
+  app.use(PrimeVue, {
+    theme: {
+      preset: Aura
+    }
+  });
+  app.directive('tooltip', Tooltip)
   app.mount('#app')
 }
 
