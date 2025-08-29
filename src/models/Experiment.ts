@@ -30,7 +30,7 @@ export class ExperimentCore {
     const sanitizedFilename = filename.replace(/\./g, '-')
 
     // we create the object for the file
-    var workbook
+    let workbook
 
     // we write the "header tables" from schema
 

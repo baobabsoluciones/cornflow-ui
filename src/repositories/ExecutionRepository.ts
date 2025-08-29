@@ -203,5 +203,5 @@ export default class ExecutionRepository {
     return response.status === 200
   }
 
-  async refreshExecution(id: string) {}
+
 }

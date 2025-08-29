@@ -102,71 +102,106 @@ class ApiClient {
     }
 
     this.refreshingToken = true
-    this.refreshTokenPromise = (async () => {
-      try {
-        // Only refresh external auth tokens (Azure/Cognito), not Cornflow tokens
-        if (config.auth.type === 'cognito' || config.auth.type === 'azure') {
-          // Dynamically import to avoid circular dependency
-          const getAuthService = await import('@/services/AuthServiceFactory')
-          const authService = await getAuthService.default()
-          
-          if (authService.refreshToken) {
-            const refreshResult = await authService.refreshToken()
-            if (refreshResult) {
-              // Update the stored token expiration in both memory and sessionStorage
-              this.tokenExpiration = refreshResult.expiresAt
-              sessionStorage.setItem('tokenExpiration', refreshResult.expiresAt.toString())
-              
-              // For external auth, we need to exchange the refreshed token with backend
-              try {
-                const backendResponse = await fetch(this.baseUrl + (config.hasExternalApp ? '/cornflow' : '') + '/login/', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'Authorization': `Bearer ${refreshResult.token}`
-                  },
-                  body: JSON.stringify({}),
-                  mode: 'cors'
-                })
-                
-                if (backendResponse.ok) {
-                  const backendData = await backendResponse.json()
-                  if (backendData.token) {
-                    // Update the backend token in sessionStorage and memory
-                    sessionStorage.setItem('token', backendData.token)
-                    this.authToken = backendData.token
-                    sessionStorage.setItem('originalToken', refreshResult.token)
-                    
-                    // Schedule the next automatic refresh
-                    this.scheduleTokenRefresh()
-                  }
-                } else {
-                  throw new Error('Backend token exchange failed')
-                }
-              } catch (error) {
-                console.error('Failed to exchange refreshed token with backend:', error)
-                throw error
-              }
-            } else {
-              throw new Error('Token refresh returned null')
-            }
-          } else {
-            throw new Error('Auth service does not support token refresh')
-          }
-        } else {
-          throw new Error('Token refresh not supported for this auth type')
-        }
-      } finally {
-        this.refreshingToken = false
-        this.refreshTokenPromise = null
-      }
-    })()
-
+    this.refreshTokenPromise = this.performTokenRefresh()
     return this.refreshTokenPromise
   }
 
+  private async performTokenRefresh(): Promise<void> {
+    try {
+      this.validateAuthTypeForRefresh()
+      const authService = await this.getAuthService()
+      const refreshResult = await this.refreshExternalToken(authService)
+      await this.exchangeTokenWithBackend(refreshResult)
+    } finally {
+      this.refreshingToken = false
+      this.refreshTokenPromise = null
+    }
+  }
+
+  private validateAuthTypeForRefresh(): void {
+    if (config.auth.type !== 'cognito' && config.auth.type !== 'azure') {
+      throw new Error('Token refresh not supported for this auth type')
+    }
+  }
+
+  private async getAuthService(): Promise<any> {
+    const getAuthService = await import('@/services/AuthServiceFactory')
+    return await getAuthService.default()
+  }
+
+  private async refreshExternalToken(authService: any): Promise<any> {
+    if (!authService.refreshToken) {
+      throw new Error('Auth service does not support token refresh')
+    }
+
+    const refreshResult = await authService.refreshToken()
+    if (!refreshResult) {
+      throw new Error('Token refresh returned null')
+    }
+
+    this.updateTokenExpiration(refreshResult.expiresAt)
+    return refreshResult
+  }
+
+  private updateTokenExpiration(expiresAt: number): void {
+    this.tokenExpiration = expiresAt
+    sessionStorage.setItem('tokenExpiration', expiresAt.toString())
+  }
+
+  private async exchangeTokenWithBackend(refreshResult: any): Promise<void> {
+    try {
+      const backendResponse = await this.makeBackendTokenRequest(refreshResult.token)
+      
+      if (!backendResponse.ok) {
+        throw new Error('Backend token exchange failed')
+      }
+
+      const backendData = await backendResponse.json()
+      this.updateBackendToken(backendData.token, refreshResult.token)
+    } catch (error) {
+      console.error('Failed to exchange refreshed token with backend:', error)
+      throw error
+    }
+  }
+
+  private async makeBackendTokenRequest(token: string): Promise<Response> {
+    const basePath = config.hasExternalApp ? '/cornflow' : ''
+    return await fetch(`${this.baseUrl}${basePath}/login/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({}),
+      mode: 'cors'
+    })
+  }
+
+  private updateBackendToken(backendToken: string, originalToken: string): void {
+    sessionStorage.setItem('token', backendToken)
+    this.authToken = backendToken
+    sessionStorage.setItem('originalToken', originalToken)
+    this.scheduleTokenRefresh()
+  }
+
   private async request(url = '', options: RequestOptions = {}) {
+    const completeUrl = this.buildRequestUrl(url, options)
+    await this.handleTokenRefreshIfNeeded(url)
+    
+    try {
+      const response = await this.performFetch(completeUrl, options)
+      this.handleUnauthorizedResponse(response, url)
+      const content = await this.parseResponseContent(response)
+      
+      return { status: response.status, content }
+    } catch (error) {
+      this.handleRequestError(error, url)
+      throw error
+    }
+  }
+
+  private buildRequestUrl(url: string, options: RequestOptions): URL {
     const isExternal = options.isExternal || false
     const basePath = isExternal ? '/external' : config.hasExternalApp ? '/cornflow' : ''
     const completeUrl = new URL(this.baseUrl + basePath + url)
@@ -174,11 +209,16 @@ class ApiClient {
     if (options.params) {
       completeUrl.search = new URLSearchParams(options.params).toString()
     }
+    
+    return completeUrl
+  }
 
-    // If token is expired and it's not a login request, refresh it
-    if ((config.auth.type === 'cognito' || config.auth.type === 'azure') && 
-        !url.includes('/login/') && 
-        this.isTokenExpired()) {
+  private async handleTokenRefreshIfNeeded(url: string): Promise<void> {
+    const needsRefresh = (config.auth.type === 'cognito' || config.auth.type === 'azure') && 
+                        !url.includes('/login/') && 
+                        this.isTokenExpired()
+
+    if (needsRefresh) {
       try {
         await this.refreshToken()
       } catch (error) {
@@ -187,46 +227,51 @@ class ApiClient {
         throw error
       }
     }
+  }
 
-    try {
-      const response = await fetch(completeUrl.toString(), {
-        ...options,
-        headers: {
-          ...this.getHeaders(),
-          ...options.headers,
-        },
-        body:
-          options.body instanceof FormData
-            ? options.body
-            : JSON.stringify(options.body),
-        mode: 'cors',
-      })
+  private async performFetch(completeUrl: URL, options: RequestOptions): Promise<Response> {
+    return await fetch(completeUrl.toString(), {
+      ...options,
+      headers: {
+        ...this.getHeaders(),
+        ...options.headers,
+      },
+      body: this.prepareRequestBody(options.body),
+      mode: 'cors',
+    })
+  }
 
-      if (response.status === 401 && !url.includes('/login/')) {
-        console.warn('Received 401 Unauthorized response, session may have expired')
-        this.handleAuthFailure()
-        throw new Error('Unauthorized: Session expired')
+  private prepareRequestBody(body: any): string | FormData | undefined {
+    if (!body) return undefined
+    return body instanceof FormData ? body : JSON.stringify(body)
+  }
+
+  private handleUnauthorizedResponse(response: Response, url: string): void {
+    if (response.status === 401 && !url.includes('/login/')) {
+      console.warn('Received 401 Unauthorized response, session may have expired')
+      this.handleAuthFailure()
+      throw new Error('Unauthorized: Session expired')
+    }
+  }
+
+  private async parseResponseContent(response: Response): Promise<any> {
+    const contentType = response.headers.get('Content-Type')
+    
+    if (contentType && contentType.includes('application/json')) {
+      try {
+        return await response.json()
+      } catch (e) {
+        return { message: 'Could not parse response' }
       }
-      
-      let content;
-      const contentType = response.headers.get('Content-Type');
-      if (contentType && contentType.includes('application/json')) {
-        try {
-          content = await response.json();
-        } catch (e) {
-          content = { message: 'Could not parse response' };
-        }
-      } else {
-        content = await response.blob();
-      }
-      
-      return { status: response.status, content }
-    } catch (error) {
-      console.error('Request failed:', error)
-      if (!url.includes('/login/') && error.message?.includes('Unauthorized')) {
-        this.handleAuthFailure()
-      }
-      throw error
+    }
+    
+    return await response.blob()
+  }
+
+  private handleRequestError(error: any, url: string): void {
+    console.error('Request failed:', error)
+    if (!url.includes('/login/') && error.message?.includes('Unauthorized')) {
+      this.handleAuthFailure()
     }
   }
 
