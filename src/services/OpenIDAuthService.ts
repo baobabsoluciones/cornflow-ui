@@ -192,7 +192,7 @@ export class OpenIDAuthService implements AuthProvider {
   private async handleAuthResponse(response: any) {
     if (response) {
       try {
-          const token = response.idToken || response.accessToken;
+        const token = response.idToken || response.accessToken;
         const tokenClaims = this.decodeToken(token);
         
         if (!tokenClaims) {
@@ -275,6 +275,8 @@ export class OpenIDAuthService implements AuthProvider {
       }
     }
   }
+
+
 
   private async retryAuthentication() {
     this.loginAttempted = false
@@ -542,6 +544,8 @@ export class OpenIDAuthService implements AuthProvider {
     return null
   }
 
+
+
   /**
    * Clears authentication state when refresh tokens are no longer valid
    */
@@ -555,7 +559,7 @@ export class OpenIDAuthService implements AuthProvider {
   }
 
   public async makeAuthenticatedRequest(url: string, options: RequestInit = {}): Promise<Response> {
-    const token = await this.getToken();
+    const token = this.getToken();
     
     const headers = new Headers(options.headers || {});
     headers.set('Authorization', `Bearer ${token}`);
