@@ -284,6 +284,84 @@ export default {
       }
       return value
     },
+
+    getInitialSteps() {
+      return [this.createStepConfig('createOrSearch', 1, 'step1')]
+    },
+
+    getSearchExecutionSteps() {
+      return [
+        this.createStepConfig('createOrSearch', 1, 'step1'),
+        this.createStepConfig('searchDateRange', 2, 'step2Search', true)
+      ]
+    },
+
+    getCreateExecutionSteps() {
+      const baseSteps = this.getBaseCreateSteps()
+      this.addOptionalSteps(baseSteps)
+      this.addSolveStep(baseSteps)
+      return baseSteps
+    },
+
+    getBaseCreateSteps() {
+      return [
+        this.createStepConfig('createOrSearch', 1, 'step1'),
+        this.createStepConfig('nameDescription', 2, 'step2', true),
+        this.createStepConfig('loadInstance', 3, 'step3', true),
+        this.createStepConfig('checkData', 4, 'step4', true)
+      ]
+    },
+
+    addOptionalSteps(baseSteps) {
+      let nextOrder = 5
+
+      if (this.shouldShowSolverStep()) {
+        baseSteps.push(this.createStepConfig('selectSolver', nextOrder, 'step5', true))
+        nextOrder++
+      }
+
+      if (this.shouldShowConfigFieldsStep()) {
+        baseSteps.push(this.createStepConfig('configParams', nextOrder, 'step6', true))
+        nextOrder++
+      }
+    },
+
+    addSolveStep(baseSteps) {
+      const solveOrder = this.calculateSolveStepOrder()
+      baseSteps.push(this.createStepConfig('solve', solveOrder, 'step7', true))
+    },
+
+    createStepConfig(key, order, stepKey, hasSubtitle = false) {
+      const config = {
+        key,
+        order,
+        title: this.$t(`projectExecution.steps.${stepKey}.title`),
+        subtitle: this.$t(`projectExecution.steps.${stepKey}.description`),
+        titleContent: this.$t(`projectExecution.steps.${stepKey}.titleContent`)
+      }
+
+      if (hasSubtitle) {
+        config.subtitleContent = this.$t(`projectExecution.steps.${stepKey}.subtitleContent`)
+      }
+
+      return config
+    },
+
+    shouldShowSolverStep() {
+      return this.generalStore.appConfig.parameters.solverConfig?.showSolverStep
+    },
+
+    shouldShowConfigFieldsStep() {
+      return this.generalStore.appConfig.parameters.configFieldsConfig?.showConfigFieldsStep
+    },
+
+    calculateSolveStepOrder() {
+      let order = 5
+      if (this.shouldShowSolverStep()) order++
+      if (this.shouldShowConfigFieldsStep()) order++
+      return order
+    },
+
     handleCheckboxChange({ value, option }) {
       this.optionSelected = value ? option : null
     },
@@ -488,83 +566,6 @@ export default {
       } else if (this.optionSelected === 'createExecution') {
         return this.getCreateExecutionSteps()
       }
-    },
-
-    getInitialSteps() {
-      return [this.createStepConfig('createOrSearch', 1, 'step1')]
-    },
-
-    getSearchExecutionSteps() {
-      return [
-        this.createStepConfig('createOrSearch', 1, 'step1'),
-        this.createStepConfig('searchDateRange', 2, 'step2Search', true)
-      ]
-    },
-
-    getCreateExecutionSteps() {
-      const baseSteps = this.getBaseCreateSteps()
-      this.addOptionalSteps(baseSteps)
-      this.addSolveStep(baseSteps)
-      return baseSteps
-    },
-
-    getBaseCreateSteps() {
-      return [
-        this.createStepConfig('createOrSearch', 1, 'step1'),
-        this.createStepConfig('nameDescription', 2, 'step2', true),
-        this.createStepConfig('loadInstance', 3, 'step3', true),
-        this.createStepConfig('checkData', 4, 'step4', true)
-      ]
-    },
-
-    addOptionalSteps(baseSteps) {
-      let nextOrder = 5
-
-      if (this.shouldShowSolverStep()) {
-        baseSteps.push(this.createStepConfig('selectSolver', nextOrder, 'step5', true))
-        nextOrder++
-      }
-
-      if (this.shouldShowConfigFieldsStep()) {
-        baseSteps.push(this.createStepConfig('configParams', nextOrder, 'step6', true))
-        nextOrder++
-      }
-    },
-
-    addSolveStep(baseSteps) {
-      const solveOrder = this.calculateSolveStepOrder()
-      baseSteps.push(this.createStepConfig('solve', solveOrder, 'step7', true))
-    },
-
-    createStepConfig(key, order, stepKey, hasSubtitle = false) {
-      const config = {
-        key,
-        order,
-        title: this.$t(`projectExecution.steps.${stepKey}.title`),
-        subtitle: this.$t(`projectExecution.steps.${stepKey}.description`),
-        titleContent: this.$t(`projectExecution.steps.${stepKey}.titleContent`)
-      }
-
-      if (hasSubtitle) {
-        config.subtitleContent = this.$t(`projectExecution.steps.${stepKey}.subtitleContent`)
-      }
-
-      return config
-    },
-
-    shouldShowSolverStep() {
-      return this.generalStore.appConfig.parameters.solverConfig?.showSolverStep
-    },
-
-    shouldShowConfigFieldsStep() {
-      return this.generalStore.appConfig.parameters.configFieldsConfig?.showConfigFieldsStep
-    },
-
-    calculateSolveStepOrder() {
-      let order = 5
-      if (this.shouldShowSolverStep()) order++
-      if (this.shouldShowConfigFieldsStep()) order++
-      return order
     },
     isConfigFieldsIncomplete() {
       const fields = this.generalStore.appConfig.parameters.configFields || []
