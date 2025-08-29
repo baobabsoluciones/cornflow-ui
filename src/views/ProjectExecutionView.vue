@@ -225,43 +225,64 @@ export default {
       const newConfig = { ...this.newExecution.config }
 
       for (const field of configFields) {
-        if (
-          field.source &&
-          this.newExecution.instance?.data &&
-          this.newExecution.instance.data[field.source]
-        ) {
-          let value;
-          if (field.lookupType === 'arrayByValue') {
-            const arr = this.newExecution.instance.data[field.source];
-            const found = arr.find(
-              (item) =>
-                item &&
-                item[field.lookupParam] === field.param
-            );
-            value = found ? found[field.lookupValue] : undefined;
-          } else if (Array.isArray(this.newExecution.instance.data[field.source])) {
-            value = undefined;
-          } else {
-            value = this.newExecution.instance.data[field.source][field.param];
-          }
-
-          if (value !== undefined) {
-            if (field.type === 'float') {
-              newConfig[field.key] = parseFloat(value);
-            } else if (field.type === 'number') {
-              newConfig[field.key] = parseInt(value);
-            } else {
-              newConfig[field.key] = value;
-            }
-          } else if (field.default !== undefined) {
-            newConfig[field.key] = field.default;
-          }
-        } else if (field.default !== undefined) {
-          newConfig[field.key] = field.default;
-        }
+        const fieldValue = this.extractFieldValue(field)
+        this.setConfigFieldValue(newConfig, field, fieldValue)
       }
 
       this.newExecution.config = newConfig
+    },
+
+    extractFieldValue(field) {
+      if (!this.hasValidDataSource(field)) {
+        return field.default
+      }
+
+      const sourceData = this.newExecution.instance.data[field.source]
+      return this.getValueFromSource(field, sourceData)
+    },
+
+    hasValidDataSource(field) {
+      return (
+        field.source &&
+        this.newExecution.instance?.data &&
+        this.newExecution.instance.data[field.source]
+      )
+    },
+
+    getValueFromSource(field, sourceData) {
+      if (field.lookupType === 'arrayByValue') {
+        return this.getArrayByValueLookup(field, sourceData)
+      }
+      
+      if (Array.isArray(sourceData)) {
+        return undefined
+      }
+      
+      return sourceData[field.param]
+    },
+
+    getArrayByValueLookup(field, arr) {
+      const found = arr.find(
+        (item) => item && item[field.lookupParam] === field.param
+      )
+      return found ? found[field.lookupValue] : undefined
+    },
+
+    setConfigFieldValue(newConfig, field, value) {
+      if (value !== undefined) {
+        newConfig[field.key] = this.convertValueByType(value, field.type)
+      } else if (field.default !== undefined) {
+        newConfig[field.key] = field.default
+      }
+    },
+
+    convertValueByType(value, type) {
+      if (type === 'float') {
+        return parseFloat(value)
+      } else if (type === 'number') {
+        return parseInt(value)
+      }
+      return value
     },
     handleCheckboxChange({ value, option }) {
       this.optionSelected = value ? option : null
@@ -461,125 +482,89 @@ export default {
     },
     steps() {
       if (this.optionSelected === null) {
-        return [
-          {
-            key: 'createOrSearch',
-            order: 1,
-            title: this.$t('projectExecution.steps.step1.title'),
-            subtitle: this.$t('projectExecution.steps.step1.description'),
-            titleContent: this.$t('projectExecution.steps.step1.titleContent'),
-          },
-        ]
+        return this.getInitialSteps()
       } else if (this.optionSelected === 'searchExecution') {
-        return [
-          {
-            key: 'createOrSearch',
-            order: 1,
-            title: this.$t('projectExecution.steps.step1.title'),
-            subtitle: this.$t('projectExecution.steps.step1.description'),
-            titleContent: this.$t('projectExecution.steps.step1.titleContent'),
-          },
-          {
-            key: 'searchDateRange',
-            order: 2,
-            title: this.$t('projectExecution.steps.step2Search.title'),
-            subtitle: this.$t('projectExecution.steps.step2Search.description'),
-            titleContent: this.$t(
-              'projectExecution.steps.step2Search.titleContent',
-            ),
-            subtitleContent: this.$t(
-              'projectExecution.steps.step2Search.subtitleContent',
-            ),
-          },
-        ]
+        return this.getSearchExecutionSteps()
       } else if (this.optionSelected === 'createExecution') {
-        const baseSteps = [
-          {
-            key: 'createOrSearch',
-            order: 1,
-            title: this.$t('projectExecution.steps.step1.title'),
-            subtitle: this.$t('projectExecution.steps.step1.description'),
-            titleContent: this.$t('projectExecution.steps.step1.titleContent'),
-          },
-          {
-            key: 'nameDescription',
-            order: 2,
-            title: this.$t('projectExecution.steps.step2.title'),
-            subtitle: this.$t('projectExecution.steps.step2.description'),
-            titleContent: this.$t('projectExecution.steps.step2.titleContent'),
-            subtitleContent: this.$t(
-              'projectExecution.steps.step2.subtitleContent',
-            ),
-          },
-          {
-            key: 'loadInstance',
-            order: 3,
-            title: this.$t('projectExecution.steps.step3.title'),
-            subtitle: this.$t('projectExecution.steps.step3.description'),
-            titleContent: this.$t('projectExecution.steps.step3.titleContent'),
-            subtitleContent: this.$t(
-              'projectExecution.steps.step3.subtitleContent',
-            ),
-          },
-          {
-            key: 'checkData',
-            order: 4,
-            title: this.$t('projectExecution.steps.step4.title'),
-            subtitle: this.$t('projectExecution.steps.step4.description'),
-            titleContent: this.$t('projectExecution.steps.step4.titleContent'),
-            subtitleContent: this.$t(
-              'projectExecution.steps.step4.subtitleContent',
-            ),
-          },
-        ]
-
-        // Add solver step if configured to show it
-        if (this.generalStore.appConfig.parameters.solverConfig?.showSolverStep) {
-          baseSteps.push({
-            key: 'selectSolver',
-            order: 5,
-            title: this.$t('projectExecution.steps.step5.title'),
-            subtitle: this.$t('projectExecution.steps.step5.description'),
-            titleContent: this.$t('projectExecution.steps.step5.titleContent'),
-            subtitleContent: this.$t(
-              'projectExecution.steps.step5.subtitleContent',
-            ),
-          })
-        }
-
-        // Add config fields step if configured to show it
-        if (this.generalStore.appConfig.parameters.configFieldsConfig?.showConfigFieldsStep) {
-          const nextOrder = this.generalStore.appConfig.parameters.solverConfig?.showSolverStep ? 6 : 5
-          baseSteps.push({
-            key: 'configParams',
-            order: nextOrder,
-            title: this.$t('projectExecution.steps.step6.title'),
-            subtitle: this.$t('projectExecution.steps.step6.description'),
-            titleContent: this.$t('projectExecution.steps.step6.titleContent'),
-            subtitleContent: this.$t(
-              'projectExecution.steps.step6.subtitleContent',
-            ),
-          })
-        }
-
-        // Add solve step with adjusted order
-        const solveOrder = this.generalStore.appConfig.parameters.solverConfig?.showSolverStep 
-          ? (this.generalStore.appConfig.parameters.configFieldsConfig?.showConfigFieldsStep ? 7 : 6)
-          : (this.generalStore.appConfig.parameters.configFieldsConfig?.showConfigFieldsStep ? 6 : 5)
-        
-        baseSteps.push({
-          key: 'solve',
-          order: solveOrder,
-          title: this.$t('projectExecution.steps.step7.title'),
-          subtitle: this.$t('projectExecution.steps.step7.description'),
-          titleContent: this.$t('projectExecution.steps.step7.titleContent'),
-          subtitleContent: this.$t(
-            'projectExecution.steps.step7.subtitleContent',
-          ),
-        })
-
-        return baseSteps
+        return this.getCreateExecutionSteps()
       }
+    },
+
+    getInitialSteps() {
+      return [this.createStepConfig('createOrSearch', 1, 'step1')]
+    },
+
+    getSearchExecutionSteps() {
+      return [
+        this.createStepConfig('createOrSearch', 1, 'step1'),
+        this.createStepConfig('searchDateRange', 2, 'step2Search', true)
+      ]
+    },
+
+    getCreateExecutionSteps() {
+      const baseSteps = this.getBaseCreateSteps()
+      this.addOptionalSteps(baseSteps)
+      this.addSolveStep(baseSteps)
+      return baseSteps
+    },
+
+    getBaseCreateSteps() {
+      return [
+        this.createStepConfig('createOrSearch', 1, 'step1'),
+        this.createStepConfig('nameDescription', 2, 'step2', true),
+        this.createStepConfig('loadInstance', 3, 'step3', true),
+        this.createStepConfig('checkData', 4, 'step4', true)
+      ]
+    },
+
+    addOptionalSteps(baseSteps) {
+      let nextOrder = 5
+
+      if (this.shouldShowSolverStep()) {
+        baseSteps.push(this.createStepConfig('selectSolver', nextOrder, 'step5', true))
+        nextOrder++
+      }
+
+      if (this.shouldShowConfigFieldsStep()) {
+        baseSteps.push(this.createStepConfig('configParams', nextOrder, 'step6', true))
+        nextOrder++
+      }
+    },
+
+    addSolveStep(baseSteps) {
+      const solveOrder = this.calculateSolveStepOrder()
+      baseSteps.push(this.createStepConfig('solve', solveOrder, 'step7', true))
+    },
+
+    createStepConfig(key, order, stepKey, hasSubtitle = false) {
+      const config = {
+        key,
+        order,
+        title: this.$t(`projectExecution.steps.${stepKey}.title`),
+        subtitle: this.$t(`projectExecution.steps.${stepKey}.description`),
+        titleContent: this.$t(`projectExecution.steps.${stepKey}.titleContent`)
+      }
+
+      if (hasSubtitle) {
+        config.subtitleContent = this.$t(`projectExecution.steps.${stepKey}.subtitleContent`)
+      }
+
+      return config
+    },
+
+    shouldShowSolverStep() {
+      return this.generalStore.appConfig.parameters.solverConfig?.showSolverStep
+    },
+
+    shouldShowConfigFieldsStep() {
+      return this.generalStore.appConfig.parameters.configFieldsConfig?.showConfigFieldsStep
+    },
+
+    calculateSolveStepOrder() {
+      let order = 5
+      if (this.shouldShowSolverStep()) order++
+      if (this.shouldShowConfigFieldsStep()) order++
+      return order
     },
     isConfigFieldsIncomplete() {
       const fields = this.generalStore.appConfig.parameters.configFields || []

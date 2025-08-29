@@ -3,6 +3,23 @@ import i18n from '@/plugins/i18n'
 import { getTableVisible, getTablePropertyVisible } from '@/utils/tableUtils'
 import { formatDateForExcel } from '@/utils/date'
 
+const processRowValues = (row: Record<string, any>): Record<string, any> => {
+  return Object.fromEntries(
+    Object.entries(row).map(([key, value]) => {
+      if (value instanceof Date) {
+        return [key, formatDateForExcel(value, true)]
+      } 
+      else if (Number.isNaN(value)) {
+        return [key, null]
+      }
+      else if (typeof value === 'number' && value % 1 !== 0) {
+        return [key, parseFloat(value.toFixed(4))]
+      }
+      return [key, value]
+    })
+  )
+}
+
 const readTable = function (
   file,
   key,
@@ -62,22 +79,7 @@ const loadExcel = async function (file, schema) {
     return readTable(file, tab, useFirstColumnAsKeys, isRequired)
       .then(table => {
         if (Array.isArray(table)) {
-          return [tab, table.map(row => {
-            return Object.fromEntries(
-              Object.entries(row).map(([key, value]) => {
-                if (value instanceof Date) {
-                  return [key, formatDateForExcel(value, true)]
-                } 
-                else if (Number.isNaN(value)) {
-                  return [key, null]
-                }
-                else if (typeof value === 'number' && value % 1 !== 0) {
-                  return [key, parseFloat(value.toFixed(4))]
-                }
-                return [key, value]
-              })
-            )
-          })]
+          return [tab, table.map(row => processRowValues(row))]
         }
         // Handle object type tables
         return [tab, table]
@@ -94,7 +96,7 @@ const loadExcel = async function (file, schema) {
 
 // this function writes all sheets according to the schema
 async function schemaDataToTable(wb: any, data: Record<string, any>, schema: Record<string, any> | null = null) {
-  var dataArray = Object.entries(data).map(([sheetName, sheetData]) => {
+  const dataArray = Object.entries(data).map(([sheetName, sheetData]) => {
     if (!Array.isArray(sheetData)) {
       sheetData = [sheetData]
     }
@@ -204,7 +206,7 @@ async function schemaDataToTable(wb: any, data: Record<string, any>, schema: Rec
 
 const toISOStringLocal = function (date, isEndDate = false) {
   if (date) {
-    var timezoneOffsetMin = date.getTimezoneOffset(),
+    const timezoneOffsetMin = date.getTimezoneOffset(),
       offsetHours = Math.abs(timezoneOffsetMin / 60),
       offsetMinutes = timezoneOffsetMin % 60,
       offsetSign = timezoneOffsetMin > 0 ? '-' : '+'
