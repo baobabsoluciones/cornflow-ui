@@ -65,7 +65,7 @@ export const useGeneralStore = defineStore('general', {
 
     async fetchUser() {
       try {
-        const userId = await session.getUserId()
+        const userId = session.getUserId()
         this.user = await this.userRepository.getUserById(userId)
       } catch (error) {
         console.error('Error getting user', error)
