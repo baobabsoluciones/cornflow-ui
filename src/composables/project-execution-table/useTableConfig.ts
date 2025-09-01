@@ -9,10 +9,11 @@ export function useTableConfig(props: {
   const { t } = useI18n();
   const generalStore = useGeneralStore();
   
+  // Counter for generating unique table IDs
+  const tableCounter = ref(0);
+  
   // Generate a unique ID for table rendering
-  const tableId = ref(
-    Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
-  );
+  const tableId = computed(() => `table-${tableCounter.value}`);
 
   // Calculate header items based on configuration
   const headerExecutions = computed<HeaderItem[]>(() => {
@@ -179,7 +180,7 @@ export function useTableConfig(props: {
   
   // Method to regenerate tableId (for forcing re-render)
   const regenerateTableId = () => {
-    tableId.value = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    tableCounter.value++;
   };
 
   return {
