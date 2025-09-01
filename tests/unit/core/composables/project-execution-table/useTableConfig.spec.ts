@@ -85,7 +85,7 @@ describe('useTableConfig', () => {
       const result2 = useTableConfig(props)
       
       expect(result1.tableId.value).not.toBe(result2.tableId.value)
-      expect(result1.tableId.value).toMatch(/^[a-z0-9]+$/)
+      expect(result1.tableId.value).toMatch(/^table-\d+$/)
     })
   })
 
@@ -344,7 +344,7 @@ describe('useTableConfig', () => {
       const props = { formatDateByTime: false }
       const { tableKey } = useTableConfig(props)
       
-      expect(tableKey.value).toMatch(/^execution-table-no-end-no-user-.+$/)
+      expect(tableKey.value).toMatch(/^execution-table-no-end-no-user-table-\d+$/)
     })
 
     test('should include end date in key when showEndCreationDate is true', () => {
@@ -353,7 +353,7 @@ describe('useTableConfig', () => {
       const props = { formatDateByTime: false }
       const { tableKey } = useTableConfig(props)
       
-      expect(tableKey.value).toMatch(/^execution-table-end-no-user-.+$/)
+      expect(tableKey.value).toMatch(/^execution-table-end-no-user-table-\d+$/)
     })
 
     test('should include user name in key when showUserName is true', () => {
@@ -362,7 +362,7 @@ describe('useTableConfig', () => {
       const props = { formatDateByTime: false }
       const { tableKey } = useTableConfig(props)
       
-      expect(tableKey.value).toMatch(/^execution-table-no-end-user-.+$/)
+      expect(tableKey.value).toMatch(/^execution-table-no-end-user-table-\d+$/)
     })
 
     test('should include both flags in key when both are true', () => {
@@ -376,7 +376,7 @@ describe('useTableConfig', () => {
       const props = { formatDateByTime: false }
       const { tableKey } = useTableConfig(props)
       
-      expect(tableKey.value).toMatch(/^execution-table-end-user-.+$/)
+      expect(tableKey.value).toMatch(/^execution-table-end-user-table-\d+$/)
     })
 
     test('should handle store errors gracefully', () => {
@@ -387,7 +387,7 @@ describe('useTableConfig', () => {
       const props = { formatDateByTime: false }
       const { tableKey } = useTableConfig(props)
       
-      expect(tableKey.value).toMatch(/^execution-table-no-end-no-user-.+$/)
+      expect(tableKey.value).toMatch(/^execution-table-no-end-no-user-table-\d+$/)
       
       // Restore
       mockGeneralStore.appConfig.parameters = originalParams
@@ -404,7 +404,7 @@ describe('useTableConfig', () => {
       const newId = tableId.value
       
       expect(newId).not.toBe(originalId)
-      expect(newId).toMatch(/^[a-z0-9]+$/)
+      expect(newId).toMatch(/^table-\d+$/)
     })
 
     test('should update tableKey when tableId changes', () => {
