@@ -3,6 +3,9 @@ import { useI18n } from 'vue-i18n';
 import { useGeneralStore } from '@/stores/general';
 import { HeaderItem } from './types';
 
+// Global counter for generating unique table IDs
+let globalTableCounter = 0;
+
 export function useTableConfig(props: {
   formatDateByTime: boolean
 }) {
@@ -10,7 +13,7 @@ export function useTableConfig(props: {
   const generalStore = useGeneralStore();
   
   // Counter for generating unique table IDs
-  const tableCounter = ref(0);
+  const tableCounter = ref(globalTableCounter++);
   
   // Generate a unique ID for table rendering
   const tableId = computed(() => `table-${tableCounter.value}`);
@@ -180,7 +183,7 @@ export function useTableConfig(props: {
   
   // Method to regenerate tableId (for forcing re-render)
   const regenerateTableId = () => {
-    tableCounter.value++;
+    tableCounter.value = globalTableCounter++;
   };
 
   return {
