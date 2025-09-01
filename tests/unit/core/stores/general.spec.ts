@@ -135,7 +135,7 @@ describe('General Store', () => {
       const user = { id: userId, name: 'Test User' }
       
       const session = await import('@/services/AuthService')
-      vi.mocked(session.default.getUserId).mockResolvedValue(userId)
+      vi.mocked(session.default.getUserId).mockReturnValue(userId)
       mockUserRepository.getUserById.mockResolvedValue(user)
       mockVersionRepository.getCornflowVersion.mockResolvedValue(version)
       mockSchemaRepository.getSchema.mockResolvedValue({})
@@ -158,7 +158,7 @@ describe('General Store', () => {
       const user = { id: userId, name: 'Test User' }
       
       const session = await import('@/services/AuthService')
-      vi.mocked(session.default.getUserId).mockResolvedValue(userId)
+      vi.mocked(session.default.getUserId).mockReturnValue(userId)
       mockUserRepository.getUserById.mockResolvedValue(user)
 
       await store.fetchUser()
@@ -476,7 +476,8 @@ describe('General Store', () => {
       const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
       
       const session = await import('@/services/AuthService')
-      vi.mocked(session.default.getUserId).mockRejectedValue(new Error('Failed to get user'))
+      vi.mocked(session.default.getUserId).mockReturnValue('test-user-id')
+      mockUserRepository.getUserById.mockRejectedValue(new Error('Failed to get user'))
 
       await store.fetchUser()
 
