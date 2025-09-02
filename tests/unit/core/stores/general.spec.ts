@@ -3,6 +3,53 @@ import { setActivePinia, createPinia } from 'pinia'
 import { useGeneralStore } from '@/stores/general'
 import { LoadedExecution } from '@/models/LoadedExecution'
 
+// Mock environment variables for consistent testing
+Object.defineProperty(import.meta, 'env', {
+  value: {
+    VITE_APP_BACKEND_URL: 'https://test-backend.com',
+    VITE_APP_SCHEMA: 'test_dag',
+    VITE_APP_NAME: 'Test App',
+    VITE_APP_EXTERNAL_APP: 'false',
+    VITE_APP_IS_STAGING_ENVIRONMENT: 'false',
+    VITE_APP_USE_HASH_MODE: 'false',
+    VITE_APP_DEFAULT_LANGUAGE: 'en',
+    VITE_APP_IS_DEVELOPER_MODE: 'false',
+    VITE_APP_ENABLE_SIGNUP: 'false',
+    VITE_APP_AUTH_TYPE: 'cornflow'
+  },
+  writable: true
+})
+
+// Mock config with proper structure
+vi.mock('@/config', () => ({
+  default: {
+    backend: 'https://test-backend.com',
+    schema: 'test_dag',
+    name: 'Test App',
+    hasExternalApp: false,
+    isStagingEnvironment: false,
+    useHashMode: false,
+    defaultLanguage: 'en',
+    isDeveloperMode: false,
+    enableSignup: false,
+    valuesJsonPath: '/values.json',
+    auth: {
+      type: 'cornflow',
+      clientId: '',
+      authority: '',
+      redirectUri: '',
+      region: '',
+      userPoolId: '',
+      domain: '',
+      providers: []
+    },
+    initConfig: vi.fn(),
+    isMicrosoftConfigured: vi.fn(() => false),
+    isGoogleConfigured: vi.fn(() => false),
+    getConfiguredOAuthProvider: vi.fn(() => 'none')
+  }
+}))
+
 // Mock dependencies
 vi.mock('@/services/AuthService', () => ({
   default: {
@@ -14,8 +61,9 @@ vi.mock('@/app/config', () => ({
   default: {
     getCore: () => ({
       parameters: {
-        schema: 'ie_scheduling_master_dag',
-        executionSolvers: ['solver1', 'solver2']
+        schema: 'test_dag',
+        executionSolvers: ['solver1', 'solver2'],
+        valuesJsonPath: '/values.json'
       }
     }),
     getDashboardRoutes: () => [],
@@ -47,6 +95,13 @@ vi.mock('@/utils/data_io', () => ({
   toISOStringLocal: vi.fn((date, isEnd) => isEnd ? '2023-01-01T23:59:59.999Z' : '2023-01-01T00:00:00.000Z')
 }))
 
+// Mock API client
+vi.mock('@/api/Api', () => ({
+  default: {
+    initializeToken: vi.fn()
+  }
+}))
+
 // Mock repositories with comprehensive methods
 const mockSchemaRepository = {
   getSchema: vi.fn()
@@ -57,7 +112,8 @@ const mockExecutionRepository = {
   loadExecution: vi.fn(),
   createExecution: vi.fn(),
   uploadSolutionData: vi.fn(),
-  deleteExecution: vi.fn()
+  deleteExecution: vi.fn(),
+  getDataToDownload: vi.fn()
 }
 
 const mockInstanceRepository = {
@@ -101,6 +157,19 @@ vi.mock('@/repositories/LicenceRepository', () => ({
 
 vi.mock('@/repositories/VersionRepository', () => ({
   default: vi.fn(() => mockVersionRepository)
+}))
+
+// Mock utility modules
+vi.mock('@/utils/tableUtils', () => ({
+  getTableDataNames: vi.fn(),
+  getHeadersFromData: vi.fn(),
+  getTableHeadersData: vi.fn(),
+  getConfigTableHeadersData: vi.fn(),
+  getConfigTableData: vi.fn()
+}))
+
+vi.mock('@/utils/filterUtils', () => ({
+  getFilterNames: vi.fn()
 }))
 
 describe('General Store', () => {
@@ -207,7 +276,7 @@ describe('General Store', () => {
       await store.setSchema()
       
       expect(store.schemaConfig).toEqual(mockSchema)
-      expect(mockSchemaRepository.getSchema).toHaveBeenCalledWith('ie_scheduling_master_dag')
+      expect(mockSchemaRepository.getSchema).toHaveBeenCalledWith('test_dag')
     })
   })
 
@@ -224,7 +293,7 @@ describe('General Store', () => {
       
       expect(result).toEqual(mockExecutions)
       expect(mockExecutionRepository.getExecutions).toHaveBeenCalledWith(
-        'ie_scheduling_master_dag',
+        'test_dag',
         '2023-01-01T00:00:00.000Z',
         '2023-01-01T23:59:59.999Z'
       )
@@ -239,7 +308,7 @@ describe('General Store', () => {
       
       expect(result).toEqual(mockExecutions)
       expect(mockExecutionRepository.getExecutions).toHaveBeenCalledWith(
-        'ie_scheduling_master_dag',
+        'test_dag',
         null,
         null
       )
@@ -383,12 +452,258 @@ describe('General Store', () => {
       expect(result).toEqual(mockInstance)
       expect(mockInstanceRepository.getInstance).toHaveBeenCalledWith('123')
     })
+
+    test('getInstanceDataChecksById successfully with success state', async () => {
+      const mockDataChecks = { id: 'exec123' }
+      const mockExecution = { state: 1 }
+      const mockInstance = { id: '123', data: {} }
+      
+      mockInstanceRepository.launchInstanceDataChecks.mockResolvedValue(mockDataChecks)
+      mockExecutionRepository.loadExecution.mockResolvedValue(mockExecution)
+      mockInstanceRepository.getInstance.mockResolvedValue(mockInstance)
+      
+      const store = useGeneralStore()
+      const result = await store.getInstanceDataChecksById('123')
+      
+      expect(result).toEqual(mockInstance)
+      expect(mockInstanceRepository.launchInstanceDataChecks).toHaveBeenCalledWith('123')
+      expect(mockExecutionRepository.loadExecution).toHaveBeenCalledWith('exec123')
+      expect(mockInstanceRepository.getInstance).toHaveBeenCalledWith('123')
+    })
+
+    test('getInstanceDataChecksById with running execution waits and succeeds', async () => {
+      const mockDataChecks = { id: 'exec123' }
+      const runningExecution = { state: 0 }
+      const completedExecution = { state: 1 }
+      const mockInstance = { id: '123', data: {} }
+      
+      mockInstanceRepository.launchInstanceDataChecks.mockResolvedValue(mockDataChecks)
+      mockExecutionRepository.loadExecution
+        .mockResolvedValueOnce(runningExecution)
+        .mockResolvedValueOnce(completedExecution)
+      mockInstanceRepository.getInstance.mockResolvedValue(mockInstance)
+      
+      const store = useGeneralStore()
+      
+      // Use fake timers to control setTimeout
+      vi.useFakeTimers()
+      
+      const resultPromise = store.getInstanceDataChecksById('123')
+      
+      // Advance timers to trigger the timeout
+      await vi.advanceTimersByTimeAsync(3000)
+      
+      const result = await resultPromise
+      
+      expect(result).toEqual(mockInstance)
+      expect(mockExecutionRepository.loadExecution).toHaveBeenCalledTimes(2)
+      
+      vi.useRealTimers()
+    })
+
+    test('getInstanceDataChecksById with failed execution returns null', async () => {
+      const mockDataChecks = { id: 'exec123' }
+      const failedExecution = { state: -1 }
+      
+      mockInstanceRepository.launchInstanceDataChecks.mockResolvedValue(mockDataChecks)
+      mockExecutionRepository.loadExecution.mockResolvedValue(failedExecution)
+      
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      
+      const store = useGeneralStore()
+      const result = await store.getInstanceDataChecksById('123')
+      
+      expect(result).toBeNull()
+      expect(consoleSpy).toHaveBeenCalledWith('Data checks failed with execution state: -1')
+      
+      consoleSpy.mockRestore()
+    })
+
+    test('getInstanceDataChecksById handles error', async () => {
+      mockInstanceRepository.launchInstanceDataChecks.mockRejectedValue(new Error('Data checks error'))
+      
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      
+      const store = useGeneralStore()
+      const result = await store.getInstanceDataChecksById('123')
+      
+      expect(result).toBeNull()
+      expect(consoleSpy).toHaveBeenCalledWith('Error getting instance data checks', expect.any(Error))
+      
+      consoleSpy.mockRestore()
+    })
+  })
+
+  describe('Actions - Notification Management', () => {
+    test('addNotification adds notification to store', () => {
+      const store = useGeneralStore()
+      const notification = { message: 'Test message', type: 'success' as const }
+      
+      store.addNotification(notification)
+      
+      expect(store.notifications).toHaveLength(1)
+      expect(store.notifications[0]).toEqual(notification)
+    })
+
+    test('removeNotification removes notification by index', () => {
+      const store = useGeneralStore()
+      const notification1 = { message: 'Message 1', type: 'success' as const }
+      const notification2 = { message: 'Message 2', type: 'error' as const }
+      
+      store.notifications = [notification1, notification2]
+      store.removeNotification(0)
+      
+      expect(store.notifications).toHaveLength(1)
+      expect(store.notifications[0]).toEqual(notification2)
+    })
+
+    test('resetNotifications clears all notifications', () => {
+      const store = useGeneralStore()
+      store.notifications = [
+        { message: 'Message 1', type: 'success' as const },
+        { message: 'Message 2', type: 'error' as const }
+      ]
+      
+      store.resetNotifications()
+      
+      expect(store.notifications).toHaveLength(0)
+    })
+  })
+
+  describe('Actions - Component Key Management', () => {
+    test('incrementUploadComponentKey increments key', () => {
+      const store = useGeneralStore()
+      const initialKey = store.uploadComponentKey
+      
+      store.incrementUploadComponentKey()
+      
+      expect(store.uploadComponentKey).toBe(initialKey + 1)
+    })
+
+    test('incrementTabBarKey increments and returns key', () => {
+      const store = useGeneralStore()
+      const initialKey = store.tabBarKey
+      
+      const returnedKey = store.incrementTabBarKey()
+      
+      expect(returnedKey).toBe(initialKey)
+      expect(store.tabBarKey).toBe(initialKey + 1)
+    })
+  })
+
+  describe('Actions - Loaded Execution Management', () => {
+    test('removeLoadedExecution removes execution by index', () => {
+      const store = useGeneralStore()
+      const execution1 = { executionId: '1', name: 'Execution 1' } as LoadedExecution
+      const execution2 = { executionId: '2', name: 'Execution 2' } as LoadedExecution
+      
+      store.loadedExecutions = [execution1, execution2]
+      store.removeLoadedExecution(0)
+      
+      expect(store.loadedExecutions).toHaveLength(1)
+      expect(store.loadedExecutions[0]).toEqual(execution2)
+    })
+
+    test('resetLoadedExecutions clears all loaded executions', () => {
+      const store = useGeneralStore()
+      store.loadedExecutions = [
+        { executionId: '1', name: 'Execution 1' } as LoadedExecution,
+        { executionId: '2', name: 'Execution 2' } as LoadedExecution
+      ]
+      
+      store.resetLoadedExecutions()
+      
+      expect(store.loadedExecutions).toHaveLength(0)
+    })
+  })
+
+  describe('Actions - Table and Filter Utilities', () => {
+    test('getTableDataNames delegates to tableUtils', async () => {
+      const store = useGeneralStore()
+      const mockTableUtils = await import('@/utils/tableUtils')
+      const mockResult = ['table1', 'table2']
+      vi.mocked(mockTableUtils.getTableDataNames).mockReturnValue(mockResult)
+      
+      const result = store.getTableDataNames('collection', {}, 'en')
+      
+      expect(mockTableUtils.getTableDataNames).toHaveBeenCalledWith(store.schemaConfig, 'collection', {}, 'en')
+      expect(result).toEqual(mockResult)
+    })
+
+    test('getHeadersFromData delegates to tableUtils', async () => {
+      const store = useGeneralStore()
+      const mockTableUtils = await import('@/utils/tableUtils')
+      const mockData = { headers: ['col1', 'col2'] }
+      const mockResult = [{ text: 'col1' }, { text: 'col2' }]
+      vi.mocked(mockTableUtils.getHeadersFromData).mockReturnValue(mockResult)
+      
+      const result = store.getHeadersFromData(mockData)
+      
+      expect(mockTableUtils.getHeadersFromData).toHaveBeenCalledWith(mockData)
+      expect(result).toEqual(mockResult)
+    })
+
+    test('getTableHeadersData delegates to tableUtils', async () => {
+      const store = useGeneralStore()
+      const mockTableUtils = await import('@/utils/tableUtils')
+      const mockResult = [{ header: 'col1' }]
+      vi.mocked(mockTableUtils.getTableHeadersData).mockReturnValue(mockResult)
+      
+      const result = store.getTableHeadersData('collection', 'table', 'en')
+      
+      expect(mockTableUtils.getTableHeadersData).toHaveBeenCalledWith(store.schemaConfig, 'collection', 'table', 'en')
+      expect(result).toEqual(mockResult)
+    })
+
+    test('getConfigTableHeadersData delegates to tableUtils', async () => {
+      const store = useGeneralStore()
+      const mockTableUtils = await import('@/utils/tableUtils')
+      const mockResult = [{ header: 'config' }]
+      vi.mocked(mockTableUtils.getConfigTableHeadersData).mockReturnValue(mockResult)
+      
+      const result = store.getConfigTableHeadersData()
+      
+      expect(mockTableUtils.getConfigTableHeadersData).toHaveBeenCalled()
+      expect(result).toEqual(mockResult)
+    })
+
+    test('getConfigTableData delegates to tableUtils', async () => {
+      const store = useGeneralStore()
+      const mockTableUtils = await import('@/utils/tableUtils')
+      const mockResult = [{ data: 'value' }]
+      const mockData = { config: 'test' }
+      vi.mocked(mockTableUtils.getConfigTableData).mockReturnValue(mockResult)
+      
+      const result = store.getConfigTableData(mockData, 'collection', 'table', 'en')
+      
+      expect(mockTableUtils.getConfigTableData).toHaveBeenCalledWith(store.schemaConfig, mockData, 'collection', 'table', 'en')
+      expect(result).toEqual(mockResult)
+    })
+
+    test('getFilterNames delegates to filterUtils', async () => {
+      const store = useGeneralStore()
+      const mockFilterUtils = await import('@/utils/filterUtils')
+      const mockResult = { filter1: 'value1' }
+      vi.mocked(mockFilterUtils.getFilterNames).mockReturnValue(mockResult)
+      
+      const result = store.getFilterNames('collection', 'table', 'type', 'en')
+      
+      expect(mockFilterUtils.getFilterNames).toHaveBeenCalledWith(
+        store.schemaConfig, 
+        store.selectedExecution, 
+        'collection', 
+        'table', 
+        'type', 
+        'en'
+      )
+      expect(result).toEqual(mockResult)
+    })
   })
 
   describe('Getters', () => {
     test('getSchemaName returns correct schema name', () => {
       const store = useGeneralStore()
-      expect(store.getSchemaName).toBe('ie_scheduling_master_dag')
+      expect(store.getSchemaName).toBe('test_dag')
     })
 
     test('getExecutionSolvers returns solvers from schema config', () => {
@@ -467,6 +782,46 @@ describe('General Store', () => {
         loading: true,
         selected: false
       })
+    })
+
+    test('getNotifications returns notifications array', () => {
+      const store = useGeneralStore()
+      const notifications = [
+        { message: 'Test 1', type: 'success' as const },
+        { message: 'Test 2', type: 'error' as const }
+      ]
+      store.notifications = notifications
+      
+      expect(store.getNotifications).toEqual(notifications)
+    })
+
+    test('getLogo returns logo asset', () => {
+      const store = useGeneralStore()
+      expect(store.getLogo).toBe('logo.png')
+    })
+
+    test('getUser returns user object', () => {
+      const store = useGeneralStore()
+      const user = { id: '123', name: 'Test User' }
+      store.user = user
+      
+      expect(store.getUser).toEqual(user)
+    })
+
+    test('getLicences returns licences array', () => {
+      const store = useGeneralStore()
+      const licences = [{ id: 1, name: 'MIT' }]
+      store.licences = licences
+      
+      expect(store.getLicences).toEqual(licences)
+    })
+
+    test('getSchemaConfig returns schema config object', () => {
+      const store = useGeneralStore()
+      const schemaConfig = { type: 'object', properties: {} }
+      store.schemaConfig = schemaConfig as any
+      
+      expect(store.getSchemaConfig).toEqual(schemaConfig)
     })
   })
 
@@ -617,6 +972,41 @@ describe('General Store', () => {
       expect(result).toBeUndefined()
       expect(consoleSpy).toHaveBeenCalledWith('Error deleting execution', expect.any(Error))
       consoleSpy.mockRestore()
+    })
+
+    test('getDataToDownload calls repository method correctly', async () => {
+      const store = useGeneralStore()
+      mockExecutionRepository.getDataToDownload.mockResolvedValue(undefined)
+      
+      await store.getDataToDownload('123', false, false)
+      
+      expect(mockExecutionRepository.getDataToDownload).toHaveBeenCalledWith('123', false, false)
+    })
+
+    test('getDataToDownload with only solution', async () => {
+      const store = useGeneralStore()
+      mockExecutionRepository.getDataToDownload.mockResolvedValue(undefined)
+      
+      await store.getDataToDownload('123', true, false)
+      
+      expect(mockExecutionRepository.getDataToDownload).toHaveBeenCalledWith('123', true, false)
+    })
+
+    test('getDataToDownload with only instance', async () => {
+      const store = useGeneralStore()
+      mockExecutionRepository.getDataToDownload.mockResolvedValue(undefined)
+      
+      await store.getDataToDownload('123', false, true)
+      
+      expect(mockExecutionRepository.getDataToDownload).toHaveBeenCalledWith('123', false, true)
+    })
+
+    test('getDataToDownload handles error', async () => {
+      const store = useGeneralStore()
+      const error = new Error('Download error')
+      mockExecutionRepository.getDataToDownload.mockRejectedValue(error)
+      
+      await expect(store.getDataToDownload('123')).rejects.toThrow('Download error')
     })
   })
 
