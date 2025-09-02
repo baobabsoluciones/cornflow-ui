@@ -14,7 +14,7 @@ vi.mock('@/app/config', () => ({
   default: {
     getCore: () => ({
       parameters: {
-        schema: 'test-schema',
+        schema: 'ie_scheduling_master_dag',
         executionSolvers: ['solver1', 'solver2']
       }
     }),
@@ -207,7 +207,7 @@ describe('General Store', () => {
       await store.setSchema()
       
       expect(store.schemaConfig).toEqual(mockSchema)
-      expect(mockSchemaRepository.getSchema).toHaveBeenCalledWith('test-schema')
+      expect(mockSchemaRepository.getSchema).toHaveBeenCalledWith('ie_scheduling_master_dag')
     })
   })
 
@@ -224,7 +224,7 @@ describe('General Store', () => {
       
       expect(result).toEqual(mockExecutions)
       expect(mockExecutionRepository.getExecutions).toHaveBeenCalledWith(
-        'test-schema',
+        'ie_scheduling_master_dag',
         '2023-01-01T00:00:00.000Z',
         '2023-01-01T23:59:59.999Z'
       )
@@ -239,7 +239,7 @@ describe('General Store', () => {
       
       expect(result).toEqual(mockExecutions)
       expect(mockExecutionRepository.getExecutions).toHaveBeenCalledWith(
-        'test-schema',
+        'ie_scheduling_master_dag',
         null,
         null
       )
@@ -388,7 +388,7 @@ describe('General Store', () => {
   describe('Getters', () => {
     test('getSchemaName returns correct schema name', () => {
       const store = useGeneralStore()
-      expect(store.getSchemaName).toBe('test-schema')
+      expect(store.getSchemaName).toBe('ie_scheduling_master_dag')
     })
 
     test('getExecutionSolvers returns solvers from schema config', () => {

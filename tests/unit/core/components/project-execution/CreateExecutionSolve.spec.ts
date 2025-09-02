@@ -60,8 +60,17 @@ const mockGeneralStore = {
   fetchLoadedExecution: vi.fn()
 }
 
+// Mock config
+const mockConfig = vi.hoisted(() => ({
+  isDeveloperMode: true
+}))
+
 vi.mock('@/stores/general', () => ({
   useGeneralStore: vi.fn(() => mockGeneralStore)
+}))
+
+vi.mock('@/config', () => ({
+  default: mockConfig
 }))
 
 // Mock i18n
@@ -646,7 +655,7 @@ describe('CreateExecutionSolve', () => {
 
   describe('Developer Mode Configuration', () => {
     test('hides developer mode when disabled', () => {
-      mockGeneralStore.appConfig.parameters.isDeveloperMode = false
+      mockConfig.isDeveloperMode = false
       wrapper = createWrapper()
       
       expect(wrapper.find('.v-card').exists()).toBe(false)
@@ -654,7 +663,7 @@ describe('CreateExecutionSolve', () => {
     })
 
     test('shows developer mode when enabled', () => {
-      mockGeneralStore.appConfig.parameters.isDeveloperMode = true
+      mockConfig.isDeveloperMode = true
       wrapper = createWrapper()
       
       expect(wrapper.find('.v-card').exists()).toBe(true)
