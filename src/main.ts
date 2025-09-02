@@ -42,14 +42,14 @@ import appConfig from '@/app/config'
 import { setDefaultLanguage } from '@/plugins/i18n'
 
 export async function initApp() {  
-  // Initialize config first
+  // Initialize external config first
   await config.initConfig();
   
   // Update app config with initialized values
   appConfig.updateConfig();
   
-  // Set the default language from config
-  const defaultLanguage = appConfig.getCore().parameters.defaultLanguage;
+  // Set the default language from external config
+  const defaultLanguage = config.defaultLanguage;
   if (defaultLanguage === 'en' || defaultLanguage === 'es' || defaultLanguage === 'fr') {
     setDefaultLanguage(defaultLanguage);
   }

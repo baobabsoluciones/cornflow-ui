@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import session from '@/services/AuthService'
-import config from '@/app/config'
+import appConfig from '@/app/config'
+import config from '@/config'
 import { mainLogo as logo, fullLogo } from '@/utils/assets'
 
 import { SchemaConfig } from '@/models/SchemaConfig'
@@ -15,7 +16,6 @@ import LicenceRepository from '@/repositories/LicenceRepository'
 import VersionRepository from '@/repositories/VersionRepository'
 
 import { toISOStringLocal } from '@/utils/data_io'
-import i18n from '@/plugins/i18n'
 
 // Import utility functions
 import * as tableUtils from '@/utils/tableUtils'
@@ -39,10 +39,10 @@ export const useGeneralStore = defineStore('general', {
     fullLogo: fullLogo,
     schema: '',
     schemaConfig: {} as SchemaConfig,
-    appConfig: config.getCore(),
-    appDashboardRoutes: config.getDashboardRoutes(),
-    appDashboardPages: config.getDashboardPages(),
-    appDashboardLayout: config.getDashboardLayout(),
+    appConfig: appConfig.getCore(),
+    appDashboardRoutes: appConfig.getDashboardRoutes(),
+    appDashboardPages: appConfig.getDashboardPages(),
+    appDashboardLayout: appConfig.getDashboardLayout(),
     lastExecutions: [] as Execution[],
     loadedExecutions: [] as LoadedExecution[],
     selectedExecution: null,
@@ -395,7 +395,7 @@ export const useGeneralStore = defineStore('general', {
     },
 
     getSchemaName(): string {
-      return this.appConfig.parameters.schema
+      return config.schema
     },
 
     getSchemaConfig(): SchemaConfig {
