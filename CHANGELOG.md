@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.3.1] - 02-09-2025
+
+### Changed
+- **Configuration management improvements**  
+  - Refactored app/config.ts to only contain app codebase config values
+  - Improved separation of concerns between environment and codebase configuration
+  - Enhanced documentation for two-layer configuration system
+  - Added clear guidelines for environment variable usage
+  - Improved portability across different deployment environments
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #149
+
+- **Code quality enhancements**  
+  - Refactored codebase to meet SonarQube quality gate standards
+  - Improved code maintainability and reduced technical debt
+  - Enhanced code documentation and type definitions
+  - Fixed code smells and potential vulnerabilities
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #147
+
 ## [1.3.0] - 20-08-2025
 
 ### Added
