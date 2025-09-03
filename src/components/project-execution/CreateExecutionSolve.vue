@@ -109,6 +109,7 @@
 import { inject, computed, ref } from 'vue'
 import { useGeneralStore } from '@/stores/general'
 import { Solution } from '@/app/models/Solution'
+import config from '@/config'
 
 export default {
   components: {},
@@ -136,7 +137,7 @@ export default {
       return this.generalStore.appConfig.parameters.configFields || []
     },
     isDeveloperMode() {
-      return this.generalStore.appConfig.parameters.isDeveloperMode
+      return config.isDeveloperMode
     }
   },
   created() {

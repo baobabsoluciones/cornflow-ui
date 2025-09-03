@@ -90,7 +90,7 @@ const routes: RouteRecordRaw[] = [
 ]
 
 const router = createRouter({
-  history: appConfig.getCore().parameters.useHashMode ? createWebHashHistory() : createWebHistory(),
+  history: config.useHashMode ? createWebHashHistory() : createWebHistory(),
   routes,
 })
 

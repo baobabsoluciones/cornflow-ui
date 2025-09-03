@@ -9,53 +9,83 @@ To create a new project based on this base project, follow these steps:
 ## 1. Copy the base project
 Copy and paste all the code from this repository into your new repository.
 
-## 2. Configure the core values
+## 2. Configuration guide
 
-The application configuration is divided into two main types:
+### Quick start
+1. **Choose your setup method**: Environment variables (recommended for production) or JSON file (good for development)
+2. **Set core values**: Backend URL, schema name, and authentication type
+3. **Customize app settings**: Modify `src/app/config.ts` for UI preferences and features
+4. **Test your setup**: Run `npm run dev` to verify configuration
 
-1. Variable-based configuration (can be set through either environment variables or JSON):
-   - Core values (backend URL, schema, name)
-   - Authentication settings
-   - External app configuration
-   This can be configured in two different ways:
+### Configuration types (core concept)
 
-### 1.1 Environment variables (.env)
-Used when `useConfigJson: false` in `src/app/config.ts`. All configuration values should be prefixed with `VITE_APP_`:
+The application uses a **two-layer configuration system** with clear separation of concerns:
+
+#### External configuration (`src/config.ts`)
+- **Purpose**: Values that must be configured externally without changing code
+- **Source**: Environment variables or `values.json` (automatically detected)
+- **Use for**: Backend URLs, authentication credentials, deployment settings
+- **Contains**: Core application values, authentication settings, behavior flags
+
+#### Internal configuration (`src/app/config.ts`)
+- **Purpose**: Application-specific settings that are part of the codebase
+- **Source**: Always defined in source code
+- **Use for**: UI preferences, feature flags, dashboard layout, custom logic
+- **Contains**: Component settings, execution steps, file processors, styling options
+
+**Key principle**: External config is "what must be changed without touching code", internal config is "what is part of the application logic".
+
+### Setup methods
+
+#### Method 1: Environment variables (recommended)
+Create a `.env` file (for local development only) or set environment variables on your server. The application automatically uses this method when `VITE_APP_SCHEMA` or `VITE_APP_BACKEND_URL` are detected.
 
 ```env
-# Core Configuration
+# Core configuration
 VITE_APP_BACKEND_URL=https://your-backend-url
 VITE_APP_SCHEMA=rostering
 VITE_APP_NAME=Rostering
-VITE_APP_EXTERNAL_APP=0
-VITE_APP_IS_STAGING_ENVIRONMENT=0
 
-# Authentication Configuration
-VITE_APP_AUTH_TYPE=cornflow  # Options: cornflow, azure, cognito
+# Application behavior
+VITE_APP_EXTERNAL_APP=true                 # true/false (also accepts 1/0)
+VITE_APP_IS_STAGING_ENVIRONMENT=false      # true/false (also accepts 1/0)
+VITE_APP_USE_HASH_MODE=false               # true/false (also accepts 1/0)
+VITE_APP_DEFAULT_LANGUAGE=en               # en, es, fr
+VITE_APP_IS_DEVELOPER_MODE=false           # true/false (also accepts 1/0)
+VITE_APP_ENABLE_SIGNUP=false               # true/false (also accepts 1/0)
+
+# Authentication configuration
+VITE_APP_AUTH_TYPE=cornflow                # Options: cornflow, azure, cognito
 VITE_APP_AUTH_CLIENT_ID=your-client-id
 VITE_APP_AUTH_AUTHORITY=your-authority
 VITE_APP_AUTH_REDIRECT_URI=your-redirect-uri
 VITE_APP_AUTH_REGION=your-region
 VITE_APP_AUTH_USER_POOL_ID=your-user-pool-id
 VITE_APP_AUTH_DOMAIN=your-domain
+VITE_APP_AUTH_PROVIDERS=google,microsoft   # For Cognito: comma-separated list
 ```
 
-### 1.2 JSON configuration (values.json)
-Used when `useConfigJson: true` in `src/app/config.ts`. Create this file based on `values.template.json`:
+#### Method 2: JSON configuration
+Copy `public/values.template.json` to `public/values.json` and configure your values (for local development only). For production, configure this json in an accesible path. Defined path by default is `/values.json` but this can be overwritten in `app/config.ts` with `valuesJsonPath`. Used automatically when no environment variables are detected.
 
 ```json
 {
     "backend_url": "https://your-backend-url",
     "schema": "rostering",
     "name": "Rostering",
-    "hasExternalApp": 0,
-    "isStagingEnvironment": 0,
+    "hasExternalApp": false,
+    "isStagingEnvironment": false,
+    "useHashMode": false,
+    "defaultLanguage": "en",
+    "isDeveloperMode": false,
+    "enableSignup": false,
     "auth_type": "cornflow",
     "cognito": {
       "region": "your-region",
       "user_pool_id": "your-user-pool-id",
       "client_id": "your-client-id",
-      "domain": "your-domain"
+      "domain": "your-domain",
+      "providers": ["google", "microsoft"]
     },
     "azure": {
       "client_id": "your-client-id",
@@ -65,14 +95,31 @@ Used when `useConfigJson: true` in `src/app/config.ts`. Create this file based o
 }
 ```
 
-2. Application-specific configuration (src/app/config.ts) and other files:
-   - Application behavior settings that cannot be changed through variables
-   - UI/UX preferences
-   - Feature flags and modes
-   This is always configured directly in the source code:
+#### Auto-detection logic
+The application automatically chooses the configuration method:
+1. **Environment variables detected** → Uses environment variables, ignores `values.json`
+2. **No environment variables** → Loads from `values.json` or defined path
 
-### 2.1 Application configuration (src/app/config.ts)
-This file contains application-specific configuration that cannot be changed through environment variables or values.json:
+**For production**: Recomended environment variables for security and flexibility, but accepts json
+**For development**: Hardcode values in your .env or values.json file. This can't be uploaded
+
+### Configuration access in code
+```typescript
+// External configuration (from env/json)
+import config from '@/config'
+config.schema          // ✅ Schema name
+config.backend         // ✅ Backend URL
+config.isDeveloperMode // ✅ Developer mode flag
+config.auth.type       // ✅ Authentication type
+
+// Internal configuration (from source code)
+import internalConfig from '@/app/config'
+internalConfig.getCore().parameters.showUserFullname  // ✅ UI preferences
+internalConfig.getCore().parameters.solverConfig     // ✅ App logic
+```
+
+### Internal app configuration (`src/app/config.ts`)
+This file contains **internal application-specific configuration** that is part of the codebase and not configurable externally:
 
 ```typescript
 {
@@ -83,22 +130,12 @@ This file contains application-specific configuration that cannot be changed thr
     Solution: SolutionRostering,
     
     parameters: {
-      // Application behavior
-      useHashMode: false, // Controls whether route has /#/ in the url or not
-      useConfigJson: false,  // Controls whether to use values.json or env vars
-      enableSignup: false, // Enables or disables the functionality for users to sign-up from login view
-      isDeveloperMode: false, // Enables or disables developer mode to upload solution
-      defaultLanguage: 'en', // Sets the default language for i18n ('en', 'es', 'fr')
-      valuesJsonPath: '/values.json', // Path to the values.json file for production
-      
-      // Schema and branding
-      schema: config.schema,  // Read from env/values.json
-      name: config.name,      // Read from env/values.json
-      logo: 'path/to',
-      expandedLogo: 'path/to',
+      // Json path
+      valuesJsonPath: '/values.json',
       
       // Project execution table configuration
-      showTablesWithoutSchema: true, // Controls whether user wants to show tables that don't appear in the schema or not
+      showUserFullname: true,
+      showTablesWithoutSchema: true,
       showExtraProjectExecutionColumns: {
         showUserName: false,     
         showEndCreationDate: false,
@@ -106,14 +143,14 @@ This file contains application-specific configuration that cannot be changed thr
         showUserFullName: false,
       },
       
-      // Dashboard Configuration
-      showDashboardMainView: false, // Controls if the dashboard main view should be shown. If false, the dashboard will be shown as a list of pages.
+      // Dashboard configuration
+      showDashboardMainView: false,
       dashboardLayout: [...],
       dashboardPages: [...],
       dashboardRoutes: [...],
       
       // Create execution steps configuration
-      executionSolvers: ['mip-gurobi'], // Fallback for showing solvers if it's not coming from backend
+      executionSolvers: ['mip-gurobi'],
       solverConfig: {
         showSolverStep: false,
         defaultSolver: 'mip.gurobi',
@@ -133,44 +170,15 @@ This file contains application-specific configuration that cannot be changed thr
 
       // States for execution and solution
       executionStates: {
-        '1': {
-          color: 'green',
-          message: 'Success execution',
-          code: 'Success'
-        }
+        '1': { color: 'green', message: 'Success execution', code: 'Success' }
       },
       solutionStates: {
-         '1': {
-          color: 'green',
-          message: 'Success solution',
-          code: 'Success'
-        }
+         '1': { color: 'green', message: 'Success solution', code: 'Success' }
       },
-      hasMicrosoftAuth: true,  // Controls if Microsoft authentication button is shown
-      hasGoogleAuth: false,    // Controls if Google authentication button is shown
     }
   }
 }
 ```
-
-### Configuration priority
-
-1. If `useConfigJson: true` in `src/app/config.ts`:
-   - The application will use `values.json` for configuration
-   - Environment variables will be ignored
-   - For local development, copy `public/values.template.json` to `public/values.json`
-   - For production, place `values.json` in your domain root
-
-2. If `useConfigJson: false` in `src/app/config.ts`:
-   - The application will use environment variables
-   - Create a `.env` file with the required variables for local development
-   - Define environment variables on the server for production
-   - `values.json` will be ignored
-
-3. Application configuration in `src/app/config.ts`:
-   - Always used regardless of `useConfigJson` setting
-   - Cannot be overridden by environment variables or `values.json`
-   - Contains application-specific logic and UI configuration
 
 ## 2.2. App folder configuration
 Inside the app folder, there are several changes that can be done to configurate your client project. This folder is meant to be for all customizations done for the client.
@@ -180,7 +188,6 @@ Inside the app folder, there are several changes that can be done to configurate
    - `views`: This directory should contain all the custom views needed for the application.
    - `components`: This directory should contain any additional components that are not in the core components.
    - `store/app.ts`: This file should define any additional store-specific configurations for the application.
-   - `tests`: This file should contain all unit tests for additional components.
    - `plugins/locales`: This folder contains three files (`en.ts`, `es.ts`, `fr.ts`) to add any text needed in the app views and components. Be careful not to duplicate the names with the original locales files (`src/plugins/locales`).
 
 * Additionally, favicon can be replaced by a new one in public/favicon.png
@@ -194,98 +201,104 @@ Inside the app folder, there are several changes that can be done to configurate
 It's important not to edit any other file or folders. Only the folders, files and images just mentioned can be edited.
 
 
-# More information about config parameters
+## Configuration reference
 
-### External application mode (hasExternalApp)
-The `hasExternalApp` parameter controls whether the application is running as an external application or as part of the main Cornflow system. This affects how API requests are handled:
+### Core parameters
 
-- When `hasExternalApp: 1`:
-  - API requests will be prefixed with `/cornflow` in the URL
-  - This is useful when the application is deployed as a standalone service that needs to communicate with the main Cornflow backend
-  - Example URL: `https://your-backend-url/cornflow/api/endpoint`
+| Parameter | Description | Environment Variable | JSON Key | Values |
+|-----------|-------------|---------------------|----------|---------|
+| **Backend URL** | API server endpoint | `VITE_APP_BACKEND_URL` | `backend_url` | URL string |
+| **Schema** | Application schema name | `VITE_APP_SCHEMA` | `schema` | String identifier |
+| **App Name** | Application display name | `VITE_APP_NAME` | `name` | String |
+| **Hash Mode** | Router mode (hash vs history) | `VITE_APP_USE_HASH_MODE` | `useHashMode` | `true`/`false` (accepts `1`/`0`) |
+| **Default Language** | UI language | `VITE_APP_DEFAULT_LANGUAGE` | `defaultLanguage` | `en`, `es`, `fr` |
+| **Developer Mode** | Enable dev features | `VITE_APP_IS_DEVELOPER_MODE` | `isDeveloperMode` | `true`/`false` (accepts `1`/`0`) |
+| **Enable Signup** | Show registration option | `VITE_APP_ENABLE_SIGNUP` | `enableSignup` | `true`/`false` (accepts `1`/`0`) |
+| **External App** | API URL prefix mode | `VITE_APP_EXTERNAL_APP` | `hasExternalApp` | `true`/`false` (accepts `1`/`0`) |
+| **Staging Environment** | Show staging banner | `VITE_APP_IS_STAGING_ENVIRONMENT` | `isStagingEnvironment` | `true`/`false` (accepts `1`/`0`) |
 
-- When `hasExternalApp: 0` (default):
-  - API requests will be made directly to the backend URL
-  - This is the standard mode when the application is part of the main Cornflow system
-  - Example URL: `https://your-backend-url/api/endpoint`
+### Authentication parameters
 
-This parameter can be set in either the environment variables or values.json:
+| Parameter | Description | Environment Variable | JSON Key | Values |
+|-----------|-------------|---------------------|----------|---------|
+| **Auth Type** | Authentication method | `VITE_APP_AUTH_TYPE` | `auth_type` | `cornflow`, `azure`, `cognito` |
+| **Client ID** | OAuth client identifier | `VITE_APP_AUTH_CLIENT_ID` | `client_id` | String |
+| **Authority** | Azure authority URL | `VITE_APP_AUTH_AUTHORITY` | `authority` | URL string |
+| **Redirect URI** | OAuth redirect URL | `VITE_APP_AUTH_REDIRECT_URI` | `redirect_uri` | URL string |
+| **Region** | AWS Cognito region | `VITE_APP_AUTH_REGION` | `region` | AWS region code |
+| **User Pool ID** | Cognito user pool | `VITE_APP_AUTH_USER_POOL_ID` | `user_pool_id` | Pool identifier |
+| **Domain** | Cognito domain | `VITE_APP_AUTH_DOMAIN` | `domain` | Domain string |
+| **OAuth Providers** | Enabled OAuth providers | `VITE_APP_AUTH_PROVIDERS` | `providers` | Comma-separated / Array |
 
+### Parameter details
+
+#### Boolean values
+All boolean parameters accept multiple formats for flexibility:
+- **Recommended**: `true` or `false` (case-insensitive)
+- **Legacy support**: `1` (true) or `0` (false)
+- **Environment variables**: String values like `"true"`, `"false"`, `"1"`, `"0"`
+- **JSON files**: Boolean values `true`/`false` or numbers `1`/`0`
+
+The application automatically converts these formats to proper boolean values.
+
+#### useHashMode
+- **Purpose**: Controls routing mode
+- **`true`**: Hash mode routing (URLs include `#`)
+- **`false`**: HTML5 history mode (clean URLs)
+- **Note**: Use hash mode if you can't configure server routing
+
+#### isDeveloperMode  
+- **Purpose**: Enables developer features
+- **`true`**: Shows solution upload in execution creation
+- **`false`**: Standard user experience
+
+#### hasExternalApp
+- **Purpose**: Controls API request URLs
+- **`true`**: Prefixes requests with `/cornflow`
+- **`false`**: Direct API requests
+
+#### OAuth providers (Cognito only)
+- **Supported**: `google`, `microsoft`, `facebook`
+- **Format**: Comma-separated string or array
+- **Behavior**: Only configured providers will work; others show error messages
+
+## Advanced features
+
+### Authentication
+
+The application supports three authentication methods. The server must be properly configured for the chosen method.
+
+#### Cornflow authentication (default)
 ```env
-# Environment variables
-VITE_APP_EXTERNAL_APP=1
+VITE_APP_AUTH_TYPE=cornflow
 ```
 
-```json
-// values.json
-{
-  "hasExternalApp": 1
-}
-```
-
-### Staging environment mode (isStagingEnvironment)
-The `isStagingEnvironment` parameter controls whether to display a warning banner at the top of the application indicating that you are in a staging environment.
-
-- When `isStagingEnvironment: 1`:
-  - Shows a marquee warning banner at the top of the application with the text "🚧 [Staging Warning Message] 🚧"
-  - The banner has a light red background and is clearly visible to users
-  - Helps users easily identify when they are working in a staging environment
-
-- When `isStagingEnvironment: 0` (default):
-  - No warning banner is displayed
-  - Normal production view is shown
-
-This parameter can be set in either the environment variables or values.json:
-
+#### Azure OpenID authentication
 ```env
-# Environment variables
-VITE_APP_IS_STAGING_ENVIRONMENT=1
+VITE_APP_AUTH_TYPE=azure
+VITE_APP_AUTH_CLIENT_ID=your_azure_client_id
+VITE_APP_AUTH_AUTHORITY=your_azure_authority
+VITE_APP_AUTH_REDIRECT_URI=your-redirect-uri
 ```
 
-```json
-// values.json
-{
-  "isStagingEnvironment": 1
-}
+#### AWS Cognito authentication
+```env
+VITE_APP_AUTH_TYPE=cognito
+VITE_APP_AUTH_CLIENT_ID=your_cognito_client_id
+VITE_APP_AUTH_REGION=your_cognito_region
+VITE_APP_AUTH_USER_POOL_ID=your_cognito_user_pool_id
+VITE_APP_AUTH_DOMAIN=your_cognito_domain
+VITE_APP_AUTH_PROVIDERS=google,microsoft
 ```
 
-### Developer mode (isDeveloperMode)
-The `isDeveloperMode` parameter enables additional development and testing features in the application. When enabled, it provides special functionality for handling solutions:
-
-- When `isDeveloperMode: true`:
-  - Adds a solution upload feature in the execution creation process
-  - Allows developers to test solutions by uploading them directly instead of running the solver
-  - Supports uploading solutions in JSON, XLSX, or CSV formats
-  - Validates uploaded solutions against the solution schema
-  - Useful for testing and debugging solution formats without running actual solvers
-
-- When `isDeveloperMode: false` (default):
-  - Disables the solution upload feature
-  - Only allows normal execution through solvers
-  - Provides a standard user experience
-
-This parameter is configured directly in `src/app/config.ts` and the idea is only to be used during local development:
-
-```typescript
-// src/app/config.ts
-const createAppConfig = () => ({
-  core: {
-    parameters: {
-      isDeveloperMode: true,
-      // ... other parameters
-    }
-  }
-})
-```
-
-## Dashboard
+### Dashboard preferences
 To save dashboard preferences for a single execution, including filters, checks, and date ranges, utilize the `setDashboardPreference` method from the `LoadedExecution.ts` class. Subsequently, retrieve these preferences using the `getDashboardPreference` method. The data type is custom, allowing for flexible usage as needed.
 
 
-## Custom file processors
+### Custom file processors
 The application supports custom file processing for instances based on filename prefixes. This feature is useful when you need to handle files with special formats or structures before merging them with other files to create an instance.
 
-### Configuration
+#### Configuration
 Custom file processing is entirely optional. By default, the system will merge all uploaded files without any special processing. If you don't need custom file processing, you can leave the `fileProcessors` object empty or omit it entirely.
 
 If you do need custom processing for specific file types, add a `fileProcessors` object to the core parameters in `src/app/config.ts`:
@@ -313,7 +326,7 @@ Each key in the `fileProcessors` object is a filename prefix that triggers speci
 
 The special prefix `'all'` can be used to apply processors to all files regardless of their names.
 
-### Implementation
+#### Implementation
 The actual processing logic must be implemented in the `src/app/composables/useFileProcessors.ts` file. You need to add your processor methods to the `processors` object in this file. 
 
 Each processor method should:
@@ -330,8 +343,8 @@ For example, in a scheduling application, one file might contain employee data, 
 
 The system automatically detects files that match the configured prefixes and processes them using the corresponding methods before merging all the processed parts into the final instance. Files that don't match any configured prefix are processed using the standard method.
 
-## Create project execution steps customization
-### Solver step: solverConfig
+### Create project execution steps customization
+#### Solver step: solverConfig
 Controls the solver selection step and default solver for executions.
 - `showSolverStep` (boolean):
   - If true, shows the solver selection step to the user.
@@ -340,7 +353,7 @@ Controls the solver selection step and default solver for executions.
   - The solver to use if `showSolverStep` is false.
   - Used in the execution config as `newExecution.config.solver`.
 
-### Configuration parameters step: configFieldsConfig
+#### Configuration parameters step: configFieldsConfig
 Controls the config fields step and value loading for execution parameters.
 - `showConfigFieldsStep` (boolean):
   - If true, shows the config fields step to the user.
@@ -349,7 +362,7 @@ Controls the config fields step and value loading for execution parameters.
   - If true, loads config field values from the instance (or default) when the step is skipped.
   - Used in ProjectExecutionView.vue to call value loading after the instance is loaded or before steps that need config values.
 
-### Configuration parameters step:configFields
+#### Configuration parameters step: configFields
 Defines the configuration fields for execution parameters. Each field can have:
 - `key` (string): Unique identifier for the field (used as config property).
 - `title` (string): Translation key for the field label.
@@ -367,127 +380,40 @@ Defines the configuration fields for execution parameters. Each field can have:
 - `default` (any, optional): Default value if not found in the instance.
 - `options` (Array<{label: string, value: any}>, for select type): Options for select fields.
 
-### Implementation in ProjectExecutionView.vue:
+#### Implementation in ProjectExecutionView.vue:
 - `solverConfig` is used to determine if the solver step is shown and to set the default solver.
 - `configFieldsConfig` is used to determine if the config fields step is shown and to auto-load values.
 - `configFields` is used to render the config fields step, auto-load values from the instance, and display the config summary in the confirmation step.
 
-## Authentication
-The application supports three authentication methods. Note that for any of these methods to work, the server must be properly configured to accept the corresponding authentication type.
+## Router configuration
+The application supports two routing modes controlled by the `useHashMode` configuration parameter:
 
-### Authentication configuration
-In addition to the authentication type configuration, you can control which authentication methods are visible in the login page through the following parameters in `src/app/config.ts`:
-
-```typescript
-parameters: {
-  hasMicrosoftAuth: true,  // Controls if Microsoft authentication button is shown
-  hasGoogleAuth: false,    // Controls if Google authentication button is shown
-}
-```
-
-These parameters work independently of the authentication type configuration, allowing you to show or hide specific authentication methods in the UI.
-
-### 1. Cornflow authentication (Default)
-Using environment variables (when useConfigJson: false):
-```env
-VITE_APP_AUTH_TYPE=cornflow
-```
-
-Using values.json (when useConfigJson: true):
-```json
-{
-  "auth_type": "cornflow"
-}
-```
-
-### 2. Azure OpenID authentication
-Using environment variables (when useConfigJson: false):
-```env
-VITE_APP_AUTH_TYPE=azure
-VITE_APP_AUTH_CLIENT_ID=your_azure_client_id
-VITE_APP_AUTH_AUTHORITY=your_azure_authority
-VITE_APP_AUTH_REDIRECT_URI=your-redirect-uri
-```
-
-Using values.json (when useConfigJson: true):
-```json
-{
-  "auth_type": "azure",
-  "azure": {
-    "client_id": "your_azure_client_id",
-    "authority": "your_azure_authority"
-  }
-}
-```
-
-### 3. AWS Cognito authentication
-Using environment variables (when useConfigJson: false):
-```env
-VITE_APP_AUTH_TYPE=cognito
-VITE_APP_AUTH_CLIENT_ID=your_cognito_client_id
-VITE_APP_AUTH_REGION=your_cognito_region
-VITE_APP_AUTH_USER_POOL_ID=your_cognito_user_pool_id
-```
-
-Using values.json (when useConfigJson: true):
-```json
-{
-  "auth_type": "cognito",
-  "cognito": {
-    "client_id": "your_cognito_client_id",
-    "region": "your_cognito_region",
-    "user_pool_id": "your_cognito_user_pool_id"
-  }
-}
-```
-
-The authentication type is configured either through environment variables or the values.json file, depending on the `useConfigJson` setting in `src/app/config.ts`.
-
-## Router Configuration
-The application supports two routing modes:
-
-### 1. HTML5 History Mode (Default)
+### HTML5 history mode (default)
 This is the default routing mode that creates clean URLs without the hash (#). It requires proper server configuration to handle the URLs correctly.
 
-### 2. Hash Mode
-If you're deploying in an environment where you don't have control over the server configuration or are experiencing issues with route handling, you can enable hash mode by setting `useHashMode: true` in the core parameters in `src/app/config.ts`:
+### Hash mode
+If you're deploying in an environment where you don't have control over the server configuration or are experiencing issues with route handling, you can enable hash mode:
 
-```typescript
-parameters: {
-  // other parameters
-  useHashMode: true,
-  // other parameters
-}
-```
+**Environment variable**: `VITE_APP_USE_HASH_MODE=1`
+**JSON**: `"useHashMode": true`
 
 When hash mode is enabled, all routes will include a hash (#) in the URL (e.g., `http://example.com/#/project-execution` instead of `http://example.com/project-execution`).
 
-## Internationalization Configuration
-The application supports multiple languages (English, Spanish, and French). You can configure the default language by setting the `defaultLanguage` parameter in `src/app/config.ts`:
+## Internationalization configuration
+The application supports multiple languages (English, Spanish, and French). You can configure the default language:
 
-```typescript
-parameters: {
-  // other parameters
-  defaultLanguage: 'es', // 'en' for English, 'es' for Spanish, 'fr' for French
-  // other parameters
-}
-```
+**Environment variable**: `VITE_APP_DEFAULT_LANGUAGE=es`
+**JSON**: `"defaultLanguage": "es"`
 
 Available language codes:
-- `'en'` - English (default)
+- `'en'` - English
 - `'es'` - Spanish
 - `'fr'` - French
 
-## Values.json Path Configuration
-When using JSON configuration (`useConfigJson: true`), you can customize the path where the application looks for the `values.json` file by setting the `valuesJsonPath` parameter in `src/app/config.ts`:
+## Values.json path configuration
+When using JSON configuration (when no environment variables are detected), you can customize the path where the application looks for the `values.json` file:
 
-```typescript
-parameters: {
-  // other parameters
-  valuesJsonPath: '/config/values.json', // Custom path to values.json
-  // other parameters
-}
-```
+**Environment variable**: `VITE_APP_VALUES_JSON_PATH=/config/values.json`
 
 The default value is `/values.json`. The application will:
 - For localhost: Use the path as-is (e.g., `/config/values.json`)
@@ -518,7 +444,7 @@ tests/unit/
     └── (your custom tests go here)
 ```
 
-### Core Tests (`tests/unit/core/`)
+### Core tests (`tests/unit/core/`)
 - **DO NOT MODIFY** these tests as they are part of the core framework
 - Contains tests for all core functionality including:
   - Components (authentication, navigation, etc.)
@@ -527,7 +453,7 @@ tests/unit/
   - Repositories (data access layer)
   - Views (core application views)
 
-### App Tests (`tests/unit/app/`)
+### App tests (`tests/unit/app/`)
 - This is where you should add **your application-specific tests**
 - Tests for custom components, services, and functionality specific to your client application
 - Follow the same structure as core tests for consistency
@@ -563,7 +489,7 @@ Coverage reports are generated in multiple formats:
 - **JSON**: Machine-readable format
 - **HTML**: Visual report in `coverage/` directory
 
-## Writing Tests
+## Writing tests
 
 When writing new tests for your application:
 

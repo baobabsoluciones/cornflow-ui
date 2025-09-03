@@ -20,6 +20,6 @@ export class User {
     this.email = email
     this.firstName = firstName
     this.lastName = lastName
-    this.fullName = getUserFullName(firstName, lastName)
+    this.fullName = getUserFullName(firstName, lastName) || username
   }
 }
