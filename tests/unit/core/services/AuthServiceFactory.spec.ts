@@ -92,7 +92,10 @@ describe('AuthServiceFactory', () => {
       mockConfig.auth.region = ''
       mockConfig.auth.domain = ''
       
-      const mockAzureInstance = { provider: 'azure' }
+      const mockAzureInstance = { 
+        provider: 'azure',
+        initialize: vi.fn().mockResolvedValue(undefined)
+      }
       mockOpenIDAuthService.mockReturnValue(mockAzureInstance)
       
       const services = await AuthServiceFactory.getAllAuthServices()
@@ -109,7 +112,10 @@ describe('AuthServiceFactory', () => {
       mockConfig.auth.authority = ''
       mockConfig.auth.redirectUri = ''
       
-      const mockCognitoInstance = { provider: 'cognito' }
+      const mockCognitoInstance = { 
+        provider: 'cognito',
+        initialize: vi.fn().mockResolvedValue(undefined)
+      }
       mockOpenIDAuthService.mockReturnValue(mockCognitoInstance)
       
       const services = await AuthServiceFactory.getAllAuthServices()
@@ -122,8 +128,14 @@ describe('AuthServiceFactory', () => {
 
     test('initializes both Azure and Cognito when both are configured', async () => {
       mockConfig.auth.type = 'azure'
-      const mockAzureInstance = { provider: 'azure' }
-      const mockCognitoInstance = { provider: 'cognito' }
+      const mockAzureInstance = { 
+        provider: 'azure',
+        initialize: vi.fn().mockResolvedValue(undefined)
+      }
+      const mockCognitoInstance = { 
+        provider: 'cognito',
+        initialize: vi.fn().mockResolvedValue(undefined)
+      }
       mockOpenIDAuthService
         .mockReturnValueOnce(mockAzureInstance)
         .mockReturnValueOnce(mockCognitoInstance)
@@ -184,7 +196,10 @@ describe('AuthServiceFactory', () => {
       mockConfig.auth.region = ''
       mockConfig.auth.domain = ''
       
-      const mockAzureInstance = { provider: 'azure' }
+      const mockAzureInstance = { 
+        provider: 'azure',
+        initialize: vi.fn().mockResolvedValue(undefined)
+      }
       mockOpenIDAuthService.mockReturnValue(mockAzureInstance)
       
       const services1 = await AuthServiceFactory.getAllAuthServices()
@@ -204,7 +219,10 @@ describe('AuthServiceFactory', () => {
 
     test('returns azure service when configured', async () => {
       mockConfig.auth.type = 'azure'
-      const mockAzureInstance = { provider: 'azure' }
+      const mockAzureInstance = { 
+        provider: 'azure',
+        initialize: vi.fn().mockResolvedValue(undefined)
+      }
       mockOpenIDAuthService.mockReturnValue(mockAzureInstance)
       
       const service = await AuthServiceFactory.getAuthService('azure')
@@ -214,7 +232,10 @@ describe('AuthServiceFactory', () => {
 
     test('returns cognito service when configured', async () => {
       mockConfig.auth.type = 'cognito'
-      const mockCognitoInstance = { provider: 'cognito' }
+      const mockCognitoInstance = { 
+        provider: 'cognito',
+        initialize: vi.fn().mockResolvedValue(undefined)
+      }
       mockOpenIDAuthService.mockReturnValue(mockCognitoInstance)
       
       const service = await AuthServiceFactory.getAuthService('cognito')
@@ -250,7 +271,10 @@ describe('AuthServiceFactory', () => {
 
     test('returns azure service when configured as default', async () => {
       mockConfig.auth.type = 'azure'
-      const mockAzureInstance = { provider: 'azure' }
+      const mockAzureInstance = { 
+        provider: 'azure',
+        initialize: vi.fn().mockResolvedValue(undefined)
+      }
       mockOpenIDAuthService.mockReturnValue(mockAzureInstance)
       
       const service = await AuthServiceFactory.getDefaultAuthService()
@@ -260,7 +284,10 @@ describe('AuthServiceFactory', () => {
 
     test('returns cognito service when configured as default', async () => {
       mockConfig.auth.type = 'cognito'
-      const mockCognitoInstance = { provider: 'cognito' }
+      const mockCognitoInstance = { 
+        provider: 'cognito',
+        initialize: vi.fn().mockResolvedValue(undefined)
+      }
       mockOpenIDAuthService.mockReturnValue(mockCognitoInstance)
       
       const service = await AuthServiceFactory.getDefaultAuthService()
@@ -459,7 +486,10 @@ describe('AuthServiceFactory', () => {
 
     test('getAllAuthServices returns all services', async () => {
       mockConfig.auth.type = 'azure'
-      const mockAzureInstance = { provider: 'azure' }
+      const mockAzureInstance = { 
+        provider: 'azure',
+        initialize: vi.fn().mockResolvedValue(undefined)
+      }
       mockOpenIDAuthService.mockReturnValue(mockAzureInstance)
       
       const services = await getAllAuthServices()
@@ -470,7 +500,10 @@ describe('AuthServiceFactory', () => {
 
     test('getSpecificAuthService returns specific service', async () => {
       mockConfig.auth.type = 'azure'
-      const mockAzureInstance = { provider: 'azure' }
+      const mockAzureInstance = { 
+        provider: 'azure',
+        initialize: vi.fn().mockResolvedValue(undefined)
+      }
       mockOpenIDAuthService.mockReturnValue(mockAzureInstance)
       
       const service = await getSpecificAuthService('azure')
@@ -526,7 +559,10 @@ describe('AuthServiceFactory', () => {
       mockConfig.auth.region = ''
       mockConfig.auth.domain = ''
       
-      const mockAzureInstance = { provider: 'azure' }
+      const mockAzureInstance = { 
+        provider: 'azure',
+        initialize: vi.fn().mockResolvedValue(undefined)
+      }
       mockOpenIDAuthService.mockReturnValue(mockAzureInstance)
       
       await AuthServiceFactory.getAllAuthServices()

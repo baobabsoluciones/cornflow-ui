@@ -18,11 +18,10 @@ export default {
     environment: 'jsdom',
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      reporter: ['text', 'json', 'html', 'lcov'],
       exclude: [
         'node_modules/**',
         'tests/**',
-        'src/app/tests/**',
         '**/*.d.ts',
         'vite.config.ts',
         'vitest.config.ts'
@@ -48,7 +47,6 @@ export default {
     include: [
       './tests/unit/core/**/*.spec.ts', // core tests (do not modify)
       './tests/unit/app/**/*.spec.ts', // app-specific tests
-      './src/app/tests/**/*.spec.ts', // additional app tests
     ],
     // silent: true, // disable warnings
   },

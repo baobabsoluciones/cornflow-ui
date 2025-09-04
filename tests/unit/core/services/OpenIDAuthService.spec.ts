@@ -149,12 +149,12 @@ describe('OpenIDAuthService - Enhanced Coverage', () => {
   describe('Constructor and Initialization', () => {
     test('initializes Azure service correctly', async () => {
       expect(azureService['provider']).toBe('azure')
-      expect(azureService['initializationPromise']).toBeDefined()
+      expect(azureService['initializationPromise']).toBeNull()
     })
 
     test('initializes Cognito service correctly', async () => {
       expect(cognitoService['provider']).toBe('cognito')
-      expect(cognitoService['initializationPromise']).toBeDefined()
+      expect(cognitoService['initializationPromise']).toBeNull()
     })
 
     test('handles Azure initialization error', async () => {
@@ -163,7 +163,7 @@ describe('OpenIDAuthService - Enhanced Coverage', () => {
       
       await expect(async () => {
         const service = new OpenIDAuthService('azure')
-        await service['initializationPromise']
+        await service.initialize()
       }).rejects.toThrow('Azure init failed')
       
       consoleSpy.mockRestore()
@@ -175,7 +175,7 @@ describe('OpenIDAuthService - Enhanced Coverage', () => {
       
       await expect(async () => {
         const service = new OpenIDAuthService('cognito')
-        await service['initializationPromise']
+        await service.initialize()
       }).rejects.toThrow('Cognito domain is not configured')
       
       mockConfig.auth.domain = originalDomain
@@ -264,7 +264,8 @@ describe('OpenIDAuthService - Enhanced Coverage', () => {
       const mockToken = createMockToken({ sub: 'test-user' })
       const mockResponse = {
         idToken: mockToken,
-        expiresOn: new Date(Date.now() + 3600000)
+        expiresOn: new Date(Date.now() + 3600000),
+        refreshTokenExpiresIn: 3600
       }
       
       await azureService['handleAuthResponse'](mockResponse)
@@ -279,6 +280,10 @@ describe('OpenIDAuthService - Enhanced Coverage', () => {
       expect(sessionStorageMock.setItem).toHaveBeenCalledWith('isAuthenticated', 'true')
       expect(sessionStorageMock.setItem).toHaveBeenCalledWith('token', 'backend-token')
       expect(sessionStorageMock.setItem).toHaveBeenCalledWith('userId', 'user-id')
+      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('originalToken', mockToken)
+      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('tokenExpiration', expect.any(String))
+      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('azureTokenExpiration', expect.any(String))
+      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('refreshTokenExpiration', expect.any(String))
       expect(mockPush).toHaveBeenCalledWith('/project-execution')
     })
   })
@@ -735,6 +740,9 @@ describe('OpenIDAuthService - Enhanced Coverage', () => {
     test('retryAuthentication handles Cognito retry', async () => {
       cognitoService['provider'] = 'cognito'
       
+      // Mock signOut to resolve successfully
+      vi.mocked(signOut).mockResolvedValue(undefined)
+      
       await (cognitoService as any).retryAuthentication()
       
       expect(mockPush).toHaveBeenCalledWith({ path: '/sign-in', query: { expired: 'true' } })
@@ -830,9 +838,9 @@ describe('OpenIDAuthService - Enhanced Coverage', () => {
       expect(azureService['provider']).toBe('azure')
       expect(cognitoService['provider']).toBe('cognito')
       
-      // Verify services are properly initialized
-      expect(azureService['initializationPromise']).toBeDefined()
-      expect(cognitoService['initializationPromise']).toBeDefined()
+      // Verify services start with no initialization promise
+      expect(azureService['initializationPromise']).toBeNull()
+      expect(cognitoService['initializationPromise']).toBeNull()
     })
   })
 }) 

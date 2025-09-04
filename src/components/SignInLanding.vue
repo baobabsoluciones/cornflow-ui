@@ -77,7 +77,6 @@
         
         <div class="social-buttons">
           <button
-            v-if="isGoogleAvailable"
             class="social-btn google-btn"
             @click="initiateGoogleAuth"
             :title="t('logIn.google_button')"
@@ -86,7 +85,6 @@
             <span>{{ t('logIn.google_button') }}</span>
           </button>
           <button
-            v-if="isMicrosoftAvailable"
             class="social-btn microsoft-btn"
             @click="initiateMicrosoftAuth"
             :title="t('logIn.microsoft_button')"
@@ -128,19 +126,12 @@ const rules = {
 let authServices: AuthServices | null = null
 let defaultAuth: any = null
 
-// Button availability
-const isGoogleAvailable = ref(false)
-const isMicrosoftAvailable = ref(false)
-
 onMounted(async () => {
   try {
     // Initialize all auth services
     authServices = await getAllAuthServices()
     defaultAuth = await getAuthService()
     
-    // Check which services are available based on config parameters
-    isGoogleAvailable.value = store.appConfig.parameters.hasGoogleAuth
-    isMicrosoftAvailable.value = store.appConfig.parameters.hasMicrosoftAuth
   } catch (error) {
     console.error('Failed to initialize auth services:', error)
     showSnackbar?.(t('logIn.snackbar_message_error'), 'error')
@@ -182,7 +173,14 @@ const submitLogIn = async () => {
 
 const initiateGoogleAuth = async () => {
   try {
-    if (!isGoogleAvailable.value) {
+    // Check if auth type is cornflow
+    if (config.auth.type === 'cornflow') {
+      showSnackbar?.(t('logIn.google_not_configured'), 'error')
+      return
+    }
+    
+    // Check if Google is actually configured for the current auth type
+    if (!config.isGoogleConfigured()) {
       showSnackbar?.(t('logIn.google_not_configured'), 'error')
       return
     }
@@ -206,7 +204,14 @@ const initiateGoogleAuth = async () => {
 
 const initiateMicrosoftAuth = async () => {
   try {
-    if (!isMicrosoftAvailable.value) {
+    // Check if auth type is cornflow
+    if (config.auth.type === 'cornflow') {
+      showSnackbar?.(t('logIn.microsoft_not_configured'), 'error')
+      return
+    }
+    
+    // Check if Microsoft is actually configured for the current auth type
+    if (!config.isMicrosoftConfigured()) {
       showSnackbar?.(t('logIn.microsoft_not_configured'), 'error')
       return
     }

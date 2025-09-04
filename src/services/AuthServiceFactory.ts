@@ -58,6 +58,7 @@ export class AuthServiceFactory {
     if (this.isAzureConfigured()) {
       try {
         this.instances.azure = new OpenIDAuthService('azure');
+        await this.instances.azure.initialize();
       } catch (error) {
         console.warn('Failed to initialize Azure auth service:', error);
         this.instances.azure = null;
@@ -68,6 +69,7 @@ export class AuthServiceFactory {
     if (this.isCognitoConfigured()) {
       try {
         this.instances.cognito = new OpenIDAuthService('cognito');
+        await this.instances.cognito.initialize();
       } catch (error) {
         console.warn('Failed to initialize Cognito auth service:', error);
         this.instances.cognito = null;

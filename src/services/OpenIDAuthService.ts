@@ -13,12 +13,22 @@ export class OpenIDAuthService implements AuthProvider {
   private loginAttempted: boolean = false
   private initializationPromise: Promise<void> | null = null
 
-  constructor(private provider: 'azure' | 'cognito') {
-    if (provider === 'azure') {
-      this.initializationPromise = this.initializeAzure()
-    } else if (provider === 'cognito') {
-      this.initializationPromise = this.initializeCognito()
+  constructor(private provider: 'azure' | 'cognito') {}
+
+  /**
+   * Initializes the authentication service based on the provider.
+   * This should be called immediately after creating an instance.
+   */
+  async initialize(): Promise<void> {
+    if (this.initializationPromise) {
+      return this.initializationPromise;
     }
+
+    this.initializationPromise = this.provider === 'azure' 
+      ? this.initializeAzure()
+      : this.initializeCognito();
+
+    return this.initializationPromise;
   }
 
   private async initializeAzure() {
@@ -146,9 +156,8 @@ export class OpenIDAuthService implements AuthProvider {
       // First clear any stale auth data before attempting login
       this.clearLocalStorageAuthData();
       
-      if (this.initializationPromise) {
-        await this.initializationPromise;
-      }
+      // Ensure service is initialized
+      await this.initialize();
 
       if (this.handlingRedirect) {
         return false;
@@ -192,7 +201,7 @@ export class OpenIDAuthService implements AuthProvider {
   private async handleAuthResponse(response: any) {
     if (response) {
       try {
-          const token = response.idToken || response.accessToken;
+        const token = response.idToken || response.accessToken;
         const tokenClaims = this.decodeToken(token);
         
         if (!tokenClaims) {
@@ -275,6 +284,8 @@ export class OpenIDAuthService implements AuthProvider {
       }
     }
   }
+
+
 
   private async retryAuthentication() {
     this.loginAttempted = false
@@ -454,93 +465,91 @@ export class OpenIDAuthService implements AuthProvider {
     return (expTime - now) < twentyFourHours;
   }
 
+  private async refreshAzureToken(): Promise<{ token: string; expiresAt: number } | null> {
+    if (!this.msalInstance) return null;
+
+    const accounts = this.msalInstance.getAllAccounts();
+    if (accounts.length === 0) {
+      console.warn('No MSAL accounts found for token refresh');
+      return null;
+    }
+
+    const silentRequest = {
+      scopes: ['openid', 'profile', 'email', 'User.Read'],
+      account: accounts[0],
+      forceRefresh: false
+    };
+
+    return this.acquireAzureToken(silentRequest);
+  }
+
+  private async acquireAzureToken(request: any): Promise<{ token: string; expiresAt: number } | null> {
+    try {
+      const response = await this.msalInstance!.acquireTokenSilent(request);
+      return this.processAzureTokenResponse(response);
+    } catch (error) {
+      console.warn('Silent token acquisition failed, trying force refresh:', error);
+      const forceRefreshRequest = { ...request, forceRefresh: true };
+      const response = await this.msalInstance!.acquireTokenSilent(forceRefreshRequest);
+      return this.processAzureTokenResponse(response);
+    }
+  }
+
+  private processAzureTokenResponse(response: any): { token: string; expiresAt: number } | null {
+    if (!response?.idToken) return null;
+
+    const tokenClaims = this.decodeToken(response.idToken);
+    if (!tokenClaims?.exp) return null;
+
+    const newExpiration = tokenClaims.exp * 1000;
+    sessionStorage.setItem('tokenExpiration', newExpiration.toString());
+    
+    if (response.expiresOn) {
+      sessionStorage.setItem('azureTokenExpiration', response.expiresOn.getTime().toString());
+    }
+
+    return {
+      token: response.idToken,
+      expiresAt: newExpiration
+    };
+  }
+
+  private async refreshCognitoToken(): Promise<{ token: string; expiresAt: number } | null> {
+    const session = await fetchAuthSession();
+    if (!session.tokens?.idToken) return null;
+
+    const tokenString = session.tokens.idToken.toString();
+    const tokenClaims = this.decodeToken(tokenString);
+    if (!tokenClaims?.exp) return null;
+
+    const newExpiration = tokenClaims.exp * 1000;
+    sessionStorage.setItem('tokenExpiration', newExpiration.toString());
+
+    return {
+      token: tokenString,
+      expiresAt: newExpiration
+    };
+  }
+
   async refreshToken(): Promise<{ token: string; expiresAt: number } | null> {
     try {
-      if (this.provider === 'azure' && this.msalInstance) {
-        // For Azure, use MSAL to get fresh tokens
-        const accounts = this.msalInstance.getAllAccounts()
-        if (accounts.length === 0) {
-          console.warn('No MSAL accounts found for token refresh')
-          return null
-        }
-
-        const silentRequest = {
-          scopes: ['openid', 'profile', 'email', 'User.Read'],
-          account: accounts[0],
-          forceRefresh: false
-        }
-
-        try {
-          const response = await this.msalInstance.acquireTokenSilent(silentRequest)
-          if (response && response.idToken) {
-            const tokenClaims = this.decodeToken(response.idToken)
-            if (tokenClaims && tokenClaims.exp) {
-              const newExpiration = tokenClaims.exp * 1000;
-              
-              // Update stored expiration times
-              sessionStorage.setItem('tokenExpiration', newExpiration.toString());
-              if (response.expiresOn) {
-                sessionStorage.setItem('azureTokenExpiration', response.expiresOn.getTime().toString());
-              }
-              
-              return {
-                token: response.idToken,
-                expiresAt: newExpiration
-              }
-            }
-          }
-        } catch (error) {
-          console.warn('Silent token acquisition failed, trying force refresh:', error)
-          // Try with force refresh - this uses the refresh token more aggressively
-          const forceRefreshRequest = { ...silentRequest, forceRefresh: true }
-          const response = await this.msalInstance.acquireTokenSilent(forceRefreshRequest)
-          if (response && response.idToken) {
-            const tokenClaims = this.decodeToken(response.idToken)
-            if (tokenClaims && tokenClaims.exp) {
-              const newExpiration = tokenClaims.exp * 1000;
-              
-              // Update stored expiration times
-              sessionStorage.setItem('tokenExpiration', newExpiration.toString());
-              if (response.expiresOn) {
-                sessionStorage.setItem('azureTokenExpiration', response.expiresOn.getTime().toString());
-              }
-              
-              return {
-                token: response.idToken,
-                expiresAt: newExpiration
-              }
-            }
-          }
-        }
+      if (this.provider === 'azure') {
+        return await this.refreshAzureToken();
       } else if (this.provider === 'cognito') {
-        // For Cognito, use Amplify's fetchAuthSession
-        const session = await fetchAuthSession()
-        if (session.tokens?.idToken) {
-          const tokenClaims = this.decodeToken(session.tokens.idToken.toString())
-          if (tokenClaims && tokenClaims.exp) {
-            const newExpiration = tokenClaims.exp * 1000;
-            
-            // Update stored expiration time
-            sessionStorage.setItem('tokenExpiration', newExpiration.toString());
-            
-            return {
-              token: session.tokens.idToken.toString(),
-              expiresAt: newExpiration
-            }
-          }
-        }
+        return await this.refreshCognitoToken();
       }
     } catch (error) {
-      console.error(`Token refresh failed for ${this.provider}:`, error)
+      console.error(`Token refresh failed for ${this.provider}:`, error);
       
-      // If refresh token has expired, we might need to clear state and re-authenticate
       if (error.message?.includes('refresh_token') || error.message?.includes('expired')) {
         this.clearAuthState();
       }
     }
     
-    return null
+    return null;
   }
+
+
 
   /**
    * Clears authentication state when refresh tokens are no longer valid
@@ -555,7 +564,7 @@ export class OpenIDAuthService implements AuthProvider {
   }
 
   public async makeAuthenticatedRequest(url: string, options: RequestInit = {}): Promise<Response> {
-    const token = await this.getToken();
+    const token = this.getToken();
     
     const headers = new Headers(options.headers || {});
     headers.set('Authorization', `Bearer ${token}`);

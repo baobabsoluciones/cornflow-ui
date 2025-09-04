@@ -111,72 +111,14 @@ const processFiles = async () => {
   }
 
   try {
-    isCheckingSchema.value = true
-    processedInstances.value = []
-    instanceErrors.value = null
-    emit('update:existingInstanceErrors', instanceErrors.value)
-      
-    // Process each file
-    for (const file of selectedFiles.value) {
-      const extension = file.name.split('.').pop()
-      try {
-        const instance = await parseFile(file, extension)
-        if (instance) {
-          processedInstances.value.push(instance)
-        }
-      } catch (error) {
-        if (showSnackbar) {
-          showSnackbar(error.message || error, 'error')
-        }
-        isCheckingSchema.value = false
-        return // Exit immediately on any file processing error
-      }
-    }
+    initializeProcessing()
     
-    if (processedInstances.value.length === 0) {
-      throw new Error(t('projectExecution.steps.step3.loadInstance.noValidInstancesError'))
-    }
+    const processedFiles = await processAllFiles()
+    const finalInstance = await prepareFinalInstance(processedFiles)
+    const validationPassed = await validateInstance(finalInstance)
     
-    const finalInstance = processedInstances.value.length > 1 ? await mergeInstances() : processedInstances.value[0]
-    selectedInstance.value = finalInstance
-
-    // Validate the instance
-    try {
-      const errors = await finalInstance.checkSchema()
-      if (errors && errors.length > 0) {
-        instanceErrors.value = `<p><strong>Merged instance:</strong></p>` + errors
-          .map((error) => `<li>${error.instancePath} - ${error.message}</li>`)
-          .join('')
-        emit('update:existingInstanceErrors', instanceErrors.value)
-        if (showSnackbar) {
-          showSnackbar(
-            t('projectExecution.steps.step3.loadInstance.instanceSchemaError'),
-            'error'
-          )
-        }
-        return // Exit if there are validation errors
-      }
-    } catch (error) {
-      console.error('Schema validation error:', error)
-      instanceErrors.value = `<p><strong>Error validating instance:</strong></p><li>${error.message}</li>`
-      emit('update:existingInstanceErrors', instanceErrors.value)
-      if (showSnackbar) {
-        showSnackbar(
-          t('projectExecution.steps.step3.loadInstance.instanceSchemaError'),
-          'error'
-        )
-      }
-      return // Exit if there's an error in validation
-    }
-
-    // Only proceed if there are no errors
-    emit('instanceSelected', selectedInstance.value)
-    instanceErrors.value = null
-    emit('update:existingInstanceErrors', instanceErrors.value)
-    if (showSnackbar) {
-      showSnackbar(
-        t('projectExecution.steps.step3.loadInstance.instancesLoaded')
-      )
+    if (validationPassed) {
+      completeProcessing()
     }
   } catch (error) {
     console.error('Error in processFiles:', error)
@@ -185,6 +127,93 @@ const processFiles = async () => {
     }
   } finally {
     isCheckingSchema.value = false
+  }
+}
+
+const initializeProcessing = () => {
+  isCheckingSchema.value = true
+  processedInstances.value = []
+  instanceErrors.value = null
+  emit('update:existingInstanceErrors', instanceErrors.value)
+}
+
+const processAllFiles = async () => {
+  for (const file of selectedFiles.value) {
+    const extension = file.name.split('.').pop()
+    try {
+      const instance = await parseFile(file, extension)
+      if (instance) {
+        processedInstances.value.push(instance)
+      }
+    } catch (error) {
+      if (showSnackbar) {
+        showSnackbar(error.message || error, 'error')
+      }
+      isCheckingSchema.value = false
+      throw error
+    }
+  }
+  
+  if (processedInstances.value.length === 0) {
+    throw new Error(t('projectExecution.steps.step3.loadInstance.noValidInstancesError'))
+  }
+  
+  return processedInstances.value
+}
+
+const prepareFinalInstance = async (instances) => {
+  const finalInstance = instances.length > 1 ? await mergeInstances() : instances[0]
+  selectedInstance.value = finalInstance
+  return finalInstance
+}
+
+const validateInstance = async (instance) => {
+  try {
+    const errors = await instance.checkSchema()
+    if (errors && errors.length > 0) {
+      handleValidationErrors(errors)
+      return false
+    }
+    return true
+  } catch (error) {
+    handleValidationException(error)
+    return false
+  }
+}
+
+const handleValidationErrors = (errors) => {
+  instanceErrors.value = `<p><strong>Merged instance:</strong></p>` + errors
+    .map((error) => `<li>${error.instancePath} - ${error.message}</li>`)
+    .join('')
+  emit('update:existingInstanceErrors', instanceErrors.value)
+  if (showSnackbar) {
+    showSnackbar(
+      t('projectExecution.steps.step3.loadInstance.instanceSchemaError'),
+      'error'
+    )
+  }
+}
+
+const handleValidationException = (error) => {
+  console.error('Schema validation error:', error)
+  instanceErrors.value = `<p><strong>Error validating instance:</strong></p><li>${error.message}</li>`
+  emit('update:existingInstanceErrors', instanceErrors.value)
+  if (showSnackbar) {
+    showSnackbar(
+      t('projectExecution.steps.step3.loadInstance.instanceSchemaError'),
+      'error'
+    )
+  }
+}
+
+const completeProcessing = () => {
+  emit('instanceSelected', selectedInstance.value)
+  instanceErrors.value = null
+  emit('update:existingInstanceErrors', instanceErrors.value)
+  if (showSnackbar) {
+    showSnackbar(
+      t('projectExecution.steps.step3.loadInstance.instancesLoaded')
+    )
   }
 }
 
@@ -279,57 +308,98 @@ const mergeInstances = async () => {
   try {
     const { Instance } = store.appConfig
     const schemas = store.getSchemaConfig
-
-    // Collect all data from instances to merge
-    const allData = processedInstances.value.map(instance => instance.data as Record<string, any>)
-    // Merge all instances data - enhance the merging logic
-    const mergedData: Record<string, any> = {}
-    const allKeys = new Set<string>()
-    for (const data of allData) {
-      for (const key in data) {
-        allKeys.add(key)
-      }
-    }
-    for (const key of allKeys) {
-      const values = allData.filter(data => data[key] !== undefined).map(data => data[key])
-      if (values.length === 0) {
-        continue
-      } else if (values.length === 1) {
-        mergedData[key] = values[0]
-      } else {
-        const firstValue = values[0]
-        if (Array.isArray(firstValue)) {
-          mergedData[key] = values.flat()
-        } else if (typeof firstValue === 'object' && firstValue !== null) {
-          mergedData[key] = {}
-          for (const value of values) {
-            if (value && typeof value === 'object') {
-              Object.assign(mergedData[key], value)
-            }
-          }
-        } else {
-          mergedData[key] = values.find(v => v !== null && v !== undefined) || firstValue
-        }
-      }
-    }
-    // Create a new instance with the merged data
-    return new Instance(
-      null,
-      mergedData,
-      schemas.instanceSchema,
-      schemas.instanceChecksSchema,
-      store.appConfig.parameters.schema
-    )
+    const allData = extractInstanceData()
+    const mergedData = performDataMerging(allData)
+    
+    return createMergedInstance(Instance, mergedData, schemas)
   } catch (error) {
-    instanceErrors.value =
-      (instanceErrors.value && instanceErrors.value.length > 0)
-        ? instanceErrors.value
-        : t('projectExecution.steps.step3.loadInstance.unexpectedError')
-    emit('update:existingInstanceErrors', instanceErrors.value)
-    if (showSnackbar) {
-      showSnackbar(error.message || error, 'error')
-    }
+    handleMergeError(error)
     throw error
+  }
+}
+
+const extractInstanceData = () => {
+  return processedInstances.value.map(instance => instance.data as Record<string, any>)
+}
+
+const performDataMerging = (allData: Record<string, any>[]) => {
+  const mergedData: Record<string, any> = {}
+  const allKeys = collectAllKeys(allData)
+  
+  for (const key of allKeys) {
+    const values = getValuesForKey(allData, key)
+    mergedData[key] = mergeValues(values)
+  }
+  
+  return mergedData
+}
+
+const collectAllKeys = (allData: Record<string, any>[]) => {
+  const allKeys = new Set<string>()
+  for (const data of allData) {
+    for (const key in data) {
+      allKeys.add(key)
+    }
+  }
+  return allKeys
+}
+
+const getValuesForKey = (allData: Record<string, any>[], key: string) => {
+  return allData.filter(data => data[key] !== undefined).map(data => data[key])
+}
+
+const mergeValues = (values: any[]) => {
+  if (values.length === 0) {
+    return undefined
+  }
+  
+  if (values.length === 1) {
+    return values[0]
+  }
+  
+  const firstValue = values[0]
+  return mergeMultipleValues(values, firstValue)
+}
+
+const mergeMultipleValues = (values: any[], firstValue: any) => {
+  if (Array.isArray(firstValue)) {
+    return values.flat()
+  }
+  
+  if (typeof firstValue === 'object' && firstValue !== null) {
+    return mergeObjectValues(values)
+  }
+  
+  return values.find(v => v !== null && v !== undefined) || firstValue
+}
+
+const mergeObjectValues = (values: any[]) => {
+  const merged = {}
+  for (const value of values) {
+    if (value && typeof value === 'object') {
+      Object.assign(merged, value)
+    }
+  }
+  return merged
+}
+
+const createMergedInstance = (Instance: any, mergedData: Record<string, any>, schemas: any) => {
+  return new Instance(
+    null,
+    mergedData,
+    schemas.instanceSchema,
+    schemas.instanceChecksSchema,
+    store.appConfig.parameters.schema
+  )
+}
+
+const handleMergeError = (error: any) => {
+  instanceErrors.value = (instanceErrors.value && instanceErrors.value.length > 0)
+    ? instanceErrors.value
+    : t('projectExecution.steps.step3.loadInstance.unexpectedError')
+  emit('update:existingInstanceErrors', instanceErrors.value)
+  if (showSnackbar) {
+    showSnackbar(error.message || error, 'error')
   }
 }
 </script>

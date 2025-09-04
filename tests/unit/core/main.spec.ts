@@ -27,7 +27,8 @@ vi.mock('@/App.vue', () => ({
 
 // Mock config
 const mockConfig = {
-  initConfig: vi.fn().mockResolvedValue(undefined)
+  initConfig: vi.fn().mockResolvedValue(undefined),
+  defaultLanguage: 'en'
 }
 
 vi.mock('@/config', () => ({
@@ -93,6 +94,7 @@ describe('Main Module Integration', () => {
     mockCreateApp.mockReturnValue(mockApp)
     mockCreatePinia.mockReturnValue(mockPinia)
     mockConfig.initConfig.mockResolvedValue(undefined)
+    mockConfig.defaultLanguage = 'en'
     mockAppConfig.getCore.mockReturnValue({
       parameters: {
         defaultLanguage: 'en'
@@ -144,11 +146,7 @@ describe('Main Module Integration', () => {
   })
 
   test('should set default language for Spanish', async () => {
-    mockAppConfig.getCore.mockReturnValue({
-      parameters: {
-        defaultLanguage: 'es'
-      }
-    })
+    mockConfig.defaultLanguage = 'es'
 
     const { initApp } = await import('@/main')
     
@@ -158,11 +156,7 @@ describe('Main Module Integration', () => {
   })
 
   test('should set default language for French', async () => {
-    mockAppConfig.getCore.mockReturnValue({
-      parameters: {
-        defaultLanguage: 'fr'
-      }
-    })
+    mockConfig.defaultLanguage = 'fr'
 
     const { initApp } = await import('@/main')
     
@@ -172,11 +166,7 @@ describe('Main Module Integration', () => {
   })
 
   test('should not set language for invalid language', async () => {
-    mockAppConfig.getCore.mockReturnValue({
-      parameters: {
-        defaultLanguage: 'invalid'
-      }
-    })
+    mockConfig.defaultLanguage = 'invalid'
 
     const { initApp } = await import('@/main')
     
@@ -186,9 +176,7 @@ describe('Main Module Integration', () => {
   })
 
   test('should not set language when undefined', async () => {
-    mockAppConfig.getCore.mockReturnValue({
-      parameters: {}
-    })
+    mockConfig.defaultLanguage = undefined
 
     const { initApp } = await import('@/main')
     

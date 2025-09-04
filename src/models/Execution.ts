@@ -52,6 +52,6 @@ export class Execution {
     this.id = id
     this.userId = userId
     this.userName = userName
-    this.userFullName = getUserFullName(userFirstName, userLastName)
+    this.userFullName = getUserFullName(userFirstName, userLastName) || this.userName
   }
 }

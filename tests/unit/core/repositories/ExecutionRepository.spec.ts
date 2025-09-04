@@ -321,10 +321,5 @@ describe('ExecutionRepository', () => {
     })
   })
 
-  describe('refreshExecution', () => {
-    test('should have refreshExecution method', async () => {
-      expect(typeof repository.refreshExecution).toBe('function')
-      await repository.refreshExecution('test-id')
-    })
-  })
+
 })

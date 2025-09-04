@@ -1,5 +1,6 @@
 export interface AuthProvider {
   login(username?: string, password?: string): Promise<boolean>;
+  initialize(): Promise<void>;
   logout(): void;
   getToken(): string | null;
   getUserId(): string | null;

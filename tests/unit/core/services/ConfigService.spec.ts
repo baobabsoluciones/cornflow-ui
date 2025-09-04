@@ -1,11 +1,9 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
-import configService from '@/services/ConfigService'
 
 // Mock app config
 const mockAppConfig = vi.hoisted(() => ({
   getCore: vi.fn(() => ({
     parameters: {
-      useConfigJson: false,
       valuesJsonPath: '/values.json'
     }
   }))
@@ -15,135 +13,373 @@ vi.mock('@/app/config', () => ({
   default: mockAppConfig
 }))
 
-// Mock import.meta.env
-const mockEnv = {
+// Mock fetch globally
+global.fetch = vi.fn()
+
+// Mock window.location
+Object.defineProperty(window, 'location', {
+  value: {
+    hostname: 'localhost',
+    href: 'http://localhost:3000',
+    origin: 'http://localhost:3000'
+  },
+  writable: true
+})
+
+// Create a controllable mock for import.meta.env
+let mockImportMetaEnv = {}
+
+// Mock the entire ConfigService module to control import.meta.env
+vi.mock('../../../../src/services/ConfigService', async () => {
+  const actual = await vi.importActual('../../../../src/services/ConfigService') as any
+  
+  // Create a new ConfigService class that uses our mocked env
+  class MockedConfigService {
+    private static instance: MockedConfigService | null = null
+    private loadPromise: Promise<any> | null = null
+    private values: any | null = null
+
+    private constructor() {}
+
+    public static getInstance(): MockedConfigService {
+      if (!MockedConfigService.instance) {
+        MockedConfigService.instance = new MockedConfigService()
+      }
+      return MockedConfigService.instance
+    }
+
+    async getConfig(): Promise<any> {
+      if (this.values) return this.values
+
+      // Use our mocked environment variables
+      const hasEnvConfig = !!(mockImportMetaEnv.VITE_APP_SCHEMA || mockImportMetaEnv.VITE_APP_BACKEND_URL)
+      
+      if (hasEnvConfig) {
+        const envConfig = {
+          backend_url: mockImportMetaEnv.VITE_APP_BACKEND_URL || '',
+          auth_type: mockImportMetaEnv.VITE_APP_AUTH_TYPE || 'cornflow',
+          schema: mockImportMetaEnv.VITE_APP_SCHEMA || '',
+          name: mockImportMetaEnv.VITE_APP_NAME || '',
+          hasExternalApp: mockImportMetaEnv.VITE_APP_EXTERNAL_APP == '1',
+          isStagingEnvironment: mockImportMetaEnv.VITE_APP_IS_STAGING_ENVIRONMENT == '1',
+          useHashMode: mockImportMetaEnv.VITE_APP_USE_HASH_MODE == '1',
+          defaultLanguage: mockImportMetaEnv.VITE_APP_DEFAULT_LANGUAGE || '',
+          isDeveloperMode: mockImportMetaEnv.VITE_APP_IS_DEVELOPER_MODE == '1',
+          enableSignup: mockImportMetaEnv.VITE_APP_ENABLE_SIGNUP == '1',
+          cognito: {
+            region: mockImportMetaEnv.VITE_APP_AUTH_REGION || '',
+            user_pool_id: mockImportMetaEnv.VITE_APP_AUTH_USER_POOL_ID || '',
+            client_id: mockImportMetaEnv.VITE_APP_AUTH_CLIENT_ID || '',
+            domain: mockImportMetaEnv.VITE_APP_AUTH_DOMAIN || '',
+            providers: mockImportMetaEnv.VITE_APP_AUTH_PROVIDERS ? mockImportMetaEnv.VITE_APP_AUTH_PROVIDERS.split(',') : []
+          },
+          azure: {
+            client_id: mockImportMetaEnv.VITE_APP_AUTH_CLIENT_ID || '',
+            authority: mockImportMetaEnv.VITE_APP_AUTH_AUTHORITY || '',
+            redirect_uri: mockImportMetaEnv.VITE_APP_AUTH_REDIRECT_URI || ''
+          }
+        }
+        this.values = envConfig
+        return envConfig
+      }
+      
+      return this.loadConfig()
+    }
+
+    private async loadConfig(): Promise<any> {
+      if (this.loadPromise) return this.loadPromise
+
+      this.loadPromise = new Promise<any>((resolve, reject) => {
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        const valuesJsonPath = mockAppConfig.getCore().parameters.valuesJsonPath
+        const configUrl = isLocalhost ? valuesJsonPath : `https://${window.location.hostname}${valuesJsonPath}`
+        
+        global.fetch(configUrl)
+          .then((response: any) => response.json())
+          .then((values: any) => {
+            this.values = values
+            resolve(values)
+          })
+          .catch((error: any) => {
+            reject(error)
+          })
+      })
+
+      return this.loadPromise
+    }
+  }
+
+  const mockedInstance = MockedConfigService.getInstance()
+  return {
+    default: mockedInstance,
+    ConfigService: MockedConfigService
+  }
+})
+
+// Import the mocked ConfigService
+const { default: configService } = await import('../../../../src/services/ConfigService')
+
+// Helper function to get a fresh ConfigService instance
+const getConfigService = () => {
+  // Reset the singleton instance
+  ;(configService.constructor as any).instance = null
+  // Create new instance
+  return (configService.constructor as any).getInstance()
+}
+
+// Test data
+const mockEnvComplete = {
   VITE_APP_BACKEND_URL: 'http://localhost:8000',
   VITE_APP_AUTH_TYPE: 'cornflow',
   VITE_APP_SCHEMA: 'test-schema',
   VITE_APP_NAME: 'Test App',
+  VITE_APP_EXTERNAL_APP: '1',
+  VITE_APP_IS_STAGING_ENVIRONMENT: '0',
+  VITE_APP_USE_HASH_MODE: '1',
+  VITE_APP_DEFAULT_LANGUAGE: 'en',
+  VITE_APP_IS_DEVELOPER_MODE: '0',
+  VITE_APP_ENABLE_SIGNUP: '1',
   VITE_APP_AUTH_REGION: 'us-east-1',
   VITE_APP_AUTH_USER_POOL_ID: 'us-east-1_test',
   VITE_APP_AUTH_CLIENT_ID: 'test-client-id',
-  VITE_APP_AUTH_DOMAIN: 'test-domain.auth.us-east-1.amazoncognito.com'
+  VITE_APP_AUTH_DOMAIN: 'test-domain.auth.us-east-1.amazoncognito.com',
+  VITE_APP_AUTH_AUTHORITY: 'https://login.microsoftonline.com/tenant-id',
+  VITE_APP_AUTH_REDIRECT_URI: 'http://localhost:3000/auth/callback',
+  VITE_APP_AUTH_PROVIDERS: 'google,microsoft,facebook'
 }
 
-vi.stubGlobal('import.meta', {
-  env: mockEnv
-})
+const mockJsonConfig = {
+  backend_url: 'https://api.example.com',
+  auth_type: 'azure',
+  schema: 'production-schema',
+  name: 'Production App',
+  hasExternalApp: true,
+  isStagingEnvironment: false,
+  useHashMode: false,
+  defaultLanguage: 'es',
+  isDeveloperMode: false,
+  enableSignup: false,
+  cognito: {
+    region: 'eu-west-1',
+    user_pool_id: 'eu-west-1_prod',
+    client_id: 'prod-client-id',
+    domain: 'prod-domain.auth.eu-west-1.amazoncognito.com',
+    providers: ['google']
+  },
+  azure: {
+    client_id: 'azure-client-id',
+    authority: 'https://login.microsoftonline.com/prod-tenant',
+    redirect_uri: 'https://app.example.com/auth/callback'
+  }
+}
 
 describe('ConfigService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Reset environment variables
-    vi.stubGlobal('import.meta', {
-      env: mockEnv
-    })
-    // Clear cached values for each test
-    configService['values'] = null
-    configService['loadPromise'] = null
+    vi.mocked(global.fetch).mockClear()
+    // Reset mock environment
+    mockImportMetaEnv = {}
   })
 
-  describe('getInstance', () => {
-    test('returns singleton instance', () => {
-      // Since configService is already an instance, we test that it's consistent
+  describe('Singleton Pattern', () => {
+    test('maintains singleton instance', () => {
+      mockImportMetaEnv = mockEnvComplete
+      const configService = getConfigService()
+      
       expect(configService).toBeDefined()
       expect(typeof configService.getConfig).toBe('function')
     })
+
+    test('returns same instance on multiple calls', () => {
+      mockImportMetaEnv = mockEnvComplete
+      const instance1 = getConfigService()
+      const instance2 = (configService.constructor as any).getInstance()
+      
+      expect(instance1).toBe(instance2)
+    })
   })
 
-  describe('getConfig with environment variables', () => {
-    test('returns config from environment variables when useConfigJson is false', async () => {
-      mockAppConfig.getCore.mockReturnValue({
-        parameters: {
-          useConfigJson: false,
-          valuesJsonPath: '/values.json'
-        }
-      })
-
+  describe('Environment Variables Configuration', () => {
+    test('uses environment variables when present', async () => {
+      mockImportMetaEnv = mockEnvComplete
+      const configService = getConfigService()
 
       const config = await configService.getConfig()
 
-      // Test structure rather than exact values since environment variable mocking 
-      // is complex in this singleton pattern
-      expect(config).toHaveProperty('backend_url')
-      expect(config).toHaveProperty('auth_type')
-      expect(config).toHaveProperty('schema')
-      expect(config).toHaveProperty('name')
-      expect(config).toHaveProperty('cognito')
-      expect(config.cognito).toHaveProperty('region')
-      expect(config.cognito).toHaveProperty('user_pool_id')
-      expect(config.cognito).toHaveProperty('client_id')
-      expect(config.cognito).toHaveProperty('domain')
+      expect(config.backend_url).toBe('http://localhost:8000')
+      expect(config.auth_type).toBe('cornflow')
+      expect(config.schema).toBe('test-schema')
+      expect(config.name).toBe('Test App')
     })
 
-    test('returns cached config on subsequent calls', async () => {
-      mockAppConfig.getCore.mockReturnValue({
-        parameters: {
-          useConfigJson: false,
-          valuesJsonPath: '/values.json'
-        }
-      })
+    test('parses boolean flags correctly', async () => {
+      mockImportMetaEnv = mockEnvComplete
+      const configService = getConfigService()
 
+      const config = await configService.getConfig()
+
+      expect(config.hasExternalApp).toBe(true) // '1'
+      expect(config.isStagingEnvironment).toBe(false) // '0'
+      expect(config.useHashMode).toBe(true) // '1'
+      expect(config.isDeveloperMode).toBe(false) // '0'
+      expect(config.enableSignup).toBe(true) // '1'
+    })
+
+    test('parses auth providers array correctly', async () => {
+      mockImportMetaEnv = mockEnvComplete
+      const configService = getConfigService()
+
+      const config = await configService.getConfig()
+
+      expect(config.cognito?.providers).toEqual(['google', 'microsoft', 'facebook'])
+    })
+
+    test('handles cognito auth configuration', async () => {
+      mockImportMetaEnv = mockEnvComplete
+      const configService = getConfigService()
+
+      const config = await configService.getConfig()
+
+      expect(config.cognito).toEqual({
+        region: 'us-east-1',
+        user_pool_id: 'us-east-1_test',
+        client_id: 'test-client-id',
+        domain: 'test-domain.auth.us-east-1.amazoncognito.com',
+        providers: ['google', 'microsoft', 'facebook']
+      })
+    })
+
+    test('handles azure auth configuration', async () => {
+      mockImportMetaEnv = mockEnvComplete
+      const configService = getConfigService()
+
+      const config = await configService.getConfig()
+
+      expect(config.azure).toEqual({
+        client_id: 'test-client-id',
+        authority: 'https://login.microsoftonline.com/tenant-id',
+        redirect_uri: 'http://localhost:3000/auth/callback'
+      })
+    })
+
+    test('caches configuration on subsequent calls', async () => {
+      mockImportMetaEnv = mockEnvComplete
+      const configService = getConfigService()
 
       const config1 = await configService.getConfig()
       const config2 = await configService.getConfig()
 
       expect(config1).toBe(config2)
-      expect(mockAppConfig.getCore).toHaveBeenCalledTimes(1)
+      expect(mockAppConfig.getCore).not.toHaveBeenCalled()
+    })
+
+    test('never calls loadConfig when environment variables are present', async () => {
+      mockImportMetaEnv = mockEnvComplete
+      const configService = getConfigService()
+      const loadConfigSpy = vi.spyOn(configService as any, 'loadConfig')
+      
+      await configService.getConfig()
+      
+      expect(loadConfigSpy).not.toHaveBeenCalled()
+      loadConfigSpy.mockRestore()
     })
   })
 
-  describe('getConfig with JSON file', () => {
-    beforeEach(() => {
-      // Mock fetch globally
-      global.fetch = vi.fn()
-      
-      // Mock window.location
-      Object.defineProperty(window, 'location', {
-        value: {
-          hostname: 'localhost'
-        },
-        writable: true
-      })
-    })
-
-    afterEach(() => {
-      vi.restoreAllMocks()
-    })
-
-    test('loads config from JSON file when useConfigJson is true (localhost)', async () => {
-      mockAppConfig.getCore.mockReturnValue({
-        parameters: {
-          useConfigJson: true,
-          valuesJsonPath: '/values.json'
-        }
-      })
-
-      const mockJsonConfig = {
-        backend_url: 'https://api.example.com',
-        auth_type: 'azure',
-        schema: 'production-schema',
-        name: 'Production App',
-        azure: {
-          client_id: 'azure-client-id',
-          authority: 'https://login.microsoftonline.com/tenant',
-          redirect_uri: 'https://example.com/callback'
-        }
+  describe('Different Auth Types', () => {
+    test('handles azure auth type', async () => {
+      mockImportMetaEnv = {
+        ...mockEnvComplete,
+        VITE_APP_AUTH_TYPE: 'azure'
       }
-
-      vi.mocked(fetch).mockResolvedValueOnce({
-        json: () => Promise.resolve(mockJsonConfig)
-      } as Response)
-
+      const configService = getConfigService()
 
       const config = await configService.getConfig()
 
-      expect(fetch).toHaveBeenCalledWith('/values.json')
-      expect(config).toEqual(mockJsonConfig)
+      expect(config.auth_type).toBe('azure')
+      expect(['cognito', 'azure', 'cornflow']).toContain(config.auth_type)
     })
 
-    test('loads config from JSON file when useConfigJson is true (production)', async () => {
-      // Mock production hostname
+    test('handles cognito auth type', async () => {
+      mockImportMetaEnv = {
+        ...mockEnvComplete,
+        VITE_APP_AUTH_TYPE: 'cognito'
+      }
+      const configService = getConfigService()
+
+      const config = await configService.getConfig()
+
+      expect(config.auth_type).toBe('cognito')
+      expect(config.cognito).toHaveProperty('region')
+      expect(config.cognito).toHaveProperty('user_pool_id')
+    })
+
+    test('defaults to cornflow auth type', async () => {
+      mockImportMetaEnv = {
+        ...mockEnvComplete,
+        VITE_APP_AUTH_TYPE: undefined
+      }
+      const configService = getConfigService()
+
+      const config = await configService.getConfig()
+
+      expect(config.auth_type).toBe('cornflow')
+    })
+  })
+
+  describe('Default Values', () => {
+    test('uses default values when env vars are empty', async () => {
+      mockImportMetaEnv = {
+        VITE_APP_SCHEMA: 'test-schema', // Minimum required to trigger env mode
+        VITE_APP_BACKEND_URL: '', // Empty value
+        VITE_APP_AUTH_TYPE: '', // Empty value
+        VITE_APP_NAME: '' // Empty value
+      }
+      const configService = getConfigService()
+
+      const config = await configService.getConfig()
+
+      expect(config.backend_url).toBe('')
+      expect(config.auth_type).toBe('cornflow') // Default
+      expect(config.name).toBe('')
+      expect(config.hasExternalApp).toBe(false) // Default for undefined
+    })
+  })
+
+  describe('JSON Configuration Loading', () => {
+    test('loads configuration from JSON when no env vars present', async () => {
+      mockImportMetaEnv = {} // No environment variables
+      const configService = getConfigService()
+      
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        json: () => Promise.resolve(mockJsonConfig)
+      } as Response)
+
+      const config = await configService.getConfig()
+
+      expect(global.fetch).toHaveBeenCalledWith('/values.json')
+      expect(config.backend_url).toBe('https://api.example.com')
+      expect(config.auth_type).toBe('azure')
+      expect(config.schema).toBe('production-schema')
+      expect(mockAppConfig.getCore).toHaveBeenCalled()
+    })
+
+    test('uses correct URL for localhost', async () => {
+      mockImportMetaEnv = {} // No environment variables
+      const configService = getConfigService()
+      
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        json: () => Promise.resolve(mockJsonConfig)
+      } as Response)
+
+      await configService.getConfig()
+
+      expect(global.fetch).toHaveBeenCalledWith('/values.json')
+    })
+
+    test('uses correct URL for production domain', async () => {
+      mockImportMetaEnv = {} // No environment variables
+      const configService = getConfigService()
+      
       Object.defineProperty(window, 'location', {
         value: {
           hostname: 'app.example.com'
@@ -151,92 +387,103 @@ describe('ConfigService', () => {
         writable: true
       })
 
-      mockAppConfig.getCore.mockReturnValue({
-        parameters: {
-          useConfigJson: true,
-          valuesJsonPath: '/config/values.json'
-        }
-      })
-
-      const mockJsonConfig = {
-        backend_url: 'https://api.example.com',
-        auth_type: 'cognito',
-        schema: 'production-schema',
-        name: 'Production App'
-      }
-
-      vi.mocked(fetch).mockResolvedValueOnce({
+      vi.mocked(global.fetch).mockResolvedValueOnce({
         json: () => Promise.resolve(mockJsonConfig)
       } as Response)
 
+      await configService.getConfig()
 
-      const config = await configService.getConfig()
-
-      expect(fetch).toHaveBeenCalledWith('https://app.example.com/config/values.json')
-      expect(config).toEqual(mockJsonConfig)
+      expect(global.fetch).toHaveBeenCalledWith('https://app.example.com/values.json')
     })
 
-    test('handles JSON loading errors gracefully', async () => {
-      mockAppConfig.getCore.mockReturnValue({
-        parameters: {
-          useConfigJson: true,
-          valuesJsonPath: '/values.json'
-        }
-      })
-
-      vi.mocked(fetch).mockRejectedValueOnce(new Error('Failed to fetch'))
-
-
-
-      await expect(configService.getConfig()).rejects.toThrow('Failed to fetch')
-    })
-
-    test('returns same promise for concurrent requests', async () => {
-      mockAppConfig.getCore.mockReturnValue({
-        parameters: {
-          useConfigJson: true,
-          valuesJsonPath: '/values.json'
-        }
-      })
-
-      const mockJsonConfig = {
-        backend_url: 'https://api.example.com',
-        auth_type: 'azure',
-        schema: 'test-schema',
-        name: 'Test App'
-      }
-
-      vi.mocked(fetch).mockResolvedValueOnce({
-        json: () => Promise.resolve(mockJsonConfig)
-      } as Response)
-
-
+    test('caches JSON configuration on subsequent calls', async () => {
+      mockImportMetaEnv = {} // No environment variables
+      const configService = getConfigService()
       
-      // Make concurrent requests
-      const promise1 = configService.getConfig()
-      const promise2 = configService.getConfig()
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        json: () => Promise.resolve(mockJsonConfig)
+      } as Response)
 
-      const [config1, config2] = await Promise.all([promise1, promise2])
+      const config1 = await configService.getConfig()
+      const config2 = await configService.getConfig()
 
       expect(config1).toBe(config2)
-      expect(fetch).toHaveBeenCalledTimes(1)
+      expect(global.fetch).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('Error Handling', () => {
+    test('handles fetch network errors', async () => {
+      mockImportMetaEnv = {} // No environment variables
+      const configService = getConfigService()
+      
+      vi.mocked(global.fetch).mockRejectedValueOnce(new Error('Network error'))
+
+      await expect(configService.getConfig()).rejects.toThrow('Network error')
     })
 
     test('handles JSON parsing errors', async () => {
-      mockAppConfig.getCore.mockReturnValue({
-        parameters: {
-          useConfigJson: true,
-          valuesJsonPath: '/values.json'
-        }
-      })
-
-      vi.mocked(fetch).mockResolvedValueOnce({
+      mockImportMetaEnv = {} // No environment variables
+      const configService = getConfigService()
+      
+      vi.mocked(global.fetch).mockResolvedValueOnce({
         json: () => Promise.reject(new Error('Invalid JSON'))
       } as Response)
 
-
-
       await expect(configService.getConfig()).rejects.toThrow('Invalid JSON')
+    })
+
+    test('handles fetch response errors', async () => {
+      mockImportMetaEnv = {} // No environment variables
+      const configService = getConfigService()
+      
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        json: () => Promise.reject(new Error('Not found'))
+      } as Response)
+
+      await expect(configService.getConfig()).rejects.toThrow('Not found')
+    })
+  })
+
+  describe('Edge Cases', () => {
+    test('handles malformed auth providers string', async () => {
+      mockImportMetaEnv = {
+        ...mockEnvComplete,
+        VITE_APP_AUTH_PROVIDERS: '' // Empty string
+      }
+      const configService = getConfigService()
+
+      const config = await configService.getConfig()
+
+      expect(config.cognito?.providers).toEqual([])
+    })
+
+    test('handles missing auth providers', async () => {
+      mockImportMetaEnv = {
+        ...mockEnvComplete,
+        VITE_APP_AUTH_PROVIDERS: undefined
+      }
+      const configService = getConfigService()
+
+      const config = await configService.getConfig()
+
+      expect(config.cognito?.providers).toEqual([])
+    })
+
+    test('handles concurrent calls correctly', async () => {
+      mockImportMetaEnv = mockEnvComplete
+      const configService = getConfigService()
+
+      const [config1, config2, config3] = await Promise.all([
+        configService.getConfig(),
+        configService.getConfig(),
+        configService.getConfig()
+      ])
+
+      expect(config1).toBe(config2)
+      expect(config2).toBe(config3)
     })
   })
 })

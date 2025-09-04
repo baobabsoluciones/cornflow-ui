@@ -3,12 +3,18 @@
     "auth_type": "cornflow",
     "schema": "rostering",
     "name": "Rostering",
-    "hasExternalApp": 0,
+    "hasExternalApp": false,
+    "isStagingEnvironment": false,
+    "useHashMode": false,
+    "defaultLanguage": "en",
+    "isDeveloperMode": false,
+    "enableSignup": false,
     "cognito": {
       "region": "your-region",
       "user_pool_id": "your-user-pool-id",
       "client_id": "your-client-id",
-      "domain": "your-domain"
+      "domain": "your-domain",
+      "providers": ["google", "microsoft"]
     },
     "azure": {
       "client_id": "your-client-id",

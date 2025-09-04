@@ -7,37 +7,43 @@ export function useTableDOMManipulation(getHeaders: () => HeaderItem[]) {
   // Add column group to enforce column widths
   const addColgroup = () => {
     nextTick(() => {
-      // Add colgroup to enforce column widths
       const tables = document.querySelectorAll('.execution-table table');
-      
-      // Get the computed widths based on the container width
-      let containerWidth = document.querySelector('.table-container')?.clientWidth || 1000;
-      
-      // Calculate fixed pixel widths based on percentage
+      const containerWidth = getContainerWidth();
       const headers = getHeaders();
-      const pixelWidths = headers.map(header => {
-        // Convert percentage to pixel width
-        const percentage = parseFloat(header.width);
-        return Math.floor((percentage / 100) * containerWidth);
-      });
+      const pixelWidths = calculatePixelWidths(headers, containerWidth);
       
       tables.forEach((table) => {
-        // Check if colgroup already exists
-        if (!table.querySelector('colgroup')) {
-          const colgroup = document.createElement('colgroup');
-          
-          // Apply the width from each header to create the colgroup using fixed pixel widths
-          headers.forEach((header, index) => {
-            const col = document.createElement('col');
-            // Use pixel widths for more precise control
-            col.style.width = `${pixelWidths[index]}px`;
-            colgroup.appendChild(col);
-          });
-
-          // Insert colgroup at the beginning of the table
-          table.insertBefore(colgroup, table.firstChild);
-        }
+        addColgroupToTable(table, headers, pixelWidths);
       });
+    });
+  };
+
+  const getContainerWidth = (): number => {
+    return document.querySelector('.table-container')?.clientWidth || 1000;
+  };
+
+  const calculatePixelWidths = (headers: HeaderItem[], containerWidth: number): number[] => {
+    return headers.map(header => {
+      const percentage = parseFloat(header.width);
+      return Math.floor((percentage / 100) * containerWidth);
+    });
+  };
+
+  const addColgroupToTable = (table: Element, headers: HeaderItem[], pixelWidths: number[]): void => {
+    if (table.querySelector('colgroup')) {
+      return; // Colgroup already exists
+    }
+
+    const colgroup = document.createElement('colgroup');
+    createColumnElements(colgroup, headers, pixelWidths);
+    table.insertBefore(colgroup, table.firstChild);
+  };
+
+  const createColumnElements = (colgroup: HTMLElement, headers: HeaderItem[], pixelWidths: number[]): void => {
+    headers.forEach((header, index) => {
+      const col = document.createElement('col');
+      col.style.width = `${pixelWidths[index]}px`;
+      colgroup.appendChild(col);
     });
   };
   
