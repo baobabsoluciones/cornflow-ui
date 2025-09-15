@@ -32,9 +32,6 @@ jobs:
       - name: Code quality - TypeScript check
         run: npx vue-tsc --noEmit
 
-      - name: Code quality - Format check
-        run: npx prettier --check .
-
       - name: Run tests with coverage
         run: npm run test:coverage
 

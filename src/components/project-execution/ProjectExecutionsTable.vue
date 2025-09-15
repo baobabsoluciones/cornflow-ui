@@ -155,7 +155,7 @@
               ></v-progress-circular>
               <v-tooltip activator="parent" location="bottom">
                 <span>
-                  {{ $t('executionTable.loadExecution') }}
+                  {{ t('executionTable.loadExecution') }}
                 </span>
               </v-tooltip>
             </span>
@@ -163,7 +163,7 @@
               <v-icon size="small" @click="deleteExecution(item)"> mdi-delete </v-icon>
               <v-tooltip activator="parent" location="bottom">
                 <span>
-                  {{ $t('executionTable.deleteExecution') }}
+                  {{ t('executionTable.deleteExecution') }}
                 </span>
               </v-tooltip>
             </span>
@@ -175,15 +175,15 @@
   <MBaseModal
     v-model="openConfirmationDeleteModal"
     :closeOnOutsideClick="false"
-    :title="$t('executionTable.deleteTitle')"
+    :title="t('executionTable.deleteTitle')"
     :buttons="[
       {
-        text: $t('executionTable.deleteButton'),
+        text: t('executionTable.deleteButton'),
         action: 'delete',
         class: 'primary-btn',
       },
       {
-        text: $t('executionTable.cancelButton'),
+        text: t('executionTable.cancelButton'),
         action: 'cancel',
         class: 'secondary-btn',
       },
@@ -194,7 +194,7 @@
   >
     <template #content>
       <v-row class="d-flex justify-center pr-2 pl-2 pb-5 pt-3">
-        <span> {{ $t('executionTable.deleteMessage') }}</span>
+        <span> {{ t('executionTable.deleteMessage') }}</span>
       </v-row>
     </template>
   </MBaseModal>

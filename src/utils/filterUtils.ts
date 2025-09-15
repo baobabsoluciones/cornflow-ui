@@ -96,7 +96,8 @@ export function getFilterOptions(selectedExecution, collection, table, header) {
  */
 export function getFilterMinValue(selectedExecution, collection, table, header) {
   const columnData = getColumnData(selectedExecution, collection, table, header)
-  return Math.min(...columnData)
+  const numericData = columnData.filter(value => typeof value === 'number' && !isNaN(value)) as number[]
+  return numericData.length > 0 ? Math.min(...numericData) : 0
 }
 
 /**
@@ -104,7 +105,8 @@ export function getFilterMinValue(selectedExecution, collection, table, header) 
  */
 export function getFilterMaxValue(selectedExecution, collection, table, header) {
   const columnData = getColumnData(selectedExecution, collection, table, header)
-  return Math.max(...columnData)
+  const numericData = columnData.filter(value => typeof value === 'number' && !isNaN(value)) as number[]
+  return numericData.length > 0 ? Math.max(...numericData) : 0
 }
 
 /**
