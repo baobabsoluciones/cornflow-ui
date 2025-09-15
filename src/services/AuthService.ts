@@ -1,6 +1,11 @@
 import client from '../api/Api'
 
 class AuthService {
+  async initialize(): Promise<void> {
+    // Cornflow auth doesn't need initialization
+    return Promise.resolve()
+  }
+
   async login(username: string, password: string): Promise<boolean> {
     const response = await client.post(
       '/login/',

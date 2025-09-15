@@ -1,5 +1,6 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { createI18n } from 'vue-i18n'
 import AppDrawer from '@/components/AppDrawer.vue'
 
 // Properly hoist mock definitions
@@ -63,6 +64,27 @@ const { mockUser, mockStore, mockAuth, mockAppConfig, mockRouter, mockRoute, moc
   })
 
   return { mockUser, mockStore, mockAuth, mockAppConfig, mockRouter, mockRoute, mockShowSnackbar, mockT }
+})
+
+// Create i18n instance for testing
+const i18n = createI18n({
+  legacy: false,
+  locale: 'en',
+  messages: {
+    en: {
+      'projectExecution.title': 'Project Execution',
+      'versionHistory.title': 'Version History',
+      'inputOutputData.title': 'Input/Output Data',
+      'inputOutputData.inputTitle': 'Input Data',
+      'inputOutputData.outputTitle': 'Output Data',
+      'logOut.title': 'Logout',
+      'logOut.accept': 'Accept',
+      'logOut.cancel': 'Cancel',
+      'logOut.message': 'Are you sure you want to logout?',
+      'logOut.snackbar_message_success': 'Logout successful',
+      'logOut.snackbar_message_error': 'Logout error'
+    }
+  }
 })
 
 vi.mock('@/stores/general', () => ({
@@ -175,6 +197,7 @@ describe('AppDrawer.vue', () => {
   const createWrapper = async (options = {}) => {
     const wrapper = mount(AppDrawer, {
       global: {
+        plugins: [i18n],
         components: {
           MAppDrawer: MockMAppDrawer,
           MBaseModal: MockMBaseModal,
@@ -190,7 +213,6 @@ describe('AppDrawer.vue', () => {
           showSnackbar: mockShowSnackbar
         },
         mocks: {
-          $t: mockT,
           $router: mockRouter,
           $route: mockRoute
         },
@@ -380,6 +402,7 @@ describe('AppDrawer.vue', () => {
     test('should handle logout when showSnackbar is not available', async () => {
       wrapper = mount(AppDrawer, {
         global: {
+          plugins: [i18n],
           components: {
             MAppDrawer: MockMAppDrawer,
             MBaseModal: MockMBaseModal,
@@ -395,7 +418,6 @@ describe('AppDrawer.vue', () => {
             showSnackbar: null
           },
           mocks: {
-            $t: mockT,
             $router: mockRouter,
             $route: mockRoute
           }

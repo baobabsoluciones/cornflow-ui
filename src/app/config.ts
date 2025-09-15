@@ -16,6 +16,7 @@ const createAppConfig = () => ({
       // Project execution table configuration
       showUserFullName: true,
       showTablesWithoutSchema: false,
+      showDashboardMainView: true,
       showExtraProjectExecutionColumns: {
         showUserName: false,
         showEndCreationDate: false,

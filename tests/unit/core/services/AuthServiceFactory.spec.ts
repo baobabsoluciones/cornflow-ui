@@ -36,7 +36,19 @@ vi.mock('@/services/AuthService', () => ({
 }))
 
 // Mock OpenIDAuthService
-const mockOpenIDAuthService = vi.hoisted(() => vi.fn())
+const mockOpenIDAuthService = vi.hoisted(() => {
+  const mockInstance = {
+    initialize: vi.fn().mockResolvedValue(undefined),
+    login: vi.fn(),
+    logout: vi.fn(),
+    isAuthenticated: vi.fn(),
+    getToken: vi.fn(),
+    getUserId: vi.fn(),
+    refreshToken: vi.fn()
+  }
+  return vi.fn().mockImplementation(() => mockInstance)
+})
+
 vi.mock('@/services/OpenIDAuthService', () => ({
   OpenIDAuthService: mockOpenIDAuthService
 }))

@@ -1,4 +1,4 @@
-import readXlsxFile from 'read-excel-file'
+import readXlsxFile, { readSheetNames } from 'read-excel-file'
 import i18n from '@/plugins/i18n'
 import { getTableVisible, getTablePropertyVisible } from '@/utils/tableUtils'
 import { formatDateForExcel } from '@/utils/date'
@@ -63,8 +63,7 @@ const readTable = function (
 
 const loadExcel = async function (file, schema) {
   // Get all sheets from Excel file
-  const allSheets = await readXlsxFile(file, { getSheets: true })
-  const sheetNames = allSheets.map(sheet => sheet.name)
+  const sheetNames = await readSheetNames(file)
   const schemaTableNames = Object.keys(schema.properties)
   const required = schema.required || []
   

@@ -1,5 +1,5 @@
 <template>
-  <div :style="$attrs.style">
+  <div :style="($attrs.style as any)">
     <Suspense>
       <MAppDrawer
         :visible="true"
@@ -114,15 +114,15 @@
   <MBaseModal
     v-model="confirmSignOutModal"
     :closeOnOutsideClick="false"
-    :title="$t('logOut.title')"
+    :title="t('logOut.title')"
     :buttons="[
       {
-        text: $t('logOut.accept'),
+        text: t('logOut.accept'),
         action: 'save',
         class: 'primary-btn',
       },
       {
-        text: $t('logOut.cancel'),
+        text: t('logOut.cancel'),
         action: 'cancel',
         class: 'secondary-btn',
       },
@@ -133,7 +133,7 @@
   >
     <template #content>
       <v-row class="d-flex justify-center pr-2 pl-2 pb-5 pt-3">
-        <span> {{ $t('logOut.message') }}</span>
+        <span> {{ t('logOut.message') }}</span>
       </v-row>
     </template>
   </MBaseModal>
@@ -141,6 +141,7 @@
 
 <script lang="ts">
 import { defineComponent, Suspense, inject } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useGeneralStore } from '@/stores/general'
 import getAuthService from '@/services/AuthServiceFactory'
 import appConfig from '@/app/config'
@@ -151,6 +152,10 @@ export default defineComponent({
   components: {},
   props: {},
   inheritAttrs: false,
+  setup() {
+    const { t } = useI18n()
+    return { t }
+  },
   data: () => ({
     model: 1,
     mini: true,
@@ -179,12 +184,12 @@ export default defineComponent({
     generalPages() {
       return [
         {
-          title: this.$t('projectExecution.title'),
+          title: this.t('projectExecution.title'),
           icon: 'mdi-chart-timeline-variant',
           to: '/project-execution',
         },
         {
-          title: this.$t('versionHistory.title'),
+          title: this.t('versionHistory.title'),
           icon: 'mdi-history',
           to: '/history-execution',
           class: 'no-fill-button',
@@ -194,16 +199,16 @@ export default defineComponent({
     executionPages() {
       return [
         {
-          title: this.$t('inputOutputData.title'),
+          title: this.t('inputOutputData.title'),
           icon: 'mdi-application-cog',
           subPages: [
             {
-              title: this.$t('inputOutputData.inputTitle'),
+              title: this.t('inputOutputData.inputTitle'),
               icon: 'mdi-table-arrow-left',
               to: '/input-data',
             },
             {
-              title: this.$t('inputOutputData.outputTitle'),
+              title: this.t('inputOutputData.outputTitle'),
               icon: 'mdi-table-arrow-right',
               to: '/output-data',
             },

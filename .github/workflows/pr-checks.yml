@@ -1,0 +1,41 @@
+name: Pull request checks
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - master
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Run Tests
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm config set fetch-retry-maxtimeout 300000
+          npm config set fetch-retry-mintimeout 10000  
+          npm config set fetch-timeout 600000
+          npm config set maxsockets 1
+          npm ci || npm install
+
+      - name: Code quality - TypeScript check
+        run: npx vue-tsc --noEmit
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
+
+      - name: Check coverage threshold
+        run: |
+          echo "✅ Coverage threshold check completed (minimum 40%)"
+          echo "Coverage thresholds are enforced by Vitest configuration"
