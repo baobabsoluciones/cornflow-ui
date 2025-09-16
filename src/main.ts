@@ -48,6 +48,11 @@ export async function initApp() {
   // Update app config with initialized values
   appConfig.updateConfig();
   
+  // Set the document title from config
+  if (config.name) {
+    document.title = config.name;
+  }
+  
   // Set the default language from external config
   const defaultLanguage = config.defaultLanguage;
   if (defaultLanguage === 'en' || defaultLanguage === 'es' || defaultLanguage === 'fr') {
