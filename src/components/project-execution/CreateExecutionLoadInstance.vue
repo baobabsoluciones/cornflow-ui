@@ -281,7 +281,7 @@ const createInstanceFromData = (data, extension, file) => {
     return Instance.fromExcel(
       data,
       schemas.instanceSchema,
-      store.appConfig.parameters.schema
+      store.getSchemaName
     )
   } else if (extension === 'json') {
     const jsonData = JSON.parse(data)
@@ -290,7 +290,7 @@ const createInstanceFromData = (data, extension, file) => {
       jsonData,
       schemas.instanceSchema,
       schemas.instanceChecksSchema,
-      store.appConfig.parameters.schema
+      store.getSchemaName
     )
   } else if (extension === 'csv') {
     return Instance.fromCsv(
@@ -298,7 +298,7 @@ const createInstanceFromData = (data, extension, file) => {
       file.name,
       schemas.instanceSchema,
       schemas.instanceChecksSchema,
-      store.appConfig.parameters.schema
+      store.getSchemaName
     )
   }
   throw new Error(t('projectExecution.steps.step3.loadInstance.unsupportedFileFormat'))
@@ -389,7 +389,7 @@ const createMergedInstance = (Instance: any, mergedData: Record<string, any>, sc
     mergedData,
     schemas.instanceSchema,
     schemas.instanceChecksSchema,
-    store.appConfig.parameters.schema
+    store.getSchemaName
   )
 }
 

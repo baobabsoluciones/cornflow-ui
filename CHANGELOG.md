@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.3.2] - 24-09-2025
+
+### Added
+- **PR checks workflow and issue templates**  
+  - Added pull request checks workflow for automated code quality validation
+  - Implemented issue templates to standardize bug reports and feature requests
+  - Enhanced development workflow with automated checks
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #163
+
+### Changed
+- **HTML name implementation**  
+  - Implemented dynamic name configuration in HTML document
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #164
+
+### Fixed
+- **GitHub security improvements**  
+  - Fixed GitHub security vulnerabilities and warnings
+  - Enhanced repository security configuration
+  - Improved dependency security and vulnerability management
+  *Contributors:* [@HelenaCA](#)
+
 ## [1.3.1] - 02-09-2025
 
 ### Changed

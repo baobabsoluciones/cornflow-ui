@@ -5,7 +5,7 @@ import { ErrorObject } from 'ajv'
 
 export class SolutionCore {
   id: string
-  data: object[]
+  data: any
   schema: object
   schemaChecks: object
   schemaName: string
@@ -13,7 +13,7 @@ export class SolutionCore {
 
   constructor(
     id: string,
-    data: object[],
+    data: any,
     schema: object,
     schemaChecks: object,
     schemaName: string,

@@ -43,7 +43,8 @@ const mockGeneralStore = {
   getSchemaConfig: {
     instanceSchema: 'instance-schema',
     instanceChecksSchema: 'instance-checks-schema'
-  }
+  },
+  getSchemaName: 'test-schema'
 }
 
 vi.mock('@/stores/general', () => ({

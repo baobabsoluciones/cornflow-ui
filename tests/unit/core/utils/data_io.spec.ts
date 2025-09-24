@@ -26,9 +26,11 @@ vi.mock('@/utils/tableUtils', () => ({
 
 // Mock read-excel-file with hoisted function
 const mockReadXlsxFile = vi.hoisted(() => vi.fn())
+const mockReadSheetNames = vi.hoisted(() => vi.fn())
 
 vi.mock('read-excel-file', () => ({
-  default: mockReadXlsxFile
+  default: mockReadXlsxFile,
+  readSheetNames: mockReadSheetNames
 }))
 
 describe('data_io utilities', () => {
@@ -58,11 +60,8 @@ describe('data_io utilities', () => {
         required: ['Sheet1']
       }
 
-      // Mock getSheets call
-      mockReadXlsxFile.mockResolvedValueOnce([
-        { name: 'Sheet1' },
-        { name: 'Sheet2' }
-      ])
+      // Mock sheet names
+      mockReadSheetNames.mockResolvedValueOnce(['Sheet1', 'Sheet2'])
 
       // Mock readTable calls for each sheet
       mockReadXlsxFile
@@ -100,7 +99,7 @@ describe('data_io utilities', () => {
         }
       }
 
-      mockReadXlsxFile.mockResolvedValueOnce([{ name: 'Config' }])
+      mockReadSheetNames.mockResolvedValueOnce(['Config'])
       mockReadXlsxFile.mockResolvedValueOnce([
         ['setting1', 'value1'],
         ['setting2', 42]
@@ -133,7 +132,7 @@ describe('data_io utilities', () => {
       const dateOnly = new Date('2023-12-25T00:00:00.000Z')
       const dateTime = new Date('2023-12-25T15:30:45.000Z')
 
-      mockReadXlsxFile.mockResolvedValueOnce([{ name: 'Dates' }])
+      mockReadSheetNames.mockResolvedValueOnce(['Dates'])
       mockReadXlsxFile.mockResolvedValueOnce([
         ['date', 'datetime'],
         [dateOnly, dateTime]
@@ -160,7 +159,7 @@ describe('data_io utilities', () => {
         }
       }
 
-      mockReadXlsxFile.mockResolvedValueOnce([{ name: 'Data' }])
+      mockReadSheetNames.mockResolvedValueOnce(['Data'])
       mockReadXlsxFile.mockResolvedValueOnce([
         ['value'],
         [NaN]
@@ -186,7 +185,7 @@ describe('data_io utilities', () => {
         }
       }
 
-      mockReadXlsxFile.mockResolvedValueOnce([{ name: 'Numbers' }])
+      mockReadSheetNames.mockResolvedValueOnce(['Numbers'])
       mockReadXlsxFile.mockResolvedValueOnce([
         ['decimal'],
         [3.14159265359]
@@ -207,7 +206,7 @@ describe('data_io utilities', () => {
         }
       }
 
-      mockReadXlsxFile.mockResolvedValueOnce([{ name: 'Empty' }])
+      mockReadSheetNames.mockResolvedValueOnce(['Empty'])
       mockReadXlsxFile.mockRejectedValueOnce(new Error('Sheet "Empty" not found'))
 
       const result = await loadExcel(mockFile, mockSchema)
