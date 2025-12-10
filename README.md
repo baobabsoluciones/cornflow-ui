@@ -2,16 +2,258 @@
 
 Cornflow-UI is a Vue.js application that serves as the user interface for Cornflow. This is the base project, and it provides the general structure and functionalities for creating new applications.
 
+# Application structure
+
+Cornflow-UI follows a modular architecture organized into distinct functional areas. The application structure is designed to be flexible and adaptable to different optimization problems while maintaining consistency across implementations.
+
+## Execution management section
+
+The execution management section handles the complete lifecycle of optimization executions, from creation to historical tracking.
+
+### Execution history
+
+- **Purpose**: Provides a comprehensive view of all past executions
+- **Features**:
+  - Historical execution tracking with status monitoring
+  - Execution loading and restoration capabilities
+  - Filtering and search functionality
+  - Execution metadata display (creation date, solver used, status, etc.)
+- **Location**: `HistoryExecutionView.vue`
+
+### Project execution
+
+- **Purpose**: Step-by-step execution creation workflow
+- **Features**:
+  - Multi-step execution creation process
+  - Instance file upload and validation
+  - Solver configuration (when enabled)
+  - Parameter configuration (when enabled)
+  - Execution review and confirmation
+- **Location**: `ProjectExecutionView.vue`
+- **Configuration**: Controlled by `executionSolvers`, `solverConfig`, and `configFieldsConfig` in `src/app/config.ts`
+
+## Configuration tables section (optional)
+
+The configuration tables section is dynamically generated based on backend schema definitions. This section only appears when the backend provides frontend-automation schema data.
+
+### Frontend-automation system
+
+The frontend-automation system is a powerful schema-driven approach that automatically generates CRUD interfaces for master data tables. This system eliminates the need for manual table interface development and ensures consistency across different projects.
+
+#### How it works
+
+1. **Schema definition**: The backend provides an OpenAPI-compatible schema through the `/frontend-automation/` endpoint
+2. **Dynamic generation**: The frontend automatically transforms this schema into interactive table interfaces
+3. **CRUD operations**: Full Create, Read, Update, Delete functionality is generated based on schema definitions
+4. **Grouping support**: Tables can be organized into logical groups for better navigation
+
+#### Schema structure
+
+The frontend-automation schema includes:
+
+```json
+{
+  "available_automations": {
+    "tables": {
+      "table_name": {
+        "title": "Table display name",
+        "group": "group_name",
+        "icon": "mdi-icon-name",
+        "get_list": { "url": "/api/endpoint", "http_method": "GET" },
+        "post_item": { "url": "/api/endpoint", "http_method": "POST" },
+        "put_item": { "url": "/api/endpoint", "http_method": "PUT" },
+        "delete_item": { "url": "/api/endpoint", "http_method": "DELETE" },
+        "post_bulk": { "url": "/api/endpoint", "http_method": "POST" }
+      }
+    },
+    "groups": {
+      "group_name": {
+        "title": "Group Display Name",
+        "icon": "mdi-icon-name"
+      }
+    }
+  },
+  "definitions": {
+    "TableName": {
+      "properties": {
+        "field_name": {
+          "type": "string",
+          "title": "Field display name"
+        }
+      }
+    }
+  }
+}
+```
+
+#### Features
+
+- **Automatic interface generation**: Tables, forms, and validation are generated from schema
+- **Multi-language support**: Titles and descriptions support multiple languages
+- **Foreign key relationships**: Automatic handling of foreign key dependencies
+- **Bulk operations**: Support for bulk upload, update, and delete operations
+- **Advanced filtering**: Dynamic filter generation based on field types
+- **Inline editing**: Direct table cell editing capabilities
+- **Export functionality**: Excel export for all table data
+
+#### Table grouping
+
+Tables can be organized in two ways:
+
+1. **Individual tables**: Each table gets its own navigation item and route
+2. **Grouped tables**: Multiple tables share a group with tabbed interface
+
+#### Implementation details
+
+- **Repository**: `SchemaRepository.ts` handles API communication
+- **Service**: `FrontendAutomationService.ts` provides utility functions
+- **Utils**: `schemaUtils.ts` handles schema transformation
+- **Component**: `CoreTable.vue` renders the dynamic table interface
+- **View**: `SectionView.vue` manages table display and navigation
+
+## Input data section
+
+The input data section appears only when an execution is loaded and displays instance data tables.
+
+### Instance tables
+
+- **Purpose**: Display and manage input data for optimization problems
+- **Data Source**: Instance schema from the backend
+- **Features**:
+  - Dynamic table generation from instance schema
+  - Read-only data display (instances cannot be modified after creation)
+  - Export capabilities for data analysis
+
+### Table organization
+
+Instance tables are organized based on schema definitions:
+
+1. **Default grouping**: If no specific groups are defined, all tables are grouped under "Input tables"
+2. **Custom grouping**: Tables can be organized into logical groups as defined in the schema
+3. **Individual tables**: Each table can have its own dedicated view
+
+### Validation tables
+
+When instance checks are available in the schema, validation tables are automatically included:
+
+- **Purpose**: Display data validation results and constraints
+- **Group**: All validation tables are grouped under "Validations"
+- **Features**:
+  - Automatic filtering to show only tables with data
+  - Read-only display of validation results
+  - Integration with execution data checks
+
+### Custom dashboards
+
+Applications can define custom dashboards for input data visualization:
+
+- **Configuration**: Defined in `src/app/config.ts` under `instanceDashboardPages`
+- **Purpose**: Provide visual insights into input data
+
+### Automatic dashboards
+
+The application includes an automatic dashboard system that intelligently generates visualizations based on table data patterns:
+
+- **Automatic widget generation**: Creates KPIs, line charts, bar charts, pie charts, area charts, and maps based on detected data patterns
+- **Pattern detection**: Automatically analyzes numeric, categorical, date, and coordinate columns
+- **Integration**: Widgets display alongside tables in a responsive 70/30 layout
+- **Custom widgets**: Supports adding custom components per table alongside auto-generated widgets
+- **Configuration**: Controlled via `enableAutoInstanceDashboard` and `tableDashboards` in `src/app/config.ts`
+
+For detailed documentation on automatic dashboards, including configuration options, widget types, and customization, see [Automatic Dashboards Documentation](docs/AUTO_DASHBOARDS_README.md).
+
+## Results section
+
+The results section appears only when an execution is loaded and displays solution data tables.
+
+### Solution tables
+
+- **Purpose**: Display optimization results and solution data
+- **Data source**: Solution schema from the backend
+- **Features**:
+  - Dynamic table generation from solution schema
+  - Read-only data display
+  - Export capabilities for result analysis
+
+### Table organization
+
+Solution tables follow the same organization principles as input data:
+
+1. **Default grouping**: If no specific groups are defined, all tables are grouped under "Output tables"
+2. **Custom grouping**: Tables can be organized into logical groups as defined in the schema
+3. **Individual tables**: Each table can have its own dedicated view
+
+### Validation tables
+
+When solution checks are available in the schema, validation tables are automatically included:
+
+- **Purpose**: Display solution validation results and quality metrics
+- **Group**: All validation tables are grouped under "Validations"
+- **Features**:
+  - Automatic filtering to show only tables with data
+  - Read-only display of validation results
+  - Integration with execution data checks
+
+### Custom dashboards
+
+Applications can define custom dashboards for results visualization:
+
+- **Configuration**: Defined in `src/app/config.ts` under `dashboardPages`
+- **Purpose**: Provide visual insights into optimization results
+
+### Automatic dashboards
+
+The application includes an automatic dashboard system that intelligently generates visualizations based on table data patterns:
+
+- **Automatic widget generation**: Creates KPIs, line charts, bar charts, pie charts, area charts, and maps based on detected data patterns
+- **Pattern detection**: Automatically analyzes numeric, categorical, date, and coordinate columns
+- **Integration**: Widgets display alongside tables in a responsive 70/30 layout
+- **Custom widgets**: Supports adding custom components per table alongside auto-generated widgets
+- **Configuration**: Controlled via `enableAutoSolutionDashboard` and `tableDashboards` in `src/app/config.ts`
+
+For detailed documentation on automatic dashboards, including configuration options, widget types, and customization, see [Automatic Dashboards Documentation](docs/AUTO_DASHBOARDS_README.md).
+
+## Technical implementation
+
+### Schema processing
+
+The application processes schemas through several layers:
+
+1. **API Layer**: `SchemaRepository.ts` fetches schema data from backend
+2. **Transformation**: `schemaUtils.ts` converts schemas to internal format
+3. **Service Layer**: `FrontendAutomationService.ts` provides utility functions
+4. **Component Layer**: `CoreTable.vue` renders dynamic interfaces
+5. **View Layer**: `SectionView.vue` manages navigation and display
+
+### Dynamic route generation
+
+Routes are automatically generated based on schema definitions:
+
+- **Individual tables**: `/configuration/{table-key}`
+- **Grouped tables**: `/configuration/group/{group-name}`
+- **Input data**: `/input-data/{table-key}` or `/input-data/group/{group-name}`
+- **Results**: `/results/{table-key}` or `/results/group/{group-name}`
+
+### State management
+
+The application uses Pinia stores for state management:
+
+- **General store**: Handles application-wide state
+- **Table stores**: Manage individual table data and operations
+- **Configuration stores**: Handle schema and configuration data
+
 # Creating a new project
 
 To create a new project based on this base project, follow these steps:
 
 ## 1. Copy the base project
+
 Copy and paste all the code from this repository into your new repository.
 
 ## 2. Configuration guide
 
 ### Quick start
+
 1. **Choose your setup method**: Environment variables (recommended for production) or JSON file (good for development)
 2. **Set core values**: Backend URL, schema name, and authentication type
 3. **Customize app settings**: Modify `src/app/config.ts` for UI preferences and features
@@ -22,12 +264,14 @@ Copy and paste all the code from this repository into your new repository.
 The application uses a **two-layer configuration system** with clear separation of concerns:
 
 #### External configuration (`src/config.ts`)
+
 - **Purpose**: Values that must be configured externally without changing code
 - **Source**: Environment variables or `values.json` (automatically detected)
 - **Use for**: Backend URLs, authentication credentials, deployment settings
 - **Contains**: Core application values, authentication settings, behavior flags
 
 #### Internal configuration (`src/app/config.ts`)
+
 - **Purpose**: Application-specific settings that are part of the codebase
 - **Source**: Always defined in source code
 - **Use for**: UI preferences, feature flags, dashboard layout, custom logic
@@ -38,6 +282,7 @@ The application uses a **two-layer configuration system** with clear separation 
 ### Setup methods
 
 #### Method 1: Environment variables (recommended)
+
 Create a `.env` file (for local development only) or set environment variables on your server. The application automatically uses this method when `VITE_APP_SCHEMA` or `VITE_APP_BACKEND_URL` are detected.
 
 ```env
@@ -66,37 +311,40 @@ VITE_APP_AUTH_PROVIDERS=google,microsoft   # For Cognito: comma-separated list
 ```
 
 #### Method 2: JSON configuration
+
 Copy `public/values.template.json` to `public/values.json` and configure your values (for local development only). For production, configure this json in an accesible path. Defined path by default is `/values.json` but this can be overwritten in `app/config.ts` with `valuesJsonPath`. Used automatically when no environment variables are detected.
 
 ```json
 {
-    "backend_url": "https://your-backend-url",
-    "schema": "rostering",
-    "name": "Rostering",
-    "hasExternalApp": false,
-    "isStagingEnvironment": false,
-    "useHashMode": false,
-    "defaultLanguage": "en",
-    "isDeveloperMode": false,
-    "enableSignup": false,
-    "auth_type": "cornflow",
-    "cognito": {
-      "region": "your-region",
-      "user_pool_id": "your-user-pool-id",
-      "client_id": "your-client-id",
-      "domain": "your-domain",
-      "providers": ["google", "microsoft"]
-    },
-    "azure": {
-      "client_id": "your-client-id",
-      "authority": "your-authority",
-      "redirect_uri": "your-redirect-uri"
-    }
+  "backend_url": "https://your-backend-url",
+  "schema": "rostering",
+  "name": "Rostering",
+  "hasExternalApp": false,
+  "isStagingEnvironment": false,
+  "useHashMode": false,
+  "defaultLanguage": "en",
+  "isDeveloperMode": false,
+  "enableSignup": false,
+  "auth_type": "cornflow",
+  "cognito": {
+    "region": "your-region",
+    "user_pool_id": "your-user-pool-id",
+    "client_id": "your-client-id",
+    "domain": "your-domain",
+    "providers": ["google", "microsoft"]
+  },
+  "azure": {
+    "client_id": "your-client-id",
+    "authority": "your-authority",
+    "redirect_uri": "your-redirect-uri"
+  }
 }
 ```
 
 #### Auto-detection logic
+
 The application automatically chooses the configuration method:
+
 1. **Environment variables detected** → Uses environment variables, ignores `values.json`
 2. **No environment variables** → Loads from `values.json` or defined path
 
@@ -104,21 +352,23 @@ The application automatically chooses the configuration method:
 **For development**: Hardcode values in your .env or values.json file. This can't be uploaded
 
 ### Configuration access in code
+
 ```typescript
 // External configuration (from env/json)
 import config from '@/config'
-config.schema          // ✅ Schema name
-config.backend         // ✅ Backend URL
+config.schema // ✅ Schema name
+config.backend // ✅ Backend URL
 config.isDeveloperMode // ✅ Developer mode flag
-config.auth.type       // ✅ Authentication type
+config.auth.type // ✅ Authentication type
 
 // Internal configuration (from source code)
 import internalConfig from '@/app/config'
-internalConfig.getCore().parameters.showUserFullname  // ✅ UI preferences
-internalConfig.getCore().parameters.solverConfig     // ✅ App logic
+internalConfig.getCore().parameters.showUserFullname // ✅ UI preferences
+internalConfig.getCore().parameters.solverConfig // ✅ App logic
 ```
 
 ### Internal app configuration (`src/app/config.ts`)
+
 This file contains **internal application-specific configuration** that is part of the codebase and not configurable externally:
 
 ```typescript
@@ -128,27 +378,29 @@ This file contains **internal application-specific configuration** that is part 
     Experiment: ExperimentRostering,
     Instance: InstanceRostering,
     Solution: SolutionRostering,
-    
+
     parameters: {
       // Json path
       valuesJsonPath: '/values.json',
-      
+
       // Project execution table configuration
       showUserFullname: true,
       showTablesWithoutSchema: true,
       showExtraProjectExecutionColumns: {
-        showUserName: false,     
+        showUserName: false,
         showEndCreationDate: false,
         showTimeLimit: true,
         showUserFullName: false,
       },
-      
+
       // Dashboard configuration
       showDashboardMainView: false,
       dashboardLayout: [...],
       dashboardPages: [...],
       dashboardRoutes: [...],
-      
+      instanceDashboardPages: [...],
+      instanceDashboardRoutes: [...],
+
       // Create execution steps configuration
       executionSolvers: ['mip-gurobi'],
       solverConfig: {
@@ -160,7 +412,7 @@ This file contains **internal application-specific configuration** that is part 
         autoLoadValues: true,
       },
       configFields: [...],
-      
+
       // Instance file processing
       fileProcessors: {
         'mtrx': 'processMatrix',
@@ -181,14 +433,16 @@ This file contains **internal application-specific configuration** that is part 
 ```
 
 ## 2.2. App folder configuration
+
 Inside the app folder, there are several changes that can be done to configurate your client project. This folder is meant to be for all customizations done for the client.
-   - `assets/logo`: This directory should contain the logo images for the application. The name should be the same as the default ones (logo.png and full_logo.png)
-   - `app/assets/style/variables.css`: This file should define the main colors of the application. Mantain the variable names and only change the colors.
-   - `models`: This directory should define the instance, solution, experiment, and execution models for the application. It always extends the main classes but methods can be overwritten.
-   - `views`: This directory should contain all the custom views needed for the application.
-   - `components`: This directory should contain any additional components that are not in the core components.
-   - `store/app.ts`: This file should define any additional store-specific configurations for the application.
-   - `plugins/locales`: This folder contains three files (`en.ts`, `es.ts`, `fr.ts`) to add any text needed in the app views and components. Be careful not to duplicate the names with the original locales files (`src/plugins/locales`).
+
+- `assets/logo`: This directory should contain the logo images for the application. The name should be the same as the default ones (logo.png and full_logo.png)
+- `app/assets/style/variables.css`: This file should define the main colors of the application. Mantain the variable names and only change the colors.
+- `models`: This directory should define the instance, solution, experiment, and execution models for the application. It always extends the main classes but methods can be overwritten.
+- `views`: This directory should contain all the custom views needed for the application.
+- `components`: This directory should contain any additional components that are not in the core components.
+- `store/app.ts`: This file should define any additional store-specific configurations for the application.
+- `plugins/locales`: This folder contains three files (`en.ts`, `es.ts`, `fr.ts`) to add any text needed in the app views and components. Be careful not to duplicate the names with the original locales files (`src/plugins/locales`).
 
 * Additionally, favicon can be replaced by a new one in public/favicon.png
 
@@ -198,42 +452,44 @@ Inside the app folder, there are several changes that can be done to configurate
    - `user_manual_fr.pdf` for French
 
 ## 3. Important disclaimer
-It's important not to edit any other file or folders. Only the folders, files and images just mentioned can be edited.
 
+It's important not to edit any other file or folders. Only the folders, files and images just mentioned can be edited.
 
 ## Configuration reference
 
 ### Core parameters
 
-| Parameter | Description | Environment Variable | JSON Key | Values |
-|-----------|-------------|---------------------|----------|---------|
-| **Backend URL** | API server endpoint | `VITE_APP_BACKEND_URL` | `backend_url` | URL string |
-| **Schema** | Application schema name | `VITE_APP_SCHEMA` | `schema` | String identifier |
-| **App Name** | Application display name | `VITE_APP_NAME` | `name` | String |
-| **Hash Mode** | Router mode (hash vs history) | `VITE_APP_USE_HASH_MODE` | `useHashMode` | `true`/`false` (accepts `1`/`0`) |
-| **Default Language** | UI language | `VITE_APP_DEFAULT_LANGUAGE` | `defaultLanguage` | `en`, `es`, `fr` |
-| **Developer Mode** | Enable dev features | `VITE_APP_IS_DEVELOPER_MODE` | `isDeveloperMode` | `true`/`false` (accepts `1`/`0`) |
-| **Enable Signup** | Show registration option | `VITE_APP_ENABLE_SIGNUP` | `enableSignup` | `true`/`false` (accepts `1`/`0`) |
-| **External App** | API URL prefix mode | `VITE_APP_EXTERNAL_APP` | `hasExternalApp` | `true`/`false` (accepts `1`/`0`) |
-| **Staging Environment** | Show staging banner | `VITE_APP_IS_STAGING_ENVIRONMENT` | `isStagingEnvironment` | `true`/`false` (accepts `1`/`0`) |
+| Parameter               | Description                   | Environment Variable              | JSON Key               | Values                           |
+| ----------------------- | ----------------------------- | --------------------------------- | ---------------------- | -------------------------------- |
+| **Backend URL**         | API server endpoint           | `VITE_APP_BACKEND_URL`            | `backend_url`          | URL string                       |
+| **Schema**              | Application schema name       | `VITE_APP_SCHEMA`                 | `schema`               | String identifier                |
+| **App Name**            | Application display name      | `VITE_APP_NAME`                   | `name`                 | String                           |
+| **Hash Mode**           | Router mode (hash vs history) | `VITE_APP_USE_HASH_MODE`          | `useHashMode`          | `true`/`false` (accepts `1`/`0`) |
+| **Default Language**    | UI language                   | `VITE_APP_DEFAULT_LANGUAGE`       | `defaultLanguage`      | `en`, `es`, `fr`                 |
+| **Developer Mode**      | Enable dev features           | `VITE_APP_IS_DEVELOPER_MODE`      | `isDeveloperMode`      | `true`/`false` (accepts `1`/`0`) |
+| **Enable Signup**       | Show registration option      | `VITE_APP_ENABLE_SIGNUP`          | `enableSignup`         | `true`/`false` (accepts `1`/`0`) |
+| **External App**        | API URL prefix mode           | `VITE_APP_EXTERNAL_APP`           | `hasExternalApp`       | `true`/`false` (accepts `1`/`0`) |
+| **Staging Environment** | Show staging banner           | `VITE_APP_IS_STAGING_ENVIRONMENT` | `isStagingEnvironment` | `true`/`false` (accepts `1`/`0`) |
 
 ### Authentication parameters
 
-| Parameter | Description | Environment Variable | JSON Key | Values |
-|-----------|-------------|---------------------|----------|---------|
-| **Auth Type** | Authentication method | `VITE_APP_AUTH_TYPE` | `auth_type` | `cornflow`, `azure`, `cognito` |
-| **Client ID** | OAuth client identifier | `VITE_APP_AUTH_CLIENT_ID` | `client_id` | String |
-| **Authority** | Azure authority URL | `VITE_APP_AUTH_AUTHORITY` | `authority` | URL string |
-| **Redirect URI** | OAuth redirect URL | `VITE_APP_AUTH_REDIRECT_URI` | `redirect_uri` | URL string |
-| **Region** | AWS Cognito region | `VITE_APP_AUTH_REGION` | `region` | AWS region code |
-| **User Pool ID** | Cognito user pool | `VITE_APP_AUTH_USER_POOL_ID` | `user_pool_id` | Pool identifier |
-| **Domain** | Cognito domain | `VITE_APP_AUTH_DOMAIN` | `domain` | Domain string |
-| **OAuth Providers** | Enabled OAuth providers | `VITE_APP_AUTH_PROVIDERS` | `providers` | Comma-separated / Array |
+| Parameter           | Description             | Environment Variable         | JSON Key       | Values                         |
+| ------------------- | ----------------------- | ---------------------------- | -------------- | ------------------------------ |
+| **Auth Type**       | Authentication method   | `VITE_APP_AUTH_TYPE`         | `auth_type`    | `cornflow`, `azure`, `cognito` |
+| **Client ID**       | OAuth client identifier | `VITE_APP_AUTH_CLIENT_ID`    | `client_id`    | String                         |
+| **Authority**       | Azure authority URL     | `VITE_APP_AUTH_AUTHORITY`    | `authority`    | URL string                     |
+| **Redirect URI**    | OAuth redirect URL      | `VITE_APP_AUTH_REDIRECT_URI` | `redirect_uri` | URL string                     |
+| **Region**          | AWS Cognito region      | `VITE_APP_AUTH_REGION`       | `region`       | AWS region code                |
+| **User Pool ID**    | Cognito user pool       | `VITE_APP_AUTH_USER_POOL_ID` | `user_pool_id` | Pool identifier                |
+| **Domain**          | Cognito domain          | `VITE_APP_AUTH_DOMAIN`       | `domain`       | Domain string                  |
+| **OAuth Providers** | Enabled OAuth providers | `VITE_APP_AUTH_PROVIDERS`    | `providers`    | Comma-separated / Array        |
 
 ### Parameter details
 
 #### Boolean values
+
 All boolean parameters accept multiple formats for flexibility:
+
 - **Recommended**: `true` or `false` (case-insensitive)
 - **Legacy support**: `1` (true) or `0` (false)
 - **Environment variables**: String values like `"true"`, `"false"`, `"1"`, `"0"`
@@ -242,22 +498,26 @@ All boolean parameters accept multiple formats for flexibility:
 The application automatically converts these formats to proper boolean values.
 
 #### useHashMode
+
 - **Purpose**: Controls routing mode
 - **`true`**: Hash mode routing (URLs include `#`)
 - **`false`**: HTML5 history mode (clean URLs)
 - **Note**: Use hash mode if you can't configure server routing
 
-#### isDeveloperMode  
+#### isDeveloperMode
+
 - **Purpose**: Enables developer features
 - **`true`**: Shows solution upload in execution creation
 - **`false`**: Standard user experience
 
 #### hasExternalApp
+
 - **Purpose**: Controls API request URLs
 - **`true`**: Prefixes requests with `/cornflow`
 - **`false`**: Direct API requests
 
 #### OAuth providers (Cognito only)
+
 - **Supported**: `google`, `microsoft`, `facebook`
 - **Format**: Comma-separated string or array
 - **Behavior**: Only configured providers will work; others show error messages
@@ -269,11 +529,13 @@ The application automatically converts these formats to proper boolean values.
 The application supports three authentication methods. The server must be properly configured for the chosen method.
 
 #### Cornflow authentication (default)
+
 ```env
 VITE_APP_AUTH_TYPE=cornflow
 ```
 
 #### Azure OpenID authentication
+
 ```env
 VITE_APP_AUTH_TYPE=azure
 VITE_APP_AUTH_CLIENT_ID=your_azure_client_id
@@ -282,6 +544,7 @@ VITE_APP_AUTH_REDIRECT_URI=your-redirect-uri
 ```
 
 #### AWS Cognito authentication
+
 ```env
 VITE_APP_AUTH_TYPE=cognito
 VITE_APP_AUTH_CLIENT_ID=your_cognito_client_id
@@ -292,13 +555,15 @@ VITE_APP_AUTH_PROVIDERS=google,microsoft
 ```
 
 ### Dashboard preferences
+
 To save dashboard preferences for a single execution, including filters, checks, and date ranges, utilize the `setDashboardPreference` method from the `LoadedExecution.ts` class. Subsequently, retrieve these preferences using the `getDashboardPreference` method. The data type is custom, allowing for flexible usage as needed.
 
-
 ### Custom file processors
+
 The application supports custom file processing for instances based on filename prefixes. This feature is useful when you need to handle files with special formats or structures before merging them with other files to create an instance.
 
 #### Configuration
+
 Custom file processing is entirely optional. By default, the system will merge all uploaded files without any special processing. If you don't need custom file processing, you can leave the `fileProcessors` object empty or omit it entirely.
 
 If you do need custom processing for specific file types, add a `fileProcessors` object to the core parameters in `src/app/config.ts`:
@@ -309,10 +574,10 @@ parameters: {
   fileProcessors: {
     // Single processor for a prefix
     'mtrx': 'processMatrix',
-    
+
     // Multiple processors for a prefix (applied in sequence)
     'config': ['processConfig', 'processCleanData'],
-    
+
     // Special 'all' prefix to process all files regardless of their names
     'all': ['processCleanData', 'processBooleansFromStrings']
   },
@@ -321,15 +586,18 @@ parameters: {
 ```
 
 Each key in the `fileProcessors` object is a filename prefix that triggers special processing, and each value is either:
+
 - A string with the name of a single processor method to use
 - An array of processor method names to apply in sequence
 
 The special prefix `'all'` can be used to apply processors to all files regardless of their names.
 
 #### Implementation
-The actual processing logic must be implemented in the `src/app/composables/useFileProcessors.ts` file. You need to add your processor methods to the `processors` object in this file. 
+
+The actual processing logic must be implemented in the `src/app/composables/useFileProcessors.ts` file. You need to add your processor methods to the `processors` object in this file.
 
 Each processor method should:
+
 1. Accept parameters: file, fileContent, extension, and schemas
 2. Parse the file content based on its format (JSON, XLSX, or CSV)
 3. Transform the data into a format that represents a part of the complete instance data
@@ -344,8 +612,11 @@ For example, in a scheduling application, one file might contain employee data, 
 The system automatically detects files that match the configured prefixes and processes them using the corresponding methods before merging all the processed parts into the final instance. Files that don't match any configured prefix are processed using the standard method.
 
 ### Create project execution steps customization
+
 #### Solver step: solverConfig
+
 Controls the solver selection step and default solver for executions.
+
 - `showSolverStep` (boolean):
   - If true, shows the solver selection step to the user.
   - If false, skips the step and uses the value in `defaultSolver` automatically.
@@ -354,7 +625,9 @@ Controls the solver selection step and default solver for executions.
   - Used in the execution config as `newExecution.config.solver`.
 
 #### Configuration parameters step: configFieldsConfig
+
 Controls the config fields step and value loading for execution parameters.
+
 - `showConfigFieldsStep` (boolean):
   - If true, shows the config fields step to the user.
   - If false, skips the step and loads values automatically from the instance or defaults.
@@ -363,7 +636,9 @@ Controls the config fields step and value loading for execution parameters.
   - Used in ProjectExecutionView.vue to call value loading after the instance is loaded or before steps that need config values.
 
 #### Configuration parameters step: configFields
+
 Defines the configuration fields for execution parameters. Each field can have:
+
 - `key` (string): Unique identifier for the field (used as config property).
 - `title` (string): Translation key for the field label.
 - `placeholder` (string): Translation key for the field placeholder.
@@ -380,18 +655,32 @@ Defines the configuration fields for execution parameters. Each field can have:
 - `default` (any, optional): Default value if not found in the instance.
 - `options` (Array<{label: string, value: any}>, for select type): Options for select fields.
 
+#### Instance editing: allowEditInstance
+
+Controls whether users can edit existing instances from the input data section.
+
+- `allowEditInstance` (boolean):
+  - If true, adds an "Edit input data" option in the dropdown menu when viewing input data tables.
+  - When clicked, redirects to the project execution view in edit mode, skipping the instance loading step and starting directly at the "Review instance" step with the currently selected execution's instance.
+  - If false, the edit option is not available.
+
 #### Implementation in ProjectExecutionView.vue:
+
 - `solverConfig` is used to determine if the solver step is shown and to set the default solver.
 - `configFieldsConfig` is used to determine if the config fields step is shown and to auto-load values.
 - `configFields` is used to render the config fields step, auto-load values from the instance, and display the config summary in the confirmation step.
+- `allowEditInstance` enables instance editing functionality in SectionView.vue for input data sections.
 
 ## Router configuration
+
 The application supports two routing modes controlled by the `useHashMode` configuration parameter:
 
 ### HTML5 history mode (default)
+
 This is the default routing mode that creates clean URLs without the hash (#). It requires proper server configuration to handle the URLs correctly.
 
 ### Hash mode
+
 If you're deploying in an environment where you don't have control over the server configuration or are experiencing issues with route handling, you can enable hash mode:
 
 **Environment variable**: `VITE_APP_USE_HASH_MODE=1`
@@ -400,27 +689,30 @@ If you're deploying in an environment where you don't have control over the serv
 When hash mode is enabled, all routes will include a hash (#) in the URL (e.g., `http://example.com/#/project-execution` instead of `http://example.com/project-execution`).
 
 ## Internationalization configuration
+
 The application supports multiple languages (English, Spanish, and French). You can configure the default language:
 
 **Environment variable**: `VITE_APP_DEFAULT_LANGUAGE=es`
 **JSON**: `"defaultLanguage": "es"`
 
 Available language codes:
+
 - `'en'` - English
 - `'es'` - Spanish
 - `'fr'` - French
 
 ## Values.json path configuration
+
 When using JSON configuration (when no environment variables are detected), you can customize the path where the application looks for the `values.json` file:
 
 **Environment variable**: `VITE_APP_VALUES_JSON_PATH=/config/values.json`
 
 The default value is `/values.json`. The application will:
+
 - For localhost: Use the path as-is (e.g., `/config/values.json`)
 - For production: Prepend the hostname (e.g., `https://example.com/config/values.json`)
 
 This is useful when you need to place the configuration file in a different location than the root of your domain.
-
 
 # Unit testing
 
@@ -445,6 +737,7 @@ tests/unit/
 ```
 
 ### Core tests (`tests/unit/core/`)
+
 - **DO NOT MODIFY** these tests as they are part of the core framework
 - Contains tests for all core functionality including:
   - Components (authentication, navigation, etc.)
@@ -454,6 +747,7 @@ tests/unit/
   - Views (core application views)
 
 ### App tests (`tests/unit/app/`)
+
 - This is where you should add **your application-specific tests**
 - Tests for custom components, services, and functionality specific to your client application
 - Follow the same structure as core tests for consistency
@@ -479,12 +773,14 @@ npm run test -- --watch
 ## Coverage reports
 
 The test coverage is configured with the following thresholds:
+
 - **Branches**: 80%
 - **Functions**: 80%
 - **Lines**: 80%
 - **Statements**: 80%
 
 Coverage reports are generated in multiple formats:
+
 - **Text**: Console output
 - **JSON**: Machine-readable format
 - **HTML**: Visual report in `coverage/` directory
@@ -508,6 +804,7 @@ When writing new tests for your application:
    - Common mocks and utilities are available
 
 4. **Example test structure**:
+
 ```typescript
 import { describe, test, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
@@ -522,10 +819,10 @@ describe('YourComponent', () => {
   test('renders correctly', () => {
     const wrapper = mount(YourComponent, {
       global: {
-        plugins: [vuetify]
-      }
+        plugins: [vuetify],
+      },
     })
-    
+
     expect(wrapper.exists()).toBe(true)
   })
 })
@@ -540,7 +837,9 @@ describe('YourComponent', () => {
 - **Maintenance**: Keep tests up to date with code changes
 
 # Run the application in local
+
 ## Installing
+
 - Install or update npm
 - Install Nodejs
 - Open your terminal
@@ -548,6 +847,7 @@ describe('YourComponent', () => {
 - Run `npm install`
 
 ## Running
+
 - Edit the `.env` file or `values.json` to add necessary configuration
 - Run `npm run dev` to start a local development server
 - A new tab will be opened in your browser

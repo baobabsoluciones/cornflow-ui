@@ -7,7 +7,7 @@
         t('projectExecution.steps.step3.loadInstance.dragAndDropDescription')
       "
       :uploadedFiles="selectedFiles"
-      :formatsAllowed="['json', 'xlsx', 'csv']"
+      :formatsAllowed="instanceProcessing.supportedExtensions.value"
       :errors="instanceErrors"
       :downloadButtonTitle="
         t('projectExecution.steps.step3.loadInstance.uploadFile')
@@ -17,11 +17,11 @@
       "
       @files-selected="onFileSelected"
     />
-    
+
     <div class="d-flex justify-center mt-4">
-      <v-btn 
-        color="primary" 
-        :disabled="selectedFiles.length === 0 || isCheckingSchema" 
+      <v-btn
+        color="primary"
+        :disabled="!canProcess"
         @click="processFiles"
         class="load-instance-btn"
         elevation="2"
@@ -30,37 +30,36 @@
         <v-icon left>mdi-upload-multiple</v-icon>
         {{ t('projectExecution.steps.step3.loadInstance.loadInstance') }}
         <span class="ml-1" v-if="selectedFiles.length > 0">
-          ({{ selectedFiles.length }} {{ selectedFiles.length === 1 ? 'file' : 'files' }})
+          ({{ selectedFiles.length }}
+          {{ selectedFiles.length === 1 ? 'file' : 'files' }})
         </span>
       </v-btn>
     </div>
-  
+
     <!-- Loading Spinner -->
     <div class="d-flex justify-center mt-2" v-if="isCheckingSchema">
       <v-progress-circular indeterminate color="primary" size="32" />
     </div>
-  
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, inject, onMounted } from 'vue'
+import { ref, watch, inject, onMounted, computed } from 'vue'
 import { Instance } from '@/app/models/Instance'
-import { useGeneralStore } from '@/stores/general'
 import { useI18n } from 'vue-i18n'
-import { useFileProcessors } from '@/app/composables/useFileProcessors'
+import { useInstanceProcessing } from '@/composables/useInstanceProcessing'
 
 const { t } = useI18n()
-const { processFileByPrefix, needsSpecialProcessing } = useFileProcessors()
+const instanceProcessing = useInstanceProcessing()
 
 const props = defineProps({
   instance: {
     type: Instance,
     default: null,
   },
-  fileSelected: {
-    type: File,
-    default: null,
+  selectedFiles: {
+    type: Array,
+    default: () => [],
   },
   existingInstanceErrors: {
     type: String,
@@ -69,40 +68,69 @@ const props = defineProps({
   newExecution: {
     type: Object,
     default: () => ({}),
-  }
+  },
 })
 
-const emit = defineEmits(['update:existingInstanceErrors', 'fileSelected', 'instanceSelected'])
+const emit = defineEmits([
+  'update:existingInstanceErrors',
+  'filesSelected',
+  'instanceSelected',
+])
 
 // State
-const selectedFiles = ref([])
-const selectedInstance = ref(null)
-const instanceErrors = ref(props.existingInstanceErrors)
-const store = useGeneralStore()
-const showSnackbar = inject('showSnackbar') as ((message: string, color?: string) => void) | undefined
-const processedInstances = ref([])
-const isCheckingSchema = ref(false)
+const selectedFiles = ref<File[]>(props.selectedFiles || [])
+const selectedInstance = ref<Instance | null>(null)
+const instanceErrors = ref<string | null>(props.existingInstanceErrors)
 
-// Initialize with fileSelected if provided
+const showSnackbar = inject('showSnackbar') as
+  | ((message: string, color?: string) => void)
+  | undefined
+
+// Computed
+const isCheckingSchema = computed(
+  () => instanceProcessing.state.value.isProcessing,
+)
+const canProcess = computed(
+  () =>
+    selectedFiles.value.length > 0 && instanceProcessing.canProcessFiles.value,
+)
+
+// Initialize with selectedFiles if provided
 onMounted(() => {
-  if (props.fileSelected) {
-    selectedFiles.value = [props.fileSelected]
+  if (props.selectedFiles && props.selectedFiles.length > 0) {
+    selectedFiles.value = [...props.selectedFiles]
   }
 })
 
 // Watchers
-watch(() => props.existingInstanceErrors, (newErrors) => {
-  instanceErrors.value = newErrors
-}, { immediate: true })
+watch(
+  () => props.selectedFiles,
+  (newFiles) => {
+    if (newFiles && newFiles.length > 0) {
+      selectedFiles.value = [...newFiles]
+    }
+  },
+  { immediate: true },
+)
+
+watch(
+  () => props.existingInstanceErrors,
+  (newErrors) => {
+    instanceErrors.value = newErrors
+  },
+  { immediate: true },
+)
 
 // Methods
-const onFileSelected = (files) => {
+const onFileSelected = (files: File[]) => {
   // Reset states before processing the new files
-  instanceErrors.value = null
-  emit('update:existingInstanceErrors', instanceErrors.value)
-  
+  resetErrors()
+  instanceProcessing.resetState()
+
   // Update our files array with what came from the component
   selectedFiles.value = [...files]
+  // Emit the files to the parent component
+  emit('filesSelected', selectedFiles.value)
 }
 
 const processFiles = async () => {
@@ -110,296 +138,46 @@ const processFiles = async () => {
     return
   }
 
+  // Reset errors before processing
+  resetErrors()
+
   try {
-    initializeProcessing()
-    
-    const processedFiles = await processAllFiles()
-    const finalInstance = await prepareFinalInstance(processedFiles)
-    const validationPassed = await validateInstance(finalInstance)
-    
-    if (validationPassed) {
-      completeProcessing()
+    const result = await instanceProcessing.processFiles(selectedFiles.value)
+
+    if (result.success && result.instance) {
+      // Success case
+      selectedInstance.value = result.instance
+      emit('instanceSelected', selectedInstance.value)
+
+      if (showSnackbar) {
+        showSnackbar(
+          t('projectExecution.steps.step3.loadInstance.instancesLoaded'),
+        )
+      }
+    } else if (result.errors) {
+      // Error case
+      handleProcessingError(result.errors)
     }
   } catch (error) {
     console.error('Error in processFiles:', error)
-    if (showSnackbar) {
-      showSnackbar(error.message || error, 'error')
-    }
-  } finally {
-    isCheckingSchema.value = false
+    handleProcessingError(error.message || String(error))
   }
 }
 
-const initializeProcessing = () => {
-  isCheckingSchema.value = true
-  processedInstances.value = []
-  instanceErrors.value = null
+const handleProcessingError = (errorMessage: string) => {
+  instanceErrors.value = errorMessage
   emit('update:existingInstanceErrors', instanceErrors.value)
-}
 
-const processAllFiles = async () => {
-  for (const file of selectedFiles.value) {
-    const extension = file.name.split('.').pop()
-    try {
-      const instance = await parseFile(file, extension)
-      if (instance) {
-        processedInstances.value.push(instance)
-      }
-    } catch (error) {
-      if (showSnackbar) {
-        showSnackbar(error.message || error, 'error')
-      }
-      isCheckingSchema.value = false
-      throw error
-    }
-  }
-  
-  if (processedInstances.value.length === 0) {
-    throw new Error(t('projectExecution.steps.step3.loadInstance.noValidInstancesError'))
-  }
-  
-  return processedInstances.value
-}
-
-const prepareFinalInstance = async (instances) => {
-  const finalInstance = instances.length > 1 ? await mergeInstances() : instances[0]
-  selectedInstance.value = finalInstance
-  return finalInstance
-}
-
-const validateInstance = async (instance) => {
-  try {
-    const errors = await instance.checkSchema()
-    if (errors && errors.length > 0) {
-      handleValidationErrors(errors)
-      return false
-    }
-    return true
-  } catch (error) {
-    handleValidationException(error)
-    return false
-  }
-}
-
-const handleValidationErrors = (errors) => {
-  instanceErrors.value = `<p><strong>Merged instance:</strong></p>` + errors
-    .map((error) => `<li>${error.instancePath} - ${error.message}</li>`)
-    .join('')
-  emit('update:existingInstanceErrors', instanceErrors.value)
   if (showSnackbar) {
     showSnackbar(
       t('projectExecution.steps.step3.loadInstance.instanceSchemaError'),
-      'error'
+      'error',
     )
   }
 }
 
-const handleValidationException = (error) => {
-  console.error('Schema validation error:', error)
-  instanceErrors.value = `<p><strong>Error validating instance:</strong></p><li>${error.message}</li>`
-  emit('update:existingInstanceErrors', instanceErrors.value)
-  if (showSnackbar) {
-    showSnackbar(
-      t('projectExecution.steps.step3.loadInstance.instanceSchemaError'),
-      'error'
-    )
-  }
-}
-
-const completeProcessing = () => {
-  emit('instanceSelected', selectedInstance.value)
+const resetErrors = () => {
   instanceErrors.value = null
   emit('update:existingInstanceErrors', instanceErrors.value)
-  if (showSnackbar) {
-    showSnackbar(
-      t('projectExecution.steps.step3.loadInstance.instancesLoaded')
-    )
-  }
-}
-
-const parseFile = async (file, extension) => {
-  return new Promise((resolve, reject) => {
-    const fileReader = new FileReader()
-    
-    fileReader.onload = async () => {
-      try {
-        // Check if this file needs special processing based on its filename
-        if (needsSpecialProcessing(file.name)) {
-          try {
-            const specialInstance = await processFileByPrefix(
-              file,
-              fileReader.result,
-              extension,
-              store.getSchemaConfig
-            )
-            
-            if (specialInstance) {
-              selectedInstance.value = specialInstance
-              resolve(specialInstance)
-              return
-            }
-          } catch (processingError) {
-            const errorMessage = `<p><strong>${file.name}:</strong> ${processingError.message}</p>`
-            instanceErrors.value = errorMessage
-            emit('update:existingInstanceErrors', instanceErrors.value)
-            reject(new Error(`${file.name}: ${processingError.message}`))
-            return
-          }
-        }
-        
-        // Standard processing
-        const instance = await createInstanceFromData(fileReader.result, extension, file)                
-        resolve(instance)
-      } catch (error) {
-        const errorMessage = `<p><strong>${file.name}:</strong> ${t('projectExecution.steps.step3.loadInstance.unexpectedError')}</p>`
-        instanceErrors.value = errorMessage
-        emit('update:existingInstanceErrors', instanceErrors.value)
-        reject(new Error(`${file.name}: ${t('projectExecution.steps.step3.loadInstance.unexpectedError')}`))
-      }
-    }
-    
-    fileReader.onerror = (error) => {
-      const errorMessage = t('projectExecution.steps.step3.loadInstance.fileReadError')
-      instanceErrors.value = `<p><strong>${file.name}:</strong> ${errorMessage}</p>`
-      emit('update:existingInstanceErrors', instanceErrors.value)
-      reject(new Error(`${file.name}: ${errorMessage}`))
-    }
-    
-    if (extension === 'xlsx') {
-      fileReader.readAsArrayBuffer(file)
-    } else {
-      fileReader.readAsText(file)
-    }
-  })
-}
-
-const createInstanceFromData = (data, extension, file) => {
-  const { Instance } = store.appConfig
-  const schemas = store.getSchemaConfig
-
-  if (extension === 'xlsx') {
-    return Instance.fromExcel(
-      data,
-      schemas.instanceSchema,
-      store.getSchemaName
-    )
-  } else if (extension === 'json') {
-    const jsonData = JSON.parse(data)
-    return new Instance(
-      null,
-      jsonData,
-      schemas.instanceSchema,
-      schemas.instanceChecksSchema,
-      store.getSchemaName
-    )
-  } else if (extension === 'csv') {
-    return Instance.fromCsv(
-      data,
-      file.name,
-      schemas.instanceSchema,
-      schemas.instanceChecksSchema,
-      store.getSchemaName
-    )
-  }
-  throw new Error(t('projectExecution.steps.step3.loadInstance.unsupportedFileFormat'))
-}
-
-const mergeInstances = async () => {
-  try {
-    const { Instance } = store.appConfig
-    const schemas = store.getSchemaConfig
-    const allData = extractInstanceData()
-    const mergedData = performDataMerging(allData)
-    
-    return createMergedInstance(Instance, mergedData, schemas)
-  } catch (error) {
-    handleMergeError(error)
-    throw error
-  }
-}
-
-const extractInstanceData = () => {
-  return processedInstances.value.map(instance => instance.data as Record<string, any>)
-}
-
-const performDataMerging = (allData: Record<string, any>[]) => {
-  const mergedData: Record<string, any> = {}
-  const allKeys = collectAllKeys(allData)
-  
-  for (const key of allKeys) {
-    const values = getValuesForKey(allData, key)
-    mergedData[key] = mergeValues(values)
-  }
-  
-  return mergedData
-}
-
-const collectAllKeys = (allData: Record<string, any>[]) => {
-  const allKeys = new Set<string>()
-  for (const data of allData) {
-    for (const key in data) {
-      allKeys.add(key)
-    }
-  }
-  return allKeys
-}
-
-const getValuesForKey = (allData: Record<string, any>[], key: string) => {
-  return allData.filter(data => data[key] !== undefined).map(data => data[key])
-}
-
-const mergeValues = (values: any[]) => {
-  if (values.length === 0) {
-    return undefined
-  }
-  
-  if (values.length === 1) {
-    return values[0]
-  }
-  
-  const firstValue = values[0]
-  return mergeMultipleValues(values, firstValue)
-}
-
-const mergeMultipleValues = (values: any[], firstValue: any) => {
-  if (Array.isArray(firstValue)) {
-    return values.flat()
-  }
-  
-  if (typeof firstValue === 'object' && firstValue !== null) {
-    return mergeObjectValues(values)
-  }
-  
-  return values.find(v => v !== null && v !== undefined) || firstValue
-}
-
-const mergeObjectValues = (values: any[]) => {
-  const merged = {}
-  for (const value of values) {
-    if (value && typeof value === 'object') {
-      Object.assign(merged, value)
-    }
-  }
-  return merged
-}
-
-const createMergedInstance = (Instance: any, mergedData: Record<string, any>, schemas: any) => {
-  return new Instance(
-    null,
-    mergedData,
-    schemas.instanceSchema,
-    schemas.instanceChecksSchema,
-    store.getSchemaName
-  )
-}
-
-const handleMergeError = (error: any) => {
-  instanceErrors.value = (instanceErrors.value && instanceErrors.value.length > 0)
-    ? instanceErrors.value
-    : t('projectExecution.steps.step3.loadInstance.unexpectedError')
-  emit('update:existingInstanceErrors', instanceErrors.value)
-  if (showSnackbar) {
-    showSnackbar(error.message || error, 'error')
-  }
 }
 </script>

@@ -246,8 +246,9 @@ const emit = defineEmits(['loadExecution', 'deleteExecution']);
 // Inject snackbar function
 const showSnackbar: (message: string, type: string) => void = inject('showSnackbar') as (message: string, type: string) => void;
 
-// Get showTimeLimit setting from config
-const showTimeLimit = generalStore.appConfig.parameters.showExtraProjectExecutionColumns.showTimeLimit;
+// Get showTimeLimit setting from config (requires both showTimeLimit and showConfigFieldsStep to be enabled)
+const showTimeLimit = generalStore.appConfig.parameters.showExtraProjectExecutionColumns.showTimeLimit 
+  && generalStore.appConfig.parameters.configFieldsConfig?.showConfigFieldsStep;
 
 // Use our composable with type assertion
 const {

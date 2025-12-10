@@ -1,18 +1,24 @@
 // Composables
-import { createRouter, RouteRecordRaw, createWebHistory, createWebHashHistory } from 'vue-router'
+import {
+  createRouter,
+  RouteRecordRaw,
+  createWebHistory,
+  createWebHashHistory,
+} from 'vue-router'
 import IndexView from '@/views/IndexView.vue'
 import LoginView from '@/views/LoginView.vue'
 import ProjectExecutionView from '@/views/ProjectExecutionView.vue'
 import HistoryExecutionView from '@/views/HistoryExecutionView.vue'
 import DashboardView from '@/views/DashboardView.vue'
-import InputDataView from '@/views/InputDataView.vue'
-import OutputDataView from '@/views/OutputDataView.vue'
 import UserSettingsView from '@/views/UserSettingsView.vue'
+import SectionView from '@/views/SectionView.vue'
 import getAuthService from '@/services/AuthServiceFactory'
 import config from '@/config'
 import appConfig from '@/app/config'
+import { useGeneralStore } from '@/stores/general'
 
 const dashboardRoutes = appConfig.getDashboardRoutes() || []
+const instanceDashboardRoutes = appConfig.getInstanceDashboardRoutes() || []
 
 let authService = null
 
@@ -24,6 +30,40 @@ const initAuthService = async () => {
   return authService
 }
 
+// Helper function to check if a route needs configurations
+const isConfigurationRoute = (path: string): boolean => {
+  return (
+    path.startsWith('/configuration') ||
+    path.startsWith('/input-data') ||
+    path.startsWith('/results')
+  )
+}
+
+// Helper function to ensure configurations are loaded
+const ensureConfigurationsLoaded = async () => {
+  const generalStore = useGeneralStore()
+
+  // Check if configurations are already loaded
+  if (generalStore.getConfigurations) {
+    return true
+  }
+
+  // If not loaded, initialize the required store data
+  try {
+    // Load schema first (required by configurations)
+    if (!generalStore.getSchemaConfig || !generalStore.getSchemaConfig.name) {
+      await generalStore.setSchema()
+    }
+
+    // Then load configurations
+    await generalStore.setConfigurations()
+    return true
+  } catch (error) {
+    console.error('Failed to load configurations:', error)
+    return false
+  }
+}
+
 const routes: RouteRecordRaw[] = [
   {
     path: '/sign-in',
@@ -31,7 +71,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/',
-    redirect: '/project-execution',
+    redirect: '/history-execution',
     name: 'Home',
     component: IndexView,
     beforeEnter: async (to, from, next) => {
@@ -51,7 +91,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'user-settings',
         name: 'User settings',
-        component: UserSettingsView,  
+        component: UserSettingsView,
         keepAlive: true,
       },
       {
@@ -73,20 +113,45 @@ const routes: RouteRecordRaw[] = [
         keepAlive: true,
       },
       {
-        path: 'input-data',
-        name: 'Input Data',
-        component: InputDataView,
+        path: 'configuration/:tableKey',
+        name: 'Master Data',
+        component: SectionView,
         keepAlive: true,
       },
       {
-        path: 'output-data',
-        name: 'Output Data',
-        component: OutputDataView,
+        path: 'configuration/group/:groupName/:tableKey?',
+        name: 'Master Data Group',
+        component: SectionView,
+        keepAlive: true,
+      },
+      {
+        path: 'input-data/:tableKey',
+        name: 'Input Data Table',
+        component: SectionView,
+        keepAlive: true,
+      },
+      {
+        path: 'input-data/group/:groupName/:tableKey?',
+        name: 'Input Data Group',
+        component: SectionView,
+        keepAlive: true,
+      },
+      {
+        path: 'results/:tableKey',
+        name: 'Results Table',
+        component: SectionView,
+        keepAlive: true,
+      },
+      {
+        path: 'results/group/:groupName/:tableKey?',
+        name: 'Results Group',
+        component: SectionView,
         keepAlive: true,
       },
       ...dashboardRoutes,
+      ...instanceDashboardRoutes,
     ],
-  }
+  },
 ]
 
 const router = createRouter({
@@ -107,16 +172,27 @@ router.beforeEach(async (to, from, next) => {
       return
     }
 
-    // If authenticated and going to the login page, redirect to project-execution
+    // If authenticated and going to the login page, redirect to history-execution
     if (isAuthenticated && isSignInPage) {
-      next('/project-execution')
+      next('/history-execution')
       return
     }
 
-    // If authenticated and going to the root, redirect to project-execution
+    // If authenticated and going to the root, redirect to history-execution
     if (isAuthenticated && to.path === '/') {
-      next('/project-execution')
+      next('/history-execution')
       return
+    }
+
+    // If authenticated and going to a configuration route, ensure configurations are loaded
+    if (isAuthenticated && isConfigurationRoute(to.path)) {
+      const configurationsLoaded = await ensureConfigurationsLoaded()
+      if (!configurationsLoaded) {
+        console.error('Failed to load configurations for route:', to.path)
+        // Optionally redirect to a safe page if configurations fail to load
+        // next('/history-execution')
+        // return
+      }
     }
 
     // In any other case, allow navigation

@@ -1,5 +1,9 @@
 import client from '@/api/Api'
 import { SchemaConfig } from '@/models/SchemaConfig'
+import {
+  transformOpenApiToTableConfig,
+  transformJsonSchemaToAutomationFormat,
+} from '@/utils/schemaUtils'
 
 export default class SchemaRepository {
   // Get schema for the app
@@ -19,5 +23,87 @@ export default class SchemaRepository {
     } else {
       throw new Error('Error getting schema')
     }
+  }
+
+  // Get configuration tables (master data only)
+  async getConfigurationTables(schemaName: string): Promise<any> {
+    const response = await client.get(`/frontend-automation/`, {}, {}, true)
+
+    if (response.status === 200) {
+      return this.processAutomationResponse(response.content)
+    } else {
+      throw new Error(
+        `Failed to get configuration tables. Status: ${response.status}`,
+      )
+    }
+  }
+
+  // Get instance data tables from schema
+  async getInstanceTables(schemaName: string): Promise<any> {
+    const schema = await this.getSchema(schemaName)
+    return this.transformSchemaToAutomationFormat(
+      schema.instanceSchema,
+      schema.instanceChecksSchema,
+      'instance',
+    )
+  }
+
+  // Get solution data tables from schema
+  async getSolutionTables(schemaName: string): Promise<any> {
+    const schema = await this.getSchema(schemaName)
+    return this.transformSchemaToAutomationFormat(
+      schema.solutionSchema,
+      schema.solutionChecksSchema,
+      'solution',
+    )
+  }
+
+  /**
+   * Process the frontend-automation response and transform it to our internal format
+   * @param automationData - The raw response from frontend-automation endpoint
+   * @returns Transformed table configuration
+   */
+  private processAutomationResponse(automationData: any): any {
+    // Validate the response structure
+    if (!automationData || !automationData.available_automations) {
+      throw new Error('Invalid automation data structure')
+    }
+
+    const { available_automations, definitions, paths } = automationData
+
+    // Ensure we have the required sections
+    if (!available_automations.tables || !definitions) {
+      throw new Error('Missing required sections in automation data')
+    }
+
+    // Create the structure expected by transformOpenApiToTableConfig
+    const processedData = {
+      available_automations: {
+        tables: available_automations.tables,
+        groups: available_automations.groups || {},
+      },
+      definitions,
+      paths: paths || {},
+    }
+
+    // Transform using the existing utility function
+    return transformOpenApiToTableConfig(processedData)
+  }
+
+  /**
+   * Transform JSON schema to automation format
+   * @param schema - The JSON schema (instance or solution)
+   * @param checksSchema - The checks schema (instance_checks or solution_checks)
+   * @param type - The type ('instance' or 'solution')
+   * @returns Transformed table configuration
+   */
+  private transformSchemaToAutomationFormat(
+    schema: any,
+    checksSchema: any,
+    type: string,
+  ): any {
+    if (!schema) return {}
+
+    return transformJsonSchemaToAutomationFormat(schema, checksSchema, type)
   }
 }

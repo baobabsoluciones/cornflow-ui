@@ -1,5 +1,5 @@
 <template>
-  <div class="main-container">
+  <div class="main-container" :class="{ 'drawer-pinned': isDrawerPinned }">
     <HelpMenu />
     <router-view v-slot="{ Component }">
       <keep-alive :key="getKey">
@@ -24,8 +24,13 @@ export default defineComponent({
     getKey() {
       return this.store.uploadComponentKey
     },
+    isDrawerPinned() {
+      return this.store.isDrawerPinned
+    },
   },
 })
 </script>
 
-<style></style>
+<style>
+/* Styles are now handled in main.css */
+</style>

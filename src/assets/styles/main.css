@@ -1,11 +1,26 @@
 .main-container {
-  margin-left: 56px !important;
   min-height: 100vh;
   background-color: var(--background);
+  transition: margin-left 0.3s ease;
+}
+
+/* Default margin for mini drawer (when not pinned) */
+.main-container:not(.drawer-pinned) {
+  margin-left: 56px !important;
+}
+
+/* No margin when drawer is pinned (handled by parent container) */
+.main-container.drawer-pinned {
+  margin-left: 0 !important;
 }
 
 .view-container {
-  padding: 40px 60px 60px 60px;
+  padding: 40px 60px 30px 60px;
+  height: calc(100vh - 40px);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 h4 {
@@ -95,3 +110,5 @@ a {
     max-width: 100% !important;
   }
 }
+
+/* Automatic dashboard styles - See dashboard.css */

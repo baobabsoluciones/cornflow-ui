@@ -1,0 +1,89 @@
+/* FloatingSelectionBar Component Styles */
+
+.floating-selection-bar {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-border-color), 0.12);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(8px);
+}
+
+.selection-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  min-height: 48px;
+}
+
+.selection-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.selection-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgb(var(--v-theme-on-surface));
+  margin-left: 4px;
+}
+
+.selection-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.action-btn {
+  transition: all 0.2s ease;
+}
+
+.delete-btn {
+  color: var(--danger);
+  padding: 4px 12px;
+  height: 32px;
+  border-radius: 6px;
+}
+
+.delete-btn:hover {
+  background-color: rgba(244, 67, 54, 0.08);
+  color: var(--danger);
+}
+
+.btn-text {
+  font-size: 13px;
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+.close-btn {
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.close-btn:hover {
+  background-color: rgba(var(--v-theme-on-surface), 0.08);
+  color: rgb(var(--v-theme-on-surface));
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .floating-selection-bar {
+    bottom: 72px;
+    left: 16px;
+    right: 16px;
+    transform: none;
+  }
+
+  .selection-content {
+    justify-content: space-between;
+  }
+}

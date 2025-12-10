@@ -119,6 +119,7 @@ import { useGeneralStore } from '@/stores/general'
 import { useI18n } from 'vue-i18n'
 import { inject } from 'vue'
 import config from '@/config'
+import { changeLanguage } from '@/plugins/i18n'
 
 export default {
   components: {},
@@ -128,7 +129,7 @@ export default {
       showSnackbar: null,
       selectedTab: 'user-settings',
       theme: 'light',
-      language: 'en',
+      language: this.$i18n.locale,
       languages: [
         { title: this.$t('settings.english'), value: 'en' },
         { title: this.$t('settings.spanish'), value: 'es' },
@@ -158,9 +159,14 @@ export default {
   },
   created() {
     this.showSnackbar = inject('showSnackbar')
-    if (config.auth.type !== 'cornflow' && this.selectedTab === 'user-profile') {
+    if (
+      config.auth.type !== 'cornflow' &&
+      this.selectedTab === 'user-profile'
+    ) {
       this.selectedTab = 'user-settings'
     }
+    // Initialize language from current i18n locale
+    this.language = this.$i18n.locale
   },
   updated() {
     this.resetPasswordFields()
@@ -175,6 +181,8 @@ export default {
   watch: {
     language(newLang) {
       this.locale = newLang
+      // Use the new changeLanguage function to update configurations
+      changeLanguage(newLang)
     },
   },
   methods: {
@@ -216,7 +224,7 @@ export default {
         {
           text: this.$t('settings.userSettings'),
           value: 'user-settings',
-        }
+        },
       ]
 
       if (config.auth.type === 'cornflow') {

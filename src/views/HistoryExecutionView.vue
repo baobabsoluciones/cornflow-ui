@@ -1,17 +1,21 @@
 <template>
   <div class="view-container">
-    <MTitleView
+    <CoreTitleView
       :icon="'mdi-history'"
       :title="title"
       :description="description"
+      class="mb-4"
+      :dropdown-items="dropdownMenuItems"
+      @dropdown-item-click="handleDropdownItemClick"
     />
+
     <MPanelData
-      class="mt-5"
       :data="data"
       :checkboxOptions="labels"
       :language="locale"
       :noDataMessage="$t('versionHistory.noData')"
       @date-range-changed="dateOptionSelected = $event"
+      class="overflow-y-auto"
     >
       <template #custom-checkbox>
         <div style="margin-top: -10px !important; display: flex">
@@ -49,12 +53,16 @@
 
 <script>
 import ProjectExecutionsTable from '@/components/project-execution/ProjectExecutionsTable.vue'
+import CoreButton from '@/components/core/CoreButton.vue'
+import CoreTitleView from '@/components/core/CoreTitleView.vue'
 import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
 
 export default {
   components: {
     ProjectExecutionsTable,
+    CoreButton,
+    CoreTitleView,
   },
   data() {
     return {
@@ -123,6 +131,16 @@ export default {
           value: 'custom',
           color: 'primary',
           isCustom: true,
+        },
+      ]
+    },
+    dropdownMenuItems() {
+      return [
+        {
+          id: 'create-new-execution',
+          title: this.$t('versionHistory.createNewExecution'),
+          icon: 'mdi-plus',
+          action: () => this.navigateToCreateExecution(),
         },
       ]
     },
@@ -197,6 +215,14 @@ export default {
     },
   },
   methods: {
+    navigateToCreateExecution() {
+      this.$router.push('/project-execution')
+    },
+    handleDropdownItemClick(item) {
+      if (item.action) {
+        item.action()
+      }
+    },
     async fetchData() {
       try {
         const result = await this.generalStore.fetchExecutionsByDateRange(
@@ -225,7 +251,7 @@ export default {
         if (!item.createdAt || typeof item.createdAt !== 'string') {
           return acc
         }
-        
+
         const date = item.createdAt.split('T')[0]
         if (!acc[date]) {
           acc[date] = {
@@ -247,7 +273,7 @@ export default {
       return Object.values(formattedData)
     },
     async loadExecution(execution) {
-      this.loadingExecutions.add(execution.id);
+      this.loadingExecutions.add(execution.id)
       try {
         const loadedResult = await this.generalStore.fetchLoadedExecution(
           execution.id,
@@ -257,9 +283,9 @@ export default {
           this.generalStore.setSelectedExecution(execution.id)
           // Update tabs and ensure they are properly initialized
           const existingTab = this.generalStore.getLoadedExecutionTabs.find(
-            (tab) => tab.value === execution.id
+            (tab) => tab.value === execution.id,
           )
-          
+
           if (!existingTab) {
             this.generalStore.addLoadedExecutionTab({
               value: execution.id,
@@ -271,7 +297,7 @@ export default {
               tab.selected = tab.value === execution.id
             })
           }
-          
+
           this.generalStore.incrementTabBarKey()
           this.showSnackbar(this.$t('projectExecution.snackbar.successLoad'))
         } else {
@@ -286,7 +312,7 @@ export default {
           'error',
         )
       } finally {
-        this.loadingExecutions.delete(execution.id);
+        this.loadingExecutions.delete(execution.id)
       }
     },
     async deleteExecution(execution) {

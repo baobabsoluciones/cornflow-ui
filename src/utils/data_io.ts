@@ -1,24 +1,7 @@
 import readXlsxFile, { readSheetNames } from 'read-excel-file'
 import i18n from '@/plugins/i18n'
-import { getTableVisible, getTablePropertyVisible } from '@/utils/tableUtils'
 import { formatDateForExcel } from '@/utils/date'
-
-const processRowValues = (row: Record<string, any>): Record<string, any> => {
-  return Object.fromEntries(
-    Object.entries(row).map(([key, value]) => {
-      if (value instanceof Date) {
-        return [key, formatDateForExcel(value, true)]
-      } 
-      else if (Number.isNaN(value)) {
-        return [key, null]
-      }
-      else if (typeof value === 'number' && value % 1 !== 0) {
-        return [key, parseFloat(value.toFixed(4))]
-      }
-      return [key, value]
-    })
-  )
-}
+import * as ExcelJS from 'exceljs'
 
 const readTable = function (
   file,
@@ -39,8 +22,8 @@ const readTable = function (
         if (!cols) {
           return []
         }
-        
-        const formattedCols = cols.map(col => {
+
+        const formattedCols = cols.map((col) => {
           if (col instanceof Date) {
             return formatDateForExcel(col)
           }
@@ -63,39 +46,75 @@ const readTable = function (
 
 const loadExcel = async function (file, schema) {
   // Get all sheets from Excel file
-  const sheetNames = await readSheetNames(file)
+  const allSheets = await readXlsxFile(file, { getSheets: true })
+  const sheetNames = allSheets.map((sheet) => sheet.name)
   const schemaTableNames = Object.keys(schema.properties)
   const required = schema.required || []
-  
+
   const readTab = function (tab) {
     const isInSchema = schemaTableNames.includes(tab)
     const tabSchema = isInSchema ? schema.properties[tab] : null
     const isRequired = required.includes(tab)
-    
+
     // For tables in schema, use schema settings
     const useFirstColumnAsKeys = isInSchema && tabSchema?.type === 'object'
-    
+
+    // Get field formats from schema for array type tables
+    const getFieldFormat = function (fieldKey: string) {
+      if (!isInSchema || !tabSchema) return undefined
+      if (
+        tabSchema.type === 'array' &&
+        tabSchema.items?.properties?.[fieldKey]
+      ) {
+        return tabSchema.items.properties[fieldKey].format
+      }
+      return undefined
+    }
+
     return readTable(file, tab, useFirstColumnAsKeys, isRequired)
-      .then(table => {
+      .then((table) => {
         if (Array.isArray(table)) {
-          return [tab, table.map(row => processRowValues(row))]
+          return [
+            tab,
+            table.map((row) => {
+              return Object.fromEntries(
+                Object.entries(row).map(([key, value]) => {
+                  if (value instanceof Date) {
+                    // Get format from schema for this field
+                    const fieldFormat = getFieldFormat(key)
+                    // Pass format to formatDateForExcel (second parameter)
+                    return [key, formatDateForExcel(value, fieldFormat, true)]
+                  } else if (Number.isNaN(value)) {
+                    return [key, null]
+                  } else if (typeof value === 'number' && value % 1 !== 0) {
+                    return [key, parseFloat(value.toFixed(4))]
+                  }
+                  return [key, value]
+                }),
+              )
+            }),
+          ]
         }
         // Handle object type tables
         return [tab, table]
       })
-      .catch(error => {
-          throw error
+      .catch((error) => {
+        throw error
       })
   }
 
   // Process all sheets, including those not in schema
-  const results = await Promise.all(sheetNames.map(tab => readTab(tab)))
+  const results = await Promise.all(sheetNames.map((tab) => readTab(tab)))
   return Object.fromEntries(results)
 }
 
 // this function writes all sheets according to the schema
-async function schemaDataToTable(wb: any, data: Record<string, any>, schema: Record<string, any> | null = null) {
-  const dataArray = Object.entries(data).map(([sheetName, sheetData]) => {
+async function schemaDataToTable(
+  wb: any,
+  data: Record<string, any>,
+  schema: Record<string, any> | null = null,
+) {
+  var dataArray = Object.entries(data).map(([sheetName, sheetData]) => {
     if (!Array.isArray(sheetData)) {
       sheetData = [sheetData]
     }
@@ -125,13 +144,19 @@ async function schemaDataToTable(wb: any, data: Record<string, any>, schema: Rec
     const worksheet = wb.addWorksheet(sheetName)
 
     if (schema?.properties?.[sheetName]?.type === 'object') {
-      // Filter out non-visible properties for object type
-      const tableData = Object.entries(sheetData[0] as Record<string, any>)
-        .filter(([key]) => {
-          const propertySchema = schema?.properties?.[sheetName]?.properties?.[key]
-          return !schema || propertySchema?.visible !== false
-        })
-      
+      // Filter out non-visible properties and 'id' columns for object type
+      const tableData = Object.entries(
+        sheetData[0] as Record<string, any>,
+      ).filter(([key]) => {
+        // Exclude 'id' columns
+        if (key === 'id') {
+          return false
+        }
+        const propertySchema =
+          schema?.properties?.[sheetName]?.properties?.[key]
+        return !schema || propertySchema?.visible !== false
+      })
+
       worksheet.addRows(tableData)
       worksheet.getColumn(1).width = 20
       worksheet.getColumn(2).width = 30
@@ -154,13 +179,18 @@ async function schemaDataToTable(wb: any, data: Record<string, any>, schema: Rec
         })
       })
     } else {
-      // Filter out non-visible headers for array type
+      // Filter out non-visible headers and 'id' columns for array type
       const allHeaders = Object.keys(sheetData[0])
-      const headers = allHeaders.filter(header => {
-        const propertySchema = schema?.properties?.[sheetName]?.items?.properties?.[header]
+      const headers = allHeaders.filter((header) => {
+        // Exclude 'id' columns
+        if (header === 'id') {
+          return false
+        }
+        const propertySchema =
+          schema?.properties?.[sheetName]?.items?.properties?.[header]
         return !schema || propertySchema?.visible !== false
       })
-      
+
       const tableData = [
         headers,
         ...sheetData.map((row) => headers.map((header) => row[header])),
@@ -205,7 +235,7 @@ async function schemaDataToTable(wb: any, data: Record<string, any>, schema: Rec
 
 const toISOStringLocal = function (date, isEndDate = false) {
   if (date) {
-    const timezoneOffsetMin = date.getTimezoneOffset(),
+    var timezoneOffsetMin = date.getTimezoneOffset(),
       offsetHours = Math.abs(timezoneOffsetMin / 60),
       offsetMinutes = timezoneOffsetMin % 60,
       offsetSign = timezoneOffsetMin > 0 ? '-' : '+'
@@ -277,9 +307,202 @@ function getLetterFromNumber(number) {
   return result
 }
 
+/**
+ * Exports table data to Excel file with proper formatting based on backend schema
+ * @param {Array} items - Array of data items to export (can be empty for structure-only export)
+ * @param {Object} tableConfig - Table configuration with schema information
+ * @param {string} tableName - Name of the table for the filename
+ * @param {string} tableTitle - Display title for the worksheet
+ * @param {Function} t - Translation function for i18n
+ * @returns {Promise<void>}
+ */
+async function exportTableToExcel(
+  items,
+  tableConfig,
+  tableName,
+  tableTitle,
+  t,
+) {
+  // Allow export even without data to show structure
+
+  const workbook = new ExcelJS.Workbook()
+  const worksheet = workbook.addWorksheet(tableTitle || tableName)
+
+  // Get schema properties (backend field names and types)
+  let schemaFields = []
+  let backendKeys = []
+
+  if (tableConfig?.get_list?.response_schema?.items?.properties) {
+    const properties = tableConfig.get_list.response_schema.items.properties
+    Object.entries(properties).forEach(([key, fieldSchema]: [string, any]) => {
+      const isReadOnly = fieldSchema?.readOnly || false
+      const isHidden = fieldSchema?.hidden || false
+      const isForeignKey = fieldSchema?.isForeignKey || false
+      const hasColumnsToJoin =
+        fieldSchema?.columnsToJoin && Array.isArray(fieldSchema.columnsToJoin)
+
+      // Exclude: id field, readOnly fields, hidden fields, foreign keys, and fields with columnsToJoin
+      if (
+        key !== 'id' &&
+        !isReadOnly &&
+        !isHidden &&
+        !isForeignKey &&
+        !hasColumnsToJoin
+      ) {
+        schemaFields.push({
+          key: key,
+          type: fieldSchema?.type || 'string',
+          required:
+            tableConfig.get_list?.response_schema?.items?.required?.includes(
+              key,
+            ) || false,
+        })
+        backendKeys.push(key) // Use actual backend field names as headers
+      }
+    })
+  } else {
+    // Fallback: if no schema, use data keys
+    if (items && items.length > 0) {
+      backendKeys = Object.keys(items[0]).filter((key) => key !== 'id')
+      schemaFields = backendKeys.map((key) => ({
+        key,
+        type: 'string',
+        required: false,
+      }))
+    }
+  }
+
+  // Add headers (backend field names) to worksheet
+  if (backendKeys.length > 0) {
+    worksheet.addRow(backendKeys)
+
+    // Style header row with modern design
+    const headerRow = worksheet.getRow(1)
+    headerRow.font = {
+      bold: true,
+      color: { argb: 'FFFFFFFF' }, // White text
+      size: 11,
+    }
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF4A90E2' }, // Modern blue
+    }
+    headerRow.alignment = {
+      vertical: 'middle',
+      horizontal: 'center',
+    }
+    headerRow.height = 25
+
+    // Add data rows (if any data exists)
+    if (items && items.length > 0) {
+      items.forEach((item, index) => {
+        const rowData = schemaFields.map((field) => {
+          const value = item[field.key]
+          return formatValueByType(value, field.type)
+        })
+        const row = worksheet.addRow(rowData)
+
+        // Subtle alternate row colors
+        if (index % 2 === 1) {
+          row.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFF8F9FA' }, // Very light gray
+          }
+        }
+      })
+    }
+
+    // Set column types and formatting with better sizing
+    schemaFields.forEach((field, index) => {
+      const column = worksheet.getColumn(index + 1)
+      // Better column width calculation
+      const minWidth = Math.max(field.key.length + 4, 12)
+      const maxWidth = 25
+      column.width = Math.min(minWidth, maxWidth)
+
+      // Set column number format based on type
+      switch (field.type) {
+        case 'integer':
+          column.numFmt = '#,##0' // Number with thousands separator
+          break
+        case 'number':
+          column.numFmt = '#,##0.00' // Number with decimals and separator
+          break
+        case 'boolean':
+          column.numFmt = '@' // Text format for true/false
+          break
+        default:
+          column.numFmt = '@' // Text format
+      }
+    })
+
+    // Add clean borders only to data area
+    const lastRow = items && items.length > 0 ? items.length + 1 : 1
+    const lastColumn = backendKeys.length
+
+    for (let row = 1; row <= lastRow; row++) {
+      for (let col = 1; col <= lastColumn; col++) {
+        const cell = worksheet.getCell(row, col)
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFE1E5E9' } },
+          left: { style: 'thin', color: { argb: 'FFE1E5E9' } },
+          bottom: { style: 'thin', color: { argb: 'FFE1E5E9' } },
+          right: { style: 'thin', color: { argb: 'FFE1E5E9' } },
+        }
+
+        // Center alignment for data cells (not header)
+        if (row > 1) {
+          cell.alignment = { vertical: 'middle' }
+        }
+      }
+    }
+  }
+
+  // Generate and download the Excel file
+  const excelBuffer = await workbook.xlsx.writeBuffer()
+  const blob = new Blob([excelBuffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  })
+  const link = document.createElement('a')
+  link.href = window.URL.createObjectURL(blob)
+  link.download = `${tableName}_${new Date().toISOString().split('T')[0]}.xlsx`
+  link.click()
+
+  // Clean up the URL object
+  window.URL.revokeObjectURL(link.href)
+}
+
+/**
+ * Format value according to its schema type for Excel export
+ */
+function formatValueByType(value, type) {
+  if (value === null || value === undefined) {
+    return ''
+  }
+
+  switch (type) {
+    case 'boolean':
+      return typeof value === 'boolean'
+        ? value
+        : value === 'true' || value === '1'
+    case 'integer':
+      return typeof value === 'number'
+        ? Math.floor(value)
+        : parseInt(value) || 0
+    case 'number':
+      return typeof value === 'number' ? value : parseFloat(value) || 0
+    case 'string':
+    default:
+      return String(value)
+  }
+}
+
 export {
   loadExcel,
   schemaDataToTable,
+  exportTableToExcel,
   toISOStringLocal,
   formatDateForHeaders,
   formatDate,

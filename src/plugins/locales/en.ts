@@ -5,7 +5,11 @@ export default {
       'Create a new execution or load an existing one to visualize the solution you are looking for. To do so, follow the steps below:',
     continueButton: 'Continue',
     previousButton: 'Previous',
+    maximize: 'Maximize',
+    minimize: 'Minimize',
     create: 'Add new',
+    downloadExcel: 'Download data',
+    uploadExcel: 'Overwrite data',
     snackbar: {
       instanceDataChecksSuccess: 'Data verification completed successfully',
       instanceDataChecksError: 'An error occurred while verifying the data',
@@ -22,9 +26,6 @@ export default {
     },
     steps: {
       step1: {
-        title: 'New execution',
-        description: 'Create a new execution',
-        titleContent: 'Choose one',
         firstOption: {
           title: 'Create a new execution',
           description:
@@ -36,17 +37,7 @@ export default {
             'Search by date for an existing execution and load it to view.',
         },
       },
-      step2Search: {
-        title: 'Select dates',
-        description: 'Select the dates for searching an execution',
-        titleContent: 'Select the dates',
-        subtitleContent:
-          'Choose a start date and an end date to search for executions within the interval between them',
-        startDate: 'Start date',
-        endDate: 'End date',
-        search: 'Search',
-      },
-      step2: {
+      nameDescription: {
         title: 'Name and description',
         description: 'Name and describe the execution',
         titleContent: 'Fill the following information',
@@ -57,79 +48,165 @@ export default {
         namePlaceholder: 'Please insert a name',
         descriptionPlaceholder: 'Please insert a description',
       },
-      step3: {
+      loadInstance: {
         title: 'Load instance',
         description: 'Load a file with the instance data',
         titleContent: 'Load instance',
-        subtitleContent: 'Select one or several files to load the instance data. When finishing the uploads, press the button below to load the instance data. If several files are selected, the data will be merged into a single instance.',
+        subtitleContent:
+          'Select one or several files to load the instance data. When finishing the uploads, press the button below to load the instance data. If several files are selected, the data will be merged into a single instance.',
         loadInstance: {
-          dragAndDropDescription: 'Drag and drop your instance file / files here',
+          dragAndDropDescription:
+            'Drag and drop your instance file / files here',
           uploadFile: 'Upload file',
           noSchemaError:
             'No schema was found: are you connected to the server?',
           instanceSchemaError: 'Instance does not comply with schema ',
           instanceLoaded: 'Instance loaded successfully',
-          instancesLoaded: 'Files merged to create the instance and loaded successfully',
+          instancesLoaded:
+            'Files merged to create the instance and loaded successfully',
           loadInstance: 'Load Instance',
           selectedFiles: 'Selected Files',
           invalidFileFormat: 'Invalid file format. Please try again.',
           unexpectedError: 'An unexpected error occurred. Please try again.',
           instanceLoadedWithErrors: 'Instance loaded with errors',
-          noValidInstancesError: 'No valid instances found in the uploaded files',
+          noValidInstancesError:
+            'No valid instances found in the uploaded files',
           downloadExcel: 'Download Excel',
         },
       },
-      step4: {
+      reviewInstance: {
+        title: 'Review instance',
+        description: 'Review and edit instance data',
+        titleContent: 'Review instance',
+        subtitleContent:
+          'Review the data of the loaded instance and edit it if necessary. These changes will not be saved to the system until you confirm in the final step.',
+      },
+      checkData: {
         title: 'Check data',
-        description: 'View and check data',
+        description: 'Verify data consistency',
         titleContent: 'Check data',
         subtitleContent:
-          'View the data of the instance loaded and edit it if needed. Optionally, you can check if the data has inconsistencies. Notice that if you don´t check and correct the data if needed, the execution may not be able to find a solution.',
+          "Optionally, you can check if the instance data has inconsistencies. Note that if you don't check and correct the data if necessary, the execution may not be able to find a solution.",
         check: 'Check data',
       },
-      step5: {
+      selectSolver: {
         title: 'Select solver',
         description: 'Select the solver to use for the execution',
         titleContent: 'Select a solver',
         subtitleContent:
           'The solver you select will be the algorithm used to find the solution',
       },
-      step6: {
+      configParams: {
         title: 'Execution parameters',
         description: 'Configure the execution parameters',
         titleContent: 'Configure execution parameters',
-        subtitleContent: 'Set the parameters that will control the execution behavior. These parameters can be configured based on your needs.',
+        subtitleContent:
+          'Set the parameters that will control the execution behavior. These parameters can be configured based on your needs.',
         timeLimitPlaceholder: 'Please insert a time limit',
         time: 'Time limit',
         secondsSuffix: 'sec',
       },
-      step7: {
+      solve: {
         title: 'Confirm',
         description: 'Confirm the execution data and start the execution',
         titleContent: 'Execution resolution confirmation',
         subtitleContent:
           'If you choose to solve the execution, the model will automatically initiate resolution and will take the estimated time to finish. You can access its status by opening the tab with the assigned name on the bottom horizontal bar.',
-        review: 'Review',
         resolve: 'Solve',
         successMessage:
           'The execution has been launched successfully. A new tab has been opened on the bottom bar. You can click on this tab to open it.',
-        errorMessage:
-          'An error occurred while creating the execution. Please try again.',
         loadNewExecution: 'Load new execution',
         developerMode: {
           title: 'Developer Mode',
           normalSolve: 'Solve normally',
           uploadSolution: 'Upload solution',
-          dragAndDropDescription: 'Drag and drop a solution file or click to browse',
+          dragAndDropDescription:
+            'Drag and drop a solution file or click to browse',
           uploadFile: 'Upload solution file',
-          invalidFileFormat: 'Invalid file format. Please upload a JSON, XLSX, or CSV file.',
-          solutionSchemaError: 'Solution file does not match the required schema',
+          invalidFileFormat:
+            'Invalid file format. Please upload a JSON, XLSX, or CSV file.',
+          solutionSchemaError:
+            'Solution file does not match the required schema',
           unsupportedFileFormat: 'Unsupported file format',
           fileReadError: 'Error reading file',
           noSolutionData: 'Please upload a solution file first',
-          uploadError: 'Error uploading solution data'
-        }
+          uploadError: 'Error uploading solution data',
+        },
       },
+      // Legacy step keys for backward compatibility
+      step2: {
+        nameTitleField: 'Name',
+        descriptionTitleField: 'Description',
+        namePlaceholder: 'Please insert a name',
+        descriptionPlaceholder: 'Please insert a description',
+      },
+      step3: {
+        loadInstance: {
+          dragAndDropDescription:
+            'Drag and drop your instance file / files here',
+          uploadFile: 'Upload file',
+          noSchemaError:
+            'No schema was found: are you connected to the server?',
+          instanceSchemaError: 'Instance does not comply with schema ',
+          instanceLoaded: 'Instance loaded successfully',
+          instancesLoaded:
+            'Files merged to create the instance and loaded successfully',
+          loadInstance: 'Load Instance',
+          selectedFiles: 'Selected Files',
+          invalidFileFormat: 'Invalid file format. Please try again.',
+          unexpectedError: 'An unexpected error occurred. Please try again.',
+          instanceLoadedWithErrors: 'Instance loaded with errors',
+          noValidInstancesError:
+            'No valid instances found in the uploaded files',
+          downloadExcel: 'Download Excel',
+        },
+      },
+      step4: {
+        titleContent: 'Review instance',
+      },
+      step5: {
+        title: 'Check data',
+        check: 'Check data',
+      },
+      step7: {
+        timeLimitPlaceholder: 'Please insert a time limit',
+        time: 'Time limit',
+        secondsSuffix: 'sec',
+      },
+      step8: {
+        resolve: 'Solve',
+        successMessage:
+          'The execution has been launched successfully. A new tab has been opened on the bottom bar. You can click on this tab to open it.',
+        loadNewExecution: 'Load new execution',
+        developerMode: {
+          title: 'Developer Mode',
+          normalSolve: 'Solve normally',
+          uploadSolution: 'Upload solution',
+          dragAndDropDescription:
+            'Drag and drop a solution file or click to browse',
+          uploadFile: 'Upload solution file',
+          invalidFileFormat:
+            'Invalid file format. Please upload a JSON, XLSX, or CSV file.',
+          solutionSchemaError:
+            'Solution file does not match the required schema',
+          unsupportedFileFormat: 'Unsupported file format',
+          fileReadError: 'Error reading file',
+          noSolutionData: 'Please upload a solution file first',
+          uploadError: 'Error uploading solution data',
+        },
+      },
+    },
+    downloadExcelMessages: {
+      success: 'Excel downloaded successfully',
+      error: 'Error downloading Excel',
+      noDataError: 'No data to download',
+    },
+    uploadExcelMessages: {
+      success: 'Excel uploaded successfully',
+      error: 'Error uploading Excel',
+      validationFailed:
+        'The Excel file does not comply with the instance schema and cannot be replaced',
+      validationErrorTitle: 'Validation errors',
     },
     infoCard: {
       createNewExecution: 'Create new execution',
@@ -144,8 +221,8 @@ export default {
       noSolutionMessage:
         'The execution has been succesfully created but no solution has been found',
     },
-    stagingWarning: 
-    'You are currently working in a staging environment. This environment is intended for testing and development purposes only. For real executions, please switch to the production environment.',
+    stagingWarning:
+      'You are currently working in a staging environment. This environment is intended for testing and development purposes only. For real executions, please switch to the production environment.',
   },
   executionTable: {
     date: 'Time',
@@ -214,16 +291,20 @@ export default {
     question: 'New to Cornflow?',
     alternative: 'Sign up',
     snackbar_message_success: 'Successfully logged in',
-    snackbar_message_error: 'Incorrect credentials',
+    snackbar_message_error_server: 'Server error',
+    snackbar_message_error_auth: 'Incorrect credentials',
     processing_auth: 'Processing authentication...',
-    redirecting: 'Redirecting to external authentication... If the redirection does not happen automatically, please contact technical support for assistance.',
+    redirecting:
+      'Redirecting to external authentication... If the redirection does not happen automatically, please contact technical support for assistance.',
     session_expired: 'Your session has expired. Please sign in again.',
     or_divider: 'OR',
-    form_login_disabled: 'Username and password login is not available with this authentication method. Please use the social login buttons.',
+    form_login_disabled:
+      'Username and password login is not available with this authentication method. Please use the social login buttons.',
     google_not_configured: 'Google authentication is not configured',
     google_not_available: 'Google authentication service is not available',
     microsoft_not_configured: 'Microsoft authentication is not configured',
-    microsoft_not_available: 'Microsoft authentication service is not available',
+    microsoft_not_available:
+      'Microsoft authentication service is not available',
   },
   logOut: {
     title: 'Log out',
@@ -269,6 +350,7 @@ export default {
     from: 'From',
     to: 'To',
     noData: ' No data found for the selected range dates',
+    createNewExecution: 'Create new execution',
   },
   inputOutputData: {
     title: 'Project management',
@@ -281,11 +363,13 @@ export default {
     addItem: 'Add new item',
     viewDetails: 'Show details',
     hideDetails: 'Hide details',
+    noDataAvailable: 'No data available',
     dataChecksInstanceMessage:
       'Data verification inconsistencies have been detected, which may result in incorrect solutions or, in some cases, the inability to find a solution.',
     dataChecksSolutionMessage:
       'Data verification inconsistencies have been detected for the solution.',
-    dataChecksPassedMessage: 'Data verification has completed successfully.',
+    dataChecksPassedMessage:
+      'Data verification has completed successfully. No inconsistencies found in the data.',
     dataChecksLoadingMessage:
       'Data verification is in progress. Please wait...',
     dataChecksFailedMessage:
@@ -304,7 +388,8 @@ export default {
     download: 'Download',
     downloadDataChecks: 'Download excel',
     generatingDataChecks: 'Generating data checks...',
-    errorDownloadingDataChecks: 'An error occurred while downloading the data checks',
+    errorDownloadingDataChecks:
+      'An error occurred while downloading the data checks',
   },
   settings: {
     currentPassword: 'Current password',
@@ -342,5 +427,216 @@ export default {
     licences: 'Licenses',
     close: 'Close',
     download: 'Download user manual',
+  },
+  navigation: {
+    executions: 'Executions',
+    masterData: 'Configuration tables',
+    inputData: 'Input data',
+    results: 'Results',
+  },
+  sectionView: {
+    editInputData: 'Edit input data',
+  },
+  table: {
+    noDataAvailable: 'No data available for this table',
+    loadingError: 'Error loading table data',
+    apiNotSupported: 'API not available or operation not supported',
+    groups: {
+      inputTables: 'Input Tables',
+      outputTables: 'Output Tables',
+    },
+    actions: 'Actions',
+    add: 'Add',
+    edit: 'Edit',
+    delete: 'Delete',
+    bulkUpload: 'Bulk upload',
+    addItem: 'Add item',
+    editItem: 'Edit item',
+    deleteItem: 'Delete item',
+    confirmDelete: 'Confirm delete',
+    deleteMessage: 'Are you sure you want to delete this item?',
+    cancel: 'Cancel',
+    save: 'Save',
+    update: 'Update',
+    ok: 'OK',
+    clickToEdit: 'Click to edit',
+    upload: 'Upload',
+    selectFile: 'Select file',
+    dragAndDrop: 'Drag and drop files here or click to select',
+    supportedFormats: 'Supported formats:',
+    searchPlaceholder: 'Search...',
+    filters: {
+      title: 'Filters',
+      noFilters: 'No filters applied',
+      addFirst: 'Add your first filter',
+      addCondition: 'Add condition',
+      field: 'Field',
+      operator: 'Operator',
+      value: 'Value',
+      valueTo: 'To',
+      and: 'AND',
+      remove: 'Remove filter',
+      clearAll: 'Clear all',
+      removeAll: 'Remove all',
+      apply: 'Apply filters',
+      cancel: 'Cancel',
+      activeFilters: 'Active filters',
+      operators: {
+        is: 'is',
+        is_not: 'is not',
+        contains: 'contains',
+        has_any_value: 'has any value',
+        is_greater_than: 'is greater than',
+        is_less_than: 'is less than',
+        is_between: 'is between',
+        is_greater_than_or_equal: 'is greater than or equal to',
+        is_less_than_or_equal: 'is less than or equal to',
+      },
+    },
+    maxFileSize: 'Maximum file size',
+    addMode: 'Add to existing data',
+    addModeDescription:
+      'Append new records to the existing table data. Existing records will be preserved.',
+    overwriteMode: 'Replace all data',
+    overwriteModeDescription:
+      'Replace all existing table data with the uploaded records. All current data will be deleted.',
+    itemAdded: 'Item added successfully',
+    itemUpdated: 'Item updated successfully',
+    itemDeleted: 'Item deleted successfully',
+    itemsDeleted: 'Items deleted successfully',
+    bulkUploadSuccess: 'Bulk upload completed successfully',
+    messages: {
+      itemCreated: 'Item created successfully',
+      itemUpdated: 'Item updated successfully',
+      itemDeleted: 'Item deleted successfully',
+      itemsDeleted: 'Items deleted successfully',
+      bulkUploadSuccess: 'Bulk upload completed successfully',
+      errorSaving: 'Error saving item',
+      errorDeleting: 'Error deleting item',
+      errorDeletingItems: 'Error deleting items',
+      errorBulkUpload: 'Error in bulk upload',
+      downloadExcelSuccess: 'Excel file downloaded successfully',
+      errorDownloadExcelTable: 'Error downloading Excel file',
+    },
+    downloadExcelTable: 'Download Excel',
+    downloadExcelSuccess: 'Excel file downloaded successfully',
+    errorDownloadExcelTable: 'Error downloading Excel file',
+    // Selection and bulk operations
+    selectedItems: '{count} selected',
+    clearSelection: 'Clear selection',
+    deleteSelected: 'Delete selected',
+    confirmBulkDelete: 'Confirm bulk delete',
+    bulkDeleteMessage:
+      'Are you sure you want to delete {count} items? This action cannot be undone.',
+    bulkDeleteSuccess: '{count} items deleted successfully',
+    bulkDeleteAllFailed: 'Failed to delete all selected items',
+    bulkDeletePartialFailed: 'Items with IDs {ids} could not be deleted',
+    errorBulkDelete: 'Error during bulk delete operation',
+    errorAdding: 'Error adding item',
+    errorUpdating: 'Error updating item',
+    errorDeleting: 'Error deleting item',
+    errorBulkUpload: 'Error during bulk upload',
+    invalidFileFormat: 'Invalid file format',
+    fileProcessingError: 'Error processing file',
+    noValidDataFound: 'No valid data found in file',
+    yes: 'Yes',
+    no: 'No',
+    search: 'Search',
+    repository: {
+      operationNotSupported: 'This action is not available for this table',
+      unsupportedHttpMethod: 'An error occurred while processing your request',
+      apiCallFailed: 'An error occurred while saving data',
+    },
+  },
+  validation: {
+    required: 'This field is required',
+    email: 'Please enter a valid email address',
+    min: 'Minimum value is {min}',
+    max: 'Maximum value is {max}',
+    minLength: 'Minimum length is {length} characters',
+    maxLength: 'Maximum length is {length} characters',
+    pattern: 'Invalid format',
+    invalidNumber: 'Please enter a valid number',
+    integer: 'Please enter a whole number',
+    url: 'Please enter a valid URL',
+    date: 'Please enter a valid date',
+    phone: 'Please enter a valid phone number',
+    alphanumeric: 'Only letters and numbers are allowed',
+    keywords: {
+      type: 'Type',
+      required: 'Required',
+      maximum: 'Maximum',
+      minimum: 'Minimum',
+      maxLength: 'Maximum length',
+      minLength: 'Minimum length',
+      pattern: 'Pattern',
+      format: 'Format',
+      enum: 'Enum',
+      const: 'Constant',
+      multipleOf: 'Multiple of',
+      exclusiveMaximum: 'Exclusive maximum',
+      exclusiveMinimum: 'Exclusive minimum',
+      maxItems: 'Maximum items',
+      minItems: 'Minimum items',
+      uniqueItems: 'Unique items',
+      maxProperties: 'Maximum properties',
+      minProperties: 'Minimum properties',
+      additionalProperties: 'Additional properties',
+      oneOf: 'One of',
+      anyOf: 'Any of',
+      allOf: 'All of',
+      not: 'Not',
+      if: 'If',
+      then: 'Then',
+      else: 'Else',
+    },
+    params: {
+      limit: 'Limit',
+      comparison: 'Comparison',
+      value: 'Value',
+      allowedValue: 'Allowed value',
+      allowedValues: 'Allowed values',
+      pattern: 'Pattern',
+      format: 'Format',
+      multipleOf: 'Multiple of',
+      maxLength: 'Maximum length',
+      minLength: 'Minimum length',
+      maxItems: 'Maximum items',
+      minItems: 'Minimum items',
+      maxProperties: 'Maximum properties',
+      minProperties: 'Minimum properties',
+    },
+    messages: {
+      maximum: 'must be <= {limit}',
+      minimum: 'must be >= {limit}',
+      maxLength: 'must NOT have more than {limit} characters',
+      minLength: 'must NOT have fewer than {limit} characters',
+      required: 'is required',
+      type: 'must be {type}',
+      pattern: 'must match pattern',
+      format: 'must match format',
+      enum: 'must be equal to one of the allowed values',
+      const: 'must be equal to constant',
+      multipleOf: 'must be multiple of {limit}',
+      exclusiveMaximum: 'must be < {limit}',
+      exclusiveMinimum: 'must be > {limit}',
+      maxItems: 'must NOT have more than {limit} items',
+      minItems: 'must NOT have fewer than {limit} items',
+      uniqueItems: 'must NOT have duplicate items',
+      maxProperties: 'must NOT have more than {limit} properties',
+      minProperties: 'must NOT have fewer than {limit} properties',
+    },
+  },
+  dashboard: {
+    widgets: {
+      total: 'Total {column}',
+      average: 'Average {column}',
+      overTime: '{column} Over Time',
+      by: '{numericColumn} by {categoryColumn}',
+      distributionBy: 'Distribution by {column}',
+      cumulative: 'Cumulative {column}',
+      map: '{valueColumn} Map',
+      mapBy: '{valueColumn} by {locationColumn}',
+    },
   },
 }

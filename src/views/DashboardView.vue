@@ -17,9 +17,10 @@
       v-if="
         selectedExecution &&
         selectedExecution.state == 1 &&
-        selectedExecution.hasSolution()
+        (isInstanceDashboard ? true : selectedExecution.hasSolution())
       "
       :execution="selectedExecution"
+      :dashboard-type="dashboardType"
     >
     </DashboardMain>
   </div>
@@ -31,6 +32,7 @@ import ExecutionInfoMenu from '@/components/project-execution/ExecutionInfoMenu.
 import DashboardMain from '@/app/components/DashboardMain.vue'
 import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
+import { getSectionType } from '@/services/FrontendAutomationService'
 
 export default {
   components: {
@@ -47,7 +49,6 @@ export default {
   created() {
     this.showSnackbar = inject('showSnackbar')
   },
-  methods: {},
   computed: {
     selectedExecution: {
       get() {
@@ -62,6 +63,15 @@ export default {
     },
     description() {
       return this.selectedExecution ? this.selectedExecution.name || '' : ''
+    },
+    // Determine dashboard type based on route
+    dashboardType() {
+      const sectionType = getSectionType(this.$route.path)
+      return sectionType === 'input-data' ? 'instance' : 'solution'
+    },
+    // Check if this is an instance dashboard
+    isInstanceDashboard() {
+      return this.dashboardType === 'instance'
     },
   },
   methods: {},

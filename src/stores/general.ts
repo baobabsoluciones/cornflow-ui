@@ -18,8 +18,13 @@ import VersionRepository from '@/repositories/VersionRepository'
 import { toISOStringLocal } from '@/utils/data_io'
 
 // Import utility functions
-import * as tableUtils from '@/utils/tableUtils'
-import * as filterUtils from '@/utils/filterUtils'
+import { ConfigurationData } from '@/types/frontendAutomation'
+import { TableSchema } from '@/config/views'
+import { locale } from '@/plugins/i18n'
+import {
+  resolveTableConfigTitles,
+  resolveDefaultGroupName,
+} from '@/utils/schemaUtils'
 
 export const useGeneralStore = defineStore('general', {
   state: () => ({
@@ -43,23 +48,30 @@ export const useGeneralStore = defineStore('general', {
     appDashboardRoutes: appConfig.getDashboardRoutes(),
     appDashboardPages: appConfig.getDashboardPages(),
     appDashboardLayout: appConfig.getDashboardLayout(),
+    appInstanceDashboardRoutes: appConfig.getInstanceDashboardRoutes(),
+    appInstanceDashboardPages: appConfig.getInstanceDashboardPages(),
+    appInstanceDashboardLayout: appConfig.getInstanceDashboardLayout(),
     lastExecutions: [] as Execution[],
     loadedExecutions: [] as LoadedExecution[],
     selectedExecution: null,
     autoLoadInterval: null,
+    isDrawerPinned: false, // New state for drawer pin status
     uploadComponentKey: 0,
     tabBarKey: 0,
     cornflowVersion: '',
+    configurations: null as ConfigurationData | null,
+    rawConfigurations: null as ConfigurationData | null, // Store raw configurations with original multilingual data
   }),
   actions: {
     async initializeData() {
       // Ensure the API client has the token loaded
       const apiClient = await import('@/api/Api')
       apiClient.default.initializeToken?.()
-      
+
       await this.fetchUser()
       await this.fetchCornflowVersion()
       await this.setSchema()
+      await this.setConfigurations()
       await this.fetchLicences()
     },
 
@@ -108,6 +120,114 @@ export const useGeneralStore = defineStore('general', {
         this.schemaConfig = schema
       } catch (error) {
         console.error('Error getting schema', error)
+      }
+    },
+
+    async setConfigurations() {
+      try {
+        // Get master data from frontend-automation (may be empty if not available)
+        let masterData = {}
+        try {
+          masterData = await this.schemaRepository.getConfigurationTables(
+            this.getSchemaName,
+          )
+        } catch (error) {
+          console.warn('Frontend automation not available:', error)
+          masterData = {}
+        }
+
+        // Get instance and solution data from schema (may be empty if not available)
+        let inputData = {}
+        let resultsData = {}
+
+        try {
+          inputData = await this.schemaRepository.getInstanceTables(
+            this.getSchemaName,
+          )
+        } catch (error) {
+          console.warn('Instance tables not available:', error)
+          inputData = {}
+        }
+
+        try {
+          resultsData = await this.schemaRepository.getSolutionTables(
+            this.getSchemaName,
+          )
+        } catch (error) {
+          console.warn('Solution tables not available:', error)
+          resultsData = {}
+        }
+
+        // Store raw configurations with original multilingual data
+        this.rawConfigurations = {
+          masterData: masterData || {},
+          inputData: inputData || {},
+          resultsData: resultsData || {},
+        }
+
+        // Create localized configurations
+        this.updateLocalizedConfigurations()
+      } catch (error) {
+        console.error('Error getting configurations', error)
+        // Initialize with empty configurations if everything fails
+        this.rawConfigurations = {
+          masterData: {} as TableSchema,
+          inputData: {} as TableSchema,
+          resultsData: {} as TableSchema,
+        }
+        this.updateLocalizedConfigurations()
+      }
+    },
+
+    // Update configurations with current locale
+    updateLocalizedConfigurations() {
+      if (!this.rawConfigurations) return
+
+      const currentLocale = locale.value
+
+      // Helper function to resolve default groups
+      const resolveConfigWithDefaultGroups = (config: TableSchema) => {
+        const resolved = resolveTableConfigTitles(config, currentLocale)
+
+        // Resolve default groups for tables that have group keys
+        Object.keys(resolved).forEach((tableKey) => {
+          const table = resolved[tableKey]
+          if (
+            table.group === 'input-tables' ||
+            table.group === 'output-tables'
+          ) {
+            // Get the translation key and resolve it
+            const translationKey = resolveDefaultGroupName(
+              table.group,
+              currentLocale,
+            )
+            // For now, we'll use the original multilingual data if available
+            if (
+              table._originalGroup &&
+              typeof table._originalGroup === 'object'
+            ) {
+              table.group =
+                table._originalGroup[currentLocale] ||
+                table._originalGroup.en ||
+                table.group
+            }
+          }
+        })
+
+        return resolved
+      }
+
+      this.configurations = {
+        masterData: resolveTableConfigTitles(
+          this.rawConfigurations.masterData,
+          currentLocale,
+        ),
+        inputData: resolveConfigWithDefaultGroups(
+          this.rawConfigurations.inputData,
+        ),
+        resultsData: resolveConfigWithDefaultGroups(
+          this.rawConfigurations.resultsData,
+        ),
       }
     },
 
@@ -168,7 +288,8 @@ export const useGeneralStore = defineStore('general', {
 
     async getInstanceDataChecksById(id: string) {
       try {
-        const dataChecks = await this.instanceRepository.launchInstanceDataChecks(id)
+        const dataChecks =
+          await this.instanceRepository.launchInstanceDataChecks(id)
         const executionId = dataChecks.id
 
         let execution
@@ -182,12 +303,19 @@ export const useGeneralStore = defineStore('general', {
 
         // Check if execution completed successfully
         // Success states: 1 (solved correctly), 2 (loaded manually), -4 (not run by user)
-        if (execution && (execution.state === 1 || execution.state === 2 || execution.state === -4)) {
+        if (
+          execution &&
+          (execution.state === 1 ||
+            execution.state === 2 ||
+            execution.state === -4)
+        ) {
           const instance = await this.instanceRepository.getInstance(id)
           return instance
         } else {
           // Execution failed - return null to indicate failure
-          console.warn(`Data checks failed with execution state: ${execution?.state}`)
+          console.warn(
+            `Data checks failed with execution state: ${execution?.state}`,
+          )
           return null
         }
       } catch (error) {
@@ -196,10 +324,22 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
+    async useEtlBackend(files: File[]): Promise<any> {
+      try {
+        const merged = await this.instanceRepository.etlBackend(files)
+        return merged
+      } catch (error) {
+        console.error('Error uploading and merging instance files', error)
+        throw error
+      }
+    },
+
     async createExecution(execution: Execution, params: string = '') {
       try {
-        const newExecution =
-          await this.executionRepository.createExecution(execution, params)
+        const newExecution = await this.executionRepository.createExecution(
+          execution,
+          params,
+        )
         return newExecution
       } catch (error) {
         console.error('Error creating execution', error)
@@ -209,7 +349,10 @@ export const useGeneralStore = defineStore('general', {
 
     async uploadSolutionData(executionId: string, solutionData: any) {
       try {
-        await this.executionRepository.uploadSolutionData(executionId, solutionData)
+        await this.executionRepository.uploadSolutionData(
+          executionId,
+          solutionData,
+        )
         return true
       } catch (error) {
         console.error('Error uploading solution data:', error)
@@ -329,32 +472,6 @@ export const useGeneralStore = defineStore('general', {
       return this.tabBarKey++
     },
 
-    // Table methods - delegated to tableUtils
-    getTableDataNames(collection: string, data: object, lang = 'en'): any[] {
-      return tableUtils.getTableDataNames(this.schemaConfig, collection, data, lang)
-    },
-
-    getHeadersFromData(data): any[] {
-      return tableUtils.getHeadersFromData(data)
-    },
-
-    getTableHeadersData(collection, table, lang = 'en'): any[] {
-      return tableUtils.getTableHeadersData(this.schemaConfig, collection, table, lang)
-    },
-
-    getConfigTableHeadersData(): any[] {
-      return tableUtils.getConfigTableHeadersData()
-    },
-
-    // Filter methods - delegated to filterUtils
-    getFilterNames(collection, table, type, lang = 'en'): any {
-      return filterUtils.getFilterNames(this.schemaConfig, this.selectedExecution, collection, table, type, lang)
-    },
-
-    getConfigTableData(data: object, collection, table, lang = 'en'): any[] {
-      return tableUtils.getConfigTableData(this.schemaConfig, data, collection, table, lang)
-    },
-
     async getDataToDownload(
       id: string,
       onlySolution: boolean = false,
@@ -375,6 +492,15 @@ export const useGeneralStore = defineStore('general', {
       } catch (error) {
         throw error
       }
+    },
+
+    // Drawer pin actions
+    setDrawerPinned(isPinned: boolean) {
+      this.isDrawerPinned = isPinned
+    },
+
+    toggleDrawerPin() {
+      this.isDrawerPinned = !this.isDrawerPinned
     },
   },
   getters: {
@@ -403,7 +529,10 @@ export const useGeneralStore = defineStore('general', {
     },
 
     getExecutionSolvers(): string[] {
-      return this.schemaConfig.config?.properties.solver?.enum || this.appConfig.parameters.executionSolvers
+      return (
+        this.schemaConfig.config?.properties.solver?.enum ||
+        this.appConfig.parameters.executionSolvers
+      )
     },
 
     getLoadedExecutionTabs(): object[] {
@@ -412,7 +541,7 @@ export const useGeneralStore = defineStore('general', {
         let isLoading = false
         switch (execution.state) {
           case 1:
-         case -4:
+          case -4:
             icon = 'mdi-checkbox-marked'
             break
           case 0:
@@ -432,6 +561,10 @@ export const useGeneralStore = defineStore('general', {
           selected: false,
         }
       })
+    },
+
+    getConfigurations(): ConfigurationData | null {
+      return this.configurations
     },
   },
 })

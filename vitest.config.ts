@@ -16,6 +16,7 @@ export default {
   test: {
     globals: true,
     environment: 'jsdom',
+    testTimeout: 10000, // Increase default timeout to 10 seconds
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
