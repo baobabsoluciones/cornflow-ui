@@ -75,6 +75,9 @@ const mockGeneralStore = {
     parameters: {
       showExtraProjectExecutionColumns: {
         showTimeLimit: true
+      },
+      configFieldsConfig: {
+        showConfigFieldsStep: true
       }
     }
   }
@@ -84,25 +87,28 @@ vi.mock('@/stores/general', () => ({
   useGeneralStore: vi.fn(() => mockGeneralStore)
 }))
 
-// Mock i18n
-const mockT = vi.fn((key) => {
-  const translations = {
-    'executionTable.loadExecution': 'Load Execution',
-    'executionTable.deleteExecution': 'Delete Execution',
-    'executionTable.deleteTitle': 'Delete Execution',
-    'executionTable.deleteMessage': 'Are you sure you want to delete this execution?',
-    'executionTable.deleteButton': 'Delete',
-    'executionTable.cancelButton': 'Cancel',
-    'inputOutputData.errorDownloadingExcel': 'Error downloading Excel file'
-  }
-  return translations[key] || key
-})
+import { createI18n } from 'vue-i18n'
 
-vi.mock('vue-i18n', () => ({
-  useI18n: () => ({
-    t: mockT
-  })
-}))
+// Create i18n instance
+const i18n = createI18n({
+  legacy: false,
+  locale: 'en',
+  messages: {
+    en: {
+      executionTable: {
+        loadExecution: 'Load Execution',
+        deleteExecution: 'Delete Execution',
+        deleteTitle: 'Delete Execution',
+        deleteMessage: 'Are you sure you want to delete this execution?',
+        deleteButton: 'Delete',
+        cancelButton: 'Cancel',
+      },
+      inputOutputData: {
+        errorDownloadingExcel: 'Error downloading Excel file',
+      },
+    },
+  },
+})
 
 // Mock MDataTable component
 const MDataTableStub = {
@@ -205,12 +211,9 @@ describe('ProjectExecutionsTable', () => {
     return mount(ProjectExecutionsTable, {
       props: { ...defaultProps, ...props },
       global: {
-        plugins: [vuetify],
+        plugins: [vuetify, i18n],
         provide: {
           showSnackbar: mockShowSnackbar
-        },
-        mocks: {
-          $t: mockT
         },
         stubs: {
           MDataTable: MDataTableStub,
@@ -500,7 +503,10 @@ describe('ProjectExecutionsTable', () => {
     test('respects showTimeLimit configuration from store', () => {
       wrapper = createWrapper()
       
-      expect(wrapper.vm.showTimeLimit).toBe(true)
+      // showTimeLimit is a local constant, not a component property
+      // Check that timeLimit cells are rendered when enabled
+      const timeLimitCells = wrapper.findAll('[data-cell="timeLimit"]')
+      expect(timeLimitCells.length).toBeGreaterThan(0)
     })
   })
 
@@ -561,8 +567,9 @@ describe('ProjectExecutionsTable', () => {
     test('uses i18n translation function', () => {
       wrapper = createWrapper()
       
-      expect(mockT).toHaveBeenCalledWith('executionTable.loadExecution')
-      expect(mockT).toHaveBeenCalledWith('executionTable.deleteExecution')
+      // Check that translations are used in the component
+      expect(wrapper.text()).toContain('Load Execution')
+      expect(wrapper.text()).toContain('Delete Execution')
     })
   })
 })

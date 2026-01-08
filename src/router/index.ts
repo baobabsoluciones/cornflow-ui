@@ -64,6 +64,16 @@ const ensureConfigurationsLoaded = async () => {
   }
 }
 
+// Helper function to get the default view from app config
+const getDefaultView = (): string => {
+  try {
+    const latestPlanConfig = appConfig.getCore()?.parameters?.latestPlanConfig
+    return latestPlanConfig?.defaultView || 'history-execution'
+  } catch {
+    return 'history-execution'
+  }
+}
+
 const routes: RouteRecordRaw[] = [
   {
     path: '/sign-in',
@@ -71,7 +81,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/',
-    redirect: '/history-execution',
+    redirect: () => `/${getDefaultView()}`,
     name: 'Home',
     component: IndexView,
     beforeEnter: async (to, from, next) => {
@@ -172,15 +182,18 @@ router.beforeEach(async (to, from, next) => {
       return
     }
 
-    // If authenticated and going to the login page, redirect to history-execution
+    // Get the default view for authenticated users
+    const defaultView = `/${getDefaultView()}`
+
+    // If authenticated and going to the login page, redirect to default view
     if (isAuthenticated && isSignInPage) {
-      next('/history-execution')
+      next(defaultView)
       return
     }
 
-    // If authenticated and going to the root, redirect to history-execution
+    // If authenticated and going to the root, redirect to default view
     if (isAuthenticated && to.path === '/') {
-      next('/history-execution')
+      next(defaultView)
       return
     }
 

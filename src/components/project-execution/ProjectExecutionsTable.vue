@@ -17,7 +17,9 @@
           <div class="cell-content">
             <span>
               {{
-                formatDateByTime ? formatToHHmm(item.createdAt) : new Date(item.createdAt).toISOString().split('T')[0]
+                formatDateByTime
+                  ? formatToHHmm(item.createdAt)
+                  : new Date(item.createdAt).toISOString().split('T')[0]
               }}
             </span>
           </div>
@@ -25,7 +27,13 @@
         <template v-slot:finishedAt="{ item }">
           <div class="cell-content">
             <span>
-              {{ item.finishedAt ? (formatDateByTime ? formatToHHmm(item.finishedAt) : new Date(item.finishedAt).toISOString().split('T')[0]) : '-' }}
+              {{
+                item.finishedAt
+                  ? formatDateByTime
+                    ? formatToHHmm(item.finishedAt)
+                    : new Date(item.finishedAt).toISOString().split('T')[0]
+                  : '-'
+              }}
             </span>
           </div>
         </template>
@@ -54,7 +62,17 @@
           </div>
         </template>
         <template v-slot:name="{ item }">
-          <div class="cell-content">
+          <div class="cell-content name-cell">
+            <v-chip
+              v-if="isLatestPlan(item.id)"
+              size="x-small"
+              color="primary"
+              variant="flat"
+              class="latest-plan-chip mr-2"
+            >
+              <v-icon size="12" start>mdi-star</v-icon>
+              {{ t('latestPlan.chip.current') }}
+            </v-chip>
             <span>{{ item.name }}</span>
             <v-tooltip
               activator="parent"
@@ -95,7 +113,11 @@
           </div>
         </template>
         <template v-slot:state="{ item }">
-          <v-chip size="x-small" :color="getStateInfo(item.state).color" value="chip">
+          <v-chip
+            size="x-small"
+            :color="getStateInfo(item.state).color"
+            value="chip"
+          >
             {{ getStateInfo(item.state).code }}
             <v-tooltip activator="parent" location="bottom">
               <div style="font-size: 11px">
@@ -119,9 +141,9 @@
           </v-chip>
         </template>
         <template v-slot:excel="{ item }">
-          <v-icon 
-            v-if="!item.isDownloading" 
-            size="small" 
+          <v-icon
+            v-if="!item.isDownloading"
+            size="small"
             @click="handleDownloadClick(item)"
           >
             mdi-microsoft-excel
@@ -135,12 +157,13 @@
           ></v-progress-circular>
         </template>
         <template v-slot:actions="{ item }">
-          <span>
+          <span class="actions-container">
+            <!-- Load execution -->
             <span>
-              <v-icon 
-                v-if="!loadingExecutions.has(item.id)" 
-                size="small" 
-                class="mr-2" 
+              <v-icon
+                v-if="!loadingExecutions.has(item.id)"
+                size="small"
+                class="mr-2"
                 @click="loadExecutionClick(item)"
               >
                 mdi-tray-arrow-up
@@ -159,8 +182,50 @@
                 </span>
               </v-tooltip>
             </span>
+
+            <!-- Set as latest plan (only if feature is available and execution is finished) -->
+            <span
+              v-if="
+                isSetLatestPlanAvailable &&
+                canSetAsLatestPlan(item.state) &&
+                !isLatestPlan(item.id)
+              "
+            >
+              <v-icon
+                size="small"
+                class="mr-2 set-latest-icon"
+                @click="openSetLatestPlanModal(item)"
+              >
+                mdi-star-outline
+              </v-icon>
+              <v-tooltip activator="parent" location="bottom">
+                <span>
+                  {{ t('latestPlan.actions.setAsCurrent') }}
+                </span>
+              </v-tooltip>
+            </span>
+
+            <!-- Already latest plan indicator -->
+            <span v-if="isLatestPlan(item.id)">
+              <v-icon
+                size="small"
+                class="mr-2 current-latest-icon"
+                color="primary"
+              >
+                mdi-star
+              </v-icon>
+              <v-tooltip activator="parent" location="bottom">
+                <span>
+                  {{ t('latestPlan.actions.isCurrentPlan') }}
+                </span>
+              </v-tooltip>
+            </span>
+
+            <!-- Delete execution -->
             <span>
-              <v-icon size="small" @click="deleteExecution(item)"> mdi-delete </v-icon>
+              <v-icon size="small" @click="deleteExecution(item)">
+                mdi-delete
+              </v-icon>
               <v-tooltip activator="parent" location="bottom">
                 <span>
                   {{ t('executionTable.deleteExecution') }}
@@ -198,19 +263,50 @@
       </v-row>
     </template>
   </MBaseModal>
+
+  <!-- Set latest plan modal -->
+  <SetLatestPlanModal
+    v-if="selectedLatestPlanExecution"
+    v-model="showLatestPlanModal"
+    :execution-id="selectedLatestPlanExecution.id"
+    :execution-name="selectedLatestPlanExecution.name"
+    @success="handleLatestPlanSuccess"
+    @error="handleLatestPlanError"
+  />
 </template>
 
 <script setup lang="ts">
-import { inject } from 'vue';
-import { useProjectExecutionsTable } from '@/composables/project-execution-table/useProjectExecutionsTable';
-import { useI18n } from 'vue-i18n';
-import { useGeneralStore } from '@/stores/general';
+import { inject, ref, computed } from 'vue'
+import { useProjectExecutionsTable } from '@/composables/project-execution-table/useProjectExecutionsTable'
+import { useI18n } from 'vue-i18n'
+import { useGeneralStore } from '@/stores/general'
+import SetLatestPlanModal from '@/components/SetLatestPlanModal.vue'
 
 // Setup i18n
-const { t } = useI18n();
+const { t } = useI18n()
 
 // Get general store
-const generalStore = useGeneralStore();
+const generalStore = useGeneralStore()
+
+// Latest plan modal state
+const showLatestPlanModal = ref(false)
+const selectedLatestPlanExecution = ref<{ id: string; name: string } | null>(
+  null,
+)
+
+// Check if set latest plan feature is available
+const isSetLatestPlanAvailable = computed(() =>
+  generalStore.isSetLatestPlanAvailable(),
+)
+
+// Check if an execution is the current latest plan (only if feature is available)
+const isLatestPlan = (executionId: string) =>
+  generalStore.isLatestPlanFeatureAvailable &&
+  generalStore.isLatestPlan(executionId)
+
+// Check if an execution can be set as latest plan
+const canSetAsLatestPlan = (state: number) =>
+  generalStore.canSetAsLatestPlan(state)
 
 // Define props
 const props = defineProps({
@@ -238,17 +334,21 @@ const props = defineProps({
     type: Set,
     default: () => new Set(),
   },
-});
+})
 
 // Define emits
-const emit = defineEmits(['loadExecution', 'deleteExecution']);
+const emit = defineEmits(['loadExecution', 'deleteExecution', 'setLatestPlan'])
 
 // Inject snackbar function
-const showSnackbar: (message: string, type: string) => void = inject('showSnackbar') as (message: string, type: string) => void;
+const showSnackbar: (message: string, type: string) => void = inject(
+  'showSnackbar',
+) as (message: string, type: string) => void
 
 // Get showTimeLimit setting from config (requires both showTimeLimit and showConfigFieldsStep to be enabled)
-const showTimeLimit = generalStore.appConfig.parameters.showExtraProjectExecutionColumns.showTimeLimit 
-  && generalStore.appConfig.parameters.configFieldsConfig?.showConfigFieldsStep;
+const showTimeLimit =
+  generalStore.appConfig.parameters.showExtraProjectExecutionColumns
+    .showTimeLimit &&
+  generalStore.appConfig.parameters.configFieldsConfig?.showConfigFieldsStep
 
 // Use our composable with type assertion
 const {
@@ -267,34 +367,56 @@ const {
   getSolutionInfo,
   getSolverName,
   getTimeLimit,
-} = useProjectExecutionsTable(props as any);
+} = useProjectExecutionsTable(props as any)
 
 // Event handlers that use emits
 const loadExecutionClick = (execution: any) => {
-  emit('loadExecution', execution);
-};
+  emit('loadExecution', execution)
+}
 
 const confirmDeleteClick = () => {
-  emit('deleteExecution', deletedItem.value);
-  openConfirmationDeleteModal.value = false;
-};
+  emit('deleteExecution', deletedItem.value)
+  openConfirmationDeleteModal.value = false
+}
+
+// Latest Plan handlers
+const openSetLatestPlanModal = (item: any) => {
+  selectedLatestPlanExecution.value = {
+    id: item.id,
+    name: item.name || `Execution ${item.id}`,
+  }
+  showLatestPlanModal.value = true
+}
+
+const handleLatestPlanSuccess = () => {
+  showSnackbar(t('latestPlan.snackbar.success'), 'success')
+  emit('setLatestPlan', selectedLatestPlanExecution.value?.id)
+}
+
+const handleLatestPlanError = (message: string) => {
+  showSnackbar(message || t('latestPlan.snackbar.error'), 'error')
+}
 
 const handleDownloadClick = async (item: any) => {
-  item.isDownloading = true;
+  item.isDownloading = true
   try {
-    const result = await handleDownload(item);
+    const result = await handleDownload(item)
     if (result && typeof result === 'object' && 'error' in result) {
-      showSnackbar(t('inputOutputData.errorDownloadingExcel'), 'error');
+      showSnackbar(t('inputOutputData.errorDownloadingExcel'), 'error')
     }
   } finally {
-    item.isDownloading = false;
+    item.isDownloading = false
   }
-};
+}
 
 // Utility function to format time as HH:mm
 function formatToHHmm(dateString: string): string {
   const date = new Date(dateString)
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+  return date.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
 }
 </script>
 

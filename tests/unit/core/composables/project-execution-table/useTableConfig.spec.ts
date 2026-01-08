@@ -35,6 +35,9 @@ const mockGeneralStore = {
         showUserName: false,
         showTimeLimit: false,
         showUserFullName: false
+      },
+      configFieldsConfig: {
+        showConfigFieldsStep: false
       }
     }
   }
@@ -55,6 +58,9 @@ describe('useTableConfig', () => {
     if (!mockGeneralStore.appConfig.parameters) {
       mockGeneralStore.appConfig.parameters = {}
     }
+    if (!mockGeneralStore.appConfig.parameters.configFieldsConfig) {
+      mockGeneralStore.appConfig.parameters.configFieldsConfig = {}
+    }
     
     // Reset store to default state
     mockGeneralStore.appConfig.parameters.showExtraProjectExecutionColumns = {
@@ -63,6 +69,10 @@ describe('useTableConfig', () => {
       showTimeLimit: false,
       showUserFullName: false
     }
+    if (!mockGeneralStore.appConfig.parameters.configFieldsConfig) {
+      mockGeneralStore.appConfig.parameters.configFieldsConfig = {}
+    }
+    mockGeneralStore.appConfig.parameters.configFieldsConfig.showConfigFieldsStep = false
   })
 
   describe('composable initialization', () => {
@@ -228,8 +238,9 @@ describe('useTableConfig', () => {
       expect(userFullNameHeader?.sortable).toBe(true)
     })
 
-    test('should add timeLimit column when showTimeLimit is true', () => {
+    test('should add timeLimit column when showTimeLimit is true and showConfigFieldsStep is true', () => {
       mockGeneralStore.appConfig.parameters.showExtraProjectExecutionColumns.showTimeLimit = true
+      mockGeneralStore.appConfig.parameters.configFieldsConfig.showConfigFieldsStep = true
       
       const props = { formatDateByTime: false }
       const { headerExecutions } = useTableConfig(props)
@@ -250,6 +261,7 @@ describe('useTableConfig', () => {
         showTimeLimit: true,
         showUserFullName: true
       }
+      mockGeneralStore.appConfig.parameters.configFieldsConfig.showConfigFieldsStep = true
       
       const props = { formatDateByTime: false }
       const { headerExecutions } = useTableConfig(props)
@@ -269,6 +281,7 @@ describe('useTableConfig', () => {
         showTimeLimit: true,
         showUserFullName: true
       }
+      mockGeneralStore.appConfig.parameters.configFieldsConfig.showConfigFieldsStep = true
       
       const props = { formatDateByTime: false }
       const { headerExecutions } = useTableConfig(props)
@@ -325,6 +338,7 @@ describe('useTableConfig', () => {
         showTimeLimit: true,
         showUserFullName: true
       }
+      mockGeneralStore.appConfig.parameters.configFieldsConfig.showConfigFieldsStep = true
       
       const props = { formatDateByTime: false }
       const { headerExecutions } = useTableConfig(props)
@@ -433,9 +447,18 @@ describe('useTableConfig', () => {
       expect(headers.find(h => h.value === 'finishedAt')).toBeUndefined()
       expect(headers.find(h => h.value === 'userName')).toBeUndefined()
       expect(headers.find(h => h.value === 'timeLimit')).toBeUndefined()
+      
+      // Restore for other tests
+      mockGeneralStore.appConfig.parameters.showExtraProjectExecutionColumns = {
+        showEndCreationDate: false,
+        showUserName: false,
+        showTimeLimit: false,
+        showUserFullName: false
+      }
     })
 
     test('should handle missing parameters', () => {
+      const originalParams = mockGeneralStore.appConfig.parameters
       mockGeneralStore.appConfig.parameters = undefined
       
       const props = { formatDateByTime: false }
@@ -446,9 +469,13 @@ describe('useTableConfig', () => {
       // Should still generate basic headers
       expect(headers).toHaveLength(8)
       expect(headers.find(h => h.value === 'createdAt')).toBeDefined()
+      
+      // Restore for other tests
+      mockGeneralStore.appConfig.parameters = originalParams
     })
 
     test('should handle missing appConfig', () => {
+      const originalAppConfig = mockGeneralStore.appConfig
       mockGeneralStore.appConfig = undefined
       
       const props = { formatDateByTime: false }
@@ -459,6 +486,9 @@ describe('useTableConfig', () => {
       // Should still generate basic headers
       expect(headers).toHaveLength(8)
       expect(headers.find(h => h.value === 'createdAt')).toBeDefined()
+      
+      // Restore for other tests
+      mockGeneralStore.appConfig = originalAppConfig
     })
 
     test('should log errors when accessing configuration fails', () => {

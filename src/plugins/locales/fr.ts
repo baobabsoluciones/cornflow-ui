@@ -420,4 +420,38 @@ export default {
     phone: 'Veuillez saisir un numéro de téléphone valide',
     alphanumeric: 'Seuls les lettres et les chiffres sont autorisés',
   },
+  latestPlan: {
+    banner: {
+      message:
+        "Aucun plan actuel n'est défini. Définissez un plan comme actuel pour le charger automatiquement lors de la connexion.",
+      actionButton: "Aller à l'historique",
+    },
+    chip: {
+      current: 'Actuel',
+    },
+    fab: {
+      tooltip: 'Définir cette exécution comme plan actuel',
+      setAsCurrent: 'Définir comme plan actuel',
+      isCurrentPlan: "C'est le plan actuel",
+    },
+    actions: {
+      setAsCurrent: 'Définir comme plan actuel',
+      isCurrentPlan: "C'est le plan actuel",
+    },
+    modal: {
+      title: 'Définir comme plan actuel',
+      message:
+        'Êtes-vous sûr de vouloir définir cette exécution comme le plan actuel ? Il sera chargé automatiquement lors de votre connexion.',
+      executionLabel: 'Exécution',
+      replaceWarning: 'Cela remplacera "{name}" comme plan actuel.',
+      confirmButton: 'Définir comme actuel',
+      cancelButton: 'Annuler',
+      errorMessage:
+        "Une erreur s'est produite lors de la définition du plan actuel. Veuillez réessayer.",
+    },
+    snackbar: {
+      success: 'Plan actuel défini avec succès',
+      error: 'Erreur lors de la définition du plan actuel',
+    },
+  },
 }

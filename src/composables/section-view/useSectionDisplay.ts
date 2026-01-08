@@ -1,5 +1,5 @@
 import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { useSectionTitles } from '@/composables/useSectionTitles'
 
 export function useSectionDisplay(
   sectionType: any,
@@ -9,18 +9,18 @@ export function useSectionDisplay(
   tableKey: any,
   groupTables: any,
 ) {
-  const { t: $t } = useI18n()
+  const { getSectionTitle } = useSectionTitles()
 
   const getSectionDisplayName = (): string => {
     switch (sectionType.value) {
       case 'configuration':
-        return $t('navigation.masterData')
+        return getSectionTitle('masterData')
       case 'input-data':
-        return $t('navigation.inputData')
+        return getSectionTitle('inputData')
       case 'results':
-        return $t('navigation.results')
+        return getSectionTitle('results')
       default:
-        return $t('navigation.masterData')
+        return getSectionTitle('masterData')
     }
   }
 

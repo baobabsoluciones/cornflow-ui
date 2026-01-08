@@ -14,6 +14,7 @@ import ExecutionRepository from '@/repositories/ExecutionRepository'
 import InstanceRepository from '@/repositories/InstanceRepository'
 import LicenceRepository from '@/repositories/LicenceRepository'
 import VersionRepository from '@/repositories/VersionRepository'
+import LatestPlanRepository from '@/repositories/LatestPlanRepository'
 
 import { toISOStringLocal } from '@/utils/data_io'
 
@@ -34,6 +35,7 @@ export const useGeneralStore = defineStore('general', {
     userRepository: new UserRepository(),
     licenceRepository: new LicenceRepository(),
     versionRepository: new VersionRepository(),
+    latestPlanRepository: new LatestPlanRepository(),
     notifications: [] as {
       message: string
       type: 'success' | 'warning' | 'info' | 'error'
@@ -61,6 +63,12 @@ export const useGeneralStore = defineStore('general', {
     cornflowVersion: '',
     configurations: null as ConfigurationData | null,
     rawConfigurations: null as ConfigurationData | null, // Store raw configurations with original multilingual data
+    // Latest plan (Actual plan) state
+    latestPlanId: null as string | null,
+    latestPlanExists: false,
+    latestPlanLoading: false,
+    showLatestPlanBanner: false,
+    latestPlanFeatureAvailable: false, // Indicates if the feature is available
   }),
   actions: {
     async initializeData() {
@@ -73,6 +81,123 @@ export const useGeneralStore = defineStore('general', {
       await this.setSchema()
       await this.setConfigurations()
       await this.fetchLicences()
+
+      // Load the latest plan after other data is initialized
+      await this.fetchLatestPlan()
+    },
+
+    /**
+     * Fetches the latest plan ID and loads it automatically.
+     * This feature is only available when:
+     * 1. isExternalApp is true
+     * 2. The backend supports the /plan-latest/ endpoint
+     */
+    async fetchLatestPlan() {
+      this.latestPlanLoading = true
+      try {
+        const result = await this.latestPlanRepository.getLatestPlan()
+
+        // Check if the feature is available
+        if (!result.featureAvailable) {
+          // Feature not available - disable everything
+          this.latestPlanFeatureAvailable = false
+          this.latestPlanId = null
+          this.latestPlanExists = false
+          this.showLatestPlanBanner = false
+          return
+        }
+
+        // Feature is available
+        this.latestPlanFeatureAvailable = true
+        this.latestPlanId = result.execution_id
+        this.latestPlanExists = result.exists
+
+        if (result.execution_id) {
+          // Automatically load the latest plan execution
+          await this.fetchLoadedExecution(result.execution_id)
+          this.setSelectedExecution(result.execution_id)
+          this.showLatestPlanBanner = false
+        } else {
+          // No latest plan exists - show banner to prompt user to set one
+          this.showLatestPlanBanner = true
+        }
+      } catch (error) {
+        console.error('Error fetching latest plan:', error)
+        this.latestPlanFeatureAvailable = false
+        this.latestPlanId = null
+        this.latestPlanExists = false
+        this.showLatestPlanBanner = false
+      } finally {
+        this.latestPlanLoading = false
+      }
+    },
+
+    /**
+     * Sets an execution as the latest plan
+     * Only available when the feature is available (isExternalApp + backend support)
+     */
+    async setLatestPlan(executionId: string): Promise<boolean> {
+      if (!this.latestPlanFeatureAvailable) {
+        console.warn('Set latest plan is not available')
+        return false
+      }
+
+      try {
+        const success =
+          await this.latestPlanRepository.setLatestPlan(executionId)
+
+        if (success) {
+          this.latestPlanId = executionId
+          this.latestPlanExists = true
+          this.showLatestPlanBanner = false
+
+          // Ensure the execution is loaded and selected
+          const existingExecution = this.loadedExecutions.find(
+            (exec) => exec.executionId === executionId,
+          )
+
+          if (!existingExecution) {
+            await this.fetchLoadedExecution(executionId)
+          }
+
+          this.setSelectedExecution(executionId)
+        }
+
+        return success
+      } catch (error) {
+        console.error('Error setting latest plan:', error)
+        return false
+      }
+    },
+
+    /**
+     * Checks if the latest plan feature is available
+     * Returns true only if isExternalApp is true AND the backend supports the endpoint
+     */
+    isSetLatestPlanAvailable(): boolean {
+      return this.latestPlanFeatureAvailable
+    },
+
+    /**
+     * Dismisses the latest plan banner
+     */
+    dismissLatestPlanBanner() {
+      this.showLatestPlanBanner = false
+    },
+
+    /**
+     * Checks if an execution is the current latest plan
+     */
+    isLatestPlan(executionId: string): boolean {
+      return this.latestPlanId === executionId
+    },
+
+    /**
+     * Checks if an execution can be set as latest plan
+     * Only finished executions can be set as latest (state 1, 2, or -4)
+     */
+    canSetAsLatestPlan(state: number): boolean {
+      return state === 1 || state === 2 || state === -4
     },
 
     async fetchUser() {
@@ -565,6 +690,47 @@ export const useGeneralStore = defineStore('general', {
 
     getConfigurations(): ConfigurationData | null {
       return this.configurations
+    },
+
+    // Latest Plan getters
+    getLatestPlanId(): string | null {
+      return this.latestPlanId
+    },
+
+    getLatestPlanExists(): boolean {
+      return this.latestPlanExists
+    },
+
+    isLatestPlanFeatureAvailable(): boolean {
+      return this.latestPlanFeatureAvailable
+    },
+
+    isLatestPlanLoading(): boolean {
+      return this.latestPlanLoading
+    },
+
+    shouldShowLatestPlanBanner(): boolean {
+      return this.showLatestPlanBanner
+    },
+
+    /**
+     * Returns the loaded execution if it's the latest plan
+     */
+    getLatestPlanExecution() {
+      if (!this.latestPlanId) return null
+      return (
+        this.loadedExecutions.find(
+          (exec) => exec.executionId === this.latestPlanId,
+        ) || null
+      )
+    },
+
+    /**
+     * Checks if the currently selected execution is the latest plan
+     */
+    isSelectedExecutionLatestPlan(): boolean {
+      if (!this.selectedExecution || !this.latestPlanId) return false
+      return this.selectedExecution.executionId === this.latestPlanId
     },
   },
 })

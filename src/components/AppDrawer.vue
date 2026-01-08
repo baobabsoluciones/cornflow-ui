@@ -175,6 +175,7 @@ import {
   getNavigationItemsFromConfig,
   filterValidationTablesWithData,
 } from '@/services/FrontendAutomationService'
+import { useSectionTitles } from '@/composables/useSectionTitles'
 
 export default defineComponent({
   name: 'CoreAppDrawer',
@@ -183,7 +184,8 @@ export default defineComponent({
   inheritAttrs: false,
   setup() {
     const { t } = useI18n()
-    return { t }
+    const { getSectionTitle } = useSectionTitles()
+    return { t, getSectionTitle }
   },
   data: () => ({
     model: 1,
@@ -219,7 +221,7 @@ export default defineComponent({
     // Main executions section (always visible)
     executionsSection() {
       return {
-        title: this.$t('navigation.executions'),
+        title: this.getSectionTitle('executions'),
         icon: 'mdi-chart-timeline-variant',
         subPages: [
           {
@@ -249,7 +251,7 @@ export default defineComponent({
 
       return hasData
         ? {
-            title: this.$t('navigation.masterData'),
+            title: this.getSectionTitle('masterData'),
             icon: 'mdi-database',
             subPages: navigationItems,
           }
@@ -302,7 +304,7 @@ export default defineComponent({
 
 
       return {
-        title: this.$t('navigation.inputData'),
+        title: this.getSectionTitle('inputData'),
         icon: 'mdi-application-cog',
         subPages: subPages,
       }
@@ -362,7 +364,7 @@ export default defineComponent({
 
 
       return {
-        title: this.$t('navigation.results'),
+        title: this.getSectionTitle('results'),
         icon: 'mdi-chart-box',
         subPages: subPages,
       }

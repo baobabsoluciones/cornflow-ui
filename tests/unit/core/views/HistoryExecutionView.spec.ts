@@ -16,13 +16,17 @@ vi.mock('@/components/project-execution/ProjectExecutionsTable.vue', () => ({
   }
 }))
 
+// Mock CoreTitleView component
+vi.mock('@/components/core/CoreTitleView.vue', () => ({
+  default: {
+    name: 'CoreTitleView',
+    template: '<div data-testid="core-title-view"><slot /></div>',
+    props: ['icon', 'title', 'description', 'dropdownItems']
+  }
+}))
+
 // Mock Mango UI components
 vi.mock('mango-ui', () => ({
-  MTitleView: {
-    name: 'MTitleView',
-    template: '<div data-testid="m-title-view"><slot /></div>',
-    props: ['icon', 'title', 'description']
-  },
   MPanelData: {
     name: 'MPanelData',
     template: '<div data-testid="m-panel-data"><slot name="custom-checkbox" /><slot name="table" :itemData="data" :showHeaders="true" /></div>',
@@ -87,10 +91,10 @@ const createWrapper = () => {
         showSnackbar: mockShowSnackbar
       },
       stubs: {
-        'MTitleView': { 
-          name: 'MTitleView',
-          template: '<div data-testid="m-title-view"></div>',
-          props: ['icon', 'title', 'description']
+        'CoreTitleView': { 
+          name: 'CoreTitleView',
+          template: '<div data-testid="core-title-view"></div>',
+          props: ['icon', 'title', 'description', 'dropdownItems']
         },
         'MPanelData': { 
           name: 'MPanelData',
@@ -125,7 +129,7 @@ describe('HistoryExecutionView', () => {
       const { wrapper } = createWrapper()
 
       expect(wrapper.find('.view-container').exists()).toBe(true)
-      expect(wrapper.find('[data-testid="m-title-view"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="core-title-view"]').exists()).toBe(true)
       expect(wrapper.find('[data-testid="m-panel-data"]').exists()).toBe(true)
     })
 
@@ -138,9 +142,9 @@ describe('HistoryExecutionView', () => {
   })
 
   describe('Component Props', () => {
-    test('passes correct props to MTitleView', () => {
+    test('passes correct props to CoreTitleView', () => {
       const { wrapper } = createWrapper()
-      const titleView = wrapper.findComponent({ name: 'MTitleView' })
+      const titleView = wrapper.findComponent({ name: 'CoreTitleView' })
 
       expect(titleView.props('icon')).toBe('mdi-history')
       expect(titleView.props('title')).toBe('Execution History')

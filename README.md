@@ -558,6 +558,139 @@ VITE_APP_AUTH_PROVIDERS=google,microsoft
 
 To save dashboard preferences for a single execution, including filters, checks, and date ranges, utilize the `setDashboardPreference` method from the `LoadedExecution.ts` class. Subsequently, retrieve these preferences using the `getDashboardPreference` method. The data type is custom, allowing for flexible usage as needed.
 
+### Latest plan (Actual plan)
+
+The `latest plan` feature provides context persistence, allowing users to automatically load a previously selected execution when accessing the application. This feature enables quick access to the most relevant plan without navigating through the execution history.
+
+#### When the feature is available
+
+The `latest plan` feature is **only available** when both conditions are met:
+
+1. **`hasExternalApp` is `true`**: The application must be configured with `VITE_APP_EXTERNAL_APP=true` (or `hasExternalApp: true` in `values.json`)
+2. **Backend supports the endpoints**: The backend must implement the `/plan-latest/` and `/set-plan-latest/` endpoints
+
+If either condition is not met, the feature is completely disabled:
+
+- No banner notification is shown
+- No floating action button appears
+- No "Set as Current Plan" action in the execution table
+- No automatic plan loading on login
+
+#### Backend endpoints
+
+The feature requires two backend endpoints:
+
+1. **GET `/plan-latest/`**: Returns the current latest plan
+   - Response: `{ execution_id: "string" }` or empty/404 if no plan is set
+2. **POST `/set-plan-latest/`**: Sets an execution as the latest plan
+   - Request body: `{ id_execution: "string" }`
+   - Response: 200 OK on success
+
+#### How it works
+
+When the feature is available:
+
+1. **On login**: After authentication, the system queries the `/plan-latest/` endpoint
+2. **Automatic loading**: If a latest plan exists, all data (instance, solution, dashboards) is automatically loaded
+3. **No plan notification**: If no latest plan is set, a persistent banner appears at the top of the page prompting the user to set one
+4. **Manual management**: Users can set any finished execution as the latest plan from:
+   - The execution history table (using the star icon action)
+   - A floating action button when viewing an execution
+
+#### Visual indicators
+
+- **Execution history table**: The current latest plan is marked with a "Current" chip
+- **Tab bar**: When configured, a star icon (★) appears next to the latest plan tab name
+- **Floating action button**: Shows a star icon indicating the current plan status
+
+#### Configuration options
+
+In `src/app/config.ts`, you can customize the feature behavior:
+
+```typescript
+latestPlanConfig: {
+  defaultView: 'history-execution', // Route to redirect after login with latest plan
+  showStarInTabBar: true,           // Show star icon in MAppBarTab for latest plan
+  showSetCurrentPlanFab: true,      // Show floating action button to set current plan
+}
+```
+
+#### Behavior summary
+
+| Configuration                               | Feature Status                              |
+| ------------------------------------------- | ------------------------------------------- |
+| `hasExternalApp: false`                     | **Disabled** - No latest plan functionality |
+| `hasExternalApp: true` + No backend support | **Disabled** - Feature unavailable          |
+| `hasExternalApp: true` + Backend support    | **Enabled** - Full functionality            |
+
+### Custom section titles
+
+The application allows customization of navigation section titles through i18n keys. This feature enables each application to define its own terminology for the main navigation sections.
+
+#### Default section titles
+
+The application has four main navigation sections with default titles:
+
+| Section Key  | English Default      | Spanish Default         | French Default           |
+| ------------ | -------------------- | ----------------------- | ------------------------ |
+| `executions` | Executions           | Ejecuciones             | Exécutions               |
+| `masterData` | Configuration tables | Tablas de configuración | Données de configuration |
+| `inputData`  | Input data           | Datos de entrada        | Données d'entrée         |
+| `results`    | Results              | Resultados              | Résultats                |
+
+#### Customizing section titles
+
+**Option 1: Using app-specific translations (recommended)**
+
+Add custom translations in your app's locale files (`src/app/plugins/locales/*.ts`):
+
+```typescript
+// src/app/plugins/locales/en.ts
+export default {
+  sectionTitles: {
+    executions: 'Plans', // Custom title for executions
+    masterData: 'Master Data', // Custom title for configuration
+    inputData: 'Inputs', // Custom title for input data
+    results: 'Outputs', // Custom title for results
+  },
+}
+
+// src/app/plugins/locales/es.ts
+export default {
+  sectionTitles: {
+    executions: 'Planes',
+    masterData: 'Datos Maestros',
+    inputData: 'Entradas',
+    results: 'Salidas',
+  },
+}
+```
+
+**Option 2: Using explicit configuration keys**
+
+You can also point to specific translation keys in `src/app/config.ts`:
+
+```typescript
+parameters: {
+  sectionTitles: {
+    executions: 'myApp.nav.plans',      // Use custom i18n key
+    masterData: null,                    // Use default (navigation.masterData)
+    inputData: 'myApp.nav.inputs',      // Use custom i18n key
+    results: null,                       // Use default (navigation.results)
+  },
+}
+```
+
+#### Resolution order
+
+The section title resolution follows this priority:
+
+1. **Custom i18n key from config**: If `sectionTitles.<section>` in config points to a valid i18n key
+2. **App-specific sectionTitles**: If `sectionTitles.<section>` exists in app translations (`src/app/plugins/locales/*.ts`)
+3. **Default navigation key**: Falls back to `navigation.<section>` (base translations)
+
+This allows for flexible customization while maintaining sensible defaults.
+
 ### Custom file processors
 
 The application supports custom file processing for instances based on filename prefixes. This feature is useful when you need to handle files with special formats or structures before merging them with other files to create an instance.

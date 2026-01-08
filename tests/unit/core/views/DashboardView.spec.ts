@@ -11,24 +11,24 @@ vi.mock('@/components/project-execution/ExecutionInfoCard.vue', () => ({
   default: {
     name: 'ExecutionInfoCard',
     template: '<div data-testid="execution-info-card">ExecutionInfoCard</div>',
-    props: ['selectedExecution']
-  }
+    props: ['selectedExecution'],
+  },
 }))
 
 vi.mock('@/components/project-execution/ExecutionInfoMenu.vue', () => ({
   default: {
     name: 'ExecutionInfoMenu',
     template: '<div data-testid="execution-info-menu">ExecutionInfoMenu</div>',
-    props: ['selectedExecution']
-  }
+    props: ['selectedExecution'],
+  },
 }))
 
 vi.mock('@/app/components/DashboardMain.vue', () => ({
   default: {
     name: 'DashboardMain',
     template: '<div data-testid="dashboard-main">DashboardMain</div>',
-    props: ['execution']
-  }
+    props: ['execution'],
+  },
 }))
 
 // Mock Mango UI components
@@ -36,63 +36,77 @@ vi.mock('mango-ui', () => ({
   MTitleView: {
     name: 'MTitleView',
     template: '<div data-testid="m-title-view"><slot /></div>',
-    props: ['icon', 'title', 'description']
-  }
+    props: ['icon', 'title', 'description'],
+  },
+}))
+
+// Mock FrontendAutomationService
+vi.mock('@/services/FrontendAutomationService', () => ({
+  getSectionType: vi.fn((path) => {
+    if (path.includes('input-data')) return 'input-data'
+    if (path.includes('solution')) return 'solution'
+    return 'solution' // default
+  }),
 }))
 
 const createWrapper = (mockSelectedExecution = null) => {
   const vuetify = createVuetify()
   const pinia = createPinia()
   setActivePinia(pinia)
-  
+
   const i18n = createI18n({
     legacy: false,
     locale: 'en',
     messages: {
       en: {
         dashboard: {
-          title: 'Dashboard'
-        }
-      }
-    }
+          title: 'Dashboard',
+        },
+      },
+    },
   })
 
   // Mock the store
   const generalStore = useGeneralStore()
   generalStore.selectedExecution = mockSelectedExecution
-  
+
   const mockShowSnackbar = vi.fn()
 
   const wrapper = mount(DashboardView, {
     global: {
       plugins: [vuetify, pinia, i18n],
       provide: {
-        showSnackbar: mockShowSnackbar
+        showSnackbar: mockShowSnackbar,
+      },
+      mocks: {
+        $route: {
+          path: '/dashboard/solution',
+        },
       },
       stubs: {
         'v-app': { template: '<div><slot /></div>' },
         'v-main': { template: '<div><slot /></div>' },
         'v-container': { template: '<div><slot /></div>' },
-        'MTitleView': { 
+        MTitleView: {
           name: 'MTitleView',
           template: '<div data-testid="m-title-view"></div>',
-          props: ['icon', 'title', 'description']
+          props: ['icon', 'title', 'description'],
         },
-        'ExecutionInfoCard': { 
+        ExecutionInfoCard: {
           name: 'ExecutionInfoCard',
           template: '<div data-testid="execution-info-card"></div>',
-          props: ['selectedExecution']
+          props: ['selectedExecution'],
         },
-        'ExecutionInfoMenu': { 
-          template: '<div data-testid="execution-info-menu"></div>' 
+        ExecutionInfoMenu: {
+          template: '<div data-testid="execution-info-menu"></div>',
         },
-        'DashboardMain': { 
+        DashboardMain: {
           name: 'DashboardMain',
           template: '<div data-testid="dashboard-main"></div>',
-          props: ['execution']
-        }
-      }
-    }
+          props: ['execution'],
+        },
+      },
+    },
   })
 
   return { wrapper, generalStore, mockShowSnackbar }
@@ -113,7 +127,9 @@ describe('DashboardView', () => {
 
       expect(wrapper.find('.view-container').exists()).toBe(true)
       expect(wrapper.find('[data-testid="m-title-view"]').exists()).toBe(true)
-      expect(wrapper.find('[data-testid="execution-info-card"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="execution-info-card"]').exists()).toBe(
+        true,
+      )
     })
 
     test('renders ExecutionInfoMenu when execution is selected', () => {
@@ -121,18 +137,22 @@ describe('DashboardView', () => {
         id: 1,
         name: 'Test Execution',
         state: 1,
-        hasSolution: vi.fn().mockReturnValue(true)
+        hasSolution: vi.fn().mockReturnValue(true),
       }
-      
+
       const { wrapper } = createWrapper(mockExecution)
 
-      expect(wrapper.find('[data-testid="execution-info-menu"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="execution-info-menu"]').exists()).toBe(
+        true,
+      )
     })
 
     test('does not render ExecutionInfoMenu when no execution is selected', () => {
       const { wrapper } = createWrapper()
 
-      expect(wrapper.find('[data-testid="execution-info-menu"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="execution-info-menu"]').exists()).toBe(
+        false,
+      )
     })
 
     test('renders DashboardMain when execution has solution and state is 1', () => {
@@ -140,9 +160,9 @@ describe('DashboardView', () => {
         id: 1,
         name: 'Test Execution',
         state: 1,
-        hasSolution: vi.fn().mockReturnValue(true)
+        hasSolution: vi.fn().mockReturnValue(true),
       }
-      
+
       const { wrapper } = createWrapper(mockExecution)
 
       expect(wrapper.find('[data-testid="dashboard-main"]').exists()).toBe(true)
@@ -153,12 +173,14 @@ describe('DashboardView', () => {
         id: 1,
         name: 'Test Execution',
         state: 0,
-        hasSolution: vi.fn().mockReturnValue(true)
+        hasSolution: vi.fn().mockReturnValue(true),
       }
-      
+
       const { wrapper } = createWrapper(mockExecution)
 
-      expect(wrapper.find('[data-testid="dashboard-main"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="dashboard-main"]').exists()).toBe(
+        false,
+      )
     })
 
     test('does not render DashboardMain when execution has no solution', () => {
@@ -166,12 +188,14 @@ describe('DashboardView', () => {
         id: 1,
         name: 'Test Execution',
         state: 1,
-        hasSolution: vi.fn().mockReturnValue(false)
+        hasSolution: vi.fn().mockReturnValue(false),
       }
-      
+
       const { wrapper } = createWrapper(mockExecution)
 
-      expect(wrapper.find('[data-testid="dashboard-main"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="dashboard-main"]').exists()).toBe(
+        false,
+      )
     })
   })
 
@@ -190,9 +214,9 @@ describe('DashboardView', () => {
         id: 1,
         name: 'Test Execution Name',
         state: 1,
-        hasSolution: vi.fn().mockReturnValue(true)
+        hasSolution: vi.fn().mockReturnValue(true),
       }
-      
+
       const { wrapper } = createWrapper(mockExecution)
       const titleView = wrapper.findComponent({ name: 'MTitleView' })
 
@@ -204,9 +228,9 @@ describe('DashboardView', () => {
         id: 1,
         name: 'Test Execution',
         state: 1,
-        hasSolution: vi.fn().mockReturnValue(true)
+        hasSolution: vi.fn().mockReturnValue(true),
       }
-      
+
       const { wrapper } = createWrapper(mockExecution)
       const infoCard = wrapper.findComponent({ name: 'ExecutionInfoCard' })
 
@@ -218,9 +242,9 @@ describe('DashboardView', () => {
         id: 1,
         name: 'Test Execution',
         state: 1,
-        hasSolution: vi.fn().mockReturnValue(true)
+        hasSolution: vi.fn().mockReturnValue(true),
       }
-      
+
       const { wrapper } = createWrapper(mockExecution)
       const dashboardMain = wrapper.findComponent({ name: 'DashboardMain' })
 
@@ -231,7 +255,7 @@ describe('DashboardView', () => {
   describe('Computed Properties', () => {
     test('title computed property returns correct value', () => {
       const { wrapper } = createWrapper()
-      
+
       expect(wrapper.vm.title).toBe('Dashboard')
     })
 
@@ -240,18 +264,163 @@ describe('DashboardView', () => {
         id: 1,
         name: 'Test Execution Name',
         state: 1,
-        hasSolution: vi.fn().mockReturnValue(true)
+        hasSolution: vi.fn().mockReturnValue(true),
       }
-      
+
       const { wrapper } = createWrapper(mockExecution)
-      
+
       expect(wrapper.vm.description).toBe('Test Execution Name')
     })
 
     test('description computed property returns empty string when no execution', () => {
       const { wrapper } = createWrapper()
-      
+
       expect(wrapper.vm.description).toBe('')
+    })
+
+    test('dashboardType computed property returns solution for solution routes', () => {
+      const { wrapper } = createWrapper()
+
+      expect(wrapper.vm.dashboardType).toBe('solution')
+    })
+
+    test('dashboardType computed property returns instance for input-data routes', () => {
+      const createInstanceWrapper = (mockSelectedExecution = null) => {
+        const vuetify = createVuetify()
+        const pinia = createPinia()
+        setActivePinia(pinia)
+
+        const i18n = createI18n({
+          legacy: false,
+          locale: 'en',
+          messages: {
+            en: {
+              dashboard: {
+                title: 'Dashboard',
+              },
+            },
+          },
+        })
+
+        const generalStore = useGeneralStore()
+        generalStore.selectedExecution = mockSelectedExecution
+
+        const mockShowSnackbar = vi.fn()
+
+        const wrapper = mount(DashboardView, {
+          global: {
+            plugins: [vuetify, pinia, i18n],
+            provide: {
+              showSnackbar: mockShowSnackbar,
+            },
+            mocks: {
+              $route: {
+                path: '/dashboard/input-data/some-id', // instance dashboard route
+              },
+            },
+            stubs: {
+              'v-app': { template: '<div><slot /></div>' },
+              'v-main': { template: '<div><slot /></div>' },
+              'v-container': { template: '<div><slot /></div>' },
+              MTitleView: {
+                name: 'MTitleView',
+                template: '<div data-testid="m-title-view"></div>',
+                props: ['icon', 'title', 'description'],
+              },
+              ExecutionInfoCard: {
+                name: 'ExecutionInfoCard',
+                template: '<div data-testid="execution-info-card"></div>',
+                props: ['selectedExecution'],
+              },
+              ExecutionInfoMenu: {
+                template: '<div data-testid="execution-info-menu"></div>',
+              },
+              DashboardMain: {
+                name: 'DashboardMain',
+                template: '<div data-testid="dashboard-main"></div>',
+                props: ['execution'],
+              },
+            },
+          },
+        })
+
+        return { wrapper, generalStore, mockShowSnackbar }
+      }
+
+      const { wrapper } = createInstanceWrapper()
+      expect(wrapper.vm.dashboardType).toBe('instance')
+    })
+
+    test('isInstanceDashboard computed property returns correct values', () => {
+      // Test solution dashboard
+      const { wrapper } = createWrapper()
+      expect(wrapper.vm.isInstanceDashboard).toBe(false)
+
+      // Test instance dashboard
+      const createInstanceWrapper = (mockSelectedExecution = null) => {
+        const vuetify = createVuetify()
+        const pinia = createPinia()
+        setActivePinia(pinia)
+
+        const i18n = createI18n({
+          legacy: false,
+          locale: 'en',
+          messages: {
+            en: {
+              dashboard: {
+                title: 'Dashboard',
+              },
+            },
+          },
+        })
+
+        const generalStore = useGeneralStore()
+        generalStore.selectedExecution = mockSelectedExecution
+
+        const mockShowSnackbar = vi.fn()
+
+        const wrapper = mount(DashboardView, {
+          global: {
+            plugins: [vuetify, pinia, i18n],
+            provide: {
+              showSnackbar: mockShowSnackbar,
+            },
+            mocks: {
+              $route: {
+                path: '/dashboard/input-data/some-id', // instance dashboard route
+              },
+            },
+            stubs: {
+              'v-app': { template: '<div><slot /></div>' },
+              'v-main': { template: '<div><slot /></div>' },
+              'v-container': { template: '<div><slot /></div>' },
+              MTitleView: {
+                name: 'MTitleView',
+                template: '<div data-testid="m-title-view"></div>',
+                props: ['icon', 'title', 'description'],
+              },
+              ExecutionInfoCard: {
+                name: 'ExecutionInfoCard',
+                template: '<div data-testid="execution-info-card"></div>',
+                props: ['selectedExecution'],
+              },
+              ExecutionInfoMenu: {
+                template: '<div data-testid="execution-info-menu"></div>',
+              },
+              DashboardMain: {
+                name: 'DashboardMain',
+                template: '<div data-testid="dashboard-main"></div>',
+                props: ['execution'],
+              },
+            },
+          },
+        })
+
+        return { wrapper, generalStore, mockShowSnackbar }
+      }
+
+      const { wrapper: instanceWrapper } = createInstanceWrapper()
+      expect(instanceWrapper.vm.isInstanceDashboard).toBe(true)
     })
 
     test('selectedExecution getter returns store value', () => {
@@ -259,27 +428,27 @@ describe('DashboardView', () => {
         id: 1,
         name: 'Test Execution',
         state: 1,
-        hasSolution: vi.fn().mockReturnValue(true)
+        hasSolution: vi.fn().mockReturnValue(true),
       }
-      
+
       const { wrapper, generalStore } = createWrapper(mockExecution)
-      
+
       expect(wrapper.vm.selectedExecution).toEqual(mockExecution)
       expect(wrapper.vm.selectedExecution).toBe(generalStore.selectedExecution)
     })
 
     test('selectedExecution setter updates store value', () => {
       const { wrapper, generalStore } = createWrapper()
-      
+
       const newExecution = {
         id: 2,
         name: 'New Execution',
         state: 1,
-        hasSolution: vi.fn().mockReturnValue(true)
+        hasSolution: vi.fn().mockReturnValue(true),
       }
-      
+
       wrapper.vm.selectedExecution = newExecution
-      
+
       expect(generalStore.selectedExecution).toEqual(newExecution)
     })
   })
@@ -287,13 +456,13 @@ describe('DashboardView', () => {
   describe('Lifecycle Methods', () => {
     test('injects showSnackbar on created', () => {
       const { wrapper, mockShowSnackbar } = createWrapper()
-      
+
       expect(wrapper.vm.showSnackbar).toBe(mockShowSnackbar)
     })
 
     test('initializes generalStore correctly', () => {
       const { wrapper, generalStore } = createWrapper()
-      
+
       expect(wrapper.vm.generalStore).toBe(generalStore)
     })
   })
@@ -301,7 +470,7 @@ describe('DashboardView', () => {
   describe('Data Properties', () => {
     test('has correct initial data structure', () => {
       const { wrapper } = createWrapper()
-      
+
       expect(wrapper.vm.generalStore).toBeDefined()
       expect(wrapper.vm.showSnackbar).toBeDefined()
     })
@@ -310,14 +479,14 @@ describe('DashboardView', () => {
   describe('Component Structure', () => {
     test('has correct CSS classes and structure', () => {
       const { wrapper } = createWrapper()
-      
+
       expect(wrapper.find('.view-container').exists()).toBe(true)
       expect(wrapper.find('.d-flex.align-end').exists()).toBe(true)
     })
 
     test('applies correct scoped styles', () => {
       const { wrapper } = createWrapper()
-      
+
       // Check that the component has the style attribute for scoped styles
       expect(wrapper.html()).toContain('data-v-')
     })
@@ -326,7 +495,7 @@ describe('DashboardView', () => {
   describe('Edge Cases', () => {
     test('handles null execution gracefully', () => {
       const { wrapper } = createWrapper(null)
-      
+
       expect(() => wrapper.vm.description).not.toThrow()
       expect(wrapper.vm.description).toBe('')
     })
@@ -335,11 +504,11 @@ describe('DashboardView', () => {
       const mockExecution = {
         id: 1,
         state: 1,
-        hasSolution: vi.fn().mockReturnValue(true)
+        hasSolution: vi.fn().mockReturnValue(true),
       }
-      
+
       const { wrapper } = createWrapper(mockExecution)
-      
+
       expect(() => wrapper.vm.description).not.toThrow()
       expect(wrapper.vm.description).toBe('')
     })
@@ -349,24 +518,24 @@ describe('DashboardView', () => {
         id: 1,
         name: undefined,
         state: 1,
-        hasSolution: vi.fn().mockReturnValue(true)
+        hasSolution: vi.fn().mockReturnValue(true),
       }
-      
+
       const { wrapper } = createWrapper(mockExecution)
-      
+
       expect(() => wrapper.vm.description).not.toThrow()
       expect(wrapper.vm.description).toBe('')
     })
   })
 
   describe('Conditional Rendering Logic', () => {
-    test('DashboardMain visibility depends on all conditions', () => {
-      // Test all conditions must be true
+    test('DashboardMain visibility for solution dashboard requires hasSolution', () => {
+      // Test conditions for solution dashboard (default route)
       const conditions = [
         { state: 0, hasSolution: true, visible: false },
         { state: 1, hasSolution: false, visible: false },
         { state: 1, hasSolution: true, visible: true },
-        { state: 2, hasSolution: true, visible: false }
+        { state: 2, hasSolution: true, visible: false },
       ]
 
       conditions.forEach(({ state, hasSolution, visible }) => {
@@ -374,12 +543,102 @@ describe('DashboardView', () => {
           id: 1,
           name: 'Test Execution',
           state,
-          hasSolution: vi.fn().mockReturnValue(hasSolution)
+          hasSolution: vi.fn().mockReturnValue(hasSolution),
         }
-        
+
         const { wrapper } = createWrapper(mockExecution)
-        
-        expect(wrapper.find('[data-testid="dashboard-main"]').exists()).toBe(visible)
+
+        expect(wrapper.find('[data-testid="dashboard-main"]').exists()).toBe(
+          visible,
+        )
+      })
+    })
+
+    test('DashboardMain visibility for instance dashboard does not require hasSolution', () => {
+      // Test instance dashboard - should show when state is 1 regardless of hasSolution
+      const createInstanceWrapper = (mockSelectedExecution = null) => {
+        const vuetify = createVuetify()
+        const pinia = createPinia()
+        setActivePinia(pinia)
+
+        const i18n = createI18n({
+          legacy: false,
+          locale: 'en',
+          messages: {
+            en: {
+              dashboard: {
+                title: 'Dashboard',
+              },
+            },
+          },
+        })
+
+        const generalStore = useGeneralStore()
+        generalStore.selectedExecution = mockSelectedExecution
+
+        const mockShowSnackbar = vi.fn()
+
+        const wrapper = mount(DashboardView, {
+          global: {
+            plugins: [vuetify, pinia, i18n],
+            provide: {
+              showSnackbar: mockShowSnackbar,
+            },
+            mocks: {
+              $route: {
+                path: '/dashboard/input-data/some-id', // instance dashboard route
+              },
+            },
+            stubs: {
+              'v-app': { template: '<div><slot /></div>' },
+              'v-main': { template: '<div><slot /></div>' },
+              'v-container': { template: '<div><slot /></div>' },
+              MTitleView: {
+                name: 'MTitleView',
+                template: '<div data-testid="m-title-view"></div>',
+                props: ['icon', 'title', 'description'],
+              },
+              ExecutionInfoCard: {
+                name: 'ExecutionInfoCard',
+                template: '<div data-testid="execution-info-card"></div>',
+                props: ['selectedExecution'],
+              },
+              ExecutionInfoMenu: {
+                template: '<div data-testid="execution-info-menu"></div>',
+              },
+              DashboardMain: {
+                name: 'DashboardMain',
+                template: '<div data-testid="dashboard-main"></div>',
+                props: ['execution'],
+              },
+            },
+          },
+        })
+
+        return { wrapper, generalStore, mockShowSnackbar }
+      }
+
+      // For instance dashboard, should show when state is 1 regardless of hasSolution
+      const instanceConditions = [
+        { state: 1, hasSolution: false, visible: true },
+        { state: 1, hasSolution: true, visible: true },
+        { state: 0, hasSolution: true, visible: false },
+        { state: 2, hasSolution: true, visible: false },
+      ]
+
+      instanceConditions.forEach(({ state, hasSolution, visible }) => {
+        const mockExecution = {
+          id: 1,
+          name: 'Test Execution',
+          state,
+          hasSolution: vi.fn().mockReturnValue(hasSolution),
+        }
+
+        const { wrapper } = createInstanceWrapper(mockExecution)
+
+        expect(wrapper.find('[data-testid="dashboard-main"]').exists()).toBe(
+          visible,
+        )
       })
     })
   })

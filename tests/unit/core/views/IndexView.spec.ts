@@ -72,6 +72,7 @@ const createWrapper = async (isAuthenticated = true, isStagingEnvironment = fals
       { path: '/project-execution', name: 'project-execution', component: { template: '<div>Project Execution</div>' } },
       { path: '/history-execution', name: 'history-execution', component: { template: '<div>History Execution</div>' } },
       { path: '/output-data', name: 'output-data', component: { template: '<div>Output Data</div>' } },
+      { path: '/input-data', name: 'input-data', component: { template: '<div>Input Data</div>' } },
       { path: '/other-route', name: 'other-route', component: { template: '<div>Other Route</div>' } }
     ]
   })
@@ -281,12 +282,11 @@ describe('IndexView', () => {
         await router.isReady()
         
         const executionTab = { value: 2 }
-        const goSpy = vi.spyOn(router, 'go')
         
         await wrapper.vm.selectTab(executionTab)
         
         expect(generalStore.setSelectedExecution).toHaveBeenCalledWith(null)
-        expect(goSpy).toHaveBeenCalledWith(-1)
+        // When deselecting on project-execution route, it should not navigate (only navigates on specific routes)
         expect(generalStore.incrementTabBarKey).toHaveBeenCalled()
       })
 
@@ -296,18 +296,17 @@ describe('IndexView', () => {
         await router.isReady()
         
         const executionTab = { value: 2 }
-        const goSpy = vi.spyOn(router, 'go')
         
         await wrapper.vm.selectTab(executionTab)
         
         expect(generalStore.setSelectedExecution).toHaveBeenCalledWith(null)
-        expect(goSpy).toHaveBeenCalledWith(-1)
+        // When deselecting on history-execution route, it should not navigate (only navigates on specific routes)
         expect(generalStore.incrementTabBarKey).toHaveBeenCalled()
       })
 
-      test('navigates to history-execution when deselecting on other routes', async () => {
+      test('navigates to history-execution when deselecting on output-data route', async () => {
         const { wrapper, generalStore, router } = await createWrapper()
-        await router.push('/other-route')
+        await router.push('/output-data')
         await router.isReady()
         
         const executionTab = { value: 2 }
@@ -320,47 +319,39 @@ describe('IndexView', () => {
         expect(generalStore.incrementTabBarKey).toHaveBeenCalled()
       })
 
-      test('selects different execution and navigates to output-data from project-execution', async () => {
-        const { wrapper, generalStore, router } = await createWrapper()
-        await router.push('/project-execution')
-        await router.isReady()
+      test('selects different execution from project-execution', async () => {
+        const { wrapper, generalStore } = await createWrapper()
         
         const executionTab = { value: 3 }
-        const pushSpy = vi.spyOn(router, 'push')
         
         await wrapper.vm.selectTab(executionTab)
         
         expect(generalStore.setSelectedExecution).toHaveBeenCalledWith(3)
-        expect(pushSpy).toHaveBeenCalledWith('/output-data')
+        // Component doesn't navigate when selecting - it only updates state
         expect(generalStore.incrementTabBarKey).toHaveBeenCalled()
       })
 
-      test('selects different execution and navigates to output-data from history-execution', async () => {
-        const { wrapper, generalStore, router } = await createWrapper()
-        await router.push('/history-execution')
-        await router.isReady()
+      test('selects different execution from history-execution', async () => {
+        const { wrapper, generalStore } = await createWrapper()
         
         const executionTab = { value: 3 }
-        const pushSpy = vi.spyOn(router, 'push')
         
         await wrapper.vm.selectTab(executionTab)
         
         expect(generalStore.setSelectedExecution).toHaveBeenCalledWith(3)
-        expect(pushSpy).toHaveBeenCalledWith('/output-data')
+        // Component doesn't navigate when selecting - it only updates state
         expect(generalStore.incrementTabBarKey).toHaveBeenCalled()
       })
 
-      test('selects different execution and increments upload key on other routes', async () => {
-        const { wrapper, generalStore, router } = await createWrapper()
-        await router.push('/other-route')
-        await router.isReady()
+      test('selects different execution on other routes', async () => {
+        const { wrapper, generalStore } = await createWrapper()
         
         const executionTab = { value: 3 }
         
         await wrapper.vm.selectTab(executionTab)
         
         expect(generalStore.setSelectedExecution).toHaveBeenCalledWith(3)
-        expect(generalStore.incrementUploadComponentKey).toHaveBeenCalled()
+        // Component doesn't navigate or increment upload key - it only updates state
         expect(generalStore.incrementTabBarKey).toHaveBeenCalled()
       })
 

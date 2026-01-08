@@ -455,8 +455,8 @@ export default {
     apiNotSupported: 'API no disponible o operación no soportada',
     searchPlaceholder: 'Buscar...',
     groups: {
-      inputTables: 'Tablas de entrada',
-      outputTables: 'Tablas de salida',
+      inputTables: 'Datos de entrada',
+      outputTables: 'Datos de la solución',
     },
     actions: 'Acciones',
     add: 'Añadir',
@@ -651,6 +651,40 @@ export default {
       cumulative: '{column} acumulado',
       map: 'Mapa de {valueColumn}',
       mapBy: '{valueColumn} por {locationColumn}',
+    },
+  },
+  latestPlan: {
+    banner: {
+      message:
+        'No hay un plan actual configurado. Establece un plan como actual para cargarlo automáticamente al iniciar sesión.',
+      actionButton: 'Ir al historial',
+    },
+    chip: {
+      current: 'Actual',
+    },
+    fab: {
+      tooltip: 'Establecer esta ejecución como plan actual',
+      setAsCurrent: 'Fijar como plan actual',
+      isCurrentPlan: 'Este es el plan actual',
+    },
+    actions: {
+      setAsCurrent: 'Establecer como plan actual',
+      isCurrentPlan: 'Este es el Plan Actual',
+    },
+    modal: {
+      title: 'Establecer como plan actual',
+      message:
+        '¿Estás seguro de que quieres establecer esta ejecución como el plan actual? Se cargará automáticamente cuando inicies sesión.',
+      executionLabel: 'Ejecución',
+      replaceWarning: 'Esto reemplazará a "{name}" como plan actual.',
+      confirmButton: 'Establecer como actual',
+      cancelButton: 'Cancelar',
+      errorMessage:
+        'Ha ocurrido un error al establecer el plan actual. Por favor, inténtalo de nuevo.',
+    },
+    snackbar: {
+      success: 'Plan actual establecido con éxito',
+      error: 'Error al establecer el plan actual',
     },
   },
 }

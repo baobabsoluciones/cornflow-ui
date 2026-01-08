@@ -467,15 +467,15 @@ export function transformJsonSchemaToAutomationFormat(
   const getDefaultGroup = (type: string) => {
     if (type === 'instance') {
       return {
-        en: 'Input Tables',
-        es: 'Tablas de entrada',
+        en: 'Input data',
+        es: 'Datos de entrada',
         fr: "Tables d'entrée",
       }
     } else if (type === 'solution') {
       return {
-        en: 'Output Tables',
-        es: 'Tablas de salida',
-        fr: 'Tables de sortie',
+        en: 'Solution data',
+        es: 'Datos de la solución',
+        fr: 'Données de la solution',
       }
     }
     return null

@@ -1,17 +1,26 @@
 <template>
   <v-app>
+    <!-- Latest plan banner -->
+    <LatestPlanBanner />
+
     <div class="marquee-container" v-if="showStagingWarning">
       <Vue3Marquee :pause-on-hover="true">
         🚧 {{ $t('projectExecution.stagingWarning') }} 🚧
       </Vue3Marquee>
     </div>
     <core-app-drawer class="app-drawer" />
-    <div class="main-content" :class="{ 'drawer-pinned': isDrawerPinned }">
+    <div
+      class="main-content"
+      :class="{
+        'drawer-pinned': isDrawerPinned,
+        'has-banner': showLatestPlanBanner,
+      }"
+    >
       <core-app-view />
       <div class="tab-container">
         <MAppBarTab
           :key="tabsKey"
-          :tabs="tabsData"
+          :tabs="enhancedTabsData"
           :createTitle="$t('projectExecution.create')"
           @close="removeTab"
           @create="createTab"
@@ -34,6 +43,9 @@
         </MAppBarTab>
       </div>
     </div>
+
+    <!-- Floating button to set current execution as latest plan -->
+    <SetCurrentPlanFab />
   </v-app>
 </template>
 
@@ -42,6 +54,8 @@ import { useGeneralStore } from '@/stores/general'
 import AuthService from '@/services/AuthService'
 import CoreAppDrawer from '@/components/AppDrawer.vue'
 import CoreAppView from '@/components/AppView.vue'
+import LatestPlanBanner from '@/components/LatestPlanBanner.vue'
+import SetCurrentPlanFab from '@/components/SetCurrentPlanFab.vue'
 import { useRouter } from 'vue-router'
 import { computed } from 'vue'
 import { Vue3Marquee } from 'vue3-marquee'
@@ -54,10 +68,39 @@ let tabsData = computed(() => generalStore.getLoadedExecutionTabs)
 let tabsKey = computed(() => generalStore.tabBarKey)
 let showStagingWarning = computed(() => config.isStagingEnvironment)
 let isDrawerPinned = computed(() => generalStore.isDrawerPinned)
+let showLatestPlanBanner = computed(
+  () => generalStore.shouldShowLatestPlanBanner,
+)
+
+// Get the currently selected execution ID
+const selectedExecutionId = computed(
+  () => generalStore.selectedExecution?.executionId,
+)
+
+// Enhance tabs data to show star icon for latest plan and ensure correct selection
+const enhancedTabsData = computed(() => {
+  const featureAvailable = generalStore.isLatestPlanFeatureAvailable
+  const latestPlanId = featureAvailable ? generalStore.getLatestPlanId : null
+  const showStar =
+    featureAvailable &&
+    (generalStore.appConfig.parameters?.latestPlanConfig?.showStarInTabBar ??
+      true)
+  const currentSelectedId = selectedExecutionId.value
+
+  return tabsData.value.map((tab) => ({
+    ...tab,
+    // Add a star prefix to the text if this is the latest plan (only if feature is available)
+    text: showStar && tab.value === latestPlanId ? `⭐ ${tab.text}` : tab.text,
+    isLatestPlan: featureAvailable && tab.value === latestPlanId,
+    // Ensure selected state is correctly set based on store
+    selected: tab.value === currentSelectedId,
+  }))
+})
 
 defineExpose({
   tabsData,
   tabsKey,
+  enhancedTabsData,
 })
 const removeTab = (index) => {
   generalStore.removeLoadedExecution(index)
@@ -183,5 +226,10 @@ body {
     margin-left: 0; /* No margin on mobile - drawer should overlay */
     width: 100%;
   }
+}
+
+/* Adjust for latest plan banner */
+.main-content.has-banner {
+  padding-top: 48px; /* Height of the banner */
 }
 </style>

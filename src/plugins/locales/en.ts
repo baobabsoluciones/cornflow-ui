@@ -639,4 +639,38 @@ export default {
       mapBy: '{valueColumn} by {locationColumn}',
     },
   },
+  latestPlan: {
+    banner: {
+      message:
+        'No current plan is set. Set a plan as current to load it automatically when you log in.',
+      actionButton: 'Go to history',
+    },
+    chip: {
+      current: 'Current',
+    },
+    fab: {
+      tooltip: 'Set this execution as current plan',
+      setAsCurrent: 'Set as current plan',
+      isCurrentPlan: 'This is the current plan',
+    },
+    actions: {
+      setAsCurrent: 'Set as current plan',
+      isCurrentPlan: 'This is the current plan',
+    },
+    modal: {
+      title: 'Set as current plan',
+      message:
+        'Are you sure you want to set this execution as the current plan? It will be loaded automatically when you log in.',
+      executionLabel: 'Execution',
+      replaceWarning: 'This will replace "{name}" as the current plan.',
+      confirmButton: 'Set as current',
+      cancelButton: 'Cancel',
+      errorMessage:
+        'An error occurred while setting the current plan. Please try again.',
+    },
+    snackbar: {
+      success: 'Current plan set successfully',
+      error: 'Error setting current plan',
+    },
+  },
 }

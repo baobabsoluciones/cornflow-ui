@@ -24,6 +24,40 @@ const createAppConfig = () => ({
       // Instance editing configuration
       allowEditInstance: true,
 
+      // Latest plan (Actual plan) configuration
+      latestPlanConfig: {
+        // Default view to navigate to after login when latest plan is loaded
+        // Options: 'history-execution', 'dashboard', 'input-data', 'results'
+        defaultView: 'history-execution',
+        // Whether to show the star icon in the tab bar for the latest plan
+        showStarInTabBar: true,
+      },
+
+      // Section titles configuration (i18n keys)
+      // These allow customizing the navigation section titles
+      // Set to null/undefined to use default translations from 'navigation.*'
+      // Set to a custom i18n key to use app-specific translations from 'app.sectionTitles.*'
+      sectionTitles: {
+        // Execution history section title
+        // Default: 'navigation.executions' -> 'Executions'
+        executions: null as string | null,
+
+        // Master/Configuration data section title
+        // Default: 'navigation.masterData' -> 'Configuration tables'
+        // Custom: 'app.sectionTitles.masterData' -> 'Master data' / 'Datos maestros'
+        masterData: null as string | null,
+
+        // Input data section title
+        // Default: 'navigation.inputData' -> 'Input data'
+        // Custom: 'app.sectionTitles.inputData' -> 'Current case data' / 'Datos del caso actual'
+        inputData: null as string | null,
+
+        // Results/Output data section title
+        // Default: 'navigation.results' -> 'Results'
+        // Custom: 'app.sectionTitles.results' -> 'Current case results' / 'Resultados del caso actual'
+        results: null as string | null,
+      },
+
       // Solver configuration
       solverConfig: {
         showSolverStep: true,
