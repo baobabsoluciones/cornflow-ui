@@ -26,6 +26,7 @@ import {
   resolveTableConfigTitles,
   resolveDefaultGroupName,
 } from '@/utils/schemaUtils'
+import { filterTablesByUserSchemas } from '@/services/FrontendAutomationService'
 
 export const useGeneralStore = defineStore('general', {
   state: () => ({
@@ -304,11 +305,16 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
-    // Update configurations with current locale
+    // Update configurations with current locale and apply user schema filtering
     updateLocalizedConfigurations() {
       if (!this.rawConfigurations) return
 
       const currentLocale = locale.value
+
+      // Get user schemas for filtering (undefined means full access)
+      const userSchemas = this.user && 'schemas' in this.user
+        ? (this.user as any).schemas
+        : undefined
 
       // Helper function to resolve default groups
       const resolveConfigWithDefaultGroups = (config: TableSchema) => {
@@ -342,17 +348,25 @@ export const useGeneralStore = defineStore('general', {
         return resolved
       }
 
+      // Resolve localized titles first
+      const localizedMasterData = resolveTableConfigTitles(
+        this.rawConfigurations.masterData,
+        currentLocale,
+      )
+      const localizedInputData = resolveConfigWithDefaultGroups(
+        this.rawConfigurations.inputData,
+      )
+      const localizedResultsData = resolveConfigWithDefaultGroups(
+        this.rawConfigurations.resultsData,
+      )
+
+      // Apply user schema filtering to masterData (frontend-automation tables)
+      // Note: inputData and resultsData are from the schema and typically don't need filtering
+      // but we filter masterData which comes from the frontend-automation endpoint
       this.configurations = {
-        masterData: resolveTableConfigTitles(
-          this.rawConfigurations.masterData,
-          currentLocale,
-        ),
-        inputData: resolveConfigWithDefaultGroups(
-          this.rawConfigurations.inputData,
-        ),
-        resultsData: resolveConfigWithDefaultGroups(
-          this.rawConfigurations.resultsData,
-        ),
+        masterData: filterTablesByUserSchemas(localizedMasterData, userSchemas),
+        inputData: localizedInputData,
+        resultsData: localizedResultsData,
       }
     },
 
@@ -639,6 +653,29 @@ export const useGeneralStore = defineStore('general', {
 
     getUser(): any {
       return this.user
+    },
+
+    /**
+     * Gets the schemas (DAGs) the user has access to.
+     * Returns undefined if user has access to all tables (no restrictions).
+     */
+    getUserSchemas(): string[] | undefined {
+      if (this.user && 'schemas' in this.user) {
+        return this.user.schemas
+      }
+      return undefined
+    },
+
+    /**
+     * Checks if the current user has access to all frontend automation tables.
+     * Returns true if user has no schema restrictions.
+     */
+    userHasFullAccess(): boolean {
+      if (this.user && 'hasFullAccess' in this.user && typeof this.user.hasFullAccess === 'function') {
+        return this.user.hasFullAccess()
+      }
+      // Default to full access if user doesn't have the method
+      return true
     },
 
     getLicences(): any {

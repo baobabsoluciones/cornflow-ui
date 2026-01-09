@@ -224,3 +224,82 @@ export function getConfigurationBySection(
       return configurations.masterData
   }
 }
+
+/**
+ * Checks if a user has access to a specific table based on the table's schemas property.
+ *
+ * Access control logic:
+ * - If table has no `schemas` property: Visible to ALL users
+ * - If table has empty `schemas` array []: Visible to NO users (hidden)
+ * - If table has `schemas` with values: Visible only to users with access to ANY of the listed schemas
+ *
+ * @param tableSchemas - The schemas array from the table configuration (can be undefined)
+ * @param userSchemas - The schemas the user has access to (undefined means full access)
+ * @returns true if user can see the table, false otherwise
+ */
+export function canUserAccessTable(
+  tableSchemas: string[] | undefined,
+  userSchemas: string[] | undefined,
+): boolean {
+  // If table has no schemas property, it's visible to ALL users
+  if (tableSchemas === undefined) {
+    return true
+  }
+
+  // If table has empty schemas array, it's visible to NO users
+  if (tableSchemas.length === 0) {
+    return false
+  }
+
+  // If user has no schema restrictions (undefined or empty), they have full access
+  if (userSchemas === undefined || userSchemas.length === 0) {
+    return true
+  }
+
+  // Check if user has access to ANY of the table's required schemas
+  return tableSchemas.some((schema) => userSchemas.includes(schema))
+}
+
+/**
+ * Filters a table configuration to only include tables the user has access to.
+ *
+ * @param config - The table schema configuration to filter
+ * @param userSchemas - The schemas the user has access to (undefined means full access)
+ * @returns Filtered configuration with only accessible tables
+ */
+export function filterTablesByUserSchemas(
+  config: TableSchema,
+  userSchemas: string[] | undefined,
+): TableSchema {
+  if (!config) return config
+
+  const filtered: TableSchema = {}
+
+  Object.entries(config).forEach(([tableKey, tableConfig]) => {
+    if (canUserAccessTable(tableConfig.schemas, userSchemas)) {
+      filtered[tableKey] = tableConfig
+    }
+  })
+
+  return filtered
+}
+
+/**
+ * Filters all configuration data (masterData, inputData, resultsData) by user schema access.
+ *
+ * @param configurations - The full configuration data
+ * @param userSchemas - The schemas the user has access to (undefined means full access)
+ * @returns Filtered configuration data with only accessible tables
+ */
+export function filterConfigurationsByUserSchemas(
+  configurations: ConfigurationData,
+  userSchemas: string[] | undefined,
+): ConfigurationData {
+  if (!configurations) return configurations
+
+  return {
+    masterData: filterTablesByUserSchemas(configurations.masterData, userSchemas),
+    inputData: filterTablesByUserSchemas(configurations.inputData, userSchemas),
+    resultsData: filterTablesByUserSchemas(configurations.resultsData, userSchemas),
+  }
+}

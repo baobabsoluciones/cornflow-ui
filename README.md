@@ -103,6 +103,85 @@ Tables can be organized in two ways:
 1. **Individual tables**: Each table gets its own navigation item and route
 2. **Grouped tables**: Multiple tables share a group with tabbed interface
 
+#### Multi-schema access control
+
+Tables can be restricted to users who have access to specific schemas (DAGs). This is controlled by the optional `schemas` property in the table configuration.
+
+##### Configuration
+
+```json
+{
+  "available_automations": {
+    "tables": {
+      "productos": {
+        "group": "logistics",
+        "title": { "en": "Products", "es": "Productos" },
+        "get_list": { "url": "/table/productos/", "http_method": "GET" }
+        // No "schemas" → visible to ALL users
+      },
+      "tarifas_especiales": {
+        "group": "logistics",
+        "title": { "en": "Special Rates", "es": "Tarifas Especiales" },
+        "schemas": ["schema_cliente_a"],
+        "get_list": { "url": "/table/tarifas-especiales/", "http_method": "GET" }
+        // Only visible to users with access to "schema_cliente_a"
+      },
+      "configuracion_avanzada": {
+        "group": "settings",
+        "title": { "en": "Advanced Config", "es": "Config. Avanzada" },
+        "schemas": ["schema_cliente_a", "schema_cliente_b"],
+        "get_list": { "url": "/table/config-avanzada/", "http_method": "GET" }
+        // Visible to users with access to "schema_cliente_a" OR "schema_cliente_b"
+      }
+    }
+  }
+}
+```
+
+##### Behavior
+
+| `schemas` Property | Who Can See the Table |
+|-------------------|----------------------|
+| Not defined | **All users** (default behavior) |
+| `["schema_a"]` | Only users with access to `schema_a` |
+| `["schema_a", "schema_b"]` | Users with access to `schema_a` **OR** `schema_b` |
+| `[]` (empty array) | **No one** (table hidden) |
+
+##### How user schemas are determined
+
+When a user logs in, the backend returns user information through the `/user/{id}/` endpoint. The response may include an optional `schemas` property:
+
+```json
+{
+  "id": 1,
+  "first_name": "John",
+  "last_name": "Doe",
+  "username": "johndoe",
+  "email": "john@example.com",
+  "schemas": ["schema_cliente_a", "schema_cliente_b"]
+}
+```
+
+- If `schemas` is **not present** or is **empty**: User has access to ALL frontend automation tables
+- If `schemas` **contains values**: User only sees tables that match their allowed schemas
+
+##### Use cases
+
+| Scenario | Configuration |
+|----------|---------------|
+| Table for all users | Don't add `schemas` property |
+| Table for specific client | `"schemas": ["client_dag_name"]` |
+| Table for multiple clients | `"schemas": ["client_a", "client_b"]` |
+| Shared table across projects | Don't add `schemas` property |
+| Project-specific table | `"schemas": ["project_dag"]` |
+
+##### Important notes
+
+- The `schemas` values must match the DAG names the user has access to
+- If a user has access to **any** of the listed schemas, the table is visible
+- Groups are still shown even if some tables within them are hidden (only visible tables appear as tabs)
+- This filtering happens in the frontend based on the user's permissions returned by the backend
+
 #### Implementation details
 
 - **Repository**: `SchemaRepository.ts` handles API communication

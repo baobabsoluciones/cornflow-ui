@@ -31,6 +31,8 @@ export function transformOpenApiToTableConfig(
         : tableInfo.group,
       title: resolveTitleWithLocale(tableInfo.title, locale, tableInfo.title),
       icon: icon, // Include icon from table or group configuration
+      // Schema access control - preserve schemas property for user access filtering
+      ...(tableInfo.schemas !== undefined && { schemas: tableInfo.schemas }),
       // Keep original multilingual data for dynamic resolution
       _originalGroup: groupInfo ? groupInfo.title : tableInfo.group,
       _originalTitle: tableInfo.title,

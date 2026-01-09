@@ -9,6 +9,9 @@ export default class UserRepository {
         .then((response) => {
           if (response.status === 200) {
             const user = response.content
+            // Parse schemas if present in the response
+            // If schemas is undefined, null, or empty, user has access to all tables
+            const schemas = Array.isArray(user.schemas) ? user.schemas : undefined
             resolve(
               new User(
                 user.id,
@@ -16,6 +19,7 @@ export default class UserRepository {
                 user.email,
                 user.first_name,
                 user.last_name,
+                schemas,
               ),
             )
           } else {

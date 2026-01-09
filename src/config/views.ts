@@ -4,6 +4,13 @@ export interface TableConfig {
   group: string
   title: string
   icon?: string
+  /**
+   * Optional array of schema (DAG) names that restrict table visibility.
+   * - If not defined: Table is visible to ALL users
+   * - If empty array []: Table is visible to NO users (hidden)
+   * - If has values: Table is visible only to users with access to ANY of the listed schemas
+   */
+  schemas?: string[]
   _originalGroup?: any
   _originalTitle?: any
   // Operations
