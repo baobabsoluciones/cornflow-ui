@@ -123,7 +123,10 @@ Tables can be restricted to users who have access to specific schemas (DAGs). Th
         "group": "logistics",
         "title": { "en": "Special Rates", "es": "Tarifas Especiales" },
         "schemas": ["schema_cliente_a"],
-        "get_list": { "url": "/table/tarifas-especiales/", "http_method": "GET" }
+        "get_list": {
+          "url": "/table/tarifas-especiales/",
+          "http_method": "GET"
+        }
         // Only visible to users with access to "schema_cliente_a"
       },
       "configuracion_avanzada": {
@@ -140,12 +143,12 @@ Tables can be restricted to users who have access to specific schemas (DAGs). Th
 
 ##### Behavior
 
-| `schemas` Property | Who Can See the Table |
-|-------------------|----------------------|
-| Not defined | **All users** (default behavior) |
-| `["schema_a"]` | Only users with access to `schema_a` |
+| `schemas` Property         | Who Can See the Table                             |
+| -------------------------- | ------------------------------------------------- |
+| Not defined                | **All users** (default behavior)                  |
+| `["schema_a"]`             | Only users with access to `schema_a`              |
 | `["schema_a", "schema_b"]` | Users with access to `schema_a` **OR** `schema_b` |
-| `[]` (empty array) | **No one** (table hidden) |
+| `[]` (empty array)         | **No one** (table hidden)                         |
 
 ##### How user schemas are determined
 
@@ -167,13 +170,13 @@ When a user logs in, the backend returns user information through the `/user/{id
 
 ##### Use cases
 
-| Scenario | Configuration |
-|----------|---------------|
-| Table for all users | Don't add `schemas` property |
-| Table for specific client | `"schemas": ["client_dag_name"]` |
-| Table for multiple clients | `"schemas": ["client_a", "client_b"]` |
-| Shared table across projects | Don't add `schemas` property |
-| Project-specific table | `"schemas": ["project_dag"]` |
+| Scenario                     | Configuration                         |
+| ---------------------------- | ------------------------------------- |
+| Table for all users          | Don't add `schemas` property          |
+| Table for specific client    | `"schemas": ["client_dag_name"]`      |
+| Table for multiple clients   | `"schemas": ["client_a", "client_b"]` |
+| Shared table across projects | Don't add `schemas` property          |
+| Project-specific table       | `"schemas": ["project_dag"]`          |
 
 ##### Important notes
 
