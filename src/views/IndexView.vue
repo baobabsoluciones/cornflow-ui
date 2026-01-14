@@ -44,8 +44,8 @@
       </div>
     </div>
 
-    <!-- Floating button to set current execution as latest plan -->
-    <SetCurrentPlanFab />
+    <!-- Floating button to set current execution as latest plan (only visible in execution-related views) -->
+    <SetCurrentPlanFab v-if="isExecutionRelatedView" />
   </v-app>
 </template>
 
@@ -56,7 +56,7 @@ import CoreAppDrawer from '@/components/AppDrawer.vue'
 import CoreAppView from '@/components/AppView.vue'
 import LatestPlanBanner from '@/components/LatestPlanBanner.vue'
 import SetCurrentPlanFab from '@/components/SetCurrentPlanFab.vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { computed } from 'vue'
 import { Vue3Marquee } from 'vue3-marquee'
 import config from '@/config'
@@ -64,6 +64,7 @@ import { baobabLogoSmall } from '@/utils/assets'
 
 const generalStore = useGeneralStore()
 const router = useRouter()
+const route = useRoute()
 let tabsData = computed(() => generalStore.getLoadedExecutionTabs)
 let tabsKey = computed(() => generalStore.tabBarKey)
 let showStagingWarning = computed(() => config.isStagingEnvironment)
@@ -97,10 +98,21 @@ const enhancedTabsData = computed(() => {
   }))
 })
 
+// Check if current route is an execution-related view (input data, results, or dashboard)
+const isExecutionRelatedView = computed(() => {
+  const currentPath = route.path
+  return (
+    currentPath.startsWith('/input-data') ||
+    currentPath.startsWith('/results') ||
+    currentPath.startsWith('/dashboard')
+  )
+})
+
 defineExpose({
   tabsData,
   tabsKey,
   enhancedTabsData,
+  isExecutionRelatedView,
 })
 const removeTab = (index) => {
   generalStore.removeLoadedExecution(index)
