@@ -5,6 +5,7 @@ import {
   getOperationConfig,
   isOperationSupported,
 } from '@/services/FrontendAutomationService'
+import { getLocalizedMessage } from '@/utils/i18nUtils'
 
 export default class TableRepository {
   private tableConfig: any
@@ -65,7 +66,7 @@ export default class TableRepository {
         return response.content
       } else {
         const apiCallFailedMessage = response.content.message
-          ? response.content.message
+          ? getLocalizedMessage(response.content.message)
           : 'An error occurred while saving your data. Please try again'
         throw new Error(apiCallFailedMessage)
       }

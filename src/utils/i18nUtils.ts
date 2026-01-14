@@ -1,4 +1,5 @@
 import { getCurrentInstance } from 'vue'
+import { currentLocale } from '@/plugins/i18n'
 
 /**
  * Resolves a title that can be either a string or a multilingual object
@@ -80,6 +81,46 @@ export function resolveTitleWithLocale(
   }
 
   // Return fallback if nothing found
+  return fallback
+}
+
+/**
+ * Gets a localized message from an API response
+ * Uses the current locale from the i18n plugin automatically
+ * @param message - The message to localize (string or object with language keys)
+ * @param fallback - Fallback text if message is not found
+ * @returns The localized message string
+ */
+export function getLocalizedMessage(
+  message: string | Record<string, string>,
+  fallback: string = 'An error occurred',
+): string {
+  // If message is a simple string, return it directly
+  if (typeof message === 'string') {
+    return message
+  }
+
+  // If message is an object with language keys, get the appropriate one
+  if (message && typeof message === 'object') {
+    const locale = currentLocale.value
+
+    // Try user's selected language first
+    if (message[locale]) {
+      return message[locale]
+    }
+
+    // Fallback to English
+    if (message['en']) {
+      return message['en']
+    }
+
+    // Return first available message if neither locale nor 'en' exist
+    const keys = Object.keys(message)
+    if (keys.length > 0) {
+      return message[keys[0]]
+    }
+  }
+
   return fallback
 }
 
