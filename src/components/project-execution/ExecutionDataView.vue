@@ -66,10 +66,132 @@
               v-for="(table, index) in instanceTables"
               :key="table.key"
               :value="index"
+              class="tab-with-indicator"
             >
-              {{ table.title }}
+              <span class="tab-label">{{ table.title }}</span>
+              <!-- Master table match indicator -->
+              <v-tooltip
+                v-if="getMatchForTable(table.key)"
+                location="top"
+              >
+                <template #activator="{ props: tooltipProps }">
+                  <v-icon
+                    v-bind="tooltipProps"
+                    size="small"
+                    :color="getMatchForTable(table.key)?.hasDifferences ? 'warning' : 'success'"
+                    class="ml-1 match-indicator"
+                  >
+                    {{ getMatchForTable(table.key)?.hasDifferences ? 'mdi-database-sync' : 'mdi-database-check' }}
+                  </v-icon>
+                </template>
+                <span>
+                  {{ getMatchForTable(table.key)?.hasDifferences 
+                    ? $t('masterTableMatch.hasDifferencesWithMaster') 
+                    : $t('masterTableMatch.identicalToMaster') }}
+                </span>
+              </v-tooltip>
             </CoreTab>
           </CoreTabs>
+
+          <!-- Master table match action bar -->
+          <div
+            v-if="currentTableMatch && !currentTable.isValidationTable"
+            class="master-match-action-bar"
+          >
+            <div class="match-info">
+              <v-icon size="small" :color="currentTableMatch.hasDifferences ? 'warning' : 'success'" class="mr-2">
+                {{ currentTableMatch.hasDifferences ? 'mdi-database-sync' : 'mdi-database-check' }}
+              </v-icon>
+              <span class="match-text">
+                {{ $t('masterTableMatch.matchFoundWith') }}
+                <strong>{{ currentTableMatch.masterTableTitle }}</strong>
+              </span>
+              <!-- Diff summary badges -->
+              <div class="diff-badges ml-3" v-if="currentTableMatch.hasDifferences">
+                <v-chip
+                  v-if="currentTableMatch.diffSummary.onlyInInstance > 0"
+                  size="x-small"
+                  color="success"
+                  variant="tonal"
+                  class="mr-1"
+                >
+                  <v-icon start size="x-small">mdi-plus</v-icon>
+                  {{ currentTableMatch.diffSummary.onlyInInstance }}
+                </v-chip>
+                <v-chip
+                  v-if="currentTableMatch.diffSummary.onlyInMaster > 0"
+                  size="x-small"
+                  color="error"
+                  variant="tonal"
+                  class="mr-1"
+                >
+                  <v-icon start size="x-small">mdi-minus</v-icon>
+                  {{ currentTableMatch.diffSummary.onlyInMaster }}
+                </v-chip>
+                <v-chip
+                  v-if="currentTableMatch.diffSummary.different > 0"
+                  size="x-small"
+                  color="warning"
+                  variant="tonal"
+                >
+                  <v-icon start size="x-small">mdi-pencil</v-icon>
+                  {{ currentTableMatch.diffSummary.different }}
+                </v-chip>
+              </div>
+              <v-chip
+                v-else
+                size="x-small"
+                color="success"
+                variant="tonal"
+                class="ml-3"
+              >
+                {{ $t('masterTableMatch.identical') }}
+              </v-chip>
+            </div>
+            <div class="match-actions">
+              <v-btn
+                size="small"
+                variant="text"
+                color="primary"
+                @click="handleShowComparison"
+              >
+                <v-icon start size="small">mdi-compare</v-icon>
+                {{ $t('masterTableMatch.viewDifferences') }}
+              </v-btn>
+              <v-divider vertical class="mx-2"></v-divider>
+              <!-- Action buttons with confirmation -->
+              <v-btn
+                size="small"
+                variant="outlined"
+                color="primary"
+                class="mr-2"
+                :class="{ 'v-btn--active': currentTableMatch.userChoice === 'use_master' }"
+                @click="showUseMasterConfirmDialog = true"
+              >
+                <v-tooltip activator="parent" location="top">
+                  {{ $t('masterTableMatch.option.useMaster.description') }}
+                </v-tooltip>
+                <v-icon start size="small">mdi-database</v-icon>
+                {{ $t('masterTableMatch.option.useMaster.short') }}
+              </v-btn>
+              <v-btn
+                size="small"
+                variant="outlined"
+                color="warning"
+                :disabled="!currentTableMatch.canReplaceMaster"
+                :class="{ 'v-btn--active': currentTableMatch.userChoice === 'replace_master' }"
+                @click="showReplaceMasterConfirmDialog = true"
+              >
+                <v-tooltip activator="parent" location="top">
+                  {{ currentTableMatch.canReplaceMaster 
+                    ? $t('masterTableMatch.option.replaceMaster.description') 
+                    : $t('masterTableMatch.option.replaceMaster.notAvailable') }}
+                </v-tooltip>
+                <v-icon start size="small">mdi-database-sync</v-icon>
+                {{ $t('masterTableMatch.option.replaceMaster.short') }}
+              </v-btn>
+            </div>
+          </div>
 
           <v-card-text class="table-card-content">
             <CoreTable
@@ -153,6 +275,30 @@
         {{ t('inputOutputData.noDataAvailable') }}
       </v-alert>
     </div>
+
+    <!-- Use Master Confirmation Dialog -->
+    <CoreConfirmDialog
+      v-model="showUseMasterConfirmDialog"
+      :title="$t('masterTableMatch.confirmUseMaster.title')"
+      :message="$t('masterTableMatch.confirmUseMaster.message', { tableName: currentTable.title })"
+      :confirm-text="$t('masterTableMatch.confirmUseMaster.confirm')"
+      :cancel-text="$t('table.cancel')"
+      confirm-color="var(--primary)"
+      @confirm="handleConfirmUseMaster"
+      @cancel="showUseMasterConfirmDialog = false"
+    />
+
+    <!-- Replace Master Confirmation Dialog -->
+    <CoreConfirmDialog
+      v-model="showReplaceMasterConfirmDialog"
+      :title="$t('masterTableMatch.confirmReplaceMaster.title')"
+      :message="$t('masterTableMatch.confirmReplaceMaster.message', { tableName: currentTable.title })"
+      :confirm-text="$t('masterTableMatch.confirmReplaceMaster.confirm')"
+      :cancel-text="$t('table.cancel')"
+      confirm-color="var(--warning)"
+      @confirm="handleConfirmReplaceMaster"
+      @cancel="showReplaceMasterConfirmDialog = false"
+    />
   </div>
 </template>
 
@@ -163,6 +309,7 @@ import { useGeneralStore } from '@/stores/general'
 import CoreTable from '@/components/core/table/CoreTable.vue'
 import CoreTab from '@/components/core/CoreTab.vue'
 import CoreTabs from '@/components/core/CoreTabs.vue'
+import CoreConfirmDialog from '@/components/core/table/CoreConfirmDialog.vue'
 import {
   getOperatorsForFieldType,
   getOperatorText as getOperatorTextUtil,
@@ -182,6 +329,7 @@ interface Props {
   checksFinished?: boolean
   checksError?: boolean
   readOnly?: boolean
+  masterTableMatches?: any[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -189,12 +337,15 @@ const props = withDefaults(defineProps<Props>(), {
   checksFinished: false,
   checksError: false,
   readOnly: false,
+  masterTableMatches: () => [],
 })
 
 // Emits
 const emit = defineEmits<{
   'save-changes': [data: any]
   'check-data': []
+  'master-table-action': [tableKey: string, action: 'keep_uploaded' | 'use_master' | 'replace_master']
+  'show-comparison': [tableKey: string]
 }>()
 
 // Composables
@@ -222,6 +373,10 @@ const selectedItems = ref<any[]>([])
 const editingRowId = ref<string | number | null>(null)
 const editingData = ref<any>({})
 const originalData = ref<any>({})
+
+// State for master table action confirmation dialogs
+const showUseMasterConfirmDialog = ref(false)
+const showReplaceMasterConfirmDialog = ref(false)
 const isEditingAnyRow = computed(() => editingRowId.value !== null)
 
 // Use the utility function for generating headers
@@ -561,6 +716,46 @@ const currentTableState = computed(() => {
   if (!table.key) return { searchValue: '', activeFilters: [] }
   return getTableState(table.key)
 })
+
+// Master table match computed properties
+const getMatchForTable = (tableKey: string) => {
+  if (!props.masterTableMatches || props.masterTableMatches.length === 0) return null
+  return props.masterTableMatches.find((m: any) => m.tableKey === tableKey) || null
+}
+
+const currentTableMatch = computed(() => {
+  const table = currentTable.value
+  if (!table.key) return null
+  return getMatchForTable(table.key)
+})
+
+const hasAnyMatches = computed(() => {
+  return props.masterTableMatches && props.masterTableMatches.length > 0
+})
+
+// Master table action handlers
+const handleMasterTableAction = (action: 'keep_uploaded' | 'use_master' | 'replace_master') => {
+  const table = currentTable.value
+  if (!table.key) return
+  emit('master-table-action', table.key, action)
+}
+
+// Confirmation handlers for master table actions
+const handleConfirmUseMaster = () => {
+  handleMasterTableAction('use_master')
+  showUseMasterConfirmDialog.value = false
+}
+
+const handleConfirmReplaceMaster = () => {
+  handleMasterTableAction('replace_master')
+  showReplaceMasterConfirmDialog.value = false
+}
+
+const handleShowComparison = () => {
+  const table = currentTable.value
+  if (!table.key) return
+  emit('show-comparison', table.key)
+}
 
 const formFields = computed(() => {
   const table = currentTable.value
@@ -931,5 +1126,88 @@ const handleCheckData = () => {
 
 .no-data-container {
   margin-top: 2rem;
+}
+
+/* Master table match styles */
+.tab-with-indicator {
+  display: flex !important;
+  align-items: center !important;
+}
+
+.tab-label {
+  display: inline-block;
+}
+
+.match-indicator {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.master-match-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: linear-gradient(90deg, rgba(251, 140, 0, 0.08) 0%, rgba(251, 140, 0, 0.02) 100%);
+  border-bottom: 1px solid rgba(251, 140, 0, 0.2);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.match-info {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.match-text {
+  font-size: 0.875rem;
+  color: var(--subtitle);
+}
+
+.match-text strong {
+  color: var(--title);
+}
+
+.diff-badges {
+  display: flex;
+  align-items: center;
+}
+
+.match-actions {
+  display: flex;
+  align-items: center;
+}
+
+.match-actions .v-btn-toggle {
+  border-radius: 4px;
+}
+
+.match-actions .v-btn-toggle .v-btn {
+  text-transform: none;
+  font-size: 0.75rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 960px) {
+  .master-match-action-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .match-actions {
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: 8px;
+  }
 }
 </style>

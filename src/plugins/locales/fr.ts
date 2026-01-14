@@ -420,6 +420,93 @@ export default {
     phone: 'Veuillez saisir un numéro de téléphone valide',
     alphanumeric: 'Seuls les lettres et les chiffres sont autorisés',
   },
+  masterTableMatch: {
+    alertTitle: 'Correspondances avec les tables de configuration détectées',
+    alertDescription:
+      'Certaines tables de vos données téléchargées correspondent à des tables de configuration existantes. Veuillez choisir comment gérer chaque correspondance ci-dessous.',
+    hasDifferences: 'A des différences',
+    hasDifferencesWithMaster: 'Cette table a des différences avec la table de configuration',
+    identical: 'Identiques',
+    identicalToMaster: 'Cette table est identique à la table de configuration',
+    viewDifferences: 'Comparer',
+    matchFoundWith: 'Correspond à:',
+    matchFoundWithMaster: 'Correspond à la table de configuration: {masterTable}',
+    uploadedRows: 'Lignes téléchargées',
+    masterRows: 'Lignes du maître',
+    newRows: 'Nouvelles lignes',
+    removedRows: 'Lignes supprimées',
+    modifiedRows: 'Lignes modifiées',
+    identicalRows: 'Lignes identiques',
+    selectAction: 'Sélectionnez une action:',
+    option: {
+      keepUploaded: {
+        title: 'Conserver les données téléchargées',
+        short: 'Conserver',
+        description:
+          'Utiliser les données téléchargées pour cette exécution sans modifier la table de configuration.',
+      },
+      useMaster: {
+        title: 'Utiliser les données du maître',
+        short: 'Utiliser maître',
+        description:
+          'Remplacer les données téléchargées par les données actuelles de la table de configuration pour cette exécution.',
+      },
+      replaceMaster: {
+        title: 'Écraser la table de configuration',
+        short: 'Écraser',
+        description:
+          'Remplacer les données de la table de configuration par les données téléchargées. Cela affecte toutes les exécutions futures.',
+        notAvailable: "Cette opération n'est pas disponible pour cette table",
+      },
+    },
+    messages: {
+      usingMasterData: 'Utilisation des données du maître pour la table "{tableName}"',
+      masterTableUpdated: 'La table de configuration "{tableName}" a été mise à jour',
+      updateError: 'Erreur lors de la mise à jour de la table de configuration',
+    },
+    confirmUseMaster: {
+      title: 'Utiliser les données de la table de configuration',
+      message: 'Êtes-vous sûr de vouloir utiliser les données de la table de configuration pour "{tableName}"? Les données téléchargées seront remplacées par les données de la table de configuration pour cette exécution.',
+      confirm: 'Utiliser les données du maître',
+    },
+    confirmReplaceMaster: {
+      title: 'Écraser la table de configuration',
+      message: 'Êtes-vous sûr de vouloir écraser la table de configuration avec les données téléchargées pour "{tableName}"? Cela modifiera définitivement la table de configuration et affectera toutes les exécutions futures.',
+      confirm: 'Écraser',
+    },
+  },
+  dataComparison: {
+    title: 'Comparaison des données: {tableName}',
+    subtitle: 'Comparaison des données téléchargées avec la table de configuration "{masterTable}"',
+    loading: 'Chargement des données de comparaison...',
+    uploadedData: 'Données téléchargées',
+    masterData: 'Données du maître',
+    rows: 'lignes',
+    newRows: 'Nouvelles',
+    removedRows: 'Supprimées',
+    modifiedRows: 'Modifiées',
+    identicalRows: 'Identiques',
+    tabs: {
+      summary: 'Résumé',
+      sideBySide: 'Côte à côte',
+      changes: 'Modifications',
+    },
+    filter: {
+      all: 'Tout',
+      added: 'Ajoutées',
+      removed: 'Supprimées',
+      modified: 'Modifiées',
+    },
+    noChangesInFilter: 'Aucune modification dans ce filtre',
+    changeType: {
+      added: 'Ligne ajoutée',
+      removed: 'Ligne supprimée',
+      modified: 'Ligne modifiée',
+    },
+  },
+  common: {
+    close: 'Fermer',
+  },
   latestPlan: {
     banner: {
       message:

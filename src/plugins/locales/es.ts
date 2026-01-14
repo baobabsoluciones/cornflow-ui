@@ -653,6 +653,93 @@ export default {
       mapBy: '{valueColumn} por {locationColumn}',
     },
   },
+  masterTableMatch: {
+    alertTitle: 'Coincidencias con tablas maestras detectadas',
+    alertDescription:
+      'Algunas tablas en los datos subidos coinciden con tablas maestras existentes. Por favor, elige cómo manejar cada coincidencia a continuación.',
+    hasDifferences: 'Tiene diferencias',
+    hasDifferencesWithMaster: 'Esta tabla tiene diferencias con la tabla maestra',
+    identical: 'Idénticas',
+    identicalToMaster: 'Esta tabla es idéntica a la tabla maestra',
+    viewDifferences: 'Comparar',
+    matchFoundWith: 'Coincide con maestro:',
+    matchFoundWithMaster: 'Coincide con tabla maestra: {masterTable}',
+    uploadedRows: 'Filas subidas',
+    masterRows: 'Filas en maestro',
+    newRows: 'Filas nuevas',
+    removedRows: 'Filas eliminadas',
+    modifiedRows: 'Filas modificadas',
+    identicalRows: 'Filas idénticas',
+    selectAction: 'Selecciona una acción:',
+    option: {
+      keepUploaded: {
+        title: 'Mantener datos subidos',
+        short: 'Mantener',
+        description:
+          'Usar los datos subidos para esta ejecución sin modificar la tabla maestra.',
+      },
+      useMaster: {
+        title: 'Usar datos del maestro',
+        short: 'Usar maestro',
+        description:
+          'Reemplazar los datos subidos con los datos actuales de la tabla maestra para esta ejecución.',
+      },
+      replaceMaster: {
+        title: 'Sobreescribir tabla maestra',
+        short: 'Sobreescribir',
+        description:
+          'Reemplazar los datos de la tabla maestra con los datos subidos. Esto afecta a todas las ejecuciones futuras.',
+        notAvailable: 'Esta operación no está disponible para esta tabla',
+      },
+    },
+    messages: {
+      usingMasterData: 'Usando datos del maestro para la tabla "{tableName}"',
+      masterTableUpdated: 'La tabla maestra "{tableName}" ha sido actualizada',
+      updateError: 'Error al actualizar la tabla maestra',
+    },
+    confirmUseMaster: {
+      title: 'Usar datos de la tabla maestra',
+      message: '¿Estás seguro de que quieres usar los datos de la tabla maestra para "{tableName}"? Los datos subidos serán reemplazados por los datos de la tabla maestra para esta ejecución.',
+      confirm: 'Usar datos del maestro',
+    },
+    confirmReplaceMaster: {
+      title: 'Sobreescribir tabla maestra',
+      message: '¿Estás seguro de que quieres sobreescribir la tabla maestra con los datos subidos de "{tableName}"? Esto modificará permanentemente la tabla maestra y afectará a todas las ejecuciones futuras.',
+      confirm: 'Sobreescribir',
+    },
+  },
+  dataComparison: {
+    title: 'Comparación de datos: {tableName}',
+    subtitle: 'Comparando datos subidos con la tabla maestra "{masterTable}"',
+    loading: 'Cargando datos de comparación...',
+    uploadedData: 'Datos subidos',
+    masterData: 'Datos del maestro',
+    rows: 'filas',
+    newRows: 'Nuevas',
+    removedRows: 'Eliminadas',
+    modifiedRows: 'Modificadas',
+    identicalRows: 'Idénticas',
+    tabs: {
+      summary: 'Resumen',
+      sideBySide: 'Lado a lado',
+      changes: 'Cambios',
+    },
+    filter: {
+      all: 'Todos',
+      added: 'Añadidos',
+      removed: 'Eliminados',
+      modified: 'Modificados',
+    },
+    noChangesInFilter: 'No hay cambios en este filtro',
+    changeType: {
+      added: 'Fila añadida',
+      removed: 'Fila eliminada',
+      modified: 'Fila modificada',
+    },
+  },
+  common: {
+    close: 'Cerrar',
+  },
   latestPlan: {
     banner: {
       message:

@@ -32,6 +32,80 @@ The execution management section handles the complete lifecycle of optimization 
 - **Location**: `ProjectExecutionView.vue`
 - **Configuration**: Controlled by `executionSolvers`, `solverConfig`, and `configFieldsConfig` in `src/app/config.ts`
 
+### Master table matching (instance synchronization)
+
+The application can automatically detect when uploaded instance tables match existing master (configuration) tables. This feature enables users to synchronize data between uploaded instances and master tables.
+
+#### How it works
+
+1. **Automatic detection**: When an instance is uploaded, the system compares table names (case-insensitive) with existing master tables
+2. **Difference calculation**: For matched tables, the system calculates detailed differences (added, removed, modified, identical rows)
+3. **User choice**: Users can choose how to handle each matched table:
+   - **Keep uploaded**: Use uploaded data for this execution without modifying the master table
+   - **Use master**: Replace uploaded data with current master table data
+   - **Update master**: Overwrite the master table with the uploaded data (requires `overwrite_all` permission)
+
+#### Visual indicators
+
+- Tables with master table matches display a badge in the tab header
+- Different colors indicate synchronization status (green = identical, orange = has differences)
+- Difference summary shows counts of added, removed, and modified rows
+
+#### Data comparison modal
+
+Users can open a detailed comparison view showing:
+- **Summary tab**: Overview of data counts and differences
+- **Side by side tab**: Both datasets displayed in parallel
+- **Changes tab**: Detailed list of all differences with field-level comparison
+
+#### Configuration
+
+Enable the feature in `src/app/config.ts`:
+
+```typescript
+parameters: {
+  enableMasterTableOverwrite: true, // Show overwrite option for master tables
+}
+```
+
+#### Foreign key handling
+
+When overwriting master tables, the system automatically handles foreign key relationships defined in the frontend-automation schema:
+
+- **`columns_to_join`**: Foreign key fields that reference other tables
+- **`join_from`**: Display fields that show human-readable values
+
+The system:
+1. Detects dependent fields (`isDependentField: true`) in the uploaded data
+2. Resolves display values to their corresponding foreign key IDs
+3. Sends only the foreign key IDs to the backend (not the display fields)
+
+Example schema with foreign keys:
+```json
+{
+  "factoria_id": {
+    "type": "integer",
+    "columns_to_join": ["factoria_nombre", "factoria_codigo"]
+  },
+  "factoria_nombre": {
+    "type": "string",
+    "join_from": "factorias.nombre"
+  }
+}
+```
+
+When uploading data with `factoria_nombre = "Factory A"`, the system:
+1. Looks up "Factory A" in the `factorias` table
+2. Gets the corresponding `id`
+3. Sends `factoria_id = 123` to the backend
+4. Removes `factoria_nombre` from the payload
+
+#### Implementation details
+
+- **Composable**: `useMasterTableMatch.ts` manages detection, comparison, and synchronization
+- **Components**: `DataComparisonModal.vue` displays the comparison interface
+- **Integration**: `ExecutionDataView.vue` renders match indicators and action buttons
+
 ## Configuration tables section (optional)
 
 The configuration tables section is dynamically generated based on backend schema definitions. This section only appears when the backend provides frontend-automation schema data.

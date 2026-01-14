@@ -28,7 +28,10 @@
         :can-check-data="false"
         :checks-finished="false"
         :checks-error="false"
+        :master-table-matches="masterTableMatchesWithCanReplace"
         @save-changes="handleSaveChanges"
+        @master-table-action="handleMasterTableChoice"
+        @show-comparison="handleShowComparison"
       />
       <!-- Error Alert - Show validation errors if any (below the table) -->
       <v-alert
@@ -82,13 +85,27 @@
                 :can-check-data="false"
                 :checks-finished="false"
                 :checks-error="false"
+                :master-table-matches="masterTableMatchesWithCanReplace"
                 @save-changes="handleSaveChanges"
+                @master-table-action="handleMasterTableChoice"
+                @show-comparison="handleShowComparison"
               />
             </div>
           </div>
         </div>
       </transition>
     </Teleport>
+
+    <!-- Data comparison modal -->
+    <DataComparisonModal
+      v-if="selectedMatchForComparison"
+      v-model="showComparisonModal"
+      :table-name="selectedMatchForComparison.tableName"
+      :master-table-title="selectedMatchForComparison.masterTableTitle"
+      :instance-data="selectedMatchForComparison.instanceData"
+      :master-data="selectedMatchForComparison.masterData"
+      :diff-summary="selectedMatchForComparison.diffSummary"
+    />
   </div>
 </template>
 
@@ -97,11 +114,13 @@ import { computed, ref, inject, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ExecutionDataView from '@/components/project-execution/ExecutionDataView.vue'
 import CoreDropdownMenu from '@/components/core/CoreDropdownMenu.vue'
+import DataComparisonModal from '@/components/project-execution/DataComparisonModal.vue'
 import { useFullscreen } from '@/composables/useFullscreen'
 import {
   useExecutionExcel,
   type NewExecution,
 } from '@/composables/project-execution/useExecutionExcel'
+import { useMasterTableMatch } from '@/composables/project-execution/useMasterTableMatch'
 import { Instance } from '@/app/models/Instance'
 import { formatValidationErrorsWithTitle } from '@/utils/errorFormatting'
 import { useGeneralStore } from '@/stores/general'
@@ -120,6 +139,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   (e: 'update:instance', instance: Instance): void
   (e: 'update:instanceErrors', errors: string | null): void
+  (e: 'master-tables-updated', tables: string[]): void
 }>()
 
 const generalStore = useGeneralStore()
@@ -129,6 +149,21 @@ const showSnackbar = inject('showSnackbar') as
 
 const { t } = useI18n()
 const { isMaximized, toggleMaximize } = useFullscreen()
+
+// Master table match composable
+const masterTableMatch = useMasterTableMatch()
+
+// Comparison modal state
+const showComparisonModal = ref(false)
+const selectedMatchForComparison = ref<any>(null)
+
+// Computed property to add canReplaceMaster to each match
+const masterTableMatchesWithCanReplace = computed(() => {
+  return masterTableMatch.matches.value.map((match) => ({
+    ...match,
+    canReplaceMaster: masterTableMatch.canReplaceMasterTable(match.tableKey),
+  }))
+})
 
 // Local state for errors
 const instanceErrors = ref<string | null>(props.instanceErrors)
@@ -141,6 +176,109 @@ watch(
   },
   { immediate: true },
 )
+
+// Detect master table matches when instance data changes
+watch(
+  () => props.newExecution.instance?.data,
+  async (newData) => {
+    if (newData && typeof newData === 'object') {
+      await masterTableMatch.detectMatches(newData as Record<string, any>)
+    } else {
+      masterTableMatch.reset()
+    }
+  },
+  { immediate: true, deep: false },
+)
+
+// Handle user choice for master table match
+const handleMasterTableChoice = async (
+  tableKey: string,
+  choice: 'keep_uploaded' | 'use_master' | 'replace_master',
+) => {
+  masterTableMatch.setUserChoice(tableKey, choice)
+
+  // If user chooses to use master data, update the instance immediately
+  if (choice === 'use_master') {
+    const match = masterTableMatch.matches.value.find(
+      (m) => m.tableKey === tableKey,
+    )
+    if (match && props.newExecution.instance) {
+      const newTableData = [...match.masterData]
+      const updatedData = {
+        ...props.newExecution.instance.data,
+        [tableKey]: newTableData,
+      }
+
+      const schemas = generalStore.getSchemaConfig
+      const updatedInstance = new Instance(
+        null,
+        updatedData,
+        schemas.instanceSchema,
+        schemas.instanceChecksSchema,
+        generalStore.getSchemaName,
+      )
+
+      emit('update:instance', updatedInstance)
+
+      // Update the match to reflect the new state (now identical)
+      masterTableMatch.updateMatchAfterAction(tableKey, 'use_master', newTableData)
+
+      if (showSnackbar) {
+        showSnackbar(
+          t('masterTableMatch.messages.usingMasterData', {
+            tableName: match.masterTableTitle,
+          }),
+          'info',
+        )
+      }
+    }
+  }
+
+  // If user chooses to replace master, do it immediately
+  if (choice === 'replace_master') {
+    try {
+      const result = await masterTableMatch.applyChoices(
+        props.newExecution.instance?.data as Record<string, any>,
+      )
+
+      if (result.masterTablesUpdated.length > 0) {
+        emit('master-tables-updated', result.masterTablesUpdated)
+
+        // Update the match to reflect the new state (now identical)
+        masterTableMatch.updateMatchAfterAction(tableKey, 'replace_master')
+
+        if (showSnackbar) {
+          showSnackbar(
+            t('masterTableMatch.messages.masterTableUpdated', {
+              tableName: result.masterTablesUpdated.join(', '),
+            }),
+            'success',
+          )
+        }
+      }
+    } catch (error) {
+      if (showSnackbar) {
+        showSnackbar(
+          error instanceof Error
+            ? error.message
+            : t('masterTableMatch.messages.updateError'),
+          'error',
+        )
+      }
+    }
+  }
+}
+
+// Handle showing comparison modal
+const handleShowComparison = (tableKey: string) => {
+  const match = masterTableMatchesWithCanReplace.value.find(
+    (m) => m.tableKey === tableKey,
+  )
+  if (match) {
+    selectedMatchForComparison.value = match
+    showComparisonModal.value = true
+  }
+}
 
 // Clear errors handler
 const clearErrors = () => {

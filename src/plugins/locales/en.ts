@@ -639,6 +639,93 @@ export default {
       mapBy: '{valueColumn} by {locationColumn}',
     },
   },
+  masterTableMatch: {
+    alertTitle: 'Master table matches detected',
+    alertDescription:
+      'Some tables in your uploaded data match existing master tables. Please choose how to handle each match below.',
+    hasDifferences: 'Has differences',
+    hasDifferencesWithMaster: 'This table has differences with the master table',
+    identical: 'Identical',
+    identicalToMaster: 'This table is identical to the master table',
+    viewDifferences: 'Compare',
+    matchFoundWith: 'Matches master:',
+    matchFoundWithMaster: 'Matches master table: {masterTable}',
+    uploadedRows: 'Uploaded rows',
+    masterRows: 'Master rows',
+    newRows: 'New rows',
+    removedRows: 'Removed rows',
+    modifiedRows: 'Modified rows',
+    identicalRows: 'Identical rows',
+    selectAction: 'Select an action:',
+    option: {
+      keepUploaded: {
+        title: 'Keep uploaded data',
+        short: 'Keep uploaded',
+        description:
+          'Use the uploaded data for this execution without modifying the master table.',
+      },
+      useMaster: {
+        title: 'Use master data',
+        short: 'Use master',
+        description:
+          'Replace uploaded data with the current master table data for this execution.',
+      },
+      replaceMaster: {
+        title: 'Overwrite master table',
+        short: 'Overwrite',
+        description:
+          'Replace the master table data with the uploaded data. This affects all future executions.',
+        notAvailable: 'This operation is not available for this table',
+      },
+    },
+    messages: {
+      usingMasterData: 'Using master data for table "{tableName}"',
+      masterTableUpdated: 'Master table "{tableName}" has been updated',
+      updateError: 'Error updating master table',
+    },
+    confirmUseMaster: {
+      title: 'Use master table data',
+      message: 'Are you sure you want to use the master table data for "{tableName}"? The uploaded data will be replaced with the master table data for this execution.',
+      confirm: 'Use master data',
+    },
+    confirmReplaceMaster: {
+      title: 'Overwrite master table',
+      message: 'Are you sure you want to overwrite the master table with the uploaded data for "{tableName}"? This will permanently modify the master table and affect all future executions.',
+      confirm: 'Overwrite',
+    },
+  },
+  dataComparison: {
+    title: 'Data comparison: {tableName}',
+    subtitle: 'Comparing uploaded data with master table "{masterTable}"',
+    loading: 'Loading comparison data...',
+    uploadedData: 'Uploaded data',
+    masterData: 'Master data',
+    rows: 'rows',
+    newRows: 'New',
+    removedRows: 'Removed',
+    modifiedRows: 'Modified',
+    identicalRows: 'Identical',
+    tabs: {
+      summary: 'Summary',
+      sideBySide: 'Side by side',
+      changes: 'Changes',
+    },
+    filter: {
+      all: 'All',
+      added: 'Added',
+      removed: 'Removed',
+      modified: 'Modified',
+    },
+    noChangesInFilter: 'No changes in this filter',
+    changeType: {
+      added: 'Added row',
+      removed: 'Removed row',
+      modified: 'Modified row',
+    },
+  },
+  common: {
+    close: 'Close',
+  },
   latestPlan: {
     banner: {
       message:
