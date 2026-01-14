@@ -177,7 +177,7 @@
               <v-btn
                 size="small"
                 variant="outlined"
-                color="warning"
+                color="accent"
                 :disabled="!currentTableMatch.canReplaceMaster"
                 :class="{ 'v-btn--active': currentTableMatch.userChoice === 'replace_master' }"
                 @click="showReplaceMasterConfirmDialog = true"
@@ -295,7 +295,7 @@
       :message="$t('masterTableMatch.confirmReplaceMaster.message', { tableName: currentTable.title })"
       :confirm-text="$t('masterTableMatch.confirmReplaceMaster.confirm')"
       :cancel-text="$t('table.cancel')"
-      confirm-color="var(--warning)"
+      confirm-color="var(--accent)"
       @confirm="handleConfirmReplaceMaster"
       @cancel="showReplaceMasterConfirmDialog = false"
     />

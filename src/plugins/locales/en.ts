@@ -665,16 +665,16 @@ export default {
           'Use the uploaded data for this execution without modifying the master table.',
       },
       useMaster: {
-        title: 'Use master data',
-        short: 'Use master',
+        title: 'Apply master data',
+        short: 'Apply master',
         description:
-          'Replace uploaded data with the current master table data for this execution.',
+          'Use the master table data instead of the uploaded data for this execution.',
       },
       replaceMaster: {
-        title: 'Overwrite master table',
-        short: 'Overwrite',
+        title: 'Save to master table',
+        short: 'Save to master',
         description:
-          'Replace the master table data with the uploaded data. This affects all future executions.',
+          'Save the uploaded data to the master table. This affects all future executions.',
         notAvailable: 'This operation is not available for this table',
       },
     },
@@ -684,14 +684,14 @@ export default {
       updateError: 'Error updating master table',
     },
     confirmUseMaster: {
-      title: 'Use master table data',
-      message: 'Are you sure you want to use the master table data for "{tableName}"? The uploaded data will be replaced with the master table data for this execution.',
-      confirm: 'Use master data',
+      title: 'Apply master data',
+      message: 'Do you want to use the master table data for "{tableName}"? The uploaded data will be replaced with master data only for this execution.',
+      confirm: 'Apply master',
     },
     confirmReplaceMaster: {
-      title: 'Overwrite master table',
-      message: 'Are you sure you want to overwrite the master table with the uploaded data for "{tableName}"? This will permanently modify the master table and affect all future executions.',
-      confirm: 'Overwrite',
+      title: 'Save to master table',
+      message: 'Do you want to save the uploaded data to the master table "{tableName}"? This will permanently modify the master table and affect all future executions.',
+      confirm: 'Save to master',
     },
   },
   dataComparison: {

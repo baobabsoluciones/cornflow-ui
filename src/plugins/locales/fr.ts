@@ -446,16 +446,16 @@ export default {
           'Utiliser les données téléchargées pour cette exécution sans modifier la table de configuration.',
       },
       useMaster: {
-        title: 'Utiliser les données du maître',
-        short: 'Utiliser maître',
+        title: 'Appliquer les données du maître',
+        short: 'Appliquer maître',
         description:
-          'Remplacer les données téléchargées par les données actuelles de la table de configuration pour cette exécution.',
+          'Utiliser les données de la table de configuration au lieu des données téléchargées pour cette exécution.',
       },
       replaceMaster: {
-        title: 'Écraser la table de configuration',
-        short: 'Écraser',
+        title: 'Enregistrer dans la table maître',
+        short: 'Enregistrer',
         description:
-          'Remplacer les données de la table de configuration par les données téléchargées. Cela affecte toutes les exécutions futures.',
+          'Enregistrer les données téléchargées dans la table de configuration. Cela affecte toutes les exécutions futures.',
         notAvailable: "Cette opération n'est pas disponible pour cette table",
       },
     },
@@ -465,14 +465,14 @@ export default {
       updateError: 'Erreur lors de la mise à jour de la table de configuration',
     },
     confirmUseMaster: {
-      title: 'Utiliser les données de la table de configuration',
-      message: 'Êtes-vous sûr de vouloir utiliser les données de la table de configuration pour "{tableName}"? Les données téléchargées seront remplacées par les données de la table de configuration pour cette exécution.',
-      confirm: 'Utiliser les données du maître',
+      title: 'Appliquer les données du maître',
+      message: 'Voulez-vous utiliser les données de la table de configuration pour "{tableName}"? Les données téléchargées seront remplacées par les données du maître uniquement pour cette exécution.',
+      confirm: 'Appliquer maître',
     },
     confirmReplaceMaster: {
-      title: 'Écraser la table de configuration',
-      message: 'Êtes-vous sûr de vouloir écraser la table de configuration avec les données téléchargées pour "{tableName}"? Cela modifiera définitivement la table de configuration et affectera toutes les exécutions futures.',
-      confirm: 'Écraser',
+      title: 'Enregistrer dans la table maître',
+      message: 'Voulez-vous enregistrer les données téléchargées dans la table maître "{tableName}"? Cela modifiera définitivement la table de configuration et affectera toutes les exécutions futures.',
+      confirm: 'Enregistrer',
     },
   },
   dataComparison: {

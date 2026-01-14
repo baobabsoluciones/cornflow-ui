@@ -817,7 +817,7 @@ const close = () => {
 }
 
 .panel-header {
-  background-color: rgba(0, 0, 0, 0.03);
+  background-color: var(--background, #f6f6f6);
   padding: 12px 16px;
   font-weight: 500;
   display: flex;
@@ -835,34 +835,38 @@ const close = () => {
   flex-direction: column;
   border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 4px;
-  overflow: hidden;
+  overflow: auto; /* Allow horizontal scroll */
 }
 
 .virtual-table-header {
   display: flex;
-  background-color: #f5f5f5;
+  background-color: var(--background, #f6f6f6);
   border-bottom: 1px solid rgba(0, 0, 0, 0.12);
   font-weight: 600;
   font-size: 0.75rem;
   color: var(--title, rgba(0, 0, 0, 0.87));
+  min-width: fit-content; /* Ensure header doesn't compress */
 }
 
 .virtual-table-header-cell {
-  flex: 1;
+  flex: 0 0 auto; /* Don't shrink, don't grow, auto width */
+  width: 120px; /* Fixed width for consistency */
+  min-width: 120px;
   padding: 10px 12px;
-  min-width: 100px;
   text-transform: uppercase;
   letter-spacing: 0.025em;
 }
 
 .virtual-table-body {
   background-color: white;
+  min-width: fit-content; /* Ensure body matches header width */
 }
 
 .virtual-table-row {
   display: flex;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   transition: background-color 0.15s;
+  min-width: fit-content; /* Ensure row doesn't compress */
 }
 
 .virtual-table-row:hover {
@@ -870,9 +874,10 @@ const close = () => {
 }
 
 .virtual-table-cell {
-  flex: 1;
+  flex: 0 0 auto; /* Don't shrink, don't grow, auto width */
+  width: 120px; /* Fixed width matching header */
+  min-width: 120px;
   padding: 8px 12px;
-  min-width: 100px;
   font-size: 0.75rem;
   display: flex;
   align-items: center;
@@ -881,33 +886,58 @@ const close = () => {
   white-space: nowrap;
 }
 
-/* Row status colors for virtual table */
+/* Row status colors for virtual table - using CSS variables */
 .virtual-table-row.row-added {
-  background-color: rgba(76, 175, 80, 0.1) !important;
+  background-color: color-mix(
+    in srgb,
+    var(--success, #3ba780) 12%,
+    transparent
+  ) !important;
 }
 
 .virtual-table-row.row-removed {
-  background-color: rgba(244, 67, 54, 0.1) !important;
+  background-color: color-mix(
+    in srgb,
+    var(--danger, #f44336) 12%,
+    transparent
+  ) !important;
 }
 
 .virtual-table-row.row-modified {
-  background-color: rgba(255, 152, 0, 0.1) !important;
+  background-color: color-mix(
+    in srgb,
+    var(--warning, #ffb458) 12%,
+    transparent
+  ) !important;
 }
 
 .data-table {
   font-size: 0.75rem;
 }
 
+/* Row status colors - using CSS variables */
 .row-added {
-  background-color: rgba(76, 175, 80, 0.1) !important;
+  background-color: color-mix(
+    in srgb,
+    var(--success, #3ba780) 12%,
+    transparent
+  ) !important;
 }
 
 .row-removed {
-  background-color: rgba(244, 67, 54, 0.1) !important;
+  background-color: color-mix(
+    in srgb,
+    var(--danger, #f44336) 12%,
+    transparent
+  ) !important;
 }
 
 .row-modified {
-  background-color: rgba(255, 152, 0, 0.1) !important;
+  background-color: color-mix(
+    in srgb,
+    var(--warning, #ffb458) 12%,
+    transparent
+  ) !important;
 }
 
 .change-filters {
@@ -931,16 +961,17 @@ const close = () => {
   align-items: flex-start;
 }
 
+/* Change item colors - using CSS variables */
 .change-item.change-added {
-  background-color: rgba(76, 175, 80, 0.05);
+  background-color: color-mix(in srgb, var(--success, #3ba780) 8%, transparent);
 }
 
 .change-item.change-removed {
-  background-color: rgba(244, 67, 54, 0.05);
+  background-color: color-mix(in srgb, var(--danger, #f44336) 8%, transparent);
 }
 
 .change-item.change-modified {
-  background-color: rgba(255, 152, 0, 0.05);
+  background-color: color-mix(in srgb, var(--warning, #ffb458) 8%, transparent);
 }
 
 .change-icon {
@@ -974,13 +1005,13 @@ const close = () => {
 }
 
 .old-value {
-  color: var(--v-error-base, #f44336);
+  color: var(--danger, #f44336);
   text-decoration: line-through;
   margin-right: 4px;
 }
 
 .new-value {
-  color: var(--v-success-base, #4caf50);
+  color: var(--success, #3ba780);
   margin-left: 4px;
 }
 </style>

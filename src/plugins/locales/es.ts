@@ -679,16 +679,16 @@ export default {
           'Usar los datos subidos para esta ejecución sin modificar la tabla maestra.',
       },
       useMaster: {
-        title: 'Usar datos del maestro',
-        short: 'Usar maestro',
+        title: 'Aplicar datos del maestro',
+        short: 'Aplicar maestro',
         description:
-          'Reemplazar los datos subidos con los datos actuales de la tabla maestra para esta ejecución.',
+          'Usar los datos de la tabla maestra en lugar de los subidos para esta ejecución.',
       },
       replaceMaster: {
-        title: 'Sobreescribir tabla maestra',
-        short: 'Sobreescribir',
+        title: 'Guardar en tabla maestra',
+        short: 'Guardar en maestro',
         description:
-          'Reemplazar los datos de la tabla maestra con los datos subidos. Esto afecta a todas las ejecuciones futuras.',
+          'Guardar los datos subidos en la tabla maestra. Esto afecta a todas las ejecuciones futuras.',
         notAvailable: 'Esta operación no está disponible para esta tabla',
       },
     },
@@ -698,14 +698,14 @@ export default {
       updateError: 'Error al actualizar la tabla maestra',
     },
     confirmUseMaster: {
-      title: 'Usar datos de la tabla maestra',
-      message: '¿Estás seguro de que quieres usar los datos de la tabla maestra para "{tableName}"? Los datos subidos serán reemplazados por los datos de la tabla maestra para esta ejecución.',
-      confirm: 'Usar datos del maestro',
+      title: 'Aplicar datos del maestro',
+      message: '¿Quieres usar los datos de la tabla maestra para "{tableName}"? Los datos que has subido serán reemplazados por los del maestro solo para esta ejecución.',
+      confirm: 'Aplicar maestro',
     },
     confirmReplaceMaster: {
-      title: 'Sobreescribir tabla maestra',
-      message: '¿Estás seguro de que quieres sobreescribir la tabla maestra con los datos subidos de "{tableName}"? Esto modificará permanentemente la tabla maestra y afectará a todas las ejecuciones futuras.',
-      confirm: 'Sobreescribir',
+      title: 'Guardar en tabla maestra',
+      message: '¿Quieres guardar los datos subidos en la tabla maestra "{tableName}"? Esto modificará permanentemente la tabla maestra y afectará a todas las ejecuciones futuras.',
+      confirm: 'Guardar en maestro',
     },
   },
   dataComparison: {
