@@ -644,7 +644,8 @@ export default {
     alertDescription:
       'Some tables in your uploaded data match existing master tables. Please choose how to handle each match below.',
     hasDifferences: 'Has differences',
-    hasDifferencesWithMaster: 'This table has differences with the master table',
+    hasDifferencesWithMaster:
+      'This table has differences with the master table',
     identical: 'Identical',
     identicalToMaster: 'This table is identical to the master table',
     viewDifferences: 'Compare',
@@ -682,15 +683,27 @@ export default {
       usingMasterData: 'Using master data for table "{tableName}"',
       masterTableUpdated: 'Master table "{tableName}" has been updated',
       updateError: 'Error updating master table',
+      errorLoadingMasterTable: 'Error loading master table {tableName}',
+      unknownError: 'Unknown error',
+      failedToUpdateMasterTable:
+        'Failed to update master table "{tableName}": {error}',
+      relatedTableNotFound:
+        'Related table {tableName} not found in configurations',
+      noMatchingItemFound:
+        'No matching item found for {fieldKey}="{fieldValue}" in table {tableName}',
+      errorProcessingDependentField:
+        'Error processing dependent field {fieldKey}',
     },
     confirmUseMaster: {
       title: 'Apply master data',
-      message: 'Do you want to use the master table data for "{tableName}"? The uploaded data will be replaced with master data only for this execution.',
+      message:
+        'Do you want to use the master table data for "{tableName}"? The uploaded data will be replaced with master data only for this execution.',
       confirm: 'Apply master',
     },
     confirmReplaceMaster: {
       title: 'Save to master table',
-      message: 'Do you want to save the uploaded data to the master table "{tableName}"? This will permanently modify the master table and affect all future executions.',
+      message:
+        'Do you want to save the uploaded data to the master table "{tableName}"? This will permanently modify the master table and affect all future executions.',
       confirm: 'Save to master',
     },
   },

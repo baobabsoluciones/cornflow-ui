@@ -64,8 +64,8 @@ export default class TableRepository {
       if (response.status >= 200 && response.status < 300) {
         return response.content
       } else {
-        const apiCallFailedMessage = this.t
-          ? this.t('table.repository.apiCallFailed')
+        const apiCallFailedMessage = response.content.message
+          ? response.content.message
           : 'An error occurred while saving your data. Please try again'
         throw new Error(apiCallFailedMessage)
       }

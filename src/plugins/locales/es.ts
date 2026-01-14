@@ -696,6 +696,12 @@ export default {
       usingMasterData: 'Usando datos del maestro para la tabla "{tableName}"',
       masterTableUpdated: 'La tabla maestra "{tableName}" ha sido actualizada',
       updateError: 'Error al actualizar la tabla maestra',
+      errorLoadingMasterTable: 'Error al cargar la tabla maestra {tableName}',
+      unknownError: 'Error desconocido',
+      failedToUpdateMasterTable: 'Error al actualizar la tabla maestra "{tableName}": {error}',
+      relatedTableNotFound: 'Tabla relacionada {tableName} no encontrada en configuraciones',
+      noMatchingItemFound: 'No se encontró elemento coincidente para {fieldKey}="{fieldValue}" en tabla {tableName}',
+      errorProcessingDependentField: 'Error al procesar campo dependiente {fieldKey}',
     },
     confirmUseMaster: {
       title: 'Aplicar datos del maestro',
