@@ -1,8 +1,11 @@
 /* Inline editing styles for CoreTable */
+/* Optimized for responsive behavior */
 
-/* Force table to maintain column widths during inline editing */
+/* ==========================================================================
+   Table Layout - Column widths during inline editing
+   ========================================================================== */
 .v-data-table-virtual .v-table__wrapper table {
-  table-layout: fixed;
+  table-layout: auto;
 }
 
 .v-data-table-virtual .v-table__wrapper table td,
@@ -10,6 +13,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 300px;
 }
 
 /* Allow overflow for editing cells to show inputs properly */
@@ -21,13 +25,16 @@
   white-space: normal;
 }
 
+/* ==========================================================================
+   Inline Edit Cell - Base styles
+   ========================================================================== */
 .inline-edit-cell {
   position: relative;
-  min-height: 40px;
+  min-height: 36px;
   display: flex;
   align-items: center;
   padding: 4px 8px;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   width: 100%;
   max-width: 100%;
   overflow: hidden;
@@ -139,8 +146,38 @@
   background-color: rgba(var(--v-theme-primary), 0.02);
 }
 
-/* Responsive adjustments */
+/* ==========================================================================
+   Responsive Adjustments
+   ========================================================================== */
+
+/* Large screens */
+@media (max-width: 1200px) {
+  .v-data-table-virtual .v-table__wrapper table td,
+  .v-data-table-virtual .v-table__wrapper table th {
+    max-width: 250px;
+  }
+}
+
+/* Medium screens */
+@media (max-width: 992px) {
+  .v-data-table-virtual .v-table__wrapper table td,
+  .v-data-table-virtual .v-table__wrapper table th {
+    max-width: 200px;
+  }
+
+  .inline-edit-cell {
+    min-height: 34px;
+    padding: 3px 6px;
+  }
+}
+
+/* Small screens */
 @media (max-width: 768px) {
+  .v-data-table-virtual .v-table__wrapper table td,
+  .v-data-table-virtual .v-table__wrapper table th {
+    max-width: 150px;
+  }
+
   .inline-edit-input {
     width: 100%;
     max-width: 100%;
@@ -159,6 +196,40 @@
   }
 
   .inline-edit-cell:has(.inline-edit-actions) {
-    padding-right: 70px; /* Smaller padding for mobile */
+    padding-right: 65px;
+  }
+
+  .inline-edit-display {
+    padding: 6px 4px;
+    min-height: 28px;
+  }
+
+  .inline-edit-readonly {
+    padding: 6px 4px;
+    min-height: 28px;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 576px) {
+  .v-data-table-virtual .v-table__wrapper table td,
+  .v-data-table-virtual .v-table__wrapper table th {
+    max-width: 120px;
+    font-size: 13px;
+  }
+
+  .inline-edit-cell {
+    min-height: 32px;
+    padding: 2px 4px;
+  }
+
+  .inline-edit-cell:has(.inline-edit-actions) {
+    padding-right: 60px;
+  }
+
+  .inline-edit-actions .v-btn {
+    min-width: 26px !important;
+    width: 26px;
+    height: 26px;
   }
 }

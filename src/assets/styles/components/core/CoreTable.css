@@ -1,31 +1,62 @@
 /* CoreTable Component Styles */
+/* Optimized for full responsiveness and dynamic table height */
 
+/* ==========================================================================
+   Main Container - Flexbox layout for full height
+   ========================================================================== */
 .core-table-container {
   width: 100%;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
   min-height: 0;
   overflow: hidden;
 }
 
-.table-container {
-  border-radius: 4px;
-  overflow-x: auto;
-  overflow-y: hidden;
+/* Ensure the v-card inside fills the container */
+.core-table-container > .v-card {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
-  max-height: 100%;
+  overflow: hidden;
 }
 
-/* Vuetify Data Table Overrides */
+/* ==========================================================================
+   Table Container - Wraps the virtual table
+   ========================================================================== */
+.table-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+/* ==========================================================================
+   Vuetify Data Table Overrides
+   ========================================================================== */
+.core-table-container :deep(.v-data-table) {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 .core-table-container :deep(.v-data-table-virtual) {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
 
 .core-table-container :deep(.v-data-table-virtual .v-table__wrapper) {
+  flex: 1;
+  min-height: 0;
   border-radius: 4px;
-  overflow-x: auto !important;
+  overflow: auto !important;
   padding-bottom: 0 !important;
 }
 
@@ -40,10 +71,11 @@
 .core-table-container :deep(.v-data-table-virtual tbody)::after {
   content: '';
   display: block;
-  height: 40px;
+  height: 10px;
   width: 100%;
 }
 
+/* Table header styling */
 .core-table-container :deep(.v-data-table-virtual .v-data-table__thead) {
   background-color: rgb(var(--v-theme-surface-variant));
 }
@@ -53,12 +85,16 @@
   font-weight: 600;
 }
 
-/* Skeleton Loader */
+/* ==========================================================================
+   Skeleton Loader
+   ========================================================================== */
 .core-table-container .v-skeleton-loader {
   background: transparent;
 }
 
-/* No Data Alert */
+/* ==========================================================================
+   No Data Alert
+   ========================================================================== */
 .no-data-alert {
   background-color: var(--primary-light-variant) !important;
   border-color: var(--primary-light) !important;
@@ -69,7 +105,9 @@
   color: var(--subtitle) !important;
 }
 
-/* Table Actions Menu Styling */
+/* ==========================================================================
+   Table Actions Menu
+   ========================================================================== */
 .table-actions-menu {
   color: rgb(var(--v-theme-on-surface)) !important;
   transition: all 0.2s ease;
@@ -106,7 +144,9 @@
   font-weight: 500;
 }
 
-/* Selection Column Alignment */
+/* ==========================================================================
+   Selection Column
+   ========================================================================== */
 .core-table-container :deep(.v-data-table th[data-column='selection']) {
   display: flex;
   align-items: center;
@@ -121,11 +161,14 @@
   vertical-align: middle;
 }
 
-/* Filter Button - Match CoreSearchInput */
+/* ==========================================================================
+   Filter Button - Matches CoreSearchInput style
+   ========================================================================== */
 .core-filter-button {
   position: relative;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   background: white;
   border: 1px solid #e0e0e0;
   border-radius: 8px;
@@ -176,6 +219,8 @@
   color: var(--subtitle);
   white-space: nowrap;
   user-select: none;
+  order: 1;
+  margin-right: 8px;
 }
 
 .core-filter-button--active .core-filter-button__text {
@@ -185,6 +230,9 @@
 
 .core-filter-button__badge {
   flex-shrink: 0;
+  order: 2;
+  margin-right: 8px;
+  z-index: 1;
 }
 
 .core-filter-button__badge :deep(.v-badge__badge) {
@@ -198,25 +246,17 @@
   color: var(--subtitle);
   flex-shrink: 0;
   margin-left: 4px;
+  order: 3;
+  z-index: 2;
 }
 
 .core-filter-button--active .core-filter-button__chevron {
   color: var(--primary);
 }
 
-/* Responsive design for filter button */
-@media (max-width: 600px) {
-  .core-filter-button {
-    min-width: auto;
-    padding: 0 8px;
-  }
-
-  .core-filter-button__text {
-    display: none;
-  }
-}
-
-/* Clear All Filters Button */
+/* ==========================================================================
+   Clear All Filters Button
+   ========================================================================== */
 .core-clear-filters-button {
   position: relative;
   display: flex;
@@ -255,38 +295,55 @@
   transform: scale(1.1);
 }
 
-/* Fix chevron and badge positioning with flexbox */
-.core-filter-button {
-  position: relative;
-  justify-content: flex-start;
+/* ==========================================================================
+   Responsive Breakpoints
+   ========================================================================== */
+
+/* Large screens */
+@media (max-width: 1200px) {
+  .core-filter-button {
+    min-width: 100px;
+  }
 }
 
-.core-filter-button__text {
-  flex: 1;
-  margin-right: 8px;
+/* Medium screens */
+@media (max-width: 992px) {
+  .core-filter-button {
+    min-width: 90px;
+  }
 }
 
-.core-filter-button__badge {
-  flex-shrink: 0;
-  margin-right: 8px;
-  z-index: 1;
+/* Small screens */
+@media (max-width: 768px) {
+  .core-filter-button {
+    min-width: auto;
+    padding: 0 8px;
+  }
+
+  .core-filter-button__text {
+    font-size: 13px;
+  }
 }
 
-.core-filter-button__chevron {
-  flex-shrink: 0;
-  margin-left: 4px;
-  z-index: 2;
+/* Extra small screens */
+@media (max-width: 600px) {
+  .core-filter-button {
+    min-width: auto;
+    padding: 0 8px;
+  }
+
+  .core-filter-button__text {
+    display: none;
+  }
+
+  .core-table-container :deep(.table-action-item .v-list-item-title) {
+    font-size: 11px !important;
+  }
 }
 
-/* Ensure chevron is always visible */
-.core-filter-button__chevron {
-  order: 3;
-}
-
-.core-filter-button__badge {
-  order: 2;
-}
-
-.core-filter-button__text {
-  order: 1;
+/* Height-based adjustments for table */
+@media (max-height: 600px) {
+  .core-table-container :deep(.v-data-table-virtual tbody)::after {
+    height: 50px; /* Keep enough padding even on small screens */
+  }
 }

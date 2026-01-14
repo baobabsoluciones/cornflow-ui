@@ -1,19 +1,34 @@
 /* SectionView Component Styles */
+/* Optimized for full responsiveness and dynamic table height */
 
+/* ==========================================================================
+   Main Container
+   ========================================================================== */
 .view-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
+.section-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* ==========================================================================
+   Loading State
+   ========================================================================== */
 .loading-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  min-height: 400px;
+  flex: 1;
+  min-height: 300px;
 }
 
 .loading-container p {
@@ -22,29 +37,60 @@
   margin-top: 1rem;
 }
 
+/* ==========================================================================
+   Table Section - Main layout container
+   ========================================================================== */
 .table-section {
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 0; /* Important for flex children to shrink */
+  min-height: 0;
+  overflow: hidden;
 }
 
+/* ==========================================================================
+   Table Card - The v-card wrapper
+   ========================================================================== */
 .table-card {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  overflow-y: auto !important;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.table-card-content {
-  flex: 1;
-  padding: 16px 0 0 0;
+/* Ensure the v-card inside table-section fills the space */
+.table-section > .v-card {
   display: flex;
   flex-direction: column;
-  min-height: 0; /* Important for flex children to shrink */
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
-/* Deep selectors for Vuetify components */
+/* ==========================================================================
+   Table Card Content - Content area inside the card
+   ========================================================================== */
+.table-card-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Ensure CoreTable container fills the card content */
+.table-card-content > .core-table-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* ==========================================================================
+   Vuetify Component Overrides
+   ========================================================================== */
 .section-view :deep(.v-tab) {
   text-transform: none;
   font-weight: 500;
@@ -54,53 +100,64 @@
   color: white;
 }
 
-/* Responsive adjustments */
-@media (max-height: 600px) {
-  .view-container {
-    height: calc(100vh - 60px); /* Account for smaller screens */
-  }
+/* Ensure v-card-text fills available space */
+.section-view :deep(.v-card-text.table-card-content) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0;
 }
 
-@media (max-width: 768px) {
-  .table-section {
-    margin-top: 1rem !important;
-  }
-}
-
-/* Auto Dashboard Widgets Layout */
+/* ==========================================================================
+   Auto Dashboard - Widgets Layout (70/30 split)
+   ========================================================================== */
 .table-with-widgets {
   display: flex;
   gap: 16px;
   width: 100%;
-  align-items: flex-start;
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
 }
 
 .table-column {
-  flex: 0 0 70%;
+  flex: 7;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .widgets-column {
-  flex: 0 0 30%;
-  min-width: 0;
+  flex: 3;
+  min-width: 280px;
+  max-width: 400px;
   display: flex;
   flex-direction: column;
   gap: 16px;
   padding-right: 16px;
+  overflow-y: auto;
+  max-height: 100%;
 }
 
-/* KPIs Section - 2 per row */
+/* ==========================================================================
+   KPIs Section - 2 per row grid
+   ========================================================================== */
 .kpis-section {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .kpi-item {
   min-width: 0;
 }
 
-/* Charts Section - 1 per row */
+/* ==========================================================================
+   Charts Section - Vertical stack
+   ========================================================================== */
 .charts-section {
   display: flex;
   flex-direction: column;
@@ -109,42 +166,163 @@
 
 .chart-item {
   min-width: 0;
+  flex-shrink: 0;
 }
 
-/* Bottom Charts Section - 2 per row below table */
+/* ==========================================================================
+   Bottom Charts Section - Full width below table
+   ========================================================================== */
 .bottom-charts-section {
   margin-top: 24px;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, 1fr);
   gap: 16px;
   width: 100%;
+  flex-shrink: 0;
 }
 
 .bottom-chart-item {
   min-width: 0;
 }
 
-/* Responsive adjustments for widgets */
+/* ==========================================================================
+   Responsive Breakpoints
+   ========================================================================== */
+
+/* Extra large screens (> 1600px) */
+@media (min-width: 1600px) {
+  .widgets-column {
+    max-width: 450px;
+  }
+}
+
+/* Large screens (1200px - 1600px) */
+@media (max-width: 1600px) {
+  .widgets-column {
+    max-width: 360px;
+  }
+}
+
+/* Medium-large screens (992px - 1200px) */
 @media (max-width: 1200px) {
   .table-with-widgets {
     flex-direction: column;
   }
 
   .table-column {
-    flex: 1;
+    flex: none;
     width: 100%;
   }
 
   .widgets-column {
-    flex: 1;
+    flex: none;
     width: 100%;
+    max-width: none;
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding-right: 0;
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  .kpis-section {
+    flex: 1;
+    min-width: 280px;
+  }
+
+  .charts-section {
+    flex: 1;
+    min-width: 280px;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .chart-item {
+    flex: 1;
+    min-width: 280px;
+  }
+
+  .bottom-charts-section {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Medium screens (768px - 992px) */
+@media (max-width: 992px) {
+  .table-section {
+    margin-top: 1rem !important;
   }
 
   .kpis-section {
     grid-template-columns: 1fr;
   }
 
+  .widgets-column {
+    gap: 12px;
+  }
+}
+
+/* Small screens (576px - 768px) */
+@media (max-width: 768px) {
+  .table-section {
+    margin-top: 0.75rem !important;
+  }
+
+  .table-with-widgets {
+    gap: 12px;
+  }
+
+  .widgets-column {
+    flex-direction: column;
+  }
+
+  .charts-section {
+    flex-direction: column;
+  }
+
+  .chart-item {
+    min-width: 100%;
+  }
+
   .bottom-charts-section {
-    grid-template-columns: 1fr;
+    margin-top: 16px;
+    gap: 12px;
+  }
+}
+
+/* Extra small screens (< 576px) */
+@media (max-width: 576px) {
+  .loading-container {
+    min-height: 200px;
+  }
+
+  .kpis-section {
+    gap: 8px;
+  }
+
+  .charts-section {
+    gap: 12px;
+  }
+
+  .widgets-column {
+    gap: 8px;
+    padding-right: 0;
+  }
+}
+
+/* Height-based adjustments */
+@media (max-height: 700px) {
+  .widgets-column {
+    max-height: 250px;
+  }
+}
+
+@media (max-height: 600px) {
+  .loading-container {
+    min-height: 200px;
+  }
+
+  .widgets-column {
+    max-height: 200px;
   }
 }
