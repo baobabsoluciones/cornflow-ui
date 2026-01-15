@@ -48,7 +48,7 @@ const {
   const mockAppConfig = {
     getCore: vi.fn().mockReturnValue({
       parameters: {
-        showUserFullName: true,
+        showOpenIdUsername: true,
         showDashboardMainView: true,
       },
     }),
@@ -223,7 +223,7 @@ describe('AppDrawer.vue', () => {
     // Ensure appConfig mock returns the correct structure
     mockAppConfig.getCore.mockReturnValue({
       parameters: {
-        showUserFullName: true,
+        showOpenIdUsername: true,
         showDashboardMainView: true,
       },
     })
@@ -312,10 +312,10 @@ describe('AppDrawer.vue', () => {
       expect(wrapper.vm.user.email).toBe('john.doe@example.com')
     })
 
-    test('should show username when showUserFullName is false', async () => {
+    test('should show username when showOpenIdUsername is false', async () => {
       mockAppConfig.getCore.mockReturnValue({
         parameters: {
-          showUserFullName: false,
+          showOpenIdUsername: false,
           showDashboardMainView: true,
         },
       })
@@ -364,7 +364,7 @@ describe('AppDrawer.vue', () => {
     test('should handle dashboard visibility based on config', async () => {
       mockAppConfig.getCore.mockReturnValue({
         parameters: {
-          showUserFullName: true,
+          showOpenIdUsername: true,
           showDashboardMainView: false,
         },
       })

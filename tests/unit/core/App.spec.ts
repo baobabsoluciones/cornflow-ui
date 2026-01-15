@@ -12,6 +12,15 @@ vi.mock('@/services/SnackbarService.ts', () => ({
     timeout: 3000,
   },
   showSnackbar: vi.fn(),
+  DEFAULT_TIMEOUT: 3000,
+  ERROR_TIMEOUT: 10000,
+  SNACKBAR_COLORS: {
+    success: 'var(--success)',
+    warning: 'var(--warning)',
+    error: 'var(--danger-variant)',
+    info: 'var(--primary)',
+  },
+  hideSnackbar: vi.fn(),
 }))
 
 // Mock MSnackbar component

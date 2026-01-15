@@ -197,7 +197,13 @@ describe('Router Configuration', () => {
 
     const routes = router.getRoutes()
     const rootRoute = routes.find((route) => route.path === '/')
-    expect(rootRoute?.redirect).toBe('/history-execution')
+    // The redirect is a function that returns the default view path
+    expect(typeof rootRoute?.redirect).toBe('function')
+    // When called, it should return the default view path
+    if (typeof rootRoute?.redirect === 'function') {
+      const result = rootRoute.redirect({ path: '/' } as any)
+      expect(result).toBe('/history-execution')
+    }
   })
 
   test('should have keepAlive configured on child routes', async () => {

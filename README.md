@@ -54,6 +54,7 @@ The application can automatically detect when uploaded instance tables match exi
 #### Data comparison modal
 
 Users can open a detailed comparison view showing:
+
 - **Summary tab**: Overview of data counts and differences
 - **Side by side tab**: Both datasets displayed in parallel
 - **Changes tab**: Detailed list of all differences with field-level comparison
@@ -76,11 +77,13 @@ When overwriting master tables, the system automatically handles foreign key rel
 - **`join_from`**: Display fields that show human-readable values
 
 The system:
+
 1. Detects dependent fields (`isDependentField: true`) in the uploaded data
 2. Resolves display values to their corresponding foreign key IDs
 3. Sends only the foreign key IDs to the backend (not the display fields)
 
 Example schema with foreign keys:
+
 ```json
 {
   "factoria_id": {
@@ -95,6 +98,7 @@ Example schema with foreign keys:
 ```
 
 When uploading data with `factoria_nombre = "Factory A"`, the system:
+
 1. Looks up "Factory A" in the `factorias` table
 2. Gets the corresponding `id`
 3. Sends `factoria_id = 123` to the backend
@@ -519,7 +523,7 @@ config.auth.type // ✅ Authentication type
 
 // Internal configuration (from source code)
 import internalConfig from '@/app/config'
-internalConfig.getCore().parameters.showUserFullname // ✅ UI preferences
+internalConfig.getCore().parameters.showOpenIdUsername // ✅ UI preferences
 internalConfig.getCore().parameters.solverConfig // ✅ App logic
 ```
 
@@ -530,63 +534,119 @@ This file contains **internal application-specific configuration** that is part 
 ```typescript
 {
   core: {
-    // Core application components
     Experiment: ExperimentRostering,
     Instance: InstanceRostering,
     Solution: SolutionRostering,
-
     parameters: {
-      // Json path
       valuesJsonPath: '/values.json',
 
-      // Project execution table configuration
-      showUserFullname: true,
+      showOpenIdUsername: false,
       showTablesWithoutSchema: true,
-      showExtraProjectExecutionColumns: {
-        showUserName: false,
-        showEndCreationDate: false,
-        showTimeLimit: true,
-        showUserFullName: false,
-      },
-
-      // Dashboard configuration
-      showDashboardMainView: false,
-      dashboardLayout: [...],
-      dashboardPages: [...],
-      dashboardRoutes: [...],
-      instanceDashboardPages: [...],
-      instanceDashboardRoutes: [...],
-
-      // Create execution steps configuration
+      showExtraProjectExecutionColumns: { ... },
+      allowEditInstance: true,
+      latestPlanConfig: { ... },
+      sectionTitles: { ... },
+      solverConfig: { ... },
+      configFieldsConfig: { ... },
       executionSolvers: ['mip-gurobi'],
-      solverConfig: {
-        showSolverStep: false,
-        defaultSolver: 'mip.gurobi',
-      },
-      configFieldsConfig: {
-        showConfigFieldsStep: false,
-        autoLoadValues: true,
-      },
       configFields: [...],
-
-      // Instance file processing
-      fileProcessors: {
-        'mtrx': 'processMatrix',
-        'config': ['processConfig', 'processCleanData'],
-        'all': ['processCleanData', 'processBooleansFromStrings']
-      },
-
-      // States for execution and solution
-      executionStates: {
-        '1': { color: 'green', message: 'Success execution', code: 'Success' }
-      },
-      solutionStates: {
-         '1': { color: 'green', message: 'Success solution', code: 'Success' }
-      },
+      fileProcessors: { ... },
+      enableAutoInstanceDashboard: false,
+      enableAutoSolutionDashboard: false,
+      tableDashboards: { ... },
+      executionStates: { ... },
+      solutionStates: { ... },
     }
-  }
+  },
+  dashboardPages: [],
+  dashboardRoutes: [],
+  dashboardLayout: [],
+  instanceDashboardPages: [],
+  instanceDashboardRoutes: [],
+  instanceDashboardLayout: [],
 }
 ```
+
+#### Internal configuration parameters reference
+
+| Parameter                     | Type       | Description                                           |
+| ----------------------------- | ---------- | ----------------------------------------------------- |
+| `valuesJsonPath`              | `string`   | Path to the external JSON configuration file          |
+| `useEtlBackend`               | `boolean`  | Enable ETL backend integration                        |
+| `showOpenIdUsername`          | `boolean`  | Display user full name and email from openId login    |
+| `showTablesWithoutSchema`     | `boolean`  | Display tables that don't have a defined schema       |
+| `allowEditInstance`           | `boolean`  | Allow users to edit instances from input data section |
+| `enableAutoInstanceDashboard` | `boolean`  | Auto-generate dashboards for instance tables          |
+| `enableAutoSolutionDashboard` | `boolean`  | Auto-generate dashboards for solution tables          |
+| `executionSolvers`            | `string[]` | List of available solvers for execution               |
+
+#### showExtraProjectExecutionColumns
+
+Controls which columns are displayed in the execution history table.
+
+| Property              | Type      | Description                       |
+| --------------------- | --------- | --------------------------------- |
+| `showUserName`        | `boolean` | Show the username column          |
+| `showEndCreationDate` | `boolean` | Show the end creation date column |
+| `showTimeLimit`       | `boolean` | Show the time limit column        |
+| `showUserFullName`    | `boolean` | Show the user's full name column  |
+
+#### latestPlanConfig
+
+Configuration for the "Latest plan" feature. See [Latest plan documentation](#latest-plan-actual-plan) for details.
+
+| Property           | Type      | Description                                                                                       |
+| ------------------ | --------- | ------------------------------------------------------------------------------------------------- |
+| `defaultView`      | `string`  | Route to redirect after login (`'history-execution'`, `'dashboard'`, `'input-data'`, `'results'`) |
+| `showStarInTabBar` | `boolean` | Show star icon in tab bar for the latest plan                                                     |
+
+#### sectionTitles
+
+Customize navigation section titles using i18n keys. See [Custom section titles](#custom-section-titles) for details.
+
+| Property     | Type             | Description                                                                |
+| ------------ | ---------------- | -------------------------------------------------------------------------- |
+| `executions` | `string \| null` | Custom i18n key for executions section (default: `navigation.executions`)  |
+| `masterData` | `string \| null` | Custom i18n key for master data section (default: `navigation.masterData`) |
+| `inputData`  | `string \| null` | Custom i18n key for input data section (default: `navigation.inputData`)   |
+| `results`    | `string \| null` | Custom i18n key for results section (default: `navigation.results`)        |
+
+#### solverConfig
+
+Controls the solver selection step. See [Solver step documentation](#solver-step-solverconfig) for details.
+
+| Property         | Type      | Description                                      |
+| ---------------- | --------- | ------------------------------------------------ |
+| `showSolverStep` | `boolean` | Show solver selection step in execution creation |
+| `defaultSolver`  | `string`  | Default solver when step is skipped              |
+
+#### configFieldsConfig
+
+Controls the configuration fields step. See [Config fields documentation](#configuration-parameters-step-configfieldsconfig) for details.
+
+| Property               | Type      | Description                                         |
+| ---------------------- | --------- | --------------------------------------------------- |
+| `showConfigFieldsStep` | `boolean` | Show config fields step in execution creation       |
+| `autoLoadValues`       | `boolean` | Auto-load values from instance when step is skipped |
+
+#### tableDashboards
+
+Per-table dashboard configuration. See [Automatic Dashboards Documentation](docs/AUTO_DASHBOARDS_README.md) for details.
+
+| Property   | Type     | Description                                 |
+| ---------- | -------- | ------------------------------------------- |
+| `instance` | `object` | Dashboard configuration for instance tables |
+| `solution` | `object` | Dashboard configuration for solution tables |
+
+#### executionStates / solutionStates
+
+Maps status codes to display properties. Each state entry contains:
+
+| Property     | Type     | Description                          |
+| ------------ | -------- | ------------------------------------ |
+| `color`      | `string` | Color identifier for the status chip |
+| `messageKey` | `string` | i18n key for the tooltip message     |
+| `codeKey`    | `string` | i18n key for the status label        |
 
 ## 2.2. App folder configuration
 

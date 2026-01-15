@@ -105,8 +105,8 @@ const createWrapper = async (isAuthenticated = true, isStagingEnvironment = fals
   
   // Create modifiable tabs for testing
   const mockTabs = [
-    { value: 1, text: 'Test Execution 1', icon: 'mdi-checkbox-marked', loading: false, selected: false },
-    { value: 2, text: 'Test Execution 2', icon: 'mdi-checkbox-marked', loading: false, selected: false }
+    { value: 1, text: 'Test Execution 1', icon: 'mdi-checkbox-marked', loading: false, selected: false, isLatestPlan: false },
+    { value: 2, text: 'Test Execution 2', icon: 'mdi-checkbox-marked', loading: false, selected: true, isLatestPlan: false }
   ]
   
   // Mock the getter using Object.defineProperty for better control

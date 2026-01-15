@@ -82,9 +82,16 @@ export function useProjectExecutionsTable(props: ExecutionTableProps) {
     getTimeLimit
   } = useExecutionActions();
   
-  // Connect the state from execution actions
+  // Connect the state from execution actions (two-way sync)
   watch(openModal, (newValue) => {
     openConfirmationDeleteModal.value = newValue;
+  });
+  
+  // Sync back to execution actions when modal is closed from component
+  watch(openConfirmationDeleteModal, (newValue) => {
+    if (openModal.value !== newValue) {
+      openModal.value = newValue;
+    }
   });
   
   watch(deletedExecution, (newValue) => {

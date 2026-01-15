@@ -209,7 +209,7 @@ export default defineComponent({
     },
     user() {
       return {
-        name: appConfig.getCore().parameters.showUserFullName
+        name: appConfig.getCore().parameters.showOpenIdUsername
           ? this.store.getUser.fullName
           : this.store.getUser.username,
         email: this.store.getUser.email,
@@ -302,7 +302,6 @@ export default defineComponent({
         })
       }
 
-
       return {
         title: this.getSectionTitle('inputData'),
         icon: 'mdi-application-cog',
@@ -361,7 +360,6 @@ export default defineComponent({
           subPages.push(page)
         })
       }
-
 
       return {
         title: this.getSectionTitle('results'),

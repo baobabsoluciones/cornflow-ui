@@ -80,7 +80,10 @@ const mockGeneralStore = {
         showConfigFieldsStep: true
       }
     }
-  }
+  },
+  isSetLatestPlanAvailable: vi.fn(() => false),
+  selectedExecution: null,
+  setLatestPlanExecution: vi.fn()
 }
 
 vi.mock('@/stores/general', () => ({
