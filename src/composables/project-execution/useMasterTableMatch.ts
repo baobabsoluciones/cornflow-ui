@@ -286,7 +286,8 @@ export function useMasterTableMatch() {
     if (trimmed === '') return null
 
     // Try number conversion
-    if (/^-?\d+\.?\d*$/.test(trimmed)) {
+    // Using non-capturing group to avoid ReDoS vulnerability
+    if (/^-?\d+(?:\.\d+)?$/.test(trimmed)) {
       const num = parseFloat(trimmed)
       if (!isNaN(num)) {
         return Number.isInteger(num) ? num : Math.round(num * 1000000) / 1000000
@@ -660,6 +661,28 @@ export function useMasterTableMatch() {
   }
 
   /**
+   * Process a single match choice and update data accordingly
+   */
+  const processMatchChoice = async (
+    match: TableMatch,
+    modifiedInstanceData: Record<string, any>,
+    masterTablesUpdated: string[],
+  ): Promise<void> => {
+    if (!match.userChoice) return
+
+    if (match.userChoice === 'use_master') {
+      modifiedInstanceData[match.tableKey] = [...match.masterData]
+      return
+    }
+
+    if (match.userChoice === 'replace_master') {
+      const replaced = await replaceMasterTable(match)
+      if (replaced) masterTablesUpdated.push(match.tableName)
+    }
+    // 'keep_uploaded' or default: do nothing
+  }
+
+  /**
    * Apply user choices - returns the modified instance data
    */
   const applyChoices = async (
@@ -669,21 +692,13 @@ export function useMasterTableMatch() {
     const masterTablesUpdated: string[] = []
 
     for (const match of matches.value) {
-      if (!match.userChoice) continue
-
-      if (match.userChoice === 'use_master') {
-        modifiedInstanceData[match.tableKey] = [...match.masterData]
-      } else if (match.userChoice === 'replace_master') {
-        try {
-          const replaced = await replaceMasterTable(match)
-          if (replaced) masterTablesUpdated.push(match.tableName)
-        } catch (err) {
-          console.error(`Error updating master table ${match.tableName}:`, err)
-          const errorMsg = err instanceof Error ? err.message : t('masterTableMatch.messages.unknownError')
-          throw new Error(t('masterTableMatch.messages.failedToUpdateMasterTable', { tableName: match.masterTableTitle, error: errorMsg }))
-        }
+      try {
+        await processMatchChoice(match, modifiedInstanceData, masterTablesUpdated)
+      } catch (err) {
+        console.error(`Error updating master table ${match.tableName}:`, err)
+        const errorMsg = err instanceof Error ? err.message : t('masterTableMatch.messages.unknownError')
+        throw new Error(t('masterTableMatch.messages.failedToUpdateMasterTable', { tableName: match.masterTableTitle, error: errorMsg }))
       }
-      // 'keep_uploaded' or default: do nothing
     }
 
     return { instanceData: modifiedInstanceData, masterTablesUpdated }

@@ -190,6 +190,71 @@ watch(
   { immediate: true, deep: false },
 )
 
+// Handle 'use_master' choice - update instance with master data
+const handleUseMasterChoice = (tableKey: string) => {
+  const match = masterTableMatch.matches.value.find(
+    (m) => m.tableKey === tableKey,
+  )
+  if (!match || !props.newExecution.instance) return
+
+  const newTableData = [...match.masterData]
+  const updatedData = {
+    ...props.newExecution.instance.data,
+    [tableKey]: newTableData,
+  }
+
+  const schemas = generalStore.getSchemaConfig
+  const updatedInstance = new Instance(
+    null,
+    updatedData,
+    schemas.instanceSchema,
+    schemas.instanceChecksSchema,
+    generalStore.getSchemaName,
+  )
+
+  emit('update:instance', updatedInstance)
+  masterTableMatch.updateMatchAfterAction(tableKey, 'use_master', newTableData)
+
+  if (showSnackbar) {
+    showSnackbar(
+      t('masterTableMatch.messages.usingMasterData', {
+        tableName: match.masterTableTitle,
+      }),
+      'info',
+    )
+  }
+}
+
+// Handle 'replace_master' choice - update master table with uploaded data
+const handleReplaceMasterChoice = async (tableKey: string) => {
+  try {
+    const result = await masterTableMatch.applyChoices(
+      props.newExecution.instance?.data as Record<string, any>,
+    )
+
+    if (result.masterTablesUpdated.length > 0) {
+      emit('master-tables-updated', result.masterTablesUpdated)
+      masterTableMatch.updateMatchAfterAction(tableKey, 'replace_master')
+
+      if (showSnackbar) {
+        showSnackbar(
+          t('masterTableMatch.messages.masterTableUpdated', {
+            tableName: result.masterTablesUpdated.join(', '),
+          }),
+          'success',
+        )
+      }
+    }
+  } catch (error) {
+    if (showSnackbar) {
+      const errorMessage = error instanceof Error
+        ? error.message
+        : t('masterTableMatch.messages.updateError')
+      showSnackbar(errorMessage, 'error')
+    }
+  }
+}
+
 // Handle user choice for master table match
 const handleMasterTableChoice = async (
   tableKey: string,
@@ -197,76 +262,12 @@ const handleMasterTableChoice = async (
 ) => {
   masterTableMatch.setUserChoice(tableKey, choice)
 
-  // If user chooses to use master data, update the instance immediately
   if (choice === 'use_master') {
-    const match = masterTableMatch.matches.value.find(
-      (m) => m.tableKey === tableKey,
-    )
-    if (match && props.newExecution.instance) {
-      const newTableData = [...match.masterData]
-      const updatedData = {
-        ...props.newExecution.instance.data,
-        [tableKey]: newTableData,
-      }
-
-      const schemas = generalStore.getSchemaConfig
-      const updatedInstance = new Instance(
-        null,
-        updatedData,
-        schemas.instanceSchema,
-        schemas.instanceChecksSchema,
-        generalStore.getSchemaName,
-      )
-
-      emit('update:instance', updatedInstance)
-
-      // Update the match to reflect the new state (now identical)
-      masterTableMatch.updateMatchAfterAction(tableKey, 'use_master', newTableData)
-
-      if (showSnackbar) {
-        showSnackbar(
-          t('masterTableMatch.messages.usingMasterData', {
-            tableName: match.masterTableTitle,
-          }),
-          'info',
-        )
-      }
-    }
+    handleUseMasterChoice(tableKey)
+  } else if (choice === 'replace_master') {
+    await handleReplaceMasterChoice(tableKey)
   }
-
-  // If user chooses to replace master, do it immediately
-  if (choice === 'replace_master') {
-    try {
-      const result = await masterTableMatch.applyChoices(
-        props.newExecution.instance?.data as Record<string, any>,
-      )
-
-      if (result.masterTablesUpdated.length > 0) {
-        emit('master-tables-updated', result.masterTablesUpdated)
-
-        // Update the match to reflect the new state (now identical)
-        masterTableMatch.updateMatchAfterAction(tableKey, 'replace_master')
-
-        if (showSnackbar) {
-          showSnackbar(
-            t('masterTableMatch.messages.masterTableUpdated', {
-              tableName: result.masterTablesUpdated.join(', '),
-            }),
-            'success',
-          )
-        }
-      }
-    } catch (error) {
-      if (showSnackbar) {
-        showSnackbar(
-          error instanceof Error
-            ? error.message
-            : t('masterTableMatch.messages.updateError'),
-          'error',
-        )
-      }
-    }
-  }
+  // 'keep_uploaded': do nothing, just record the choice
 }
 
 // Handle showing comparison modal

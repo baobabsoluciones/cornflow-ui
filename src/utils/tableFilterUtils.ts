@@ -3,6 +3,15 @@
  * Shared between ExecutionDataView and other table components
  */
 
+/**
+ * Generate a cryptographically secure unique ID
+ * Uses crypto.randomUUID() which is safe for non-security UI purposes
+ */
+export const generateSecureId = (prefix: string = ''): string => {
+  const uuid = crypto.randomUUID().replace(/-/g, '').substring(0, 12)
+  return prefix ? `${prefix}_${uuid}` : uuid
+}
+
 export interface FilterCondition {
   id: string
   field: string
@@ -63,7 +72,7 @@ export const operatorNeedsSecondValue = (operator: string): boolean => {
  * Generate a unique filter ID
  */
 export const generateFilterId = (): string => {
-  return `filter_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  return generateSecureId('filter')
 }
 
 /**

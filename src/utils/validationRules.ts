@@ -51,12 +51,17 @@ export function createValidationRules(
 
     /**
      * Email format validation
+     * Uses bounded quantifiers to prevent ReDoS attacks
      */
     email: (customMessage?: string): ValidationRule => {
       return (v: any) => {
         if (!v) return true // Optional field
-        const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-        return pattern.test(String(v)) || customMessage || t('validation.email')
+        const str = String(v)
+        // Length check first to avoid ReDoS on very long strings
+        if (str.length > 254) return customMessage || t('validation.email')
+        // Bounded quantifiers for local part (max 64) and domain parts (max 63 each)
+        const pattern = /^[^\s@]{1,64}@[^\s@]{1,63}\.[^\s@]{1,63}$/
+        return pattern.test(str) || customMessage || t('validation.email')
       }
     },
 

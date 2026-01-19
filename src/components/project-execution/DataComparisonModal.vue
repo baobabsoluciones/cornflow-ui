@@ -572,55 +572,47 @@ const getRowKey = (row: any, primaryKey: string): string => {
 }
 
 /**
+ * Normalize a string value for comparison
+ */
+const normalizeStringValue = (value: string): any => {
+  const trimmed = value.trim()
+  if (trimmed === '') return null
+
+  // Try to convert to number if it looks like one
+  // Using non-capturing group to avoid ReDoS vulnerability
+  if (/^-?\d+(?:\.\d+)?$/.test(trimmed)) {
+    const num = parseFloat(trimmed)
+    if (!isNaN(num)) {
+      return Number.isInteger(num) ? num : Math.round(num * 1000000) / 1000000
+    }
+  }
+
+  // Try to convert to boolean
+  const lowerTrimmed = trimmed.toLowerCase()
+  if (lowerTrimmed === 'true') return true
+  if (lowerTrimmed === 'false') return false
+
+  return trimmed
+}
+
+/**
+ * Normalize a number value for comparison
+ */
+const normalizeNumberValue = (value: number): number | null => {
+  if (isNaN(value)) return null
+  return Number.isInteger(value) ? value : Math.round(value * 1000000) / 1000000
+}
+
+/**
  * Normalize a value for comparison
  * Handles type coercion between strings and numbers, trims strings, etc.
  */
 const normalizeValue = (value: any): any => {
-  // Handle null/undefined
-  if (value === null || value === undefined || value === '') {
-    return null
-  }
-
-  // Handle strings
-  if (typeof value === 'string') {
-    const trimmed = value.trim()
-    if (trimmed === '') return null
-
-    // Try to convert to number if it looks like one
-    if (/^-?\d+\.?\d*$/.test(trimmed)) {
-      const num = parseFloat(trimmed)
-      if (!isNaN(num)) {
-        // Return as integer if it's a whole number
-        return Number.isInteger(num) ? num : Math.round(num * 1000000) / 1000000
-      }
-    }
-
-    // Try to convert to boolean
-    if (trimmed.toLowerCase() === 'true') return true
-    if (trimmed.toLowerCase() === 'false') return false
-
-    return trimmed
-  }
-
-  // Handle numbers - normalize floating point precision
-  if (typeof value === 'number') {
-    if (isNaN(value)) return null
-    // Round to 6 decimal places to avoid floating point precision issues
-    return Number.isInteger(value)
-      ? value
-      : Math.round(value * 1000000) / 1000000
-  }
-
-  // Handle booleans
-  if (typeof value === 'boolean') {
-    return value
-  }
-
-  // Handle objects/arrays
-  if (typeof value === 'object') {
-    return JSON.stringify(value)
-  }
-
+  if (value === null || value === undefined || value === '') return null
+  if (typeof value === 'string') return normalizeStringValue(value)
+  if (typeof value === 'number') return normalizeNumberValue(value)
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'object') return JSON.stringify(value)
   return value
 }
 

@@ -318,6 +318,7 @@ import {
   generateFilterId,
   applyFiltersAndSearch as applyFiltersAndSearchUtil,
   generateHeadersFromData,
+  generateSecureId,
   type FilterCondition,
 } from '@/utils/tableFilterUtils'
 import { transformJsonSchemaToAutomationFormat } from '@/utils/schemaUtils'
@@ -465,7 +466,7 @@ const createTableObject = (tableKey: string, tableData: any[], schema: any) => {
   // Ensure all items have an ID (before generating headers)
   tableData.forEach((item: any, index: number) => {
     if (!item.id) {
-      item.id = `${tableKey}_${index}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      item.id = generateSecureId(`${tableKey}_${index}`)
     }
   })
 
@@ -632,7 +633,7 @@ const createValidationTables = (execution: any) => {
       if (isPrimitiveArray) {
         // Convert primitives to objects with a 'value' field
         processedData = tableData.map((value: any, index: number) => ({
-          id: `validation_${tableKey}_${index}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          id: generateSecureId(`validation_${tableKey}_${index}`),
           value: value,
         }))
         headers = [
@@ -657,9 +658,7 @@ const createValidationTables = (execution: any) => {
       } else {
         // Object array - ensure all items have an ID
         processedData = tableData.map((item: any, index: number) => ({
-          id:
-            item.id ||
-            `validation_${tableKey}_${index}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          id: item.id || generateSecureId(`validation_${tableKey}_${index}`),
           ...item,
         }))
 
@@ -893,7 +892,7 @@ const handleSaveItem = (data: any) => {
   } else {
     // Add new item
     // Generate a temporary ID for UI tracking
-    const tempId = `${table.key}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    const tempId = generateSecureId(table.key)
     tableData.push({ ...dataWithoutId, id: tempId })
   }
 
@@ -968,6 +967,37 @@ const startInlineEdit = (item: any, field?: string) => {
   originalData.value = { ...item }
 }
 
+// Convert value to integer type
+const convertToInteger = (value: any): number => {
+  const result = typeof value === 'number' ? Math.floor(value) : parseInt(String(value), 10)
+  return isNaN(result) ? 0 : result
+}
+
+// Convert value to number type
+const convertToNumber = (value: any): number => {
+  const result = typeof value === 'number' ? value : parseFloat(String(value))
+  return isNaN(result) ? 0 : result
+}
+
+// Convert value to boolean type
+const convertToBoolean = (value: any): boolean => {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'string') return value.toLowerCase() === 'true' || value === '1'
+  return Boolean(value)
+}
+
+// Convert a single field value based on schema type
+const convertFieldValue = (value: any, schemaType: string): any => {
+  if (value === null || value === undefined) return value
+
+  switch (schemaType) {
+    case 'integer': return convertToInteger(value)
+    case 'number': return convertToNumber(value)
+    case 'boolean': return convertToBoolean(value)
+    default: return value
+  }
+}
+
 // Helper function to convert data types based on JSON schema
 const convertDataTypesBasedOnSchema = (data: any, tableKey: string): any => {
   const execution = props.execution || generalStore.selectedExecution
@@ -979,49 +1009,12 @@ const convertDataTypesBasedOnSchema = (data: any, tableKey: string): any => {
   const convertedData = { ...data }
 
   Object.keys(convertedData).forEach((key) => {
-    if (key === 'id') return // Skip internal ID
+    if (key === 'id') return
 
     const fieldSchema = itemSchema.properties?.[key]
     if (!fieldSchema) return
 
-    const value = convertedData[key]
-    if (value === null || value === undefined) return
-
-    // Convert based on schema type
-    switch (fieldSchema.type) {
-      case 'integer':
-        convertedData[key] =
-          typeof value === 'number'
-            ? Math.floor(value)
-            : parseInt(String(value), 10)
-        if (isNaN(convertedData[key])) {
-          convertedData[key] = 0
-        }
-        break
-
-      case 'number':
-        convertedData[key] =
-          typeof value === 'number' ? value : parseFloat(String(value))
-        if (isNaN(convertedData[key])) {
-          convertedData[key] = 0
-        }
-        break
-
-      case 'boolean':
-        if (typeof value === 'boolean') {
-          convertedData[key] = value
-        } else if (typeof value === 'string') {
-          convertedData[key] =
-            value.toLowerCase() === 'true' || value === '1'
-        } else {
-          convertedData[key] = Boolean(value)
-        }
-        break
-
-      default:
-        // Keep as is for string and other types
-        break
-    }
+    convertedData[key] = convertFieldValue(convertedData[key], fieldSchema.type)
   })
 
   return convertedData

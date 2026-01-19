@@ -129,57 +129,60 @@ export default {
     this.showSnackbar = inject('showSnackbar')
     const route = useRoute()
     
-    // Check if we're in edit mode
     this.isEditMode = route.query.editInstance === 'true'
     
-    // If in edit mode, load the instance from selected execution
-    if (this.isEditMode && this.generalStore.selectedExecution) {
+    this.initializeEditMode()
+    this.initializeDefaultSolver()
+    this.initializeConfigFieldValues()
+    this.initializeStep()
+  },
+  methods: {
+    // Initialize from selected execution when in edit mode
+    initializeEditMode() {
+      if (!this.isEditMode || !this.generalStore.selectedExecution) return
+
       const selectedExecution = this.generalStore.selectedExecution
-      // Get instance from experiment or directly from execution
       const instance = selectedExecution.experiment?.instance || selectedExecution.instance
-      
-      if (instance) {
-        this.newExecution.instance = instance
-        // Set name and description from execution if available
-        if (selectedExecution.name) {
-          this.newExecution.name = selectedExecution.name
-        }
-        if (selectedExecution.description) {
-          this.newExecution.description = selectedExecution.description
-        }
-        // Load config from execution if available
-        if (selectedExecution.config) {
-          this.newExecution.config = { ...selectedExecution.config }
-        }
+
+      if (!instance) return
+
+      this.newExecution.instance = instance
+      if (selectedExecution.name) this.newExecution.name = selectedExecution.name
+      if (selectedExecution.description) this.newExecution.description = selectedExecution.description
+      if (selectedExecution.config) this.newExecution.config = { ...selectedExecution.config }
+    },
+
+    // Set default solver if solver step is hidden
+    initializeDefaultSolver() {
+      const solverConfig = this.generalStore.appConfig.parameters.solverConfig
+      if (!solverConfig?.showSolverStep) {
+        this.newExecution.config.solver = solverConfig.defaultSolver
       }
-    }
-    
-    // Set default solver if configured to not show solver step
-    if (!this.generalStore.appConfig.parameters.solverConfig?.showSolverStep) {
-      this.newExecution.config.solver =
-        this.generalStore.appConfig.parameters.solverConfig.defaultSolver
-    }
-    // Load config field values if configured to not show config fields step
-    // Only load if we have an instance (either from edit mode or already loaded)
-    if (
-      !this.generalStore.appConfig.parameters.configFieldsConfig
-        ?.showConfigFieldsStep &&
-      this.generalStore.appConfig.parameters.configFieldsConfig?.autoLoadValues &&
-      this.newExecution.instance
-    ) {
-      this.loadConfigFieldValues()
-    }
-    
+    },
+
+    // Load config field values if config fields step is hidden
+    initializeConfigFieldValues() {
+      const configFieldsConfig = this.generalStore.appConfig.parameters.configFieldsConfig
+      const shouldAutoLoad = !configFieldsConfig?.showConfigFieldsStep &&
+        configFieldsConfig?.autoLoadValues &&
+        this.newExecution.instance
+
+      if (shouldAutoLoad) {
+        this.loadConfigFieldValues()
+      }
+    },
+
     // Set initial step based on edit mode
-    this.$nextTick(() => {
-      if (this.isEditMode) {
+    initializeStep() {
+      this.$nextTick(() => {
+        if (!this.isEditMode) return
+
         const steps = this.getExecutionSteps()
         const reviewIndex = steps.findIndex(step => step.key === 'reviewInstance')
         this.currentStep = reviewIndex >= 0 ? reviewIndex : 0
-      }
-    })
-  },
-  methods: {
+      })
+    },
+
     async handleStepChange(newStep) {
       // If we're skipping the solver step, ensure the solver is set
       if (

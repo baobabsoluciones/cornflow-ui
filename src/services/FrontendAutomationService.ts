@@ -8,8 +8,8 @@ export function toUrlFriendly(text: string): string {
     .toLowerCase()
     .replace(/\s+/g, '-') // Replace spaces with hyphens
     .replace(/[^a-z0-9\-_]/g, '') // Remove special characters except hyphens and underscores
-    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
-    .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+    .replace(/-{2,}/g, '-') // Replace multiple hyphens with single hyphen (bounded quantifier)
+    .replace(/^-|-$/g, '') // Remove leading/trailing single hyphens
 }
 
 // Helper function to convert URL-friendly format back to original key

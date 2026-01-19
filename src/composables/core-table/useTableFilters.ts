@@ -1,5 +1,6 @@
 import { ref, computed, watch } from 'vue'
 import type { ComputedRef } from 'vue'
+import { generateSecureId } from '@/utils/tableFilterUtils'
 
 // Filter types based on field types
 export type FilterOperator =
@@ -271,7 +272,7 @@ export function useTableFilters<T extends Record<string, any>>(
 
   // Generate unique filter ID
   const generateFilterId = (): string => {
-    return `filter_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    return generateSecureId('filter')
   }
 
   // Create a new empty filter condition
