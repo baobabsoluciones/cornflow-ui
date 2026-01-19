@@ -437,7 +437,7 @@ export function getAvailableLocales(multilingualObject: any): string[] {
   }
 
   extractLocales(multilingualObject)
-  return Array.from(locales).sort()
+  return Array.from(locales).sort((a, b) => a.localeCompare(b))
 }
 
 /**

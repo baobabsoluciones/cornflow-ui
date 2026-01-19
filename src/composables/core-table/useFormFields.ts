@@ -312,13 +312,9 @@ export function useFormFields(props: UseFormFieldsProps) {
 
   /**
    * Get field columns for responsive layout
+   * Returns 12 (full width) for all fields on small screens
    */
-  const getFieldCols = (field: FieldConfig | undefined): number => {
-    if (!field) return 12
-    if (field.type === 'boolean') return 12
-    if (field.type === 'textarea') return 12
-    return 12
-  }
+  const getFieldCols = (): number => 12
 
   /**
    * Get field md breakpoint columns
@@ -416,6 +412,44 @@ export function useFormFields(props: UseFormFieldsProps) {
   }
 
   /**
+   * Helper: Get fields as a record (normalize array to object)
+   */
+  const normalizeFields = (): Record<string, FieldConfig> => {
+    const fieldsValue = getFields()
+    if (!fieldsValue) return {}
+    
+    return Array.isArray(fieldsValue)
+      ? fieldsValue.reduce(
+          (acc, field) => ({ ...acc, [field.key || '']: field }),
+          {},
+        )
+      : fieldsValue
+  }
+
+  /**
+   * Helper: Update dependent fields from a matching item
+   */
+  const updateColumnsFromMatch = (
+    formData: Record<string, any>,
+    fields: Record<string, FieldConfig>,
+    columnsToJoin: string[],
+    matchingItem: any,
+    excludeKey?: string,
+  ): void => {
+    columnsToJoin.forEach((columnKey: string) => {
+      if (columnKey === excludeKey) return
+      
+      const dependentFieldConfig = fields[columnKey]
+      if (!dependentFieldConfig?.isDependentField) return
+      
+      const depJoinInfo = parseJoinFrom(dependentFieldConfig.joinFrom || '')
+      if (depJoinInfo && matchingItem[depJoinInfo.field] !== undefined) {
+        formData[columnKey] = matchingItem[depJoinInfo.field]
+      }
+    })
+  }
+
+  /**
    * Update dependent fields when a selector field changes
    */
   const updateDependentFields = (
@@ -423,90 +457,42 @@ export function useFormFields(props: UseFormFieldsProps) {
     newValue: any,
     formData: Record<string, any>,
   ): Record<string, any> => {
-    const fieldsValue = getFields()
-    if (!fieldsValue) return formData
-
-    const fields = Array.isArray(fieldsValue)
-      ? fieldsValue.reduce(
-          (acc, field) => ({ ...acc, [field.key || '']: field }),
-          {},
-        )
-      : fieldsValue
-
+    const fields = normalizeFields()
     const changedField = fields[changedFieldKey]
     if (!changedField) return formData
 
-    // Get table data for lookups
     const tableDataValue = getTableData()
+    const joinInfo = parseJoinFrom(changedField.joinFrom || '')
+    if (!joinInfo) return formData
 
-    // Case 1: Changed field is a main selector field (like codigo_factoria)
+    const tableData = tableDataValue?.[joinInfo.table] || []
+
+    // Case 1: Changed field is a main selector field
     if (changedField.isDependentField && changedField.isMainSelector) {
       const foreignKeyField = changedField.foreignKeyField
       if (!foreignKeyField) return formData
 
-      // Find the foreign key value based on the selected option
-      const joinInfo = parseJoinFrom(changedField.joinFrom || '')
-      if (!joinInfo) return formData
+      const matchingItem = tableData.find((item) => item[joinInfo.field] === newValue)
+      if (!matchingItem) return formData
 
-      // Get the table data to find the ID
-      const tableData = tableDataValue?.[joinInfo.table] || []
-      const matchingItem = tableData.find(
-        (item) => item[joinInfo.field] === newValue,
-      )
+      formData[foreignKeyField] = matchingItem.id
 
-      if (matchingItem) {
-        // Update the foreign key field
-        formData[foreignKeyField] = matchingItem.id
-
-        // Find the foreign key field configuration to get its columnsToJoin
-        const foreignKeyFieldConfig = fields[foreignKeyField]
-        if (foreignKeyFieldConfig && foreignKeyFieldConfig.columnsToJoin) {
-          // Update all fields that are in columnsToJoin array
-          foreignKeyFieldConfig.columnsToJoin.forEach((columnKey: string) => {
-            if (columnKey !== changedFieldKey) {
-              // This is another dependent field that should be updated
-              const dependentFieldConfig = fields[columnKey]
-              if (
-                dependentFieldConfig &&
-                dependentFieldConfig.isDependentField
-              ) {
-                const depJoinInfo = parseJoinFrom(
-                  dependentFieldConfig.joinFrom || '',
-                )
-                if (
-                  depJoinInfo &&
-                  matchingItem[depJoinInfo.field] !== undefined
-                ) {
-                  formData[columnKey] = matchingItem[depJoinInfo.field]
-                }
-              }
-            }
-          })
-        }
+      const foreignKeyFieldConfig = fields[foreignKeyField]
+      if (foreignKeyFieldConfig?.columnsToJoin) {
+        updateColumnsFromMatch(
+          formData, 
+          fields, 
+          foreignKeyFieldConfig.columnsToJoin, 
+          matchingItem, 
+          changedFieldKey
+        )
       }
     }
-    // Case 2: Changed field is a foreign key field (like factoria_id) - direct ID change
+    // Case 2: Changed field is a foreign key field
     else if (changedField.isForeignKey && changedField.columnsToJoin) {
-      // Find the matching item in the table data
-      const joinInfo = parseJoinFrom(changedField.joinFrom || '')
-      if (!joinInfo) return formData
-
-      const tableData = tableDataValue?.[joinInfo.table] || []
       const matchingItem = tableData.find((item) => item.id === newValue)
-
       if (matchingItem) {
-        // Update all dependent fields that are in columnsToJoin
-        changedField.columnsToJoin.forEach((columnKey: string) => {
-          const dependentFieldConfig = fields[columnKey]
-          if (dependentFieldConfig && dependentFieldConfig.isDependentField) {
-            const depJoinInfo = parseJoinFrom(
-              dependentFieldConfig.joinFrom || '',
-            )
-            if (depJoinInfo && matchingItem[depJoinInfo.field] !== undefined) {
-              formData[columnKey] = matchingItem[depJoinInfo.field]
-            }
-          }
-        })
+        updateColumnsFromMatch(formData, fields, changedField.columnsToJoin, matchingItem)
       }
     }
 
@@ -520,16 +506,7 @@ export function useFormFields(props: UseFormFieldsProps) {
   const filterDependentFields = (
     formData: Record<string, any>,
   ): Record<string, any> => {
-    const fieldsValue = getFields()
-    if (!fieldsValue) return formData
-
-    const fields = Array.isArray(fieldsValue)
-      ? fieldsValue.reduce(
-          (acc, field) => ({ ...acc, [field.key || '']: field }),
-          {},
-        )
-      : fieldsValue
-
+    const fields = normalizeFields()
     const filtered: Record<string, any> = {}
 
     Object.entries(formData).forEach(([key, value]) => {
@@ -545,77 +522,63 @@ export function useFormFields(props: UseFormFieldsProps) {
   }
 
   /**
+   * Helper: Convert value to integer
+   */
+  const toInteger = (value: any): number => {
+    const result = typeof value === 'number' ? Math.floor(value) : parseInt(String(value), 10)
+    return isNaN(result) ? 0 : result
+  }
+
+  /**
+   * Helper: Convert value to number (float)
+   */
+  const toNumber = (value: any): number => {
+    const result = typeof value === 'number' ? value : parseFloat(String(value))
+    return isNaN(result) ? 0 : result
+  }
+
+  /**
+   * Helper: Convert value to boolean
+   */
+  const toBoolean = (value: any): boolean => {
+    if (typeof value === 'boolean') return value
+    if (typeof value === 'string') return value.toLowerCase() === 'true' || value === '1'
+    return Boolean(value)
+  }
+
+  /**
+   * Helper: Convert a single value based on field type
+   */
+  const convertValueByType = (value: any, fieldType: string): any => {
+    switch (fieldType) {
+      case 'integer':
+        return toInteger(value)
+      case 'number':
+        return toNumber(value)
+      case 'boolean':
+        return toBoolean(value)
+      default:
+        return value
+    }
+  }
+
+  /**
    * Convert form data values to their correct types based on field configuration
    */
   const convertFormDataTypes = (
     formData: Record<string, any>,
   ): Record<string, any> => {
-    const fieldsValue = getFields()
-    if (!fieldsValue) return formData
-
-    const fields = Array.isArray(fieldsValue)
-      ? fieldsValue.reduce(
-          (acc, field) => ({ ...acc, [field.key || '']: field }),
-          {},
-        )
-      : fieldsValue
-
+    const fields = normalizeFields()
     const convertedData: Record<string, any> = {}
 
     Object.entries(formData).forEach(([key, value]) => {
-      const field = fields[key]
-
-      // Skip null/undefined values
       if (value === null || value === undefined) {
         convertedData[key] = value
         return
       }
 
-      // Convert based on field type
-      if (field?.type) {
-        switch (field.type) {
-          case 'integer':
-            // Convert to integer
-            convertedData[key] =
-              typeof value === 'number'
-                ? Math.floor(value)
-                : parseInt(String(value), 10)
-            // Handle NaN
-            if (isNaN(convertedData[key])) {
-              convertedData[key] = 0
-            }
-            break
-
-          case 'number':
-            // Convert to float
-            convertedData[key] =
-              typeof value === 'number' ? value : parseFloat(String(value))
-            // Handle NaN
-            if (isNaN(convertedData[key])) {
-              convertedData[key] = 0
-            }
-            break
-
-          case 'boolean':
-            // Convert to boolean
-            if (typeof value === 'boolean') {
-              convertedData[key] = value
-            } else if (typeof value === 'string') {
-              convertedData[key] =
-                value.toLowerCase() === 'true' || value === '1'
-            } else {
-              convertedData[key] = Boolean(value)
-            }
-            break
-
-          default:
-            // Keep as is for string, date, email, textarea, selector, etc.
-            convertedData[key] = value
-        }
-      } else {
-        // No field type info, keep original value
-        convertedData[key] = value
-      }
+      const fieldType = fields[key]?.type
+      convertedData[key] = fieldType ? convertValueByType(value, fieldType) : value
     })
 
     return convertedData

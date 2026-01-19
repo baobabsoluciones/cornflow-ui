@@ -198,89 +198,122 @@ export class OpenIDAuthService implements AuthProvider {
     }
   }
 
+  /**
+   * Stores authentication session data including tokens and user claims
+   */
+  private storeAuthSessionData(
+    backendToken: string,
+    userId: string,
+    tokenClaims: any,
+    originalToken: string,
+    response: any,
+  ): void {
+    sessionStorage.setItem('isAuthenticated', 'true')
+    sessionStorage.setItem('token', backendToken)
+    sessionStorage.setItem('userId', userId)
+
+    // Store token expiration
+    if (tokenClaims?.exp) {
+      const expirationTime = tokenClaims.exp * 1000
+      sessionStorage.setItem('tokenExpiration', expirationTime.toString())
+      sessionStorage.setItem('originalToken', originalToken)
+    }
+
+    // Store Azure-specific token metadata
+    if (this.provider === 'azure' && response.expiresOn) {
+      sessionStorage.setItem('azureTokenExpiration', response.expiresOn.getTime().toString())
+    }
+
+    // Store refresh token expiration if available
+    if (response.refreshTokenExpiresIn) {
+      const refreshExpiration = Date.now() + response.refreshTokenExpiresIn * 1000
+      sessionStorage.setItem('refreshTokenExpiration', refreshExpiration.toString())
+    }
+  }
+
+  /**
+   * Stores user claims from the token
+   */
+  private storeUserClaims(tokenClaims: any): void {
+    if (!tokenClaims) return
+
+    sessionStorage.setItem(
+      'username',
+      tokenClaims['cognito:username'] || tokenClaims.preferred_username || tokenClaims.email || '',
+    )
+    sessionStorage.setItem(
+      'email',
+      tokenClaims.email || tokenClaims.preferred_username || '',
+    )
+    sessionStorage.setItem('name', tokenClaims.name || '')
+    sessionStorage.setItem('given_name', tokenClaims.given_name || '')
+    sessionStorage.setItem('family_name', tokenClaims.family_name || '')
+  }
+
+  /**
+   * Authenticates with the backend using the OpenID token
+   */
+  private async authenticateWithBackend(token: string): Promise<any> {
+    return client.post(
+      '/login/',
+      {},
+      {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    )
+  }
+
+  /**
+   * Handles successful backend authentication
+   */
+  private handleSuccessfulAuth(
+    backendResponse: any,
+    token: string,
+    tokenClaims: any,
+    response: any,
+  ): void {
+    this.storeAuthSessionData(
+      backendResponse.content.token,
+      backendResponse.content.id,
+      tokenClaims,
+      token,
+      response,
+    )
+    this.storeUserClaims(tokenClaims)
+    client.initializeToken()
+    router.push('/project-execution')
+  }
+
   private async handleAuthResponse(response: any) {
-    if (response) {
-      try {
-        const token = response.idToken || response.accessToken;
-        const tokenClaims = this.decodeToken(token);
-        
-        if (!tokenClaims) {
-          this.loginAttempted = false;
-          await this.retryAuthentication();
-          return;
-        }
-        
-        try {
-          const backendResponse = await client.post(
-            '/login/',
-            {},
-            { 
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              'Authorization': `Bearer ${token}`
-            }
-          );
+    if (!response) return
 
-          if (backendResponse.status === 200) {
-            const backendToken = backendResponse.content.token;
-            
-            sessionStorage.setItem('isAuthenticated', 'true');
-            sessionStorage.setItem('token', backendToken);
-            sessionStorage.setItem('userId', backendResponse.content.id);
-            
-            // Store comprehensive token information for better refresh management
-            if (tokenClaims && tokenClaims.exp) {
-              const expirationTime = tokenClaims.exp * 1000; // Convert to milliseconds
-              sessionStorage.setItem('tokenExpiration', expirationTime.toString());
-              sessionStorage.setItem('originalToken', token); // Keep original token for refresh
-            }
-            
-            // Store Azure/Cognito specific token metadata for debugging and monitoring
-            if (this.provider === 'azure' && response.expiresOn) {
-              // MSAL provides expiresOn for access tokens
-              sessionStorage.setItem('azureTokenExpiration', response.expiresOn.getTime().toString());
-            }
-            
-            // Store refresh token expiration if available (mainly for Azure direct flows)
-            if (response.refreshTokenExpiresIn) {
-              const refreshExpiration = Date.now() + (response.refreshTokenExpiresIn * 1000);
-              sessionStorage.setItem('refreshTokenExpiration', refreshExpiration.toString());
-            }
-            
-            if (tokenClaims) {
-              sessionStorage.setItem('username', 
-                tokenClaims['cognito:username'] || 
-                tokenClaims.preferred_username || 
-                tokenClaims.email || 
-                '');
-              sessionStorage.setItem('email', 
-                tokenClaims.email || 
-                tokenClaims.preferred_username || 
-                '');
-              sessionStorage.setItem('name', tokenClaims.name || '');
-              sessionStorage.setItem('given_name', tokenClaims.given_name || '');
-              sessionStorage.setItem('family_name', tokenClaims.family_name || '');
-            }
-            
-            // Reinitialize the API client with the new token
-            client.initializeToken();
+    try {
+      const token = response.idToken || response.accessToken
+      const tokenClaims = this.decodeToken(token)
 
-            router.push('/project-execution');
-          } else {
-            console.error('Backend Response:', backendResponse);
-            await this.retryAuthentication();
-          }
-        } catch (error) {
-          console.error('Backend authentication failed:', error);
-          if (error.response?.status === 400) {
-            await this.retryAuthentication();
-          } else {
-            throw error;
-          }
-        }
-      } catch (error) {
-        console.error('Authentication error:', error);
-        await this.retryAuthentication();
+      if (!tokenClaims) {
+        this.loginAttempted = false
+        await this.retryAuthentication()
+        return
+      }
+
+      const backendResponse = await this.authenticateWithBackend(token)
+
+      if (backendResponse.status === 200) {
+        this.handleSuccessfulAuth(backendResponse, token, tokenClaims, response)
+      } else {
+        console.error('Backend Response:', backendResponse)
+        await this.retryAuthentication()
+      }
+    } catch (error) {
+      console.error('Authentication error:', error)
+      const shouldRetry = !error.response || error.response?.status === 400
+      if (shouldRetry) {
+        await this.retryAuthentication()
+      } else {
+        throw error
       }
     }
   }

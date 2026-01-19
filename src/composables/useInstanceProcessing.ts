@@ -193,7 +193,7 @@ export function useInstanceProcessing() {
       }
 
       // Standard processing
-      const instance = await createInstanceFromData(
+      const instance = createInstanceFromData(
         fileContent,
         extension,
         file,

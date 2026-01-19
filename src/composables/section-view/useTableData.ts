@@ -322,92 +322,81 @@ export function useTableData(
       }))
   })
 
-  // Map dependent fields to foreign key IDs
-  const mapDependentFieldsToIds = async (parsedData: any[]): Promise<any[]> => {
-    if (!tableConfig.value?.get_list?.response_schema?.items?.properties) {
-      return parsedData
+  /**
+   * Helper: Check if field has a valid dependent value
+   */
+  const hasValidDependentValue = (prop: any, value: any): boolean => {
+    return prop.isDependentField && prop.joinFrom && value !== undefined && value !== null && value !== ''
+  }
+
+  /**
+   * Helper: Compare values for matching (handles string case-insensitivity)
+   */
+  const fieldValuesMatch = (fieldValue: any, rowValue: any): boolean => {
+    if (typeof fieldValue === 'string' && typeof rowValue === 'string') {
+      return fieldValue.toLowerCase() === rowValue.toLowerCase()
+    }
+    return fieldValue === rowValue
+  }
+
+  /**
+   * Helper: Process a single dependent field in a row
+   */
+  const processRowDependentField = async (
+    mappedRow: Record<string, any>,
+    fieldKey: string,
+    prop: any,
+    properties: any,
+  ): Promise<void> => {
+    const foreignKeyField = getForeignKeyFieldName(fieldKey, { properties })
+    if (!foreignKeyField) {
+      delete mappedRow[fieldKey]
+      return
     }
 
-    const properties =
-      tableConfig.value.get_list.response_schema.items.properties
+    const joinInfo = parseJoinFrom(prop.joinFrom)
+    if (!joinInfo) {
+      delete mappedRow[fieldKey]
+      return
+    }
 
-    // Process each row
-    const mappedData = await Promise.all(
+    try {
+      const relatedTableData = await loadTableData(joinInfo.table)
+      const matchingItem = relatedTableData.find(
+        (item) => fieldValuesMatch(item[joinInfo.field], mappedRow[fieldKey])
+      )
+
+      if (matchingItem?.id !== undefined) {
+        mappedRow[foreignKeyField] = matchingItem.id
+      } else {
+        console.warn(`No matching item found for ${fieldKey}="${mappedRow[fieldKey]}" in table ${joinInfo.table}`)
+      }
+    } catch (error) {
+      console.error(`Error loading related table ${joinInfo.table} for field ${fieldKey}:`, error)
+    }
+    delete mappedRow[fieldKey]
+  }
+
+  // Map dependent fields to foreign key IDs
+  const mapDependentFieldsToIds = async (parsedData: any[]): Promise<any[]> => {
+    const properties = tableConfig.value?.get_list?.response_schema?.items?.properties
+    if (!properties) return parsedData
+
+    return Promise.all(
       parsedData.map(async (row) => {
         const mappedRow: Record<string, any> = { ...row }
 
-        // Find all dependent fields that have values in this row
+        // Process dependent fields with values
         for (const [fieldKey, fieldProp] of Object.entries(properties)) {
           const prop = fieldProp as any
-
-          // Check if this is a dependent field with a value in the row
-          if (
-            prop.isDependentField &&
-            prop.joinFrom &&
-            mappedRow[fieldKey] !== undefined &&
-            mappedRow[fieldKey] !== null &&
-            mappedRow[fieldKey] !== ''
-          ) {
-            // Get the foreign key field name
-            const foreignKeyField = getForeignKeyFieldName(fieldKey, {
-              properties,
-            })
-
-            if (!foreignKeyField) continue
-
-            // Parse joinFrom to get table and field information
-            const joinInfo = parseJoinFrom(prop.joinFrom)
-            if (!joinInfo) continue
-
-            try {
-              // Load the related table data
-              const relatedTableData = await loadTableData(joinInfo.table)
-
-              // Find the item in the related table that matches the value
-              const matchingItem = relatedTableData.find((item) => {
-                const fieldValue = item[joinInfo.field]
-                const rowValue = mappedRow[fieldKey]
-
-                // Compare values (handle different types)
-                if (
-                  typeof fieldValue === 'string' &&
-                  typeof rowValue === 'string'
-                ) {
-                  return fieldValue.toLowerCase() === rowValue.toLowerCase()
-                }
-                return fieldValue === rowValue
-              })
-
-              if (matchingItem && matchingItem.id !== undefined) {
-                // Set the foreign key ID
-                mappedRow[foreignKeyField] = matchingItem.id
-
-                // Remove the dependent field (it's only for display)
-                delete mappedRow[fieldKey]
-              } else {
-                // If no match found, log a warning but keep the row
-                console.warn(
-                  `No matching item found for ${fieldKey}="${mappedRow[fieldKey]}" in table ${joinInfo.table}`,
-                )
-                // Remove the dependent field even if no match (to avoid sending it)
-                delete mappedRow[fieldKey]
-              }
-            } catch (error) {
-              console.error(
-                `Error loading related table ${joinInfo.table} for field ${fieldKey}:`,
-                error,
-              )
-              // Remove the dependent field on error
-              delete mappedRow[fieldKey]
-            }
+          if (hasValidDependentValue(prop, mappedRow[fieldKey])) {
+            await processRowDependentField(mappedRow, fieldKey, prop, properties)
           }
         }
 
-        // Also remove any other dependent fields that don't have values
-        // (to ensure we don't send them)
+        // Remove remaining dependent fields
         for (const [fieldKey, fieldProp] of Object.entries(properties)) {
-          const prop = fieldProp as any
-          if (prop.isDependentField && mappedRow[fieldKey] !== undefined) {
+          if ((fieldProp as any).isDependentField) {
             delete mappedRow[fieldKey]
           }
         }
@@ -415,90 +404,84 @@ export function useTableData(
         return mappedRow
       }),
     )
-
-    return mappedData
   }
 
-  // Parse upload file function
-  const parseUploadFile = async (file: File): Promise<any[]> => {
-    const extension = file.name.split('.').pop()?.toLowerCase()
-
-    // Handle Excel files separately (they don't use FileReader)
-    if (extension === 'xlsx' || extension === 'xls') {
-      try {
-        const rows = await readXlsxFile(file)
-        if (rows.length < 2) {
-          throw new Error(
-            'Excel file must have at least a header row and one data row',
-          )
-        }
-
-        // First row is headers
-        const headers = rows[0].map((header) => String(header).trim())
-
-        // Convert remaining rows to objects
-        const data = rows.slice(1).map((row) => {
-          const obj: any = {}
-          headers.forEach((header, index) => {
-            // Only convert null/undefined to empty string
-            const value = row[index]
-            obj[header] = value === null || value === undefined ? '' : value
-          })
-          return obj
-        })
-
-        return data
-      } catch (error) {
-        console.error('Excel parsing error:', error)
-        throw new Error(t('table.messages.fileProcessingError'))
+  // Helper function to parse Excel files
+  const parseExcelFile = async (file: File): Promise<any[]> => {
+    try {
+      const rows = await readXlsxFile(file)
+      if (rows.length < 2) {
+        throw new Error(
+          'Excel file must have at least a header row and one data row',
+        )
       }
+
+      const headers = rows[0].map((header) => String(header).trim())
+
+      return rows.slice(1).map((row) => {
+        const obj: any = {}
+        headers.forEach((header, index) => {
+          const value = row[index]
+          obj[header] = value === null || value === undefined ? '' : value
+        })
+        return obj
+      })
+    } catch (error) {
+      console.error('Excel parsing error:', error)
+      throw new Error(t('table.messages.fileProcessingError'))
+    }
+  }
+
+  // Helper function to parse JSON content
+  const parseJsonContent = (content: string): any[] => {
+    const jsonData = JSON.parse(content)
+    return Array.isArray(jsonData) ? jsonData : [jsonData]
+  }
+
+  // Helper function to parse CSV content
+  const parseCsvContent = (content: string): any[] => {
+    const lines = content.split('\n').filter((line) => line.trim())
+    if (lines.length < 2) {
+      throw new Error('Invalid CSV format')
     }
 
-    // Handle JSON and CSV files with FileReader
+    const headers = lines[0].split(',').map((h) => h.trim())
+    return lines.slice(1).map((line) => {
+      const values = line.split(',').map((v) => v.trim())
+      const obj: any = {}
+      headers.forEach((header, index) => {
+        const value = values[index]
+        obj[header] = value === undefined ? '' : value
+      })
+      return obj
+    })
+  }
+
+  // Helper function to read file as text and parse based on extension
+  const parseTextFile = (
+    file: File,
+    extension: string,
+  ): Promise<any[]> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
 
       reader.onload = (e) => {
         try {
           const content = e.target!.result as string
-
-          switch (extension) {
-            case 'json':
-              const jsonData = JSON.parse(content)
-              resolve(Array.isArray(jsonData) ? jsonData : [jsonData])
-              break
-            case 'csv':
-              // Simple CSV parsing
-              const lines = content.split('\n').filter((line) => line.trim())
-              if (lines.length < 2) {
-                throw new Error('Invalid CSV format')
-              }
-
-              const headers = lines[0].split(',').map((h) => h.trim())
-              const data = lines.slice(1).map((line) => {
-                const values = line.split(',').map((v) => v.trim())
-                const obj: any = {}
-                headers.forEach((header, index) => {
-                  // Only convert undefined to empty string
-                  const value = values[index]
-                  obj[header] = value === undefined ? '' : value
-                })
-                return obj
-              })
-              resolve(data)
-              break
-            default:
-              reject(new Error(t('table.messages.invalidFileFormat')))
+          if (extension === 'json') {
+            resolve(parseJsonContent(content))
+          } else if (extension === 'csv') {
+            resolve(parseCsvContent(content))
+          } else {
+            reject(new Error(t('table.messages.invalidFileFormat')))
           }
         } catch (error) {
           console.error('File parsing error:', error)
-          reject(
-            new Error(
-              error instanceof Error
-                ? error.message
-                : t('table.messages.fileProcessingError'),
-            ),
-          )
+          const errorMessage =
+            error instanceof Error
+              ? error.message
+              : t('table.messages.fileProcessingError')
+          reject(new Error(errorMessage))
         }
       }
 
@@ -509,6 +492,21 @@ export function useTableData(
 
       reader.readAsText(file)
     })
+  }
+
+  // Parse upload file function
+  const parseUploadFile = async (file: File): Promise<any[]> => {
+    const extension = file.name.split('.').pop()?.toLowerCase()
+
+    if (extension === 'xlsx' || extension === 'xls') {
+      return parseExcelFile(file)
+    }
+
+    if (extension === 'json' || extension === 'csv') {
+      return parseTextFile(file, extension)
+    }
+
+    throw new Error(t('table.messages.invalidFileFormat'))
   }
 
   // Load data function for master tables
@@ -613,6 +611,164 @@ export function useTableData(
       return false
     }
   })
+
+  // Helper to download master table data as Excel
+  const downloadMasterTableExcel = async () => {
+    if (!tableConfig.value || !tableConfig.value.get_list) {
+      showSnackbar(t('table.messages.errorDownloadExcelTable'), 'error')
+      return
+    }
+
+    downloading.value = true
+    try {
+      const tableName = tableKey.value
+      const tableTitle = tableConfig.value.title || tableName
+      const dataToExport = filteredItems.value
+
+      await exportTableToExcel(
+        dataToExport,
+        tableConfig.value,
+        tableName,
+        tableTitle,
+        t,
+      )
+
+      showSnackbar(t('table.messages.downloadExcelSuccess'), 'success')
+    } catch (err) {
+      console.error('Error downloading Excel:', err)
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : t('table.messages.errorDownloadExcelTable')
+      showSnackbar(errorMessage, 'error')
+    } finally {
+      downloading.value = false
+    }
+  }
+
+  // Helper to create mock config for primitive arrays
+  const createPrimitiveArrayConfig = () => ({
+    get_list: {
+      response_schema: {
+        items: {
+          properties: {
+            value: {
+              type: 'string',
+              title: 'Value',
+            },
+          },
+          required: [],
+        },
+      },
+    },
+  })
+
+  // Helper to determine field type from value
+  const getFieldType = (value: any): string => {
+    if (typeof value === 'number') {
+      return Number.isInteger(value) ? 'integer' : 'number'
+    }
+    if (typeof value === 'boolean') {
+      return 'boolean'
+    }
+    return 'string'
+  }
+
+  // Helper to create mock config from data structure
+  const createMockConfigFromData = (dataToExport: any[]): any => {
+    if (!dataToExport || dataToExport.length === 0) {
+      return {
+        get_list: {
+          response_schema: {
+            items: {
+              properties: {},
+              required: [],
+            },
+          },
+        },
+      }
+    }
+
+    const properties: Record<string, any> = {}
+    Object.keys(dataToExport[0]).forEach((key) => {
+      if (key !== 'id' && !key.endsWith('_id')) {
+        const value = dataToExport[0][key]
+        properties[key] = {
+          type: getFieldType(value),
+          title: key,
+        }
+      }
+    })
+
+    return {
+      get_list: {
+        response_schema: {
+          items: {
+            properties,
+            required: [],
+          },
+        },
+      },
+    }
+  }
+
+  // Helper to download execution data as Excel
+  const downloadExecutionDataExcel = async () => {
+    downloading.value = true
+    try {
+      const tableName = tableKey.value
+      const tableTitle = executionTableData.tableTitle.value || tableName
+      const dataToExport = executionTableData.items.value
+      const isPrimitive = executionTableData.isPrimitiveArray.value
+
+      // Handle primitive arrays (list of strings)
+      const isPrimitiveStringArray =
+        isPrimitive &&
+        Array.isArray(dataToExport) &&
+        dataToExport.length > 0 &&
+        typeof dataToExport[0] === 'string'
+
+      if (isPrimitiveStringArray) {
+        const mockConfig = createPrimitiveArrayConfig()
+        const transformedData = dataToExport.map((item, index) => ({
+          id: index,
+          value: item,
+        }))
+
+        await exportTableToExcel(
+          transformedData,
+          mockConfig,
+          tableName,
+          tableTitle,
+          t,
+        )
+      } else {
+        // For object arrays, use existing config or create mock
+        const configToUse = tableConfig.value?.get_list?.response_schema
+          ? tableConfig.value
+          : createMockConfigFromData(dataToExport)
+
+        await exportTableToExcel(
+          dataToExport,
+          configToUse,
+          tableName,
+          tableTitle,
+          t,
+        )
+      }
+
+      showSnackbar(t('table.messages.downloadExcelSuccess'), 'success')
+    } catch (err) {
+      console.error('Error downloading execution Excel:', err)
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : t('table.messages.errorDownloadExcelTable')
+      showSnackbar(errorMessage, 'error')
+    } finally {
+      downloading.value = false
+    }
+  }
 
   return {
     // Dynamic data that switches automatically
@@ -897,158 +1053,9 @@ export function useTableData(
     },
     handleDownloadExcel: async () => {
       if (!shouldUseExecutionData.value) {
-        // Master table download
-        if (!tableConfig.value || !tableConfig.value.get_list) {
-          showSnackbar(t('table.messages.errorDownloadExcelTable'), 'error')
-          return
-        }
-
-        downloading.value = true
-        try {
-          const tableName = tableKey.value
-          const tableTitle = tableConfig.value.title || tableName
-
-          // Use filtered items for download (respecting current filters and search)
-          const dataToExport = filteredItems.value
-
-          await exportTableToExcel(
-            dataToExport,
-            tableConfig.value,
-            tableName,
-            tableTitle,
-            t,
-          )
-
-          showSnackbar(t('table.messages.downloadExcelSuccess'), 'success')
-        } catch (err) {
-          console.error('Error downloading Excel:', err)
-          const errorMessage =
-            err instanceof Error
-              ? err.message
-              : t('table.messages.errorDownloadExcelTable')
-          showSnackbar(errorMessage, 'error')
-        } finally {
-          downloading.value = false
-        }
+        await downloadMasterTableExcel()
       } else {
-        // Execution data download
-        downloading.value = true
-        try {
-          const tableName = tableKey.value
-          const tableTitle = executionTableData.tableTitle.value || tableName
-
-          // Use execution table data for download
-          const dataToExport = executionTableData.items.value
-
-          // Check if this is a primitive array (list of strings)
-          const isPrimitive = executionTableData.isPrimitiveArray.value
-
-          if (
-            isPrimitive &&
-            Array.isArray(dataToExport) &&
-            dataToExport.length > 0 &&
-            typeof dataToExport[0] === 'string'
-          ) {
-            // For primitive arrays, create a simple column structure
-            const mockTableConfig = {
-              get_list: {
-                response_schema: {
-                  items: {
-                    properties: {
-                      value: {
-                        type: 'string',
-                        title: 'Value',
-                      },
-                    },
-                    required: [],
-                  },
-                },
-              },
-            }
-
-            // Transform array of strings to array of objects
-            const transformedData = dataToExport.map((item, index) => ({
-              id: index,
-              value: item,
-            }))
-
-            await exportTableToExcel(
-              transformedData,
-              mockTableConfig,
-              tableName,
-              tableTitle,
-              t,
-            )
-          } else {
-            // For execution data with objects, use the original tableConfig if available
-            // This ensures we filter out columns with columnsToJoin properly
-            let configToUse = tableConfig.value
-
-            // Only create a mock config if we don't have schema information
-            if (!tableConfig.value?.get_list?.response_schema) {
-              const mockTableConfig = {
-                get_list: {
-                  response_schema: {
-                    items: {
-                      properties: {},
-                      required: [],
-                    },
-                  },
-                },
-              }
-
-              // Generate schema from the actual data structure
-              if (dataToExport && dataToExport.length > 0) {
-                const properties: Record<string, any> = {}
-                const required: string[] = []
-
-                // Analyze the first item to determine field types
-                Object.keys(dataToExport[0]).forEach((key) => {
-                  // Filter out id field and common foreign key patterns (fields ending with _id)
-                  if (key !== 'id' && !key.endsWith('_id')) {
-                    const value = dataToExport[0][key]
-                    let type = 'string'
-
-                    if (typeof value === 'number') {
-                      type = Number.isInteger(value) ? 'integer' : 'number'
-                    } else if (typeof value === 'boolean') {
-                      type = 'boolean'
-                    }
-
-                    properties[key] = {
-                      type,
-                      title: key,
-                    }
-                  }
-                })
-
-                mockTableConfig.get_list.response_schema.items.properties =
-                  properties
-
-                configToUse = mockTableConfig
-              }
-            }
-
-            await exportTableToExcel(
-              dataToExport,
-              configToUse,
-              tableName,
-              tableTitle,
-              t,
-            )
-          }
-
-          showSnackbar(t('table.messages.downloadExcelSuccess'), 'success')
-        } catch (err) {
-          console.error('Error downloading execution Excel:', err)
-          const errorMessage =
-            err instanceof Error
-              ? err.message
-              : t('table.messages.errorDownloadExcelTable')
-          showSnackbar(errorMessage, 'error')
-        } finally {
-          downloading.value = false
-        }
+        await downloadExecutionDataExcel()
       }
     },
     handleConfirmDelete: async () => {

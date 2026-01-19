@@ -333,20 +333,18 @@ export function useTableHeight() {
 
     // Watch for fullscreen state changes on body
     if (window.MutationObserver) {
+      const handleClassMutation = (mutation: MutationRecord) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+          nextTick(() => {
+            calculateTableHeight()
+            setupFullscreenBodyObserver()
+            setupFiltersPanelObserver()
+          })
+        }
+      }
+
       mutationObserver.value = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-          if (
-            mutation.type === 'attributes' &&
-            mutation.attributeName === 'class'
-          ) {
-            // Fullscreen state changed
-            nextTick(() => {
-              calculateTableHeight()
-              setupFullscreenBodyObserver()
-              setupFiltersPanelObserver()
-            })
-          }
-        })
+        mutations.forEach(handleClassMutation)
       })
 
       // Observe body for class changes

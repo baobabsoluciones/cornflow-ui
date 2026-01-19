@@ -7,118 +7,80 @@ export interface ButtonStylesProps {
   textColor?: string | null
 }
 
+// CSS color variable mapping
+const COLOR_MAP: Record<string, string> = {
+  primary: 'var(--primary)',
+  warning: 'var(--warning)',
+}
+
+/**
+ * Resolve color from prop to CSS variable or direct value
+ */
+function resolveColor(color: string): string {
+  return COLOR_MAP[color] ?? color
+}
+
+/**
+ * Get text color based on props
+ */
+function getTextColor(textColor: string | null | undefined, color: string): string {
+  return textColor ?? resolveColor(color)
+}
+
+/**
+ * Get styles for filled variant
+ */
+function getFilledStyles(props: ButtonStylesProps): Record<string, string> {
+  return {
+    backgroundColor: props.backgroundColor ?? resolveColor(props.color),
+    color: props.textColor ?? 'white',
+    border: 'none',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+  }
+}
+
+/**
+ * Get styles for outlined variant
+ */
+function getOutlinedStyles(props: ButtonStylesProps): Record<string, string> {
+  const resolvedColor = resolveColor(props.color)
+  const textColor = props.textColor ?? resolvedColor
+  const borderColor = props.textColor ? props.color : resolvedColor
+
+  return {
+    backgroundColor: props.backgroundColor ?? 'transparent',
+    color: textColor,
+    borderColor: borderColor,
+    border: `2px solid ${borderColor}`,
+    boxShadow: 'none',
+  }
+}
+
+/**
+ * Get styles for text/icon variants
+ */
+function getTextIconStyles(props: ButtonStylesProps): Record<string, string> {
+  return {
+    backgroundColor: 'transparent',
+    color: getTextColor(props.textColor, props.color),
+    border: 'none',
+    boxShadow: 'none',
+  }
+}
+
 export function useButtonStyles(props: ButtonStylesProps) {
   const buttonStyles = computed(() => {
-    const styles: Record<string, string> = {}
-
-    // Get CSS variables for default colors
-    const primaryColor = 'var(--primary)'
-    const primaryVariant = 'var(--primary-variant)'
-    const warningColor = 'var(--warning)'
-
-    // Determine colors based on variant and props
     switch (props.variant) {
       case 'filled':
-        if (props.backgroundColor) {
-          styles.backgroundColor = props.backgroundColor
-        } else {
-          switch (props.color) {
-            case 'primary':
-              styles.backgroundColor = primaryColor
-              break
-            case 'warning':
-              styles.backgroundColor = warningColor
-              break
-            default:
-              styles.backgroundColor = props.color
-          }
-        }
-
-        if (props.textColor) {
-          styles.color = props.textColor
-        } else {
-          styles.color = 'white'
-        }
-
-        styles.border = 'none'
-        styles.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)'
-        break
-
+        return getFilledStyles(props)
       case 'outlined':
-        if (props.backgroundColor) {
-          styles.backgroundColor = props.backgroundColor
-        } else {
-          styles.backgroundColor = 'transparent'
-        }
-
-        if (props.textColor) {
-          styles.color = props.textColor
-        } else {
-          switch (props.color) {
-            case 'primary':
-              styles.color = primaryColor
-              styles.borderColor = primaryColor
-              break
-            case 'warning':
-              styles.color = warningColor
-              styles.borderColor = warningColor
-              break
-            default:
-              styles.color = props.color
-              styles.borderColor = props.color
-          }
-        }
-
-        styles.border = `2px solid ${styles.borderColor || props.color}`
-        styles.boxShadow = 'none'
-        break
-
+        return getOutlinedStyles(props)
       case 'text':
-        styles.backgroundColor = 'transparent'
-
-        if (props.textColor) {
-          styles.color = props.textColor
-        } else {
-          switch (props.color) {
-            case 'primary':
-              styles.color = primaryColor
-              break
-            case 'warning':
-              styles.color = warningColor
-              break
-            default:
-              styles.color = props.color
-          }
-        }
-
-        styles.border = 'none'
-        styles.boxShadow = 'none'
-        break
-
       case 'icon':
-        styles.backgroundColor = 'transparent'
-
-        if (props.textColor) {
-          styles.color = props.textColor
-        } else {
-          switch (props.color) {
-            case 'primary':
-              styles.color = primaryColor
-              break
-            case 'warning':
-              styles.color = warningColor
-              break
-            default:
-              styles.color = props.color
-          }
-        }
-
-        styles.border = 'none'
-        styles.boxShadow = 'none'
-        break
+        return getTextIconStyles(props)
+      default:
+        return {}
     }
-
-    return styles
   })
 
   return {

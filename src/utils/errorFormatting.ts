@@ -39,6 +39,24 @@ function getTranslatedParam(paramKey: string, t?: TranslateFunction): string {
 }
 
 /**
+ * Keywords that require the 'limit' parameter
+ */
+const LIMIT_KEYWORDS = ['maximum', 'minimum', 'maxLength', 'minLength']
+
+/**
+ * Get translation params for a specific keyword
+ */
+function getKeywordParams(keyword: string, params: Record<string, any>): Record<string, any> {
+  if (LIMIT_KEYWORDS.includes(keyword) && params.limit !== undefined) {
+    return { limit: params.limit }
+  }
+  if (keyword === 'type') {
+    return { type: params.type || 'unknown' }
+  }
+  return {}
+}
+
+/**
  * Translate Ajv error message based on keyword and params
  */
 function translateErrorMessage(
@@ -49,33 +67,23 @@ function translateErrorMessage(
 ): string {
   if (!t) return message
 
-  // Try to get a translated message template based on keyword
   const messageKey = `validation.messages.${keyword}`
   let translatedTemplate = t(messageKey)
-  
-  // If no translation found, try to translate common patterns
+
+  // If translation key not found, try with params for specific keywords
   if (translatedTemplate === messageKey) {
-    // Translate common Ajv error message patterns
-    if (keyword === 'maximum' && params.limit !== undefined) {
-      translatedTemplate = t('validation.messages.maximum', { limit: params.limit })
-    } else if (keyword === 'minimum' && params.limit !== undefined) {
-      translatedTemplate = t('validation.messages.minimum', { limit: params.limit })
-    } else if (keyword === 'maxLength' && params.limit !== undefined) {
-      translatedTemplate = t('validation.messages.maxLength', { limit: params.limit })
-    } else if (keyword === 'minLength' && params.limit !== undefined) {
-      translatedTemplate = t('validation.messages.minLength', { limit: params.limit })
-    } else if (keyword === 'required') {
-      translatedTemplate = t('validation.messages.required')
-    } else if (keyword === 'type') {
-      translatedTemplate = t('validation.messages.type', { type: params.type || 'unknown' })
-    } else if (keyword === 'pattern') {
-      translatedTemplate = t('validation.messages.pattern')
+    const keywordParams = getKeywordParams(keyword, params)
+    const hasValidParams = LIMIT_KEYWORDS.includes(keyword) 
+      ? params.limit !== undefined 
+      : ['required', 'type', 'pattern'].includes(keyword)
+
+    if (hasValidParams) {
+      translatedTemplate = t(messageKey, keywordParams)
     } else {
-      // Fallback: return original message
       return message
     }
   } else {
-    // Use the translated template and replace params
+    // Replace params in template
     Object.entries(params).forEach(([key, value]) => {
       translatedTemplate = translatedTemplate.replace(`{${key}}`, String(value))
     })

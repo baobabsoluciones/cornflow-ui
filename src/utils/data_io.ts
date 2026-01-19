@@ -44,201 +44,236 @@ const readTable = function (
     })
 }
 
+/**
+ * Processes a single cell value based on type
+ */
+function processRowValue(value: any, fieldFormat: string | undefined): any {
+  if (value instanceof Date) {
+    return formatDateForExcel(value, fieldFormat, true)
+  }
+  if (Number.isNaN(value)) {
+    return null
+  }
+  if (typeof value === 'number' && value % 1 !== 0) {
+    return parseFloat(value.toFixed(4))
+  }
+  return value
+}
+
+/**
+ * Processes a row, applying value transformations
+ */
+function processTableRow(
+  row: Record<string, any>,
+  getFieldFormat: (key: string) => string | undefined,
+): Record<string, any> {
+  return Object.fromEntries(
+    Object.entries(row).map(([key, value]) => [
+      key,
+      processRowValue(value, getFieldFormat(key)),
+    ]),
+  )
+}
+
 const loadExcel = async function (file, schema) {
-  // Get all sheets from Excel file
   const allSheets = await readXlsxFile(file, { getSheets: true })
   const sheetNames = allSheets.map((sheet) => sheet.name)
   const schemaTableNames = Object.keys(schema.properties)
   const required = schema.required || []
 
-  const readTab = function (tab) {
+  const readTab = async function (tab: string): Promise<[string, any]> {
     const isInSchema = schemaTableNames.includes(tab)
     const tabSchema = isInSchema ? schema.properties[tab] : null
     const isRequired = required.includes(tab)
-
-    // For tables in schema, use schema settings
     const useFirstColumnAsKeys = isInSchema && tabSchema?.type === 'object'
 
-    // Get field formats from schema for array type tables
-    const getFieldFormat = function (fieldKey: string) {
+    const getFieldFormat = (fieldKey: string): string | undefined => {
       if (!isInSchema || !tabSchema) return undefined
-      if (
-        tabSchema.type === 'array' &&
-        tabSchema.items?.properties?.[fieldKey]
-      ) {
+      if (tabSchema.type === 'array' && tabSchema.items?.properties?.[fieldKey]) {
         return tabSchema.items.properties[fieldKey].format
       }
       return undefined
     }
 
-    return readTable(file, tab, useFirstColumnAsKeys, isRequired)
-      .then((table) => {
-        if (Array.isArray(table)) {
-          return [
-            tab,
-            table.map((row) => {
-              return Object.fromEntries(
-                Object.entries(row).map(([key, value]) => {
-                  if (value instanceof Date) {
-                    // Get format from schema for this field
-                    const fieldFormat = getFieldFormat(key)
-                    // Pass format to formatDateForExcel (second parameter)
-                    return [key, formatDateForExcel(value, fieldFormat, true)]
-                  } else if (Number.isNaN(value)) {
-                    return [key, null]
-                  } else if (typeof value === 'number' && value % 1 !== 0) {
-                    return [key, parseFloat(value.toFixed(4))]
-                  }
-                  return [key, value]
-                }),
-              )
-            }),
-          ]
-        }
-        // Handle object type tables
-        return [tab, table]
-      })
-      .catch((error) => {
-        throw error
-      })
+    const table = await readTable(file, tab, useFirstColumnAsKeys, isRequired)
+    
+    if (!Array.isArray(table)) {
+      return [tab, table]
+    }
+
+    const processedTable = table.map((row) => processTableRow(row, getFieldFormat))
+    return [tab, processedTable]
   }
 
-  // Process all sheets, including those not in schema
   const results = await Promise.all(sheetNames.map((tab) => readTab(tab)))
   return Object.fromEntries(results)
 }
 
-// this function writes all sheets according to the schema
+/**
+ * Applies standard border style to a cell
+ */
+function applyCellBorder(cell: any): void {
+  cell.border = {
+    top: { style: 'thin' },
+    left: { style: 'thin' },
+    bottom: { style: 'thin' },
+    right: { style: 'thin' },
+  }
+}
+
+/**
+ * Gets alternating row fill color
+ */
+function getAlternatingFill(index: number): any {
+  return {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: index % 2 === 0 ? 'FFFFFFFF' : 'FFF2F2F2' },
+  }
+}
+
+/**
+ * Checks if a field should be visible in export
+ */
+function isFieldVisible(
+  key: string,
+  schema: Record<string, any> | null,
+  sheetName: string,
+  isObjectType: boolean,
+): boolean {
+  if (key === 'id') return false
+  if (!schema) return true
+
+  const propertySchema = isObjectType
+    ? schema.properties?.[sheetName]?.properties?.[key]
+    : schema.properties?.[sheetName]?.items?.properties?.[key]
+
+  return propertySchema?.visible !== false
+}
+
+/**
+ * Processes object type worksheet (key-value pairs)
+ */
+function processObjectTypeWorksheet(
+  worksheet: any,
+  sheetData: any[],
+  schema: Record<string, any> | null,
+  sheetName: string,
+): void {
+  const tableData = Object.entries(sheetData[0] as Record<string, any>).filter(
+    ([key]) => isFieldVisible(key, schema, sheetName, true),
+  )
+
+  worksheet.addRows(tableData)
+  worksheet.getColumn(1).width = 20
+  worksheet.getColumn(2).width = 30
+
+  tableData.forEach((_, index) => {
+    ;['A', 'B'].forEach((col) => {
+      const cell = worksheet.getCell(`${col}${index + 1}`)
+      cell.fill = getAlternatingFill(index)
+      applyCellBorder(cell)
+    })
+  })
+}
+
+/**
+ * Processes array type worksheet (tabular data)
+ */
+function processArrayTypeWorksheet(
+  worksheet: any,
+  sheetData: any[],
+  schema: Record<string, any> | null,
+  sheetName: string,
+): void {
+  const allHeaders = Object.keys(sheetData[0])
+  const headers = allHeaders.filter((header) =>
+    isFieldVisible(header, schema, sheetName, false),
+  )
+
+  const tableData = [
+    headers,
+    ...sheetData.map((row) => headers.map((header) => row[header])),
+  ]
+  worksheet.addRows(tableData)
+
+  headers.forEach((header, index) => {
+    worksheet.getColumn(index + 1).width = header.length + 5
+  })
+
+  tableData.forEach((row, rowIndex) => {
+    row.forEach((_, colIndex) => {
+      const cell = worksheet.getCell(rowIndex + 1, colIndex + 1)
+      if (rowIndex === 0) {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFD3D3D3' },
+        }
+        cell.font = { bold: true }
+      } else {
+        cell.fill = getAlternatingFill(rowIndex)
+      }
+      applyCellBorder(cell)
+    })
+  })
+}
+
+/**
+ * Prepares sheet data, creating empty row if needed
+ */
+function prepareSheetData(
+  sheetData: any[],
+  schema: Record<string, any> | null,
+  sheetName: string,
+): any[] | null {
+  if (sheetData.length > 0) return sheetData
+
+  const requiredHeaders = schema?.properties?.[sheetName]?.items?.required
+  if (!requiredHeaders) return null
+
+  return [
+    requiredHeaders.reduce((acc: Record<string, any>, header: string) => {
+      acc[header] = null
+      return acc
+    }, {}),
+  ]
+}
+
+// This function writes all sheets according to the schema
 async function schemaDataToTable(
   wb: any,
   data: Record<string, any>,
   schema: Record<string, any> | null = null,
 ) {
-  var dataArray = Object.entries(data).map(([sheetName, sheetData]) => {
-    if (!Array.isArray(sheetData)) {
-      sheetData = [sheetData]
-    }
-    return [sheetName, sheetData]
+  const dataArray = Object.entries(data).map(([sheetName, sheetData]) => {
+    const normalizedData = Array.isArray(sheetData) ? sheetData : [sheetData]
+    return [sheetName, normalizedData]
   })
 
-  for (let [sheetName, sheetData] of dataArray) {
-    // Skip tables that are not visible
-    if (schema && schema.properties?.[sheetName]?.visible === false) {
-      continue
-    }
+  for (const [sheetName, rawSheetData] of dataArray) {
+    if (schema?.properties?.[sheetName]?.visible === false) continue
 
-    if (sheetData.length === 0) {
-      if (schema?.properties?.[sheetName]?.items?.required) {
-        const headers = schema.properties[sheetName].items.required
-        sheetData = [
-          headers.reduce((acc: Record<string, any>, header: string) => {
-            acc[header] = null
-            return acc
-          }, {}),
-        ]
-      } else {
-        continue
-      }
-    }
+    const sheetData = prepareSheetData(rawSheetData, schema, sheetName)
+    if (!sheetData) continue
 
     const worksheet = wb.addWorksheet(sheetName)
+    const isObjectType = schema?.properties?.[sheetName]?.type === 'object'
 
-    if (schema?.properties?.[sheetName]?.type === 'object') {
-      // Filter out non-visible properties and 'id' columns for object type
-      const tableData = Object.entries(
-        sheetData[0] as Record<string, any>,
-      ).filter(([key]) => {
-        // Exclude 'id' columns
-        if (key === 'id') {
-          return false
-        }
-        const propertySchema =
-          schema?.properties?.[sheetName]?.properties?.[key]
-        return !schema || propertySchema?.visible !== false
-      })
-
-      worksheet.addRows(tableData)
-      worksheet.getColumn(1).width = 20
-      worksheet.getColumn(2).width = 30
-
-      // Apply styles to the table
-      tableData.forEach((row, index) => {
-        ;['A', 'B'].forEach((col) => {
-          const cell = worksheet.getCell(`${col}${index + 1}`)
-          cell.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: index % 2 === 0 ? 'FFFFFFFF' : 'FFF2F2F2' },
-          }
-          cell.border = {
-            top: { style: 'thin' },
-            left: { style: 'thin' },
-            bottom: { style: 'thin' },
-            right: { style: 'thin' },
-          }
-        })
-      })
+    if (isObjectType) {
+      processObjectTypeWorksheet(worksheet, sheetData, schema, sheetName)
     } else {
-      // Filter out non-visible headers and 'id' columns for array type
-      const allHeaders = Object.keys(sheetData[0])
-      const headers = allHeaders.filter((header) => {
-        // Exclude 'id' columns
-        if (header === 'id') {
-          return false
-        }
-        const propertySchema =
-          schema?.properties?.[sheetName]?.items?.properties?.[header]
-        return !schema || propertySchema?.visible !== false
-      })
-
-      const tableData = [
-        headers,
-        ...sheetData.map((row) => headers.map((header) => row[header])),
-      ]
-      worksheet.addRows(tableData)
-
-      headers.forEach((header, index) => {
-        worksheet.getColumn(index + 1).width = header.length + 5
-      })
-
-      // Apply styles without creating the table
-      tableData.forEach((row, rowIndex) => {
-        row.forEach((_, colIndex) => {
-          const cell = worksheet.getCell(rowIndex + 1, colIndex + 1)
-          if (rowIndex === 0) {
-            // Style for header row
-            cell.fill = {
-              type: 'pattern',
-              pattern: 'solid',
-              fgColor: { argb: 'FFD3D3D3' },
-            }
-            cell.font = { bold: true }
-          } else {
-            // Style for data rows
-            cell.fill = {
-              type: 'pattern',
-              pattern: 'solid',
-              fgColor: { argb: rowIndex % 2 === 0 ? 'FFFFFFFF' : 'FFF2F2F2' },
-            }
-          }
-          cell.border = {
-            top: { style: 'thin' },
-            left: { style: 'thin' },
-            bottom: { style: 'thin' },
-            right: { style: 'thin' },
-          }
-        })
-      })
+      processArrayTypeWorksheet(worksheet, sheetData, schema, sheetName)
     }
   }
 }
 
 const toISOStringLocal = function (date, isEndDate = false) {
   if (date) {
-    var timezoneOffsetMin = date.getTimezoneOffset(),
-      offsetHours = Math.abs(timezoneOffsetMin / 60),
-      offsetMinutes = timezoneOffsetMin % 60,
-      offsetSign = timezoneOffsetMin > 0 ? '-' : '+'
+    const timezoneOffsetMin = date.getTimezoneOffset()
+    const offsetHours = Math.abs(timezoneOffsetMin / 60)
+    const offsetMinutes = timezoneOffsetMin % 60
+    const offsetSign = timezoneOffsetMin > 0 ? '-' : '+'
 
     // If it's an end date, set the time to 23:59
     if (isEndDate) {
@@ -308,159 +343,150 @@ function getLetterFromNumber(number) {
 }
 
 /**
- * Exports table data to Excel file with proper formatting based on backend schema
- * @param {Array} items - Array of data items to export (can be empty for structure-only export)
- * @param {Object} tableConfig - Table configuration with schema information
- * @param {string} tableName - Name of the table for the filename
- * @param {string} tableTitle - Display title for the worksheet
- * @param {Function} t - Translation function for i18n
- * @returns {Promise<void>}
+ * Checks if a field should be excluded from export
  */
-async function exportTableToExcel(
-  items,
-  tableConfig,
-  tableName,
-  tableTitle,
-  t,
-) {
-  // Allow export even without data to show structure
+function shouldExcludeField(key: string, fieldSchema: any): boolean {
+  if (key === 'id') return true
+  if (fieldSchema?.readOnly) return true
+  if (fieldSchema?.hidden) return true
+  if (fieldSchema?.isForeignKey) return true
+  if (fieldSchema?.columnsToJoin && Array.isArray(fieldSchema.columnsToJoin)) return true
+  return false
+}
 
-  const workbook = new ExcelJS.Workbook()
-  const worksheet = workbook.addWorksheet(tableTitle || tableName)
+/**
+ * Extracts schema fields from table config
+ */
+function extractSchemaFields(tableConfig: any, items: any[]): {
+  schemaFields: Array<{ key: string; type: string; required: boolean }>
+  backendKeys: string[]
+} {
+  const schemaFields: Array<{ key: string; type: string; required: boolean }> = []
+  const backendKeys: string[] = []
 
-  // Get schema properties (backend field names and types)
-  let schemaFields = []
-  let backendKeys = []
-
-  if (tableConfig?.get_list?.response_schema?.items?.properties) {
-    const properties = tableConfig.get_list.response_schema.items.properties
+  const properties = tableConfig?.get_list?.response_schema?.items?.properties
+  if (properties) {
+    const requiredFields = tableConfig.get_list?.response_schema?.items?.required || []
     Object.entries(properties).forEach(([key, fieldSchema]: [string, any]) => {
-      const isReadOnly = fieldSchema?.readOnly || false
-      const isHidden = fieldSchema?.hidden || false
-      const isForeignKey = fieldSchema?.isForeignKey || false
-      const hasColumnsToJoin =
-        fieldSchema?.columnsToJoin && Array.isArray(fieldSchema.columnsToJoin)
-
-      // Exclude: id field, readOnly fields, hidden fields, foreign keys, and fields with columnsToJoin
-      if (
-        key !== 'id' &&
-        !isReadOnly &&
-        !isHidden &&
-        !isForeignKey &&
-        !hasColumnsToJoin
-      ) {
+      if (!shouldExcludeField(key, fieldSchema)) {
         schemaFields.push({
-          key: key,
+          key,
           type: fieldSchema?.type || 'string',
-          required:
-            tableConfig.get_list?.response_schema?.items?.required?.includes(
-              key,
-            ) || false,
+          required: requiredFields.includes(key),
         })
-        backendKeys.push(key) // Use actual backend field names as headers
+        backendKeys.push(key)
       }
     })
-  } else {
-    // Fallback: if no schema, use data keys
-    if (items && items.length > 0) {
-      backendKeys = Object.keys(items[0]).filter((key) => key !== 'id')
-      schemaFields = backendKeys.map((key) => ({
-        key,
-        type: 'string',
-        required: false,
-      }))
-    }
-  }
-
-  // Add headers (backend field names) to worksheet
-  if (backendKeys.length > 0) {
-    worksheet.addRow(backendKeys)
-
-    // Style header row with modern design
-    const headerRow = worksheet.getRow(1)
-    headerRow.font = {
-      bold: true,
-      color: { argb: 'FFFFFFFF' }, // White text
-      size: 11,
-    }
-    headerRow.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FF4A90E2' }, // Modern blue
-    }
-    headerRow.alignment = {
-      vertical: 'middle',
-      horizontal: 'center',
-    }
-    headerRow.height = 25
-
-    // Add data rows (if any data exists)
-    if (items && items.length > 0) {
-      items.forEach((item, index) => {
-        const rowData = schemaFields.map((field) => {
-          const value = item[field.key]
-          return formatValueByType(value, field.type)
-        })
-        const row = worksheet.addRow(rowData)
-
-        // Subtle alternate row colors
-        if (index % 2 === 1) {
-          row.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'FFF8F9FA' }, // Very light gray
-          }
-        }
+  } else if (items && items.length > 0) {
+    Object.keys(items[0])
+      .filter((key) => key !== 'id')
+      .forEach((key) => {
+        schemaFields.push({ key, type: 'string', required: false })
+        backendKeys.push(key)
       })
-    }
+  }
 
-    // Set column types and formatting with better sizing
-    schemaFields.forEach((field, index) => {
-      const column = worksheet.getColumn(index + 1)
-      // Better column width calculation
-      const minWidth = Math.max(field.key.length + 4, 12)
-      const maxWidth = 25
-      column.width = Math.min(minWidth, maxWidth)
+  return { schemaFields, backendKeys }
+}
 
-      // Set column number format based on type
-      switch (field.type) {
-        case 'integer':
-          column.numFmt = '#,##0' // Number with thousands separator
-          break
-        case 'number':
-          column.numFmt = '#,##0.00' // Number with decimals and separator
-          break
-        case 'boolean':
-          column.numFmt = '@' // Text format for true/false
-          break
-        default:
-          column.numFmt = '@' // Text format
+/**
+ * Styles the header row of the worksheet
+ */
+function styleExportHeaderRow(worksheet: any): void {
+  const headerRow = worksheet.getRow(1)
+  headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 }
+  headerRow.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FF4A90E2' },
+  }
+  headerRow.alignment = { vertical: 'middle', horizontal: 'center' }
+  headerRow.height = 25
+}
+
+/**
+ * Adds data rows to worksheet with alternating colors
+ */
+function addExportDataRows(
+  worksheet: any,
+  items: any[],
+  schemaFields: Array<{ key: string; type: string }>,
+): void {
+  items.forEach((item, index) => {
+    const rowData = schemaFields.map((field) =>
+      formatValueByType(item[field.key], field.type),
+    )
+    const row = worksheet.addRow(rowData)
+
+    if (index % 2 === 1) {
+      row.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFF8F9FA' },
       }
-    })
+    }
+  })
+}
 
-    // Add clean borders only to data area
-    const lastRow = items && items.length > 0 ? items.length + 1 : 1
-    const lastColumn = backendKeys.length
+/**
+ * Gets Excel number format for a field type
+ */
+function getExcelNumberFormat(type: string): string {
+  switch (type) {
+    case 'integer':
+      return '#,##0'
+    case 'number':
+      return '#,##0.00'
+    default:
+      return '@'
+  }
+}
 
-    for (let row = 1; row <= lastRow; row++) {
-      for (let col = 1; col <= lastColumn; col++) {
-        const cell = worksheet.getCell(row, col)
-        cell.border = {
-          top: { style: 'thin', color: { argb: 'FFE1E5E9' } },
-          left: { style: 'thin', color: { argb: 'FFE1E5E9' } },
-          bottom: { style: 'thin', color: { argb: 'FFE1E5E9' } },
-          right: { style: 'thin', color: { argb: 'FFE1E5E9' } },
-        }
+/**
+ * Sets column widths and formats
+ */
+function setColumnFormats(
+  worksheet: any,
+  schemaFields: Array<{ key: string; type: string }>,
+): void {
+  schemaFields.forEach((field, index) => {
+    const column = worksheet.getColumn(index + 1)
+    const minWidth = Math.max(field.key.length + 4, 12)
+    column.width = Math.min(minWidth, 25)
+    column.numFmt = getExcelNumberFormat(field.type)
+  })
+}
 
-        // Center alignment for data cells (not header)
-        if (row > 1) {
-          cell.alignment = { vertical: 'middle' }
-        }
+/**
+ * Applies borders to worksheet cells
+ */
+function applyExportBorders(
+  worksheet: any,
+  lastRow: number,
+  lastColumn: number,
+): void {
+  const borderStyle = {
+    top: { style: 'thin', color: { argb: 'FFE1E5E9' } },
+    left: { style: 'thin', color: { argb: 'FFE1E5E9' } },
+    bottom: { style: 'thin', color: { argb: 'FFE1E5E9' } },
+    right: { style: 'thin', color: { argb: 'FFE1E5E9' } },
+  }
+
+  for (let row = 1; row <= lastRow; row++) {
+    for (let col = 1; col <= lastColumn; col++) {
+      const cell = worksheet.getCell(row, col)
+      cell.border = borderStyle
+      if (row > 1) {
+        cell.alignment = { vertical: 'middle' }
       }
     }
   }
+}
 
-  // Generate and download the Excel file
+/**
+ * Downloads workbook as Excel file
+ */
+async function downloadExcelFile(workbook: ExcelJS.Workbook, tableName: string): Promise<void> {
   const excelBuffer = await workbook.xlsx.writeBuffer()
   const blob = new Blob([excelBuffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -469,9 +495,42 @@ async function exportTableToExcel(
   link.href = window.URL.createObjectURL(blob)
   link.download = `${tableName}_${new Date().toISOString().split('T')[0]}.xlsx`
   link.click()
-
-  // Clean up the URL object
   window.URL.revokeObjectURL(link.href)
+}
+
+/**
+ * Exports table data to Excel file with proper formatting based on backend schema
+ */
+async function exportTableToExcel(
+  items,
+  tableConfig,
+  tableName,
+  tableTitle,
+  t,
+) {
+  const workbook = new ExcelJS.Workbook()
+  const worksheet = workbook.addWorksheet(tableTitle || tableName)
+
+  const { schemaFields, backendKeys } = extractSchemaFields(tableConfig, items)
+
+  if (backendKeys.length === 0) {
+    await downloadExcelFile(workbook, tableName)
+    return
+  }
+
+  worksheet.addRow(backendKeys)
+  styleExportHeaderRow(worksheet)
+
+  if (items && items.length > 0) {
+    addExportDataRows(worksheet, items, schemaFields)
+  }
+
+  setColumnFormats(worksheet, schemaFields)
+
+  const lastRow = items && items.length > 0 ? items.length + 1 : 1
+  applyExportBorders(worksheet, lastRow, backendKeys.length)
+
+  await downloadExcelFile(workbook, tableName)
 }
 
 /**

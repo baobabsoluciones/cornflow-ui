@@ -272,6 +272,317 @@ function allValuesAreZero(values: number[]): boolean {
   return values.every((v) => Math.abs(v) < 0.0001) // Use small epsilon for floating point comparison
 }
 
+// Type for title getter function
+type TitleGetter = (key: string, params?: Record<string, string>) => string
+
+/**
+ * Create a title getter function with optional translation support
+ */
+function createTitleGetter(
+  t?: (key: string, params?: Record<string, string>) => string,
+): TitleGetter {
+  const translations: Record<string, string> = {
+    'dashboard.widgets.total': 'Total {column}',
+    'dashboard.widgets.average': 'Average {column}',
+    'dashboard.widgets.overTime': '{column} Over Time',
+    'dashboard.widgets.by': '{numericColumn} by {categoryColumn}',
+    'dashboard.widgets.distributionBy': 'Distribution by {column}',
+    'dashboard.widgets.cumulative': 'Cumulative {column}',
+    'dashboard.widgets.map': '{valueColumn} Map',
+  }
+
+  return (key: string, params: Record<string, string> = {}): string => {
+    if (t) return t(key, params)
+    
+    let title = translations[key] || key
+    Object.entries(params).forEach(([param, value]) => {
+      title = title.replace(`{${param}}`, value)
+    })
+    return title
+  }
+}
+
+/**
+ * Generate KPI widgets for numeric columns
+ */
+function generateKPIWidgets(
+  analysis: TableAnalysis,
+  getTitle: TitleGetter,
+): DashboardWidget[] {
+  const widgets: DashboardWidget[] = []
+  
+  if (analysis.numericColumns.length === 0 || analysis.rowCount === 0) {
+    return widgets
+  }
+  
+  if (analysis.numericColumns.length > 3) {
+    return widgets
+  }
+
+  analysis.numericColumns.forEach((col) => {
+    const values = analysis.data.map((row) => Number(row[col])).filter((v) => !isNaN(v))
+    if (values.length === 0 || allValuesAreZero(values)) return
+
+    const sum = roundToTwoDecimals(values.reduce((a, b) => a + b, 0))
+    const avg = roundToTwoDecimals(sum / values.length)
+    const icon = getIconForColumn(col)
+    const format = getFormatForColumn(col)
+    const columnName = formatColumnName(col)
+
+    if (Math.abs(sum) >= 0.01) {
+      widgets.push({
+        type: 'kpi',
+        title: getTitle('dashboard.widgets.total', { column: columnName }),
+        tableKey: analysis.tableKey,
+        config: { value: sum, label: getTitle('dashboard.widgets.total', { column: columnName }), format, icon },
+        cols: 4,
+      })
+    }
+
+    if (Math.abs(avg) >= 0.01) {
+      widgets.push({
+        type: 'kpi',
+        title: getTitle('dashboard.widgets.average', { column: columnName }),
+        tableKey: analysis.tableKey,
+        config: { value: avg, label: getTitle('dashboard.widgets.average', { column: columnName }), format, icon },
+        cols: 4,
+      })
+    }
+  })
+
+  return widgets
+}
+
+/**
+ * Generate time series line chart widget
+ */
+function generateLineChartWidget(
+  analysis: TableAnalysis,
+  getTitle: TitleGetter,
+): DashboardWidget | null {
+  if (!analysis.hasTimeSeries || analysis.dateColumns.length === 0 || analysis.numericColumns.length === 0) {
+    return null
+  }
+
+  const dateCol = analysis.dateColumns[0]
+  const numericCol = analysis.numericColumns[0]
+  const grouped = groupByDate(analysis.data, dateCol, numericCol)
+  
+  if (grouped.length <= 1) return null
+  
+  const allValues = grouped.map((g) => g.value)
+  if (allValuesAreZero(allValues)) return null
+
+  const numericColName = formatColumnName(numericCol)
+  return {
+    type: 'line',
+    title: getTitle('dashboard.widgets.overTime', { column: numericColName }),
+    tableKey: analysis.tableKey,
+    config: {
+      categories: grouped.map((g) => g.date),
+      series: [{ name: numericColName, data: grouped.map((g) => roundToTwoDecimals(g.value)) }],
+    },
+    cols: 12,
+  }
+}
+
+/**
+ * Generate bar chart widget for categorical data
+ */
+function generateBarChartWidget(
+  analysis: TableAnalysis,
+  getTitle: TitleGetter,
+): DashboardWidget | null {
+  if (!analysis.hasCategories || analysis.categoricalColumns.length === 0 || analysis.numericColumns.length === 0) {
+    return null
+  }
+
+  const catCol = analysis.categoricalColumns[0]
+  const numericCol = analysis.numericColumns[0]
+  
+  if (analysis.binaryColumns.includes(catCol)) return null
+
+  const grouped = groupByCategory(analysis.data, catCol, numericCol)
+  if (grouped.length <= 1 || grouped.length > 20) return null
+
+  const allValues = grouped.map((g) => g.value)
+  if (allValuesAreZero(allValues)) return null
+
+  const numericColName = formatColumnName(numericCol)
+  const catColName = formatColumnName(catCol)
+  return {
+    type: 'bar',
+    title: getTitle('dashboard.widgets.by', { numericColumn: numericColName, categoryColumn: catColName }),
+    tableKey: analysis.tableKey,
+    config: {
+      categories: grouped.map((g) => g.category),
+      series: [{ name: numericColName, data: grouped.map((g) => roundToTwoDecimals(g.value)) }],
+    },
+    cols: 12,
+  }
+}
+
+/**
+ * Generate pie chart widget for categorical distribution
+ */
+function generatePieChartWidget(
+  analysis: TableAnalysis,
+  getTitle: TitleGetter,
+): DashboardWidget | null {
+  if (!analysis.hasCategories || analysis.categoricalColumns.length === 0 || analysis.numericColumns.length === 0) {
+    return null
+  }
+
+  const catCol = analysis.categoricalColumns[0]
+  const numericCol = analysis.numericColumns[0]
+  
+  if (analysis.binaryColumns.includes(catCol)) return null
+
+  const grouped = groupByCategory(analysis.data, catCol, numericCol)
+  if (grouped.length < 2 || grouped.length > 10) return null
+
+  const allValues = grouped.map((g) => g.value)
+  if (allValuesAreZero(allValues)) return null
+
+  const catColName = formatColumnName(catCol)
+  return {
+    type: 'pie',
+    title: getTitle('dashboard.widgets.distributionBy', { column: catColName }),
+    tableKey: analysis.tableKey,
+    config: {
+      labels: grouped.map((g) => g.category),
+      series: grouped.map((g) => roundToTwoDecimals(g.value)),
+    },
+    cols: 6,
+  }
+}
+
+/**
+ * Generate area chart widget for cumulative data
+ */
+function generateAreaChartWidget(
+  analysis: TableAnalysis,
+  getTitle: TitleGetter,
+): DashboardWidget | null {
+  if (!analysis.hasTimeSeries || analysis.dateColumns.length === 0 || analysis.numericColumns.length === 0) {
+    return null
+  }
+
+  const dateCol = analysis.dateColumns[0]
+  const numericCol = analysis.numericColumns[0]
+  const grouped = groupByDate(analysis.data, dateCol, numericCol)
+  
+  if (grouped.length <= 1) return null
+
+  const allValues = grouped.map((g) => g.value)
+  if (allValuesAreZero(allValues)) return null
+
+  let cumulative = 0
+  const numericColName = formatColumnName(numericCol)
+  const cumulativeTitle = getTitle('dashboard.widgets.cumulative', { column: numericColName })
+  
+  return {
+    type: 'area',
+    title: cumulativeTitle,
+    tableKey: analysis.tableKey,
+    config: {
+      categories: grouped.map((g) => g.date),
+      series: [{
+        name: cumulativeTitle,
+        data: grouped.map((g) => {
+          cumulative += g.value
+          return roundToTwoDecimals(cumulative)
+        }),
+      }],
+    },
+    cols: 12,
+  }
+}
+
+/**
+ * Collect valid coordinate data from analysis
+ */
+function collectCoordinateData(
+  analysis: TableAnalysis,
+  coordinateCols: { latCol: string; lonCol: string },
+  valueCol: string,
+  valueType: 'binary' | 'numeric',
+): Array<{ lat: number; lon: number; value: number }> {
+  const coordinateData: Array<{ lat: number; lon: number; value: number }> = []
+  
+  analysis.data.forEach((row) => {
+    const lat = Number(row[coordinateCols.latCol])
+    const lon = Number(row[coordinateCols.lonCol])
+    const value = Number(row[valueCol]) || 0
+    
+    const isValidCoordinate =
+      !isNaN(lat) && !isNaN(lon) && !isNaN(value) &&
+      lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180
+    
+    if (isValidCoordinate) {
+      coordinateData.push({
+        lat: roundToTwoDecimals(lat),
+        lon: roundToTwoDecimals(lon),
+        value: valueType === 'binary' ? value : roundToTwoDecimals(value),
+      })
+    }
+  })
+  
+  return coordinateData
+}
+
+/**
+ * Generate map widget for coordinate columns
+ */
+function generateMapWidget(
+  analysis: TableAnalysis,
+  getTitle: TitleGetter,
+): DashboardWidget | null {
+  if (analysis.locationColumns.length < 2) return null
+
+  const allColumns = analysis.data.length > 0 ? Object.keys(analysis.data[0]) : []
+  const coordinateCols = findCoordinateColumns(allColumns, analysis.data)
+  
+  if (!coordinateCols.latCol || !coordinateCols.lonCol) return null
+
+  // Find value column (prefer binary, then numeric)
+  let valueCol: string | null = null
+  let valueType: 'binary' | 'numeric' = 'numeric'
+  
+  if (analysis.binaryColumns.length > 0) {
+    valueCol = analysis.binaryColumns[0]
+    valueType = 'binary'
+  } else if (analysis.numericColumns.length > 0) {
+    valueCol = analysis.numericColumns[0]
+  }
+  
+  if (!valueCol) return null
+
+  const coordinateData = collectCoordinateData(
+    analysis,
+    { latCol: coordinateCols.latCol, lonCol: coordinateCols.lonCol },
+    valueCol,
+    valueType,
+  )
+  
+  const allValues = coordinateData.map((d) => d.value)
+  if (allValuesAreZero(allValues) || coordinateData.length === 0) return null
+
+  const valueColName = formatColumnName(valueCol)
+  return {
+    type: 'map',
+    title: getTitle('dashboard.widgets.map', { valueColumn: valueColName }),
+    tableKey: analysis.tableKey,
+    config: {
+      coordinates: coordinateData.map((d) => [d.lat, d.lon]),
+      values: coordinateData.map((d) => d.value),
+      valueType,
+      valueColumn: valueColName,
+    },
+    cols: 12,
+  }
+}
+
 /**
  * Generate dashboard widgets from table analysis
  */
@@ -280,309 +591,27 @@ export function generateDashboardWidgets(
   locale: string = 'en',
   t?: (key: string, params?: Record<string, string>) => string,
 ): DashboardWidget[] {
-  // Helper function to get translated title
-  const getTitle = (
-    key: string,
-    params: Record<string, string> = {},
-  ): string => {
-    if (t) {
-      return t(key, params)
-    }
-    // Fallback to English if no translation function provided
-    const translations: Record<string, string> = {
-      'dashboard.widgets.total': `Total ${params.column || ''}`,
-      'dashboard.widgets.average': `Average ${params.column || ''}`,
-      'dashboard.widgets.overTime': `${params.column || ''} Over Time`,
-      'dashboard.widgets.by': `${params.numericColumn || ''} by ${params.categoryColumn || ''}`,
-      'dashboard.widgets.distributionBy': `Distribution by ${params.column || ''}`,
-      'dashboard.widgets.cumulative': `Cumulative ${params.column || ''}`,
-      'dashboard.widgets.map': `${params.locationColumn || ''} Map`,
-      'dashboard.widgets.mapBy': `${params.valueColumn || ''} by ${params.locationColumn || ''}`,
-    }
-    let title = translations[key] || key
-    // Replace placeholders
-    Object.keys(params).forEach((param) => {
-      title = title.replace(`{${param}}`, params[param])
-    })
-    return title
-  }
+  const getTitle = createTitleGetter(t)
   const widgets: DashboardWidget[] = []
 
-  // KPI widgets for numeric columns (if few unique values or aggregatable)
-  if (analysis.numericColumns.length > 0 && analysis.rowCount > 0) {
-    analysis.numericColumns.forEach((col) => {
-      const values = analysis.data.map((row) => Number(row[col])).filter((v) => !isNaN(v))
-      if (values.length > 0) {
-        const sum = roundToTwoDecimals(values.reduce((a, b) => a + b, 0))
-        const avg = roundToTwoDecimals(sum / values.length)
-        const max = roundToTwoDecimals(Math.max(...values))
-        const min = roundToTwoDecimals(Math.min(...values))
+  // Generate KPI widgets
+  widgets.push(...generateKPIWidgets(analysis, getTitle))
 
-        // Skip if all values are zero
-        if (allValuesAreZero(values)) {
-          return
-        }
+  // Generate chart widgets
+  const lineChart = generateLineChartWidget(analysis, getTitle)
+  if (lineChart) widgets.push(lineChart)
 
-        // Create KPI widgets for key metrics
-        if (analysis.numericColumns.length <= 3) {
-          const icon = getIconForColumn(col)
-          const format = getFormatForColumn(col)
-          
-          const columnName = formatColumnName(col)
-          
-          // Only add total KPI if sum is not zero
-          if (Math.abs(sum) >= 0.01) {
-            widgets.push({
-              type: 'kpi',
-              title: getTitle('dashboard.widgets.total', { column: columnName }),
-              tableKey: analysis.tableKey,
-              config: {
-                value: sum,
-                label: getTitle('dashboard.widgets.total', { column: columnName }),
-                format: format,
-                icon: icon,
-              },
-              cols: 4,
-            })
-          }
+  const barChart = generateBarChartWidget(analysis, getTitle)
+  if (barChart) widgets.push(barChart)
 
-          // Only add average KPI if avg is not zero
-          if (Math.abs(avg) >= 0.01) {
-            widgets.push({
-              type: 'kpi',
-              title: getTitle('dashboard.widgets.average', { column: columnName }),
-              tableKey: analysis.tableKey,
-              config: {
-                value: avg,
-                label: getTitle('dashboard.widgets.average', { column: columnName }),
-                format: format,
-                icon: icon,
-              },
-              cols: 4,
-            })
-          }
-        }
-      }
-    })
-  }
+  const pieChart = generatePieChartWidget(analysis, getTitle)
+  if (pieChart) widgets.push(pieChart)
 
-  // Time series chart
-  if (analysis.hasTimeSeries && analysis.dateColumns.length > 0 && analysis.numericColumns.length > 0) {
-    const dateCol = analysis.dateColumns[0]
-    const numericCol = analysis.numericColumns[0]
+  const areaChart = generateAreaChartWidget(analysis, getTitle)
+  if (areaChart) widgets.push(areaChart)
 
-    // Group by date if needed
-    const grouped = groupByDate(analysis.data, dateCol, numericCol)
-    if (grouped.length > 1) {
-      // Check if all values are zero
-      const allValues = grouped.map((g) => g.value)
-      if (!allValuesAreZero(allValues)) {
-        const numericColName = formatColumnName(numericCol)
-        widgets.push({
-          type: 'line',
-          title: getTitle('dashboard.widgets.overTime', { column: numericColName }),
-          tableKey: analysis.tableKey,
-          config: {
-            categories: grouped.map((g) => g.date),
-            series: [
-              {
-                name: numericColName,
-                data: grouped.map((g) => roundToTwoDecimals(g.value)),
-              },
-            ],
-          },
-          cols: 12,
-        })
-      }
-    }
-  }
-
-  // Bar chart for categorical data
-  // Skip if categorical column is binary (0 or 1 only)
-  if (analysis.hasCategories && analysis.categoricalColumns.length > 0 && analysis.numericColumns.length > 0) {
-    const catCol = analysis.categoricalColumns[0]
-    const numericCol = analysis.numericColumns[0]
-
-    // Skip if this categorical column is binary
-    if (analysis.binaryColumns.includes(catCol)) {
-      // Don't create bar chart for binary categorical columns
-    } else {
-      // Group by category
-      const grouped = groupByCategory(analysis.data, catCol, numericCol)
-      if (grouped.length > 1 && grouped.length <= 20) {
-        // Check if all values are zero
-        const allValues = grouped.map((g) => g.value)
-        if (!allValuesAreZero(allValues)) {
-          const numericColName = formatColumnName(numericCol)
-          const catColName = formatColumnName(catCol)
-          widgets.push({
-            type: 'bar',
-            title: getTitle('dashboard.widgets.by', {
-              numericColumn: numericColName,
-              categoryColumn: catColName,
-            }),
-            tableKey: analysis.tableKey,
-            config: {
-              categories: grouped.map((g) => g.category),
-              series: [
-                {
-                  name: numericColName,
-                  data: grouped.map((g) => roundToTwoDecimals(g.value)),
-                },
-              ],
-            },
-            cols: 12,
-          })
-        }
-      }
-    }
-  }
-
-  // Pie chart for categorical distribution (if few categories)
-  // Skip if categorical column is binary (0 or 1 only)
-  if (
-    analysis.hasCategories &&
-    analysis.categoricalColumns.length > 0 &&
-    analysis.numericColumns.length > 0
-  ) {
-    const catCol = analysis.categoricalColumns[0]
-    const numericCol = analysis.numericColumns[0]
-
-    // Skip if this categorical column is binary
-    if (!analysis.binaryColumns.includes(catCol)) {
-      const grouped = groupByCategory(analysis.data, catCol, numericCol)
-      if (grouped.length >= 2 && grouped.length <= 10) {
-        // Check if all values are zero
-        const allValues = grouped.map((g) => g.value)
-        if (!allValuesAreZero(allValues)) {
-          const catColName = formatColumnName(catCol)
-          widgets.push({
-            type: 'pie',
-            title: getTitle('dashboard.widgets.distributionBy', { column: catColName }),
-            tableKey: analysis.tableKey,
-            config: {
-              labels: grouped.map((g) => g.category),
-              series: grouped.map((g) => roundToTwoDecimals(g.value)),
-            },
-            cols: 6,
-          })
-        }
-      }
-    }
-  }
-
-  // Area chart for cumulative data
-  if (analysis.hasTimeSeries && analysis.dateColumns.length > 0 && analysis.numericColumns.length > 0) {
-    const dateCol = analysis.dateColumns[0]
-    const numericCol = analysis.numericColumns[0]
-
-    const grouped = groupByDate(analysis.data, dateCol, numericCol)
-    if (grouped.length > 1) {
-      // Check if all values are zero
-      const allValues = grouped.map((g) => g.value)
-      if (!allValuesAreZero(allValues)) {
-        let cumulative = 0
-        const numericColName = formatColumnName(numericCol)
-        const cumulativeTitle = getTitle('dashboard.widgets.cumulative', {
-          column: numericColName,
-        })
-        widgets.push({
-          type: 'area',
-          title: cumulativeTitle,
-          tableKey: analysis.tableKey,
-          config: {
-            categories: grouped.map((g) => g.date),
-            series: [
-              {
-                name: cumulativeTitle,
-                data: grouped.map((g) => {
-                  cumulative += g.value
-                  return roundToTwoDecimals(cumulative)
-                }),
-              },
-            ],
-          },
-          cols: 12,
-        })
-      }
-    }
-  }
-
-  // Map widget for coordinate columns (lat/lon) with associated values
-  if (analysis.locationColumns.length >= 2) {
-    // Get all columns from the data
-    const allColumns = analysis.data.length > 0 ? Object.keys(analysis.data[0]) : []
-    // Find lat and lon columns
-    const coordinateCols = findCoordinateColumns(allColumns, analysis.data)
-    
-    if (coordinateCols.latCol && coordinateCols.lonCol) {
-      // Try to find a binary or numeric column to associate with coordinates
-      let valueCol: string | null = null
-      let valueType: 'binary' | 'numeric' = 'numeric'
-      
-      // Prefer binary columns first (like intercambio: 0 or 1)
-      if (analysis.binaryColumns.length > 0) {
-        valueCol = analysis.binaryColumns[0]
-        valueType = 'binary'
-      } else if (analysis.numericColumns.length > 0) {
-        valueCol = analysis.numericColumns[0]
-        valueType = 'numeric'
-      }
-      
-      if (valueCol) {
-        // Collect coordinate data with values
-        const coordinateData: Array<{
-          lat: number
-          lon: number
-          value: number
-        }> = []
-        
-        analysis.data.forEach((row) => {
-          const lat = Number(row[coordinateCols.latCol!])
-          const lon = Number(row[coordinateCols.lonCol!])
-          const value = Number(row[valueCol!]) || 0
-          
-          // Validate coordinates
-          if (
-            !isNaN(lat) &&
-            !isNaN(lon) &&
-            !isNaN(value) &&
-            lat >= -90 &&
-            lat <= 90 &&
-            lon >= -180 &&
-            lon <= 180
-          ) {
-            coordinateData.push({
-              lat: roundToTwoDecimals(lat),
-              lon: roundToTwoDecimals(lon),
-              value: valueType === 'binary' ? value : roundToTwoDecimals(value),
-            })
-          }
-        })
-        
-        // Check if all values are zero
-        const allValues = coordinateData.map((d) => d.value)
-        if (!allValuesAreZero(allValues) && coordinateData.length > 0) {
-          const valueColName = formatColumnName(valueCol)
-          
-          widgets.push({
-            type: 'map',
-            title: getTitle('dashboard.widgets.map', {
-              valueColumn: valueColName,
-            }),
-            tableKey: analysis.tableKey,
-            config: {
-              coordinates: coordinateData.map((d) => [d.lat, d.lon]),
-              values: coordinateData.map((d) => d.value),
-              valueType: valueType,
-              valueColumn: valueColName,
-            },
-            cols: 12, // Maps take full width
-          })
-        }
-      }
-    }
-  }
+  const mapWidget = generateMapWidget(analysis, getTitle)
+  if (mapWidget) widgets.push(mapWidget)
 
   return widgets
 }
@@ -712,33 +741,21 @@ function getIconForColumn(col: string): string {
 function getFormatForColumn(col: string): 'number' | 'currency' | 'percentage' {
   const colLower = col.toLowerCase()
   
-  // Currency related
-  if (
-    colLower.includes('revenue') ||
-    colLower.includes('income') ||
-    colLower.includes('sales') ||
-    colLower.includes('cost') ||
-    colLower.includes('expense') ||
-    colLower.includes('price') ||
-    colLower.includes('amount') ||
-    colLower.includes('value') ||
-    colLower.includes('profit') ||
-    colLower.includes('margin')
-  ) {
+  const currencyPatterns = [
+    'revenue', 'income', 'sales', 'cost', 'expense',
+    'price', 'amount', 'value', 'profit', 'margin',
+  ]
+  
+  const percentagePatterns = ['percentage', 'percent', 'rate', 'ratio']
+  
+  if (currencyPatterns.some((pattern) => colLower.includes(pattern))) {
     return 'currency'
   }
   
-  // Percentage related
-  if (
-    colLower.includes('percentage') ||
-    colLower.includes('percent') ||
-    colLower.includes('rate') ||
-    colLower.includes('ratio')
-  ) {
+  if (percentagePatterns.some((pattern) => colLower.includes(pattern))) {
     return 'percentage'
   }
   
-  // Default to number
   return 'number'
 }
 
@@ -772,7 +789,7 @@ function groupByDate(
   })
 
   return Object.keys(grouped)
-    .sort()
+    .sort((a, b) => a.localeCompare(b))
     .map((date) => ({
       date,
       value: roundToTwoDecimals(grouped[date].reduce((a, b) => a + b, 0)),
