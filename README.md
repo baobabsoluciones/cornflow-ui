@@ -597,6 +597,7 @@ Configuration for the "Latest plan" feature. See [Latest plan documentation](#la
 
 | Property           | Type      | Description                                                                                       |
 | ------------------ | --------- | ------------------------------------------------------------------------------------------------- |
+| `enableLatestPlan` | `boolean` | Master switch to enable/disable the feature (default: `true`). If `false`, disables the feature regardless of other conditions |
 | `defaultView`      | `string`  | Route to redirect after login (`'history-execution'`, `'dashboard'`, `'input-data'`, `'results'`) |
 | `showStarInTabBar` | `boolean` | Show star icon in tab bar for the latest plan                                                     |
 
@@ -780,12 +781,13 @@ The `latest plan` feature provides context persistence, allowing users to automa
 
 #### When the feature is available
 
-The `latest plan` feature is **only available** when both conditions are met:
+The `latest plan` feature is **only available** when all conditions are met:
 
-1. **`hasExternalApp` is `true`**: The application must be configured with `VITE_APP_EXTERNAL_APP=true` (or `hasExternalApp: true` in `values.json`)
-2. **Backend supports the endpoints**: The backend must implement the `/plan-latest/` and `/set-plan-latest/` endpoints
+1. **`enableLatestPlan` is `true`** (or not set): The master switch in `src/app/config.ts` must not be explicitly set to `false`
+2. **`hasExternalApp` is `true`**: The application must be configured with `VITE_APP_EXTERNAL_APP=true` (or `hasExternalApp: true` in `values.json`)
+3. **Backend supports the endpoints**: The backend must implement the `/plan-latest/` and `/set-plan-latest/` endpoints
 
-If either condition is not met, the feature is completely disabled:
+If any condition is not met, the feature is completely disabled:
 
 - No banner notification is shown
 - No floating action button appears
@@ -825,6 +827,7 @@ In `src/app/config.ts`, you can customize the feature behavior:
 
 ```typescript
 latestPlanConfig: {
+  enableLatestPlan: true,           // Master switch: if false, disables the entire feature
   defaultView: 'history-execution', // Route to redirect after login with latest plan
   showStarInTabBar: true,           // Show star icon in MAppBarTab for latest plan
   showSetCurrentPlanFab: true,      // Show floating action button to set current plan
@@ -833,11 +836,12 @@ latestPlanConfig: {
 
 #### Behavior summary
 
-| Configuration                               | Feature Status                              |
-| ------------------------------------------- | ------------------------------------------- |
-| `hasExternalApp: false`                     | **Disabled** - No latest plan functionality |
-| `hasExternalApp: true` + No backend support | **Disabled** - Feature unavailable          |
-| `hasExternalApp: true` + Backend support    | **Enabled** - Full functionality            |
+| Configuration                                                  | Feature Status                              |
+| -------------------------------------------------------------- | ------------------------------------------- |
+| `enableLatestPlan: false`                                      | **Disabled** - Master switch overrides all  |
+| `enableLatestPlan: true` + `hasExternalApp: false`             | **Disabled** - No latest plan functionality |
+| `enableLatestPlan: true` + `hasExternalApp: true` + No backend | **Disabled** - Feature unavailable          |
+| `enableLatestPlan: true` + `hasExternalApp: true` + Backend    | **Enabled** - Full functionality            |
 
 ### Custom section titles
 

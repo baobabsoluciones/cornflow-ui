@@ -1,5 +1,6 @@
 import client from '@/api/Api'
 import config from '@/config'
+import appConfig from '@/app/config'
 
 /**
  * Response type for latest plan operations
@@ -13,11 +14,12 @@ interface LatestPlanResponse {
 /**
  * Repository for managing the latest plan (actual plan) feature.
  *
- * This feature is ONLY available when:
- * 1. isExternalApp is true (configured via VITE_APP_EXTERNAL_APP)
- * 2. The backend supports the /plan-latest/ endpoint
+ * This feature is ONLY available when ALL conditions are met:
+ * 1. enableLatestPlan is true in app config (master switch)
+ * 2. isExternalApp is true (configured via VITE_APP_EXTERNAL_APP)
+ * 3. The backend supports the /plan-latest/ endpoint
  *
- * If either condition is not met, the feature is completely disabled.
+ * If any condition is not met, the feature is completely disabled.
  */
 export default class LatestPlanRepository {
   private featureAvailable: boolean | null = null // Cache for feature availability
@@ -27,12 +29,20 @@ export default class LatestPlanRepository {
    * This must be called before using any other methods.
    *
    * The feature is available only if:
-   * 1. isExternalApp is true
-   * 2. The backend endpoint exists and responds correctly
+   * 1. enableLatestPlan is true in app config (master switch)
+   * 2. isExternalApp is true
+   * 3. The backend endpoint exists and responds correctly
    *
    * @returns Promise<boolean> indicating if the feature is available
    */
   async checkFeatureAvailability(): Promise<boolean> {
+    // Check master switch first - if disabled in app config, feature is not available
+    const latestPlanConfig = appConfig.getCore().parameters.latestPlanConfig
+    if (latestPlanConfig?.enableLatestPlan === false) {
+      this.featureAvailable = false
+      return false
+    }
+
     // If not external app, feature is not available
     if (!config.hasExternalApp) {
       this.featureAvailable = false
@@ -79,7 +89,13 @@ export default class LatestPlanRepository {
    * @returns Object with execution_id, exists flag, and featureAvailable flag
    */
   async getLatestPlan(): Promise<LatestPlanResponse> {
-    // Check if feature is available
+    // Check master switch first
+    const latestPlanConfig = appConfig.getCore().parameters.latestPlanConfig
+    if (latestPlanConfig?.enableLatestPlan === false) {
+      return { execution_id: null, exists: false, featureAvailable: false }
+    }
+
+    // Check if external app is enabled
     if (!config.hasExternalApp) {
       return { execution_id: null, exists: false, featureAvailable: false }
     }

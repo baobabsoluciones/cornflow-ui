@@ -27,6 +27,7 @@ const createAppConfig = () => ({
       allowEditInstance: true,
 
       latestPlanConfig: {
+        enableLatestPlan: true,
         defaultView: 'history-execution',
         showStarInTabBar: true,
       },
