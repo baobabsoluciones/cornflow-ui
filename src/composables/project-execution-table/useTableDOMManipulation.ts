@@ -3,23 +3,29 @@ import { HeaderItem } from './types';
 
 export function useTableDOMManipulation(getHeaders: () => HeaderItem[]) {
   const resizeTimeout = ref<number | null>(null);
+  const resizeObserver = ref<ResizeObserver | null>(null);
+  const observedContainers = ref<Set<Element>>(new Set());
   
-  // Add column group to enforce column widths
+  // Add or update column group to enforce column widths
   const addColgroup = () => {
     nextTick(() => {
       const tables = document.querySelectorAll('.execution-table table');
-      const containerWidth = getContainerWidth();
       const headers = getHeaders();
-      const pixelWidths = calculatePixelWidths(headers, containerWidth);
       
       tables.forEach((table) => {
-        addColgroupToTable(table, headers, pixelWidths);
+        // Get the container width for this specific table
+        const container = table.closest('.table-container');
+        const containerWidth = container?.clientWidth || 1000;
+        const pixelWidths = calculatePixelWidths(headers, containerWidth);
+        updateColgroupInTable(table, headers, pixelWidths);
+        
+        // Observe new containers for resize
+        if (container && resizeObserver.value && !observedContainers.value.has(container)) {
+          resizeObserver.value.observe(container);
+          observedContainers.value.add(container);
+        }
       });
     });
-  };
-
-  const getContainerWidth = (): number => {
-    return document.querySelector('.table-container')?.clientWidth || 1000;
   };
 
   const calculatePixelWidths = (headers: HeaderItem[], containerWidth: number): number[] => {
@@ -29,9 +35,11 @@ export function useTableDOMManipulation(getHeaders: () => HeaderItem[]) {
     });
   };
 
-  const addColgroupToTable = (table: Element, headers: HeaderItem[], pixelWidths: number[]): void => {
-    if (table.querySelector('colgroup')) {
-      return; // Colgroup already exists
+  const updateColgroupInTable = (table: Element, headers: HeaderItem[], pixelWidths: number[]): void => {
+    // Remove existing colgroup to update with new widths
+    const existingColgroup = table.querySelector('colgroup');
+    if (existingColgroup) {
+      existingColgroup.remove();
     }
 
     const colgroup = document.createElement('colgroup');
@@ -47,7 +55,7 @@ export function useTableDOMManipulation(getHeaders: () => HeaderItem[]) {
     });
   };
   
-  // Handle window resize
+  // Handle resize with debounce
   const handleResize = () => {
     // Debounce resize handler to avoid performance issues
     if (resizeTimeout.value !== null) {
@@ -57,17 +65,33 @@ export function useTableDOMManipulation(getHeaders: () => HeaderItem[]) {
       addColgroup();
     }, 150);
   };
+
+  // Initialize ResizeObserver
+  const initResizeObserver = () => {
+    resizeObserver.value = new ResizeObserver(() => {
+      handleResize();
+    });
+  };
   
   // Lifecycle hooks
   onMounted(() => {
+    // Initialize ResizeObserver first
+    initResizeObserver();
+    // Then add colgroups (which will also observe containers)
     addColgroup();
-    // Add resize event listener for responsive tables
+    // Add resize event listener for window resize
     window.addEventListener('resize', handleResize);
   });
   
   onBeforeUnmount(() => {
     // Clean up resize event listener
     window.removeEventListener('resize', handleResize);
+    // Clean up ResizeObserver
+    if (resizeObserver.value) {
+      resizeObserver.value.disconnect();
+      resizeObserver.value = null;
+    }
+    observedContainers.value.clear();
     // Clear any pending timeout
     if (resizeTimeout.value !== null) {
       window.clearTimeout(resizeTimeout.value);
