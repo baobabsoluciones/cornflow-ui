@@ -58,10 +58,12 @@ export default defineConfig({
   // Development server configuration
   // Automatically starts the dev server with test environment variables
   webServer: {
-    command: 'npm run dev',
+    command: 'npm run dev -- --port 5173',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
+    timeout: 180 * 1000, // Increased timeout to 3 minutes
+    stdout: 'pipe', // Capture stdout to detect server ready
+    stderr: 'pipe', // Capture stderr for debugging
     env: {
       // Pass VITE_APP_* environment variables to the dev server
       ...Object.fromEntries(
