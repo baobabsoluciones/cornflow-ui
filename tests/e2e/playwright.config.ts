@@ -1,4 +1,14 @@
 import { defineConfig, devices } from '@playwright/test';
+import { config } from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Get __dirname equivalent for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables from .env.test file
+config({ path: path.resolve(__dirname, '.env.test') });
 
 /**
  * Minimal Playwright configuration for E2E tests
@@ -45,12 +55,18 @@ export default defineConfig({
     },
   ],
 
-  // Development server (optional)
-  // Uncomment if you want Playwright to start the dev server automatically
+  // Development server configuration
+  // Automatically starts the dev server with test environment variables
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
+    env: {
+      // Pass VITE_APP_* environment variables to the dev server
+      ...Object.fromEntries(
+        Object.entries(process.env).filter(([key]) => key.startsWith('VITE_APP_'))
+      ),
+    },
   },
 });
