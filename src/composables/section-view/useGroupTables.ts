@@ -77,12 +77,56 @@ export function useGroupTables(currentConfiguration: any, sectionType: any) {
     return tablesInGroup
   })
 
-  const tableConfig = computed(() => {
-    const result = isGroupView.value
-      ? null
-      : (currentConfiguration.value[tableKey.value] as TableConfig) || null
+  // Helper function to find table key in configuration (handles URL-friendly and case variations)
+  const findTableKeyInConfig = (
+    searchKey: string,
+    config: Record<string, any>,
+  ): string | null => {
+    if (!searchKey || !config || Object.keys(config).length === 0) return null
 
-    return result
+    // Try direct lookup first
+    if (config[searchKey]) return searchKey
+
+    // Try fromUrlFriendly conversion
+    const resolvedKey = fromUrlFriendly(searchKey, config)
+    if (resolvedKey && config[resolvedKey]) return resolvedKey
+
+    // Try case-insensitive and underscore/hyphen variations
+    const normalizedSearchKey = searchKey.toLowerCase().replace(/-/g, '_')
+    for (const key of Object.keys(config)) {
+      const normalizedKey = key.toLowerCase().replace(/-/g, '_')
+      if (normalizedKey === normalizedSearchKey) {
+        return key
+      }
+    }
+
+    return null
+  }
+
+  const tableConfig = computed(() => {
+    if (isGroupView.value) return null
+    if (!currentConfiguration.value || !tableKey.value) return null
+
+    // Find the actual key in configuration
+    const actualKey = findTableKeyInConfig(
+      tableKey.value,
+      currentConfiguration.value,
+    )
+
+    if (actualKey) {
+      return currentConfiguration.value[actualKey] as TableConfig
+    }
+
+    return null
+  })
+
+  // Resolved table key that matches the configuration
+  const resolvedTableKey = computed(() => {
+    if (!tableKey.value || !currentConfiguration.value) return tableKey.value
+    return (
+      findTableKeyInConfig(tableKey.value, currentConfiguration.value) ||
+      tableKey.value
+    )
   })
 
   const selectedTableConfig = computed(() => {
@@ -207,6 +251,19 @@ export function useGroupTables(currentConfiguration: any, sectionType: any) {
     { immediate: true },
   )
 
+  // Watch for configuration changes to re-initialize
+  watch(
+    currentConfiguration,
+    (newConfig) => {
+      if (newConfig && Object.keys(newConfig).length > 0) {
+        // Re-initialize from route when configurations are loaded
+        initializeFromRoute()
+        initializeSelectedTable()
+      }
+    },
+    { immediate: true },
+  )
+
   // Lifecycle
   onMounted(() => {
     // Initialize from route first
@@ -239,9 +296,11 @@ export function useGroupTables(currentConfiguration: any, sectionType: any) {
     tableConfig,
     selectedTableConfig,
     tabsData,
+    resolvedTableKey,
 
     // Methods
     handleTabChange,
     initializeSelectedTable,
+    findTableKeyInConfig,
   }
 }
