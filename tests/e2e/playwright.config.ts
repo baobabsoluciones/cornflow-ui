@@ -31,15 +31,20 @@ export default defineConfig({
   workers: process.env.CI ? 2 : undefined, // Workers in CI
 
   // Reporter configuration
-  reporter: [
-    ['html'],
-    ['list'],
-    ...(process.env.CI ? [['github']] : []),
-  ],
+  reporter: process.env.CI
+    ? [
+        ['html', {}],
+        ['list', {}],
+        ['github', {}],
+      ]
+    : [
+        ['html', {}],
+        ['list', {}],
+      ],
 
   // Shared settings for all projects
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
     trace: 'on-first-retry', // Traces only on retries
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -58,17 +63,20 @@ export default defineConfig({
   // Development server configuration
   // Automatically starts the dev server with test environment variables
   webServer: {
-    command: 'npm run dev -- --port 5173',
-    url: 'http://localhost:5173',
+    command: 'npm run dev -- --port 3000',
+    url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 180 * 1000, // Increased timeout to 3 minutes
     stdout: 'pipe', // Capture stdout to detect server ready
     stderr: 'pipe', // Capture stderr for debugging
     env: {
-      // Pass VITE_APP_* environment variables to the dev server
+      // Explicitly pass all VITE_APP_* environment variables to the dev server
+      // This ensures the Vue application has access to backend configuration
       ...Object.fromEntries(
         Object.entries(process.env).filter(([key]) => key.startsWith('VITE_APP_'))
       ),
+      // Also ensure NODE_ENV is set if not already
+      NODE_ENV: process.env.NODE_ENV || 'development',
     },
   },
 });

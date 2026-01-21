@@ -25,8 +25,15 @@ test.describe('Authentication', () => {
 
     // Verify that we're no longer on the sign-in page
     // (should have been redirected to a protected route)
+    // In hash mode, the pathname may still be /sign-in, but the hash should have changed
     const currentUrl = page.url();
-    expect(currentUrl).not.toContain('/sign-in');
+    const url = new URL(currentUrl);
+    // Check that we have a valid hash route (not empty and not just '#')
+    expect(url.hash).toBeTruthy();
+    expect(url.hash).not.toBe('');
+    expect(url.hash).not.toBe('#');
+    // The hash should not contain '/sign-in' (it should be something like '#/history-execution')
+    expect(url.hash).not.toContain('/sign-in');
 
     // Verify that sessionStorage contains authentication data
     const token = await page.evaluate(() => {
@@ -46,10 +53,17 @@ test.describe('Authentication', () => {
     await authenticate(page);
 
     // Verify we're on a protected route (not sign-in)
+    // In hash mode, the pathname may still be /sign-in, but the hash should contain a protected route
     const currentUrl = page.url();
-    expect(currentUrl).not.toContain('/sign-in');
+    const url = new URL(currentUrl);
+    
+    // Verify we have a valid hash route
+    expect(url.hash).toBeTruthy();
+    expect(url.hash).not.toBe('');
+    expect(url.hash).not.toBe('#');
+    expect(url.hash).not.toContain('/sign-in');
 
-    // Common protected routes after login
+    // Common protected routes after login (in hash mode, these are in the hash)
     const protectedRoutes = [
       '/history-execution',
       '/dashboard',
@@ -58,8 +72,9 @@ test.describe('Authentication', () => {
     ];
 
     // Check if we're on one of the expected protected routes
+    // In hash mode, check the hash instead of the full URL
     const isOnProtectedRoute = protectedRoutes.some((route) =>
-      currentUrl.includes(route)
+      url.hash.includes(route)
     );
     expect(isOnProtectedRoute).toBe(true);
   });
