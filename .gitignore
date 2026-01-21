@@ -1,6 +1,7 @@
 # Environment files
 .env
 .env.*
+!.env.test.example
 public/values.json
 
 # Build directories
