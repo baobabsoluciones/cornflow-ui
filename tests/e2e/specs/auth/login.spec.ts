@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
-import { authenticate, isAuthenticated } from '../../helpers/auth/index';
+import { authenticate, isAuthenticated, logout } from '../../helpers/auth/index';
+import { isOnProtectedRoute, isHashRoute, getHashRoute } from '../../helpers/urlHelpers';
+import { getAuthSessionStorage, verifyAuthSessionStorage } from '../../helpers/sessionStorageHelpers';
+import { PROTECTED_ROUTES } from '../../helpers/constants';
 
 /**
  * Authentication tests
@@ -25,27 +28,20 @@ test.describe('Authentication', () => {
 
     // Verify that we're no longer on the sign-in page
     // (should have been redirected to a protected route)
-    // In hash mode, the pathname may still be /sign-in, but the hash should have changed
-    const currentUrl = page.url();
-    const url = new URL(currentUrl);
-    // Check that we have a valid hash route (not empty and not just '#')
-    expect(url.hash).toBeTruthy();
-    expect(url.hash).not.toBe('');
-    expect(url.hash).not.toBe('#');
-    // The hash should not contain '/sign-in' (it should be something like '#/history-execution')
-    expect(url.hash).not.toContain('/sign-in');
+    expect(isOnProtectedRoute(page)).toBe(true);
+
+    // Verify hash route is valid
+    const hash = getHashRoute(page);
+    expect(hash).toBeTruthy();
+    expect(hash).not.toBe('');
+    expect(hash).not.toBe('#');
+    expect(hash).not.toContain('/sign-in');
 
     // Verify that sessionStorage contains authentication data
-    const token = await page.evaluate(() => {
-      return sessionStorage.getItem('token');
-    });
-    expect(token).toBeTruthy();
-    expect(token?.length).toBeGreaterThan(0);
-
-    const isAuthFlag = await page.evaluate(() => {
-      return sessionStorage.getItem('isAuthenticated');
-    });
-    expect(isAuthFlag).toBe('true');
+    const auth = await getAuthSessionStorage(page);
+    expect(auth.token).toBeTruthy();
+    expect(auth.token?.length).toBeGreaterThan(0);
+    expect(auth.isAuthenticated).toBe('true');
   });
 
   test('should redirect to protected route after login', async ({ page }) => {
@@ -53,29 +49,119 @@ test.describe('Authentication', () => {
     await authenticate(page);
 
     // Verify we're on a protected route (not sign-in)
-    // In hash mode, the pathname may still be /sign-in, but the hash should contain a protected route
-    const currentUrl = page.url();
-    const url = new URL(currentUrl);
-    
-    // Verify we have a valid hash route
-    expect(url.hash).toBeTruthy();
-    expect(url.hash).not.toBe('');
-    expect(url.hash).not.toBe('#');
-    expect(url.hash).not.toContain('/sign-in');
+    expect(isOnProtectedRoute(page)).toBe(true);
 
-    // Common protected routes after login (in hash mode, these are in the hash)
-    const protectedRoutes = [
-      '/history-execution',
-      '/dashboard',
-      '/project-execution',
-      '/',
-    ];
+    // Verify hash route is valid
+    const hash = getHashRoute(page);
+    expect(hash).toBeTruthy();
+    expect(hash).not.toBe('');
+    expect(hash).not.toBe('#');
+    expect(hash).not.toContain('/sign-in');
 
     // Check if we're on one of the expected protected routes
-    // In hash mode, check the hash instead of the full URL
-    const isOnProtectedRoute = protectedRoutes.some((route) =>
-      url.hash.includes(route)
-    );
-    expect(isOnProtectedRoute).toBe(true);
+    expect(isHashRoute(page, PROTECTED_ROUTES)).toBe(true);
+  });
+
+  test('should fail login with invalid credentials', async ({ page }) => {
+    await page.goto('/sign-in');
+    await page.waitForLoadState('networkidle');
+
+    // Try to authenticate with invalid credentials
+    let authError: Error | null = null;
+    try {
+      await authenticate(page, 'invalid_user', 'invalid_password');
+    } catch (error) {
+      authError = error instanceof Error ? error : new Error(String(error));
+    }
+
+    // Verify that authentication failed
+    expect(authError).not.toBeNull();
+    expect(authError?.message).toBeTruthy();
+
+    // Verify we're still on the sign-in page
+    expect(isOnProtectedRoute(page)).toBe(false);
+
+    // Verify user is not authenticated
+    const authenticated = await isAuthenticated(page);
+    expect(authenticated).toBe(false);
+
+    // Verify sessionStorage does not contain authentication data
+    const auth = await getAuthSessionStorage(page);
+    expect(auth.isAuthenticated).not.toBe('true');
+    expect(auth.token).toBeNull();
+  });
+
+  test('should fail login with empty credentials', async ({ page }) => {
+    await page.goto('/sign-in');
+    await page.waitForLoadState('networkidle');
+
+    // Try to authenticate with empty credentials
+    let authError: Error | null = null;
+    try {
+      await authenticate(page, '', '');
+    } catch (error) {
+      authError = error instanceof Error ? error : new Error(String(error));
+    }
+
+    // Verify that authentication failed with the expected error message
+    expect(authError).not.toBeNull();
+    expect(authError?.message).toContain('Username and password are required');
+  });
+
+  test('should logout successfully', async ({ page }) => {
+    // First, authenticate
+    await authenticate(page);
+    
+    // Verify we're authenticated
+    expect(await isAuthenticated(page)).toBe(true);
+    expect(isOnProtectedRoute(page)).toBe(true);
+
+    // Logout
+    await logout(page);
+
+    // Verify we're on the sign-in page
+    await expect(page).toHaveURL(/\/sign-in/);
+
+    // Verify user is not authenticated
+    expect(await isAuthenticated(page)).toBe(false);
+
+    // Verify sessionStorage is cleared
+    const auth = await getAuthSessionStorage(page);
+    expect(auth.isAuthenticated).not.toBe('true');
+    expect(auth.token).toBeNull();
+  });
+
+  test('should redirect to sign-in when accessing protected route without authentication', async ({ page }) => {
+    // Try to access a protected route without authentication
+    await page.goto('/history-execution');
+    await page.waitForLoadState('networkidle');
+
+    // Should be redirected to sign-in
+    await expect(page).toHaveURL(/\/sign-in/);
+
+    // Verify user is not authenticated
+    expect(await isAuthenticated(page)).toBe(false);
+  });
+
+  test('should maintain authentication state across page reloads', async ({ page }) => {
+    // Authenticate
+    await authenticate(page);
+    
+    // Verify authentication
+    expect(await isAuthenticated(page)).toBe(true);
+    const authBeforeReload = await getAuthSessionStorage(page);
+
+    // Reload the page
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    // Verify authentication is still valid
+    expect(await isAuthenticated(page)).toBe(true);
+    const authAfterReload = await getAuthSessionStorage(page);
+    
+    // Verify sessionStorage data is preserved
+    expect(authAfterReload.token).toBe(authBeforeReload.token);
+    expect(authAfterReload.isAuthenticated).toBe(authBeforeReload.isAuthenticated);
+    expect(authAfterReload.userId).toBe(authBeforeReload.userId);
   });
 });

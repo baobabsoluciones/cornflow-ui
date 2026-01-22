@@ -1,4 +1,22 @@
 import { Page, expect } from '@playwright/test';
+import {
+  SELECTORS,
+  TIMEOUTS,
+  SESSION_STORAGE_KEYS,
+} from '../constants';
+import {
+  waitForProtectedRoute,
+  isOnSignInPage,
+} from '../urlHelpers';
+import {
+  waitForAuthentication,
+  verifyAuthSessionStorage,
+} from '../sessionStorageHelpers';
+import {
+  setupErrorDetection,
+  checkErrorSnackbar,
+  getDetailedErrorMessage,
+} from '../errorDetection';
 
 /**
  * Helper function to authenticate a user using Cornflow authentication
@@ -45,8 +63,9 @@ export async function cornflowAuth(
   } = options;
 
   // Get credentials from parameters or environment variables
-  const testUsername = username || process.env.PLAYWRIGHT_TEST_USER || '';
-  const testPassword = password || process.env.PLAYWRIGHT_TEST_PASSWORD || '';
+  // Use explicit undefined check to allow empty strings as valid parameter values
+  const testUsername = username !== undefined ? username : (process.env.PLAYWRIGHT_TEST_USER || '');
+  const testPassword = password !== undefined ? password : (process.env.PLAYWRIGHT_TEST_PASSWORD || '');
 
   if (!testUsername || !testPassword) {
     throw new Error(
@@ -56,182 +75,120 @@ export async function cornflowAuth(
 
   // Navigate to sign-in page
   await page.goto('/sign-in');
-
-  // Wait for the login form to be visible
   await page.waitForLoadState('networkidle');
   
   // Wait for the form container to be visible
-  await page.waitForSelector('.login-form', { timeout: 10000 });
+  await page.waitForSelector(SELECTORS.LOGIN_FORM, { timeout: TIMEOUTS.FORM_LOAD });
 
-  // Wait a bit more to ensure the application is fully initialized
-  // This gives time for config.initConfig() to complete
-  await page.waitForTimeout(1000);
+  // Wait for application initialization (config.initConfig())
+  await page.waitForTimeout(TIMEOUTS.CONFIG_INIT_DELAY);
 
-  // Find and fill username field
-  // Try multiple selectors to find the username input
-  const usernameInput = page.locator('input[type="text"]').first();
-  await usernameInput.waitFor({ state: 'visible', timeout: 10000 });
+  // Fill username field
+  const usernameInput = page.locator(SELECTORS.USERNAME_INPUT).first();
+  await usernameInput.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
   await usernameInput.fill(testUsername);
-  
-  // Wait a bit to ensure the value is set
-  await page.waitForTimeout(200);
+  await page.waitForTimeout(TIMEOUTS.INPUT_FILL_DELAY);
 
-  // Find and fill password field
-  const passwordInput = page.locator('input[type="password"]');
-  await passwordInput.waitFor({ state: 'visible', timeout: 10000 });
+  // Fill password field
+  const passwordInput = page.locator(SELECTORS.PASSWORD_INPUT);
+  await passwordInput.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
   await passwordInput.fill(testPassword);
-  
-  // Wait a bit to ensure the value is set
-  await page.waitForTimeout(200);
+  await page.waitForTimeout(TIMEOUTS.INPUT_FILL_DELAY);
 
   // Find and click the submit button
-  // Use the class selector first as it's the most reliable
-  const submitButton = page.locator('button.main-signin-btn');
-  await submitButton.waitFor({ state: 'visible', timeout: 10000 });
-  
-  // Wait for button to be enabled (not disabled)
-  await expect(submitButton).toBeEnabled({ timeout: 5000 });
-  
+  const submitButton = page.locator(SELECTORS.SUBMIT_BUTTON);
+  await submitButton.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
+  await expect(submitButton).toBeEnabled({ timeout: TIMEOUTS.BUTTON_ENABLE });
+
   // Set up error detection before clicking submit
-  let errorMessage: string | null = null;
-  const consoleHandler = (msg: any) => {
-    if (msg.type() === 'error') {
-      const text = msg.text();
-      if (text.includes('Error') || text.includes('error') || text.includes('failed')) {
-        errorMessage = text;
-      }
-    }
-  };
-  page.on('console', consoleHandler);
+  const errorDetection = setupErrorDetection(page);
 
-  // Also listen for network failures
-  const responseHandler = (response: any) => {
-    if (response.url().includes('/login/') && !response.ok()) {
-      errorMessage = `Login request failed with status ${response.status()}`;
-    }
-  };
-  page.on('response', responseHandler);
-
-  // Wait for navigation if requested
-  if (waitForNavigation) {
-    // Wait for navigation after clicking submit
-    // In hash mode, the pathname doesn't change, but the hash does
-    // The URL should change from /sign-in to /sign-in#/history-execution (or similar)
-    // Also wait for network to be idle to ensure the login request completes
-    try {
-      await Promise.all([
-        page.waitForURL((url) => {
-          // In hash mode, check if hash exists and doesn't contain '/sign-in'
-          // The hash should be something like '#/history-execution' after login
-          const hash = url.hash;
-          return hash !== '' && !hash.includes('/sign-in');
-        }, { timeout: 20000 }),
-        page.waitForLoadState('networkidle').catch(() => {}), // Don't fail if networkidle doesn't happen
-        submitButton.click(),
-      ]);
-    } catch (error) {
-      // Check for error snackbar message
-      const snackbar = page.locator('.v-snackbar').filter({ hasText: /error|Error|servidor|server/i });
-      const snackbarVisible = await snackbar.isVisible().catch(() => false);
-      
-      if (snackbarVisible) {
-        const snackbarText = await snackbar.textContent().catch(() => '');
-        errorMessage = snackbarText || 'Error message detected in snackbar';
-      }
-      
-      // Clean up listeners
-      page.off('console', consoleHandler);
-      page.off('response', responseHandler);
-      
-      // Get more context for debugging
-      const currentUrl = page.url();
-      const networkErrors = await page.evaluate(() => {
-        return (window as any).__playwrightNetworkErrors || [];
-      }).catch(() => []);
-      
-      throw new Error(
-        `Login failed: ${errorMessage || error instanceof Error ? error.message : String(error)}. ` +
-        `Current URL: ${currentUrl}. ` +
-        `Network errors: ${JSON.stringify(networkErrors)}`
-      );
-    }
-  } else {
+  try {
+    // Click submit button
     await submitButton.click();
-  }
 
-  // Clean up listeners
-  page.off('console', consoleHandler);
-  page.off('response', responseHandler);
+    // Wait a bit for potential errors to appear before checking
+    await page.waitForTimeout(TIMEOUTS.ERROR_SNACKBAR_CHECK);
 
-  // Check for error snackbar after a short delay
-  await page.waitForTimeout(2000);
-  const snackbar = page.locator('.v-snackbar').filter({ hasText: /error|Error|servidor|server/i });
-  const snackbarVisible = await snackbar.isVisible().catch(() => false);
-  
-  if (snackbarVisible) {
-    const snackbarText = await snackbar.textContent().catch(() => '');
-    const currentUrl = page.url();
-    const backendUrl = await page.evaluate(() => {
-      return (window as any).__config?.backend || 'not found';
-    }).catch(() => 'not found');
-    
-    throw new Error(
-      `Login failed: Error snackbar detected - "${snackbarText}". ` +
-      `Current URL: ${currentUrl}. ` +
-      `Backend URL from config: ${backendUrl}. ` +
-      `Please verify that VITE_APP_BACKEND_URL is correctly set in your .env.test file.`
+    // Check for error snackbar early (before waiting for navigation)
+    const snackbarError = await checkErrorSnackbar(page);
+    if (snackbarError.hasError) {
+      const detailedError = await getDetailedErrorMessage(
+        page,
+        `Error snackbar detected: "${snackbarError.errorMessage}"`
+      );
+      throw new Error(detailedError);
+    }
+
+    // Check for errors from listeners
+    const listenerError = errorDetection.getError();
+    if (listenerError) {
+      const detailedError = await getDetailedErrorMessage(page, listenerError);
+      throw new Error(detailedError);
+    }
+
+    // Wait for navigation if requested (only if no errors detected)
+    if (waitForNavigation) {
+      try {
+        await waitForProtectedRoute(page, TIMEOUTS.NAVIGATION);
+      } catch (navError) {
+        // If navigation times out, check for error snackbar
+        const snackbarError = await checkErrorSnackbar(page);
+        if (snackbarError.hasError) {
+          const detailedError = await getDetailedErrorMessage(
+            page,
+            `Login failed: ${snackbarError.errorMessage}`
+          );
+          throw new Error(detailedError);
+        }
+        // Check for listener errors
+        const listenerError = errorDetection.getError();
+        if (listenerError) {
+          const detailedError = await getDetailedErrorMessage(page, listenerError);
+          throw new Error(detailedError);
+        }
+        // If no errors detected but navigation failed, re-throw the navigation error
+        throw navError;
+      }
+    }
+  } catch (error) {
+    // Check for error snackbar if not already checked
+    const snackbarError = await checkErrorSnackbar(page);
+    if (snackbarError.hasError) {
+      const detailedError = await getDetailedErrorMessage(
+        page,
+        `Login failed: ${snackbarError.errorMessage}`
+      );
+      throw new Error(detailedError);
+    }
+
+    // Re-throw with additional context
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const listenerError = errorDetection.getError();
+    const detailedError = await getDetailedErrorMessage(
+      page,
+      `Login failed: ${listenerError || errorMessage}`
     );
+    throw new Error(detailedError);
+  } finally {
+    // Always clean up listeners
+    errorDetection.cleanup();
   }
 
   // Verify authentication state if requested
   if (verifyAuth) {
-    // Wait for sessionStorage to be updated with a more robust approach
-    // Poll sessionStorage until authentication is complete or timeout
-    let attempts = 0;
-    const maxAttempts = 30; // 30 attempts * 500ms = 15 seconds max
-    let isAuthenticated = false;
-    
-    while (attempts < maxAttempts && !isAuthenticated) {
-      await page.waitForTimeout(500);
-      isAuthenticated = await page.evaluate(() => {
-        return sessionStorage.getItem('isAuthenticated') === 'true';
-      });
-      attempts++;
-    }
+    // Wait for authentication to be set in sessionStorage
+    await waitForAuthentication(
+      page,
+      TIMEOUTS.AUTH_VERIFICATION_MAX_ATTEMPTS * TIMEOUTS.AUTH_VERIFICATION_POLL,
+      TIMEOUTS.AUTH_VERIFICATION_POLL
+    );
 
-    if (!isAuthenticated) {
-      // Get more debug information
-      const currentUrl = page.url();
-      const sessionStorageContent = await page.evaluate(() => {
-        return {
-          isAuthenticated: sessionStorage.getItem('isAuthenticated'),
-          token: sessionStorage.getItem('token') ? 'present' : 'missing',
-          userId: sessionStorage.getItem('userId'),
-        };
-      });
-      
-      throw new Error(
-        `Authentication failed: isAuthenticated is not set to true in sessionStorage. ` +
-        `Current URL: ${currentUrl}, ` +
-        `SessionStorage: ${JSON.stringify(sessionStorageContent)}`
-      );
-    }
-
-    // Verify token exists
-    const token = await page.evaluate(() => {
-      return sessionStorage.getItem('token');
-    });
-
-    if (!token) {
-      throw new Error('Authentication failed: token not found in sessionStorage');
-    }
+    // Verify authentication data exists
+    await verifyAuthSessionStorage(page);
 
     // Verify we're not on the sign-in page anymore
-    // In hash mode, the pathname may still be /sign-in, but the hash should have changed
-    const currentUrl = page.url();
-    const url = new URL(currentUrl);
-    // Check if we're still on sign-in without a valid hash route
-    if (url.pathname.includes('/sign-in') && (!url.hash || url.hash === '' || url.hash === '#')) {
+    if (isOnSignInPage(page)) {
       throw new Error('Authentication failed: still on sign-in page after login attempt');
     }
   }
@@ -244,10 +201,12 @@ export async function cornflowAuth(
  * @returns Promise<boolean> - true if authenticated, false otherwise
  */
 export async function isAuthenticated(page: Page): Promise<boolean> {
-  return await page.evaluate(() => {
-    return sessionStorage.getItem('isAuthenticated') === 'true' &&
-           sessionStorage.getItem('token') !== null;
-  });
+  return await page.evaluate((keys) => {
+    return (
+      sessionStorage.getItem(keys.IS_AUTHENTICATED) === 'true' &&
+      sessionStorage.getItem(keys.TOKEN) !== null
+    );
+  }, SESSION_STORAGE_KEYS);
 }
 
 /**
@@ -265,11 +224,11 @@ export async function logout(
   navigateToSignIn: boolean = true
 ): Promise<void> {
   // Clear sessionStorage
-  await page.evaluate(() => {
-    sessionStorage.setItem('isAuthenticated', 'false');
-    sessionStorage.removeItem('token');
-    sessionStorage.removeItem('userId');
-  });
+  await page.evaluate((keys) => {
+    sessionStorage.setItem(keys.IS_AUTHENTICATED, 'false');
+    sessionStorage.removeItem(keys.TOKEN);
+    sessionStorage.removeItem(keys.USER_ID);
+  }, SESSION_STORAGE_KEYS);
 
   // Navigate to sign-in if requested
   if (navigateToSignIn) {
