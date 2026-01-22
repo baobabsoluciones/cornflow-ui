@@ -30,6 +30,10 @@ export const SELECTORS = {
   PASSWORD_INPUT: 'input[type="password"]',
   SUBMIT_BUTTON: 'button.main-signin-btn',
   ERROR_SNACKBAR: '.v-snackbar',
+  LOGOUT_BUTTON: 'v-list-item:has-text("Logout"), v-list-item:has-text("Cerrar sesión")',
+  LOGOUT_MODAL: '.v-dialog',
+  LOGOUT_MODAL_ACCEPT_BUTTON: 'button.primary-btn, button:has-text("Cerrar sesión"), button:has-text("Log out")',
+  LOGOUT_MODAL_CANCEL_BUTTON: 'button.secondary-btn, button:has-text("Cancelar"), button:has-text("Cancel")',
 } as const;
 
 // SessionStorage keys

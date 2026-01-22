@@ -2,7 +2,7 @@ import { test, expect, Page } from '@playwright/test';
 import { authenticate, isAuthenticated, logout } from '../../helpers/auth/index';
 import { isOnProtectedRoute, isHashRoute, getHashRoute } from '../../helpers/urlHelpers';
 import { getAuthSessionStorage } from '../../helpers/sessionStorageHelpers';
-import { PROTECTED_ROUTES } from '../../helpers/constants';
+import { PROTECTED_ROUTES, SELECTORS, TIMEOUTS } from '../../helpers/constants';
 
 /**
  * Helper to verify that hash route is valid (not empty and not sign-in)
@@ -115,6 +115,69 @@ test.describe('Authentication', () => {
     expect(isOnProtectedRoute(page)).toBe(true);
 
     await logout(page);
+
+    // Verify logout: on sign-in page and not authenticated
+    await expect(page).toHaveURL(/\/sign-in/);
+    await expectNotAuthenticated(page);
+  });
+
+  test('should logout successfully by clicking logout button in UI', async ({ page }) => {
+    // Authenticate first
+    await authenticate(page);
+    await expectAuthenticated(page);
+    expect(isOnProtectedRoute(page)).toBe(true);
+
+    // Wait for the drawer to be visible
+    await page.waitForLoadState('networkidle');
+    
+    // Find and click the logout button in the drawer
+    // The logout button has icon 'mdi-logout' and may show text "Logout" or "Cerrar sesión" when expanded
+    // When the menu is collapsed (mini), only the icon is visible
+    // Strategy: Try to find by text first (expanded menu), fallback to icon-based selector (collapsed menu)
+    let logoutButton = page.getByText(/Logout|Cerrar sesión/i).first();
+    const isTextVisible = await logoutButton.isVisible().catch(() => false);
+    
+    if (!isTextVisible) {
+      // Menu is collapsed, find the .v-list-item that contains the mdi-logout icon
+      // First try to find the v-list-item containing the icon
+      logoutButton = page
+        .locator('.v-list-item')
+        .filter({ has: page.locator('[class*="mdi-logout"]') })
+        .first();
+      
+      // If that doesn't work, find the icon and click it directly
+      // The click should bubble up to the parent v-list-item
+      const buttonVisible = await logoutButton.isVisible().catch(() => false);
+      if (!buttonVisible) {
+        const logoutIcon = page.locator('[class*="mdi-logout"]').first();
+        await logoutIcon.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
+        logoutButton = logoutIcon;
+      }
+    }
+    
+    await logoutButton.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
+    await logoutButton.click();
+
+    // Wait for the confirmation modal to appear
+    // The modal title should be visible
+    const modalTitle = page.getByText(/Cerrar sesión|Log out/i).first();
+    await modalTitle.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
+
+    // Find and click the accept/confirm button in the modal
+    // Try primary-btn class first, fallback to button with logout text
+    let acceptButton = page.locator('button.primary-btn').first();
+    const isVisible = await acceptButton.isVisible().catch(() => false);
+    
+    if (!isVisible) {
+      acceptButton = page.getByRole('button', { name: /Cerrar sesión|Log out/i }).first();
+    }
+    
+    await acceptButton.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
+    await acceptButton.click();
+
+    // Wait for navigation to sign-in page
+    await page.waitForURL(/\/sign-in/, { timeout: TIMEOUTS.NAVIGATION });
+    await page.waitForLoadState('networkidle');
 
     // Verify logout: on sign-in page and not authenticated
     await expect(page).toHaveURL(/\/sign-in/);
