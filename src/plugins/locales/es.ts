@@ -654,6 +654,7 @@ export default {
     },
   },
   masterTableMatch: {
+    loading: 'Comparando con tablas maestras...',
     alertTitle: 'Coincidencias con tablas maestras detectadas',
     alertDescription:
       'Algunas tablas en los datos subidos coinciden con tablas maestras existentes. Por favor, elige cómo manejar cada coincidencia a continuación.',

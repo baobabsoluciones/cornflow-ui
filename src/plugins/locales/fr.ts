@@ -421,6 +421,7 @@ export default {
     alphanumeric: 'Seuls les lettres et les chiffres sont autorisés',
   },
   masterTableMatch: {
+    loading: 'Comparaison avec les tables de configuration...',
     alertTitle: 'Correspondances avec les tables de configuration détectées',
     alertDescription:
       'Certaines tables de vos données téléchargées correspondent à des tables de configuration existantes. Veuillez choisir comment gérer chaque correspondance ci-dessous.',

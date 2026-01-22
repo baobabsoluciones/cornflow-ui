@@ -1,5 +1,17 @@
 <template>
   <div class="review-instance-wrapper">
+    <!-- Loading overlay for master table matching -->
+    <div v-if="isMasterTableMatchingEnabled && isMasterTableLoading" class="master-table-loading-overlay">
+      <div class="loading-content">
+        <v-progress-circular
+          indeterminate
+          color="primary"
+          size="40"
+        />
+        <span class="loading-text">{{ $t('masterTableMatch.loading') }}</span>
+      </div>
+    </div>
+
     <!-- Normal view with maximize button -->
     <div class="review-instance-container">
       <div v-if="!isMaximized" class="review-instance-header">
@@ -29,6 +41,7 @@
         :checks-finished="false"
         :checks-error="false"
         :master-table-matches="masterTableMatchesWithCanReplace"
+        :master-table-loading="isMasterTableLoading"
         @save-changes="handleSaveChanges"
         @master-table-action="handleMasterTableChoice"
         @show-comparison="handleShowComparison"
@@ -96,9 +109,9 @@
       </transition>
     </Teleport>
 
-    <!-- Data comparison modal -->
+    <!-- Data comparison modal (only shown when master table matching is enabled) -->
     <DataComparisonModal
-      v-if="selectedMatchForComparison"
+      v-if="isMasterTableMatchingEnabled && selectedMatchForComparison"
       v-model="showComparisonModal"
       :table-name="selectedMatchForComparison.tableName"
       :master-table-title="selectedMatchForComparison.masterTableTitle"
@@ -124,6 +137,7 @@ import { useMasterTableMatch } from '@/composables/project-execution/useMasterTa
 import { Instance } from '@/app/models/Instance'
 import { formatValidationErrorsWithTitle } from '@/utils/errorFormatting'
 import { useGeneralStore } from '@/stores/general'
+import appConfig from '@/app/config'
 
 interface Props {
   newExecution: NewExecution
@@ -150,6 +164,11 @@ const showSnackbar = inject('showSnackbar') as
 const { t } = useI18n()
 const { isMaximized, toggleMaximize } = useFullscreen()
 
+// Check if master table matching feature is enabled
+const isMasterTableMatchingEnabled = computed(() => {
+  return appConfig.getCore().parameters.enableMasterTableMatching !== false
+})
+
 // Master table match composable
 const masterTableMatch = useMasterTableMatch()
 
@@ -158,11 +177,20 @@ const showComparisonModal = ref(false)
 const selectedMatchForComparison = ref<any>(null)
 
 // Computed property to add canReplaceMaster to each match
+// Returns empty array if feature is disabled
 const masterTableMatchesWithCanReplace = computed(() => {
+  if (!isMasterTableMatchingEnabled.value) {
+    return []
+  }
   return masterTableMatch.matches.value.map((match) => ({
     ...match,
     canReplaceMaster: masterTableMatch.canReplaceMasterTable(match.tableKey),
   }))
+})
+
+// Computed property for master table loading state
+const isMasterTableLoading = computed(() => {
+  return isMasterTableMatchingEnabled.value && masterTableMatch.loading.value
 })
 
 // Local state for errors
@@ -177,10 +205,16 @@ watch(
   { immediate: true },
 )
 
-// Detect master table matches when instance data changes
+// Detect master table matches when instance data changes (only if feature is enabled)
 watch(
   () => props.newExecution.instance?.data,
   async (newData) => {
+    // Skip detection if feature is disabled
+    if (!isMasterTableMatchingEnabled.value) {
+      masterTableMatch.reset()
+      return
+    }
+
     if (newData && typeof newData === 'object') {
       await masterTableMatch.detectMatches(newData as Record<string, any>)
     } else {
@@ -399,6 +433,34 @@ const handleSaveChanges = async (data: object) => {
 .review-instance-wrapper {
   position: relative;
   width: 100%;
+}
+
+/* Loading overlay for master table matching */
+.master-table-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.85);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.loading-text {
+  color: var(--subtitle);
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
 .review-instance-container {
