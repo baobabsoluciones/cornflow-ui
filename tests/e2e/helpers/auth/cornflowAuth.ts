@@ -19,6 +19,51 @@ import {
 } from '../errorDetection';
 
 /**
+ * Fill a form input field with proper waiting and delays
+ */
+async function fillInputField(
+  page: Page,
+  selector: string,
+  value: string,
+  isFirst: boolean = false
+): Promise<void> {
+  const input = isFirst
+    ? page.locator(selector).first()
+    : page.locator(selector);
+  
+  await input.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
+  await input.fill(value);
+  await page.waitForTimeout(TIMEOUTS.INPUT_FILL_DELAY);
+}
+
+/**
+ * Check for authentication errors (snackbar and listeners)
+ * Returns a detailed error message if an error is found, null otherwise
+ */
+async function checkForAuthErrors(
+  page: Page,
+  errorDetection: ReturnType<typeof setupErrorDetection>,
+  baseMessage: string = 'Login failed'
+): Promise<string | null> {
+  // Check for error snackbar
+  const snackbarError = await checkErrorSnackbar(page);
+  if (snackbarError.hasError) {
+    return await getDetailedErrorMessage(
+      page,
+      `${baseMessage}: ${snackbarError.errorMessage}`
+    );
+  }
+
+  // Check for errors from listeners
+  const listenerError = errorDetection.getError();
+  if (listenerError) {
+    return await getDetailedErrorMessage(page, `${baseMessage}: ${listenerError}`);
+  }
+
+  return null;
+}
+
+/**
  * Helper function to authenticate a user using Cornflow authentication
  * (username/password login)
  * 
@@ -73,105 +118,61 @@ export async function cornflowAuth(
     );
   }
 
-  // Navigate to sign-in page
+  // Navigate to sign-in page and wait for form
   await page.goto('/sign-in');
   await page.waitForLoadState('networkidle');
-  
-  // Wait for the form container to be visible
   await page.waitForSelector(SELECTORS.LOGIN_FORM, { timeout: TIMEOUTS.FORM_LOAD });
-
-  // Wait for application initialization (config.initConfig())
   await page.waitForTimeout(TIMEOUTS.CONFIG_INIT_DELAY);
 
-  // Fill username field
-  const usernameInput = page.locator(SELECTORS.USERNAME_INPUT).first();
-  await usernameInput.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
-  await usernameInput.fill(testUsername);
-  await page.waitForTimeout(TIMEOUTS.INPUT_FILL_DELAY);
+  // Fill form fields
+  await fillInputField(page, SELECTORS.USERNAME_INPUT, testUsername, true);
+  await fillInputField(page, SELECTORS.PASSWORD_INPUT, testPassword);
 
-  // Fill password field
-  const passwordInput = page.locator(SELECTORS.PASSWORD_INPUT);
-  await passwordInput.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
-  await passwordInput.fill(testPassword);
-  await page.waitForTimeout(TIMEOUTS.INPUT_FILL_DELAY);
-
-  // Find and click the submit button
+  // Prepare and click submit button
   const submitButton = page.locator(SELECTORS.SUBMIT_BUTTON);
   await submitButton.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
   await expect(submitButton).toBeEnabled({ timeout: TIMEOUTS.BUTTON_ENABLE });
 
-  // Set up error detection before clicking submit
+  // Set up error detection before submitting
   const errorDetection = setupErrorDetection(page);
 
   try {
-    // Click submit button
+    // Submit the form
     await submitButton.click();
-
-    // Wait a bit for potential errors to appear before checking
     await page.waitForTimeout(TIMEOUTS.ERROR_SNACKBAR_CHECK);
 
-    // Check for error snackbar early (before waiting for navigation)
-    const snackbarError = await checkErrorSnackbar(page);
-    if (snackbarError.hasError) {
-      const detailedError = await getDetailedErrorMessage(
-        page,
-        `Error snackbar detected: "${snackbarError.errorMessage}"`
-      );
-      throw new Error(detailedError);
+    // Check for errors immediately after submission
+    const errorMessage = await checkForAuthErrors(page, errorDetection, 'Error snackbar detected');
+    if (errorMessage) {
+      throw new Error(errorMessage);
     }
 
-    // Check for errors from listeners
-    const listenerError = errorDetection.getError();
-    if (listenerError) {
-      const detailedError = await getDetailedErrorMessage(page, listenerError);
-      throw new Error(detailedError);
-    }
-
-    // Wait for navigation if requested (only if no errors detected)
+    // Wait for navigation if requested
     if (waitForNavigation) {
       try {
         await waitForProtectedRoute(page, TIMEOUTS.NAVIGATION);
       } catch (navError) {
-        // If navigation times out, check for error snackbar
-        const snackbarError = await checkErrorSnackbar(page);
-        if (snackbarError.hasError) {
-          const detailedError = await getDetailedErrorMessage(
-            page,
-            `Login failed: ${snackbarError.errorMessage}`
-          );
-          throw new Error(detailedError);
+        // If navigation fails, check for errors that might have appeared
+        const navErrorMessage = await checkForAuthErrors(page, errorDetection, 'Login failed');
+        if (navErrorMessage) {
+          throw new Error(navErrorMessage);
         }
-        // Check for listener errors
-        const listenerError = errorDetection.getError();
-        if (listenerError) {
-          const detailedError = await getDetailedErrorMessage(page, listenerError);
-          throw new Error(detailedError);
-        }
-        // If no errors detected but navigation failed, re-throw the navigation error
+        // Re-throw navigation error if no other errors found
         throw navError;
       }
     }
   } catch (error) {
-    // Check for error snackbar if not already checked
-    const snackbarError = await checkErrorSnackbar(page);
-    if (snackbarError.hasError) {
-      const detailedError = await getDetailedErrorMessage(
-        page,
-        `Login failed: ${snackbarError.errorMessage}`
-      );
-      throw new Error(detailedError);
+    // Final error check before throwing
+    const finalErrorMessage = await checkForAuthErrors(page, errorDetection, 'Login failed');
+    if (finalErrorMessage) {
+      throw new Error(finalErrorMessage);
     }
 
-    // Re-throw with additional context
+    // Re-throw original error with context
     const errorMessage = error instanceof Error ? error.message : String(error);
-    const listenerError = errorDetection.getError();
-    const detailedError = await getDetailedErrorMessage(
-      page,
-      `Login failed: ${listenerError || errorMessage}`
-    );
+    const detailedError = await getDetailedErrorMessage(page, `Login failed: ${errorMessage}`);
     throw new Error(detailedError);
   } finally {
-    // Always clean up listeners
     errorDetection.cleanup();
   }
 

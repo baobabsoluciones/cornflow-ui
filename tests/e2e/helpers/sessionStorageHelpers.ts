@@ -58,16 +58,13 @@ export async function waitForAuthentication(
 ): Promise<void> {
   const startTime = Date.now();
   const maxAttempts = Math.ceil(timeout / pollInterval);
-  let attempts = 0;
   
-  while (attempts < maxAttempts) {
-    const isAuthenticated = await isAuthenticatedInSessionStorage(page);
-    
-    if (isAuthenticated) {
+  for (let attempts = 0; attempts < maxAttempts; attempts++) {
+    if (await isAuthenticatedInSessionStorage(page)) {
       return;
     }
     
-    // Check timeout
+    // Check if we've exceeded the timeout
     if (Date.now() - startTime >= timeout) {
       const auth = await getAuthSessionStorage(page);
       throw new Error(
@@ -77,10 +74,9 @@ export async function waitForAuthentication(
     }
     
     await page.waitForTimeout(pollInterval);
-    attempts++;
   }
   
-  // Final check
+  // Final check after all attempts
   const auth = await getAuthSessionStorage(page);
   throw new Error(
     `Authentication failed: isAuthenticated is not set to true in sessionStorage. ` +

@@ -2,6 +2,9 @@ import { Page } from '@playwright/test';
 
 /**
  * Helper functions for URL verification in hash mode routing
+ * 
+ * Note: This application uses Vue Router in hash mode, where routes are in the URL hash (e.g., #/dashboard)
+ * rather than the pathname. The pathname may remain /sign-in even after successful login.
  */
 
 /**
@@ -12,23 +15,20 @@ import { Page } from '@playwright/test';
  * @returns true if on a protected route, false otherwise
  */
 export function isOnProtectedRoute(page: Page): boolean {
-  const currentUrl = page.url();
-  const url = new URL(currentUrl);
-  
-  // In hash mode, check the hash instead of the pathname
+  const url = new URL(page.url());
   const hash = url.hash;
   
-  // If no hash or empty hash, we're not on a protected route
+  // Empty or missing hash means not on a protected route
   if (!hash || hash === '' || hash === '#') {
     return false;
   }
   
-  // If hash contains '/sign-in', we're still on sign-in
+  // Hash containing '/sign-in' means still on sign-in page
   if (hash.includes('/sign-in')) {
     return false;
   }
   
-  // If we have a non-empty hash that doesn't contain '/sign-in', we're on a protected route
+  // Non-empty hash without '/sign-in' means on a protected route
   return true;
 }
 
@@ -40,23 +40,16 @@ export function isOnProtectedRoute(page: Page): boolean {
  * @returns true if on sign-in page, false otherwise
  */
 export function isOnSignInPage(page: Page): boolean {
-  const currentUrl = page.url();
-  const url = new URL(currentUrl);
+  const url = new URL(page.url());
   
-  // Check if pathname is /sign-in
-  if (url.pathname.includes('/sign-in')) {
-    // In hash mode, if hash is empty or just '#', we're still on sign-in
-    const hash = url.hash;
-    if (!hash || hash === '' || hash === '#') {
-      return true;
-    }
-    // If hash contains '/sign-in', we're still on sign-in
-    if (hash.includes('/sign-in')) {
-      return true;
-    }
+  // Must have /sign-in in pathname
+  if (!url.pathname.includes('/sign-in')) {
+    return false;
   }
   
-  return false;
+  // In hash mode, check hash to confirm we're still on sign-in
+  const hash = url.hash;
+  return !hash || hash === '' || hash === '#' || hash.includes('/sign-in');
 }
 
 /**
@@ -66,20 +59,19 @@ export function isOnSignInPage(page: Page): boolean {
  * @returns The hash route (e.g., '#/history-execution') or empty string
  */
 export function getHashRoute(page: Page): string {
-  const currentUrl = page.url();
-  const url = new URL(currentUrl);
-  return url.hash || '';
+  return new URL(page.url()).hash || '';
 }
 
 /**
  * Check if the current URL's hash matches one of the provided routes
  * 
  * @param page - Playwright Page object
- * @param routes - Array of routes to check against
+ * @param routes - Array of routes to check against (e.g., ['/history-execution', '/dashboard'])
  * @returns true if hash matches any of the routes, false otherwise
  */
 export function isHashRoute(page: Page, routes: readonly string[]): boolean {
   const hash = getHashRoute(page);
+  
   if (!hash || hash === '' || hash === '#') {
     return false;
   }
