@@ -39,14 +39,16 @@ export function transformOpenApiToTableConfig(
     }
 
     // Process each operation
+    // Define non-operation keys that should be skipped
+    const nonOperationKeys = ['group', 'title', 'icon', 'schemas', '_originalGroup', '_originalTitle']
+    
     Object.entries(tableInfo).forEach(
       ([operationKey, operationInfo]: [string, any]) => {
-        if (
-          operationKey === 'group' ||
-          operationKey === 'title' ||
-          operationKey === 'icon'
-        )
-          return
+        // Skip non-operation keys
+        if (nonOperationKeys.includes(operationKey)) return
+        
+        // Skip if operationInfo is not a valid operation object
+        if (!operationInfo || typeof operationInfo !== 'object' || !operationInfo.url) return
 
         // Convert operation info to our format
         result[tableKey][operationKey] = {
@@ -138,34 +140,76 @@ export function getResponseSchemaFromDefinitions(
   return null
 }
 
+// Helper function to convert snake_case or kebab-case to PascalCase
+function toPascalCase(str: string): string {
+  return str
+    .split(/[-_]/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join('')
+}
+
+// Helper function to normalize a string for comparison (remove underscores, hyphens, lowercase)
+function normalizeForComparison(str: string): string {
+  return str.replace(/[-_]/g, '').toLowerCase()
+}
+
 // Helper function to find the correct definition key for a table
 function findDefinitionKeyForTable(
   tableKey: string,
   definitions: any,
 ): string | null {
+  const definitionKeys = Object.keys(definitions)
+  
+  // Filter out BulkDelete definitions - they are not table schemas
+  const tableDefinitions = definitionKeys.filter(
+    (key) => !key.endsWith('BulkDelete')
+  )
+
   // Try exact match first (case sensitive)
-  const exactMatch = Object.keys(definitions).find(
+  if (definitions[tableKey] && !tableKey.endsWith('BulkDelete')) return tableKey
+
+  // Try case-insensitive exact match
+  const exactMatch = tableDefinitions.find(
     (key) => key.toLowerCase() === tableKey.toLowerCase(),
   )
   if (exactMatch) return exactMatch
 
-  // Try capitalized version
+  // Try PascalCase conversion (e.g., e_criterios_bondad -> ECriteriosBondad)
+  const pascalCaseKey = toPascalCase(tableKey)
+  if (definitions[pascalCaseKey] && !pascalCaseKey.endsWith('BulkDelete')) {
+    return pascalCaseKey
+  }
+
+  // Try normalized comparison (remove underscores/hyphens and compare lowercase)
+  // This handles cases like: e_criterios_bondad vs ECriteriosBondad
+  const normalizedTableKey = normalizeForComparison(tableKey)
+  const normalizedMatch = tableDefinitions.find(
+    (key) => normalizeForComparison(key) === normalizedTableKey,
+  )
+  if (normalizedMatch) return normalizedMatch
+
+  // Try capitalized version (simple first letter capitalization)
   const capitalizedKey = tableKey.charAt(0).toUpperCase() + tableKey.slice(1)
-  if (definitions[capitalizedKey]) return capitalizedKey
+  if (definitions[capitalizedKey] && !capitalizedKey.endsWith('BulkDelete')) {
+    return capitalizedKey
+  }
 
   // Try plural forms
   const pluralForms = [
+    pascalCaseKey + 's',
     capitalizedKey + 's',
-    capitalizedKey.slice(0, -1), // Remove 's' if ends with 's'
+    pascalCaseKey.slice(0, -1), // Remove 's' if ends with 's'
+    capitalizedKey.slice(0, -1),
   ]
 
   for (const form of pluralForms) {
-    if (definitions[form]) return form
+    if (definitions[form] && !form.endsWith('BulkDelete')) return form
   }
 
-  // Fallback to first available definition
-  const availableKeys = Object.keys(definitions)
-  return availableKeys.length > 0 ? availableKeys[0] : null
+  // Do NOT fallback to first available definition - return null if no match found
+  // This prevents incorrect schema associations
+  console.warn(`[schemaUtils] Could not find definition for table: ${tableKey}`)
+  return null
 }
 
 // Convert OpenAPI definition to our schema format

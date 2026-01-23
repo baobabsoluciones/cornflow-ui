@@ -39,6 +39,7 @@ const createAppConfig = () => ({
         results: null as string | null,
       },
 
+      enableMasterTableMatching: true,
       solverConfig: {
         showSolverStep: true,
         defaultSolver: 'mip',

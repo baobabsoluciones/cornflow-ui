@@ -640,6 +640,7 @@ export default {
     },
   },
   masterTableMatch: {
+    loading: 'Comparing with master tables...',
     alertTitle: 'Master table matches detected',
     alertDescription:
       'Some tables in your uploaded data match existing master tables. Please choose how to handle each match below.',
