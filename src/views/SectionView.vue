@@ -172,60 +172,59 @@
               />
             </div>
           </div>
+          <!-- Widgets column (30%) -->
+          <div class="widgets-column">
+            <!-- KPIs section (2 per row) -->
+            <div v-if="kpiWidgets.length > 0" class="kpis-section">
+              <div
+                v-for="(widget, index) in kpiWidgets"
+                :key="`kpi-${index}`"
+                class="kpi-item"
+              >
+                <component
+                  :is="getWidgetComponent(widget.type)"
+                  :title="widget.title"
+                  :config="widget.config"
+                />
+              </div>
+            </div>
+            <!-- Charts section (1 per row) -->
+            <div v-if="sideCharts.length > 0" class="charts-section">
+              <div
+                v-for="(widget, index) in sideCharts"
+                :key="`chart-${index}`"
+                class="chart-item"
+              >
+                <component
+                  :is="getWidgetComponent(widget.type)"
+                  :title="widget.title"
+                  :config="widget.config"
+                />
+              </div>
+            </div>
+            <!-- Custom widgets section (side) -->
+            <div v-if="customSideWidgets.length > 0" class="charts-section">
+              <div
+                v-for="(widget, index) in customSideWidgets"
+                :key="`custom-side-${index}`"
+                class="chart-item"
+              >
+                <component
+                  v-if="tableKey.value && executionType.value"
+                  :is="getWidgetComponent(widget.component)"
+                  :table-data="getTableData(tableKey.value)"
+                  :table-key="tableKey.value"
+                  :execution-data="getExecutionData()"
+                  :execution-type="executionType.value"
+                  v-bind="widget.props || {}"
+                />
+              </div>
+            </div>
+          </div>
         </div>
-        <!-- Widgets column (30%) -->
-        <div class="widgets-column">
-          <!-- KPIs section (2 per row) -->
-          <div v-if="kpiWidgets.length > 0" class="kpis-section">
-            <div
-              v-for="(widget, index) in kpiWidgets"
-              :key="`kpi-${index}`"
-              class="kpi-item"
-            >
-              <component
-                :is="getWidgetComponent(widget.type)"
-                :title="widget.title"
-                :config="widget.config"
-              />
-            </div>
-          </div>
-          <!-- Charts section (1 per row) -->
-          <div v-if="sideCharts.length > 0" class="charts-section">
-            <div
-              v-for="(widget, index) in sideCharts"
-              :key="`chart-${index}`"
-              class="chart-item"
-            >
-              <component
-                :is="getWidgetComponent(widget.type)"
-                :title="widget.title"
-                :config="widget.config"
-              />
-            </div>
-          </div>
-          <!-- Custom widgets section (side) -->
-          <div v-if="customSideWidgets.length > 0" class="charts-section">
-            <div
-              v-for="(widget, index) in customSideWidgets"
-              :key="`custom-side-${index}`"
-              class="chart-item"
-            >
-              <component
-                v-if="tableKey.value && executionType.value"
-                :is="getWidgetComponent(widget.component)"
-                :table-data="getTableData(tableKey.value)"
-                :table-key="tableKey.value"
-                :execution-data="getExecutionData()"
-                :execution-type="executionType.value"
-                v-bind="widget.props || {}"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-      <!-- Regular table without widgets -->
-      <CoreTable
-        v-else
+        <!-- Regular table without widgets -->
+        <CoreTable
+          v-else
         :items="tableData.items.value"
         :headers="tableData.headers.value"
         :loading="tableData.loading.value"
@@ -317,7 +316,8 @@
           (show) => (tableData.showBulkUploadModal.value = show)
         "
         @update:formData="(data) => (tableData.formData.value = data)"
-      />
+        />
+      </div>
 
       <!-- Group view with tabs (for grouped tables) -->
       <div v-else class="table-section mt-5">
@@ -764,6 +764,7 @@ const {
   selectedTableConfig,
   tabsData,
   handleTabChange,
+  resolvedTableKey,
 } = useGroupTables(currentConfiguration, sectionType)
 
 const { title, description, currentIcon } = useSectionDisplay(
@@ -783,7 +784,9 @@ const executionType = computed(() => {
 })
 
 // Table data management - Business logic layer
-const tableData = useTableData(tableKey, tableConfig, executionType)
+// Use resolvedTableKey for non-group views to ensure correct key matching
+const effectiveTableKey = computed(() => resolvedTableKey.value || tableKey.value)
+const tableData = useTableData(effectiveTableKey, tableConfig, executionType)
 const selectedTableData = useTableData(
   selectedTable,
   selectedTableConfig,
@@ -811,18 +814,17 @@ watch(
 
     if (isTableChange) {
       // Reset inline editing state for both table instances
+      // Note: isEditingAnyRow is a computed based on editingRowId, so we only need to reset editingRowId
       if (tableData) {
         tableData.editingRowId.value = null
         tableData.editingData.value = {}
         tableData.originalData.value = {}
-        tableData.isEditingAnyRow.value = false
       }
 
       if (selectedTableData) {
         selectedTableData.editingRowId.value = null
         selectedTableData.editingData.value = {}
         selectedTableData.originalData.value = {}
-        selectedTableData.isEditingAnyRow.value = false
       }
     }
   },

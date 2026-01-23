@@ -61,13 +61,25 @@ Users can open a detailed comparison view showing:
 
 #### Configuration
 
-Enable the feature in `src/app/config.ts`:
+Enable or disable the feature in `src/app/config.ts`:
 
 ```typescript
 parameters: {
-  enableMasterTableOverwrite: true, // Show overwrite option for master tables
+  enableMasterTableMatching: true, // Enable/disable the entire master table matching feature
 }
 ```
+
+When `enableMasterTableMatching` is set to `true` (default), the feature is active and users will see:
+
+- Match indicators on table tabs showing synchronization status
+- Action bar with options to compare, use master data, or update master tables
+- Data comparison modal for detailed side-by-side comparison
+
+When set to `false`, the feature is completely disabled:
+
+- No match detection is performed
+- No indicators or action buttons are shown
+- The instance review step works as a simple data viewer/editor
 
 #### Foreign key handling
 
@@ -578,6 +590,7 @@ This file contains **internal application-specific configuration** that is part 
 | `allowEditInstance`           | `boolean`  | Allow users to edit instances from input data section |
 | `enableAutoInstanceDashboard` | `boolean`  | Auto-generate dashboards for instance tables          |
 | `enableAutoSolutionDashboard` | `boolean`  | Auto-generate dashboards for solution tables          |
+| `enableMasterTableMatching`   | `boolean`  | Enable master table matching during instance review   |
 | `executionSolvers`            | `string[]` | List of available solvers for execution               |
 
 #### showExtraProjectExecutionColumns
