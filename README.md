@@ -38,12 +38,31 @@ The application can automatically detect when uploaded instance tables match exi
 
 #### How it works
 
-1. **Automatic detection**: When an instance is uploaded, the system compares table names (case-insensitive) with existing master tables
+1. **Automatic detection**: When an instance is uploaded, the system compares table names with existing master tables using intelligent name normalization
 2. **Difference calculation**: For matched tables, the system calculates detailed differences (added, removed, modified, identical rows)
 3. **User choice**: Users can choose how to handle each matched table:
    - **Keep uploaded**: Use uploaded data for this execution without modifying the master table
    - **Use master**: Replace uploaded data with current master table data
    - **Update master**: Overwrite the master table with the uploaded data (requires `overwrite_all` permission)
+
+#### Table name matching
+
+The system uses intelligent name normalization to match tables with different naming conventions. The following formats are automatically recognized and matched:
+
+- **snake_case**: `e_tabla_maestra` matches `e_tabla_maestra`
+- **camelCase**: `eTablaMaestra` matches `e_tabla_maestra`
+- **kebab-case**: `e-tabla-maestra` matches `e_tabla_maestra`
+- **lowercase**: `etablamaestra` matches `etablamaestra` (if both use the same format)
+
+The normalization process:
+1. Converts all names to lowercase
+2. Normalizes separators (hyphens and underscores are treated equivalently)
+3. Detects camelCase patterns and converts them to snake_case for comparison
+
+Examples of matched table names:
+- `e_tabla_maestra` ↔ `eTablaMaestra` ↔ `e-tabla-maestra` ↔ `ETablaMaestra`
+- `productos` ↔ `Productos` ↔ `PRODUCTOS`
+- `config_avanzada` ↔ `configAvanzada` ↔ `config-avanzada`
 
 #### Visual indicators
 

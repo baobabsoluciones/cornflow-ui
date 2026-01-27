@@ -153,6 +153,37 @@ export function useMasterTableMatch() {
   }
 
   /**
+   * Normalize table name for comparison
+   * Handles different naming conventions: snake_case, camelCase, kebab-case, lowercase
+   * Examples:
+   * - e_tabla_maestra → e_tabla_maestra
+   * - eTablaMaestra → e_tabla_maestra
+   * - e-tabla-maestra → e_tabla_maestra
+   * - etablamaestra → etablamaestra (kept as-is, matches if both use same format)
+   */
+  const normalizeTableName = (tableName: string): string => {
+    if (!tableName) return ''
+    
+    // First, check if it contains separators (underscores or hyphens)
+    if (tableName.includes('_') || tableName.includes('-')) {
+      // Normalize separators: replace hyphens with underscores and convert to lowercase
+      return tableName.replace(/-/g, '_').toLowerCase()
+    }
+    
+    // If no separators, check if it's camelCase (has mixed case)
+    // Convert camelCase to snake_case: eTablaMaestra -> e_tabla_maestra
+    if (tableName !== tableName.toLowerCase() && tableName !== tableName.toUpperCase()) {
+      // Insert underscore before uppercase letters (except the first character)
+      return tableName
+        .replace(/([a-z])([A-Z])/g, '$1_$2')
+        .toLowerCase()
+    }
+    
+    // If it's all lowercase or all uppercase with no separators, just normalize case
+    return tableName.toLowerCase()
+  }
+
+  /**
    * Detect matches between instance tables and master tables
    */
   const detectMatches = async (instanceData: Record<string, any>) => {
@@ -178,9 +209,15 @@ export function useMasterTableMatch() {
         const instanceTableData = instanceData[instanceKey]
         if (!Array.isArray(instanceTableData)) continue
 
-        const matchingMasterKey = masterTableKeys.find(
-          (masterKey) => masterKey.toLowerCase() === instanceKey.toLowerCase(),
-        )
+        // Normalize instance key for comparison
+        const normalizedInstanceKey = normalizeTableName(instanceKey)
+
+        // Find matching master key by comparing normalized names
+        const matchingMasterKey = masterTableKeys.find((masterKey) => {
+          const normalizedMasterKey = normalizeTableName(masterKey)
+          return normalizedMasterKey === normalizedInstanceKey
+        })
+
         if (!matchingMasterKey) continue
 
         const masterTableConfig = configurations.masterData[matchingMasterKey]
