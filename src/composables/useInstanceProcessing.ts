@@ -380,7 +380,6 @@ export function useInstanceProcessing() {
   ): Promise<ProcessingResult> => {
     try {
       const errors = await instance.checkSchema()
-      console.log(errors)
       if (errors && errors.length > 0) {
         return createErrorResult(
           formatValidationErrorsWithTitle(title, errors, t),
