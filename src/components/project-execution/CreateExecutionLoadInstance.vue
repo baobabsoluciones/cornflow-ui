@@ -248,8 +248,19 @@ onMounted(() => {
 watch(
   () => props.selectedFiles,
   (newFiles) => {
-    if (newFiles && newFiles.length > 0) {
+    // Always sync with props, even if empty array
+    if (newFiles) {
       selectedFiles.value = [...newFiles]
+    } else {
+      selectedFiles.value = []
+    }
+    
+    // Reset drag and drop component if files are cleared
+    if ((!newFiles || newFiles.length === 0) && dragDropFileRef.value) {
+      // Clear the drag and drop component's internal state
+      if (dragDropFileRef.value.clearFiles) {
+        dragDropFileRef.value.clearFiles()
+      }
     }
   },
   { immediate: true },

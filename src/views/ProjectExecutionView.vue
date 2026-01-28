@@ -30,6 +30,7 @@
         <!-- Template for step 2 -->
         <template v-else-if="step.key === 'loadInstance'">
           <CreateExecutionLoadInstance
+            :key="componentKey"
             :selectedFiles="selectedFiles"
             :newExecution="newExecution"
             :existingInstanceErrors="existingInstanceErrors"
@@ -154,6 +155,7 @@ export default {
       showExitConfirmationModal: false,
       pendingNavigation: null,
       pendingNavigationTo: null,
+      componentKey: 0,
     }
   },
   created() {
@@ -505,6 +507,9 @@ export default {
       
       // Reset all data
       this.resetAndLoadNewExecution()
+      
+      // Force remount of child components by incrementing key
+      this.componentKey++
       
       // Reinitialize default values after reset
       this.initializeDefaultSolver()
