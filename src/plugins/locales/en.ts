@@ -72,6 +72,13 @@ export default {
           noValidInstancesError:
             'No valid instances found in the uploaded files',
           downloadExcel: 'Download Excel',
+          downloadAllErrors: 'Download all errors',
+          showingErrorsTruncated:
+            'Showing first {displayed} of {total} errors. Download the complete error list to see all errors.',
+          totalErrors: 'There are {total} errors',
+          andMoreErrors: 'and {count} more',
+          errorsDownloadStarted: 'Error file download started',
+          errorsDownloadError: 'Error downloading error file',
         },
       },
       reviewInstance: {
@@ -159,6 +166,13 @@ export default {
           noValidInstancesError:
             'No valid instances found in the uploaded files',
           downloadExcel: 'Download Excel',
+          downloadAllErrors: 'Download all errors',
+          showingErrorsTruncated:
+            'Showing first {displayed} of {total} errors. Download the complete error list to see all errors.',
+          totalErrors: 'There are {total} errors',
+          andMoreErrors: 'and {count} more',
+          errorsDownloadStarted: 'Error file download started',
+          errorsDownloadError: 'Error downloading error file',
         },
       },
       step4: {
@@ -605,6 +619,7 @@ export default {
       minItems: 'Minimum items',
       maxProperties: 'Maximum properties',
       minProperties: 'Minimum properties',
+      missingProperty: 'Missing property',
     },
     messages: {
       maximum: 'must be <= {limit}',

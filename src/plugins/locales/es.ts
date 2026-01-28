@@ -76,6 +76,13 @@ export default {
           noValidInstancesError:
             'No se encontraron instancias válidas en los archivos cargados',
           downloadExcel: 'Descargar excel',
+          downloadAllErrors: 'Descargar todos los errores',
+          showingErrorsTruncated:
+            'Mostrando los primeros {displayed} de {total} errores. Descarga la lista completa de errores para ver todos los errores.',
+          totalErrors: 'Hay {total} errores',
+          andMoreErrors: 'y {count} más',
+          errorsDownloadStarted: 'Descarga del archivo de errores iniciada',
+          errorsDownloadError: 'Error al descargar el archivo de errores',
         },
       },
       reviewInstance: {
@@ -165,6 +172,13 @@ export default {
           noValidInstancesError:
             'No se encontraron instancias válidas en los archivos cargados',
           downloadExcel: 'Descargar excel',
+          downloadAllErrors: 'Descargar todos los errores',
+          showingErrorsTruncated:
+            'Mostrando los primeros {displayed} de {total} errores. Descarga la lista completa de errores para ver todos los errores.',
+          totalErrors: 'Hay {total} errores',
+          andMoreErrors: 'y {count} más',
+          errorsDownloadStarted: 'Descarga del archivo de errores iniciada',
+          errorsDownloadError: 'Error al descargar el archivo de errores',
         },
       },
       step4: {
@@ -619,6 +633,7 @@ export default {
       minItems: 'Mínimo de elementos',
       maxProperties: 'Máximo de propiedades',
       minProperties: 'Mínimo de propiedades',
+      missingProperty: 'Propiedad requerida',
     },
     messages: {
       maximum: 'debe ser <= {limit}',
