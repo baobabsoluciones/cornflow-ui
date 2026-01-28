@@ -84,6 +84,8 @@ const mockT = vi.fn((key) => {
       'Failed to read file',
     'projectExecution.steps.step3.loadInstance.unsupportedFileFormat':
       'Unsupported file format',
+    'common.file': 'file',
+    'common.files': 'files',
   }
   return translations[key] || key
 })
