@@ -26,6 +26,13 @@ export default {
       successLoad: 'Ejecución cargada con éxito',
       errorLoad: 'Ocurrió un error al cargar la ejecución',
     },
+    exitConfirmation: {
+      title: 'Salir del proceso de creación',
+      message:
+        '¿Seguro que quieres salir del proceso de creación de la ejecución?\nSi sales ahora, se reiniciará el flujo y se perderá todo el progreso realizado.',
+      confirmButton: 'Sí, salir',
+      cancelButton: 'Cancelar',
+    },
     steps: {
       step1: {
         firstOption: {
@@ -634,6 +641,23 @@ export default {
       maxProperties: 'Máximo de propiedades',
       minProperties: 'Mínimo de propiedades',
       missingProperty: 'Propiedad requerida',
+      type: 'Tipo',
+    },
+    errorFormats: {
+      typeError: 'error - se esperaba {type}, pero se recibió un tipo diferente',
+      typeErrorNoField: 'error - se esperaba {type}',
+      requiredError: '- falta la propiedad {property}',
+      requiredErrorNoPath: '- falta la propiedad requerida {property}',
+      requiredErrorGeneric: '- falta la propiedad requerida',
+    },
+    types: {
+      integer: 'entero',
+      number: 'número',
+      string: 'cadena de texto',
+      boolean: 'booleano',
+      array: 'array',
+      object: 'objeto',
+      null: 'null',
     },
     messages: {
       maximum: 'debe ser <= {limit}',
@@ -761,6 +785,10 @@ export default {
   },
   common: {
     close: 'Cerrar',
+    file: 'archivo',
+    files: 'archivos',
+    error: 'error',
+    errors: 'errores',
   },
   latestPlan: {
     banner: {
