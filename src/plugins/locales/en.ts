@@ -24,6 +24,13 @@ export default {
       successLoad: 'Execution loaded successfully',
       errorLoad: 'An error occurred while loading the execution',
     },
+    exitConfirmation: {
+      title: 'Exit creation process',
+      message:
+        'Are you sure you want to exit the execution creation process?\nIf you exit now, the flow will be reset and all progress made will be lost.',
+      confirmButton: 'Yes, exit',
+      cancelButton: 'Cancel',
+    },
     steps: {
       step1: {
         firstOption: {
@@ -72,6 +79,13 @@ export default {
           noValidInstancesError:
             'No valid instances found in the uploaded files',
           downloadExcel: 'Download Excel',
+          downloadAllErrors: 'Download all errors',
+          showingErrorsTruncated:
+            'Showing first {displayed} of {total} errors. Download the complete error list to see all errors.',
+          totalErrors: 'There are {total} errors',
+          andMoreErrors: 'and {count} more',
+          errorsDownloadStarted: 'Error file download started',
+          errorsDownloadError: 'Error downloading error file',
         },
       },
       reviewInstance: {
@@ -159,6 +173,13 @@ export default {
           noValidInstancesError:
             'No valid instances found in the uploaded files',
           downloadExcel: 'Download Excel',
+          downloadAllErrors: 'Download all errors',
+          showingErrorsTruncated:
+            'Showing first {displayed} of {total} errors. Download the complete error list to see all errors.',
+          totalErrors: 'There are {total} errors',
+          andMoreErrors: 'and {count} more',
+          errorsDownloadStarted: 'Error file download started',
+          errorsDownloadError: 'Error downloading error file',
         },
       },
       step4: {
@@ -605,6 +626,24 @@ export default {
       minItems: 'Minimum items',
       maxProperties: 'Maximum properties',
       minProperties: 'Minimum properties',
+      missingProperty: 'Missing property',
+      type: 'Type',
+    },
+    errorFormats: {
+      typeError: 'error - expected {type}, but received a different type',
+      typeErrorNoField: 'error - expected {type}',
+      requiredError: '- missing property {property}',
+      requiredErrorNoPath: '- missing required property {property}',
+      requiredErrorGeneric: '- missing required property',
+    },
+    types: {
+      integer: 'integer',
+      number: 'number',
+      string: 'string',
+      boolean: 'boolean',
+      array: 'array',
+      object: 'object',
+      null: 'null',
     },
     messages: {
       maximum: 'must be <= {limit}',
@@ -739,6 +778,10 @@ export default {
   },
   common: {
     close: 'Close',
+    file: 'file',
+    files: 'files',
+    error: 'error',
+    errors: 'errors',
   },
   latestPlan: {
     banner: {

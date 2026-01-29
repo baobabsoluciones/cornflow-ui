@@ -13,6 +13,7 @@ import {
   formatErrorDetails,
   ValidationError,
 } from '@/utils/errorFormatting'
+import type { ErrorObject } from 'ajv'
 import {
   FILE_EXTENSIONS,
   SUPPORTED_DATA_EXTENSIONS,
@@ -23,6 +24,7 @@ import {
 export interface ProcessingResult {
   instance: Instance | null
   errors: string | null
+  rawErrors: ErrorObject[] | null
   success: boolean
 }
 
@@ -55,6 +57,7 @@ export function useInstanceProcessing() {
     if (files.length === 0) {
       return createErrorResult(
         t('projectExecution.steps.step3.loadInstance.noFilesSelectedError'),
+        null,
       )
     }
 
@@ -71,7 +74,7 @@ export function useInstanceProcessing() {
       }
     } catch (error) {
       console.error('Error in processFiles:', error)
-      return createErrorResult(error.message || String(error))
+      return createErrorResult(error.message || String(error), null)
     } finally {
       state.value.isProcessing = false
     }
@@ -113,6 +116,7 @@ export function useInstanceProcessing() {
           t('projectExecution.steps.step3.loadInstance.unexpectedError'),
           t,
         ),
+        null,
       )
     }
   }
@@ -138,6 +142,7 @@ export function useInstanceProcessing() {
       if (state.value.processedInstances.length === 0) {
         return createErrorResult(
           t('projectExecution.steps.step3.loadInstance.noValidInstancesError'),
+          null,
         )
       }
 
@@ -148,6 +153,7 @@ export function useInstanceProcessing() {
       if (!mergedInstance) {
         return createErrorResult(
           t('projectExecution.steps.step3.loadInstance.mergingError'),
+          null,
         )
       }
 
@@ -163,7 +169,7 @@ export function useInstanceProcessing() {
       return createSuccessResult(mergedInstance)
     } catch (error) {
       console.error('Frontend processing error:', error)
-      return createErrorResult(error.message || String(error))
+      return createErrorResult(error.message || String(error), null)
     }
   }
 
@@ -201,14 +207,16 @@ export function useInstanceProcessing() {
       return createSuccessResult(instance)
     } catch (error) {
       console.error(`Error processing file ${file.name}:`, error)
-      return createErrorResult(
-        formatErrorDetails(
-          file.name,
-          [{ instancePath: '', message: error.message }],
-          error.message,
-          t,
-        ),
+      // Format error message - if it's already HTML formatted, use it directly
+      // Otherwise, format it as a file processing error
+      const errorMessage = error.message || String(error)
+      const formattedError = formatErrorDetails(
+        file.name,
+        [{ instancePath: '', message: errorMessage }],
+        errorMessage,
+        t,
       )
+      return createErrorResult(formattedError, null)
     }
   }
 
@@ -373,7 +381,10 @@ export function useInstanceProcessing() {
     try {
       const errors = await instance.checkSchema()
       if (errors && errors.length > 0) {
-        return createErrorResult(formatValidationErrorsWithTitle(title, errors, t))
+        return createErrorResult(
+          formatValidationErrorsWithTitle(title, errors, t),
+          errors,
+        )
       }
       return createSuccessResult(instance)
     } catch (error) {
@@ -384,6 +395,7 @@ export function useInstanceProcessing() {
           error.message,
           t,
         ),
+        null,
       )
     }
   }
@@ -394,17 +406,22 @@ export function useInstanceProcessing() {
   const createSuccessResult = (instance: Instance): ProcessingResult => ({
     instance,
     errors: null,
+    rawErrors: null,
     success: true,
   })
 
   /**
    * Helper to create error result
    */
-  const createErrorResult = (errors: string): ProcessingResult => {
+  const createErrorResult = (
+    errors: string,
+    rawErrors: ErrorObject[] | null = null,
+  ): ProcessingResult => {
     state.value.errors = errors
     return {
       instance: null,
       errors,
+      rawErrors,
       success: false,
     }
   }

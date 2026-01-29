@@ -216,7 +216,6 @@ async function addMarkersToMap() {
       }
     }, 100)
 
-    console.log(`Successfully added ${coordinateData.length} markers`)
     loading.value = false
   } catch (err) {
     console.error('Error adding markers:', err)

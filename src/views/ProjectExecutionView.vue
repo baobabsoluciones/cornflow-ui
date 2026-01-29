@@ -30,6 +30,7 @@
         <!-- Template for step 2 -->
         <template v-else-if="step.key === 'loadInstance'">
           <CreateExecutionLoadInstance
+            :key="componentKey"
             :selectedFiles="selectedFiles"
             :newExecution="newExecution"
             :existingInstanceErrors="existingInstanceErrors"
@@ -86,6 +87,34 @@
       </template>
     </MFormSteps>
   </div>
+
+  <!-- Exit confirmation modal -->
+  <MBaseModal
+    v-model="showExitConfirmationModal"
+    :closeOnOutsideClick="false"
+    :title="$t('projectExecution.exitConfirmation.title')"
+    :buttons="[
+      {
+        text: $t('projectExecution.exitConfirmation.confirmButton'),
+        action: 'confirm',
+        class: 'primary-btn',
+      },
+      {
+        text: $t('projectExecution.exitConfirmation.cancelButton'),
+        action: 'cancel',
+        class: 'secondary-btn',
+      },
+    ]"
+    @confirm="handleConfirmExit"
+    @cancel="handleCancelExit"
+    @close="handleCancelExit"
+  >
+    <template #content>
+      <v-row class="d-flex justify-center pr-2 pl-2 pb-5 pt-3">
+        <span style="white-space: pre-line">{{ $t('projectExecution.exitConfirmation.message') }}</span>
+      </v-row>
+    </template>
+  </MBaseModal>
 </template>
 
 <script>
@@ -97,7 +126,7 @@ import CreateExecutionSolve from '@/components/project-execution/CreateExecution
 import CreateExecutionConfigParams from '@/components/project-execution/CreateExecutionConfigParams.vue'
 import { useGeneralStore } from '@/stores/general'
 import { inject } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 export default {
   components: {
@@ -123,6 +152,10 @@ export default {
       existingInstanceErrors: null,
       checksLaunching: false,
       isEditMode: false,
+      showExitConfirmationModal: false,
+      pendingNavigation: null,
+      pendingNavigationTo: null,
+      componentKey: 0,
     }
   },
   created() {
@@ -135,6 +168,25 @@ export default {
     this.initializeDefaultSolver()
     this.initializeConfigFieldValues()
     this.initializeStep()
+  },
+  beforeRouteLeave(to, from, next) {
+    // Check if there's any progress to lose
+    const hasProgress = this.hasProgressToLose()
+    
+    if (!hasProgress) {
+      // No progress to lose, allow navigation
+      next()
+      return
+    }
+    
+    // Store the pending navigation and destination
+    this.pendingNavigation = next
+    this.pendingNavigationTo = to
+    
+    // Show confirmation modal
+    this.showExitConfirmationModal = true
+    
+    // Don't call next() here - wait for user confirmation
   },
   methods: {
     // Initialize from selected execution when in edit mode
@@ -426,6 +478,61 @@ export default {
       Object.assign(this.$data, this.$options.data())
       // Reinitialize the store since we reset the data
       this.generalStore = useGeneralStore()
+    },
+    
+    // Check if there's any progress that would be lost
+    hasProgressToLose() {
+      return (
+        this.newExecution.name ||
+        this.newExecution.description ||
+        this.newExecution.instance ||
+        (this.newExecution.config && Object.keys(this.newExecution.config).length > 0) ||
+        this.selectedFiles.length > 0 ||
+        this.currentStep > 0
+      )
+    },
+    
+    // Handle confirmation to exit
+    handleConfirmExit() {
+      // Close modal first
+      this.showExitConfirmationModal = false
+      
+      // Store navigation info before reset
+      const navigationTo = this.pendingNavigationTo
+      const navigationNext = this.pendingNavigation
+      
+      // Clear pending navigation
+      this.pendingNavigation = null
+      this.pendingNavigationTo = null
+      
+      // Reset all data
+      this.resetAndLoadNewExecution()
+      
+      // Force remount of child components by incrementing key
+      this.componentKey++
+      
+      // Reinitialize default values after reset
+      this.initializeDefaultSolver()
+      
+      // Use $nextTick to ensure reset is complete, then navigate
+      this.$nextTick(() => {
+        if (navigationNext && navigationTo) {
+          // Navigate to the intended destination
+          navigationNext()
+        }
+      })
+    },
+    
+    // Handle cancellation of exit
+    handleCancelExit() {
+      // Close modal
+      this.showExitConfirmationModal = false
+      
+      // Cancel navigation
+      if (this.pendingNavigation) {
+        this.pendingNavigation(false)
+        this.pendingNavigation = null
+      }
     },
   },
   watch: {

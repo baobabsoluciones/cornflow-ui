@@ -66,6 +66,13 @@ export default {
             'Format de fichier non valide. Veuillez réessayer.',
           unexpectedError:
             "Une erreur inattendue s'est produite. Veuillez réessayer.",
+          downloadAllErrors: 'Télécharger toutes les erreurs',
+          showingErrorsTruncated:
+            'Affichage des {displayed} premières erreurs sur {total}. Téléchargez la liste complète des erreurs pour voir toutes les erreurs.',
+          totalErrors: 'Il y a {total} erreurs',
+          andMoreErrors: 'et {count} de plus',
+          errorsDownloadStarted: 'Téléchargement du fichier d\'erreurs démarré',
+          errorsDownloadError: 'Erreur lors du téléchargement du fichier d\'erreurs',
         },
       },
       step3: {
