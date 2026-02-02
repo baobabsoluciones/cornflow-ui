@@ -555,10 +555,21 @@ export function useTableData(
     searchValue.value = value
   }
 
+  // Filtered items for execution data (applying filters and search to execution data)
+  const filteredExecutionItems = computed(() => {
+    if (!shouldUseExecutionData.value) return []
+
+    return applyFiltersAndSearchUtil(
+      executionTableData.items.value,
+      searchValue.value,
+      activeFilters.value as FilterCondition[],
+    )
+  })
+
   // Dynamic computed properties that switch between execution and master data
   const dynamicItems = computed(() => {
     if (shouldUseExecutionData.value) {
-      return executionTableData.items.value
+      return filteredExecutionItems.value
     } else {
       return filteredItems.value
     }
