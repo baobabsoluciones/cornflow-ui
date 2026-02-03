@@ -6,10 +6,11 @@
       :description="description"
     />
     <MFormSteps
+      :key="'form-steps-' + currentStep + '-' + formStepsKey"
       :steps="steps"
       :disablePreviousButton="disablePrevButton"
       :disableNextButton="disableNextButton"
-      :currentStep.sync="currentStep"
+      :currentStep="currentStep"
       :steps-column-width="'20vw'"
       :continueButtonText="$t('projectExecution.continueButton')"
       :previousButtonText="$t('projectExecution.previousButton')"
@@ -45,11 +46,13 @@
         <!-- Template for step 3 -->
         <template v-else-if="step.key === 'reviewInstance'">
           <CreateExecutionReviewInstance
+            ref="reviewInstanceRef"
             :newExecution="newExecution"
             :instanceErrors="existingInstanceErrors"
             :isEditMode="isEditMode"
             @update:instance="handleInstanceSelected"
             @update:instanceErrors="existingInstanceErrors = $event"
+            @has-pending-changes="hasPendingTableChanges = $event"
           />
         </template>
 
@@ -115,6 +118,14 @@
       </v-row>
     </template>
   </MBaseModal>
+
+  <!-- Unsaved changes warning modal (for step changes) -->
+  <UnsavedChangesWarningModal
+    v-model="showUnsavedChangesModal"
+    :changes-count="tableChanges.totalChangesCount.value"
+    @stay="handleStayOnStep"
+    @leave="handleLeaveStep"
+  />
 </template>
 
 <script>
@@ -124,9 +135,11 @@ import CreateExecutionReviewInstance from '@/components/project-execution/Create
 import CreateExecutionCheckData from '@/components/project-execution/CreateExecutionCheckData.vue'
 import CreateExecutionSolve from '@/components/project-execution/CreateExecutionSolve.vue'
 import CreateExecutionConfigParams from '@/components/project-execution/CreateExecutionConfigParams.vue'
+import UnsavedChangesWarningModal from '@/components/core/UnsavedChangesWarningModal.vue'
 import { useGeneralStore } from '@/stores/general'
-import { inject } from 'vue'
+import { inject, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useTableChanges } from '@/composables/useTableChanges'
 
 export default {
   components: {
@@ -136,6 +149,7 @@ export default {
     CreateExecutionReviewInstance,
     CreateExecutionCheckData,
     CreateExecutionConfigParams,
+    UnsavedChangesWarningModal,
   },
   data() {
     return {
@@ -156,6 +170,12 @@ export default {
       pendingNavigation: null,
       pendingNavigationTo: null,
       componentKey: 0,
+      // Pending changes state
+      hasPendingTableChanges: false,
+      showUnsavedChangesModal: false,
+      pendingStepChange: null,
+      formStepsKey: 0,
+      tableChanges: useTableChanges(),
     }
   },
   created() {
@@ -170,8 +190,8 @@ export default {
     this.initializeStep()
   },
   beforeRouteLeave(to, from, next) {
-    // Check if there's any progress to lose
-    const hasProgress = this.hasProgressToLose()
+    // Check if there's any progress to lose (including pending table changes)
+    const hasProgress = this.hasProgressToLose() || this.hasPendingTableChanges
     
     if (!hasProgress) {
       // No progress to lose, allow navigation
@@ -236,6 +256,23 @@ export default {
     },
 
     async handleStepChange(newStep) {
+      // Check if we're leaving the reviewInstance step with pending changes
+      // Use tableChanges.hasChanges (singleton) so we don't depend on child event timing
+      const currentStepKey = this.steps[this.currentStep]?.key
+      const hasPending = this.tableChanges.hasChanges.value || this.hasPendingTableChanges
+      if (currentStepKey === 'reviewInstance' && hasPending) {
+        // Store the pending step change and show warning modal; do NOT update currentStep
+        this.pendingStepChange = newStep
+        this.showUnsavedChangesModal = true
+        this.formStepsKey += 1 // Force MFormSteps to re-render with current step (stay on reviewInstance)
+        return // Don't proceed with step change yet - step stays at currentStep
+      }
+
+      // Proceed with step change
+      await this.proceedWithStepChange(newStep)
+    },
+
+    async proceedWithStepChange(newStep) {
       // If we're skipping the solver step, ensure the solver is set
       if (
         !this.generalStore.appConfig.parameters.solverConfig?.showSolverStep
@@ -257,6 +294,26 @@ export default {
         await this.loadConfigFieldValues()
       }
       this.currentStep = newStep
+    },
+
+    // Handle staying on the current step (user chose to stay)
+    handleStayOnStep() {
+      this.pendingStepChange = null
+      this.showUnsavedChangesModal = false
+    },
+
+    // Handle leaving the step (user chose to discard changes)
+    handleLeaveStep() {
+      // Clear pending changes
+      this.tableChanges.clearAllChanges()
+      this.hasPendingTableChanges = false
+
+      // Proceed with the pending step change
+      if (this.pendingStepChange !== null) {
+        this.proceedWithStepChange(this.pendingStepChange)
+        this.pendingStepChange = null
+      }
+      this.showUnsavedChangesModal = false
     },
     async validateInstanceSchema() {
       if (!this.newExecution.instance) {
@@ -505,6 +562,10 @@ export default {
       this.pendingNavigation = null
       this.pendingNavigationTo = null
       
+      // Clear pending table changes
+      this.tableChanges.clearAllChanges()
+      this.hasPendingTableChanges = false
+
       // Reset all data
       this.resetAndLoadNewExecution()
       

@@ -56,6 +56,26 @@
       </v-alert>
     </div>
 
+    <!-- Pending Changes Review Button (Excel mode) - At top for visibility -->
+    <div
+      v-if="enableExcelMode && hasPendingChanges"
+      class="pending-changes-bar"
+    >
+      <v-chip color="success" variant="tonal" size="small" class="mr-2">
+        <v-icon start size="small">mdi-pencil</v-icon>
+        {{ $t('pendingChanges.changesIndicator', { count: pendingChangesCount }) }}
+      </v-chip>
+      <v-btn
+        color="success"
+        variant="flat"
+        size="small"
+        @click="openPendingChangesModal"
+      >
+        <v-icon start size="small">mdi-eye</v-icon>
+        {{ $t('pendingChanges.reviewChanges') }}
+      </v-btn>
+    </div>
+
     <!-- Instance data tables display -->
     <div v-if="instanceTables.length > 0" class="data-tables-container">
       <!-- Multiple tables with tabs -->
@@ -198,6 +218,7 @@
               :items="currentTable.items"
               :headers="currentTable.headers"
               :table-title="currentTable.title"
+              :table-key="currentTable.key"
               :loading="false"
               :elevation="0"
               :enable-search="true"
@@ -207,6 +228,9 @@
               :enable-bulk-actions="
                 !readOnly && !currentTable.isValidationTable
               "
+              :enable-excel-mode="enableExcelMode && !readOnly && !currentTable.isValidationTable"
+              :is-cell-modified="isCellModified"
+              :get-modified-value="getModifiedValue"
               :can-add="!readOnly && !currentTable.isValidationTable"
               :can-edit="!readOnly && !currentTable.isValidationTable"
               :can-delete="!readOnly && !currentTable.isValidationTable"
@@ -223,6 +247,7 @@
               :form-data="formData"
               :is-editing="isEditing"
               :editing-row-id="editingRowId"
+              :editing-table-key="editingTableKey"
               :editing-data="editingData"
               :original-data="originalData"
               :is-editing-any-row="isEditingAnyRow"
@@ -260,6 +285,7 @@
               @save-inline-edit="saveInlineEdit"
               @cancel-inline-edit="cancelInlineEdit"
               @update-inline-field="updateInlineField"
+              @cell-change="handleCellChange"
             />
           </v-card-text>
         </v-card>
@@ -275,6 +301,24 @@
         {{ t('inputOutputData.noDataAvailable') }}
       </v-alert>
     </div>
+
+    <!-- Pending Changes Review Modal -->
+    <PendingChangesReviewModal
+      v-model="showPendingChangesModal"
+      :saving="savingChanges"
+      :validation-error="saveValidationError"
+      :row-identifiers="getRowIdentifiers"
+      :rows-data="getRowsData"
+      :table-headers="getTableHeaders"
+      @save="handleSaveAllChanges"
+      @close="handleClosePendingChangesModal"
+      @update-change="handleModalUpdateChange"
+      @revert-change="handleRevertChange"
+      @revert-row="handleRevertRow"
+      @revert-table="handleRevertTable"
+      @revert-all="handleRevertAll"
+      @clear-validation-error="saveValidationError = null"
+    />
 
     <!-- Use Master Confirmation Dialog -->
     <CoreConfirmDialog
@@ -310,6 +354,7 @@ import CoreTable from '@/components/core/table/CoreTable.vue'
 import CoreTab from '@/components/core/CoreTab.vue'
 import CoreTabs from '@/components/core/CoreTabs.vue'
 import CoreConfirmDialog from '@/components/core/table/CoreConfirmDialog.vue'
+import PendingChangesReviewModal from '@/components/core/PendingChangesReviewModal.vue'
 import {
   getOperatorsForFieldType,
   getOperatorText as getOperatorTextUtil,
@@ -322,6 +367,8 @@ import {
   type FilterCondition,
 } from '@/utils/tableFilterUtils'
 import { transformJsonSchemaToAutomationFormat } from '@/utils/schemaUtils'
+import { useTableChanges } from '@/composables/useTableChanges'
+import { formatValidationErrorsWithTitle } from '@/utils/errorFormatting'
 
 // Props
 interface Props {
@@ -331,6 +378,7 @@ interface Props {
   checksError?: boolean
   readOnly?: boolean
   masterTableMatches?: any[]
+  enableExcelMode?: boolean // Enable Excel-like editing mode
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -339,6 +387,7 @@ const props = withDefaults(defineProps<Props>(), {
   checksError: false,
   readOnly: false,
   masterTableMatches: () => [],
+  enableExcelMode: true, // Enable by default
 })
 
 // Emits
@@ -347,11 +396,13 @@ const emit = defineEmits<{
   'check-data': []
   'master-table-action': [tableKey: string, action: 'keep_uploaded' | 'use_master' | 'replace_master']
   'show-comparison': [tableKey: string]
+  'pending-changes-update': [hasChanges: boolean, changesCount: number]
 }>()
 
 // Composables
 const { t } = useI18n()
 const generalStore = useGeneralStore()
+const tableChanges = useTableChanges()
 
 // State
 const checksLaunched = ref(false)
@@ -372,6 +423,7 @@ const selectedItems = ref<any[]>([])
 
 // State for inline editing
 const editingRowId = ref<string | number | null>(null)
+const editingTableKey = ref<string | null>(null)
 const editingData = ref<any>({})
 const originalData = ref<any>({})
 
@@ -379,6 +431,15 @@ const originalData = ref<any>({})
 const showUseMasterConfirmDialog = ref(false)
 const showReplaceMasterConfirmDialog = ref(false)
 const isEditingAnyRow = computed(() => editingRowId.value !== null)
+
+// State for pending changes review modal
+const showPendingChangesModal = ref(false)
+const savingChanges = ref(false)
+const saveValidationError = ref<string | null>(null)
+
+// Computed for pending changes
+const hasPendingChanges = computed(() => tableChanges.hasChanges.value)
+const pendingChangesCount = computed(() => tableChanges.totalChangesCount.value)
 
 // Use the utility function for generating headers
 const generateHeaders = generateHeadersFromData
@@ -444,11 +505,22 @@ const instanceTables = computed(() => {
     return tables
   }
 
-  // Normal mode: show instance data tables
+  // Normal mode: show instance data tables in schema order
   const instanceData = execution.instance.data
   const schema = instanceSchema.value
+  const rawSchema = execution.instance.schema
+  const schemaOrder =
+    rawSchema?.properties && typeof rawSchema.properties === 'object'
+      ? Object.keys(rawSchema.properties)
+      : []
 
-  Object.keys(instanceData).forEach((tableKey) => {
+  const dataKeys = Object.keys(instanceData)
+  const orderedKeys = [
+    ...schemaOrder.filter((k) => dataKeys.includes(k)),
+    ...dataKeys.filter((k) => !schemaOrder.includes(k)),
+  ]
+
+  orderedKeys.forEach((tableKey) => {
     const tableData = instanceData[tableKey]
     if (Array.isArray(tableData)) {
       const tableObject = createTableObject(tableKey, tableData, schema)
@@ -962,9 +1034,30 @@ const handleConfirmBulkDelete = () => {
 
 // Inline editing handlers
 const startInlineEdit = (item: any, field?: string) => {
+  const tableKey = currentTable.value?.key ?? null
+  // If we're already editing the same row of the same table, don't reset the editing data
+  // This preserves any pending changes (like Fijar toggle)
+  if (editingRowId.value === item.id && editingTableKey.value === tableKey) {
+    return
+  }
+
   editingRowId.value = item.id
+  editingTableKey.value = tableKey
+  // Start from item and overlay any pending changes (e.g. Fijar) so edit form shows current state
   editingData.value = { ...item }
   originalData.value = { ...item }
+
+  if (props.enableExcelMode) {
+    const table = currentTable.value
+    if (table?.key) {
+      const rowChanges = tableChanges.getChangesForTable(table.key)?.[String(item.id)]
+      if (rowChanges) {
+        Object.entries(rowChanges).forEach(([fieldKey, change]) => {
+          editingData.value[fieldKey] = change.newValue
+        })
+      }
+    }
+  }
 }
 
 // Convert value to integer type
@@ -1040,6 +1133,7 @@ const saveInlineEdit = () => {
   }
 
   editingRowId.value = null
+  editingTableKey.value = null
   editingData.value = {}
   originalData.value = {}
 
@@ -1049,6 +1143,7 @@ const saveInlineEdit = () => {
 
 const cancelInlineEdit = () => {
   editingRowId.value = null
+  editingTableKey.value = null
   editingData.value = {}
   originalData.value = {}
 }
@@ -1057,11 +1152,280 @@ const updateInlineField = (field: string, value: any) => {
   editingData.value[field] = value
 }
 
+// Excel mode handlers
+const handleCellChange = (
+  tableKey: string,
+  rowId: string | number,
+  fieldKey: string,
+  oldValue: any,
+  newValue: any
+) => {
+  if (!props.enableExcelMode) return
+
+  // Get field title from headers
+  const table = instanceTables.value.find((t) => t.key === tableKey)
+  const header = table?.headers.find((h: any) => h.key === fieldKey)
+  const fieldTitle = header?.title || fieldKey
+
+  // Record the change
+  tableChanges.recordChange(
+    tableKey,
+    rowId,
+    fieldKey,
+    oldValue,
+    newValue,
+    fieldTitle,
+    table?.title
+  )
+
+  // Emit event to parent
+  emit('pending-changes-update', tableChanges.hasChanges.value, tableChanges.totalChangesCount.value)
+}
+
+// Check if a cell is modified
+const isCellModified = (rowId: string | number, fieldKey: string): boolean => {
+  if (!props.enableExcelMode) return false
+  const table = currentTable.value
+  if (!table.key) return false
+  return tableChanges.isCellModified(table.key, rowId, fieldKey)
+}
+
+// Get the modified value for a cell
+const getModifiedValue = (rowId: string | number, fieldKey: string): any => {
+  if (!props.enableExcelMode) return undefined
+  const table = currentTable.value
+  if (!table.key) return undefined
+  
+  const changes = tableChanges.getChangesForTable(table.key)
+  if (!changes) return undefined
+  
+  const rowChanges = changes[String(rowId)]
+  if (!rowChanges) return undefined
+  
+  const fieldChange = rowChanges[fieldKey]
+  if (!fieldChange) return undefined
+  
+  return fieldChange.newValue
+}
+
+// Open pending changes review modal
+const openPendingChangesModal = () => {
+  showPendingChangesModal.value = true
+}
+
+// Close pending changes modal and clear validation error
+const handleClosePendingChangesModal = () => {
+  saveValidationError.value = null
+  showPendingChangesModal.value = false
+}
+
+// Handle save all changes from modal
+const handleSaveAllChanges = async () => {
+  if (!props.execution?.instance?.data) return
+
+  saveValidationError.value = null
+  savingChanges.value = true
+
+  try {
+    const instance = props.execution.instance
+    const updatedData = tableChanges.applyChangesToData(instance.data)
+
+    // Clone current data so we can restore if validation fails
+    const previousData = JSON.parse(JSON.stringify(instance.data))
+
+    // Apply changes to instance data
+    Object.keys(updatedData).forEach((tableKey) => {
+      if (instance.data[tableKey]) {
+        instance.data[tableKey] = updatedData[tableKey]
+      }
+    })
+
+    // Re-validate JSON against instance schema (same as load step)
+    const validationErrors = await instance.checkSchema()
+
+    if (validationErrors && validationErrors.length > 0) {
+      // Restore previous data
+      Object.keys(previousData).forEach((tableKey) => {
+        instance.data[tableKey] = previousData[tableKey]
+      })
+      saveValidationError.value = formatValidationErrorsWithTitle(
+        t('projectExecution.steps.step3.loadInstance.instanceSchemaError'),
+        validationErrors,
+        t,
+      )
+      return
+    }
+
+    emit('save-changes', instance.data)
+    tableChanges.clearAllChanges()
+    showPendingChangesModal.value = false
+  } finally {
+    savingChanges.value = false
+  }
+}
+
+// Get original row value (from instance data, before pending changes) for modal edit
+const getOriginalRowValue = (tableKey: string, rowId: string, fieldKey: string): any => {
+  const tableData = props.execution?.instance?.data?.[tableKey]
+  if (!tableData) return undefined
+  const row = tableData.find((item: any) => String(item.id) === String(rowId))
+  return row?.[fieldKey]
+}
+
+// Handle edit from modal (update or add a change)
+const handleModalUpdateChange = (tableKey: string, rowId: string, fieldKey: string, newValue: any) => {
+  const existing = tableChanges.getChangesForTable(tableKey)?.[String(rowId)]?.[fieldKey]
+  const oldValue = existing ? existing.oldValue : getOriginalRowValue(tableKey, rowId, fieldKey)
+  const table = instanceTables.value.find((t) => t.key === tableKey)
+  const header = table?.headers?.find((h: any) => h.key === fieldKey)
+  const fieldTitle = header?.title || fieldKey
+  tableChanges.recordChange(tableKey, rowId, fieldKey, oldValue, newValue, fieldTitle, table?.title)
+  emit('pending-changes-update', tableChanges.hasChanges.value, tableChanges.totalChangesCount.value)
+}
+
+// Handle revert change from modal
+const handleRevertChange = (tableKey: string, rowId: string, fieldKey: string) => {
+  const change = tableChanges.revertChange(tableKey, rowId, fieldKey)
+  if (change && props.execution?.instance?.data?.[tableKey]) {
+    // Revert the value in the actual data
+    const tableData = props.execution.instance.data[tableKey]
+    const rowIndex = tableData.findIndex((item: any) => String(item.id) === rowId)
+    if (rowIndex !== -1) {
+      tableData[rowIndex][fieldKey] = change.oldValue
+    }
+  }
+  emit('pending-changes-update', tableChanges.hasChanges.value, tableChanges.totalChangesCount.value)
+}
+
+// Handle revert row from modal
+const handleRevertRow = (tableKey: string, rowId: string) => {
+  const changes = tableChanges.revertRowChanges(tableKey, rowId)
+  if (changes && props.execution?.instance?.data?.[tableKey]) {
+    // Revert all values in the actual data
+    const tableData = props.execution.instance.data[tableKey]
+    const rowIndex = tableData.findIndex((item: any) => String(item.id) === rowId)
+    if (rowIndex !== -1) {
+      Object.entries(changes).forEach(([fieldKey, change]) => {
+        tableData[rowIndex][fieldKey] = change.oldValue
+      })
+    }
+  }
+  emit('pending-changes-update', tableChanges.hasChanges.value, tableChanges.totalChangesCount.value)
+}
+
+// Handle revert table from modal
+const handleRevertTable = (tableKey: string) => {
+  const changes = tableChanges.revertTableChanges(tableKey)
+  if (changes && props.execution?.instance?.data?.[tableKey]) {
+    // Revert all values in the actual data
+    const tableData = props.execution.instance.data[tableKey]
+    Object.entries(changes).forEach(([rowId, rowChanges]) => {
+      const rowIndex = tableData.findIndex((item: any) => String(item.id) === rowId)
+      if (rowIndex !== -1) {
+        Object.entries(rowChanges).forEach(([fieldKey, change]) => {
+          tableData[rowIndex][fieldKey] = change.oldValue
+        })
+      }
+    })
+  }
+  emit('pending-changes-update', tableChanges.hasChanges.value, tableChanges.totalChangesCount.value)
+}
+
+// Handle revert all from modal
+const handleRevertAll = () => {
+  // Get all changes before clearing
+  const allChanges = tableChanges.getAllChanges()
+
+  // Revert all values in the actual data
+  if (props.execution?.instance?.data) {
+    Object.entries(allChanges).forEach(([tableKey, tableChangesData]) => {
+      const tableData = props.execution.instance.data[tableKey]
+      if (tableData) {
+        Object.entries(tableChangesData).forEach(([rowId, rowChanges]) => {
+          const rowIndex = tableData.findIndex((item: any) => String(item.id) === rowId)
+          if (rowIndex !== -1) {
+            Object.entries(rowChanges).forEach(([fieldKey, change]) => {
+              tableData[rowIndex][fieldKey] = change.oldValue
+            })
+          }
+        })
+      }
+    })
+  }
+
+  tableChanges.clearAllChanges()
+  emit('pending-changes-update', false, 0)
+}
+
+// Get row identifiers for the modal
+const getRowIdentifiers = computed(() => {
+  const identifiers: Record<string, Record<string, string>> = {}
+
+  instanceTables.value.forEach((table) => {
+    identifiers[table.key] = {}
+    table.items.forEach((item: any) => {
+      // Try to find a meaningful identifier
+      const idFields = ['name', 'nombre', 'code', 'codigo', 'title', 'titulo']
+      let identifier = String(item.id)
+
+      for (const field of idFields) {
+        if (item[field]) {
+          identifier = String(item[field])
+          break
+        }
+      }
+
+      identifiers[table.key][String(item.id)] = identifier
+    })
+  })
+
+  return identifiers
+})
+
+// Get all rows data for the modal to show context
+const getRowsData = computed(() => {
+  const rowsData: Record<string, Record<string, any>> = {}
+
+  instanceTables.value.forEach((table) => {
+    rowsData[table.key] = {}
+    table.items.forEach((item: any) => {
+      rowsData[table.key][String(item.id)] = { ...item }
+    })
+  })
+
+  return rowsData
+})
+
+// Get table headers for the modal (with type for editable inputs)
+const getTableHeaders = computed(() => {
+  const headers: Record<string, Array<{ key: string; title: string; type?: string }>> = {}
+
+  instanceTables.value.forEach((table) => {
+    headers[table.key] = table.headers
+      .filter((h: any) => h.key !== 'selection')
+      .map((h: any) => ({
+        key: h.key,
+        title: h.title,
+        type: h.type === 'integer' ? 'number' : h.type,
+      }))
+  })
+
+  return headers
+})
+
 // Methods
 const handleCheckData = () => {
   checksLaunched.value = true
   emit('check-data')
 }
+
+// Expose methods for parent component
+defineExpose({
+  hasPendingChanges,
+  pendingChangesCount,
+  openPendingChangesModal,
+  clearAllChanges: tableChanges.clearAllChanges,
+})
 </script>
 
 <style scoped>
@@ -1202,5 +1566,19 @@ const handleCheckData = () => {
     justify-content: flex-end;
     margin-top: 8px;
   }
+}
+
+/* Pending changes bar */
+.pending-changes-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, rgba(76, 175, 80, 0.12) 0%, rgba(76, 175, 80, 0.05) 100%);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  gap: 8px;
+  flex-shrink: 0;
 }
 </style>

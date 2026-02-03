@@ -41,8 +41,8 @@
 }
 
 .inline-edit-cell.editing {
-  background-color: rgba(var(--v-theme-primary), 0.05);
-  border-radius: 4px;
+  background-color: transparent;
+  border-radius: 0;
 }
 
 /* Ensure the last column (with actions) has relative positioning */
@@ -67,25 +67,22 @@
 }
 
 .inline-edit-display--disabled {
-  cursor: default !important;
-  opacity: 0.7;
+  cursor: not-allowed !important;
+  opacity: 0.6;
+  color: rgba(var(--v-theme-on-surface), 0.5);
 }
 
 .inline-edit-display--disabled:hover {
-  background-color: transparent !important;
+  background-color: rgba(0, 0, 0, 0.02) !important;
 }
 
 .inline-edit-readonly {
   padding: 8px 4px;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-  font-style: italic;
-  border-radius: 4px;
-  border: 1px dashed rgba(var(--v-theme-outline), 0.3);
+  color: rgba(var(--v-theme-on-surface), 0.5);
   width: 100%;
   min-height: 32px;
   display: flex;
   align-items: center;
-  justify-content: center;
 }
 
 .inline-edit-input {
@@ -96,21 +93,60 @@
 }
 
 .inline-edit-input .v-field {
-  font-size: 14px;
+  font-size: 13px;
+  background: transparent !important;
 }
 
 .inline-edit-input .v-field__input {
-  min-height: 32px;
-  padding: 4px 8px;
+  min-height: 28px;
+  padding: 2px 6px;
 }
 
-/* Remove any extra borders from Vuetify inputs */
+/* Clean single border for inputs - no double rectangle */
 .inline-edit-input .v-field__outline {
-  --v-field-border-opacity: 0.6;
+  --v-field-border-opacity: 1;
 }
 
-.inline-edit-input .v-field--focused .v-field__outline {
-  --v-field-border-opacity: 1;
+/* Use a simple border on the whole field instead of the segmented outline */
+.inline-edit-input .v-field__outline__start,
+.inline-edit-input .v-field__outline__end,
+.inline-edit-input .v-field__outline__notch {
+  border: none !important;
+}
+
+.inline-edit-input .v-field {
+  border: 1px solid var(--primary) !important;
+  border-radius: 4px !important;
+}
+
+.inline-edit-input .v-field--focused {
+  border-width: 2px !important;
+  border-color: var(--primary) !important;
+}
+
+/* Make select fields match */
+.inline-edit-input.v-select .v-field {
+  background: transparent !important;
+}
+
+.inline-edit-input.v-select .v-field__overlay {
+  background: transparent !important;
+}
+
+/* Switch styling for Fijar column */
+.inline-edit-switch {
+  flex: 0 0 auto;
+  width: auto;
+  max-width: none;
+  min-width: 0;
+}
+
+.inline-edit-switch :deep(.v-switch__track) {
+  opacity: 1;
+}
+
+.inline-edit-switch :deep(.v-switch__thumb) {
+  color: white;
 }
 
 .inline-edit-actions {
@@ -232,4 +268,72 @@
     width: 26px;
     height: 26px;
   }
+}
+
+/* ==========================================================================
+   Excel-like Editing Mode - Modified Cell Styles
+   ========================================================================== */
+
+/* Modified cell indicator - green background */
+.inline-edit-cell.cell-modified {
+  background-color: rgba(76, 175, 80, 0.15) !important;
+  border-radius: 4px;
+  position: relative;
+}
+
+.inline-edit-cell.cell-modified::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 6px;
+  height: 6px;
+  background-color: #4caf50;
+  border-radius: 50%;
+  opacity: 0.8;
+}
+
+/* Modified cell hover state */
+.inline-edit-cell.cell-modified:hover {
+  background-color: rgba(76, 175, 80, 0.22) !important;
+}
+
+/* Modified cell editing state */
+.inline-edit-cell.cell-modified.editing {
+  background-color: rgba(76, 175, 80, 0.12) !important;
+}
+
+/* Excel mode - editable cell indicator on hover */
+.excel-mode .inline-edit-display:not(.inline-edit-display--disabled):hover {
+  background-color: rgba(var(--v-theme-primary), 0.12);
+  cursor: cell;
+}
+
+/* Excel mode - focused cell */
+.excel-mode .inline-edit-cell.cell-focused {
+  z-index: 5;
+}
+
+/* Excel mode - hide row-level actions */
+.excel-mode .inline-edit-actions {
+  display: none;
+}
+
+/* Excel mode - cell editing indicator */
+.excel-mode .inline-edit-cell.editing {
+  background-color: transparent;
+}
+
+/* Excel mode - modified and editing */
+.excel-mode .inline-edit-cell.cell-modified.editing {
+  background-color: rgba(76, 175, 80, 0.08);
+}
+
+/* Row with any modified cells - subtle highlight */
+.v-data-table-virtual tbody tr:has(.cell-modified) {
+  background-color: rgba(76, 175, 80, 0.03);
+}
+
+.v-data-table-virtual tbody tr:has(.cell-modified):hover {
+  background-color: rgba(76, 175, 80, 0.06);
 }
