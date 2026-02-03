@@ -8,7 +8,7 @@
     <v-card class="unsaved-changes-modal">
       <v-card-title class="d-flex align-center">
         <v-icon class="mr-2" color="warning">mdi-alert-circle</v-icon>
-        {{ $t('pendingChanges.unsavedChangesWarning.title') }}
+        {{ t('pendingChanges.unsavedChangesWarning.title') }}
       </v-card-title>
 
       <v-card-text>
@@ -18,7 +18,7 @@
         <div v-if="changesCount > 0" class="changes-summary mt-3">
           <v-chip color="warning" variant="tonal" size="small">
             <v-icon start size="small">mdi-pencil</v-icon>
-            {{ changesCount }} {{ $t('pendingChanges.changes') }}
+            {{ changesCount }} {{ t('pendingChanges.changes') }}
           </v-chip>
         </div>
       </v-card-text>
@@ -37,7 +37,7 @@
           variant="outlined"
           @click="handleLeave"
         >
-          {{ $t('pendingChanges.unsavedChangesWarning.leave') }}
+          {{ t('pendingChanges.unsavedChangesWarning.leave') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -45,6 +45,10 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+
 interface Props {
   modelValue: boolean
   changesCount?: number

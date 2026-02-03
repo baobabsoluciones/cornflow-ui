@@ -11,7 +11,7 @@
       <v-card-title class="modal-header">
         <div class="d-flex align-center">
           <v-icon class="mr-2" color="success">mdi-pencil-box-multiple</v-icon>
-          {{ $t('pendingChanges.title') }}
+          {{ t('pendingChanges.title') }}
           <v-chip size="small" color="success" variant="tonal" class="ml-2">
             {{ totalChangesCount }} {{ $t('pendingChanges.changes') }}
           </v-chip>
@@ -23,7 +23,7 @@
             size="small"
             @click="toggleFullscreen"
             class="mr-1"
-            :title="isFullscreen ? $t('projectExecution.minimize') : $t('projectExecution.maximize')"
+            :title="isFullscreen ? t('projectExecution.minimize') : t('projectExecution.maximize')"
           />
           <v-btn variant="text" size="small" @click="handleClose">
             <v-icon>mdi-close</v-icon>
@@ -51,7 +51,7 @@
         <!-- No changes state -->
         <div v-if="changesGroupedByTable.length === 0" class="no-changes">
           <v-icon size="64" color="grey-lighten-1">mdi-check-all</v-icon>
-          <p class="text-grey mt-2">{{ $t('pendingChanges.noChanges') }}</p>
+          <p class="text-grey mt-2">{{ t('pendingChanges.noChanges') }}</p>
         </div>
 
         <!-- Changes grouped by table -->
@@ -68,7 +68,7 @@
                     <v-icon class="mr-2" size="small">mdi-table</v-icon>
                     <span class="table-name">{{ tableGroup.tableTitle }}</span>
                     <v-chip size="x-small" color="success" variant="tonal" class="ml-2">
-                      {{ tableGroup.changes.length }} {{ tableGroup.changes.length === 1 ? $t('pendingChanges.row') : $t('pendingChanges.modifiedRows').toLowerCase() }}
+                      {{ tableGroup.changes.length }} {{ tableGroup.changes.length === 1 ? t('pendingChanges.row') : t('pendingChanges.modifiedRows').toLowerCase() }}
                     </v-chip>
                   </div>
                 </div>
@@ -161,7 +161,7 @@
                               class="revert-btn"
                             >
                               <v-icon size="small" start>mdi-undo</v-icon>
-                              {{ $t('pendingChanges.revert') }}
+                              {{ t('pendingChanges.revert') }}
                             </v-btn>
                           </td>
                         </tr>
@@ -186,7 +186,7 @@
           size="small"
         >
           <v-icon start size="small">mdi-undo-variant</v-icon>
-          {{ $t('pendingChanges.revertAllChanges') }}
+          {{ t('pendingChanges.revertAllChanges') }}
         </v-btn>
         <v-spacer></v-spacer>
         <v-btn
@@ -194,7 +194,7 @@
           @click="handleClose"
           size="small"
         >
-          {{ $t('common.cancel') }}
+          {{ t('common.cancel') }}
         </v-btn>
         <v-btn
           color="success"
@@ -205,7 +205,7 @@
           size="small"
         >
           <v-icon start size="small">mdi-content-save-all</v-icon>
-          {{ $t('pendingChanges.saveAllChanges') }}
+          {{ t('pendingChanges.saveAllChanges') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -214,10 +214,10 @@
   <!-- Confirmation dialogs -->
   <CoreConfirmDialog
     v-model="showRevertAllConfirm"
-    :title="$t('pendingChanges.confirmRevertAll.title')"
-    :message="$t('pendingChanges.confirmRevertAll.message')"
-    :confirm-text="$t('pendingChanges.confirmRevertAll.confirm')"
-    :cancel-text="$t('table.cancel')"
+    :title="t('pendingChanges.confirmRevertAll.title')"
+    :message="t('pendingChanges.confirmRevertAll.message')"
+    :confirm-text="t('pendingChanges.confirmRevertAll.confirm')"
+    :cancel-text="t('table.cancel')"
     confirm-color="var(--danger)"
     @confirm="confirmRevertAll"
     @cancel="showRevertAllConfirm = false"
@@ -226,8 +226,11 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useTableChanges } from '@/composables/useTableChanges'
 import CoreConfirmDialog from '@/components/core/table/CoreConfirmDialog.vue'
+
+const { t } = useI18n()
 
 interface RowData {
   [key: string]: any

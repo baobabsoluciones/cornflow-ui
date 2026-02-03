@@ -75,9 +75,8 @@ function processTableRow(
   )
 }
 
-const loadExcel = async function (file, schema) {
-  const allSheets = await readXlsxFile(file, { getSheets: true })
-  const sheetNames = allSheets.map((sheet) => sheet.name)
+const loadExcel = async function (file: File | Blob | ArrayBuffer, schema: { properties: Record<string, any>; required?: string[] }) {
+  const sheetNames = await readSheetNames(file)
   const schemaTableNames = Object.keys(schema.properties)
   const required = schema.required || []
 
@@ -87,10 +86,11 @@ const loadExcel = async function (file, schema) {
     const isRequired = required.includes(tab)
     const useFirstColumnAsKeys = isInSchema && tabSchema?.type === 'object'
 
-    const getFieldFormat = (fieldKey: string): string | undefined => {
+    const getFieldFormat = (fieldKey: string): 'date' | 'date-time' | 'hour' | undefined => {
       if (!isInSchema || !tabSchema) return undefined
       if (tabSchema.type === 'array' && tabSchema.items?.properties?.[fieldKey]) {
-        return tabSchema.items.properties[fieldKey].format
+        const format = tabSchema.items.properties[fieldKey].format
+        return format === 'date' || format === 'date-time' || format === 'hour' ? format : undefined
       }
       return undefined
     }
@@ -246,9 +246,9 @@ async function schemaDataToTable(
   data: Record<string, any>,
   schema: Record<string, any> | null = null,
 ) {
-  const dataArray = Object.entries(data).map(([sheetName, sheetData]) => {
+  const dataArray: Array<[string, any[]]> = Object.entries(data).map(([sheetName, sheetData]) => {
     const normalizedData = Array.isArray(sheetData) ? sheetData : [sheetData]
-    return [sheetName, normalizedData]
+    return [sheetName, normalizedData] as [string, any[]]
   })
 
   for (const [sheetName, rawSheetData] of dataArray) {

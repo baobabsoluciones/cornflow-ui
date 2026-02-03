@@ -4,7 +4,7 @@
       <div class="banner-content">
         <v-icon class="banner-icon" size="20">mdi-star-outline</v-icon>
         <span class="banner-text">
-          {{ $t('latestPlan.banner.message') }}
+          {{ t('latestPlan.banner.message') }}
         </span>
         <v-btn
           variant="outlined"
@@ -12,7 +12,7 @@
           class="banner-action-btn"
           @click="navigateToHistory"
         >
-          {{ $t('latestPlan.banner.actionButton') }}
+          {{ t('latestPlan.banner.actionButton') }}
         </v-btn>
         <v-btn
           icon
@@ -31,8 +31,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useGeneralStore } from '@/stores/general'
 
+const { t } = useI18n()
 const router = useRouter()
 const generalStore = useGeneralStore()
 

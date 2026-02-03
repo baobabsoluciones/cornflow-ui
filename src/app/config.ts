@@ -14,7 +14,8 @@ const createAppConfig = () => ({
     parameters: {
       valuesJsonPath: '/values.json',
       useEtlBackend: true,
-
+      schema: '' as string,
+      showDashboardMainView: true,
       showTablesWithoutSchema: false,
       showOpenIdUsername: true,
       showExtraProjectExecutionColumns: {

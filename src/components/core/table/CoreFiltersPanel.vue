@@ -32,7 +32,7 @@
               rounded="lg"
               color="var(--sutitle)"
               v-bind="props"
-              :title="$t('table.filters.addCondition')"
+              :title="t('table.filters.addCondition')"
             />
           </template>
 
@@ -44,7 +44,7 @@
                 <v-select
                   v-model="newFilter.field"
                   :items="fieldOptions"
-                  :label="$t('table.filters.field')"
+                  :label="t('table.filters.field')"
                   item-title="title"
                   item-value="key"
                   variant="outlined"
@@ -57,7 +57,7 @@
                 <v-select
                   v-model="newFilter.operator"
                   :items="operatorOptions"
-                  :label="$t('table.filters.operator')"
+                  :label="t('table.filters.operator')"
                   item-title="text"
                   item-value="value"
                   variant="outlined"
@@ -72,7 +72,7 @@
                   <v-text-field
                     v-if="currentFieldType === 'string'"
                     v-model="newFilter.value"
-                    :label="$t('table.filters.value')"
+                    :label="t('table.filters.value')"
                     variant="outlined"
                     density="compact"
                   />
@@ -81,7 +81,7 @@
                   <v-text-field
                     v-else-if="['number', 'integer'].includes(currentFieldType)"
                     v-model="newFilter.value"
-                    :label="$t('table.filters.value')"
+                    :label="t('table.filters.value')"
                     type="number"
                     variant="outlined"
                     density="compact"
@@ -92,7 +92,7 @@
                     v-else-if="currentFieldType === 'boolean'"
                     v-model="newFilter.value"
                     :items="booleanOptions"
-                    :label="$t('table.filters.value')"
+                    :label="t('table.filters.value')"
                     item-title="text"
                     item-value="value"
                     variant="outlined"
@@ -103,7 +103,7 @@
                   <v-text-field
                     v-if="operatorNeedsSecondValue(newFilter.operator)"
                     v-model="newFilter.value2"
-                    :label="$t('table.filters.valueTo')"
+                    :label="t('table.filters.valueTo')"
                     :type="
                       ['number', 'integer'].includes(currentFieldType)
                         ? 'number'
@@ -118,13 +118,13 @@
                 <!-- Actions -->
                 <div class="d-flex justify-end ga-2">
                   <CoreButton
-                    :text="$t('table.filters.cancel')"
+                    :text="t('table.filters.cancel')"
                     variant="text"
                     size="small"
                     @click="cancelAddFilter"
                   />
                   <CoreButton
-                    :text="$t('table.filters.apply')"
+                    :text="t('table.filters.apply')"
                     variant="filled"
                     size="small"
                     color="primary"
@@ -148,6 +148,7 @@ import CoreButton from '@/components/core/CoreButton.vue'
 import type {
   FilterCondition,
   FilterField,
+  FilterOperator,
 } from '@/composables/core-table/useTableFilters'
 
 // Props
@@ -212,8 +213,8 @@ const operatorOptions = computed(() => {
 })
 
 const booleanOptions = computed(() => [
-  { text: $t('common.yes'), value: true },
-  { text: $t('common.no'), value: false },
+  { text: t('common.yes'), value: true },
+  { text: t('common.no'), value: false },
 ])
 
 const isNewFilterValid = computed(() => {
@@ -240,7 +241,7 @@ const getFilterDisplayText = (filter: FilterCondition): string => {
   }
 
   if (filter.operator === 'is_between' && filter.value2 !== undefined) {
-    return `${fieldTitle} ${operatorText} ${filter.value} ${$t('table.filters.and').toLowerCase()} ${filter.value2}`
+    return `${fieldTitle} ${operatorText} ${filter.value} ${t('table.filters.and').toLowerCase()} ${filter.value2}`
   }
 
   return `${fieldTitle} ${operatorText} ${filter.value}`
@@ -268,24 +269,31 @@ const handleNewFilterOperatorChange = (newOperator: any) => {
 
 const applyNewFilter = () => {
   // Normalize filter values based on field types
-  const normalizedFilter = { ...newFilter.value }
-  normalizedFilter.id = props.generateFilterId()
+  let value: string | number | boolean = newFilter.value
+  let value2: string | number | undefined = newFilter.value2
 
-  // Convert values to appropriate types
   if (
     currentFieldType.value === 'number' ||
     currentFieldType.value === 'integer'
   ) {
-    if (normalizedFilter.value !== '' && normalizedFilter.value != null) {
-      normalizedFilter.value = Number(normalizedFilter.value)
+    if (value !== '' && value != null) {
+      value = Number(value)
     }
-    if (normalizedFilter.value2 !== '' && normalizedFilter.value2 != null) {
-      normalizedFilter.value2 = Number(normalizedFilter.value2)
+    if (value2 !== '' && value2 != null) {
+      value2 = Number(value2)
     }
   } else if (currentFieldType.value === 'boolean') {
-    if (normalizedFilter.value !== '' && normalizedFilter.value != null) {
-      normalizedFilter.value = Boolean(normalizedFilter.value)
+    if (value !== '' && value != null) {
+      value = Boolean(value)
     }
+  }
+
+  const normalizedFilter: FilterCondition = {
+    id: props.generateFilterId(),
+    field: newFilter.value.field,
+    operator: newFilter.value.operator as FilterOperator,
+    value,
+    value2,
   }
 
   // Emit the filter
