@@ -177,7 +177,7 @@ interface Emits {
 const emit = defineEmits<Emits>()
 
 // Composables
-const { t: $t } = useI18n()
+const { t } = useI18n()
 
 // Local state
 const showAddFilterMenu = ref(false)
@@ -230,6 +230,16 @@ const isNewFilterValid = computed(() => {
   return true
 })
 
+// Format a filter value for display (handles primitives and avoids [object Object] for objects)
+const formatFilterValueForDisplay = (val: unknown): string => {
+  if (val === null || val === undefined) return ''
+  if (typeof val === 'object') {
+    const obj = val as Record<string, unknown>
+    return String(obj.title ?? obj.label ?? obj.name ?? obj.value ?? '')
+  }
+  return String(val)
+}
+
 // Methods
 const getFilterDisplayText = (filter: FilterCondition): string => {
   const field = props.availableFields.find((f) => f.key === filter.field)
@@ -241,10 +251,10 @@ const getFilterDisplayText = (filter: FilterCondition): string => {
   }
 
   if (filter.operator === 'is_between' && filter.value2 !== undefined) {
-    return `${fieldTitle} ${operatorText} ${filter.value} ${t('table.filters.and').toLowerCase()} ${filter.value2}`
+    return `${fieldTitle} ${operatorText} ${formatFilterValueForDisplay(filter.value)} ${t('table.filters.and').toLowerCase()} ${formatFilterValueForDisplay(filter.value2)}`
   }
 
-  return `${fieldTitle} ${operatorText} ${filter.value}`
+  return `${fieldTitle} ${operatorText} ${formatFilterValueForDisplay(filter.value)}`
 }
 
 const handleNewFilterFieldChange = (newFieldKey: string) => {
@@ -268,9 +278,9 @@ const handleNewFilterOperatorChange = (newOperator: any) => {
 }
 
 const applyNewFilter = () => {
-  // Normalize filter values based on field types
-  let value: string | number | boolean = newFilter.value
-  let value2: string | number | undefined = newFilter.value2
+  // Normalize filter values based on field types (newFilter is a ref, so .value holds { field, operator, value, value2 })
+  let value: string | number | boolean = newFilter.value.value
+  let value2: string | number | undefined = newFilter.value.value2
 
   if (
     currentFieldType.value === 'number' ||
