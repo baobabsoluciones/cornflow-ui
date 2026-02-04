@@ -371,6 +371,10 @@
                     selectedTableData.searchPlaceholder.value
                   "
                   :elevation="0"
+                  :display-as-alert-list="
+                    selectedTableData.isValidationMessageList?.value ?? false
+                  "
+                  alert-list-message-key="message"
                   :enable-search="selectedTableData.enableSearch.value"
                   :enable-filters="selectedTableData.enableFilters.value"
                   :enable-selection="selectedTableData.enableSelection.value"
@@ -568,6 +572,10 @@
                 :table-title="selectedTableData.tableTitle.value"
                 :search-placeholder="selectedTableData.searchPlaceholder.value"
                 :elevation="0"
+                :display-as-alert-list="
+                  selectedTableData.isValidationMessageList?.value ?? false
+                "
+                alert-list-message-key="message"
                 :enable-search="selectedTableData.enableSearch.value"
                 :enable-filters="selectedTableData.enableFilters.value"
                 :enable-selection="selectedTableData.enableSelection.value"

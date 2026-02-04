@@ -324,6 +324,7 @@ export default {
       "Erreur lors du chargement des données de la table depuis l'API",
     apiNotSupported: 'API non disponible ou opération non supportée',
     searchPlaceholder: 'Rechercher...',
+    validationMessageColumn: 'Message',
     groups: {
       inputTables: "Tables d'entrée",
       outputTables: 'Tables de sortie',

@@ -475,6 +475,7 @@ export default {
     loadingError: 'Error al cargar los datos de la tabla',
     apiNotSupported: 'API no disponible o operación no soportada',
     searchPlaceholder: 'Buscar...',
+    validationMessageColumn: 'Mensaje',
     groups: {
       inputTables: 'Datos de entrada',
       outputTables: 'Datos de la solución',
