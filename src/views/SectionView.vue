@@ -793,6 +793,11 @@ const selectedTableData = useTableData(
   executionType,
 )
 
+// Per-tab search and filters state (only used in group view) so each tab has independent filter/search
+const perTabSearchAndFilters = ref<
+  Record<string, { searchValue: string; activeFilters: any[] }>
+>({})
+
 // Create a unified data source that uses the correct instance
 const activeTableData = computed(() => {
   const isGroup = isGroupView.value
@@ -813,6 +818,21 @@ watch(
       newTableKey !== oldTableKey || newSelectedTable !== oldSelectedTable
 
     if (isTableChange) {
+      // In group view: persist search and filters for the tab we're leaving, restore for the tab we're entering
+      if (isGroupView.value && oldSelectedTable) {
+        perTabSearchAndFilters.value[oldSelectedTable] = {
+          searchValue: selectedTableData.searchValue.value,
+          activeFilters: [...selectedTableData.activeFilters.value],
+        }
+      }
+      if (isGroupView.value && newSelectedTable) {
+        const saved = perTabSearchAndFilters.value[newSelectedTable]
+        selectedTableData.searchValue.value = saved?.searchValue ?? ''
+        selectedTableData.activeFilters.value = saved?.activeFilters
+          ? [...saved.activeFilters]
+          : []
+      }
+
       // Reset inline editing state for both table instances
       // Note: isEditingAnyRow is a computed based on editingRowId, so we only need to reset editingRowId
       if (tableData) {
