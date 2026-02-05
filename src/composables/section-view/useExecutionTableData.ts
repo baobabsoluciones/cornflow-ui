@@ -1,5 +1,9 @@
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useGeneralStore } from '@/stores/general'
+
+/** Key for the single column when validation data is array of strings (shown as alert list) */
+const VALIDATION_MESSAGE_FIELD = 'message'
 
 /**
  * Composable for handling execution data (instance/solution) tables
@@ -12,6 +16,7 @@ export function useExecutionTableData(
   executionType: any,
 ) {
   const generalStore = useGeneralStore()
+  const { t } = useI18n()
 
   // State
   const loading = ref(false)
@@ -36,8 +41,14 @@ export function useExecutionTableData(
     return validationGroups.includes(group)
   })
 
-  // Check if this is a primitive array (list of strings)
+  // Validation messages (array of strings): we show as alert list, so report false to use CoreTable in list mode
+  const isValidationMessageList = computed(
+    () => isValidationTable.value && !!tableConfig.value?.isPrimitiveArray,
+  )
+
+  // For validation message list we use CoreTable in alert-list mode; for other primitives keep SimpleList
   const isPrimitiveArray = computed(() => {
+    if (isValidationMessageList.value) return false
     return tableConfig.value?.isPrimitiveArray || false
   })
 
@@ -80,18 +91,33 @@ export function useExecutionTableData(
     }
   })
 
-  // Get table headers from schema
+  // Get table headers from schema (or single column for validation message list)
   const headers = computed(() => {
+    if (isValidationMessageList.value) {
+      return [
+        {
+          title: t('table.validationMessageColumn'),
+          value: VALIDATION_MESSAGE_FIELD,
+          key: VALIDATION_MESSAGE_FIELD,
+          sortable: true,
+          filterable: true,
+          type: 'string',
+          required: false,
+          readOnly: true,
+        },
+      ]
+    }
+
     if (!tableConfig.value?.get_list?.response_schema?.items?.properties)
       return []
 
     const properties =
       tableConfig.value.get_list.response_schema.items.properties
-    const headers = Object.entries(properties).map(
+    return Object.entries(properties).map(
       ([key, prop]: [string, any]) => ({
         title: prop.title || key,
         value: key,
-        key: key, // Add key property for CoreTable compatibility
+        key: key,
         sortable: true,
         filterable: true,
         type: prop.type === 'integer' ? 'number' : prop.type,
@@ -100,12 +126,9 @@ export function useExecutionTableData(
             key,
           ) || false,
         readOnly: prop.readOnly || false,
-        // Choices property
         choices: prop.choices || undefined,
       }),
     )
-
-    return headers
   })
 
   // Get available filter fields from headers
@@ -123,7 +146,7 @@ export function useExecutionTableData(
     return tableConfig.value?.title || tableKey.value || 'Table'
   })
 
-  // Load data function
+  // Load data function (normalize validation message list to [{ id, message }])
   const loadData = async () => {
     if (!tableKey.value || !selectedExecution.value) {
       items.value = []
@@ -135,7 +158,14 @@ export function useExecutionTableData(
 
     try {
       const data = tableData.value
-      items.value = data
+      if (isValidationMessageList.value && Array.isArray(data)) {
+        items.value = data.map((item: unknown, index: number) => ({
+          id: index,
+          [VALIDATION_MESSAGE_FIELD]: String(item),
+        }))
+      } else {
+        items.value = data
+      }
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error'
       items.value = []
@@ -153,9 +183,7 @@ export function useExecutionTableData(
     { immediate: true },
   )
 
-  // Return reactive data and methods
   return {
-    // State
     loading,
     items,
     error,
@@ -163,11 +191,10 @@ export function useExecutionTableData(
     availableFilterFields,
     tableTitle,
     isPrimitiveArray,
+    isValidationMessageList,
 
-    // Computed
     hasData: computed(() => items.value.length > 0),
 
-    // Methods
     loadData,
     refresh: loadData,
   }

@@ -462,6 +462,7 @@ export default {
     noDataAvailable: 'No data available for this table',
     loadingError: 'Error loading table data',
     apiNotSupported: 'API not available or operation not supported',
+    validationMessageColumn: 'Message',
     groups: {
       inputTables: 'Input Tables',
       outputTables: 'Output Tables',
