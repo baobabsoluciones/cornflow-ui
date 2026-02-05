@@ -7,7 +7,10 @@
     scrollable
     persistent
   >
-    <v-card class="pending-changes-modal" :class="{ 'fullscreen-modal': isFullscreen }">
+    <v-card
+      class="pending-changes-modal"
+      :class="{ 'fullscreen-modal': isFullscreen }"
+    >
       <v-card-title class="modal-header">
         <div class="d-flex align-center">
           <v-icon class="mr-2" color="success">mdi-pencil-box-multiple</v-icon>
@@ -23,7 +26,11 @@
             size="small"
             @click="toggleFullscreen"
             class="mr-1"
-            :title="isFullscreen ? t('projectExecution.minimize') : t('projectExecution.maximize')"
+            :title="
+              isFullscreen
+                ? t('projectExecution.minimize')
+                : t('projectExecution.maximize')
+            "
           />
           <v-btn variant="text" size="small" @click="handleClose">
             <v-icon>mdi-close</v-icon>
@@ -49,16 +56,20 @@
         </v-alert>
 
         <!-- No changes state -->
-        <div v-if="changesGroupedByTable.length === 0" class="no-changes">
+        <div v-if="fullGroupedByTable.length === 0" class="no-changes">
           <v-icon size="64" color="grey-lighten-1">mdi-check-all</v-icon>
           <p class="text-grey mt-2">{{ t('pendingChanges.noChanges') }}</p>
         </div>
 
-        <!-- Changes grouped by table -->
+        <!-- Changes grouped by table (edits + creates + deletes) -->
         <div v-else class="changes-list">
-          <v-expansion-panels v-model="expandedPanels" multiple variant="accordion">
+          <v-expansion-panels
+            v-model="expandedPanels"
+            multiple
+            variant="accordion"
+          >
             <v-expansion-panel
-              v-for="tableGroup in changesGroupedByTable"
+              v-for="tableGroup in fullGroupedByTable"
               :key="tableGroup.tableKey"
               class="table-changes-panel"
             >
@@ -67,15 +78,32 @@
                   <div class="d-flex align-center">
                     <v-icon class="mr-2" size="small">mdi-table</v-icon>
                     <span class="table-name">{{ tableGroup.tableTitle }}</span>
-                    <v-chip size="x-small" color="success" variant="tonal" class="ml-2">
-                      {{ tableGroup.changes.length }} {{ tableGroup.changes.length === 1 ? t('pendingChanges.row') : t('pendingChanges.modifiedRows').toLowerCase() }}
+                    <v-chip
+                      size="x-small"
+                      color="success"
+                      variant="tonal"
+                      class="ml-2"
+                    >
+                      {{
+                        tableGroup.changes.length +
+                        tableGroup.creates.length +
+                        tableGroup.deletes.length
+                      }}
+                      {{
+                        tableGroup.changes.length +
+                          tableGroup.creates.length +
+                          tableGroup.deletes.length ===
+                        1
+                          ? t('pendingChanges.row')
+                          : t('pendingChanges.modifiedRows').toLowerCase()
+                      }}
                     </v-chip>
                   </div>
                 </div>
               </v-expansion-panel-title>
 
               <v-expansion-panel-text class="pa-0">
-                <!-- Row changes as table -->
+                <!-- Modified rows (cell edits) -->
                 <div
                   v-for="(rowGroup, rowIndex) in tableGroup.changes"
                   :key="rowGroup.rowId"
@@ -87,10 +115,17 @@
                     <table class="context-table">
                       <thead>
                         <tr>
-                          <th 
-                            v-for="header in getVisibleHeaders(tableGroup.tableKey)" 
+                          <th
+                            v-for="header in getVisibleHeaders(
+                              tableGroup.tableKey,
+                            )"
                             :key="header.key"
-                            :class="{ 'header-modified': isFieldModified(rowGroup, header.key) }"
+                            :class="{
+                              'header-modified': isFieldModified(
+                                rowGroup,
+                                header.key,
+                              ),
+                            }"
                           >
                             {{ header.title }}
                           </th>
@@ -99,22 +134,58 @@
                       </thead>
                       <tbody>
                         <tr>
-                          <td 
-                            v-for="header in getVisibleHeaders(tableGroup.tableKey)" 
+                          <td
+                            v-for="header in getVisibleHeaders(
+                              tableGroup.tableKey,
+                            )"
                             :key="header.key"
-                            :class="{ 
-                              'cell-modified': isFieldModified(rowGroup, header.key),
-                              'cell-original': !isFieldModified(rowGroup, header.key)
+                            :class="{
+                              'cell-modified': isFieldModified(
+                                rowGroup,
+                                header.key,
+                              ),
+                              'cell-original': !isFieldModified(
+                                rowGroup,
+                                header.key,
+                              ),
                             }"
                           >
-                            <template v-if="isFieldModified(rowGroup, header.key)">
+                            <template
+                              v-if="isFieldModified(rowGroup, header.key)"
+                            >
                               <div class="cell-change cell-change--editable">
-                                <span class="old-val">{{ formatValue(getFieldOldValue(rowGroup, header.key)) }}</span>
-                                <v-icon size="x-small" class="mx-1">mdi-arrow-right</v-icon>
+                                <span class="old-val">{{
+                                  formatValue(
+                                    getFieldOldValue(rowGroup, header.key),
+                                  )
+                                }}</span>
+                                <v-icon size="x-small" class="mx-1"
+                                  >mdi-arrow-right</v-icon
+                                >
                                 <v-text-field
                                   v-if="(header.type || 'string') !== 'boolean'"
-                                  :model-value="getRowFieldValue(tableGroup.tableKey, rowGroup.rowId, header.key, rowGroup)"
-                                  @update:model-value="(val) => emit('update-change', tableGroup.tableKey, rowGroup.rowId, header.key, header.type === 'number' ? (val === '' ? undefined : Number(val)) : val)"
+                                  :model-value="
+                                    getRowFieldValue(
+                                      tableGroup.tableKey,
+                                      rowGroup.rowId,
+                                      header.key,
+                                      rowGroup,
+                                    )
+                                  "
+                                  @update:model-value="
+                                    (val) =>
+                                      emit(
+                                        'update-change',
+                                        tableGroup.tableKey,
+                                        rowGroup.rowId,
+                                        header.key,
+                                        header.type === 'number'
+                                          ? val === ''
+                                            ? undefined
+                                            : Number(val)
+                                          : val,
+                                      )
+                                  "
                                   variant="outlined"
                                   density="compact"
                                   hide-details
@@ -122,8 +193,24 @@
                                 />
                                 <v-switch
                                   v-else
-                                  :model-value="!!getRowFieldValue(tableGroup.tableKey, rowGroup.rowId, header.key, rowGroup)"
-                                  @update:model-value="(val) => emit('update-change', tableGroup.tableKey, rowGroup.rowId, header.key, val)"
+                                  :model-value="
+                                    !!getRowFieldValue(
+                                      tableGroup.tableKey,
+                                      rowGroup.rowId,
+                                      header.key,
+                                      rowGroup,
+                                    )
+                                  "
+                                  @update:model-value="
+                                    (val) =>
+                                      emit(
+                                        'update-change',
+                                        tableGroup.tableKey,
+                                        rowGroup.rowId,
+                                        header.key,
+                                        val,
+                                      )
+                                  "
                                   hide-details
                                   density="compact"
                                   color="primary"
@@ -134,8 +221,28 @@
                             <template v-else>
                               <v-text-field
                                 v-if="(header.type || 'string') !== 'boolean'"
-                                :model-value="getRowFieldValue(tableGroup.tableKey, rowGroup.rowId, header.key, rowGroup)"
-                                @update:model-value="(val) => emit('update-change', tableGroup.tableKey, rowGroup.rowId, header.key, header.type === 'number' ? (val === '' ? undefined : Number(val)) : val)"
+                                :model-value="
+                                  getRowFieldValue(
+                                    tableGroup.tableKey,
+                                    rowGroup.rowId,
+                                    header.key,
+                                    rowGroup,
+                                  )
+                                "
+                                @update:model-value="
+                                  (val) =>
+                                    emit(
+                                      'update-change',
+                                      tableGroup.tableKey,
+                                      rowGroup.rowId,
+                                      header.key,
+                                      header.type === 'number'
+                                        ? val === ''
+                                          ? undefined
+                                          : Number(val)
+                                        : val,
+                                    )
+                                "
                                 variant="outlined"
                                 density="compact"
                                 hide-details
@@ -143,8 +250,24 @@
                               />
                               <v-switch
                                 v-else
-                                :model-value="!!getRowFieldValue(tableGroup.tableKey, rowGroup.rowId, header.key, rowGroup)"
-                                @update:model-value="(val) => emit('update-change', tableGroup.tableKey, rowGroup.rowId, header.key, val)"
+                                :model-value="
+                                  !!getRowFieldValue(
+                                    tableGroup.tableKey,
+                                    rowGroup.rowId,
+                                    header.key,
+                                    rowGroup,
+                                  )
+                                "
+                                @update:model-value="
+                                  (val) =>
+                                    emit(
+                                      'update-change',
+                                      tableGroup.tableKey,
+                                      rowGroup.rowId,
+                                      header.key,
+                                      val,
+                                    )
+                                "
                                 hide-details
                                 density="compact"
                                 color="primary"
@@ -157,7 +280,12 @@
                               size="x-small"
                               variant="tonal"
                               color="error"
-                              @click="revertRowChanges(tableGroup.tableKey, rowGroup.rowId)"
+                              @click="
+                                revertRowChanges(
+                                  tableGroup.tableKey,
+                                  rowGroup.rowId,
+                                )
+                              "
                               class="revert-btn"
                             >
                               <v-icon size="small" start>mdi-undo</v-icon>
@@ -167,6 +295,170 @@
                         </tr>
                       </tbody>
                     </table>
+                  </div>
+                </div>
+
+                <!-- New rows (pending creates) - editable -->
+                <div
+                  v-for="(create, createIndex) in tableGroup.creates"
+                  :key="create.tempId"
+                  class="row-change-block row-change-block--new"
+                  :class="{ 'row-change-block--alt': createIndex % 2 === 1 }"
+                >
+                  <div class="row-context-table">
+                    <div class="row-change-label">
+                      <v-chip size="x-small" color="primary" variant="tonal">
+                        {{ t('pendingChanges.newRow') }}
+                      </v-chip>
+                      <v-btn
+                        size="x-small"
+                        variant="tonal"
+                        color="error"
+                        @click="
+                          tableChanges.revertCreate(
+                            tableGroup.tableKey,
+                            create.tempId,
+                          )
+                        "
+                        class="revert-btn ml-2"
+                      >
+                        <v-icon size="small" start>mdi-undo</v-icon>
+                        {{ t('pendingChanges.revert') }}
+                      </v-btn>
+                    </div>
+                    <table class="context-table">
+                      <thead>
+                        <tr>
+                          <th
+                            v-for="header in getVisibleHeaders(
+                              tableGroup.tableKey,
+                            )"
+                            :key="header.key"
+                          >
+                            {{ header.title }}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td
+                            v-for="header in getVisibleHeaders(
+                              tableGroup.tableKey,
+                            )"
+                            :key="header.key"
+                            class="cell-new cell-new--editable"
+                          >
+                            <v-text-field
+                              v-if="(header.type || 'string') !== 'boolean'"
+                              :model-value="create.data[header.key]"
+                              @update:model-value="
+                                (val) =>
+                                  handleUpdateCreate(
+                                    tableGroup.tableKey,
+                                    create.tempId,
+                                    header.key,
+                                    header.type === 'number'
+                                      ? val === ''
+                                        ? undefined
+                                        : Number(val)
+                                      : val,
+                                  )
+                              "
+                              variant="outlined"
+                              density="compact"
+                              hide-details
+                              class="cell-edit-input"
+                            />
+                            <v-switch
+                              v-else
+                              :model-value="!!create.data[header.key]"
+                              @update:model-value="
+                                (val) =>
+                                  handleUpdateCreate(
+                                    tableGroup.tableKey,
+                                    create.tempId,
+                                    header.key,
+                                    val,
+                                  )
+                              "
+                              hide-details
+                              density="compact"
+                              color="primary"
+                              class="cell-edit-switch"
+                            />
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- Deleted rows (pending deletes) -->
+                <div
+                  v-for="(deleteEntry, deleteIndex) in tableGroup.deletes"
+                  :key="`del-${tableGroup.tableKey}-${deleteEntry.rowId}`"
+                  class="row-change-block row-change-block--deleted"
+                  :class="{ 'row-change-block--alt': deleteIndex % 2 === 1 }"
+                >
+                  <div class="row-context-table">
+                    <div class="row-change-label">
+                      <v-chip size="x-small" color="error" variant="tonal">
+                        {{ t('pendingChanges.deletedRow') }}
+                      </v-chip>
+                      <v-btn
+                        size="x-small"
+                        variant="tonal"
+                        color="primary"
+                        @click="
+                          tableChanges.revertDelete(
+                            tableGroup.tableKey,
+                            deleteEntry.rowId,
+                          )
+                        "
+                        class="revert-btn ml-2"
+                      >
+                        <v-icon size="small" start>mdi-undo</v-icon>
+                        {{ t('pendingChanges.revert') }}
+                      </v-btn>
+                    </div>
+                    <!-- Show row data when available -->
+                    <table
+                      v-if="
+                        deleteEntry.data &&
+                        Object.keys(deleteEntry.data).length > 0
+                      "
+                      class="context-table"
+                    >
+                      <thead>
+                        <tr>
+                          <th
+                            v-for="header in getVisibleHeaders(
+                              tableGroup.tableKey,
+                            )"
+                            :key="header.key"
+                          >
+                            {{ header.title }}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td
+                            v-for="header in getVisibleHeaders(
+                              tableGroup.tableKey,
+                            )"
+                            :key="header.key"
+                            class="cell-deleted"
+                          >
+                            {{ formatValue(deleteEntry.data[header.key]) }}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <!-- Fallback when no row data (e.g. legacy) -->
+                    <div v-else class="d-flex align-center pa-2 text-caption">
+                      ID: {{ deleteEntry.rowId }}
+                    </div>
                   </div>
                 </div>
               </v-expansion-panel-text>
@@ -189,11 +481,7 @@
           {{ t('pendingChanges.revertAllChanges') }}
         </v-btn>
         <v-spacer></v-spacer>
-        <v-btn
-          variant="text"
-          @click="handleClose"
-          size="small"
-        >
+        <v-btn variant="text" @click="handleClose" size="small">
           {{ t('common.cancel') }}
         </v-btn>
         <v-btn
@@ -255,6 +543,8 @@ interface Props {
   rowIdentifiers?: Record<string, Record<string, string>>
   rowsData?: AllRowsData
   tableHeaders?: TableHeaders
+  /** When provided, only show and count changes for these table keys (e.g. current group). */
+  tableKeysFilter?: string[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -263,6 +553,7 @@ const props = withDefaults(defineProps<Props>(), {
   rowIdentifiers: () => ({}),
   rowsData: () => ({}),
   tableHeaders: () => ({}),
+  tableKeysFilter: undefined,
 })
 
 const emit = defineEmits<{
@@ -270,7 +561,13 @@ const emit = defineEmits<{
   (e: 'save', data: any): void
   (e: 'close'): void
   (e: 'clear-validation-error'): void
-  (e: 'update-change', tableKey: string, rowId: string, fieldKey: string, newValue: any): void
+  (
+    e: 'update-change',
+    tableKey: string,
+    rowId: string,
+    fieldKey: string,
+    newValue: any,
+  ): void
   (e: 'revert-change', tableKey: string, rowId: string, fieldKey: string): void
   (e: 'revert-row', tableKey: string, rowId: string): void
   (e: 'revert-table', tableKey: string): void
@@ -293,13 +590,43 @@ const toggleFullscreen = () => {
   isFullscreen.value = !isFullscreen.value
 }
 
-// Computed
-const changesGroupedByTable = computed(() => {
-  return tableChanges.getChangesGroupedByTable()
+/** Row is valid for display (excludes placeholder/undefined rowIds that cause empty inputs). */
+const isValidRowId = (rowId: string): boolean =>
+  rowId != null && String(rowId).trim() !== '' && String(rowId) !== 'undefined'
+
+// Full grouped data (edits + creates + deletes); filter by tableKeysFilter and invalid rowIds
+const fullGroupedByTable = computed(() => {
+  const all = tableChanges.getFullGroupedChanges()
+  const byTable = props.tableKeysFilter?.length
+    ? all.filter((g) => new Set(props.tableKeysFilter).has(g.tableKey))
+    : all
+  return byTable
+    .map((g) => ({
+      ...g,
+      changes: g.changes.filter((row) => isValidRowId(row.rowId)),
+    }))
+    .filter(
+      (g) =>
+        g.changes.length > 0 || g.creates.length > 0 || g.deletes.length > 0,
+    )
 })
 
+// For backward compatibility and save payload: edits-only structure
+const changesGroupedByTable = computed(() =>
+  fullGroupedByTable.value.map((g) => ({
+    tableKey: g.tableKey,
+    tableTitle: g.tableTitle,
+    changes: g.changes,
+  })),
+)
+
 const totalChangesCount = computed(() => {
-  return tableChanges.totalChangesCount.value
+  if (!props.tableKeysFilter?.length)
+    return tableChanges.totalChangesCount.value
+  return fullGroupedByTable.value.reduce((sum, g) => {
+    const editCount = g.changes.reduce((r, c) => r + c.fields.length, 0)
+    return sum + editCount + g.creates.length + g.deletes.length
+  }, 0)
 })
 
 // Get full row data for display
@@ -307,12 +634,19 @@ const getRowData = (tableKey: string, rowId: string): RowData | null => {
   return props.rowsData[tableKey]?.[rowId] || null
 }
 
-// Get headers for a table, filtering out 'id' columns
-const getVisibleHeaders = (tableKey: string): Array<{ key: string; title: string; type?: string }> => {
+// Get headers for a table, filtering out 'id', selection, and other non-data columns
+const getVisibleHeaders = (
+  tableKey: string,
+): Array<{ key: string; title: string; type?: string }> => {
   const headers = props.tableHeaders[tableKey] || []
-  return headers.filter(h => {
-    const keyLower = h.key.toLowerCase()
-    return keyLower !== 'id' && !keyLower.endsWith('_id') && keyLower !== 'rowid'
+  return headers.filter((h) => {
+    const keyLower = (h.key || '').toLowerCase()
+    return (
+      keyLower !== 'id' &&
+      keyLower !== 'selection' &&
+      !keyLower.endsWith('_id') &&
+      keyLower !== 'rowid'
+    )
   })
 }
 
@@ -328,8 +662,15 @@ const getFieldOldValue = (rowGroup: any, fieldKey: string): any => {
 }
 
 // Get the current value of a field (modified value if changed, original otherwise)
-const getRowFieldValue = (tableKey: string, rowId: string, fieldKey: string, rowGroup: any): any => {
-  const modifiedField = rowGroup.fields.find((f: any) => f.fieldKey === fieldKey)
+const getRowFieldValue = (
+  tableKey: string,
+  rowId: string,
+  fieldKey: string,
+  rowGroup: any,
+): any => {
+  const modifiedField = rowGroup.fields.find(
+    (f: any) => f.fieldKey === fieldKey,
+  )
   if (modifiedField) {
     return modifiedField.newValue
   }
@@ -353,12 +694,29 @@ const revertRowChanges = (tableKey: string, rowId: string) => {
   emit('revert-row', tableKey, rowId)
 }
 
+const handleUpdateCreate = (
+  tableKey: string,
+  tempId: string,
+  fieldKey: string,
+  value: any,
+) => {
+  tableChanges.updateCreateField(tableKey, tempId, fieldKey, value)
+}
+
 const handleRevertAll = () => {
   showRevertAllConfirm.value = true
 }
 
 const confirmRevertAll = () => {
-  tableChanges.clearAllChanges()
+  if (props.tableKeysFilter?.length) {
+    props.tableKeysFilter.forEach((key) => {
+      tableChanges.revertTableChanges(key)
+      tableChanges.clearCreatesForTable(key)
+      tableChanges.clearDeletesForTable(key)
+    })
+  } else {
+    tableChanges.clearAllChanges()
+  }
   showRevertAllConfirm.value = false
   emit('revert-all')
 }
@@ -379,10 +737,10 @@ watch(
   () => props.modelValue,
   (newValue) => {
     if (newValue) {
-      expandedPanels.value = changesGroupedByTable.value.map((_, index) => index)
+      expandedPanels.value = fullGroupedByTable.value.map((_, index) => index)
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 </script>
 
@@ -401,7 +759,11 @@ watch(
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background: linear-gradient(135deg, rgba(76, 175, 80, 0.08) 0%, rgba(76, 175, 80, 0.02) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(76, 175, 80, 0.08) 0%,
+    rgba(76, 175, 80, 0.02) 100%
+  );
 }
 
 .modal-content {
@@ -456,6 +818,29 @@ watch(
 
 .row-change-block--alt {
   background-color: rgba(0, 0, 0, 0.015);
+}
+
+.row-change-block--new {
+  border-left: 3px solid var(--primary-variant, #1976d2);
+}
+
+.row-change-block--deleted {
+  border-left: 3px solid var(--danger, #c62828);
+}
+
+.context-table td.cell-deleted {
+  background-color: rgba(198, 40, 40, 0.06);
+  color: var(--subtitle, #666);
+}
+
+.row-change-label {
+  display: flex;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.context-table td.cell-new {
+  background-color: rgba(25, 118, 210, 0.06);
 }
 
 /* Context table styles */

@@ -426,7 +426,7 @@ describe('ProjectExecutionView', () => {
       const formSteps = wrapper.findComponent({ name: 'MFormSteps' })
 
       expect(Array.isArray(formSteps.props('steps'))).toBe(true)
-      expect(formSteps.props('stepsColumnWidth')).toBe('20vw')
+      expect(formSteps.props('stepsColumnWidth')).toBe('20%')
       expect(formSteps.props('continueButtonText')).toBe('Continue')
       expect(formSteps.props('previousButtonText')).toBe('Previous')
     })

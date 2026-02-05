@@ -271,6 +271,24 @@
 }
 
 /* ==========================================================================
+   Read-only Display Mode - Plain table cells (input-data/results)
+   ========================================================================== */
+.read-only-display .read-only-cell {
+  display: block;
+  padding: 8px 4px;
+  min-height: 32px;
+  line-height: 1.5;
+  color: rgba(var(--v-theme-on-surface), 1);
+  background: transparent !important;
+  border: none !important;
+  cursor: default;
+}
+
+.read-only-display .v-data-table-virtual tbody td {
+  background: transparent !important;
+}
+
+/* ==========================================================================
    Excel-like Editing Mode - Modified Cell Styles
    ========================================================================== */
 

@@ -1,4 +1,6 @@
 export default {
+  DecisionOps: 'DecisionOps',
+  baobab: 'baobab',
   projectExecution: {
     title: 'Project execution',
     description:
@@ -457,6 +459,13 @@ export default {
   },
   sectionView: {
     editInputData: 'Edit input data',
+    exitConfirmation: {
+      title: 'Leave with unsaved changes',
+      message:
+        'You have unsaved changes in the master data. If you leave now, your changes will be lost. Are you sure you want to leave?',
+      confirmButton: 'Yes, leave',
+      cancelButton: 'Cancel',
+    },
   },
   table: {
     noDataAvailable: 'No data available for this table',
@@ -800,17 +809,22 @@ export default {
     saveAllChanges: 'Save all changes',
     confirmRevertAll: {
       title: 'Revert all changes',
-      message: 'Are you sure you want to revert all pending changes? This action cannot be undone.',
+      message:
+        'Are you sure you want to revert all pending changes? This action cannot be undone.',
       confirm: 'Yes, revert all',
     },
     unsavedChangesWarning: {
       title: 'Unsaved changes',
-      message: 'You have unsaved changes. If you leave now, your changes will be lost.',
+      message:
+        'You have unsaved changes. If you leave now, your changes will be lost.',
       stay: 'Stay',
       leave: 'Leave anyway',
     },
     reviewChanges: 'Review changes',
     changesIndicator: '{count} pending changes',
+    changeStaged: 'Change staged. It will be applied when you save.',
+    newRow: 'New row',
+    deletedRow: 'Deleted row',
   },
   common: {
     close: 'Close',

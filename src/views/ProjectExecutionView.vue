@@ -11,7 +11,7 @@
       :disablePreviousButton="disablePrevButton"
       :disableNextButton="disableNextButton"
       :currentStep="currentStep"
-      :steps-column-width="'20vw'"
+      :steps-column-width="'20%'"
       :continueButtonText="$t('projectExecution.continueButton')"
       :previousButtonText="$t('projectExecution.previousButton')"
       @update:currentStep="handleStepChange"
@@ -114,7 +114,9 @@
   >
     <template #content>
       <v-row class="d-flex justify-center pr-2 pl-2 pb-5 pt-3">
-        <span style="white-space: pre-line">{{ $t('projectExecution.exitConfirmation.message') }}</span>
+        <span style="white-space: pre-line">{{
+          $t('projectExecution.exitConfirmation.message')
+        }}</span>
       </v-row>
     </template>
   </MBaseModal>
@@ -181,9 +183,9 @@ export default {
   created() {
     this.showSnackbar = inject('showSnackbar')
     const route = useRoute()
-    
+
     this.isEditMode = route.query.editInstance === 'true'
-    
+
     this.initializeEditMode()
     this.initializeDefaultSolver()
     this.initializeConfigFieldValues()
@@ -192,20 +194,20 @@ export default {
   beforeRouteLeave(to, from, next) {
     // Check if there's any progress to lose (including pending table changes)
     const hasProgress = this.hasProgressToLose() || this.hasPendingTableChanges
-    
+
     if (!hasProgress) {
       // No progress to lose, allow navigation
       next()
       return
     }
-    
+
     // Store the pending navigation and destination
     this.pendingNavigation = next
     this.pendingNavigationTo = to
-    
+
     // Show confirmation modal
     this.showExitConfirmationModal = true
-    
+
     // Don't call next() here - wait for user confirmation
   },
   methods: {
@@ -214,14 +216,18 @@ export default {
       if (!this.isEditMode || !this.generalStore.selectedExecution) return
 
       const selectedExecution = this.generalStore.selectedExecution
-      const instance = selectedExecution.experiment?.instance || selectedExecution.instance
+      const instance =
+        selectedExecution.experiment?.instance || selectedExecution.instance
 
       if (!instance) return
 
       this.newExecution.instance = instance
-      if (selectedExecution.name) this.newExecution.name = selectedExecution.name
-      if (selectedExecution.description) this.newExecution.description = selectedExecution.description
-      if (selectedExecution.config) this.newExecution.config = { ...selectedExecution.config }
+      if (selectedExecution.name)
+        this.newExecution.name = selectedExecution.name
+      if (selectedExecution.description)
+        this.newExecution.description = selectedExecution.description
+      if (selectedExecution.config)
+        this.newExecution.config = { ...selectedExecution.config }
     },
 
     // Set default solver if solver step is hidden
@@ -234,8 +240,10 @@ export default {
 
     // Load config field values if config fields step is hidden
     initializeConfigFieldValues() {
-      const configFieldsConfig = this.generalStore.appConfig.parameters.configFieldsConfig
-      const shouldAutoLoad = !configFieldsConfig?.showConfigFieldsStep &&
+      const configFieldsConfig =
+        this.generalStore.appConfig.parameters.configFieldsConfig
+      const shouldAutoLoad =
+        !configFieldsConfig?.showConfigFieldsStep &&
         configFieldsConfig?.autoLoadValues &&
         this.newExecution.instance
 
@@ -250,7 +258,9 @@ export default {
         if (!this.isEditMode) return
 
         const steps = this.getExecutionSteps()
-        const reviewIndex = steps.findIndex(step => step.key === 'reviewInstance')
+        const reviewIndex = steps.findIndex(
+          (step) => step.key === 'reviewInstance',
+        )
         this.currentStep = reviewIndex >= 0 ? reviewIndex : 0
       })
     },
@@ -259,7 +269,8 @@ export default {
       // Check if we're leaving the reviewInstance step with pending changes
       // Use tableChanges.hasChanges (singleton) so we don't depend on child event timing
       const currentStepKey = this.steps[this.currentStep]?.key
-      const hasPending = this.tableChanges.hasChanges.value || this.hasPendingTableChanges
+      const hasPending =
+        this.tableChanges.hasChanges.value || this.hasPendingTableChanges
       if (currentStepKey === 'reviewInstance' && hasPending) {
         // Store the pending step change and show warning modal; do NOT update currentStep
         this.pendingStepChange = newStep
@@ -322,24 +333,30 @@ export default {
 
       try {
         const validationErrors = await this.newExecution.instance.checkSchema()
-        
+
         if (validationErrors && validationErrors.length > 0) {
           // Import formatValidationErrorsWithTitle dynamically to avoid circular dependencies
-          const { formatValidationErrorsWithTitle } = await import('@/utils/errorFormatting')
-          
+          const { formatValidationErrorsWithTitle } = await import(
+            '@/utils/errorFormatting'
+          )
+
           // Format validation errors with full Ajv error details and translations
           const errorMessage = formatValidationErrorsWithTitle(
-            this.$t('projectExecution.steps.step3.loadInstance.instanceSchemaError'),
+            this.$t(
+              'projectExecution.steps.step3.loadInstance.instanceSchemaError',
+            ),
             validationErrors, // Pass full Ajv ErrorObject array
             this.$t, // Pass translation function
           )
-          
+
           this.existingInstanceErrors = errorMessage
-          
+
           // Show snackbar notification (persistent - won't auto-close)
           if (this.showSnackbar) {
             this.showSnackbar(
-              this.$t('projectExecution.steps.step3.loadInstance.instanceSchemaError'),
+              this.$t(
+                'projectExecution.steps.step3.loadInstance.instanceSchemaError',
+              ),
               'error',
               { persistent: true }, // Make it persistent so it doesn't auto-close
             )
@@ -350,12 +367,15 @@ export default {
         }
       } catch (error) {
         // Handle validation exception
-        const errorMessage = error instanceof Error ? error.message : String(error)
+        const errorMessage =
+          error instanceof Error ? error.message : String(error)
         this.existingInstanceErrors = errorMessage
-        
+
         if (this.showSnackbar) {
           this.showSnackbar(
-            this.$t('projectExecution.steps.step3.loadInstance.unexpectedError'),
+            this.$t(
+              'projectExecution.steps.step3.loadInstance.unexpectedError',
+            ),
             'error',
           )
         }
@@ -436,20 +456,20 @@ export default {
 
     getBaseCreateSteps() {
       const steps = []
-      
+
       // In edit mode, skip loadInstance step
       if (!this.isEditMode) {
         steps.push(this.createStepConfig('loadInstance', 1, true))
       }
-      
+
       // Review instance step (order depends on whether loadInstance is present)
       const reviewOrder = this.isEditMode ? 1 : 2
       steps.push(this.createStepConfig('reviewInstance', reviewOrder, true))
-      
+
       // Check data step
       const checkOrder = this.isEditMode ? 2 : 3
       steps.push(this.createStepConfig('checkData', checkOrder, true))
-      
+
       return steps
     },
 
@@ -536,45 +556,46 @@ export default {
       // Reinitialize the store since we reset the data
       this.generalStore = useGeneralStore()
     },
-    
+
     // Check if there's any progress that would be lost
     hasProgressToLose() {
       return (
         this.newExecution.name ||
         this.newExecution.description ||
         this.newExecution.instance ||
-        (this.newExecution.config && Object.keys(this.newExecution.config).length > 0) ||
+        (this.newExecution.config &&
+          Object.keys(this.newExecution.config).length > 0) ||
         this.selectedFiles.length > 0 ||
         this.currentStep > 0
       )
     },
-    
+
     // Handle confirmation to exit
     handleConfirmExit() {
       // Close modal first
       this.showExitConfirmationModal = false
-      
+
       // Store navigation info before reset
       const navigationTo = this.pendingNavigationTo
       const navigationNext = this.pendingNavigation
-      
+
       // Clear pending navigation
       this.pendingNavigation = null
       this.pendingNavigationTo = null
-      
+
       // Clear pending table changes
       this.tableChanges.clearAllChanges()
       this.hasPendingTableChanges = false
 
       // Reset all data
       this.resetAndLoadNewExecution()
-      
+
       // Force remount of child components by incrementing key
       this.componentKey++
-      
+
       // Reinitialize default values after reset
       this.initializeDefaultSolver()
-      
+
       // Use $nextTick to ensure reset is complete, then navigate
       this.$nextTick(() => {
         if (navigationNext && navigationTo) {
@@ -583,12 +604,12 @@ export default {
         }
       })
     },
-    
+
     // Handle cancellation of exit
     handleCancelExit() {
       // Close modal
       this.showExitConfirmationModal = false
-      
+
       // Cancel navigation
       if (this.pendingNavigation) {
         this.pendingNavigation(false)

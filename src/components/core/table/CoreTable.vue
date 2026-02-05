@@ -1,5 +1,11 @@
 <template>
-  <div class="core-table-container" :class="{ 'excel-mode': enableExcelMode }">
+  <div
+    class="core-table-container"
+    :class="{
+      'excel-mode': enableExcelMode && !readOnlyDisplay,
+      'read-only-display': readOnlyDisplay,
+    }"
+  >
     <v-card :elevation="elevation">
       <!-- Search and Action buttons -->
       <div class="d-flex justify-space-between align-center ma-4 ga-2">
@@ -95,7 +101,7 @@
           fixed-header
           class="pr-5 pl-5 pt-2"
           item-value="id"
-          :item-class="getRowClass"
+          :row-props="getRowProps"
         >
           <template v-slot:loading>
             <v-skeleton-loader type="table-row@10"></v-skeleton-loader>
@@ -138,19 +144,40 @@
             />
           </template>
 
-          <!-- Dynamic column slots for inline editing -->
+          <!-- Dynamic column slots for inline editing or read-only display -->
           <template
             v-for="header in safeHeaders.filter((h) => h.key !== 'selection')"
             :key="header.key"
             v-slot:[`item.${header.key}`]="{ item }"
           >
+            <!-- Read-only display: plain text cell (input-data/results in SectionView) -->
+            <span v-if="readOnlyDisplay" class="read-only-cell">
+              {{
+                formatCellValueForDisplay(
+                  getCellDisplayValue(item, header.key),
+                  header,
+                )
+              }}
+            </span>
+            <!-- Editable cell -->
             <div
+              v-else
               class="inline-edit-cell"
               :class="{
                 editing: isRowEditing(item.id),
-                'cell-modified': isCellModified(item.id, header.key)
+                'cell-modified': isCellModified(item.id, header.key),
               }"
-              :data-fijar-value="isFijarColumn(header) ? (isRowEditing(item.id) ? (editingData[header.key] ? 'true' : 'false') : (getCellDisplayValue(item, header.key) ? 'true' : 'false')) : undefined"
+              :data-fijar-value="
+                isFijarColumn(header)
+                  ? isRowEditing(item.id)
+                    ? editingData[header.key]
+                      ? 'true'
+                      : 'false'
+                    : getCellDisplayValue(item, header.key)
+                      ? 'true'
+                      : 'false'
+                  : undefined
+              "
             >
               <!-- Editing mode -->
               <template v-if="isRowEditing(item.id)">
@@ -166,7 +193,10 @@
 
                 <!-- Fijar column - Switch for boolean -->
                 <v-switch
-                  v-else-if="isFijarColumn(header) && getFieldType(header.key) === 'boolean'"
+                  v-else-if="
+                    isFijarColumn(header) &&
+                    getFieldType(header.key) === 'boolean'
+                  "
                   :model-value="editingData[header.key]"
                   @update:model-value="
                     (value) => updateInlineField(header.key, value)
@@ -195,7 +225,10 @@
 
                 <!-- Boolean selector (for non-Fijar boolean columns) -->
                 <v-select
-                  v-else-if="getFieldType(header.key) === 'boolean' && !isFijarColumn(header)"
+                  v-else-if="
+                    getFieldType(header.key) === 'boolean' &&
+                    !isFijarColumn(header)
+                  "
                   :model-value="editingData[header.key]"
                   @update:model-value="
                     (value) => updateInlineField(header.key, value)
@@ -211,10 +244,7 @@
 
                 <!-- Foreign key selector or choices field -->
                 <v-select
-                  v-else-if="
-                    isSelectorField(header) ||
-                    hasChoices(header)
-                  "
+                  v-else-if="isSelectorField(header) || hasChoices(header)"
                   :model-value="editingData[header.key]"
                   @update:model-value="
                     (value) => updateInlineField(header.key, value)
@@ -251,13 +281,21 @@
               <template v-else>
                 <!-- Fijar column - Switch display -->
                 <v-switch
-                  v-if="isFijarColumn(header) && getFieldType(header.key) === 'boolean'"
+                  v-if="
+                    isFijarColumn(header) &&
+                    getFieldType(header.key) === 'boolean'
+                  "
                   :model-value="getCellDisplayValue(item, header.key)"
                   @update:model-value="
                     (value) => {
                       if (canEdit && !header.readOnly) {
                         startInlineEdit(item)
-                        updateInlineField(header.key, value, item.id, getCellDisplayValue(item, header.key))
+                        updateInlineField(
+                          header.key,
+                          value,
+                          item.id,
+                          getCellDisplayValue(item, header.key),
+                        )
                       }
                     }
                   "
@@ -288,13 +326,22 @@
                         : undefined
                   "
                 >
-                  {{ formatCellValueForDisplay(getCellDisplayValue(item, header.key), header) }}
+                  {{
+                    formatCellValueForDisplay(
+                      getCellDisplayValue(item, header.key),
+                      header,
+                    )
+                  }}
                 </span>
               </template>
 
               <!-- Save/Cancel buttons (only show for the editing row at the end, not in Excel mode) -->
               <div
-                v-if="!enableExcelMode && isRowEditing(item.id) && isLastEditableColumn(header.key)"
+                v-if="
+                  !enableExcelMode &&
+                  isRowEditing(item.id) &&
+                  isLastEditableColumn(header.key)
+                "
                 class="inline-edit-actions ml-2"
               >
                 <CoreButton
@@ -395,7 +442,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import {
+  ref,
+  computed,
+  watch,
+  onMounted,
+  onBeforeUnmount,
+  onActivated,
+  onDeactivated,
+  nextTick,
+} from 'vue'
 import { useI18n } from 'vue-i18n'
 import CoreButton from '@/components/core/CoreButton.vue'
 import CoreModal from '@/components/core/table/CoreModal.vue'
@@ -433,6 +489,12 @@ interface Props {
   enableExcelMode?: boolean // Enable Excel-like editing without row-level save/cancel
   isCellModified?: (rowId: string | number, fieldKey: string) => boolean // Callback to check if a cell is modified
   getModifiedValue?: (rowId: string | number, fieldKey: string) => any // Callback to get modified value for a cell
+
+  // Optional row class (e.g. row-new, row-deleted for pending changes)
+  getRowClass?: (item: any) => string
+
+  // Read-only display (e.g. input-data/results in SectionView): show cells as plain text, no editing UI
+  readOnlyDisplay?: boolean
 
   // Action Permissions
   canAdd?: boolean
@@ -502,6 +564,7 @@ const props = withDefaults(defineProps<Props>(), {
   enableExcelMode: false,
   isCellModified: () => () => false,
   getModifiedValue: () => () => undefined,
+  readOnlyDisplay: false,
   canAdd: false,
   canEdit: false,
   canDelete: false,
@@ -587,7 +650,14 @@ interface Emits {
   (e: 'update-inline-field', field: string, value: any): void
 
   // Excel Mode Events
-  (e: 'cell-change', tableKey: string, rowId: string | number, fieldKey: string, oldValue: any, newValue: any): void
+  (
+    e: 'cell-change',
+    tableKey: string,
+    rowId: string | number,
+    fieldKey: string,
+    oldValue: any,
+    newValue: any,
+  ): void
 }
 
 const emit = defineEmits<Emits>()
@@ -615,6 +685,19 @@ const showFiltersPanel = ref(false)
 const forceRerender = ref(0)
 const tableKey = ref(0)
 const localLoading = ref(false)
+// Reentrancy guard: skip applyFijarRowClasses if a run is still in progress (avoids backlog when keep-alive re-activates)
+const applyFijarRowClassesInProgress = ref(false)
+// Debounce timer so we never run applyFijarRowClasses more than once per DEBOUNCE_MS (avoids main-thread flood)
+const applyFijarRowClassesDebounceMs = 280
+let applyFijarRowClassesDebounceTimer: ReturnType<typeof setTimeout> | null =
+  null
+// Refs for fijar listeners cleanup (interval, observer, scroll) so we can clear on deactivate/unmount and re-setup on activate
+const fijarListenersRef = ref<{
+  intervalId?: ReturnType<typeof setInterval>
+  observer?: MutationObserver
+  scrollElement?: Element
+  scrollHandler?: () => void
+}>({})
 
 // Initialization complete
 
@@ -629,7 +712,7 @@ watch(
       // Apply row classes after loading finishes
       nextTick(() => {
         setTimeout(() => {
-          applyFijarRowClasses()
+          scheduleApplyFijarRowClasses()
         }, 200)
       })
     }
@@ -649,88 +732,104 @@ watch(
   { immediate: true },
 )
 
+function clearFijarListeners() {
+  if (applyFijarRowClassesDebounceTimer) {
+    clearTimeout(applyFijarRowClassesDebounceTimer)
+    applyFijarRowClassesDebounceTimer = null
+  }
+  const refs = fijarListenersRef.value
+  if (refs.intervalId) {
+    clearInterval(refs.intervalId)
+    refs.intervalId = undefined
+  }
+  if (refs.observer) {
+    refs.observer.disconnect()
+    refs.observer = undefined
+  }
+  if (refs.scrollElement && refs.scrollHandler) {
+    refs.scrollElement.removeEventListener('scroll', refs.scrollHandler)
+    refs.scrollElement = undefined
+    refs.scrollHandler = undefined
+  }
+}
+
+/** Debounced scheduler: run applyFijarRowClasses once DEBOUNCE_MS after the last trigger to avoid main-thread flood. */
+function scheduleApplyFijarRowClasses() {
+  if (applyFijarRowClassesDebounceTimer)
+    clearTimeout(applyFijarRowClassesDebounceTimer)
+  applyFijarRowClassesDebounceTimer = setTimeout(() => {
+    applyFijarRowClassesDebounceTimer = null
+    runApplyFijarRowClasses()
+  }, applyFijarRowClassesDebounceMs)
+}
+
+function setupFijarListeners() {
+  clearFijarListeners()
+  if (!tableContainer.value) return
+
+  const scrollElement = tableContainer.value.querySelector('.v-table__wrapper')
+  if (scrollElement) {
+    const scrollHandler = () => {
+      scheduleApplyFijarRowClasses()
+      clearTimeout((scrollElement as any).__fijarScrollTimeout)
+      ;(scrollElement as any).__fijarScrollTimeout = setTimeout(() => {
+        scheduleApplyFijarRowClasses()
+      }, 50)
+    }
+    scrollElement.addEventListener('scroll', scrollHandler, { passive: true })
+    fijarListenersRef.value.scrollElement = scrollElement
+    fijarListenersRef.value.scrollHandler = scrollHandler
+  }
+
+  const tbody =
+    tableContainer.value.querySelector('.v-data-table-virtual tbody') ||
+    tableContainer.value.querySelector('tbody')
+  if (tbody) {
+    const observer = new MutationObserver(() => {
+      nextTick(() => scheduleApplyFijarRowClasses())
+    })
+    observer.observe(tbody, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'style'],
+    })
+    fijarListenersRef.value.observer = observer
+  }
+
+  const intervalId = setInterval(() => {
+    if (tableContainer.value) scheduleApplyFijarRowClasses()
+  }, 450)
+  fijarListenersRef.value.intervalId = intervalId
+}
+
 onMounted(() => {
-  // Force immediate check
   if (props.items && props.items.length > 0) {
     localLoading.value = false
     tableKey.value++
   }
-  // Apply row classes after mount with delay to ensure DOM is ready
   nextTick(() => {
     setTimeout(() => {
-      applyFijarRowClasses()
-      // Also try again after a longer delay
-      setTimeout(() => {
-        applyFijarRowClasses()
-      }, 500)
+      scheduleApplyFijarRowClasses()
+      setTimeout(() => scheduleApplyFijarRowClasses(), 500)
     }, 300)
   })
-
-  // Set up scroll listener to reapply styles when scrolling
-  if (tableContainer.value) {
-    const scrollElement = tableContainer.value.querySelector('.v-table__wrapper')
-    if (scrollElement) {
-      scrollElement.addEventListener('scroll', () => {
-        // Apply immediately and also after a short delay
-        applyFijarRowClasses()
-        // Debounce for additional application
-        clearTimeout((scrollElement as any).__fijarScrollTimeout)
-        ;(scrollElement as any).__fijarScrollTimeout = setTimeout(() => {
-          applyFijarRowClasses()
-        }, 50)
-      }, { passive: true })
-    }
-  }
-
-  // Set up MutationObserver to detect when new rows are added
-  let observer: MutationObserver | null = null
-  if (tableContainer.value) {
-    const tbody = tableContainer.value.querySelector('.v-data-table-virtual tbody') ||
-                  tableContainer.value.querySelector('tbody')
-    if (tbody) {
-      observer = new MutationObserver(() => {
-        // Apply immediately when DOM changes
-        nextTick(() => {
-          applyFijarRowClasses()
-        })
-      })
-      observer.observe(tbody, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['class', 'style'],
-      })
-    }
-  }
-
-  // Set up periodic check to ensure styles are always applied (more frequent for fast scrolling)
-  const intervalId = setInterval(() => {
-    if (tableContainer.value) {
-      applyFijarRowClasses()
-    } else {
-      clearInterval(intervalId)
-    }
-  }, 150) // Check every 150ms for better responsiveness
-
-  // Store interval ID and observer for cleanup
-  if (tableContainer.value) {
-    ;(tableContainer.value as any).__fijarIntervalId = intervalId
-    ;(tableContainer.value as any).__fijarObserver = observer
-  }
+  setupFijarListeners()
 })
 
-// Cleanup on unmount
+onActivated(() => {
+  nextTick(() => {
+    setupFijarListeners()
+    setTimeout(() => scheduleApplyFijarRowClasses(), 100)
+  })
+})
+
+onDeactivated(() => {
+  clearFijarListeners()
+})
+
 onBeforeUnmount(() => {
-  if (tableContainer.value) {
-    const intervalId = (tableContainer.value as any).__fijarIntervalId
-    if (intervalId) {
-      clearInterval(intervalId)
-    }
-    const observer = (tableContainer.value as any).__fijarObserver
-    if (observer) {
-      observer.disconnect()
-    }
-  }
+  clearFijarListeners()
 })
 
 // Watch for items changes to update row classes
@@ -740,7 +839,7 @@ watch(
     nextTick(() => {
       // Small delay to ensure DOM is updated
       setTimeout(() => {
-        applyFijarRowClasses()
+        scheduleApplyFijarRowClasses()
       }, 300)
     })
   },
@@ -753,7 +852,7 @@ watch(
   () => {
     nextTick(() => {
       setTimeout(() => {
-        applyFijarRowClasses()
+        scheduleApplyFijarRowClasses()
       }, 50)
     })
   },
@@ -761,117 +860,168 @@ watch(
 )
 
 /**
- * Apply CSS classes to rows based on Fijar column value
+ * Apply CSS classes to rows: Fijar (blue), row-new (green), row-deleted (red).
+ * Uses DOM inspection like Fijar so styles apply reliably with virtual scroll.
+ * Guarded to avoid re-entrancy when keep-alive re-activates and watchers fire in burst.
+ * Called only from scheduleApplyFijarRowClasses (debounced).
  */
-const applyFijarRowClasses = () => {
+const runApplyFijarRowClasses = () => {
   if (!tableContainer.value) return
+  if (applyFijarRowClassesInProgress.value) return
+  applyFijarRowClassesInProgress.value = true
+  try {
+    const fijarHeader = safeHeaders.value.find((h) => isFijarColumn(h))
 
-  // Find the Fijar column header
-  const fijarHeader = safeHeaders.value.find((h) => isFijarColumn(h))
-  if (!fijarHeader) return
-
-  // Try multiple selectors to find rows
-  let rows = tableContainer.value.querySelectorAll(
-    '.v-data-table-virtual tbody tr',
-  )
-  
-  if (rows.length === 0) {
-    rows = tableContainer.value.querySelectorAll(
-      '.v-data-table-virtual .v-table tbody tr',
+    // Try multiple selectors to find rows (same as Fijar)
+    let rows = tableContainer.value.querySelectorAll(
+      '.v-data-table-virtual tbody tr',
     )
-  }
-  
-  if (rows.length === 0) {
-    rows = tableContainer.value.querySelectorAll('tbody tr')
-  }
-
-  const backgroundColor = 'rgba(241, 249, 253, 0.6)'
-  const backgroundColorHover = 'rgba(241, 249, 253, 0.8)'
-
-  rows.forEach((row: Element) => {
-    const rowElement = row as HTMLElement
-    
-    // Remove existing hover listeners to avoid duplicates
-    const existingHoverEnter = (rowElement as any).__fijarHoverEnter
-    const existingHoverLeave = (rowElement as any).__fijarHoverLeave
-    if (existingHoverEnter) {
-      rowElement.removeEventListener('mouseenter', existingHoverEnter)
+    if (rows.length === 0) {
+      rows = tableContainer.value.querySelectorAll(
+        '.v-data-table-virtual .v-table tbody tr',
+      )
     }
-    if (existingHoverLeave) {
-      rowElement.removeEventListener('mouseleave', existingHoverLeave)
+    if (rows.length === 0) {
+      rows = tableContainer.value.querySelectorAll('tbody tr')
     }
-    
-    // First, try to find the switch directly in the row
-    const switchElement = rowElement.querySelector('.v-switch')
-    if (switchElement) {
-      const switchInput = switchElement.querySelector('input[type="checkbox"]') as HTMLInputElement
-      if (switchInput) {
-        if (switchInput.checked) {
-          rowElement.classList.add('row-fijar-active')
-          // Apply style directly to row
-          rowElement.style.setProperty('background-color', backgroundColor, 'important')
-          // Also apply to all cells to ensure visibility
-          const cells = rowElement.querySelectorAll('td')
-          cells.forEach((cell: Element) => {
-            (cell as HTMLElement).style.setProperty('background-color', 'transparent', 'important')
-          })
-          // Set up hover handlers
-          const hoverEnter = () => {
-            if (switchInput.checked) {
-              rowElement.style.setProperty('background-color', backgroundColorHover, 'important')
-            }
+
+    const backgroundColorFijar = 'rgba(241, 249, 253, 0.6)'
+    const backgroundColorHover = 'rgba(241, 249, 253, 0.8)'
+    const backgroundColorNew = 'rgba(76, 175, 80, 0.12)'
+    const backgroundColorDeleted = 'rgba(198, 40, 40, 0.1)'
+
+    rows.forEach((row: Element) => {
+      const rowElement = row as HTMLElement
+      const cells = rowElement.querySelectorAll('td')
+
+      // Resolve item for this row: prefer data-item-id (set by getRowProps), then id cell, then index
+      let item: any = null
+      const dataItemId = rowElement.getAttribute?.('data-item-id')
+      if (dataItemId != null && dataItemId !== '') {
+        item = safeItems.value.find((i: any) => String(i?.id) === dataItemId)
+      }
+      if (!item && cells.length > 0) {
+        const idCellIndex = safeHeaders.value.findIndex((h) => h.key === 'id')
+        if (idCellIndex >= 0 && cells[idCellIndex]) {
+          const rowId = (cells[idCellIndex] as HTMLElement).textContent?.trim()
+          if (rowId) {
+            item = safeItems.value.find((i: any) => String(i?.id) === rowId)
           }
-          const hoverLeave = () => {
-            if (switchInput.checked) {
-              rowElement.style.setProperty('background-color', backgroundColor, 'important')
-            }
-          }
-          rowElement.addEventListener('mouseenter', hoverEnter)
-          rowElement.addEventListener('mouseleave', hoverLeave)
-          ;(rowElement as any).__fijarHoverEnter = hoverEnter
-          ;(rowElement as any).__fijarHoverLeave = hoverLeave
-        } else {
-          rowElement.classList.remove('row-fijar-active')
-          rowElement.style.removeProperty('background-color')
         }
-        return
+        if (!item) {
+          const idx = Array.from(rows).indexOf(rowElement)
+          if (idx >= 0 && idx < safeItems.value.length) {
+            item = safeItems.value[idx]
+          }
+        }
       }
-    }
-    
-    // Second, try to find by data attribute
-    const fijarValue = rowElement.querySelector('[data-fijar-value]')
-    if (fijarValue) {
-      const isFijarActive = fijarValue.getAttribute('data-fijar-value') === 'true'
-      if (isFijarActive) {
-        rowElement.classList.add('row-fijar-active')
-        rowElement.style.setProperty('background-color', backgroundColor, 'important')
-        const cells = rowElement.querySelectorAll('td')
-        cells.forEach((cell: Element) => {
-          (cell as HTMLElement).style.setProperty('background-color', 'transparent', 'important')
-        })
-      } else {
-        rowElement.classList.remove('row-fijar-active')
-        rowElement.style.removeProperty('background-color')
+
+      // Apply row-new / row-deleted (same DOM approach as Fijar: class + inline style)
+      rowElement.classList.remove('row-new', 'row-deleted')
+      if (item && props.getRowClass) {
+        const pendingClass = getRowClass(item)
+        if (pendingClass.includes('row-new')) {
+          rowElement.classList.add('row-new')
+          rowElement.style.setProperty(
+            'background-color',
+            backgroundColorNew,
+            'important',
+          )
+          cells.forEach((cell: Element) => {
+            ;(cell as HTMLElement).style.setProperty(
+              'background-color',
+              'transparent',
+              'important',
+            )
+          })
+          if (fijarHeader) {
+            rowElement.classList.remove('row-fijar-active')
+            rowElement.style.removeProperty('background-color')
+          }
+          return
+        }
+        if (pendingClass.includes('row-deleted')) {
+          rowElement.classList.add('row-deleted')
+          rowElement.style.setProperty(
+            'background-color',
+            backgroundColorDeleted,
+            'important',
+          )
+          cells.forEach((cell: Element) => {
+            ;(cell as HTMLElement).style.setProperty(
+              'background-color',
+              'transparent',
+              'important',
+            )
+          })
+          if (fijarHeader) {
+            rowElement.classList.remove('row-fijar-active')
+          }
+          return
+        }
       }
-      return
-    }
-    
-    // Third, try to match by item data
-    const cells = rowElement.querySelectorAll('td')
-    if (cells.length > 0) {
-      const headerKeys = safeHeaders.value.map((h) => h.key)
-      const fijarHeaderIndex = headerKeys.indexOf(fijarHeader.key)
-      
-      if (fijarHeaderIndex >= 0 && cells[fijarHeaderIndex]) {
-        const fijarCell = cells[fijarHeaderIndex]
-        const switchInCell = fijarCell.querySelector('.v-switch input[type="checkbox"]') as HTMLInputElement
-        if (switchInCell) {
-          if (switchInCell.checked) {
+      rowElement.style.removeProperty('background-color')
+
+      // Fijar logic (only when column exists)
+      if (!fijarHeader) return
+
+      // Remove existing hover listeners to avoid duplicates
+      const existingHoverEnter = (rowElement as any).__fijarHoverEnter
+      const existingHoverLeave = (rowElement as any).__fijarHoverLeave
+      if (existingHoverEnter) {
+        rowElement.removeEventListener('mouseenter', existingHoverEnter)
+      }
+      if (existingHoverLeave) {
+        rowElement.removeEventListener('mouseleave', existingHoverLeave)
+      }
+
+      // First, try to find the switch directly in the row
+      const switchElement = rowElement.querySelector('.v-switch')
+      if (switchElement) {
+        const switchInput = switchElement.querySelector(
+          'input[type="checkbox"]',
+        ) as HTMLInputElement
+        if (switchInput) {
+          if (switchInput.checked) {
             rowElement.classList.add('row-fijar-active')
-            rowElement.style.setProperty('background-color', backgroundColor, 'important')
+            // Apply style directly to row
+            rowElement.style.setProperty(
+              'background-color',
+              backgroundColorFijar,
+              'important',
+            )
+            // Also apply to all cells to ensure visibility
+            const cells = rowElement.querySelectorAll('td')
             cells.forEach((cell: Element) => {
-              (cell as HTMLElement).style.setProperty('background-color', 'transparent', 'important')
+              ;(cell as HTMLElement).style.setProperty(
+                'background-color',
+                'transparent',
+                'important',
+              )
             })
+            // Set up hover handlers
+            const hoverEnter = () => {
+              if (switchInput.checked) {
+                rowElement.style.setProperty(
+                  'background-color',
+                  backgroundColorHover,
+                  'important',
+                )
+              }
+            }
+            const hoverLeave = () => {
+              if (switchInput.checked) {
+                rowElement.style.setProperty(
+                  'background-color',
+                  backgroundColorFijar,
+                  'important',
+                )
+              }
+            }
+            rowElement.addEventListener('mouseenter', hoverEnter)
+            rowElement.addEventListener('mouseleave', hoverLeave)
+            ;(rowElement as any).__fijarHoverEnter = hoverEnter
+            ;(rowElement as any).__fijarHoverLeave = hoverLeave
           } else {
             rowElement.classList.remove('row-fijar-active')
             rowElement.style.removeProperty('background-color')
@@ -879,36 +1029,112 @@ const applyFijarRowClasses = () => {
           return
         }
       }
-      
-      // Try to match item by ID from cells
-      const idCellIndex = safeHeaders.value.findIndex((h) => h.key === 'id')
-      const cellToCheck = idCellIndex >= 0 && cells[idCellIndex] ? cells[idCellIndex] : cells[0]
-      const rowId = cellToCheck?.textContent?.trim()
-      
-      if (rowId) {
-        const item = safeItems.value.find((item: any) => {
-          const itemId = item.id?.toString() || item._id?.toString()
-          return itemId === rowId
-        })
-        
-        if (item) {
-          const fijarValue = item[fijarHeader.key]
-          const isFijarActive = fijarValue === true || fijarValue === 'true' || fijarValue === 1 || fijarValue === '1'
-          
-          if (isFijarActive) {
-            rowElement.classList.add('row-fijar-active')
-            rowElement.style.setProperty('background-color', backgroundColor, 'important')
-            cells.forEach((cell: Element) => {
-              (cell as HTMLElement).style.setProperty('background-color', 'transparent', 'important')
-            })
-          } else {
-            rowElement.classList.remove('row-fijar-active')
-            rowElement.style.removeProperty('background-color')
+
+      // Second, try to find by data attribute
+      const fijarValue = rowElement.querySelector('[data-fijar-value]')
+      if (fijarValue) {
+        const isFijarActive =
+          fijarValue.getAttribute('data-fijar-value') === 'true'
+        if (isFijarActive) {
+          rowElement.classList.add('row-fijar-active')
+          rowElement.style.setProperty(
+            'background-color',
+            backgroundColorFijar,
+            'important',
+          )
+          const cells = rowElement.querySelectorAll('td')
+          cells.forEach((cell: Element) => {
+            ;(cell as HTMLElement).style.setProperty(
+              'background-color',
+              'transparent',
+              'important',
+            )
+          })
+        } else {
+          rowElement.classList.remove('row-fijar-active')
+          rowElement.style.removeProperty('background-color')
+        }
+        return
+      }
+
+      // Third, try to match by item data (cells already declared at top of loop)
+      if (cells.length > 0) {
+        const headerKeys = safeHeaders.value.map((h) => h.key)
+        const fijarHeaderIndex = headerKeys.indexOf(fijarHeader.key)
+
+        if (fijarHeaderIndex >= 0 && cells[fijarHeaderIndex]) {
+          const fijarCell = cells[fijarHeaderIndex]
+          const switchInCell = fijarCell.querySelector(
+            '.v-switch input[type="checkbox"]',
+          ) as HTMLInputElement
+          if (switchInCell) {
+            if (switchInCell.checked) {
+              rowElement.classList.add('row-fijar-active')
+              rowElement.style.setProperty(
+                'background-color',
+                backgroundColorFijar,
+                'important',
+              )
+              cells.forEach((cell: Element) => {
+                ;(cell as HTMLElement).style.setProperty(
+                  'background-color',
+                  'transparent',
+                  'important',
+                )
+              })
+            } else {
+              rowElement.classList.remove('row-fijar-active')
+              rowElement.style.removeProperty('background-color')
+            }
+            return
+          }
+        }
+
+        // Try to match item by ID from cells
+        const idCellIndex = safeHeaders.value.findIndex((h) => h.key === 'id')
+        const cellToCheck =
+          idCellIndex >= 0 && cells[idCellIndex] ? cells[idCellIndex] : cells[0]
+        const rowId = cellToCheck?.textContent?.trim()
+
+        if (rowId) {
+          const item = safeItems.value.find((item: any) => {
+            const itemId = item.id?.toString() || item._id?.toString()
+            return itemId === rowId
+          })
+
+          if (item) {
+            const fijarValue = item[fijarHeader.key]
+            const isFijarActive =
+              fijarValue === true ||
+              fijarValue === 'true' ||
+              fijarValue === 1 ||
+              fijarValue === '1'
+
+            if (isFijarActive) {
+              rowElement.classList.add('row-fijar-active')
+              rowElement.style.setProperty(
+                'background-color',
+                backgroundColorFijar,
+                'important',
+              )
+              cells.forEach((cell: Element) => {
+                ;(cell as HTMLElement).style.setProperty(
+                  'background-color',
+                  'transparent',
+                  'important',
+                )
+              })
+            } else {
+              rowElement.classList.remove('row-fijar-active')
+              rowElement.style.removeProperty('background-color')
+            }
           }
         }
       }
-    }
-  })
+    })
+  } finally {
+    applyFijarRowClassesInProgress.value = false
+  }
 }
 
 // Watch for inline editing to load selector options
@@ -922,7 +1148,7 @@ watch(
       // When editing ends, update row classes
       nextTick(() => {
         setTimeout(() => {
-          applyFijarRowClasses()
+          scheduleApplyFijarRowClasses()
         }, 200)
       })
     }
@@ -1136,15 +1362,15 @@ const updateInlineField = (
   if (props.enableExcelMode && props.tableKey && rowId != null) {
     emit('cell-change', props.tableKey, rowId, field, oldValue, value)
   }
-  
+
   // If Fijar column was updated, refresh row classes immediately and after a delay
   const fijarHeader = safeHeaders.value.find((h) => isFijarColumn(h))
   if (fijarHeader && field === fijarHeader.key) {
     nextTick(() => {
-      applyFijarRowClasses()
+      scheduleApplyFijarRowClasses()
       // Also apply after a short delay to ensure DOM is updated
       setTimeout(() => {
-        applyFijarRowClasses()
+        scheduleApplyFijarRowClasses()
       }, 150)
     })
   }
@@ -1253,20 +1479,34 @@ const isFijarColumn = (header: any): boolean => {
 }
 
 /**
- * Get row class based on Fijar column value
+ * Get row class: optional parent override (e.g. row-new, row-deleted) + Fijar column
  */
 const getRowClass = (item: any): string => {
-  // Find the Fijar column header
+  const parts: string[] = []
+  const custom = props.getRowClass?.(item)
+  if (custom) parts.push(custom)
   const fijarHeader = safeHeaders.value.find((h) => isFijarColumn(h))
-  if (!fijarHeader) return ''
-  
-  // Check if Fijar is true for this item
-  const fijarValue = item[fijarHeader.key]
-  if (fijarValue === true || fijarValue === 'true' || fijarValue === 1) {
-    return 'row-fijar-active'
+  if (fijarHeader) {
+    const fijarValue = item[fijarHeader.key]
+    if (fijarValue === true || fijarValue === 'true' || fijarValue === 1) {
+      parts.push('row-fijar-active')
+    }
   }
-  
-  return ''
+  return parts.filter(Boolean).join(' ')
+}
+
+/**
+ * Row props for v-data-table-virtual (Vuetify 3): applies row class and data-item-id
+ * so DOM-based row styling (row-new / row-deleted) can resolve the correct item.
+ */
+const getRowProps = (data: { item: any }) => {
+  const cls = getRowClass(data.item)
+  const itemId =
+    data.item != null && data.item.id != null ? String(data.item.id) : ''
+  return {
+    ...(cls ? { class: cls } : {}),
+    ...(itemId ? { 'data-item-id': itemId } : {}),
+  }
 }
 
 /**
@@ -1404,6 +1644,8 @@ const getColumnAlignment = (columnKey: string): string => {
   // You can add more logic here based on column types
   return 'left'
 }
+
+defineExpose({ getRowProps })
 </script>
 
 <style src="@/assets/styles/components/core/CoreTable.css"></style>
