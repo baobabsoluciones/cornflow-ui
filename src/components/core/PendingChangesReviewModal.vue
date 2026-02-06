@@ -8,46 +8,55 @@
     persistent
   >
     <v-card
-      class="pending-changes-modal"
+      class="core-modal-base pending-changes-modal"
       :class="{ 'fullscreen-modal': isFullscreen }"
     >
-      <v-card-title class="modal-header">
+      <!-- Header -->
+      <v-card-title class="core-modal-base__header pending-changes-modal__header">
         <div class="d-flex align-center">
-          <v-icon class="mr-2" color="success">mdi-pencil-box-multiple</v-icon>
-          {{ t('pendingChanges.title') }}
-          <v-chip size="small" color="success" variant="tonal" class="ml-2">
+          <div class="pending-changes-modal__header-icon">
+            <v-icon size="20" color="white">mdi-pencil-box-multiple</v-icon>
+          </div>
+          <span class="core-modal-base__title">{{ t('pendingChanges.title') }}</span>
+          <v-chip
+            size="small"
+            variant="tonal"
+            class="ml-3 pending-changes-modal__badge"
+          >
             {{ totalChangesCount }} {{ $t('pendingChanges.changes') }}
           </v-chip>
         </div>
-        <div class="d-flex align-center">
+        <div class="d-flex align-center" style="gap: 4px;">
           <v-btn
             :icon="isFullscreen ? 'mdi-window-restore' : 'mdi-window-maximize'"
             variant="text"
             size="small"
             @click="toggleFullscreen"
-            class="mr-1"
             :title="
               isFullscreen
                 ? t('projectExecution.minimize')
                 : t('projectExecution.maximize')
             "
           />
-          <v-btn variant="text" size="small" @click="handleClose">
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            size="small"
+            class="core-modal-base__close"
+            @click="handleClose"
+          />
         </div>
       </v-card-title>
 
-      <v-divider></v-divider>
-
-      <v-card-text class="modal-content">
+      <!-- Content -->
+      <v-card-text class="core-modal-base__content pending-changes-modal__content">
         <!-- Validation error after save attempt -->
         <v-alert
           v-if="validationError"
           type="error"
           variant="tonal"
           density="comfortable"
-          class="mb-3"
+          class="mb-4"
           :model-value="true"
           closable
           @click:close="clearValidationError"
@@ -56,13 +65,15 @@
         </v-alert>
 
         <!-- No changes state -->
-        <div v-if="fullGroupedByTable.length === 0" class="no-changes">
-          <v-icon size="64" color="grey-lighten-1">mdi-check-all</v-icon>
-          <p class="text-grey mt-2">{{ t('pendingChanges.noChanges') }}</p>
+        <div v-if="fullGroupedByTable.length === 0" class="pending-changes-modal__empty">
+          <div class="pending-changes-modal__empty-icon">
+            <v-icon size="40" color="white">mdi-check-all</v-icon>
+          </div>
+          <p class="pending-changes-modal__empty-text">{{ t('pendingChanges.noChanges') }}</p>
         </div>
 
         <!-- Changes grouped by table (edits + creates + deletes) -->
-        <div v-else class="changes-list">
+        <div v-else class="pending-changes-modal__list">
           <v-expansion-panels
             v-model="expandedPanels"
             multiple
@@ -71,18 +82,17 @@
             <v-expansion-panel
               v-for="tableGroup in fullGroupedByTable"
               :key="tableGroup.tableKey"
-              class="table-changes-panel"
+              class="pending-changes-modal__panel"
             >
-              <v-expansion-panel-title class="table-panel-title">
+              <v-expansion-panel-title class="pending-changes-modal__panel-title">
                 <div class="d-flex align-center justify-space-between w-100">
                   <div class="d-flex align-center">
-                    <v-icon class="mr-2" size="small">mdi-table</v-icon>
-                    <span class="table-name">{{ tableGroup.tableTitle }}</span>
+                    <v-icon class="mr-2" size="18" color="var(--primary)">mdi-table</v-icon>
+                    <span class="pending-changes-modal__table-name">{{ tableGroup.tableTitle }}</span>
                     <v-chip
                       size="x-small"
-                      color="success"
                       variant="tonal"
-                      class="ml-2"
+                      class="ml-2 pending-changes-modal__count-chip"
                     >
                       {{
                         tableGroup.changes.length +
@@ -107,12 +117,32 @@
                 <div
                   v-for="(rowGroup, rowIndex) in tableGroup.changes"
                   :key="rowGroup.rowId"
-                  class="row-change-block"
-                  :class="{ 'row-change-block--alt': rowIndex % 2 === 1 }"
+                  class="pending-changes-modal__row pending-changes-modal__row--edited"
+                  :class="{ 'pending-changes-modal__row--alt': rowIndex % 2 === 1 }"
                 >
-                  <!-- Row context as mini table -->
-                  <div class="row-context-table">
-                    <table class="context-table">
+                  <div class="pending-changes-modal__row-table-wrap">
+                    <!-- Label bar: type chip + revert -->
+                    <div class="pending-changes-modal__row-bar">
+                      <v-chip size="x-small" variant="tonal" class="pending-changes-modal__type-chip pending-changes-modal__type-chip--edited">
+                        {{ t('pendingChanges.modifiedRow') }}
+                      </v-chip>
+                      <v-btn
+                        size="x-small"
+                        variant="text"
+                        @click="
+                          revertRowChanges(
+                            tableGroup.tableKey,
+                            rowGroup.rowId,
+                          )
+                        "
+                        class="pending-changes-modal__revert-btn"
+                      >
+                        <v-icon size="small" start>mdi-undo</v-icon>
+                        {{ t('pendingChanges.revert') }}
+                      </v-btn>
+                    </div>
+                    <!-- Row context as mini table -->
+                    <table class="pending-changes-modal__table">
                       <thead>
                         <tr>
                           <th
@@ -121,7 +151,7 @@
                             )"
                             :key="header.key"
                             :class="{
-                              'header-modified': isFieldModified(
+                              'pending-changes-modal__th--modified': isFieldModified(
                                 rowGroup,
                                 header.key,
                               ),
@@ -129,7 +159,6 @@
                           >
                             {{ header.title }}
                           </th>
-                          <th class="actions-header"></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -140,11 +169,11 @@
                             )"
                             :key="header.key"
                             :class="{
-                              'cell-modified': isFieldModified(
+                              'pending-changes-modal__td--modified': isFieldModified(
                                 rowGroup,
                                 header.key,
                               ),
-                              'cell-original': !isFieldModified(
+                              'pending-changes-modal__td--original': !isFieldModified(
                                 rowGroup,
                                 header.key,
                               ),
@@ -153,13 +182,13 @@
                             <template
                               v-if="isFieldModified(rowGroup, header.key)"
                             >
-                              <div class="cell-change cell-change--editable">
-                                <span class="old-val">{{
+                              <div class="pending-changes-modal__cell-change">
+                                <span class="pending-changes-modal__old-val">{{
                                   formatValue(
                                     getFieldOldValue(rowGroup, header.key),
                                   )
                                 }}</span>
-                                <v-icon size="x-small" class="mx-1"
+                                <v-icon size="14" class="pending-changes-modal__arrow-icon"
                                   >mdi-arrow-right</v-icon
                                 >
                                 <v-text-field
@@ -189,7 +218,7 @@
                                   variant="outlined"
                                   density="compact"
                                   hide-details
-                                  class="cell-edit-input"
+                                  class="pending-changes-modal__input"
                                 />
                                 <v-switch
                                   v-else
@@ -214,7 +243,7 @@
                                   hide-details
                                   density="compact"
                                   color="primary"
-                                  class="cell-edit-switch"
+                                  class="pending-changes-modal__switch"
                                 />
                               </div>
                             </template>
@@ -246,7 +275,7 @@
                                 variant="outlined"
                                 density="compact"
                                 hide-details
-                                class="cell-edit-input"
+                                class="pending-changes-modal__input"
                               />
                               <v-switch
                                 v-else
@@ -271,26 +300,9 @@
                                 hide-details
                                 density="compact"
                                 color="primary"
-                                class="cell-edit-switch"
+                                class="pending-changes-modal__switch"
                               />
                             </template>
-                          </td>
-                          <td class="actions-cell">
-                            <v-btn
-                              size="x-small"
-                              variant="tonal"
-                              color="error"
-                              @click="
-                                revertRowChanges(
-                                  tableGroup.tableKey,
-                                  rowGroup.rowId,
-                                )
-                              "
-                              class="revert-btn"
-                            >
-                              <v-icon size="small" start>mdi-undo</v-icon>
-                              {{ t('pendingChanges.revert') }}
-                            </v-btn>
                           </td>
                         </tr>
                       </tbody>
@@ -302,31 +314,31 @@
                 <div
                   v-for="(create, createIndex) in tableGroup.creates"
                   :key="create.tempId"
-                  class="row-change-block row-change-block--new"
-                  :class="{ 'row-change-block--alt': createIndex % 2 === 1 }"
+                  class="pending-changes-modal__row pending-changes-modal__row--new"
+                  :class="{ 'pending-changes-modal__row--alt': createIndex % 2 === 1 }"
                 >
-                  <div class="row-context-table">
-                    <div class="row-change-label">
-                      <v-chip size="x-small" color="primary" variant="tonal">
+                  <div class="pending-changes-modal__row-table-wrap">
+                    <!-- Label bar: type chip + revert -->
+                    <div class="pending-changes-modal__row-bar">
+                      <v-chip size="x-small" variant="tonal" class="pending-changes-modal__type-chip pending-changes-modal__type-chip--new">
                         {{ t('pendingChanges.newRow') }}
                       </v-chip>
                       <v-btn
                         size="x-small"
-                        variant="tonal"
-                        color="error"
+                        variant="text"
                         @click="
                           tableChanges.revertCreate(
                             tableGroup.tableKey,
                             create.tempId,
                           )
                         "
-                        class="revert-btn ml-2"
+                        class="pending-changes-modal__revert-btn"
                       >
                         <v-icon size="small" start>mdi-undo</v-icon>
                         {{ t('pendingChanges.revert') }}
                       </v-btn>
                     </div>
-                    <table class="context-table">
+                    <table class="pending-changes-modal__table">
                       <thead>
                         <tr>
                           <th
@@ -346,7 +358,7 @@
                               tableGroup.tableKey,
                             )"
                             :key="header.key"
-                            class="cell-new cell-new--editable"
+                            class="pending-changes-modal__td--new"
                           >
                             <v-text-field
                               v-if="(header.type || 'string') !== 'boolean'"
@@ -367,7 +379,7 @@
                               variant="outlined"
                               density="compact"
                               hide-details
-                              class="cell-edit-input"
+                              class="pending-changes-modal__input"
                             />
                             <v-switch
                               v-else
@@ -384,7 +396,7 @@
                               hide-details
                               density="compact"
                               color="primary"
-                              class="cell-edit-switch"
+                              class="pending-changes-modal__switch"
                             />
                           </td>
                         </tr>
@@ -397,25 +409,25 @@
                 <div
                   v-for="(deleteEntry, deleteIndex) in tableGroup.deletes"
                   :key="`del-${tableGroup.tableKey}-${deleteEntry.rowId}`"
-                  class="row-change-block row-change-block--deleted"
-                  :class="{ 'row-change-block--alt': deleteIndex % 2 === 1 }"
+                  class="pending-changes-modal__row pending-changes-modal__row--deleted"
+                  :class="{ 'pending-changes-modal__row--alt': deleteIndex % 2 === 1 }"
                 >
-                  <div class="row-context-table">
-                    <div class="row-change-label">
-                      <v-chip size="x-small" color="error" variant="tonal">
+                  <div class="pending-changes-modal__row-table-wrap">
+                    <!-- Label bar: type chip + revert -->
+                    <div class="pending-changes-modal__row-bar">
+                      <v-chip size="x-small" variant="tonal" class="pending-changes-modal__type-chip pending-changes-modal__type-chip--deleted">
                         {{ t('pendingChanges.deletedRow') }}
                       </v-chip>
                       <v-btn
                         size="x-small"
-                        variant="tonal"
-                        color="primary"
+                        variant="text"
                         @click="
                           tableChanges.revertDelete(
                             tableGroup.tableKey,
                             deleteEntry.rowId,
                           )
                         "
-                        class="revert-btn ml-2"
+                        class="pending-changes-modal__revert-btn"
                       >
                         <v-icon size="small" start>mdi-undo</v-icon>
                         {{ t('pendingChanges.revert') }}
@@ -427,7 +439,7 @@
                         deleteEntry.data &&
                         Object.keys(deleteEntry.data).length > 0
                       "
-                      class="context-table"
+                      class="pending-changes-modal__table"
                     >
                       <thead>
                         <tr>
@@ -448,7 +460,7 @@
                               tableGroup.tableKey,
                             )"
                             :key="header.key"
-                            class="cell-deleted"
+                            class="pending-changes-modal__td--deleted"
                           >
                             {{ formatValue(deleteEntry.data[header.key]) }}
                           </td>
@@ -467,30 +479,34 @@
         </div>
       </v-card-text>
 
-      <v-divider></v-divider>
-
-      <v-card-actions class="modal-actions">
+      <!-- Actions -->
+      <v-card-actions class="core-modal-base__actions pending-changes-modal__actions">
         <v-btn
-          color="error"
           variant="text"
           @click="handleRevertAll"
           :disabled="totalChangesCount === 0"
           size="small"
+          class="pending-changes-modal__revert-all-btn"
         >
           <v-icon start size="small">mdi-undo-variant</v-icon>
           {{ t('pendingChanges.revertAllChanges') }}
         </v-btn>
         <v-spacer></v-spacer>
-        <v-btn variant="text" @click="handleClose" size="small">
+        <v-btn
+          variant="text"
+          @click="handleClose"
+          size="small"
+          class="pending-changes-modal__cancel-btn"
+        >
           {{ t('common.cancel') }}
         </v-btn>
         <v-btn
-          color="success"
           variant="flat"
           @click="handleSaveAll"
           :disabled="totalChangesCount === 0"
           :loading="saving"
           size="small"
+          class="pending-changes-modal__save-btn"
         >
           <v-icon start size="small">mdi-content-save-all</v-icon>
           {{ t('pendingChanges.saveAllChanges') }}
@@ -744,136 +760,215 @@ watch(
 )
 </script>
 
+<style>
+@import '@/assets/styles/components/core/CoreModalBase.css';
+</style>
+
 <style scoped>
+/* ── Modal card ── */
 .pending-changes-modal {
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
   max-height: 90vh;
 }
 
 .pending-changes-modal.fullscreen-modal {
   max-height: 100vh;
   height: 100vh;
+  border-radius: 0;
 }
 
-.modal-header {
+/* ── Header ── */
+.pending-changes-modal__header {
+  background: var(--background, #f6f6f6);
+}
+
+.pending-changes-modal__header-icon {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background: linear-gradient(
-    135deg,
-    rgba(76, 175, 80, 0.08) 0%,
-    rgba(76, 175, 80, 0.02) 100%
-  );
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background-color: var(--primary, #326786);
+  margin-right: 12px;
+  flex-shrink: 0;
 }
 
-.modal-content {
+.pending-changes-modal__badge {
+  background-color: var(--primary-light-variant, #e6f1f7) !important;
+  color: var(--primary, #326786) !important;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+/* ── Content area ── */
+.pending-changes-modal__content {
   min-height: 200px;
   max-height: 60vh;
   overflow-y: auto;
-  padding: 16px;
+  padding: 20px;
 }
 
-.fullscreen-modal .modal-content {
+.fullscreen-modal .pending-changes-modal__content {
   flex: 1;
   max-height: none;
 }
 
-.no-changes {
+/* ── Empty state ── */
+.pending-changes-modal__empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px;
+  padding: 56px 24px;
 }
 
-.changes-list {
+.pending-changes-modal__empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background-color: var(--disabled, #f2f4f7);
+  margin-bottom: 16px;
+}
+
+.pending-changes-modal__empty-icon .v-icon {
+  color: var(--subtitle, #6e6e6e) !important;
+}
+
+.pending-changes-modal__empty-text {
+  color: var(--subtitle, #6e6e6e);
+  font-size: 14px;
+  margin: 0;
+}
+
+/* ── Changes list ── */
+.pending-changes-modal__list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
-.table-changes-panel {
-  border-radius: 8px !important;
+/* ── Expansion panels ── */
+.pending-changes-modal__panel {
+  border-radius: 10px !important;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   overflow: hidden;
+  box-shadow: none !important;
 }
 
-.table-panel-title {
-  min-height: 44px !important;
-  padding: 8px 16px !important;
+.pending-changes-modal__panel::before {
+  box-shadow: none !important;
 }
 
-.table-name {
+.pending-changes-modal__panel-title {
+  min-height: 48px !important;
+  padding: 10px 16px !important;
+  background-color: var(--background, #f6f6f6);
+  transition: background-color 0.2s ease;
+}
+
+.pending-changes-modal__panel-title:hover {
+  background-color: var(--primary-light-variant, #e6f1f7);
+}
+
+.pending-changes-modal__table-name {
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
+  color: var(--title, #404040);
 }
 
-/* Row change blocks */
-.row-change-block {
+.pending-changes-modal__count-chip {
+  background-color: var(--primary-light-variant, #e6f1f7) !important;
+  color: var(--primary, #326786) !important;
+  font-weight: 600;
+}
+
+/* ── Row blocks ── */
+.pending-changes-modal__row {
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  transition: background-color 0.15s ease;
 }
 
-.row-change-block:last-child {
+.pending-changes-modal__row:last-child {
   border-bottom: none;
 }
 
-.row-change-block--alt {
+.pending-changes-modal__row--alt {
   background-color: rgba(0, 0, 0, 0.015);
 }
 
-.row-change-block--new {
-  border-left: 3px solid var(--primary-variant, #1976d2);
+.pending-changes-modal__row--edited {
+  border-left: 3px solid var(--warning, #ffb458);
 }
 
-.row-change-block--deleted {
-  border-left: 3px solid var(--danger, #c62828);
+.pending-changes-modal__row--new {
+  border-left: 3px solid var(--primary, #326786);
 }
 
-.context-table td.cell-deleted {
-  background-color: rgba(198, 40, 40, 0.06);
-  color: var(--subtitle, #666);
+.pending-changes-modal__row--deleted {
+  border-left: 3px solid var(--danger, #f44336);
 }
 
-.row-change-label {
+/* ── Unified row bar (chip + revert) ── */
+.pending-changes-modal__row-bar {
   display: flex;
   align-items: center;
-  padding: 4px 0;
+  justify-content: space-between;
+  padding: 6px 0;
 }
 
-.context-table td.cell-new {
-  background-color: rgba(25, 118, 210, 0.06);
+/* Type chips - each tinted to match the row border */
+.pending-changes-modal__type-chip--edited {
+  background-color: color-mix(in srgb, var(--warning, #ffb458) 15%, white) !important;
+  color: var(--title, #404040) !important;
 }
 
-/* Context table styles */
-.row-context-table {
+.pending-changes-modal__type-chip--new {
+  background-color: color-mix(in srgb, var(--primary, #326786) 12%, white) !important;
+  color: var(--primary-variant, #1e3f4f) !important;
+}
+
+.pending-changes-modal__type-chip--deleted {
+  background-color: color-mix(in srgb, var(--danger, #f44336) 12%, white) !important;
+  color: var(--danger-variant, #b43c31) !important;
+}
+
+/* ── Mini tables ── */
+.pending-changes-modal__row-table-wrap {
   overflow-x: auto;
-  padding: 8px 12px;
+  padding: 10px 14px;
 }
 
-.context-table {
+.pending-changes-modal__table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.8rem;
 }
 
-.context-table th {
+.pending-changes-modal__table th {
   text-align: left;
-  padding: 6px 10px;
-  background-color: rgba(0, 0, 0, 0.03);
-  font-weight: 500;
+  padding: 7px 10px;
+  background-color: var(--background, #f6f6f6);
+  font-weight: 600;
   font-size: 0.7rem;
   text-transform: uppercase;
-  letter-spacing: 0.3px;
-  color: var(--subtitle, #666);
+  letter-spacing: 0.4px;
+  color: var(--subtitle, #6e6e6e);
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   white-space: nowrap;
 }
 
-.context-table th.header-modified {
-  background-color: rgba(76, 175, 80, 0.12);
-  color: #2e7d32;
+.pending-changes-modal__th--modified {
+  background-color: color-mix(in srgb, var(--success, #3ba780) 12%, var(--background, #f6f6f6)) !important;
+  color: var(--success, #3ba780) !important;
 }
 
-.context-table td {
+
+.pending-changes-modal__table td {
   padding: 8px 10px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.04);
   vertical-align: middle;
@@ -883,75 +978,122 @@ watch(
   white-space: nowrap;
 }
 
-.context-table td.cell-modified {
-  background-color: rgba(76, 175, 80, 0.08);
+.pending-changes-modal__td--modified {
+  background-color: color-mix(in srgb, var(--success, #3ba780) 8%, transparent);
   white-space: normal;
 }
 
-.context-table td.cell-original {
-  color: var(--subtitle, #666);
+.pending-changes-modal__td--original {
+  color: var(--subtitle, #6e6e6e);
 }
 
-.actions-header {
-  width: 80px;
+.pending-changes-modal__td--new {
+  background-color: color-mix(in srgb, var(--primary, #326786) 6%, transparent);
 }
 
-.actions-cell {
-  text-align: right;
-  width: 80px;
+.pending-changes-modal__td--deleted {
+  background-color: color-mix(in srgb, var(--danger, #f44336) 6%, transparent);
+  color: var(--subtitle, #6e6e6e);
 }
 
-/* Cell change display */
-.cell-change {
+/* ── Cell change display ── */
+.pending-changes-modal__cell-change {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 2px;
-}
-
-.cell-change--editable {
   gap: 6px;
 }
 
-.old-val {
-  color: #c62828;
+.pending-changes-modal__old-val {
+  color: var(--danger, #f44336);
   text-decoration: line-through;
-  opacity: 0.7;
+  opacity: 0.75;
   font-size: 0.75rem;
 }
 
-/* Editable inputs in modal */
-.cell-edit-input {
+.pending-changes-modal__arrow-icon {
+  color: var(--subtitle, #6e6e6e);
+}
+
+/* ── Editable inputs ── */
+.pending-changes-modal__input {
   min-width: 80px;
   max-width: 160px;
 }
 
-.cell-edit-input :deep(.v-field) {
+.pending-changes-modal__input :deep(.v-field) {
   font-size: 0.8rem;
+  border-radius: 6px;
 }
 
-.cell-edit-switch {
+.pending-changes-modal__switch {
   flex-shrink: 0;
 }
 
-.new-val {
-  color: #2e7d32;
-  font-weight: 600;
-}
-
-/* Revert button */
-.revert-btn {
+/* ── Revert button (unified for all row types) ── */
+.pending-changes-modal__revert-btn {
   text-transform: none;
-  font-size: 0.7rem;
+  font-size: 0.72rem;
+  letter-spacing: 0;
+  color: var(--subtitle, #6e6e6e) !important;
+  transition: color 0.15s ease, background-color 0.15s ease;
 }
 
-/* Modal actions */
-.modal-actions {
-  padding: 12px 16px;
-  gap: 8px;
+.pending-changes-modal__revert-btn:hover {
+  color: var(--danger, #f44336) !important;
+  background-color: color-mix(in srgb, var(--danger, #f44336) 8%, transparent) !important;
 }
 
+/* ── Footer actions ── */
+.pending-changes-modal__actions {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.pending-changes-modal__revert-all-btn {
+  color: var(--danger, #f44336) !important;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+
+.pending-changes-modal__cancel-btn {
+  color: var(--subtitle, #6e6e6e) !important;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.pending-changes-modal__save-btn {
+  background-color: var(--primary, #326786) !important;
+  color: white !important;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+  border-radius: 8px;
+}
+
+.pending-changes-modal__save-btn:hover {
+  box-shadow: 0 2px 8px rgba(50, 103, 134, 0.3);
+}
+
+.pending-changes-modal__save-btn:disabled {
+  background-color: var(--disabled, #f2f4f7) !important;
+  color: var(--subtitle, #6e6e6e) !important;
+  box-shadow: none;
+}
+
+/* ── Utilities ── */
 .w-100 {
   width: 100%;
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .pending-changes-modal__content {
+    padding: 16px;
+  }
+
+  .pending-changes-modal__row-table-wrap {
+    padding: 8px 10px;
+  }
 }
 </style>

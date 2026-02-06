@@ -7,64 +7,77 @@
     scrollable
   >
     <v-card
-      class="data-comparison-modal"
+      class="core-modal-base data-comparison-modal"
       :class="{ 'fullscreen-modal': isFullscreen }"
     >
-      <v-card-title class="d-flex align-center justify-space-between">
+      <!-- Header -->
+      <v-card-title class="core-modal-base__header data-comparison-modal__header">
         <div class="d-flex align-center">
-          <v-icon class="mr-2" color="primary">mdi-compare</v-icon>
-          {{ $t('dataComparison.title', { tableName }) }}
+          <div class="data-comparison-modal__header-icon">
+            <v-icon size="20" color="white">mdi-compare</v-icon>
+          </div>
+          <div class="data-comparison-modal__header-text">
+            <span class="core-modal-base__title">
+              {{ $t('dataComparison.title', { tableName }) }}
+            </span>
+            <span class="data-comparison-modal__subtitle">
+              {{ $t('dataComparison.subtitle', { masterTable: masterTableTitle }) }}
+            </span>
+          </div>
         </div>
-        <div class="d-flex align-center">
+        <div class="d-flex align-center" style="gap: 4px;">
           <v-btn
             :icon="isFullscreen ? 'mdi-window-restore' : 'mdi-window-maximize'"
             variant="text"
             size="small"
             @click="toggleFullscreen"
-            class="mr-1"
             :title="
               isFullscreen
                 ? $t('projectExecution.minimize')
                 : $t('projectExecution.maximize')
             "
           />
-          <v-btn variant="text" size="small" @click="close">
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            size="small"
+            class="core-modal-base__close"
+            @click="close"
+          />
         </div>
       </v-card-title>
 
-      <v-card-subtitle>
-        {{ $t('dataComparison.subtitle', { masterTable: masterTableTitle }) }}
-      </v-card-subtitle>
-
-      <v-divider></v-divider>
-
-      <v-card-text class="modal-content">
+      <!-- Content -->
+      <v-card-text class="core-modal-base__content data-comparison-modal__content">
         <!-- Loading overlay -->
-        <div v-if="isLoading" class="loading-container">
+        <div v-if="isLoading" class="data-comparison-modal__loading">
           <v-progress-circular
             indeterminate
-            color="primary"
-            size="48"
+            size="44"
+            width="3"
+            class="data-comparison-modal__spinner"
           ></v-progress-circular>
-          <p class="mt-3 text-subtitle-2">{{ $t('dataComparison.loading') }}</p>
+          <p class="data-comparison-modal__loading-text">{{ $t('dataComparison.loading') }}</p>
         </div>
 
         <!-- Content (hidden while loading) -->
         <div v-else>
           <!-- View mode tabs -->
-          <v-tabs v-model="viewMode" class="mb-4">
-            <v-tab value="summary">
-              <v-icon left>mdi-chart-bar</v-icon>
+          <v-tabs
+            v-model="viewMode"
+            class="data-comparison-modal__tabs mb-5"
+            density="comfortable"
+          >
+            <v-tab value="summary" class="data-comparison-modal__tab">
+              <v-icon size="18" class="mr-2">mdi-chart-bar</v-icon>
               {{ $t('dataComparison.tabs.summary') }}
             </v-tab>
-            <v-tab value="side-by-side">
-              <v-icon left>mdi-view-split-vertical</v-icon>
+            <v-tab value="side-by-side" class="data-comparison-modal__tab">
+              <v-icon size="18" class="mr-2">mdi-view-split-vertical</v-icon>
               {{ $t('dataComparison.tabs.sideBySide') }}
             </v-tab>
-            <v-tab value="changes">
-              <v-icon left>mdi-delta</v-icon>
+            <v-tab value="changes" class="data-comparison-modal__tab">
+              <v-icon size="18" class="mr-2">mdi-delta</v-icon>
               {{ $t('dataComparison.tabs.changes') }}
             </v-tab>
           </v-tabs>
@@ -72,121 +85,113 @@
           <v-window v-model="viewMode">
             <!-- Summary view -->
             <v-window-item value="summary">
-              <div class="summary-view">
+              <div class="data-comparison-modal__summary">
+                <!-- Data source cards -->
                 <v-row>
                   <v-col cols="12" md="6">
-                    <v-card variant="outlined" class="summary-card">
-                      <v-card-title class="text-subtitle-1">
-                        <v-icon class="mr-2" color="primary">mdi-upload</v-icon>
-                        {{ $t('dataComparison.uploadedData') }}
-                      </v-card-title>
-                      <v-card-text>
-                        <div class="stat-value">
+                    <div class="data-comparison-modal__source-card">
+                      <div class="data-comparison-modal__source-icon data-comparison-modal__source-icon--instance">
+                        <v-icon size="22" color="white">mdi-upload</v-icon>
+                      </div>
+                      <div class="data-comparison-modal__source-info">
+                        <span class="data-comparison-modal__source-label">
+                          {{ $t('dataComparison.uploadedData') }}
+                        </span>
+                        <span class="data-comparison-modal__source-value">
                           {{ diffSummary.totalInstance }}
-                        </div>
-                        <div class="stat-label">
-                          {{ $t('dataComparison.rows') }}
-                        </div>
-                      </v-card-text>
-                    </v-card>
+                          <span class="data-comparison-modal__source-unit">{{ $t('dataComparison.rows') }}</span>
+                        </span>
+                      </div>
+                    </div>
                   </v-col>
                   <v-col cols="12" md="6">
-                    <v-card variant="outlined" class="summary-card">
-                      <v-card-title class="text-subtitle-1">
-                        <v-icon class="mr-2" color="secondary"
-                          >mdi-database</v-icon
-                        >
-                        {{ $t('dataComparison.masterData') }}
-                      </v-card-title>
-                      <v-card-text>
-                        <div class="stat-value">
+                    <div class="data-comparison-modal__source-card">
+                      <div class="data-comparison-modal__source-icon data-comparison-modal__source-icon--master">
+                        <v-icon size="22" color="white">mdi-database</v-icon>
+                      </div>
+                      <div class="data-comparison-modal__source-info">
+                        <span class="data-comparison-modal__source-label">
+                          {{ $t('dataComparison.masterData') }}
+                        </span>
+                        <span class="data-comparison-modal__source-value">
                           {{ diffSummary.totalMaster }}
-                        </div>
-                        <div class="stat-label">
-                          {{ $t('dataComparison.rows') }}
-                        </div>
-                      </v-card-text>
-                    </v-card>
+                          <span class="data-comparison-modal__source-unit">{{ $t('dataComparison.rows') }}</span>
+                        </span>
+                      </div>
+                    </div>
                   </v-col>
                 </v-row>
 
-                <v-row class="mt-4">
-                  <v-col cols="6" md="3">
-                    <div class="diff-stat">
-                      <v-icon color="success" size="large"
-                        >mdi-plus-circle</v-icon
-                      >
-                      <div class="diff-stat-value text-success">
-                        {{ diffSummary.onlyInInstance }}
-                      </div>
-                      <div class="diff-stat-label">
-                        {{ $t('dataComparison.newRows') }}
-                      </div>
+                <!-- Diff stats -->
+                <div class="data-comparison-modal__stats-grid">
+                  <div class="data-comparison-modal__stat data-comparison-modal__stat--added">
+                    <div class="data-comparison-modal__stat-icon-wrap">
+                      <v-icon size="20">mdi-plus-circle</v-icon>
                     </div>
-                  </v-col>
-                  <v-col cols="6" md="3">
-                    <div class="diff-stat">
-                      <v-icon color="error" size="large"
-                        >mdi-minus-circle</v-icon
-                      >
-                      <div class="diff-stat-value text-error">
-                        {{ diffSummary.onlyInMaster }}
-                      </div>
-                      <div class="diff-stat-label">
-                        {{ $t('dataComparison.removedRows') }}
-                      </div>
+                    <div class="data-comparison-modal__stat-value">
+                      {{ diffSummary.onlyInInstance }}
                     </div>
-                  </v-col>
-                  <v-col cols="6" md="3">
-                    <div class="diff-stat">
-                      <v-icon color="warning" size="large"
-                        >mdi-pencil-circle</v-icon
-                      >
-                      <div class="diff-stat-value text-warning">
-                        {{ diffSummary.different }}
-                      </div>
-                      <div class="diff-stat-label">
-                        {{ $t('dataComparison.modifiedRows') }}
-                      </div>
+                    <div class="data-comparison-modal__stat-label">
+                      {{ $t('dataComparison.newRows') }}
                     </div>
-                  </v-col>
-                  <v-col cols="6" md="3">
-                    <div class="diff-stat">
-                      <v-icon color="grey" size="large"
-                        >mdi-check-circle</v-icon
-                      >
-                      <div class="diff-stat-value">
-                        {{ diffSummary.identical }}
-                      </div>
-                      <div class="diff-stat-label">
-                        {{ $t('dataComparison.identicalRows') }}
-                      </div>
+                  </div>
+                  <div class="data-comparison-modal__stat data-comparison-modal__stat--removed">
+                    <div class="data-comparison-modal__stat-icon-wrap">
+                      <v-icon size="20">mdi-minus-circle</v-icon>
                     </div>
-                  </v-col>
-                </v-row>
+                    <div class="data-comparison-modal__stat-value">
+                      {{ diffSummary.onlyInMaster }}
+                    </div>
+                    <div class="data-comparison-modal__stat-label">
+                      {{ $t('dataComparison.removedRows') }}
+                    </div>
+                  </div>
+                  <div class="data-comparison-modal__stat data-comparison-modal__stat--modified">
+                    <div class="data-comparison-modal__stat-icon-wrap">
+                      <v-icon size="20">mdi-pencil-circle</v-icon>
+                    </div>
+                    <div class="data-comparison-modal__stat-value">
+                      {{ diffSummary.different }}
+                    </div>
+                    <div class="data-comparison-modal__stat-label">
+                      {{ $t('dataComparison.modifiedRows') }}
+                    </div>
+                  </div>
+                  <div class="data-comparison-modal__stat data-comparison-modal__stat--identical">
+                    <div class="data-comparison-modal__stat-icon-wrap">
+                      <v-icon size="20">mdi-check-circle</v-icon>
+                    </div>
+                    <div class="data-comparison-modal__stat-value">
+                      {{ diffSummary.identical }}
+                    </div>
+                    <div class="data-comparison-modal__stat-label">
+                      {{ $t('dataComparison.identicalRows') }}
+                    </div>
+                  </div>
+                </div>
               </div>
             </v-window-item>
 
             <!-- Side by side view -->
             <v-window-item value="side-by-side">
-              <div class="side-by-side-view">
+              <div class="data-comparison-modal__side-by-side">
                 <v-row>
                   <v-col cols="12" md="6">
-                    <div class="data-panel">
-                      <div class="panel-header">
-                        <v-icon class="mr-2" color="primary">mdi-upload</v-icon>
-                        {{ $t('dataComparison.uploadedData') }}
-                        <v-chip size="x-small" class="ml-2">
+                    <div class="data-comparison-modal__data-panel">
+                      <div class="data-comparison-modal__panel-header data-comparison-modal__panel-header--instance">
+                        <v-icon class="mr-2" size="18" color="white">mdi-upload</v-icon>
+                        <span>{{ $t('dataComparison.uploadedData') }}</span>
+                        <v-chip size="x-small" variant="tonal" class="ml-auto data-comparison-modal__panel-chip">
                           {{ instanceData.length }}
                         </v-chip>
                       </div>
-                      <div class="panel-content virtual-table-container">
+                      <div class="data-comparison-modal__virtual-table">
                         <!-- Virtual table header -->
-                        <div class="virtual-table-header">
+                        <div class="data-comparison-modal__vtable-header">
                           <div
                             v-for="header in tableHeaders"
                             :key="header.key"
-                            class="virtual-table-header-cell"
+                            class="data-comparison-modal__vtable-header-cell"
                           >
                             {{ header.title }}
                           </div>
@@ -196,17 +201,17 @@
                           :items="instanceData"
                           :height="virtualTableHeight"
                           item-height="40"
-                          class="virtual-table-body"
+                          class="data-comparison-modal__vtable-body"
                         >
                           <template #default="{ item }">
                             <div
-                              class="virtual-table-row"
+                              class="data-comparison-modal__vtable-row"
                               :class="getRowClass(item, 'instance')"
                             >
                               <div
                                 v-for="header in tableHeaders"
                                 :key="header.key"
-                                class="virtual-table-cell"
+                                class="data-comparison-modal__vtable-cell"
                               >
                                 {{ formatValue(item[header.key]) }}
                               </div>
@@ -217,23 +222,21 @@
                     </div>
                   </v-col>
                   <v-col cols="12" md="6">
-                    <div class="data-panel">
-                      <div class="panel-header">
-                        <v-icon class="mr-2" color="secondary"
-                          >mdi-database</v-icon
-                        >
-                        {{ $t('dataComparison.masterData') }}
-                        <v-chip size="x-small" class="ml-2">
+                    <div class="data-comparison-modal__data-panel">
+                      <div class="data-comparison-modal__panel-header data-comparison-modal__panel-header--master">
+                        <v-icon class="mr-2" size="18" color="white">mdi-database</v-icon>
+                        <span>{{ $t('dataComparison.masterData') }}</span>
+                        <v-chip size="x-small" variant="tonal" class="ml-auto data-comparison-modal__panel-chip">
                           {{ masterData.length }}
                         </v-chip>
                       </div>
-                      <div class="panel-content virtual-table-container">
+                      <div class="data-comparison-modal__virtual-table">
                         <!-- Virtual table header -->
-                        <div class="virtual-table-header">
+                        <div class="data-comparison-modal__vtable-header">
                           <div
                             v-for="header in tableHeaders"
                             :key="header.key"
-                            class="virtual-table-header-cell"
+                            class="data-comparison-modal__vtable-header-cell"
                           >
                             {{ header.title }}
                           </div>
@@ -243,17 +246,17 @@
                           :items="masterData"
                           :height="virtualTableHeight"
                           item-height="40"
-                          class="virtual-table-body"
+                          class="data-comparison-modal__vtable-body"
                         >
                           <template #default="{ item }">
                             <div
-                              class="virtual-table-row"
+                              class="data-comparison-modal__vtable-row"
                               :class="getRowClass(item, 'master')"
                             >
                               <div
                                 v-for="header in tableHeaders"
                                 :key="header.key"
-                                class="virtual-table-cell"
+                                class="data-comparison-modal__vtable-cell"
                               >
                                 {{ formatValue(item[header.key]) }}
                               </div>
@@ -269,46 +272,46 @@
 
             <!-- Changes view -->
             <v-window-item value="changes">
-              <div class="changes-view">
+              <div class="data-comparison-modal__changes">
                 <!-- Filter buttons -->
-                <div class="change-filters mb-4">
-                  <v-btn-toggle v-model="changeFilter" mandatory>
-                    <v-btn value="all" size="small">
+                <div class="data-comparison-modal__filters mb-4">
+                  <v-btn-toggle
+                    v-model="changeFilter"
+                    mandatory
+                    class="data-comparison-modal__filter-toggle"
+                    density="comfortable"
+                  >
+                    <v-btn value="all" size="small" class="data-comparison-modal__filter-btn">
                       {{ $t('dataComparison.filter.all') }}
-                      <v-chip size="x-small" class="ml-1">{{
-                        totalChanges
-                      }}</v-chip>
+                      <v-chip size="x-small" class="ml-1">{{ totalChanges }}</v-chip>
                     </v-btn>
-                    <v-btn value="added" size="small" color="success">
-                      <v-icon left>mdi-plus</v-icon>
+                    <v-btn value="added" size="small" class="data-comparison-modal__filter-btn">
+                      <v-icon size="16" class="mr-1">mdi-plus</v-icon>
                       {{ $t('dataComparison.filter.added') }}
-                      <v-chip size="x-small" class="ml-1">
-                        {{ diffSummary.onlyInInstance }}
-                      </v-chip>
+                      <v-chip size="x-small" class="ml-1">{{ diffSummary.onlyInInstance }}</v-chip>
                     </v-btn>
-                    <v-btn value="removed" size="small" color="error">
-                      <v-icon left>mdi-minus</v-icon>
+                    <v-btn value="removed" size="small" class="data-comparison-modal__filter-btn">
+                      <v-icon size="16" class="mr-1">mdi-minus</v-icon>
                       {{ $t('dataComparison.filter.removed') }}
-                      <v-chip size="x-small" class="ml-1">
-                        {{ diffSummary.onlyInMaster }}
-                      </v-chip>
+                      <v-chip size="x-small" class="ml-1">{{ diffSummary.onlyInMaster }}</v-chip>
                     </v-btn>
-                    <v-btn value="modified" size="small" color="warning">
-                      <v-icon left>mdi-pencil</v-icon>
+                    <v-btn value="modified" size="small" class="data-comparison-modal__filter-btn">
+                      <v-icon size="16" class="mr-1">mdi-pencil</v-icon>
                       {{ $t('dataComparison.filter.modified') }}
-                      <v-chip size="x-small" class="ml-1">
-                        {{ diffSummary.different }}
-                      </v-chip>
+                      <v-chip size="x-small" class="ml-1">{{ diffSummary.different }}</v-chip>
                     </v-btn>
                   </v-btn-toggle>
                 </div>
 
-                <!-- Changes list -->
-                <div v-if="filteredChanges.length === 0" class="no-changes">
-                  <v-icon size="48" color="grey">mdi-check-all</v-icon>
-                  <p>{{ $t('dataComparison.noChangesInFilter') }}</p>
+                <!-- Empty state -->
+                <div v-if="filteredChanges.length === 0" class="data-comparison-modal__empty">
+                  <div class="data-comparison-modal__empty-icon">
+                    <v-icon size="40" color="white">mdi-check-all</v-icon>
+                  </div>
+                  <p class="data-comparison-modal__empty-text">{{ $t('dataComparison.noChangesInFilter') }}</p>
                 </div>
 
+                <!-- Changes list -->
                 <v-virtual-scroll
                   v-else
                   :items="filteredChanges"
@@ -316,52 +319,54 @@
                   item-height="80"
                 >
                   <template #default="{ item }">
-                    <div class="change-item" :class="'change-' + item.type">
-                      <div class="change-icon">
-                        <v-icon v-if="item.type === 'added'" color="success">
-                          mdi-plus-circle
+                    <div class="data-comparison-modal__change-item" :class="'data-comparison-modal__change-item--' + item.type">
+                      <div class="data-comparison-modal__change-icon-wrap" :class="'data-comparison-modal__change-icon-wrap--' + item.type">
+                        <v-icon v-if="item.type === 'added'" size="18" color="white">
+                          mdi-plus
                         </v-icon>
                         <v-icon
                           v-else-if="item.type === 'removed'"
-                          color="error"
+                          size="18"
+                          color="white"
                         >
-                          mdi-minus-circle
+                          mdi-minus
                         </v-icon>
                         <v-icon
                           v-else-if="item.type === 'modified'"
-                          color="warning"
+                          size="18"
+                          color="white"
                         >
-                          mdi-pencil-circle
+                          mdi-pencil
                         </v-icon>
                       </div>
-                      <div class="change-content">
-                        <div class="change-type">
+                      <div class="data-comparison-modal__change-body">
+                        <div class="data-comparison-modal__change-type">
                           {{ $t(`dataComparison.changeType.${item.type}`) }}
                         </div>
-                        <div v-if="item.type === 'added'" class="change-data">
+                        <div v-if="item.type === 'added'" class="data-comparison-modal__change-data">
                           <code>{{ formatRowPreview(item.instanceRow) }}</code>
                         </div>
                         <div
                           v-else-if="item.type === 'removed'"
-                          class="change-data"
+                          class="data-comparison-modal__change-data"
                         >
                           <code>{{ formatRowPreview(item.masterRow) }}</code>
                         </div>
                         <div
                           v-else-if="item.type === 'modified'"
-                          class="change-data"
+                          class="data-comparison-modal__change-data"
                         >
                           <div
                             v-for="change in item.changes"
                             :key="change.field"
-                            class="field-change"
+                            class="data-comparison-modal__field-change"
                           >
                             <strong>{{ change.field }}:</strong>
-                            <span class="old-value">{{
+                            <span class="data-comparison-modal__old-value">{{
                               formatValue(change.masterValue)
                             }}</span>
-                            <v-icon size="small">mdi-arrow-right</v-icon>
-                            <span class="new-value">{{
+                            <v-icon size="14" class="data-comparison-modal__arrow-icon">mdi-arrow-right</v-icon>
+                            <span class="data-comparison-modal__new-value">{{
                               formatValue(change.instanceValue)
                             }}</span>
                           </div>
@@ -376,11 +381,14 @@
         </div>
       </v-card-text>
 
-      <v-divider></v-divider>
-
-      <v-card-actions>
+      <!-- Actions -->
+      <v-card-actions class="core-modal-base__actions data-comparison-modal__actions">
         <v-spacer></v-spacer>
-        <v-btn color="primary" variant="tonal" @click="close">
+        <v-btn
+          variant="flat"
+          @click="close"
+          class="data-comparison-modal__close-btn"
+        >
           {{ $t('common.close') }}
         </v-btn>
       </v-card-actions>
@@ -732,142 +740,337 @@ const close = () => {
 }
 </script>
 
+<style>
+@import '@/assets/styles/components/core/CoreModalBase.css';
+</style>
+
 <style scoped>
+/* ── Modal card ── */
 .data-comparison-modal {
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
   max-height: 90vh;
 }
 
 .data-comparison-modal.fullscreen-modal {
   max-height: 100vh;
   height: 100vh;
+  border-radius: 0;
 }
 
-.fullscreen-modal .modal-content {
+/* ── Header ── */
+.data-comparison-modal__header {
+  background: var(--background, #f6f6f6);
+}
+
+.data-comparison-modal__header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background-color: var(--primary, #326786);
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.data-comparison-modal__header-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.data-comparison-modal__subtitle {
+  font-size: 12px;
+  color: var(--subtitle, #6e6e6e);
+  font-weight: 400;
+  margin-top: 2px;
+}
+
+/* ── Content area ── */
+.data-comparison-modal__content {
+  min-height: 400px;
+  padding: 20px;
+}
+
+.fullscreen-modal .data-comparison-modal__content {
   flex: 1;
   overflow: auto;
 }
 
-.fullscreen-modal .panel-content {
-  max-height: calc(100vh - 350px);
-}
-
-.fullscreen-modal .virtual-table-container {
-  flex: 1;
-}
-
-.modal-content {
-  min-height: 400px;
-}
-
-.loading-container {
+/* ── Loading ── */
+.data-comparison-modal__loading {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   min-height: 300px;
-  color: var(--subtitle);
 }
 
-.summary-card {
-  text-align: center;
+.data-comparison-modal__spinner {
+  color: var(--primary, #326786) !important;
 }
 
-.stat-value {
-  font-size: 2.5rem;
+.data-comparison-modal__loading-text {
+  color: var(--subtitle, #6e6e6e);
+  font-size: 14px;
+  margin-top: 16px;
+}
+
+/* ── Tabs ── */
+.data-comparison-modal__tabs {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.data-comparison-modal__tab {
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+/* ── Summary view ── */
+.data-comparison-modal__summary {
+  padding-top: 4px;
+}
+
+/* Source cards (uploaded / master) */
+.data-comparison-modal__source-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  background: white;
+  transition: box-shadow 0.2s ease;
+}
+
+.data-comparison-modal__source-card:hover {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.data-comparison-modal__source-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.data-comparison-modal__source-icon--instance {
+  background-color: var(--primary, #326786);
+}
+
+.data-comparison-modal__source-icon--master {
+  background-color: var(--accent, #4e7f9c);
+}
+
+.data-comparison-modal__source-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.data-comparison-modal__source-label {
+  font-size: 13px;
+  color: var(--subtitle, #6e6e6e);
+  font-weight: 500;
+}
+
+.data-comparison-modal__source-value {
+  font-size: 1.75rem;
   font-weight: 700;
-  color: var(--title);
+  color: var(--title, #404040);
+  line-height: 1.2;
 }
 
-.stat-label {
-  color: var(--subtitle);
-  font-size: 0.875rem;
+.data-comparison-modal__source-unit {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--subtitle, #6e6e6e);
+  margin-left: 4px;
 }
 
-.diff-stat {
+/* Diff stats grid */
+.data-comparison-modal__stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.data-comparison-modal__stat {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 16px;
+  padding: 20px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.diff-stat-value {
+.data-comparison-modal__stat:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.data-comparison-modal__stat-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  margin-bottom: 10px;
+}
+
+.data-comparison-modal__stat--added {
+  background-color: color-mix(in srgb, var(--success, #3ba780) 6%, white);
+}
+
+.data-comparison-modal__stat--added .data-comparison-modal__stat-icon-wrap {
+  background-color: color-mix(in srgb, var(--success, #3ba780) 15%, white);
+  color: var(--success, #3ba780);
+}
+
+.data-comparison-modal__stat--added .data-comparison-modal__stat-value {
+  color: var(--success, #3ba780);
+}
+
+.data-comparison-modal__stat--removed {
+  background-color: color-mix(in srgb, var(--danger, #f44336) 6%, white);
+}
+
+.data-comparison-modal__stat--removed .data-comparison-modal__stat-icon-wrap {
+  background-color: color-mix(in srgb, var(--danger, #f44336) 15%, white);
+  color: var(--danger, #f44336);
+}
+
+.data-comparison-modal__stat--removed .data-comparison-modal__stat-value {
+  color: var(--danger, #f44336);
+}
+
+.data-comparison-modal__stat--modified {
+  background-color: color-mix(in srgb, var(--warning, #ffb458) 6%, white);
+}
+
+.data-comparison-modal__stat--modified .data-comparison-modal__stat-icon-wrap {
+  background-color: color-mix(in srgb, var(--warning, #ffb458) 15%, white);
+  color: var(--warning, #ffb458);
+}
+
+.data-comparison-modal__stat--modified .data-comparison-modal__stat-value {
+  color: var(--warning, #ffb458);
+}
+
+.data-comparison-modal__stat--identical {
+  background-color: var(--background, #f6f6f6);
+}
+
+.data-comparison-modal__stat--identical .data-comparison-modal__stat-icon-wrap {
+  background-color: var(--disabled, #f2f4f7);
+  color: var(--subtitle, #6e6e6e);
+}
+
+.data-comparison-modal__stat--identical .data-comparison-modal__stat-value {
+  color: var(--subtitle, #6e6e6e);
+}
+
+.data-comparison-modal__stat-value {
   font-size: 1.5rem;
-  font-weight: 600;
-  margin-top: 8px;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
-.diff-stat-label {
-  font-size: 0.75rem;
-  color: var(--subtitle);
+.data-comparison-modal__stat-label {
+  font-size: 0.72rem;
+  color: var(--subtitle, #6e6e6e);
+  margin-top: 4px;
+  font-weight: 500;
 }
 
-.data-panel {
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 8px;
+/* ── Side by side view ── */
+.data-comparison-modal__data-panel {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
   overflow: hidden;
 }
 
-.panel-header {
-  background-color: var(--background, #f6f6f6);
-  padding: 12px 16px;
-  font-weight: 500;
+.data-comparison-modal__panel-header {
+  padding: 10px 16px;
+  font-weight: 600;
+  font-size: 13px;
   display: flex;
   align-items: center;
+  color: white;
 }
 
-.panel-content {
-  max-height: 400px;
-  overflow: auto;
+.data-comparison-modal__panel-header--instance {
+  background-color: var(--primary, #326786);
+}
+
+.data-comparison-modal__panel-header--master {
+  background-color: var(--accent, #4e7f9c);
+}
+
+.data-comparison-modal__panel-chip {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+  font-weight: 600;
+}
+
+.fullscreen-modal .data-comparison-modal__virtual-table {
+  flex: 1;
 }
 
 /* Virtual table styles */
-.virtual-table-container {
+.data-comparison-modal__virtual-table {
   display: flex;
   flex-direction: column;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 4px;
-  overflow: auto; /* Allow horizontal scroll */
+  overflow: auto;
 }
 
-.virtual-table-header {
+.data-comparison-modal__vtable-header {
   display: flex;
   background-color: var(--background, #f6f6f6);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   font-weight: 600;
-  font-size: 0.75rem;
-  color: var(--title, rgba(0, 0, 0, 0.87));
-  min-width: fit-content; /* Ensure header doesn't compress */
+  font-size: 0.7rem;
+  color: var(--subtitle, #6e6e6e);
+  min-width: fit-content;
 }
 
-.virtual-table-header-cell {
-  flex: 0 0 auto; /* Don't shrink, don't grow, auto width */
-  width: 120px; /* Fixed width for consistency */
+.data-comparison-modal__vtable-header-cell {
+  flex: 0 0 auto;
+  width: 120px;
   min-width: 120px;
-  padding: 10px 12px;
+  padding: 9px 12px;
   text-transform: uppercase;
-  letter-spacing: 0.025em;
+  letter-spacing: 0.4px;
 }
 
-.virtual-table-body {
+.data-comparison-modal__vtable-body {
   background-color: white;
-  min-width: fit-content; /* Ensure body matches header width */
+  min-width: fit-content;
 }
 
-.virtual-table-row {
+.data-comparison-modal__vtable-row {
   display: flex;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  transition: background-color 0.15s;
-  min-width: fit-content; /* Ensure row doesn't compress */
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  transition: background-color 0.15s ease;
+  min-width: fit-content;
 }
 
-.virtual-table-row:hover {
-  background-color: rgba(0, 0, 0, 0.04);
+.data-comparison-modal__vtable-row:hover {
+  background-color: rgba(0, 0, 0, 0.03);
 }
 
-.virtual-table-cell {
-  flex: 0 0 auto; /* Don't shrink, don't grow, auto width */
-  width: 120px; /* Fixed width matching header */
+.data-comparison-modal__vtable-cell {
+  flex: 0 0 auto;
+  width: 120px;
   min-width: 120px;
   padding: 8px 12px;
   font-size: 0.75rem;
@@ -876,134 +1079,213 @@ const close = () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--title, #404040);
 }
 
-/* Row status colors for virtual table - using CSS variables */
-.virtual-table-row.row-added {
-  background-color: color-mix(
-    in srgb,
-    var(--success, #3ba780) 12%,
-    transparent
-  ) !important;
+/* Row status colors */
+.data-comparison-modal__vtable-row.row-added {
+  background-color: color-mix(in srgb, var(--success, #3ba780) 10%, transparent) !important;
 }
 
-.virtual-table-row.row-removed {
-  background-color: color-mix(
-    in srgb,
-    var(--danger, #f44336) 12%,
-    transparent
-  ) !important;
+.data-comparison-modal__vtable-row.row-removed {
+  background-color: color-mix(in srgb, var(--danger, #f44336) 10%, transparent) !important;
 }
 
-.virtual-table-row.row-modified {
-  background-color: color-mix(
-    in srgb,
-    var(--warning, #ffb458) 12%,
-    transparent
-  ) !important;
+.data-comparison-modal__vtable-row.row-modified {
+  background-color: color-mix(in srgb, var(--warning, #ffb458) 10%, transparent) !important;
 }
 
-.data-table {
-  font-size: 0.75rem;
-}
-
-/* Row status colors - using CSS variables */
-.row-added {
-  background-color: color-mix(
-    in srgb,
-    var(--success, #3ba780) 12%,
-    transparent
-  ) !important;
-}
-
-.row-removed {
-  background-color: color-mix(
-    in srgb,
-    var(--danger, #f44336) 12%,
-    transparent
-  ) !important;
-}
-
-.row-modified {
-  background-color: color-mix(
-    in srgb,
-    var(--warning, #ffb458) 12%,
-    transparent
-  ) !important;
-}
-
-.change-filters {
+/* ── Changes view ── */
+.data-comparison-modal__filters {
   display: flex;
   justify-content: center;
 }
 
-.no-changes {
+.data-comparison-modal__filter-toggle {
+  border-radius: 10px !important;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.data-comparison-modal__filter-btn {
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+/* Empty state */
+.data-comparison-modal__empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px;
-  color: var(--subtitle);
+  padding: 56px 24px;
 }
 
-.change-item {
+.data-comparison-modal__empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background-color: var(--disabled, #f2f4f7);
+  margin-bottom: 16px;
+}
+
+.data-comparison-modal__empty-icon .v-icon {
+  color: var(--subtitle, #6e6e6e) !important;
+}
+
+.data-comparison-modal__empty-text {
+  color: var(--subtitle, #6e6e6e);
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Change items */
+.data-comparison-modal__change-item {
   display: flex;
   padding: 12px 16px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   align-items: flex-start;
+  gap: 12px;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  transition: box-shadow 0.15s ease;
 }
 
-/* Change item colors - using CSS variables */
-.change-item.change-added {
-  background-color: color-mix(in srgb, var(--success, #3ba780) 8%, transparent);
+.data-comparison-modal__change-item:hover {
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
 }
 
-.change-item.change-removed {
-  background-color: color-mix(in srgb, var(--danger, #f44336) 8%, transparent);
+.data-comparison-modal__change-item--added {
+  background-color: color-mix(in srgb, var(--success, #3ba780) 6%, white);
+  border-left: 3px solid var(--success, #3ba780);
 }
 
-.change-item.change-modified {
-  background-color: color-mix(in srgb, var(--warning, #ffb458) 8%, transparent);
+.data-comparison-modal__change-item--removed {
+  background-color: color-mix(in srgb, var(--danger, #f44336) 6%, white);
+  border-left: 3px solid var(--danger, #f44336);
 }
 
-.change-icon {
-  margin-right: 12px;
+.data-comparison-modal__change-item--modified {
+  background-color: color-mix(in srgb, var(--warning, #ffb458) 6%, white);
+  border-left: 3px solid var(--warning, #ffb458);
+}
+
+.data-comparison-modal__change-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
   flex-shrink: 0;
+  margin-top: 2px;
 }
 
-.change-content {
+.data-comparison-modal__change-icon-wrap--added {
+  background-color: var(--success, #3ba780);
+}
+
+.data-comparison-modal__change-icon-wrap--removed {
+  background-color: var(--danger, #f44336);
+}
+
+.data-comparison-modal__change-icon-wrap--modified {
+  background-color: var(--warning, #ffb458);
+}
+
+.data-comparison-modal__change-body {
   flex: 1;
   min-width: 0;
 }
 
-.change-type {
-  font-weight: 500;
+.data-comparison-modal__change-type {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--title, #404040);
   margin-bottom: 4px;
 }
 
-.change-data {
+.data-comparison-modal__change-data {
   font-size: 0.75rem;
-  color: var(--subtitle);
+  color: var(--subtitle, #6e6e6e);
 }
 
-.change-data code {
-  background-color: rgba(0, 0, 0, 0.05);
-  padding: 2px 6px;
-  border-radius: 4px;
+.data-comparison-modal__change-data code {
+  background-color: rgba(0, 0, 0, 0.04);
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.72rem;
 }
 
-.field-change {
+.data-comparison-modal__field-change {
   margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
 }
 
-.old-value {
+.data-comparison-modal__old-value {
   color: var(--danger, #f44336);
   text-decoration: line-through;
-  margin-right: 4px;
+  opacity: 0.8;
 }
 
-.new-value {
+.data-comparison-modal__arrow-icon {
+  color: var(--subtitle, #6e6e6e);
+}
+
+.data-comparison-modal__new-value {
   color: var(--success, #3ba780);
-  margin-left: 4px;
+  font-weight: 600;
+}
+
+/* ── Footer actions ── */
+.data-comparison-modal__actions {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.data-comparison-modal__close-btn {
+  background-color: var(--primary, #326786) !important;
+  color: white !important;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+  border-radius: 8px;
+  min-width: 100px;
+}
+
+.data-comparison-modal__close-btn:hover {
+  box-shadow: 0 2px 8px rgba(50, 103, 134, 0.3);
+}
+
+/* ── Responsive ── */
+@media (max-width: 960px) {
+  .data-comparison-modal__stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .data-comparison-modal__content {
+    padding: 16px;
+  }
+
+  .data-comparison-modal__stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .data-comparison-modal__stat {
+    padding: 14px 8px;
+  }
+
+  .data-comparison-modal__filter-toggle {
+    flex-wrap: wrap;
+  }
 }
 </style>
