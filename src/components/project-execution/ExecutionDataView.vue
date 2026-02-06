@@ -56,6 +56,28 @@
       </v-alert>
     </div>
 
+    <!-- Pending Changes Review Button (Excel mode) - At top for visibility -->
+    <div
+      v-if="enableExcelMode && hasPendingChanges"
+      class="pending-changes-bar"
+    >
+      <v-chip color="success" variant="tonal" size="small" class="mr-2">
+        <v-icon start size="small">mdi-pencil</v-icon>
+        {{
+          $t('pendingChanges.changesIndicator', { count: pendingChangesCount })
+        }}
+      </v-chip>
+      <v-btn
+        color="success"
+        variant="flat"
+        size="small"
+        @click="openPendingChangesModal"
+      >
+        <v-icon start size="small">mdi-eye</v-icon>
+        {{ $t('pendingChanges.reviewChanges') }}
+      </v-btn>
+    </div>
+
     <!-- Instance data tables display -->
     <div v-if="instanceTables.length > 0" class="data-tables-container">
       <!-- Multiple tables with tabs -->
@@ -70,24 +92,31 @@
             >
               <span class="tab-label">{{ table.title }}</span>
               <!-- Master table match indicator -->
-              <v-tooltip
-                v-if="getMatchForTable(table.key)"
-                location="top"
-              >
+              <v-tooltip v-if="getMatchForTable(table.key)" location="top">
                 <template #activator="{ props: tooltipProps }">
                   <v-icon
                     v-bind="tooltipProps"
                     size="small"
-                    :color="getMatchForTable(table.key)?.hasDifferences ? 'warning' : 'success'"
+                    :color="
+                      getMatchForTable(table.key)?.hasDifferences
+                        ? 'warning'
+                        : 'success'
+                    "
                     class="ml-1 match-indicator"
                   >
-                    {{ getMatchForTable(table.key)?.hasDifferences ? 'mdi-database-sync' : 'mdi-database-check' }}
+                    {{
+                      getMatchForTable(table.key)?.hasDifferences
+                        ? 'mdi-database-sync'
+                        : 'mdi-database-check'
+                    }}
                   </v-icon>
                 </template>
                 <span>
-                  {{ getMatchForTable(table.key)?.hasDifferences 
-                    ? t('masterTableMatch.hasDifferencesWithMaster') 
-                    : t('masterTableMatch.identicalToMaster') }}
+                  {{
+                    getMatchForTable(table.key)?.hasDifferences
+                      ? t('masterTableMatch.hasDifferencesWithMaster')
+                      : t('masterTableMatch.identicalToMaster')
+                  }}
                 </span>
               </v-tooltip>
             </CoreTab>
@@ -99,15 +128,28 @@
             class="master-match-action-bar"
           >
             <div class="match-info">
-              <v-icon size="small" :color="currentTableMatch.hasDifferences ? 'warning' : 'success'" class="mr-2">
-                {{ currentTableMatch.hasDifferences ? 'mdi-database-sync' : 'mdi-database-check' }}
+              <v-icon
+                size="small"
+                :color="
+                  currentTableMatch.hasDifferences ? 'warning' : 'success'
+                "
+                class="mr-2"
+              >
+                {{
+                  currentTableMatch.hasDifferences
+                    ? 'mdi-database-sync'
+                    : 'mdi-database-check'
+                }}
               </v-icon>
               <span class="match-text">
                 {{ t('masterTableMatch.matchFoundWith') }}
                 <strong>{{ currentTableMatch.masterTableTitle }}</strong>
               </span>
               <!-- Diff summary badges -->
-              <div class="diff-badges ml-3" v-if="currentTableMatch.hasDifferences">
+              <div
+                class="diff-badges ml-3"
+                v-if="currentTableMatch.hasDifferences"
+              >
                 <v-chip
                   v-if="currentTableMatch.diffSummary.onlyInInstance > 0"
                   size="x-small"
@@ -165,7 +207,10 @@
                 variant="outlined"
                 color="primary"
                 class="mr-2"
-                :class="{ 'v-btn--active': currentTableMatch.userChoice === 'use_master' }"
+                :class="{
+                  'v-btn--active':
+                    currentTableMatch.userChoice === 'use_master',
+                }"
                 @click="showUseMasterConfirmDialog = true"
               >
                 <v-tooltip activator="parent" location="top">
@@ -179,13 +224,18 @@
                 variant="outlined"
                 color="accent"
                 :disabled="!currentTableMatch.canReplaceMaster"
-                :class="{ 'v-btn--active': currentTableMatch.userChoice === 'replace_master' }"
+                :class="{
+                  'v-btn--active':
+                    currentTableMatch.userChoice === 'replace_master',
+                }"
                 @click="showReplaceMasterConfirmDialog = true"
               >
                 <v-tooltip activator="parent" location="top">
-                  {{ currentTableMatch.canReplaceMaster 
-                    ? t('masterTableMatch.option.replaceMaster.description') 
-                    : t('masterTableMatch.option.replaceMaster.notAvailable') }}
+                  {{
+                    currentTableMatch.canReplaceMaster
+                      ? t('masterTableMatch.option.replaceMaster.description')
+                      : t('masterTableMatch.option.replaceMaster.notAvailable')
+                  }}
                 </v-tooltip>
                 <v-icon start size="small">mdi-database-sync</v-icon>
                 {{ t('masterTableMatch.option.replaceMaster.short') }}
@@ -198,6 +248,7 @@
               :items="currentTable.items"
               :headers="currentTable.headers"
               :table-title="currentTable.title"
+              :table-key="currentTable.key"
               :loading="false"
               :elevation="0"
               :enable-search="true"
@@ -207,6 +258,12 @@
               :enable-bulk-actions="
                 !readOnly && !currentTable.isValidationTable
               "
+              :enable-excel-mode="
+                enableExcelMode && !readOnly && !currentTable.isValidationTable
+              "
+              :get-row-class="getRowClass"
+              :is-cell-modified="isCellModified"
+              :get-modified-value="getModifiedValue"
               :can-add="!readOnly && !currentTable.isValidationTable"
               :can-edit="!readOnly && !currentTable.isValidationTable"
               :can-delete="!readOnly && !currentTable.isValidationTable"
@@ -221,8 +278,11 @@
               :show-bulk-delete-dialog="showBulkDeleteDialog"
               :form-fields="formFields"
               :form-data="formData"
+              :table-data="tableDataForCoreTable"
+              :load-table-data="loadTableDataForCoreTable"
               :is-editing="isEditing"
               :editing-row-id="editingRowId"
+              :editing-table-key="editingTableKey"
               :editing-data="editingData"
               :original-data="originalData"
               :is-editing-any-row="isEditingAnyRow"
@@ -260,6 +320,7 @@
               @save-inline-edit="saveInlineEdit"
               @cancel-inline-edit="cancelInlineEdit"
               @update-inline-field="updateInlineField"
+              @cell-change="handleCellChange"
             />
           </v-card-text>
         </v-card>
@@ -276,11 +337,33 @@
       </v-alert>
     </div>
 
+    <!-- Pending Changes Review Modal -->
+    <PendingChangesReviewModal
+      v-model="showPendingChangesModal"
+      :saving="savingChanges"
+      :validation-error="saveValidationError"
+      :row-identifiers="getRowIdentifiers"
+      :rows-data="getRowsData"
+      :table-headers="getTableHeaders"
+      @save="handleSaveAllChanges"
+      @close="handleClosePendingChangesModal"
+      @update-change="handleModalUpdateChange"
+      @revert-change="handleRevertChange"
+      @revert-row="handleRevertRow"
+      @revert-table="handleRevertTable"
+      @revert-all="handleRevertAll"
+      @clear-validation-error="saveValidationError = null"
+    />
+
     <!-- Use Master Confirmation Dialog -->
     <CoreConfirmDialog
       v-model="showUseMasterConfirmDialog"
       :title="t('masterTableMatch.confirmUseMaster.title')"
-      :message="t('masterTableMatch.confirmUseMaster.message', { tableName: currentTable.title })"
+      :message="
+        t('masterTableMatch.confirmUseMaster.message', {
+          tableName: currentTable.title,
+        })
+      "
       :confirm-text="t('masterTableMatch.confirmUseMaster.confirm')"
       :cancel-text="t('table.cancel')"
       confirm-color="var(--primary)"
@@ -291,10 +374,14 @@
     <!-- Replace Master Confirmation Dialog -->
     <CoreConfirmDialog
       v-model="showReplaceMasterConfirmDialog"
-      :title="t('masterTableMatch.confirmReplaceMaster.title')"
-      :message="t('masterTableMatch.confirmReplaceMaster.message', { tableName: currentTable.title })"
-      :confirm-text="t('masterTableMatch.confirmReplaceMaster.confirm')"
-      :cancel-text="t('table.cancel')"
+      :title="$t('masterTableMatch.confirmReplaceMaster.title')"
+      :message="
+        $t('masterTableMatch.confirmReplaceMaster.message', {
+          tableName: currentTable.title,
+        })
+      "
+      :confirm-text="$t('masterTableMatch.confirmReplaceMaster.confirm')"
+      :cancel-text="$t('table.cancel')"
       confirm-color="var(--accent)"
       @confirm="handleConfirmReplaceMaster"
       @cancel="showReplaceMasterConfirmDialog = false"
@@ -310,6 +397,7 @@ import CoreTable from '@/components/core/table/CoreTable.vue'
 import CoreTab from '@/components/core/CoreTab.vue'
 import CoreTabs from '@/components/core/CoreTabs.vue'
 import CoreConfirmDialog from '@/components/core/table/CoreConfirmDialog.vue'
+import PendingChangesReviewModal from '@/components/core/PendingChangesReviewModal.vue'
 import {
   getOperatorsForFieldType,
   getOperatorText as getOperatorTextUtil,
@@ -322,6 +410,8 @@ import {
   type FilterCondition,
 } from '@/utils/tableFilterUtils'
 import { transformJsonSchemaToAutomationFormat } from '@/utils/schemaUtils'
+import { useTableChanges } from '@/composables/useTableChanges'
+import { formatValidationErrorsWithTitle } from '@/utils/errorFormatting'
 
 // Props
 interface Props {
@@ -331,6 +421,7 @@ interface Props {
   checksError?: boolean
   readOnly?: boolean
   masterTableMatches?: any[]
+  enableExcelMode?: boolean // Enable Excel-like editing mode
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -339,19 +430,25 @@ const props = withDefaults(defineProps<Props>(), {
   checksError: false,
   readOnly: false,
   masterTableMatches: () => [],
+  enableExcelMode: true, // Enable by default
 })
 
 // Emits
 const emit = defineEmits<{
   'save-changes': [data: any]
   'check-data': []
-  'master-table-action': [tableKey: string, action: 'keep_uploaded' | 'use_master' | 'replace_master']
+  'master-table-action': [
+    tableKey: string,
+    action: 'keep_uploaded' | 'use_master' | 'replace_master',
+  ]
   'show-comparison': [tableKey: string]
+  'pending-changes-update': [hasChanges: boolean, changesCount: number]
 }>()
 
 // Composables
 const { t } = useI18n()
 const generalStore = useGeneralStore()
+const tableChanges = useTableChanges()
 
 // State
 const checksLaunched = ref(false)
@@ -372,6 +469,7 @@ const selectedItems = ref<any[]>([])
 
 // State for inline editing
 const editingRowId = ref<string | number | null>(null)
+const editingTableKey = ref<string | null>(null)
 const editingData = ref<any>({})
 const originalData = ref<any>({})
 
@@ -379,6 +477,15 @@ const originalData = ref<any>({})
 const showUseMasterConfirmDialog = ref(false)
 const showReplaceMasterConfirmDialog = ref(false)
 const isEditingAnyRow = computed(() => editingRowId.value !== null)
+
+// State for pending changes review modal
+const showPendingChangesModal = ref(false)
+const savingChanges = ref(false)
+const saveValidationError = ref<string | null>(null)
+
+// Computed for pending changes
+const hasPendingChanges = computed(() => tableChanges.hasChanges.value)
+const pendingChangesCount = computed(() => tableChanges.totalChangesCount.value)
 
 // Use the utility function for generating headers
 const generateHeaders = generateHeadersFromData
@@ -444,25 +551,58 @@ const instanceTables = computed(() => {
     return tables
   }
 
-  // Normal mode: show instance data tables
+  // Normal mode: show instance data tables in schema order
   const instanceData = execution.instance.data
   const schema = instanceSchema.value
+  const rawSchema = execution.instance.schema
+  const schemaOrder =
+    rawSchema?.properties && typeof rawSchema.properties === 'object'
+      ? Object.keys(rawSchema.properties)
+      : []
 
-  Object.keys(instanceData).forEach((tableKey) => {
-    const tableData = instanceData[tableKey]
-    if (Array.isArray(tableData)) {
-      const tableObject = createTableObject(tableKey, tableData, schema)
-      if (tableObject) {
-        tables.push(tableObject)
-      }
+  const dataKeys = Object.keys(instanceData)
+  const orderedKeys = [
+    ...schemaOrder.filter((k) => dataKeys.includes(k)),
+    ...dataKeys.filter((k) => !schemaOrder.includes(k)),
+  ]
+
+  orderedKeys.forEach((tableKey) => {
+    const baseData = instanceData[tableKey]
+    if (!Array.isArray(baseData)) return
+    // In Excel mode, show all base rows (including pending deletes, styled red) plus pending creates (styled green)
+    let tableData = baseData
+    if (props.enableExcelMode) {
+      const creates = tableChanges.getPendingCreates(tableKey)
+      tableData = [...baseData].concat(
+        creates.map((c) => ({ ...c.data, id: c.tempId })),
+      )
+    }
+    // When table matches a master table, use master config (types, joinFrom, columnsToJoin, choices)
+    const match = props.masterTableMatches?.find(
+      (m: any) => m.tableKey === tableKey,
+    )
+    const effectiveConfig = match?.masterTableConfig ?? schema?.[tableKey]
+    const tableObject = createTableObject(
+      tableKey,
+      tableData,
+      schema,
+      effectiveConfig,
+    )
+    if (tableObject) {
+      tables.push(tableObject)
     }
   })
 
   return tables
 })
 
-// Helper function to create table object
-const createTableObject = (tableKey: string, tableData: any[], schema: any) => {
+// Helper function to create table object (effectiveConfig = master table config when match, else instance schema)
+const createTableObject = (
+  tableKey: string,
+  tableData: any[],
+  schema: any,
+  effectiveConfig?: any,
+) => {
   // Ensure all items have an ID (before generating headers)
   tableData.forEach((item: any, index: number) => {
     if (!item.id) {
@@ -470,28 +610,48 @@ const createTableObject = (tableKey: string, tableData: any[], schema: any) => {
     }
   })
 
-  // Get headers from transformed schema (automation format)
+  const tableConfig = effectiveConfig ?? schema?.[tableKey]
   let headers: any[]
   let title = tableKey
 
-  // The transformed schema has structure: schema[tableKey].get_list.response_schema.items.properties
-  if (schema?.[tableKey]) {
-    const tableConfig = schema[tableKey]
+  if (tableConfig?.title) {
+    title = tableConfig.title
+  }
 
-    // Get title from schema config
-    if (tableConfig.title) {
-      title = tableConfig.title
-    }
+  const selectionHeader = {
+    title: '',
+    value: 'selection',
+    key: 'selection',
+    sortable: false,
+    filterable: false,
+    type: 'selection',
+    required: false,
+    width: '48px',
+  }
 
-    // Generate headers from get_list operation schema
-    const responseSchema = tableConfig.get_list?.response_schema
-    if (responseSchema?.items?.properties) {
-      const properties = responseSchema.items.properties
-      const requiredFields = responseSchema.items.required || []
+  const responseSchema = tableConfig?.get_list?.response_schema
+  if (responseSchema?.items?.properties) {
+    const properties = responseSchema.items.properties
+    const requiredFields = responseSchema.items.required || []
 
-      // Generate headers from schema properties
-      const schemaHeaders = Object.entries(properties).map(
-        ([key, prop]: [string, any]) => ({
+    // SAFETY CHECK: Verify that schema property keys actually exist in the data.
+    // When a master table config is used (effectiveConfig), its column keys may differ
+    // from the instance data keys (e.g., different casing or different column set),
+    // which would cause empty cells since item[header.key] wouldn't find a match.
+    const schemaKeys = Object.keys(properties).filter((k) => k !== 'id')
+    const dataKeys =
+      tableData.length > 0
+        ? Object.keys(tableData[0]).filter((k) => k !== 'id' && k !== '_id')
+        : []
+
+    const keysMatchData =
+      dataKeys.length === 0 || schemaKeys.some((sk) => dataKeys.includes(sk))
+
+    if (keysMatchData) {
+      // Schema keys match data keys - use schema headers with full metadata
+      const schemaHeaders = Object.entries(properties)
+        .filter(([key]) => key !== 'id')
+        .map(([key, prop]: [string, any]) => ({
           title: prop.title || key,
           value: key,
           key: key,
@@ -505,92 +665,80 @@ const createTableObject = (tableKey: string, tableData: any[], schema: any) => {
           max: prop.maximum,
           pattern: prop.pattern,
           readOnly: prop.readOnly || false,
-        }),
+          isForeignKey: prop.isForeignKey || false,
+          isDependentField: prop.isDependentField || false,
+          isMainSelector: prop.isMainSelector || false,
+          joinFrom: prop.joinFrom || undefined,
+          columnsToJoin: prop.columnsToJoin || undefined,
+          foreignKeyField: prop.foreignKeyField || undefined,
+          hidden: prop.hidden || false,
+          // Use explicit choices from config, or schema enum (e.g. 'refineria' | 'factoria') so dropdowns show options without lookup
+          choices:
+            prop.choices ??
+            (Array.isArray(prop.enum) && prop.enum.length > 0
+              ? prop.enum
+              : undefined),
+        }))
+
+      headers = [selectionHeader, ...schemaHeaders]
+    } else {
+      // Schema keys DON'T match data keys (e.g., master table config has different
+      // column names than the instance data). Fall back to data-derived headers
+      // but enrich them with metadata from the master config via case-insensitive matching.
+      console.warn(
+        `ExecutionDataView: Schema property keys for "${tableKey}" don't match data keys (schema: [${schemaKeys.join(', ')}], data: [${dataKeys.join(', ')}]). Falling back to data-derived headers.`,
       )
 
-      // IMPORTANT: Add special headers for CoreTable functionality
-      headers = [
-        // Selection header (for checkboxes) - MUST be first
-        {
-          title: '',
-          value: 'selection',
-          key: 'selection',
-          sortable: false,
-          filterable: false,
-          type: 'selection',
-          required: false,
-          width: '48px',
-        },
-        // ID header (for row identification) - hidden from display
-        {
-          title: 'ID',
-          value: 'id',
-          key: 'id',
-          sortable: false,
-          filterable: false,
-          type: 'string',
-          required: false,
-          align: ' d-none',
-        },
-        // Schema fields
-        ...schemaHeaders,
-      ]
-    } else {
-      console.warn(
-        `ExecutionDataView: No response schema items.properties for "${tableKey}", using fallback`,
-      )
-      // Fallback to generating from data
-      let dataHeaders = generateHeaders(tableData)
-      // Add selection and ID headers
-      headers = [
-        {
-          title: '',
-          value: 'selection',
-          key: 'selection',
-          sortable: false,
-          filterable: false,
-          type: 'selection',
-          width: '48px',
-        },
-        {
-          title: 'ID',
-          value: 'id',
-          key: 'id',
-          sortable: false,
-          filterable: false,
-          type: 'string',
-          align: ' d-none',
-        },
-        ...dataHeaders.filter((h) => h.key !== 'id' && h.key !== 'selection'),
-      ]
+      // Build a case-insensitive lookup from the config properties for enrichment
+      const configPropsLookup = new Map<string, any>()
+      Object.entries(properties).forEach(([key, prop]) => {
+        configPropsLookup.set(key.toLowerCase(), prop as any)
+      })
+
+      const dataHeaders = generateHeaders(tableData)
+      const enrichedHeaders = dataHeaders
+        .filter((h: any) => h.key !== 'id' && h.key !== 'selection')
+        .map((h: any) => {
+          const configProp = configPropsLookup.get(h.key.toLowerCase())
+          if (configProp) {
+            return {
+              ...h,
+              title: configProp.title || h.title,
+              type:
+                configProp.type === 'integer'
+                  ? 'number'
+                  : configProp.type || h.type,
+              required: requiredFields.includes(h.key),
+              readOnly: configProp.readOnly || false,
+              isForeignKey: configProp.isForeignKey || false,
+              isDependentField: configProp.isDependentField || false,
+              isMainSelector: configProp.isMainSelector || false,
+              joinFrom: configProp.joinFrom || undefined,
+              columnsToJoin: configProp.columnsToJoin || undefined,
+              foreignKeyField: configProp.foreignKeyField || undefined,
+              hidden: configProp.hidden || false,
+              choices:
+                configProp.choices ??
+                (Array.isArray(configProp.enum) && configProp.enum.length > 0
+                  ? configProp.enum
+                  : undefined),
+            }
+          }
+          return h
+        })
+
+      headers = [selectionHeader, ...enrichedHeaders]
     }
   } else {
     console.warn(
-      `ExecutionDataView: No transformed schema config found for table "${tableKey}", using fallback`,
+      `ExecutionDataView: No response schema items.properties for "${tableKey}", using fallback`,
     )
-    // Fallback to generating from data
-    let dataHeaders = generateHeaders(tableData)
-    // Add selection and ID headers
+    const dataHeaders = generateHeaders(tableData)
     headers = [
-      {
-        title: '',
-        value: 'selection',
-        key: 'selection',
-        sortable: false,
-        filterable: false,
-        type: 'selection',
-        width: '48px',
-      },
-      {
-        title: 'ID',
-        value: 'id',
-        key: 'id',
-        sortable: false,
-        filterable: false,
-        type: 'string',
-        align: ' d-none',
-      },
-      ...dataHeaders.filter((h) => h.key !== 'id' && h.key !== 'selection'),
+      selectionHeader,
+      ...dataHeaders.filter(
+        (h: any) => h.key !== 'id' && h.key !== 'selection',
+      ),
     ]
   }
 
@@ -718,8 +866,11 @@ const currentTableState = computed(() => {
 
 // Master table match computed properties
 const getMatchForTable = (tableKey: string) => {
-  if (!props.masterTableMatches || props.masterTableMatches.length === 0) return null
-  return props.masterTableMatches.find((m: any) => m.tableKey === tableKey) || null
+  if (!props.masterTableMatches || props.masterTableMatches.length === 0)
+    return null
+  return (
+    props.masterTableMatches.find((m: any) => m.tableKey === tableKey) || null
+  )
 }
 
 const currentTableMatch = computed(() => {
@@ -732,8 +883,61 @@ const hasAnyMatches = computed(() => {
   return props.masterTableMatches && props.masterTableMatches.length > 0
 })
 
+// Dropdown options come from the instance JSON (tables that match), not from masterData API.
+// Expose both original keys and normalized keys (e.g. operadores_intercambios) so useFormFields
+// can find tables by joinFrom (e.g. "operadores_intercambios.operador") even when instance.data
+// uses different key format (e.g. "Operadores Intercambios").
+const tableDataForCoreTable = computed(() => {
+  const data = props.execution?.instance?.data
+  if (!data || typeof data !== 'object') return {}
+  const normalized: Record<string, any[]> = {}
+  for (const key of Object.keys(data)) {
+    const value = data[key]
+    if (!Array.isArray(value)) continue
+    const norm = normalizeTableNameForLookup(key)
+    if (norm && norm !== key && !(norm in data)) {
+      normalized[norm] = value
+    }
+  }
+  return { ...data, ...normalized }
+})
+
+// Normalize table name to match instance.data keys (snake_case, spaces, camelCase, etc.)
+const normalizeTableNameForLookup = (name: string): string => {
+  if (!name) return ''
+  const withUnderscores = name.replace(/\s+/g, '_').replace(/-/g, '_')
+  if (withUnderscores.includes('_')) {
+    return withUnderscores.toLowerCase()
+  }
+  if (
+    withUnderscores !== withUnderscores.toLowerCase() &&
+    withUnderscores !== withUnderscores.toUpperCase()
+  ) {
+    return withUnderscores.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase()
+  }
+  return withUnderscores.toLowerCase()
+}
+
+// Return dropdown options from the matching table in the instance JSON (no API / no masterData)
+const loadTableDataForCoreTable = async (tableName: string): Promise<any[]> => {
+  const instanceData = props.execution?.instance?.data
+  if (!instanceData || typeof instanceData !== 'object') return []
+
+  let table = instanceData[tableName]
+  if (Array.isArray(table)) return table
+
+  const normalized = normalizeTableNameForLookup(tableName)
+  const key = Object.keys(instanceData).find(
+    (k) => normalizeTableNameForLookup(k) === normalized,
+  )
+  table = key ? instanceData[key] : null
+  return Array.isArray(table) ? table : []
+}
+
 // Master table action handlers
-const handleMasterTableAction = (action: 'keep_uploaded' | 'use_master' | 'replace_master') => {
+const handleMasterTableAction = (
+  action: 'keep_uploaded' | 'use_master' | 'replace_master',
+) => {
   const table = currentTable.value
   if (!table.key) return
   emit('master-table-action', table.key, action)
@@ -760,18 +964,23 @@ const formFields = computed(() => {
   const table = currentTable.value
   if (!table.headers || table.headers.length === 0) return []
 
-  // Convert headers to form fields format with validation rules from schema
+  // Convert headers to form fields format with validation rules and dropdown config (choices, joinFrom)
   return table.headers.map((header: any) => ({
     key: header.key,
     title: header.title,
     type: header.type,
-    required: header.required || false, // Use required from schema
-    readOnly: header.key === 'id', // ID field is read-only when editing
+    required: header.required || false,
+    readOnly: header.key === 'id',
     minLength: header.minLength,
     maxLength: header.maxLength,
     min: header.min,
     max: header.max,
     pattern: header.pattern,
+    choices: header.choices,
+    joinFrom: header.joinFrom,
+    isDependentField: header.isDependentField,
+    isMainSelector: header.isMainSelector,
+    foreignKeyField: header.foreignKeyField,
   }))
 })
 
@@ -874,24 +1083,34 @@ const handleSaveItem = (data: any) => {
   const table = currentTable.value
   if (!table.key || !props.execution?.instance?.data) return
 
-  const tableData = props.execution.instance.data[table.key]
-
-  // Convert types based on schema before saving
   const convertedData = convertDataTypesBasedOnSchema(data, table.key)
-
-  // Create a copy without the internal ID for storage
   const { id, ...dataWithoutId } = convertedData
 
+  // Excel mode (review instance): stage add; no API, apply to JSON on Save all
+  if (props.enableExcelMode && !isEditing.value) {
+    tableChanges.recordCreate(
+      table.key,
+      dataWithoutId as Record<string, any>,
+      table.title,
+    )
+    showAddEditModal.value = false
+    formData.value = {}
+    emit(
+      'pending-changes-update',
+      tableChanges.hasChanges.value,
+      tableChanges.totalChangesCount.value,
+    )
+    return
+  }
+
+  const tableData = props.execution.instance.data[table.key]
+
   if (isEditing.value) {
-    // Edit existing item
     const index = tableData.findIndex((item: any) => item.id === data.id)
     if (index !== -1) {
-      // Keep the ID for internal tracking, but don't include it in the stored data
       tableData[index] = { ...dataWithoutId, id: data.id }
     }
   } else {
-    // Add new item
-    // Generate a temporary ID for UI tracking
     const tempId = generateSecureId(table.key)
     tableData.push({ ...dataWithoutId, id: tempId })
   }
@@ -899,7 +1118,6 @@ const handleSaveItem = (data: any) => {
   showAddEditModal.value = false
   formData.value = {}
 
-  // Emit event to notify parent that data has changed
   emit('save-changes', props.execution.instance.data)
 }
 
@@ -918,6 +1136,23 @@ const handleConfirmDelete = () => {
   if (!table.key || !props.execution?.instance?.data || !itemToDelete.value)
     return
 
+  // Excel mode: stage delete; no API, apply to JSON on Save all
+  if (props.enableExcelMode) {
+    tableChanges.recordDelete(
+      table.key,
+      itemToDelete.value.id,
+      itemToDelete.value,
+    )
+    showDeleteDialog.value = false
+    itemToDelete.value = null
+    emit(
+      'pending-changes-update',
+      tableChanges.hasChanges.value,
+      tableChanges.totalChangesCount.value,
+    )
+    return
+  }
+
   const tableData = props.execution.instance.data[table.key]
   const index = tableData.findIndex(
     (item: any) => item.id === itemToDelete.value.id,
@@ -930,7 +1165,6 @@ const handleConfirmDelete = () => {
   showDeleteDialog.value = false
   itemToDelete.value = null
 
-  // Emit event to notify parent that data has changed
   emit('save-changes', props.execution.instance.data)
 }
 
@@ -943,10 +1177,24 @@ const handleConfirmBulkDelete = () => {
   )
     return
 
+  // Excel mode: stage deletes; no API, apply to JSON on Save all
+  if (props.enableExcelMode) {
+    selectedItems.value.forEach((item) =>
+      tableChanges.recordDelete(table.key, item.id, item),
+    )
+    showBulkDeleteDialog.value = false
+    selectedItems.value = []
+    emit(
+      'pending-changes-update',
+      tableChanges.hasChanges.value,
+      tableChanges.totalChangesCount.value,
+    )
+    return
+  }
+
   const tableData = props.execution.instance.data[table.key]
   const idsToDelete = selectedItems.value.map((item) => item.id)
 
-  // Remove all selected items
   for (let i = tableData.length - 1; i >= 0; i--) {
     if (idsToDelete.includes(tableData[i].id)) {
       tableData.splice(i, 1)
@@ -956,20 +1204,43 @@ const handleConfirmBulkDelete = () => {
   showBulkDeleteDialog.value = false
   selectedItems.value = []
 
-  // Emit event to notify parent that data has changed
   emit('save-changes', props.execution.instance.data)
 }
 
 // Inline editing handlers
 const startInlineEdit = (item: any, field?: string) => {
+  const tableKey = currentTable.value?.key ?? null
+  // If we're already editing the same row of the same table, don't reset the editing data
+  // This preserves any pending changes (like Fijar toggle)
+  if (editingRowId.value === item.id && editingTableKey.value === tableKey) {
+    return
+  }
+
   editingRowId.value = item.id
+  editingTableKey.value = tableKey
+  // Start from item and overlay any pending changes (e.g. Fijar) so edit form shows current state
   editingData.value = { ...item }
   originalData.value = { ...item }
+
+  if (props.enableExcelMode) {
+    const table = currentTable.value
+    if (table?.key) {
+      const rowChanges = tableChanges.getChangesForTable(table.key)?.[
+        String(item.id)
+      ]
+      if (rowChanges) {
+        Object.entries(rowChanges).forEach(([fieldKey, change]) => {
+          editingData.value[fieldKey] = change.newValue
+        })
+      }
+    }
+  }
 }
 
 // Convert value to integer type
 const convertToInteger = (value: any): number => {
-  const result = typeof value === 'number' ? Math.floor(value) : parseInt(String(value), 10)
+  const result =
+    typeof value === 'number' ? Math.floor(value) : parseInt(String(value), 10)
   return isNaN(result) ? 0 : result
 }
 
@@ -982,7 +1253,8 @@ const convertToNumber = (value: any): number => {
 // Convert value to boolean type
 const convertToBoolean = (value: any): boolean => {
   if (typeof value === 'boolean') return value
-  if (typeof value === 'string') return value.toLowerCase() === 'true' || value === '1'
+  if (typeof value === 'string')
+    return value.toLowerCase() === 'true' || value === '1'
   return Boolean(value)
 }
 
@@ -991,32 +1263,44 @@ const convertFieldValue = (value: any, schemaType: string): any => {
   if (value === null || value === undefined) return value
 
   switch (schemaType) {
-    case 'integer': return convertToInteger(value)
-    case 'number': return convertToNumber(value)
-    case 'boolean': return convertToBoolean(value)
-    default: return value
+    case 'integer':
+      return convertToInteger(value)
+    case 'number':
+      return convertToNumber(value)
+    case 'boolean':
+      return convertToBoolean(value)
+    default:
+      return value
   }
 }
 
-// Helper function to convert data types based on JSON schema
-const convertDataTypesBasedOnSchema = (data: any, tableKey: string): any => {
-  const execution = props.execution || generalStore.selectedExecution
-  if (!execution?.instance?.schema?.properties?.[tableKey]?.items?.properties) {
-    return data
+// Get item schema for type conversion: use master table config when match, else instance schema (so int stays int)
+const getItemSchemaForTypeConversion = (tableKey: string): any => {
+  const match = props.masterTableMatches?.find(
+    (m: any) => m.tableKey === tableKey,
+  )
+  if (match?.masterTableConfig?.get_list?.response_schema?.items) {
+    return match.masterTableConfig.get_list.response_schema.items
   }
+  const execution = props.execution || generalStore.selectedExecution
+  return execution?.instance?.schema?.properties?.[tableKey]?.items ?? null
+}
 
-  const itemSchema = execution.instance.schema.properties[tableKey].items
+// Helper function to convert data types based on effective schema (master or instance)
+const convertDataTypesBasedOnSchema = (data: any, tableKey: string): any => {
+  const itemSchema = getItemSchemaForTypeConversion(tableKey)
+  if (!itemSchema?.properties) return data
+
   const convertedData = { ...data }
-
   Object.keys(convertedData).forEach((key) => {
     if (key === 'id') return
-
-    const fieldSchema = itemSchema.properties?.[key]
+    const fieldSchema = itemSchema.properties[key]
     if (!fieldSchema) return
-
-    convertedData[key] = convertFieldValue(convertedData[key], fieldSchema.type)
+    convertedData[key] = convertFieldValue(
+      convertedData[key],
+      fieldSchema.type || 'string',
+    )
   })
-
   return convertedData
 }
 
@@ -1025,30 +1309,32 @@ const saveInlineEdit = () => {
   if (!table.key || !props.execution?.instance?.data || !editingRowId.value)
     return
 
-  const tableData = props.execution.instance.data[table.key]
-  const index = tableData.findIndex(
-    (item: any) => item.id === editingRowId.value,
-  )
-
-  if (index !== -1) {
-    // Convert types based on schema before saving
-    const convertedData = convertDataTypesBasedOnSchema(
-      editingData.value,
-      table.key,
+  // Excel mode: cell changes are already in tableChanges; apply to JSON only on Save all
+  if (!props.enableExcelMode) {
+    const tableData = props.execution.instance.data[table.key]
+    const index = tableData.findIndex(
+      (item: any) => item.id === editingRowId.value,
     )
-    tableData[index] = convertedData
+
+    if (index !== -1) {
+      const convertedData = convertDataTypesBasedOnSchema(
+        editingData.value,
+        table.key,
+      )
+      tableData[index] = convertedData
+    }
+    emit('save-changes', props.execution.instance.data)
   }
 
   editingRowId.value = null
+  editingTableKey.value = null
   editingData.value = {}
   originalData.value = {}
-
-  // Emit event to notify parent that data has changed
-  emit('save-changes', props.execution.instance.data)
 }
 
 const cancelInlineEdit = () => {
   editingRowId.value = null
+  editingTableKey.value = null
   editingData.value = {}
   originalData.value = {}
 }
@@ -1057,11 +1343,396 @@ const updateInlineField = (field: string, value: any) => {
   editingData.value[field] = value
 }
 
+// Excel mode handlers
+const handleCellChange = (
+  tableKey: string,
+  rowId: string | number,
+  fieldKey: string,
+  oldValue: any,
+  newValue: any,
+) => {
+  if (!props.enableExcelMode) return
+
+  const table = instanceTables.value.find((t) => t.key === tableKey)
+  const header = table?.headers.find((h: any) => h.key === fieldKey)
+  const fieldTitle = header?.title || fieldKey
+
+  // Convert newValue to correct type (int, number, boolean) so it is stored and saved as such
+  const itemSchema = getItemSchemaForTypeConversion(tableKey)
+  const fieldType = itemSchema?.properties?.[fieldKey]?.type ?? header?.type
+  const typedNewValue =
+    fieldType != null ? convertFieldValue(newValue, fieldType) : newValue
+
+  tableChanges.recordChange(
+    tableKey,
+    rowId,
+    fieldKey,
+    oldValue,
+    typedNewValue,
+    fieldTitle,
+    table?.title,
+  )
+
+  // Emit event to parent
+  emit(
+    'pending-changes-update',
+    tableChanges.hasChanges.value,
+    tableChanges.totalChangesCount.value,
+  )
+}
+
+// Check if a cell is modified
+const isCellModified = (rowId: string | number, fieldKey: string): boolean => {
+  if (!props.enableExcelMode) return false
+  const table = currentTable.value
+  if (!table.key) return false
+  return tableChanges.isCellModified(table.key, rowId, fieldKey)
+}
+
+// Get the modified value for a cell
+const getModifiedValue = (rowId: string | number, fieldKey: string): any => {
+  if (!props.enableExcelMode) return undefined
+  const table = currentTable.value
+  if (!table.key) return undefined
+
+  const changes = tableChanges.getChangesForTable(table.key)
+  if (!changes) return undefined
+
+  const rowChanges = changes[String(rowId)]
+  if (!rowChanges) return undefined
+
+  const fieldChange = rowChanges[fieldKey]
+  if (!fieldChange) return undefined
+
+  return fieldChange.newValue
+}
+
+// Row class for pending changes: new rows green, deleted rows red (Excel mode only)
+const getRowClass = (item: any): string => {
+  if (!props.enableExcelMode || !item) return ''
+  const tableKey = currentTable.value?.key
+  if (!tableKey) return ''
+  return tableChanges.getRowClass(tableKey, item)
+}
+
+// Open pending changes review modal
+const openPendingChangesModal = () => {
+  showPendingChangesModal.value = true
+}
+
+// Close pending changes modal and clear validation error
+const handleClosePendingChangesModal = () => {
+  saveValidationError.value = null
+  showPendingChangesModal.value = false
+}
+
+// Handle save all changes from modal (apply edits + creates + deletes to JSON only; no API)
+const handleSaveAllChanges = async () => {
+  if (!props.execution?.instance?.data) return
+
+  saveValidationError.value = null
+  savingChanges.value = true
+
+  try {
+    const instance = props.execution.instance
+    const previousData = JSON.parse(JSON.stringify(instance.data))
+
+    // Build updated data: apply cell edits, then remove deletes, then add creates (JSON only)
+    const updatedData = JSON.parse(JSON.stringify(instance.data))
+
+    const allTableKeys = new Set([
+      ...Object.keys(updatedData),
+      ...tableChanges.modifiedTableKeys.value,
+    ])
+
+    allTableKeys.forEach((tableKey) => {
+      if (!updatedData[tableKey]) updatedData[tableKey] = []
+
+      let tableRows = [...updatedData[tableKey]]
+
+      // 1. Remove pending deletes
+      const deletes = tableChanges.getPendingDeletes(tableKey)
+      if (deletes.length > 0) {
+        const deleteSet = new Set(deletes.map(String))
+        tableRows = tableRows.filter(
+          (row: any) => !deleteSet.has(String(row.id)),
+        )
+      }
+
+      // 2. Apply cell edits
+      const changes = tableChanges.getChangesForTable(tableKey)
+      if (changes) {
+        tableRows = tableRows.map((row: any) => {
+          const rowChanges = changes[String(row.id)]
+          if (!rowChanges) return row
+          const merged = { ...row }
+          Object.entries(rowChanges).forEach(
+            ([fieldKey, change]: [string, any]) => {
+              merged[fieldKey] = change.newValue
+            },
+          )
+          return merged
+        })
+      }
+
+      // 3. Add pending creates (with new id for JSON)
+      const creates = tableChanges.getPendingCreates(tableKey)
+      creates.forEach((c) => {
+        const newId = generateSecureId(tableKey)
+        const row = convertDataTypesBasedOnSchema(
+          { ...c.data, id: newId },
+          tableKey,
+        )
+        tableRows.push(row)
+      })
+
+      updatedData[tableKey] = tableRows
+    })
+
+    // Write back to instance.data
+    Object.keys(updatedData).forEach((tableKey) => {
+      instance.data[tableKey] = updatedData[tableKey]
+    })
+
+    const validationErrors = await instance.checkSchema()
+
+    if (validationErrors && validationErrors.length > 0) {
+      Object.keys(previousData).forEach((tableKey) => {
+        instance.data[tableKey] = previousData[tableKey]
+      })
+      saveValidationError.value = formatValidationErrorsWithTitle(
+        t('projectExecution.steps.step3.loadInstance.instanceSchemaError'),
+        validationErrors,
+        t,
+      )
+      return
+    }
+
+    emit('save-changes', instance.data)
+    tableChanges.clearAllChanges()
+    showPendingChangesModal.value = false
+  } finally {
+    savingChanges.value = false
+  }
+}
+
+// Get original row value (from instance data, before pending changes) for modal edit
+const getOriginalRowValue = (
+  tableKey: string,
+  rowId: string,
+  fieldKey: string,
+): any => {
+  const tableData = props.execution?.instance?.data?.[tableKey]
+  if (!tableData) return undefined
+  const row = tableData.find((item: any) => String(item.id) === String(rowId))
+  return row?.[fieldKey]
+}
+
+// Handle edit from modal (update or add a change)
+const handleModalUpdateChange = (
+  tableKey: string,
+  rowId: string,
+  fieldKey: string,
+  newValue: any,
+) => {
+  const existing =
+    tableChanges.getChangesForTable(tableKey)?.[String(rowId)]?.[fieldKey]
+  const oldValue = existing
+    ? existing.oldValue
+    : getOriginalRowValue(tableKey, rowId, fieldKey)
+  const table = instanceTables.value.find((t) => t.key === tableKey)
+  const header = table?.headers?.find((h: any) => h.key === fieldKey)
+  const fieldTitle = header?.title || fieldKey
+  const itemSchema = getItemSchemaForTypeConversion(tableKey)
+  const fieldType = itemSchema?.properties?.[fieldKey]?.type ?? header?.type
+  const typedNewValue =
+    fieldType != null ? convertFieldValue(newValue, fieldType) : newValue
+  tableChanges.recordChange(
+    tableKey,
+    rowId,
+    fieldKey,
+    oldValue,
+    typedNewValue,
+    fieldTitle,
+    table?.title,
+  )
+  emit(
+    'pending-changes-update',
+    tableChanges.hasChanges.value,
+    tableChanges.totalChangesCount.value,
+  )
+}
+
+// Handle revert change from modal
+const handleRevertChange = (
+  tableKey: string,
+  rowId: string,
+  fieldKey: string,
+) => {
+  const change = tableChanges.revertChange(tableKey, rowId, fieldKey)
+  if (change && props.execution?.instance?.data?.[tableKey]) {
+    // Revert the value in the actual data
+    const tableData = props.execution.instance.data[tableKey]
+    const rowIndex = tableData.findIndex(
+      (item: any) => String(item.id) === rowId,
+    )
+    if (rowIndex !== -1) {
+      tableData[rowIndex][fieldKey] = change.oldValue
+    }
+  }
+  emit(
+    'pending-changes-update',
+    tableChanges.hasChanges.value,
+    tableChanges.totalChangesCount.value,
+  )
+}
+
+// Handle revert row from modal
+const handleRevertRow = (tableKey: string, rowId: string) => {
+  const changes = tableChanges.revertRowChanges(tableKey, rowId)
+  if (changes && props.execution?.instance?.data?.[tableKey]) {
+    // Revert all values in the actual data
+    const tableData = props.execution.instance.data[tableKey]
+    const rowIndex = tableData.findIndex(
+      (item: any) => String(item.id) === rowId,
+    )
+    if (rowIndex !== -1) {
+      Object.entries(changes).forEach(([fieldKey, change]) => {
+        tableData[rowIndex][fieldKey] = change.oldValue
+      })
+    }
+  }
+  emit(
+    'pending-changes-update',
+    tableChanges.hasChanges.value,
+    tableChanges.totalChangesCount.value,
+  )
+}
+
+// Handle revert table from modal
+const handleRevertTable = (tableKey: string) => {
+  const changes = tableChanges.revertTableChanges(tableKey)
+  if (changes && props.execution?.instance?.data?.[tableKey]) {
+    // Revert all values in the actual data
+    const tableData = props.execution.instance.data[tableKey]
+    Object.entries(changes).forEach(([rowId, rowChanges]) => {
+      const rowIndex = tableData.findIndex(
+        (item: any) => String(item.id) === rowId,
+      )
+      if (rowIndex !== -1) {
+        Object.entries(rowChanges).forEach(([fieldKey, change]) => {
+          tableData[rowIndex][fieldKey] = change.oldValue
+        })
+      }
+    })
+  }
+  emit(
+    'pending-changes-update',
+    tableChanges.hasChanges.value,
+    tableChanges.totalChangesCount.value,
+  )
+}
+
+// Handle revert all from modal
+const handleRevertAll = () => {
+  // Get all changes before clearing
+  const allChanges = tableChanges.getAllChanges()
+
+  // Revert all values in the actual data
+  if (props.execution?.instance?.data) {
+    Object.entries(allChanges).forEach(([tableKey, tableChangesData]) => {
+      const tableData = props.execution.instance.data[tableKey]
+      if (tableData) {
+        Object.entries(tableChangesData).forEach(([rowId, rowChanges]) => {
+          const rowIndex = tableData.findIndex(
+            (item: any) => String(item.id) === rowId,
+          )
+          if (rowIndex !== -1) {
+            Object.entries(rowChanges).forEach(([fieldKey, change]) => {
+              tableData[rowIndex][fieldKey] = change.oldValue
+            })
+          }
+        })
+      }
+    })
+  }
+
+  tableChanges.clearAllChanges()
+  emit('pending-changes-update', false, 0)
+}
+
+// Get row identifiers for the modal
+const getRowIdentifiers = computed(() => {
+  const identifiers: Record<string, Record<string, string>> = {}
+
+  instanceTables.value.forEach((table) => {
+    identifiers[table.key] = {}
+    table.items.forEach((item: any) => {
+      // Try to find a meaningful identifier
+      const idFields = ['name', 'nombre', 'code', 'codigo', 'title', 'titulo']
+      let identifier = String(item.id)
+
+      for (const field of idFields) {
+        if (item[field]) {
+          identifier = String(item[field])
+          break
+        }
+      }
+
+      identifiers[table.key][String(item.id)] = identifier
+    })
+  })
+
+  return identifiers
+})
+
+// Get all rows data for the modal to show context
+const getRowsData = computed(() => {
+  const rowsData: Record<string, Record<string, any>> = {}
+
+  instanceTables.value.forEach((table) => {
+    rowsData[table.key] = {}
+    table.items.forEach((item: any) => {
+      rowsData[table.key][String(item.id)] = { ...item }
+    })
+  })
+
+  return rowsData
+})
+
+// Get table headers for the modal (with type for editable inputs)
+const getTableHeaders = computed(() => {
+  const headers: Record<
+    string,
+    Array<{ key: string; title: string; type?: string }>
+  > = {}
+
+  instanceTables.value.forEach((table) => {
+    headers[table.key] = table.headers
+      .filter((h: any) => h.key !== 'selection')
+      .map((h: any) => ({
+        key: h.key,
+        title: h.title,
+        type: h.type === 'integer' ? 'number' : h.type,
+      }))
+  })
+
+  return headers
+})
+
 // Methods
 const handleCheckData = () => {
   checksLaunched.value = true
   emit('check-data')
 }
+
+// Expose methods for parent component
+defineExpose({
+  hasPendingChanges,
+  pendingChangesCount,
+  openPendingChangesModal,
+  clearAllChanges: tableChanges.clearAllChanges,
+})
 </script>
 
 <style scoped>
@@ -1136,7 +1807,8 @@ const handleCheckData = () => {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -1149,7 +1821,11 @@ const handleCheckData = () => {
   align-items: center;
   justify-content: space-between;
   padding: 10px 16px;
-  background: linear-gradient(90deg, rgba(251, 140, 0, 0.08) 0%, rgba(251, 140, 0, 0.02) 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(251, 140, 0, 0.08) 0%,
+    rgba(251, 140, 0, 0.02) 100%
+  );
   border-bottom: 1px solid rgba(251, 140, 0, 0.2);
   flex-wrap: wrap;
   gap: 8px;
@@ -1204,3 +1880,4 @@ const handleCheckData = () => {
   }
 }
 </style>
+<style src="@/assets/styles/components/core/PendingChangesBar.css"></style>

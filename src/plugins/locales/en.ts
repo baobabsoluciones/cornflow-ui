@@ -1,4 +1,6 @@
 export default {
+  DecisionOps: 'DecisionOps',
+  baobab: 'baobab',
   projectExecution: {
     title: 'Project execution',
     description:
@@ -457,6 +459,13 @@ export default {
   },
   sectionView: {
     editInputData: 'Edit input data',
+    exitConfirmation: {
+      title: 'Leave with unsaved changes',
+      message:
+        'You have unsaved changes in the master data. If you leave now, your changes will be lost. Are you sure you want to leave?',
+      confirmButton: 'Yes, leave',
+      cancelButton: 'Cancel',
+    },
   },
   table: {
     noDataAvailable: 'No data available for this table',
@@ -482,6 +491,7 @@ export default {
     update: 'Update',
     ok: 'OK',
     clickToEdit: 'Click to edit',
+    fieldReadOnly: 'This field cannot be edited',
     upload: 'Upload',
     selectFile: 'Select file',
     dragAndDrop: 'Drag and drop files here or click to select',
@@ -777,8 +787,49 @@ export default {
       modified: 'Modified row',
     },
   },
+  pendingChanges: {
+    title: 'Pending changes',
+    subtitle: 'Review and confirm your changes before saving',
+    changes: 'changes',
+    modifiedTables: 'Modified tables',
+    modifiedRows: 'Modified rows',
+    modifiedRow: 'Modified row',
+    totalChanges: 'Total changes',
+    noChanges: 'No pending changes',
+    row: 'Row',
+    rowContext: 'Row data',
+    changedFields: 'Changed fields',
+    originalValue: 'Original value',
+    newValue: 'New value',
+    revert: 'Revert',
+    revertField: 'Revert this change',
+    revertRow: 'Revert row changes',
+    revertAllTable: 'Revert all changes in this table',
+    revertAll: 'Revert all',
+    revertAllChanges: 'Revert all changes',
+    saveAllChanges: 'Save all changes',
+    confirmRevertAll: {
+      title: 'Revert all changes',
+      message:
+        'Are you sure you want to revert all pending changes? This action cannot be undone.',
+      confirm: 'Yes, revert all',
+    },
+    unsavedChangesWarning: {
+      title: 'Unsaved changes',
+      message:
+        'You have unsaved changes. If you leave now, your changes will be lost.',
+      stay: 'Stay',
+      leave: 'Leave anyway',
+    },
+    reviewChanges: 'Review changes',
+    changesIndicator: '{count} pending changes',
+    changeStaged: 'Change staged. It will be applied when you save.',
+    newRow: 'New row',
+    deletedRow: 'Deleted row',
+  },
   common: {
     close: 'Close',
+    cancel: 'Cancel',
     file: 'file',
     files: 'files',
     error: 'error',

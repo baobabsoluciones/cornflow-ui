@@ -15,7 +15,7 @@
           <v-icon>{{ isCurrentPlan ? 'mdi-star' : 'mdi-star-plus-outline' }}</v-icon>
         </v-btn>
       </template>
-      <span>{{ isCurrentPlan ? $t('latestPlan.fab.isCurrentPlan') : $t('latestPlan.fab.tooltip') }}</span>
+      <span>{{ isCurrentPlan ? t('latestPlan.fab.isCurrentPlan') : t('latestPlan.fab.tooltip') }}</span>
     </v-tooltip>
 
     <!-- Confirmation Modal -->

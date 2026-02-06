@@ -5,6 +5,7 @@ import { showSnackbar } from '@/services/SnackbarService'
 import { useExecutionTableData } from './useExecutionTableData'
 import { getSectionType } from '@/services/FrontendAutomationService'
 import { useGeneralStore } from '@/stores/general'
+import { useTableChanges } from '@/composables/useTableChanges'
 import type { Ref, ComputedRef } from 'vue'
 import {
   getOperatorsForFieldType,
@@ -31,6 +32,18 @@ export function useTableData(
 
   const getOperatorText = (operator: string): string => {
     return getOperatorTextUtil(operator, t)
+  }
+
+  // Table changes for Excel-like editing (master tables only)
+  const tableChanges = useTableChanges()
+
+  /**
+   * Normalize table key for storage/read so it's consistent when the same tab
+   * is identified by different formats (e.g. URL has "resumen-factorias", config has "resumen_factorias").
+   */
+  const normalizeTableKeyForStorage = (key: string): string => {
+    if (!key) return ''
+    return String(key).toLowerCase().replace(/-/g, '_')
   }
 
   // Check if we're dealing with execution data (input-data or results)
@@ -130,6 +143,8 @@ export function useTableData(
   const editingData = ref({})
   const originalData = ref({})
   const tableDataCache = ref<Record<string, any[]>>({})
+  // Cancel in-flight loadData when view is deactivated so we don't update state after navigate-away
+  const loadIdRef = ref(0)
 
   // Function to load data from related tables (for foreign key selectors)
   const loadTableData = async (tableName: string): Promise<any[]> => {
@@ -326,7 +341,13 @@ export function useTableData(
    * Helper: Check if field has a valid dependent value
    */
   const hasValidDependentValue = (prop: any, value: any): boolean => {
-    return prop.isDependentField && prop.joinFrom && value !== undefined && value !== null && value !== ''
+    return (
+      prop.isDependentField &&
+      prop.joinFrom &&
+      value !== undefined &&
+      value !== null &&
+      value !== ''
+    )
   }
 
   /**
@@ -362,24 +383,30 @@ export function useTableData(
 
     try {
       const relatedTableData = await loadTableData(joinInfo.table)
-      const matchingItem = relatedTableData.find(
-        (item) => fieldValuesMatch(item[joinInfo.field], mappedRow[fieldKey])
+      const matchingItem = relatedTableData.find((item) =>
+        fieldValuesMatch(item[joinInfo.field], mappedRow[fieldKey]),
       )
 
       if (matchingItem?.id !== undefined) {
         mappedRow[foreignKeyField] = matchingItem.id
       } else {
-        console.warn(`No matching item found for ${fieldKey}="${mappedRow[fieldKey]}" in table ${joinInfo.table}`)
+        console.warn(
+          `No matching item found for ${fieldKey}="${mappedRow[fieldKey]}" in table ${joinInfo.table}`,
+        )
       }
     } catch (error) {
-      console.error(`Error loading related table ${joinInfo.table} for field ${fieldKey}:`, error)
+      console.error(
+        `Error loading related table ${joinInfo.table} for field ${fieldKey}:`,
+        error,
+      )
     }
     delete mappedRow[fieldKey]
   }
 
   // Map dependent fields to foreign key IDs
   const mapDependentFieldsToIds = async (parsedData: any[]): Promise<any[]> => {
-    const properties = tableConfig.value?.get_list?.response_schema?.items?.properties
+    const properties =
+      tableConfig.value?.get_list?.response_schema?.items?.properties
     if (!properties) return parsedData
 
     return Promise.all(
@@ -390,7 +417,12 @@ export function useTableData(
         for (const [fieldKey, fieldProp] of Object.entries(properties)) {
           const prop = fieldProp as any
           if (hasValidDependentValue(prop, mappedRow[fieldKey])) {
-            await processRowDependentField(mappedRow, fieldKey, prop, properties)
+            await processRowDependentField(
+              mappedRow,
+              fieldKey,
+              prop,
+              properties,
+            )
           }
         }
 
@@ -458,10 +490,7 @@ export function useTableData(
   }
 
   // Helper function to read file as text and parse based on extension
-  const parseTextFile = (
-    file: File,
-    extension: string,
-  ): Promise<any[]> => {
+  const parseTextFile = (file: File, extension: string): Promise<any[]> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
 
@@ -516,6 +545,7 @@ export function useTableData(
       return
     }
 
+    const myLoadId = ++loadIdRef.value
     loading.value = true
     error.value = null
 
@@ -524,14 +554,22 @@ export function useTableData(
         .default
       const repository = new TableRepository(tableConfig.value, t)
       const data = await repository.getList()
+      // Don't update state if this load was superseded or cancelled (e.g. user navigated away)
+      if (myLoadId !== loadIdRef.value) return
       items.value = Array.isArray(data) ? data : []
     } catch (err) {
+      if (myLoadId !== loadIdRef.value) return
       console.error('Error in loadData:', err)
       error.value = 'Failed to load data'
       items.value = []
     } finally {
-      loading.value = false
+      if (myLoadId === loadIdRef.value) loading.value = false
     }
+  }
+
+  /** Call when the view is deactivated/unmounted so in-flight loadData does not update state. */
+  const cancelLoadData = () => {
+    loadIdRef.value++
   }
 
   // Watch for config changes (only for master tables)
@@ -548,6 +586,56 @@ export function useTableData(
       }
     },
     { immediate: true },
+  )
+
+  // When a staged create is reverted from the pending-changes modal, remove that row from items.
+  // Watch a stable string key so we don't re-run on every tick (getPendingCreates returns new array ref each time).
+  watch(
+    () => {
+      const creates =
+        tableChanges.getPendingCreates(
+          normalizeTableKeyForStorage(tableKey.value),
+        ) || []
+      return creates
+        .map((c) => c.tempId)
+        .sort()
+        .join(',')
+    },
+    (newKey, oldKey) => {
+      if (oldKey == null || oldKey === '') return
+      const newIds = newKey ? newKey.split(',').filter(Boolean) : []
+      const oldIds = oldKey ? oldKey.split(',').filter(Boolean) : []
+      const currentSet = new Set(newIds)
+      const removed = oldIds.filter((id: string) => !currentSet.has(id))
+      if (removed.length > 0) {
+        const removedSet = new Set(removed)
+        items.value = items.value.filter(
+          (i: any) => !removedSet.has(String(i.id)),
+        )
+      }
+    },
+  )
+
+  // When a staged delete is reverted from the modal, reload so the row reappears.
+  // Watch a stable string key so we don't re-run on every tick.
+  watch(
+    () => {
+      const deletes =
+        tableChanges.getPendingDeletes(
+          normalizeTableKeyForStorage(tableKey.value),
+        ) || []
+      return deletes.sort().join(',')
+    },
+    (newKey, oldKey) => {
+      if (oldKey == null || oldKey === '') return
+      const newIds = newKey ? newKey.split(',').filter(Boolean) : []
+      const oldIds = oldKey ? oldKey.split(',').filter(Boolean) : []
+      const currentSet = new Set(newIds)
+      const reverted = oldIds.filter((id: string) => !currentSet.has(id))
+      if (reverted.length > 0 && !shouldUseExecutionData.value) {
+        loadData()
+      }
+    },
   )
 
   // Event handlers (simplified for master tables)
@@ -781,6 +869,11 @@ export function useTableData(
     }
   }
 
+  // Local ref so getRowClass (and other handlers) can access it in closure
+  const enableExcelMode = computed(
+    () => !shouldUseExecutionData.value && !!tableConfig.value?.put_item,
+  )
+
   return {
     // Dynamic data that switches automatically
     items: dynamicItems,
@@ -826,6 +919,95 @@ export function useTableData(
       () => !shouldUseExecutionData.value && !!tableConfig.value?.post_bulk,
     ),
     canDownloadExcel: computed(() => true),
+    // Excel-like mode for master tables (accumulate changes, save all via TableRepository)
+    enableExcelMode,
+    isCellModified: (rowId: string | number, fieldKey: string) =>
+      tableChanges.isCellModified(
+        normalizeTableKeyForStorage(tableKey.value),
+        rowId,
+        fieldKey,
+      ),
+    getModifiedValue: (rowId: string | number, fieldKey: string) => {
+      const item = dynamicItems.value.find(
+        (i: any) => String(i.id) === String(rowId),
+      )
+      return tableChanges.getCurrentValue(
+        normalizeTableKeyForStorage(tableKey.value),
+        rowId,
+        fieldKey,
+        item?.[fieldKey],
+      )
+    },
+    handleCellChange: (
+      tableKeyArg: string,
+      rowId: string | number,
+      fieldKey: string,
+      oldValue: any,
+      newValue: any,
+    ) => {
+      // Use the table key from the event (the table that emitted the change), not the current
+      // ref value, so changes are stored under the correct tab when switching tabs quickly.
+      const rawKey = tableKeyArg ?? tableKey.value ?? ''
+      if (!rawKey) return
+
+      // Normalize so URL format (resumen-factorias) and config format (resumen_factorias) match
+      const keyToUse = normalizeTableKeyForStorage(rawKey)
+
+      const header = dynamicHeaders.value.find((h: any) => h.key === fieldKey)
+      const fieldTitle = header?.title || fieldKey
+      const tableTitle = tableConfig.value?.title || rawKey
+
+      tableChanges.setTableTitle(keyToUse, tableTitle)
+      tableChanges.recordChange(
+        keyToUse,
+        rowId,
+        fieldKey,
+        oldValue,
+        newValue,
+        fieldTitle,
+        tableTitle,
+      )
+    },
+    hasPendingChanges: computed(() => {
+      const storageKey = normalizeTableKeyForStorage(tableKey.value)
+      return (
+        tableChanges.isTableModified(storageKey) ||
+        tableChanges.getPendingCreates(storageKey).length > 0 ||
+        tableChanges.getPendingDeletes(storageKey).length > 0
+      )
+    }),
+    pendingChangesCount: computed(() => {
+      const storageKey = normalizeTableKeyForStorage(tableKey.value)
+      const changes = tableChanges.getChangesForTable(storageKey)
+      let cellCount = 0
+      if (changes) {
+        cellCount = Object.values(changes).reduce(
+          (sum, row) => sum + Object.keys(row).length,
+          0,
+        )
+      }
+      const createsCount = tableChanges.getPendingCreates(storageKey).length
+      const deletesCount = tableChanges.getPendingDeletes(storageKey).length
+      return cellCount + createsCount + deletesCount
+    }),
+    rowsDataForModal: computed(() => {
+      const storageKey = normalizeTableKeyForStorage(tableKey.value)
+      return {
+        [storageKey]: Object.fromEntries(
+          dynamicItems.value.map((item: any) => [String(item.id), item]),
+        ),
+      }
+    }),
+    tableHeadersForModal: computed(() => {
+      const storageKey = normalizeTableKeyForStorage(tableKey.value)
+      return { [storageKey]: dynamicHeaders.value }
+    }),
+    /** Row class for pending changes: row-new (green), row-deleted (red). Only when Excel mode. */
+    getRowClass: (item: any): string => {
+      if (!enableExcelMode.value) return ''
+      const storageKey = normalizeTableKeyForStorage(tableKey.value)
+      return tableChanges.getRowClass(storageKey, item)
+    },
     searchValue,
     activeFilters,
     selectedItems,
@@ -954,11 +1136,6 @@ export function useTableData(
 
       saving.value = true
       try {
-        const { default: TableRepository } = await import(
-          '@/repositories/TableRepository'
-        )
-        const repository = new TableRepository(tableConfig.value, t)
-
         const wasEditing = isEditing.value
         const mode = wasEditing ? 'edit' : 'add'
 
@@ -968,23 +1145,42 @@ export function useTableData(
           mode,
         )
 
+        // Master tables in Excel mode: stage add (no API until "Save all" in pending changes modal)
+        if (enableExcelMode.value && !wasEditing) {
+          const storageKey = normalizeTableKeyForStorage(tableKey.value)
+          const tableTitle = tableConfig.value?.title || tableKey.value
+          const tempId = tableChanges.recordCreate(
+            storageKey,
+            preparedData as Record<string, any>,
+            tableTitle,
+          )
+          items.value = [...items.value, { ...preparedData, id: tempId } as any]
+          showAddEditModal.value = false
+          formData.value = {}
+          isEditing.value = false
+          showSnackbar(t('pendingChanges.changeStaged'), 'success')
+          saving.value = false
+          return
+        }
+
+        const { default: TableRepository } = await import(
+          '@/repositories/TableRepository'
+        )
+        const repository = new TableRepository(tableConfig.value, t)
+
         if (wasEditing) {
-          // Update existing item - id is passed separately to putItem
           const id = (formData.value as any).id
           await repository.putItem(id, preparedData)
         } else {
-          // Create new item
           await repository.createItem(preparedData)
         }
 
-        // Reload data and close modal
         const reloadedData = await repository.getList()
         items.value = Array.isArray(reloadedData) ? reloadedData : []
         showAddEditModal.value = false
         formData.value = {}
         isEditing.value = false
 
-        // Show success message
         showSnackbar(
           wasEditing
             ? t('table.messages.itemUpdated')
@@ -1077,6 +1273,19 @@ export function useTableData(
     handleConfirmDelete: async () => {
       if (!tableConfig.value || !(formData.value as any)?.id) return
 
+      const id = (formData.value as any).id
+
+      // Master tables in Excel mode: stage delete (row stays visible in red until Save all)
+      if (enableExcelMode.value) {
+        const storageKey = normalizeTableKeyForStorage(tableKey.value)
+        const rowData = formData.value as Record<string, any>
+        tableChanges.recordDelete(storageKey, id, rowData)
+        showDeleteDialog.value = false
+        formData.value = {}
+        showSnackbar(t('pendingChanges.changeStaged'), 'success')
+        return
+      }
+
       deleting.value = true
       try {
         const { default: TableRepository } = await import(
@@ -1084,15 +1293,13 @@ export function useTableData(
         )
         const repository = new TableRepository(tableConfig.value, t)
 
-        await repository.deleteItem((formData.value as any).id)
+        await repository.deleteItem(id)
 
-        // Reload data and close dialog
         const reloadedData = await repository.getList()
         items.value = Array.isArray(reloadedData) ? reloadedData : []
         showDeleteDialog.value = false
         formData.value = {}
 
-        // Show success message
         showSnackbar(t('table.messages.itemDeleted'), 'success')
       } catch (err) {
         console.error('Error deleting item:', err)
@@ -1110,6 +1317,18 @@ export function useTableData(
     handleConfirmBulkDelete: async () => {
       if (!tableConfig.value || selectedItems.value.length === 0) return
 
+      // Master tables in Excel mode: stage deletes (rows stay visible in red until Save all)
+      if (enableExcelMode.value) {
+        const storageKey = normalizeTableKeyForStorage(tableKey.value)
+        selectedItems.value.forEach((item: any) =>
+          tableChanges.recordDelete(storageKey, item.id, item),
+        )
+        selectedItems.value = []
+        showBulkDeleteDialog.value = false
+        showSnackbar(t('pendingChanges.changeStaged'), 'success')
+        return
+      }
+
       bulkDeleting.value = true
       try {
         const { default: TableRepository } = await import(
@@ -1120,13 +1339,11 @@ export function useTableData(
         const idsToDelete = selectedItems.value.map((item) => item.id)
         await repository.deleteBulk(idsToDelete)
 
-        // Reload data and close dialog
         const reloadedData = await repository.getList()
         items.value = Array.isArray(reloadedData) ? reloadedData : []
         selectedItems.value = []
         showBulkDeleteDialog.value = false
 
-        // Show success message
         showSnackbar(t('table.messages.itemsDeleted'), 'success')
       } catch (err) {
         console.error('Error deleting items:', err)
@@ -1205,6 +1422,83 @@ export function useTableData(
       editingData.value = {}
       originalData.value = {}
     },
+    saveAllChanges: async () => {
+      if (shouldUseExecutionData.value) return
+      const config = tableConfig.value
+      const storageKey = normalizeTableKeyForStorage(tableKey.value)
+      const edits = tableChanges.getChangesForTable(storageKey)
+      const hasEdits = edits && Object.keys(edits).length > 0
+      const hasCreates = tableChanges.getPendingCreates(storageKey).length > 0
+      const hasDeletes = tableChanges.getPendingDeletes(storageKey).length > 0
+      if (!hasEdits && !hasCreates && !hasDeletes) return
+
+      saving.value = true
+      try {
+        const { default: TableRepository } = await import(
+          '@/repositories/TableRepository'
+        )
+        const repository = new TableRepository(config, t)
+
+        // 1. Pending deletes
+        const deletes = tableChanges.getPendingDeletes(storageKey)
+        if (config?.delete_item && deletes.length > 0) {
+          for (const rowId of deletes) {
+            await repository.deleteItem(rowId)
+          }
+          tableChanges.clearDeletesForTable(storageKey)
+        }
+
+        // 2. Pending creates
+        const creates = tableChanges.getPendingCreates(storageKey)
+        if (config?.post_item && creates.length > 0) {
+          for (const { data } of creates) {
+            const { id: _id, ...payload } = data
+            await repository.createItem(payload)
+          }
+          tableChanges.clearCreatesForTable(storageKey)
+        }
+
+        // 3. Cell edits
+        const changes = tableChanges.getChangesForTable(storageKey)
+        if (config?.put_item && changes && Object.keys(changes).length > 0) {
+          const currentItems = await repository.getList()
+          for (const [rowId, rowChanges] of Object.entries(changes)) {
+            const row = currentItems.find((i: any) => String(i.id) === rowId)
+            if (!row) continue
+            const merged = { ...row }
+            Object.entries(rowChanges).forEach(
+              ([fieldKey, change]: [string, any]) => {
+                merged[fieldKey] = change.newValue
+              },
+            )
+            const preparedData = formFieldsComposable.prepareFormDataForSubmit(
+              merged as any,
+              'edit',
+            )
+            await repository.putItem(rowId, preparedData)
+          }
+          tableChanges.revertTableChanges(storageKey)
+        }
+
+        await loadData()
+        showSnackbar(t('table.messages.itemUpdated'), 'success')
+      } catch (err) {
+        console.error('Error saving all changes:', err)
+        error.value =
+          err instanceof Error ? err.message : 'Error saving changes'
+        showSnackbar(
+          err instanceof Error ? err.message : t('table.messages.errorSaving'),
+          'error',
+        )
+      } finally {
+        saving.value = false
+      }
+    },
+    clearPendingChanges: () => {
+      tableChanges.revertTableChanges(
+        normalizeTableKeyForStorage(tableKey.value),
+      )
+    },
     updateInlineField: (field: string, value: any) => {
       // Update the field and handle dependent fields (foreign keys)
       const updatedData = { ...editingData.value, [field]: value }
@@ -1256,26 +1550,8 @@ export function useTableData(
 
       if (!tableConfig.value?.get_list) return
 
-      loading.value = true
-      error.value = null
-
-      try {
-        // Import TableRepository dynamically to avoid circular dependencies
-        const { default: TableRepository } = await import(
-          '@/repositories/TableRepository'
-        )
-        const repository = new TableRepository(tableConfig.value, t)
-
-        const data = await repository.getList()
-
-        items.value = Array.isArray(data) ? data : []
-      } catch (err) {
-        console.error('Error loading master table data:', err)
-        error.value = err instanceof Error ? err.message : 'Unknown error'
-        items.value = []
-      } finally {
-        loading.value = false
-      }
+      await loadData()
     },
+    cancelLoadData,
   }
 }

@@ -36,15 +36,18 @@
         </div>
       </div>
       <ExecutionDataView
+        ref="executionDataViewRef"
         :execution="newExecution"
         :can-check-data="false"
         :checks-finished="false"
         :checks-error="false"
         :master-table-matches="masterTableMatchesWithCanReplace"
         :master-table-loading="isMasterTableLoading"
+        :enable-excel-mode="true"
         @save-changes="handleSaveChanges"
         @master-table-action="handleMasterTableChoice"
         @show-comparison="handleShowComparison"
+        @pending-changes-update="handlePendingChangesUpdate"
       />
       <!-- Error Alert - Show validation errors if any (below the table) -->
       <v-alert
@@ -99,9 +102,11 @@
                 :checks-finished="false"
                 :checks-error="false"
                 :master-table-matches="masterTableMatchesWithCanReplace"
+                :enable-excel-mode="true"
                 @save-changes="handleSaveChanges"
                 @master-table-action="handleMasterTableChoice"
                 @show-comparison="handleShowComparison"
+                @pending-changes-update="handlePendingChangesUpdate"
               />
             </div>
           </div>
@@ -138,6 +143,7 @@ import { Instance } from '@/app/models/Instance'
 import { formatValidationErrorsWithTitle } from '@/utils/errorFormatting'
 import { useGeneralStore } from '@/stores/general'
 import appConfig from '@/app/config'
+import { useTableChanges } from '@/composables/useTableChanges'
 
 interface Props {
   newExecution: NewExecution
@@ -154,7 +160,11 @@ const emit = defineEmits<{
   (e: 'update:instance', instance: Instance): void
   (e: 'update:instanceErrors', errors: string | null): void
   (e: 'master-tables-updated', tables: string[]): void
+  (e: 'has-pending-changes', hasChanges: boolean): void
 }>()
+
+// Table changes composable for tracking pending changes
+const tableChanges = useTableChanges()
 
 const generalStore = useGeneralStore()
 const showSnackbar = inject('showSnackbar') as
@@ -427,6 +437,25 @@ const handleSaveChanges = async (data: object) => {
     }
   }
 }
+
+// Reference to ExecutionDataView
+const executionDataViewRef = ref<InstanceType<typeof ExecutionDataView> | null>(null)
+
+// Handle pending changes update from ExecutionDataView
+const handlePendingChangesUpdate = (hasChanges: boolean, changesCount: number) => {
+  emit('has-pending-changes', hasChanges)
+}
+
+// Check if there are pending changes
+const hasPendingChanges = computed(() => {
+  return tableChanges.hasChanges.value
+})
+
+// Expose methods for parent component
+defineExpose({
+  hasPendingChanges,
+  clearPendingChanges: tableChanges.clearAllChanges,
+})
 </script>
 
 <style scoped>

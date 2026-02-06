@@ -249,19 +249,20 @@ export function useInstanceProcessing() {
   /**
    * Create instance from file data
    */
-  const createInstanceFromData = (
+  const createInstanceFromData = async (
     data: string | ArrayBuffer,
     extension: string,
     file: File,
-  ): Instance => {
+  ): Promise<Instance> => {
     const { Instance } = store.appConfig
     const schemas = store.getSchemaConfig
+    const schemaName = store.appConfig.parameters.schema
 
     if (isExcelExtension(extension)) {
-      return Instance.fromExcel(
+      return await Instance.fromExcel(
         data,
         schemas.instanceSchema,
-        store.appConfig.parameters.schema,
+        schemaName,
       )
     } else if (extension === FILE_EXTENSIONS.JSON) {
       const jsonData = JSON.parse(data as string)
@@ -270,15 +271,15 @@ export function useInstanceProcessing() {
         jsonData,
         schemas.instanceSchema,
         schemas.instanceChecksSchema,
-        store.appConfig.parameters.schema,
+        schemaName,
       )
     } else if (extension === FILE_EXTENSIONS.CSV) {
-      return Instance.fromCsv(
+      return await Instance.fromCsv(
         data as string,
         file.name,
         schemas.instanceSchema,
         schemas.instanceChecksSchema,
-        store.appConfig.parameters.schema,
+        schemaName,
       )
     }
 
@@ -308,7 +309,7 @@ export function useInstanceProcessing() {
         mergedData,
         schemas.instanceSchema,
         schemas.instanceChecksSchema,
-        store.appConfig.parameters.schema,
+        store.appConfig.parameters.schema as string,
       )
     } catch (error) {
       console.error('Error merging instances:', error)

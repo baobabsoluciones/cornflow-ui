@@ -1,4 +1,6 @@
 export default {
+  DecisionOps: 'DecisionOps',
+  baobab: 'baobab',
   projectExecution: {
     title: 'Ejecución',
     description:
@@ -469,6 +471,13 @@ export default {
   },
   sectionView: {
     editInputData: 'Editar datos de entrada',
+    exitConfirmation: {
+      title: 'Salir con cambios sin guardar',
+      message:
+        'Tienes cambios sin guardar en los datos maestros. Si sales ahora, se perderán. ¿Seguro que quieres salir?',
+      confirmButton: 'Sí, salir',
+      cancelButton: 'Cancelar',
+    },
   },
   table: {
     noDataAvailable: 'No hay datos disponibles para esta tabla',
@@ -495,6 +504,7 @@ export default {
     update: 'Actualizar',
     ok: 'Aceptar',
     clickToEdit: 'Clic para editar',
+    fieldReadOnly: 'Este campo no se puede editar',
     upload: 'Subir',
     selectFile: 'Seleccionar archivo',
     dragAndDrop: 'Arrastra y suelta archivos aquí o haz clic para seleccionar',
@@ -645,7 +655,8 @@ export default {
       type: 'Tipo',
     },
     errorFormats: {
-      typeError: 'error - se esperaba {type}, pero se recibió un tipo diferente',
+      typeError:
+        'error - se esperaba {type}, pero se recibió un tipo diferente',
       typeErrorNoField: 'error - se esperaba {type}',
       requiredError: '- falta la propiedad {property}',
       requiredErrorNoPath: '- falta la propiedad requerida {property}',
@@ -699,7 +710,8 @@ export default {
     alertDescription:
       'Algunas tablas en los datos subidos coinciden con tablas maestras existentes. Por favor, elige cómo manejar cada coincidencia a continuación.',
     hasDifferences: 'Tiene diferencias',
-    hasDifferencesWithMaster: 'Esta tabla tiene diferencias con la tabla maestra',
+    hasDifferencesWithMaster:
+      'Esta tabla tiene diferencias con la tabla maestra',
     identical: 'Idénticas',
     identicalToMaster: 'Esta tabla es idéntica a la tabla maestra',
     viewDifferences: 'Comparar',
@@ -739,19 +751,25 @@ export default {
       updateError: 'Error al actualizar la tabla maestra',
       errorLoadingMasterTable: 'Error al cargar la tabla maestra {tableName}',
       unknownError: 'Error desconocido',
-      failedToUpdateMasterTable: 'Error al actualizar la tabla maestra "{tableName}": {error}',
-      relatedTableNotFound: 'Tabla relacionada {tableName} no encontrada en configuraciones',
-      noMatchingItemFound: 'No se encontró elemento coincidente para {fieldKey}="{fieldValue}" en tabla {tableName}',
-      errorProcessingDependentField: 'Error al procesar campo dependiente {fieldKey}',
+      failedToUpdateMasterTable:
+        'Error al actualizar la tabla maestra "{tableName}": {error}',
+      relatedTableNotFound:
+        'Tabla relacionada {tableName} no encontrada en configuraciones',
+      noMatchingItemFound:
+        'No se encontró elemento coincidente para {fieldKey}="{fieldValue}" en tabla {tableName}',
+      errorProcessingDependentField:
+        'Error al procesar campo dependiente {fieldKey}',
     },
     confirmUseMaster: {
       title: 'Aplicar datos del maestro',
-      message: '¿Quieres usar los datos de la tabla maestra para "{tableName}"? Los datos que has subido serán reemplazados por los del maestro solo para esta ejecución.',
+      message:
+        '¿Quieres usar los datos de la tabla maestra para "{tableName}"? Los datos que has subido serán reemplazados por los del maestro solo para esta ejecución.',
       confirm: 'Aplicar maestro',
     },
     confirmReplaceMaster: {
       title: 'Guardar en tabla maestra',
-      message: '¿Quieres guardar los datos subidos en la tabla maestra "{tableName}"? Esto modificará permanentemente la tabla maestra y afectará a todas las ejecuciones futuras.',
+      message:
+        '¿Quieres guardar los datos subidos en la tabla maestra "{tableName}"? Esto modificará permanentemente la tabla maestra y afectará a todas las ejecuciones futuras.',
       confirm: 'Guardar en maestro',
     },
   },
@@ -784,8 +802,49 @@ export default {
       modified: 'Fila modificada',
     },
   },
+  pendingChanges: {
+    title: 'Cambios pendientes',
+    subtitle: 'Revisa y confirma tus cambios antes de guardar',
+    changes: 'cambios',
+    modifiedTables: 'Tablas modificadas',
+    modifiedRows: 'Filas modificadas',
+    modifiedRow: 'Fila modificada',
+    totalChanges: 'Total de cambios',
+    noChanges: 'No hay cambios pendientes',
+    row: 'Fila',
+    rowContext: 'Datos de la fila',
+    changedFields: 'Campos modificados',
+    originalValue: 'Valor original',
+    newValue: 'Nuevo valor',
+    revert: 'Revertir',
+    revertField: 'Revertir este cambio',
+    revertRow: 'Revertir cambios de la fila',
+    revertAllTable: 'Revertir todos los cambios de esta tabla',
+    revertAll: 'Revertir todo',
+    revertAllChanges: 'Revertir todos los cambios',
+    saveAllChanges: 'Guardar todos los cambios',
+    confirmRevertAll: {
+      title: 'Revertir todos los cambios',
+      message:
+        '¿Estás seguro de que quieres revertir todos los cambios pendientes? Esta acción no se puede deshacer.',
+      confirm: 'Sí, revertir todo',
+    },
+    unsavedChangesWarning: {
+      title: 'Cambios sin guardar',
+      message:
+        'Tienes cambios sin guardar. Si sales ahora, tus cambios se perderán.',
+      stay: 'Quedarse',
+      leave: 'Salir de todos modos',
+    },
+    reviewChanges: 'Revisar cambios',
+    changesIndicator: '{count} cambios pendientes',
+    changeStaged: 'Cambio añadido a pendientes. Se aplicará al guardar.',
+    newRow: 'Nueva fila',
+    deletedRow: 'Fila eliminada',
+  },
   common: {
     close: 'Cerrar',
+    cancel: 'Cancelar',
     file: 'archivo',
     files: 'archivos',
     error: 'error',

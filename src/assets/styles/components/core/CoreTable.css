@@ -347,3 +347,122 @@
     height: 50px; /* Keep enough padding even on small screens */
   }
 }
+
+/* ==========================================================================
+   Fijar Column - Row Styling
+   ========================================================================== */
+/* Style rows where Fijar column is true (fixed rows) - Maximum specificity */
+/* Using direct rgba for better browser compatibility */
+.core-table-container :deep(.v-data-table-virtual tbody tr.row-fijar-active),
+.core-table-container
+  :deep(
+    .v-data-table-virtual .v-table__wrapper table tbody tr.row-fijar-active
+  ),
+.core-table-container
+  :deep(.v-data-table-virtual .v-table tbody tr.row-fijar-active),
+.core-table-container
+  :deep(.v-data-table-virtual .v-table__wrapper tbody tr.row-fijar-active),
+table.v-data-table-virtual tbody tr.row-fijar-active,
+.v-data-table-virtual tbody tr.row-fijar-active,
+.v-data-table-virtual tbody tr.row-fijar-active.v-data-table__tr {
+  background-color: rgba(241, 249, 253, 0.6) !important;
+  background: rgba(241, 249, 253, 0.6) !important;
+}
+
+.core-table-container
+  :deep(.v-data-table-virtual tbody tr.row-fijar-active:hover),
+.core-table-container
+  :deep(
+    .v-data-table-virtual
+      .v-table__wrapper
+      table
+      tbody
+      tr.row-fijar-active:hover
+  ),
+.core-table-container
+  :deep(.v-data-table-virtual .v-table tbody tr.row-fijar-active:hover),
+.core-table-container
+  :deep(
+    .v-data-table-virtual .v-table__wrapper tbody tr.row-fijar-active:hover
+  ),
+table.v-data-table-virtual tbody tr.row-fijar-active:hover,
+.v-data-table-virtual tbody tr.row-fijar-active:hover,
+.v-data-table-virtual tbody tr.row-fijar-active.v-data-table__tr:hover {
+  background-color: rgba(241, 249, 253, 0.8) !important;
+  background: rgba(241, 249, 253, 0.8) !important;
+}
+
+/* Override Vuetify's row and cell styles - ensure cells don't override row background */
+.core-table-container :deep(.v-data-table-virtual tbody tr.row-fijar-active td),
+.core-table-container
+  :deep(
+    .v-data-table-virtual .v-table__wrapper table tbody tr.row-fijar-active td
+  ),
+.core-table-container
+  :deep(.v-data-table-virtual .v-table tbody tr.row-fijar-active td),
+.v-data-table-virtual tbody tr.row-fijar-active td {
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+/* Fallback: Also support data attribute approach */
+.core-table-container
+  :deep(.v-data-table-virtual tbody tr:has(td [data-fijar-value='true'])),
+.core-table-container
+  :deep(
+    .v-data-table-virtual
+      .v-table__wrapper
+      table
+      tbody
+      tr:has(td [data-fijar-value='true'])
+  ) {
+  background-color: rgba(241, 249, 253, 0.6) !important;
+  background: rgba(241, 249, 253, 0.6) !important;
+}
+
+.core-table-container
+  :deep(.v-data-table-virtual tbody tr:has(td [data-fijar-value='true']):hover),
+.core-table-container
+  :deep(
+    .v-data-table-virtual
+      .v-table__wrapper
+      table
+      tbody
+      tr:has(td [data-fijar-value='true']):hover
+  ) {
+  background-color: rgba(241, 249, 253, 0.8) !important;
+  background: rgba(241, 249, 253, 0.8) !important;
+}
+
+/* ==========================================================================
+   Pending changes - New row (green) / Deleted row (red)
+   ========================================================================== */
+.core-table-container :deep(.v-data-table-virtual tbody tr.row-new),
+.core-table-container
+  :deep(.v-data-table-virtual .v-table__wrapper table tbody tr.row-new),
+.v-data-table-virtual tbody tr.row-new,
+.v-data-table-virtual tbody tr.row-new.v-data-table__tr {
+  background-color: rgba(76, 175, 80, 0.12) !important;
+  background: rgba(76, 175, 80, 0.12) !important;
+}
+
+.core-table-container :deep(.v-data-table-virtual tbody tr.row-new td),
+.v-data-table-virtual tbody tr.row-new td {
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+.core-table-container :deep(.v-data-table-virtual tbody tr.row-deleted),
+.core-table-container
+  :deep(.v-data-table-virtual .v-table__wrapper table tbody tr.row-deleted),
+.v-data-table-virtual tbody tr.row-deleted,
+.v-data-table-virtual tbody tr.row-deleted.v-data-table__tr {
+  background-color: rgba(198, 40, 40, 0.1) !important;
+  background: rgba(198, 40, 40, 0.1) !important;
+}
+
+.core-table-container :deep(.v-data-table-virtual tbody tr.row-deleted td),
+.v-data-table-virtual tbody tr.row-deleted td {
+  background-color: transparent !important;
+  background: transparent !important;
+}

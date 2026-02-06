@@ -16,6 +16,30 @@
         @dropdown-item-click="handleDropdownItemClick"
       />
 
+      <!-- Pending changes bar (master tables / configuration only) -->
+      <div
+        v-if="isConfigurationSection && hasPendingChanges"
+        class="pending-changes-bar mt-3"
+      >
+        <v-chip color="success" variant="tonal" size="small" class="mr-2">
+          <v-icon start size="small">mdi-pencil</v-icon>
+          {{
+            $t('pendingChanges.changesIndicator', {
+              count: pendingChangesCount,
+            })
+          }}
+        </v-chip>
+        <v-btn
+          color="success"
+          variant="flat"
+          size="small"
+          @click="openMasterTablePendingModal"
+        >
+          <v-icon start size="small">mdi-eye</v-icon>
+          {{ $t('pendingChanges.reviewChanges') }}
+        </v-btn>
+      </div>
+
       <!-- Single table view (for null group or individual tables) -->
       <!-- Check if it's a primitive array and render SimpleList -->
       <div
@@ -54,6 +78,12 @@
               :enable-selection="tableData.enableSelection.value"
               :enable-actions="tableData.enableActions.value"
               :enable-bulk-actions="tableData.enableBulkActions.value"
+              :read-only-display="isReadOnlyDataSection"
+              :table-key="effectiveTableKey"
+              :enable-excel-mode="tableData.enableExcelMode.value"
+              :is-cell-modified="tableData.isCellModified"
+              :get-modified-value="tableData.getModifiedValue"
+              :get-row-class="tableData.getRowClass"
               :can-add="tableData.canAdd.value"
               :can-edit="tableData.canEdit.value"
               :can-delete="tableData.canDelete.value"
@@ -115,6 +145,7 @@
               @save-inline-edit="tableData.saveInlineEdit"
               @cancel-inline-edit="tableData.cancelInlineEdit"
               @update-inline-field="tableData.updateInlineField"
+              @cell-change="tableData.handleCellChange"
               @update:searchValue="tableData.handleSearch"
               @update:activeFilters="
                 (filters) => (tableData.activeFilters.value = filters)
@@ -225,97 +256,103 @@
         <!-- Regular table without widgets -->
         <CoreTable
           v-else
-        :items="tableData.items.value"
-        :headers="tableData.headers.value"
-        :loading="tableData.loading.value"
-        :table-title="tableData.tableTitle.value"
-        :search-placeholder="tableData.searchPlaceholder.value"
-        :enable-search="tableData.enableSearch.value"
-        :enable-filters="tableData.enableFilters.value"
-        :enable-selection="tableData.enableSelection.value"
-        :enable-actions="tableData.enableActions.value"
-        :enable-bulk-actions="tableData.enableBulkActions.value"
-        :can-add="tableData.canAdd.value"
-        :can-edit="tableData.canEdit.value"
-        :can-delete="tableData.canDelete.value"
-        :can-bulk-upload="tableData.canBulkUpload.value"
-        :can-download-excel="tableData.canDownloadExcel.value"
-        :search-value="tableData.searchValue.value"
-        :active-filters="tableData.activeFilters.value"
-        :selected-items="tableData.selectedItems.value"
-        :available-filter-fields="tableData.availableFilterFields.value"
-        :show-add-edit-modal="tableData.showAddEditModal.value"
-        :show-delete-dialog="tableData.showDeleteDialog.value"
-        :show-bulk-delete-dialog="tableData.showBulkDeleteDialog.value"
-        :show-bulk-upload-modal="tableData.showBulkUploadModal.value"
-        :form-fields="tableData.formFields.value"
-        :form-data="tableData.formData.value"
-        :is-editing="tableData.isEditing.value"
-        :saving="tableData.saving.value"
-        :deleting="tableData.deleting.value"
-        :bulk-deleting="tableData.bulkDeleting.value"
-        :uploading="tableData.uploading.value"
-        :downloading="tableData.downloading.value"
-        :editing-row-id="tableData.editingRowId.value"
-        :editing-data="tableData.editingData.value"
-        :original-data="tableData.originalData.value"
-        :is-editing-any-row="tableData.isEditingAnyRow.value"
-        :load-table-data="tableData.loadTableData"
-        :table-data="tableData.tableData.value"
-        @search="tableData.handleSearch"
-        :get-operators-for-field-type="tableData.getOperatorsForFieldType"
-        :get-operator-text="tableData.getOperatorText"
-        :operator-needs-value="tableData.operatorNeedsValue"
-        :operator-needs-second-value="tableData.operatorNeedsSecondValue"
-        :generate-filter-id="tableData.generateFilterId"
-        @add-filter="tableData.handleAddFilter"
-        @remove-filter="tableData.handleRemoveFilter"
-        @clear-all-filters="tableData.handleClearAllFilters"
-        @toggle-filters-panel="tableData.handleToggleFiltersPanel"
-        @select-item="tableData.handleSelectItem"
-        @select-all="tableData.handleSelectAll"
-        @clear-selection="tableData.handleClearSelection"
-        @add-item="tableData.handleAddItem"
-        @edit-item="tableData.handleEditItem"
-        @delete-item="tableData.handleDeleteItem"
-        @bulk-delete="tableData.handleBulkDelete"
-        @save-item="tableData.handleSaveItem"
-        @cancel-edit="() => (tableData.showAddEditModal.value = false)"
-        @bulk-upload="tableData.handleBulkUpload"
-        @download-excel="tableData.handleDownloadExcel"
-        @confirm-delete="tableData.handleConfirmDelete"
-        @confirm-bulk-delete="tableData.handleConfirmBulkDelete"
-        @cancel-delete="() => (tableData.showDeleteDialog.value = false)"
-        @cancel-bulk-delete="
-          () => (tableData.showBulkDeleteDialog.value = false)
-        "
-        @cancel-bulk-upload="
-          () => (tableData.showBulkUploadModal.value = false)
-        "
-        @start-inline-edit="tableData.startInlineEdit"
-        @save-inline-edit="tableData.saveInlineEdit"
-        @cancel-inline-edit="tableData.cancelInlineEdit"
-        @update-inline-field="tableData.updateInlineField"
-        @update:searchValue="tableData.handleSearch"
-        @update:activeFilters="
-          (filters) => (tableData.activeFilters.value = filters)
-        "
-        @update:selectedItems="
-          (items) => (tableData.selectedItems.value = items)
-        "
-        @update:showAddEditModal="
-          (show) => (tableData.showAddEditModal.value = show)
-        "
-        @update:showDeleteDialog="
-          (show) => (tableData.showDeleteDialog.value = show)
-        "
-        @update:showBulkDeleteDialog="
-          (show) => (tableData.showBulkDeleteDialog.value = show)
-        "
-        @update:showBulkUploadModal="
-          (show) => (tableData.showBulkUploadModal.value = show)
-        "
-        @update:formData="(data) => (tableData.formData.value = data)"
+          :items="tableData.items.value"
+          :headers="tableData.headers.value"
+          :loading="tableData.loading.value"
+          :table-title="tableData.tableTitle.value"
+          :search-placeholder="tableData.searchPlaceholder.value"
+          :enable-search="tableData.enableSearch.value"
+          :enable-filters="tableData.enableFilters.value"
+          :enable-selection="tableData.enableSelection.value"
+          :enable-actions="tableData.enableActions.value"
+          :enable-bulk-actions="tableData.enableBulkActions.value"
+          :read-only-display="isReadOnlyDataSection"
+          :table-key="effectiveTableKey"
+          :enable-excel-mode="tableData.enableExcelMode.value"
+          :is-cell-modified="tableData.isCellModified"
+          :get-modified-value="tableData.getModifiedValue"
+          :can-add="tableData.canAdd.value"
+          :can-edit="tableData.canEdit.value"
+          :can-delete="tableData.canDelete.value"
+          :can-bulk-upload="tableData.canBulkUpload.value"
+          :can-download-excel="tableData.canDownloadExcel.value"
+          :search-value="tableData.searchValue.value"
+          :active-filters="tableData.activeFilters.value"
+          :selected-items="tableData.selectedItems.value"
+          :available-filter-fields="tableData.availableFilterFields.value"
+          :show-add-edit-modal="tableData.showAddEditModal.value"
+          :show-delete-dialog="tableData.showDeleteDialog.value"
+          :show-bulk-delete-dialog="tableData.showBulkDeleteDialog.value"
+          :show-bulk-upload-modal="tableData.showBulkUploadModal.value"
+          :form-fields="tableData.formFields.value"
+          :form-data="tableData.formData.value"
+          :is-editing="tableData.isEditing.value"
+          :saving="tableData.saving.value"
+          :deleting="tableData.deleting.value"
+          :bulk-deleting="tableData.bulkDeleting.value"
+          :uploading="tableData.uploading.value"
+          :downloading="tableData.downloading.value"
+          :editing-row-id="tableData.editingRowId.value"
+          :editing-data="tableData.editingData.value"
+          :original-data="tableData.originalData.value"
+          :is-editing-any-row="tableData.isEditingAnyRow.value"
+          :load-table-data="tableData.loadTableData"
+          :table-data="tableData.tableData.value"
+          @search="tableData.handleSearch"
+          :get-operators-for-field-type="tableData.getOperatorsForFieldType"
+          :get-operator-text="tableData.getOperatorText"
+          :operator-needs-value="tableData.operatorNeedsValue"
+          :operator-needs-second-value="tableData.operatorNeedsSecondValue"
+          :generate-filter-id="tableData.generateFilterId"
+          @add-filter="tableData.handleAddFilter"
+          @remove-filter="tableData.handleRemoveFilter"
+          @clear-all-filters="tableData.handleClearAllFilters"
+          @toggle-filters-panel="tableData.handleToggleFiltersPanel"
+          @select-item="tableData.handleSelectItem"
+          @select-all="tableData.handleSelectAll"
+          @clear-selection="tableData.handleClearSelection"
+          @add-item="tableData.handleAddItem"
+          @edit-item="tableData.handleEditItem"
+          @delete-item="tableData.handleDeleteItem"
+          @bulk-delete="tableData.handleBulkDelete"
+          @save-item="tableData.handleSaveItem"
+          @cancel-edit="() => (tableData.showAddEditModal.value = false)"
+          @bulk-upload="tableData.handleBulkUpload"
+          @download-excel="tableData.handleDownloadExcel"
+          @confirm-delete="tableData.handleConfirmDelete"
+          @confirm-bulk-delete="tableData.handleConfirmBulkDelete"
+          @cancel-delete="() => (tableData.showDeleteDialog.value = false)"
+          @cancel-bulk-delete="
+            () => (tableData.showBulkDeleteDialog.value = false)
+          "
+          @cancel-bulk-upload="
+            () => (tableData.showBulkUploadModal.value = false)
+          "
+          @start-inline-edit="tableData.startInlineEdit"
+          @save-inline-edit="tableData.saveInlineEdit"
+          @cancel-inline-edit="tableData.cancelInlineEdit"
+          @update-inline-field="tableData.updateInlineField"
+          @cell-change="tableData.handleCellChange"
+          @update:searchValue="tableData.handleSearch"
+          @update:activeFilters="
+            (filters) => (tableData.activeFilters.value = filters)
+          "
+          @update:selectedItems="
+            (items) => (tableData.selectedItems.value = items)
+          "
+          @update:showAddEditModal="
+            (show) => (tableData.showAddEditModal.value = show)
+          "
+          @update:showDeleteDialog="
+            (show) => (tableData.showDeleteDialog.value = show)
+          "
+          @update:showBulkDeleteDialog="
+            (show) => (tableData.showBulkDeleteDialog.value = show)
+          "
+          @update:showBulkUploadModal="
+            (show) => (tableData.showBulkUploadModal.value = show)
+          "
+          @update:formData="(data) => (tableData.formData.value = data)"
         />
       </div>
 
@@ -382,6 +419,12 @@
                   :enable-bulk-actions="
                     selectedTableData.enableBulkActions.value
                   "
+                  :read-only-display="isReadOnlyDataSection"
+                  :table-key="selectedTable"
+                  :enable-excel-mode="selectedTableData.enableExcelMode.value"
+                  :is-cell-modified="selectedTableData.isCellModified"
+                  :get-modified-value="selectedTableData.getModifiedValue"
+                  :get-row-class="selectedTableData.getRowClass"
                   :can-add="selectedTableData.canAdd.value"
                   :can-edit="selectedTableData.canEdit.value"
                   :can-delete="selectedTableData.canDelete.value"
@@ -463,6 +506,7 @@
                   @save-inline-edit="selectedTableData.saveInlineEdit"
                   @cancel-inline-edit="selectedTableData.cancelInlineEdit"
                   @update-inline-field="selectedTableData.updateInlineField"
+                  @cell-change="selectedTableData.handleCellChange"
                   @update:searchValue="selectedTableData.handleSearch"
                   @update:activeFilters="
                     (filters) =>
@@ -581,6 +625,12 @@
                 :enable-selection="selectedTableData.enableSelection.value"
                 :enable-actions="selectedTableData.enableActions.value"
                 :enable-bulk-actions="selectedTableData.enableBulkActions.value"
+                :read-only-display="isReadOnlyDataSection"
+                :table-key="selectedTable"
+                :enable-excel-mode="selectedTableData.enableExcelMode.value"
+                :is-cell-modified="selectedTableData.isCellModified"
+                :get-modified-value="selectedTableData.getModifiedValue"
+                :get-row-class="selectedTableData.getRowClass"
                 :can-add="selectedTableData.canAdd.value"
                 :can-edit="selectedTableData.canEdit.value"
                 :can-delete="selectedTableData.canDelete.value"
@@ -658,6 +708,7 @@
                 @save-inline-edit="selectedTableData.saveInlineEdit"
                 @cancel-inline-edit="selectedTableData.cancelInlineEdit"
                 @update-inline-field="selectedTableData.updateInlineField"
+                @cell-change="selectedTableData.handleCellChange"
                 @update:searchValue="selectedTableData.handleSearch"
                 @update:activeFilters="
                   (filters) => (selectedTableData.activeFilters.value = filters)
@@ -723,22 +774,78 @@
         </v-card>
       </div>
     </template>
+
+    <!-- Pending changes review modal (master tables / configuration only) -->
+    <PendingChangesReviewModal
+      v-if="isConfigurationSection"
+      v-model="showMasterTablePendingModal"
+      :saving="
+        isGroupView ? selectedTableData.saving.value : tableData.saving.value
+      "
+      :validation-error="null"
+      :rows-data="
+        isGroupView
+          ? aggregatedRowsDataForModal
+          : tableData.rowsDataForModal.value
+      "
+      :table-headers="
+        isGroupView
+          ? aggregatedTableHeadersForModal
+          : tableData.tableHeadersForModal.value
+      "
+      :table-keys-filter="isGroupView ? modifiedTableKeysInGroup : undefined"
+      @save="handleMasterTableSaveAll"
+      @close="handleCloseMasterTablePendingModal"
+      @update:model-value="(v) => (showMasterTablePendingModal = v)"
+    />
+
+    <!-- Exit confirmation when leaving with unsaved pending changes (configuration) -->
+    <MBaseModal
+      v-model="showExitConfirmationModal"
+      :closeOnOutsideClick="false"
+      :title="t('sectionView.exitConfirmation.title')"
+      :buttons="[
+        {
+          text: t('sectionView.exitConfirmation.confirmButton'),
+          action: 'confirm',
+          class: 'primary-btn',
+        },
+        {
+          text: t('sectionView.exitConfirmation.cancelButton'),
+          action: 'cancel',
+          class: 'secondary-btn',
+        },
+      ]"
+      @confirm="handleConfirmExit"
+      @cancel="handleCancelExit"
+      @close="handleCancelExit"
+    >
+      <template #content>
+        <v-row class="d-flex justify-center pr-2 pl-2 pb-5 pt-3">
+          <span style="white-space: pre-line">{{
+            t('sectionView.exitConfirmation.message')
+          }}</span>
+        </v-row>
+      </template>
+    </MBaseModal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, watch, ref, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, watch, ref, onMounted, onDeactivated } from 'vue'
+import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import CoreTable from '@/components/core/table/CoreTable.vue'
 import SimpleList from '@/components/core/SimpleList.vue'
 import CoreTab from '@/components/core/CoreTab.vue'
 import CoreTabs from '@/components/core/CoreTabs.vue'
 import CoreTitleView from '@/components/core/CoreTitleView.vue'
+import PendingChangesReviewModal from '@/components/core/PendingChangesReviewModal.vue'
 import { useSectionConfiguration } from '@/composables/section-view/useSectionConfiguration'
 import { useGroupTables } from '@/composables/section-view/useGroupTables'
 import { useSectionDisplay } from '@/composables/section-view/useSectionDisplay'
 import { useTableData } from '@/composables/section-view/useTableData'
+import { useTableChanges } from '@/composables/useTableChanges'
 import { useGeneralStore } from '@/stores/general'
 import { generateAutoDashboard } from '@/services/AutoDashboardService'
 import type { DashboardWidget } from '@/services/AutoDashboardService'
@@ -791,15 +898,253 @@ const executionType = computed(() => {
   return null
 })
 
+// Read-only display: input-data and results show data as plain table (no editing UI, no green cells)
+const isReadOnlyDataSection = computed(
+  () => sectionType.value === 'input-data' || sectionType.value === 'results',
+)
+
+// Configuration (master tables) section: show pending changes bar and review modal
+const isConfigurationSection = computed(
+  () => sectionType.value === 'configuration',
+)
+
+// Shared table changes (so bar and modal are common across all tabs in group view)
+const tableChanges = useTableChanges()
+
+/** Normalize table key for storage (match useTableData) so we filter by current group. */
+const normalizeTableKey = (key: string): string => {
+  if (!key) return ''
+  return String(key).toLowerCase().replace(/-/g, '_')
+}
+
+/** In group view: modified table keys that belong to the current group. */
+const modifiedTableKeysInGroup = computed(() => {
+  if (!isGroupView.value || !groupTables.value) return []
+  const groupKeys = Object.keys(groupTables.value)
+  const normalizedGroup = new Set(groupKeys.map(normalizeTableKey))
+  return tableChanges.modifiedTableKeys.value.filter((mk) =>
+    normalizedGroup.has(mk),
+  )
+})
+
+const hasPendingChanges = computed(() => {
+  if (!isConfigurationSection.value) return false
+  if (isGroupView.value) {
+    return modifiedTableKeysInGroup.value.length > 0
+  }
+  return tableData.hasPendingChanges.value
+})
+
+const pendingChangesCount = computed(() => {
+  if (!isConfigurationSection.value) return 0
+  if (isGroupView.value) {
+    return modifiedTableKeysInGroup.value.reduce((sum, storageKey) => {
+      const changes = tableChanges.getChangesForTable(storageKey)
+      let cellCount = 0
+      if (changes) {
+        cellCount = Object.values(changes).reduce(
+          (rowSum, row) => rowSum + Object.keys(row).length,
+          0,
+        )
+      }
+      const createsCount = tableChanges.getPendingCreates(storageKey).length
+      const deletesCount = tableChanges.getPendingDeletes(storageKey).length
+      return sum + cellCount + createsCount + deletesCount
+    }, 0)
+  }
+  return tableData.pendingChangesCount.value
+})
+
+const showMasterTablePendingModal = ref(false)
+const showExitConfirmationModal = ref(false)
+const pendingNavigationNext = ref<((abort?: boolean) => void) | null>(null)
+
+const openMasterTablePendingModal = () => {
+  showMasterTablePendingModal.value = true
+}
+
+onBeforeRouteLeave((_to, _from, next) => {
+  if (!isConfigurationSection.value || !hasPendingChanges.value) {
+    next()
+    return
+  }
+  pendingNavigationNext.value = next
+  showExitConfirmationModal.value = true
+})
+
+const handleConfirmExit = () => {
+  showExitConfirmationModal.value = false
+  tableChanges.clearAllChanges()
+  const next = pendingNavigationNext.value
+  pendingNavigationNext.value = null
+  next?.()
+}
+
+const handleCancelExit = () => {
+  showExitConfirmationModal.value = false
+  const next = pendingNavigationNext.value
+  pendingNavigationNext.value = null
+  next?.(false)
+}
+
+const handleMasterTableSaveAll = async () => {
+  if (isGroupView.value) {
+    await saveAllGroupMasterTableChanges()
+  } else {
+    await tableData.saveAllChanges()
+  }
+  showMasterTablePendingModal.value = false
+}
+
+/** Save pending changes for all modified tables in the current group (deletes → creates → edits). */
+const saveAllGroupMasterTableChanges = async () => {
+  const keys = modifiedTableKeysInGroup.value
+  if (keys.length === 0 || !groupTables.value) return
+
+  const { default: TableRepository } = await import(
+    '@/repositories/TableRepository'
+  )
+  const { t } = useI18n()
+
+  for (const storageKey of keys) {
+    const configKey = Object.keys(groupTables.value).find(
+      (gk) => normalizeTableKey(gk) === storageKey,
+    )
+    if (!configKey) continue
+
+    const config = groupTables.value[configKey]
+    const repository = new TableRepository(config, t)
+
+    // 1. Apply pending deletes (no API until now)
+    const deletes = tableChanges.getPendingDeletes(storageKey)
+    if (config?.delete_item && deletes.length > 0) {
+      for (const rowId of deletes) {
+        await repository.deleteItem(rowId)
+      }
+      tableChanges.clearDeletesForTable(storageKey)
+    }
+
+    // 2. Apply pending creates (no API until now)
+    const creates = tableChanges.getPendingCreates(storageKey)
+    if (config?.post_item && creates.length > 0) {
+      for (const { data } of creates) {
+        const { id: _id, ...payload } = data
+        await repository.createItem(payload)
+      }
+      tableChanges.clearCreatesForTable(storageKey)
+    }
+
+    // 3. Apply cell edits (put)
+    const changes = tableChanges.getChangesForTable(storageKey)
+    if (config?.put_item && changes) {
+      const items = await repository.getList()
+      for (const [rowId, rowChanges] of Object.entries(changes)) {
+        const row = items.find((i: any) => String(i.id) === rowId)
+        if (!row) continue
+        const merged = { ...row }
+        Object.entries(rowChanges).forEach(
+          ([fieldKey, change]: [string, any]) => {
+            merged[fieldKey] = change.newValue
+          },
+        )
+        const preparedData = { ...merged }
+        delete preparedData.id
+        await repository.putItem(rowId, preparedData)
+      }
+      tableChanges.revertTableChanges(storageKey)
+    }
+  }
+
+  // Refresh current tab data so staged creates/deletes are reflected
+  await selectedTableData.loadTableData()
+}
+
+const handleCloseMasterTablePendingModal = () => {
+  showMasterTablePendingModal.value = false
+}
+
 // Table data management - Business logic layer
 // Use resolvedTableKey for non-group views to ensure correct key matching
-const effectiveTableKey = computed(() => resolvedTableKey.value || tableKey.value)
+const effectiveTableKey = computed(
+  () => resolvedTableKey.value || tableKey.value,
+)
 const tableData = useTableData(effectiveTableKey, tableConfig, executionType)
 const selectedTableData = useTableData(
   selectedTable,
   selectedTableConfig,
   executionType,
 )
+
+/** Cache rowsData and tableHeaders per tab (normalized key) so the review modal has data for all tabs. */
+const groupModalDataCache = ref<
+  Record<
+    string,
+    {
+      rowsData: Record<string, Record<string, any>>
+      tableHeaders: Record<
+        string,
+        Array<{ key: string; title: string; type?: string }>
+      >
+    }
+  >
+>({})
+
+/** Keep cache updated with current tab data when in group view. */
+watch(
+  [
+    () => (isGroupView.value ? selectedTable.value : null),
+    () => (isGroupView.value ? selectedTableData.rowsDataForModal.value : null),
+    () =>
+      isGroupView.value ? selectedTableData.tableHeadersForModal.value : null,
+  ],
+  () => {
+    if (!isGroupView.value || !selectedTable.value) return
+    const key = normalizeTableKey(selectedTable.value)
+    groupModalDataCache.value[key] = {
+      rowsData: selectedTableData.rowsDataForModal.value,
+      tableHeaders: selectedTableData.tableHeadersForModal.value,
+    }
+  },
+  { deep: true },
+)
+
+/** Aggregated rowsData and tableHeaders for the review modal (all modified tables in group). */
+const aggregatedRowsDataForModal = computed(() => {
+  if (!isGroupView.value) return tableData.rowsDataForModal.value
+  const currentKey = selectedTable.value
+    ? normalizeTableKey(selectedTable.value)
+    : ''
+  const result: Record<string, Record<string, any>> = {}
+  for (const key of modifiedTableKeysInGroup.value) {
+    const cached = groupModalDataCache.value[key]?.rowsData?.[key]
+    const current =
+      key === currentKey
+        ? selectedTableData.rowsDataForModal.value[key]
+        : undefined
+    result[key] = cached ?? current ?? {}
+  }
+  return result
+})
+
+const aggregatedTableHeadersForModal = computed(() => {
+  if (!isGroupView.value) return tableData.tableHeadersForModal.value
+  const currentKey = selectedTable.value
+    ? normalizeTableKey(selectedTable.value)
+    : ''
+  const result: Record<
+    string,
+    Array<{ key: string; title: string; type?: string }>
+  > = {}
+  for (const key of modifiedTableKeysInGroup.value) {
+    const cached = groupModalDataCache.value[key]?.tableHeaders?.[key]
+    const current =
+      key === currentKey
+        ? selectedTableData.tableHeadersForModal.value[key]
+        : undefined
+    result[key] = cached ?? current ?? []
+  }
+  return result
+})
 
 // Per-tab search and filters state (only used in group view) so each tab has independent filter/search
 const perTabSearchAndFilters = ref<
@@ -1173,8 +1518,7 @@ const getTableData = (tableKey: string) => {
 
 // Component registry for custom widgets
 // Add your custom components here by importing them
-const customComponentRegistry: Record<string, any> = {
-}
+const customComponentRegistry: Record<string, any> = {}
 
 const getWidgetComponent = (type: string) => {
   const components: Record<string, any> = {
@@ -1236,7 +1580,14 @@ const handleDropdownItemClick = (item: any) => {
   }
 }
 
+// Cancel in-flight table loads when view is deactivated (keep-alive) so GET doesn't update state after navigate-away
+onDeactivated(() => {
+  tableData.cancelLoadData()
+  selectedTableData.cancelLoadData()
+})
+
 // Component setup complete
 </script>
 
+<style src="@/assets/styles/components/core/PendingChangesBar.css"></style>
 <style src="@/assets/styles/views/SectionView.css"></style>

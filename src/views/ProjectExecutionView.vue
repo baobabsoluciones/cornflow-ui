@@ -6,11 +6,12 @@
       :description="description"
     />
     <MFormSteps
+      :key="'form-steps-' + currentStep + '-' + formStepsKey"
       :steps="steps"
       :disablePreviousButton="disablePrevButton"
       :disableNextButton="disableNextButton"
-      :currentStep.sync="currentStep"
-      :steps-column-width="'20vw'"
+      :currentStep="currentStep"
+      :steps-column-width="'20%'"
       :continueButtonText="$t('projectExecution.continueButton')"
       :previousButtonText="$t('projectExecution.previousButton')"
       @update:currentStep="handleStepChange"
@@ -45,11 +46,13 @@
         <!-- Template for step 3 -->
         <template v-else-if="step.key === 'reviewInstance'">
           <CreateExecutionReviewInstance
+            ref="reviewInstanceRef"
             :newExecution="newExecution"
             :instanceErrors="existingInstanceErrors"
             :isEditMode="isEditMode"
             @update:instance="handleInstanceSelected"
             @update:instanceErrors="existingInstanceErrors = $event"
+            @has-pending-changes="hasPendingTableChanges = $event"
           />
         </template>
 
@@ -111,10 +114,20 @@
   >
     <template #content>
       <v-row class="d-flex justify-center pr-2 pl-2 pb-5 pt-3">
-        <span style="white-space: pre-line">{{ $t('projectExecution.exitConfirmation.message') }}</span>
+        <span style="white-space: pre-line">{{
+          $t('projectExecution.exitConfirmation.message')
+        }}</span>
       </v-row>
     </template>
   </MBaseModal>
+
+  <!-- Unsaved changes warning modal (for step changes) -->
+  <UnsavedChangesWarningModal
+    v-model="showUnsavedChangesModal"
+    :changes-count="tableChanges.totalChangesCount.value"
+    @stay="handleStayOnStep"
+    @leave="handleLeaveStep"
+  />
 </template>
 
 <script>
@@ -124,9 +137,11 @@ import CreateExecutionReviewInstance from '@/components/project-execution/Create
 import CreateExecutionCheckData from '@/components/project-execution/CreateExecutionCheckData.vue'
 import CreateExecutionSolve from '@/components/project-execution/CreateExecutionSolve.vue'
 import CreateExecutionConfigParams from '@/components/project-execution/CreateExecutionConfigParams.vue'
+import UnsavedChangesWarningModal from '@/components/core/UnsavedChangesWarningModal.vue'
 import { useGeneralStore } from '@/stores/general'
-import { inject } from 'vue'
+import { inject, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useTableChanges } from '@/composables/useTableChanges'
 
 export default {
   components: {
@@ -136,6 +151,7 @@ export default {
     CreateExecutionReviewInstance,
     CreateExecutionCheckData,
     CreateExecutionConfigParams,
+    UnsavedChangesWarningModal,
   },
   data() {
     return {
@@ -156,36 +172,42 @@ export default {
       pendingNavigation: null,
       pendingNavigationTo: null,
       componentKey: 0,
+      // Pending changes state
+      hasPendingTableChanges: false,
+      showUnsavedChangesModal: false,
+      pendingStepChange: null,
+      formStepsKey: 0,
+      tableChanges: useTableChanges(),
     }
   },
   created() {
     this.showSnackbar = inject('showSnackbar')
     const route = useRoute()
-    
+
     this.isEditMode = route.query.editInstance === 'true'
-    
+
     this.initializeEditMode()
     this.initializeDefaultSolver()
     this.initializeConfigFieldValues()
     this.initializeStep()
   },
   beforeRouteLeave(to, from, next) {
-    // Check if there's any progress to lose
-    const hasProgress = this.hasProgressToLose()
-    
+    // Check if there's any progress to lose (including pending table changes)
+    const hasProgress = this.hasProgressToLose() || this.hasPendingTableChanges
+
     if (!hasProgress) {
       // No progress to lose, allow navigation
       next()
       return
     }
-    
+
     // Store the pending navigation and destination
     this.pendingNavigation = next
     this.pendingNavigationTo = to
-    
+
     // Show confirmation modal
     this.showExitConfirmationModal = true
-    
+
     // Don't call next() here - wait for user confirmation
   },
   methods: {
@@ -194,14 +216,18 @@ export default {
       if (!this.isEditMode || !this.generalStore.selectedExecution) return
 
       const selectedExecution = this.generalStore.selectedExecution
-      const instance = selectedExecution.experiment?.instance || selectedExecution.instance
+      const instance =
+        selectedExecution.experiment?.instance || selectedExecution.instance
 
       if (!instance) return
 
       this.newExecution.instance = instance
-      if (selectedExecution.name) this.newExecution.name = selectedExecution.name
-      if (selectedExecution.description) this.newExecution.description = selectedExecution.description
-      if (selectedExecution.config) this.newExecution.config = { ...selectedExecution.config }
+      if (selectedExecution.name)
+        this.newExecution.name = selectedExecution.name
+      if (selectedExecution.description)
+        this.newExecution.description = selectedExecution.description
+      if (selectedExecution.config)
+        this.newExecution.config = { ...selectedExecution.config }
     },
 
     // Set default solver if solver step is hidden
@@ -214,8 +240,10 @@ export default {
 
     // Load config field values if config fields step is hidden
     initializeConfigFieldValues() {
-      const configFieldsConfig = this.generalStore.appConfig.parameters.configFieldsConfig
-      const shouldAutoLoad = !configFieldsConfig?.showConfigFieldsStep &&
+      const configFieldsConfig =
+        this.generalStore.appConfig.parameters.configFieldsConfig
+      const shouldAutoLoad =
+        !configFieldsConfig?.showConfigFieldsStep &&
         configFieldsConfig?.autoLoadValues &&
         this.newExecution.instance
 
@@ -230,12 +258,32 @@ export default {
         if (!this.isEditMode) return
 
         const steps = this.getExecutionSteps()
-        const reviewIndex = steps.findIndex(step => step.key === 'reviewInstance')
+        const reviewIndex = steps.findIndex(
+          (step) => step.key === 'reviewInstance',
+        )
         this.currentStep = reviewIndex >= 0 ? reviewIndex : 0
       })
     },
 
     async handleStepChange(newStep) {
+      // Check if we're leaving the reviewInstance step with pending changes
+      // Use tableChanges.hasChanges (singleton) so we don't depend on child event timing
+      const currentStepKey = this.steps[this.currentStep]?.key
+      const hasPending =
+        this.tableChanges.hasChanges.value || this.hasPendingTableChanges
+      if (currentStepKey === 'reviewInstance' && hasPending) {
+        // Store the pending step change and show warning modal; do NOT update currentStep
+        this.pendingStepChange = newStep
+        this.showUnsavedChangesModal = true
+        this.formStepsKey += 1 // Force MFormSteps to re-render with current step (stay on reviewInstance)
+        return // Don't proceed with step change yet - step stays at currentStep
+      }
+
+      // Proceed with step change
+      await this.proceedWithStepChange(newStep)
+    },
+
+    async proceedWithStepChange(newStep) {
       // If we're skipping the solver step, ensure the solver is set
       if (
         !this.generalStore.appConfig.parameters.solverConfig?.showSolverStep
@@ -258,6 +306,26 @@ export default {
       }
       this.currentStep = newStep
     },
+
+    // Handle staying on the current step (user chose to stay)
+    handleStayOnStep() {
+      this.pendingStepChange = null
+      this.showUnsavedChangesModal = false
+    },
+
+    // Handle leaving the step (user chose to discard changes)
+    handleLeaveStep() {
+      // Clear pending changes
+      this.tableChanges.clearAllChanges()
+      this.hasPendingTableChanges = false
+
+      // Proceed with the pending step change
+      if (this.pendingStepChange !== null) {
+        this.proceedWithStepChange(this.pendingStepChange)
+        this.pendingStepChange = null
+      }
+      this.showUnsavedChangesModal = false
+    },
     async validateInstanceSchema() {
       if (!this.newExecution.instance) {
         return
@@ -265,24 +333,30 @@ export default {
 
       try {
         const validationErrors = await this.newExecution.instance.checkSchema()
-        
+
         if (validationErrors && validationErrors.length > 0) {
           // Import formatValidationErrorsWithTitle dynamically to avoid circular dependencies
-          const { formatValidationErrorsWithTitle } = await import('@/utils/errorFormatting')
-          
+          const { formatValidationErrorsWithTitle } = await import(
+            '@/utils/errorFormatting'
+          )
+
           // Format validation errors with full Ajv error details and translations
           const errorMessage = formatValidationErrorsWithTitle(
-            this.$t('projectExecution.steps.step3.loadInstance.instanceSchemaError'),
+            this.$t(
+              'projectExecution.steps.step3.loadInstance.instanceSchemaError',
+            ),
             validationErrors, // Pass full Ajv ErrorObject array
             this.$t, // Pass translation function
           )
-          
+
           this.existingInstanceErrors = errorMessage
-          
+
           // Show snackbar notification (persistent - won't auto-close)
           if (this.showSnackbar) {
             this.showSnackbar(
-              this.$t('projectExecution.steps.step3.loadInstance.instanceSchemaError'),
+              this.$t(
+                'projectExecution.steps.step3.loadInstance.instanceSchemaError',
+              ),
               'error',
               { persistent: true }, // Make it persistent so it doesn't auto-close
             )
@@ -293,12 +367,15 @@ export default {
         }
       } catch (error) {
         // Handle validation exception
-        const errorMessage = error instanceof Error ? error.message : String(error)
+        const errorMessage =
+          error instanceof Error ? error.message : String(error)
         this.existingInstanceErrors = errorMessage
-        
+
         if (this.showSnackbar) {
           this.showSnackbar(
-            this.$t('projectExecution.steps.step3.loadInstance.unexpectedError'),
+            this.$t(
+              'projectExecution.steps.step3.loadInstance.unexpectedError',
+            ),
             'error',
           )
         }
@@ -379,20 +456,20 @@ export default {
 
     getBaseCreateSteps() {
       const steps = []
-      
+
       // In edit mode, skip loadInstance step
       if (!this.isEditMode) {
         steps.push(this.createStepConfig('loadInstance', 1, true))
       }
-      
+
       // Review instance step (order depends on whether loadInstance is present)
       const reviewOrder = this.isEditMode ? 1 : 2
       steps.push(this.createStepConfig('reviewInstance', reviewOrder, true))
-      
+
       // Check data step
       const checkOrder = this.isEditMode ? 2 : 3
       steps.push(this.createStepConfig('checkData', checkOrder, true))
-      
+
       return steps
     },
 
@@ -479,41 +556,46 @@ export default {
       // Reinitialize the store since we reset the data
       this.generalStore = useGeneralStore()
     },
-    
+
     // Check if there's any progress that would be lost
     hasProgressToLose() {
       return (
         this.newExecution.name ||
         this.newExecution.description ||
         this.newExecution.instance ||
-        (this.newExecution.config && Object.keys(this.newExecution.config).length > 0) ||
+        (this.newExecution.config &&
+          Object.keys(this.newExecution.config).length > 0) ||
         this.selectedFiles.length > 0 ||
         this.currentStep > 0
       )
     },
-    
+
     // Handle confirmation to exit
     handleConfirmExit() {
       // Close modal first
       this.showExitConfirmationModal = false
-      
+
       // Store navigation info before reset
       const navigationTo = this.pendingNavigationTo
       const navigationNext = this.pendingNavigation
-      
+
       // Clear pending navigation
       this.pendingNavigation = null
       this.pendingNavigationTo = null
-      
+
+      // Clear pending table changes
+      this.tableChanges.clearAllChanges()
+      this.hasPendingTableChanges = false
+
       // Reset all data
       this.resetAndLoadNewExecution()
-      
+
       // Force remount of child components by incrementing key
       this.componentKey++
-      
+
       // Reinitialize default values after reset
       this.initializeDefaultSolver()
-      
+
       // Use $nextTick to ensure reset is complete, then navigate
       this.$nextTick(() => {
         if (navigationNext && navigationTo) {
@@ -522,12 +604,12 @@ export default {
         }
       })
     },
-    
+
     // Handle cancellation of exit
     handleCancelExit() {
       // Close modal
       this.showExitConfirmationModal = false
-      
+
       // Cancel navigation
       if (this.pendingNavigation) {
         this.pendingNavigation(false)

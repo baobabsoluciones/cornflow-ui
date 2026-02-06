@@ -13,6 +13,8 @@ import { parseJoinFrom, getForeignKeyFieldName } from '@/utils/schemaUtils'
 export interface TableMatch {
   tableKey: string
   tableName: string
+  /** Master table key (e.g. e_tabla_maestra) used in joinFrom and for selector options */
+  masterKey: string
   masterTableTitle: string
   instanceData: any[]
   masterData: any[]
@@ -109,7 +111,10 @@ export function useMasterTableMatch() {
   /**
    * Helper: Load master table data and cache it
    */
-  const loadMasterData = async (masterKey: string, masterTableConfig: any): Promise<any[]> => {
+  const loadMasterData = async (
+    masterKey: string,
+    masterTableConfig: any,
+  ): Promise<any[]> => {
     if (masterDataCache.value[masterKey]) {
       return masterDataCache.value[masterKey]
     }
@@ -117,9 +122,16 @@ export function useMasterTableMatch() {
     try {
       const repository = new TableRepository(masterTableConfig, t)
       const masterData = await repository.getList()
-      masterDataCache.value[masterKey] = Array.isArray(masterData) ? masterData : []
+      masterDataCache.value[masterKey] = Array.isArray(masterData)
+        ? masterData
+        : []
     } catch (err) {
-      console.error(t('masterTableMatch.messages.errorLoadingMasterTable', { tableName: masterKey }), err)
+      console.error(
+        t('masterTableMatch.messages.errorLoadingMasterTable', {
+          tableName: masterKey,
+        }),
+        err,
+      )
       masterDataCache.value[masterKey] = []
     }
 
@@ -130,18 +142,22 @@ export function useMasterTableMatch() {
    * Helper: Create a table match object
    */
   const createTableMatch = (
-    instanceKey: string, 
-    instanceTableData: any[], 
+    instanceKey: string,
+    instanceTableData: any[],
     masterKey: string,
-    masterTableConfig: any, 
-    masterData: any[]
+    masterTableConfig: any,
+    masterData: any[],
   ): TableMatch => {
     const diffSummary = calculateDiffSummary(instanceTableData, masterData)
-    const hasDifferences = diffSummary.onlyInInstance > 0 || diffSummary.onlyInMaster > 0 || diffSummary.different > 0
+    const hasDifferences =
+      diffSummary.onlyInInstance > 0 ||
+      diffSummary.onlyInMaster > 0 ||
+      diffSummary.different > 0
 
     return {
       tableKey: instanceKey,
       tableName: instanceKey,
+      masterKey,
       masterTableTitle: masterTableConfig.title || masterKey,
       instanceData: instanceTableData,
       masterData: masterData,
@@ -163,22 +179,23 @@ export function useMasterTableMatch() {
    */
   const normalizeTableName = (tableName: string): string => {
     if (!tableName) return ''
-    
+
     // First, check if it contains separators (underscores or hyphens)
     if (tableName.includes('_') || tableName.includes('-')) {
       // Normalize separators: replace hyphens with underscores and convert to lowercase
       return tableName.replace(/-/g, '_').toLowerCase()
     }
-    
+
     // If no separators, check if it's camelCase (has mixed case)
     // Convert camelCase to snake_case: eTablaMaestra -> e_tabla_maestra
-    if (tableName !== tableName.toLowerCase() && tableName !== tableName.toUpperCase()) {
+    if (
+      tableName !== tableName.toLowerCase() &&
+      tableName !== tableName.toUpperCase()
+    ) {
       // Insert underscore before uppercase letters (except the first character)
-      return tableName
-        .replace(/([a-z])([A-Z])/g, '$1_$2')
-        .toLowerCase()
+      return tableName.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase()
     }
-    
+
     // If it's all lowercase or all uppercase with no separators, just normalize case
     return tableName.toLowerCase()
   }
@@ -221,15 +238,29 @@ export function useMasterTableMatch() {
         if (!matchingMasterKey) continue
 
         const masterTableConfig = configurations.masterData[matchingMasterKey]
-        const masterData = await loadMasterData(matchingMasterKey, masterTableConfig)
+        const masterData = await loadMasterData(
+          matchingMasterKey,
+          masterTableConfig,
+        )
 
-        newMatches.push(createTableMatch(instanceKey, instanceTableData, matchingMasterKey, masterTableConfig, masterData))
+        newMatches.push(
+          createTableMatch(
+            instanceKey,
+            instanceTableData,
+            matchingMasterKey,
+            masterTableConfig,
+            masterData,
+          ),
+        )
       }
 
       matches.value = newMatches
     } catch (err) {
       console.error('Error detecting master table matches:', err)
-      error.value = err instanceof Error ? err.message : t('masterTableMatch.messages.unknownError')
+      error.value =
+        err instanceof Error
+          ? err.message
+          : t('masterTableMatch.messages.unknownError')
       matches.value = []
     } finally {
       loading.value = false
@@ -602,7 +633,13 @@ export function useMasterTableMatch() {
    * Helper: Check if field has a valid dependent value
    */
   const hasValidDependentValue = (prop: any, value: any): boolean => {
-    return prop.isDependentField && prop.joinFrom && value !== undefined && value !== null && value !== ''
+    return (
+      prop.isDependentField &&
+      prop.joinFrom &&
+      value !== undefined &&
+      value !== null &&
+      value !== ''
+    )
   }
 
   /**
@@ -629,20 +666,33 @@ export function useMasterTableMatch() {
 
     try {
       if (!relatedDataCache[joinInfo.table]) {
-        relatedDataCache[joinInfo.table] = await loadRelatedTableData(joinInfo.table)
+        relatedDataCache[joinInfo.table] = await loadRelatedTableData(
+          joinInfo.table,
+        )
       }
 
-      const matchingItem = relatedDataCache[joinInfo.table].find(
-        (item) => valuesMatch(item[joinInfo.field], processedRow[fieldKey])
+      const matchingItem = relatedDataCache[joinInfo.table].find((item) =>
+        valuesMatch(item[joinInfo.field], processedRow[fieldKey]),
       )
 
       if (matchingItem?.id !== undefined) {
         processedRow[foreignKeyField] = matchingItem.id
       } else {
-        console.warn(t('masterTableMatch.messages.noMatchingItemFound', { fieldKey, fieldValue: processedRow[fieldKey], tableName: joinInfo.table }))
+        console.warn(
+          t('masterTableMatch.messages.noMatchingItemFound', {
+            fieldKey,
+            fieldValue: processedRow[fieldKey],
+            tableName: joinInfo.table,
+          }),
+        )
       }
     } catch (error) {
-      console.error(t('masterTableMatch.messages.errorProcessingDependentField', { fieldKey }), error)
+      console.error(
+        t('masterTableMatch.messages.errorProcessingDependentField', {
+          fieldKey,
+        }),
+        error,
+      )
     }
     delete processedRow[fieldKey]
   }
@@ -650,7 +700,10 @@ export function useMasterTableMatch() {
   /**
    * Prepare data for overwrite - handles columns_to_join by mapping dependent fields to foreign key IDs
    */
-  const prepareDataForOverwrite = async (data: any[], tableConfig: any): Promise<any[]> => {
+  const prepareDataForOverwrite = async (
+    data: any[],
+    tableConfig: any,
+  ): Promise<any[]> => {
     const properties = tableConfig?.get_list?.response_schema?.items?.properties
     if (!properties) {
       return data.map(({ id, _id, ...rest }) => rest)
@@ -666,7 +719,13 @@ export function useMasterTableMatch() {
         for (const [fieldKey, fieldProp] of Object.entries(properties)) {
           const prop = fieldProp as any
           if (hasValidDependentValue(prop, processedRow[fieldKey])) {
-            await processDependentField(processedRow, fieldKey, prop, properties, relatedDataCache)
+            await processDependentField(
+              processedRow,
+              fieldKey,
+              prop,
+              properties,
+              relatedDataCache,
+            )
           }
         }
 
@@ -691,7 +750,10 @@ export function useMasterTableMatch() {
     if (!match.masterTableConfig?.overwrite_all) return false
 
     const repository = new TableRepository(match.masterTableConfig, t)
-    const preparedData = await prepareDataForOverwrite(match.instanceData, match.masterTableConfig)
+    const preparedData = await prepareDataForOverwrite(
+      match.instanceData,
+      match.masterTableConfig,
+    )
     await repository.overwriteAll(preparedData)
     masterDataCache.value[match.tableKey] = [...match.instanceData]
     return true
@@ -724,17 +786,32 @@ export function useMasterTableMatch() {
    */
   const applyChoices = async (
     originalInstanceData: Record<string, any>,
-  ): Promise<{ instanceData: Record<string, any>; masterTablesUpdated: string[] }> => {
+  ): Promise<{
+    instanceData: Record<string, any>
+    masterTablesUpdated: string[]
+  }> => {
     const modifiedInstanceData = { ...originalInstanceData }
     const masterTablesUpdated: string[] = []
 
     for (const match of matches.value) {
       try {
-        await processMatchChoice(match, modifiedInstanceData, masterTablesUpdated)
+        await processMatchChoice(
+          match,
+          modifiedInstanceData,
+          masterTablesUpdated,
+        )
       } catch (err) {
         console.error(`Error updating master table ${match.tableName}:`, err)
-        const errorMsg = err instanceof Error ? err.message : t('masterTableMatch.messages.unknownError')
-        throw new Error(t('masterTableMatch.messages.failedToUpdateMasterTable', { tableName: match.masterTableTitle, error: errorMsg }))
+        const errorMsg =
+          err instanceof Error
+            ? err.message
+            : t('masterTableMatch.messages.unknownError')
+        throw new Error(
+          t('masterTableMatch.messages.failedToUpdateMasterTable', {
+            tableName: match.masterTableTitle,
+            error: errorMsg,
+          }),
+        )
       }
     }
 

@@ -41,7 +41,7 @@ export default defineComponent({
     dashboardType: {
       type: String,
       default: 'solution',
-      validator: (value) => ['instance', 'solution'].includes(value),
+      validator: (value: string) => ['instance', 'solution'].includes(value),
     },
   },
   data: () => ({

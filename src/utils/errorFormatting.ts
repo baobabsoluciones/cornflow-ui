@@ -298,17 +298,17 @@ export function formatValidationErrors(
 /**
  * Format validation errors with a title
  * @param title Title to display (will be wrapped in <strong> tags inside a <p>)
- * @param errors Array of validation errors
+ * @param errors Array of validation errors (ValidationError or Ajv ErrorObject)
  * @param t Optional translation function
  * @returns Complete HTML string with title and formatted error list
  */
 export function formatValidationErrorsWithTitle(
   title: string,
-  errors: ValidationError[],
+  errors: ValidationError[] | Array<{ instancePath?: string; message?: string; keyword?: string; params?: Record<string, unknown> }>,
   t?: TranslateFunction,
 ): string {
   const titleHtml = `<p><strong>${title}:</strong></p>`
-  const errorsHtml = formatValidationErrors(errors, t)
+  const errorsHtml = formatValidationErrors(errors as ValidationError[], t)
   // Wrap errors in <ul> if there are errors
   const wrappedErrors = errorsHtml ? `<ul>${errorsHtml}</ul>` : ''
   return titleHtml + wrappedErrors

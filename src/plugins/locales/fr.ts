@@ -427,6 +427,30 @@ export default {
     date: 'Veuillez saisir une date valide',
     phone: 'Veuillez saisir un numéro de téléphone valide',
     alphanumeric: 'Seuls les lettres et les chiffres sont autorisés',
+    keywords: {
+      type: 'Type',
+      required: 'Requis',
+    },
+    params: {
+      missingProperty: 'Propriété manquante',
+      type: 'Type',
+    },
+    errorFormats: {
+      typeError: 'erreur - {type} attendu, mais un type différent a été reçu',
+      typeErrorNoField: 'erreur - {type} attendu',
+      requiredError: '- propriété manquante {property}',
+      requiredErrorNoPath: '- propriété requise manquante {property}',
+      requiredErrorGeneric: '- propriété requise manquante',
+    },
+    types: {
+      integer: 'entier',
+      number: 'nombre',
+      string: 'chaîne de caractères',
+      boolean: 'booléen',
+      array: 'tableau',
+      object: 'objet',
+      null: 'null',
+    },
   },
   masterTableMatch: {
     loading: 'Comparaison avec les tables de configuration...',
@@ -515,6 +539,10 @@ export default {
   },
   common: {
     close: 'Fermer',
+    file: 'fichier',
+    files: 'fichiers',
+    error: 'erreur',
+    errors: 'erreurs',
   },
   latestPlan: {
     banner: {

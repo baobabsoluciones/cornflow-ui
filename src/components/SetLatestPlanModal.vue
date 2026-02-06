@@ -3,7 +3,7 @@
     :model-value="modelValue"
     @update:model-value="(val) => emit('update:modelValue', val)"
     :closeOnOutsideClick="false"
-    :title="$t('latestPlan.modal.title')"
+    :title="t('latestPlan.modal.title')"
     :buttons="modalButtons"
     @confirm="handleConfirm"
     @cancel="handleCancel"
@@ -16,12 +16,12 @@
         </div>
         
         <p class="modal-message">
-          {{ $t('latestPlan.modal.message') }}
+          {{ t('latestPlan.modal.message') }}
         </p>
 
         <div v-if="executionName" class="execution-info">
           <div class="execution-info-label">
-            {{ $t('latestPlan.modal.executionLabel') }}
+            {{ t('latestPlan.modal.executionLabel') }}
           </div>
           <div class="execution-info-value">
             {{ executionName }}
@@ -31,7 +31,7 @@
         <div v-if="currentLatestPlanName" class="current-plan-warning">
           <v-icon size="18" class="warning-icon">mdi-information-outline</v-icon>
           <span>
-            {{ $t('latestPlan.modal.replaceWarning', { name: currentLatestPlanName }) }}
+            {{ t('latestPlan.modal.replaceWarning', { name: currentLatestPlanName }) }}
           </span>
         </div>
 
