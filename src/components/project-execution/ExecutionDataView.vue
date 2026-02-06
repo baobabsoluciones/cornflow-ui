@@ -618,73 +618,127 @@ const createTableObject = (
     title = tableConfig.title
   }
 
+  const selectionHeader = {
+    title: '',
+    value: 'selection',
+    key: 'selection',
+    sortable: false,
+    filterable: false,
+    type: 'selection',
+    required: false,
+    width: '48px',
+  }
+
   const responseSchema = tableConfig?.get_list?.response_schema
   if (responseSchema?.items?.properties) {
     const properties = responseSchema.items.properties
     const requiredFields = responseSchema.items.required || []
 
-    // Build headers with types and master-config fields (joinFrom, columnsToJoin, choices); exclude id column
-    const schemaHeaders = Object.entries(properties)
-      .filter(([key]) => key !== 'id')
-      .map(([key, prop]: [string, any]) => ({
-        title: prop.title || key,
-        value: key,
-        key: key,
-        sortable: true,
-        filterable: true,
-        type: prop.type === 'integer' ? 'number' : prop.type,
-        required: requiredFields.includes(key),
-        minLength: prop.minLength,
-        maxLength: prop.maxLength,
-        min: prop.minimum,
-        max: prop.maximum,
-        pattern: prop.pattern,
-        readOnly: prop.readOnly || false,
-        isForeignKey: prop.isForeignKey || false,
-        isDependentField: prop.isDependentField || false,
-        isMainSelector: prop.isMainSelector || false,
-        joinFrom: prop.joinFrom || undefined,
-        columnsToJoin: prop.columnsToJoin || undefined,
-        foreignKeyField: prop.foreignKeyField || undefined,
-        hidden: prop.hidden || false,
-        // Use explicit choices from config, or schema enum (e.g. 'refineria' | 'factoria') so dropdowns show options without lookup
-        choices:
-          prop.choices ??
-          (Array.isArray(prop.enum) && prop.enum.length > 0
-            ? prop.enum
-            : undefined),
-      }))
+    // SAFETY CHECK: Verify that schema property keys actually exist in the data.
+    // When a master table config is used (effectiveConfig), its column keys may differ
+    // from the instance data keys (e.g., different casing or different column set),
+    // which would cause empty cells since item[header.key] wouldn't find a match.
+    const schemaKeys = Object.keys(properties).filter((k) => k !== 'id')
+    const dataKeys =
+      tableData.length > 0
+        ? Object.keys(tableData[0]).filter((k) => k !== 'id' && k !== '_id')
+        : []
 
-    // Headers without ID column (id is kept in item for selection; column not shown)
-    headers = [
-      {
-        title: '',
-        value: 'selection',
-        key: 'selection',
-        sortable: false,
-        filterable: false,
-        type: 'selection',
-        required: false,
-        width: '48px',
-      },
-      ...schemaHeaders,
-    ]
+    const keysMatchData =
+      dataKeys.length === 0 || schemaKeys.some((sk) => dataKeys.includes(sk))
+
+    if (keysMatchData) {
+      // Schema keys match data keys - use schema headers with full metadata
+      const schemaHeaders = Object.entries(properties)
+        .filter(([key]) => key !== 'id')
+        .map(([key, prop]: [string, any]) => ({
+          title: prop.title || key,
+          value: key,
+          key: key,
+          sortable: true,
+          filterable: true,
+          type: prop.type === 'integer' ? 'number' : prop.type,
+          required: requiredFields.includes(key),
+          minLength: prop.minLength,
+          maxLength: prop.maxLength,
+          min: prop.minimum,
+          max: prop.maximum,
+          pattern: prop.pattern,
+          readOnly: prop.readOnly || false,
+          isForeignKey: prop.isForeignKey || false,
+          isDependentField: prop.isDependentField || false,
+          isMainSelector: prop.isMainSelector || false,
+          joinFrom: prop.joinFrom || undefined,
+          columnsToJoin: prop.columnsToJoin || undefined,
+          foreignKeyField: prop.foreignKeyField || undefined,
+          hidden: prop.hidden || false,
+          // Use explicit choices from config, or schema enum (e.g. 'refineria' | 'factoria') so dropdowns show options without lookup
+          choices:
+            prop.choices ??
+            (Array.isArray(prop.enum) && prop.enum.length > 0
+              ? prop.enum
+              : undefined),
+        }))
+
+      headers = [selectionHeader, ...schemaHeaders]
+    } else {
+      // Schema keys DON'T match data keys (e.g., master table config has different
+      // column names than the instance data). Fall back to data-derived headers
+      // but enrich them with metadata from the master config via case-insensitive matching.
+      console.warn(
+        `ExecutionDataView: Schema property keys for "${tableKey}" don't match data keys (schema: [${schemaKeys.join(', ')}], data: [${dataKeys.join(', ')}]). Falling back to data-derived headers.`,
+      )
+
+      // Build a case-insensitive lookup from the config properties for enrichment
+      const configPropsLookup = new Map<string, any>()
+      Object.entries(properties).forEach(([key, prop]) => {
+        configPropsLookup.set(key.toLowerCase(), prop as any)
+      })
+
+      const dataHeaders = generateHeaders(tableData)
+      const enrichedHeaders = dataHeaders
+        .filter((h: any) => h.key !== 'id' && h.key !== 'selection')
+        .map((h: any) => {
+          const configProp = configPropsLookup.get(h.key.toLowerCase())
+          if (configProp) {
+            return {
+              ...h,
+              title: configProp.title || h.title,
+              type:
+                configProp.type === 'integer'
+                  ? 'number'
+                  : configProp.type || h.type,
+              required: requiredFields.includes(h.key),
+              readOnly: configProp.readOnly || false,
+              isForeignKey: configProp.isForeignKey || false,
+              isDependentField: configProp.isDependentField || false,
+              isMainSelector: configProp.isMainSelector || false,
+              joinFrom: configProp.joinFrom || undefined,
+              columnsToJoin: configProp.columnsToJoin || undefined,
+              foreignKeyField: configProp.foreignKeyField || undefined,
+              hidden: configProp.hidden || false,
+              choices:
+                configProp.choices ??
+                (Array.isArray(configProp.enum) && configProp.enum.length > 0
+                  ? configProp.enum
+                  : undefined),
+            }
+          }
+          return h
+        })
+
+      headers = [selectionHeader, ...enrichedHeaders]
+    }
   } else {
     console.warn(
       `ExecutionDataView: No response schema items.properties for "${tableKey}", using fallback`,
     )
     const dataHeaders = generateHeaders(tableData)
     headers = [
-      {
-        title: '',
-        value: 'selection',
-        key: 'selection',
-        sortable: false,
-        filterable: false,
-        type: 'selection',
-        width: '48px',
-      },
-      ...dataHeaders.filter((h) => h.key !== 'id' && h.key !== 'selection'),
+      selectionHeader,
+      ...dataHeaders.filter(
+        (h: any) => h.key !== 'id' && h.key !== 'selection',
+      ),
     ]
   }
 

@@ -92,7 +92,11 @@ describe('PendingChangesReviewModal', () => {
       tableChanges.recordCreate('my_table', { name: 'New Item' }, 'My Table')
       const wrapper = createWrapper()
 
-      const tableHeaders = wrapper.findAll('.context-table thead th')
+      const createsTable = wrapper.find(
+        '.pending-changes-modal__row--new .pending-changes-modal__table',
+      )
+      expect(createsTable.exists()).toBe(true)
+      const tableHeaders = createsTable.findAll('thead th')
       const headerTexts = tableHeaders
         .map((th) => th.text().trim())
         .filter(Boolean)
@@ -119,7 +123,9 @@ describe('PendingChangesReviewModal', () => {
         },
       })
 
-      const dataTable = wrapper.find('.context-table')
+      const dataTable = wrapper.find(
+        '.pending-changes-modal__row--new .pending-changes-modal__table',
+      )
       expect(dataTable.exists()).toBe(true)
       const ths = dataTable.findAll('thead th')
       const titles = ths.map((th) => th.text().trim())
