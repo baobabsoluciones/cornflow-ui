@@ -9,7 +9,7 @@
         :disabled="checksLaunched && !checksFinished"
         size="small"
       >
-        {{ $t('projectExecution.steps.step5.check') }}
+        {{ t('projectExecution.steps.step5.check') }}
       </v-btn>
     </div>
 
@@ -22,7 +22,7 @@
         icon="mdi-check"
         density="compact"
       >
-        {{ $t('inputOutputData.dataChecksPassedMessage') }}
+        {{ t('inputOutputData.dataChecksPassedMessage') }}
       </v-alert>
     </div>
 
@@ -40,7 +40,7 @@
           size="14"
           class="mr-2"
         ></v-progress-circular>
-        {{ $t('inputOutputData.dataChecksLoadingMessage') }}
+        {{ t('inputOutputData.dataChecksLoadingMessage') }}
       </v-alert>
     </div>
 
@@ -52,7 +52,7 @@
         icon="mdi-alert-circle"
         density="compact"
       >
-        {{ $t('inputOutputData.dataChecksFailedMessage') }}
+        {{ t('inputOutputData.dataChecksFailedMessage') }}
       </v-alert>
     </div>
 
@@ -114,8 +114,8 @@
                 <span>
                   {{
                     getMatchForTable(table.key)?.hasDifferences
-                      ? $t('masterTableMatch.hasDifferencesWithMaster')
-                      : $t('masterTableMatch.identicalToMaster')
+                      ? t('masterTableMatch.hasDifferencesWithMaster')
+                      : t('masterTableMatch.identicalToMaster')
                   }}
                 </span>
               </v-tooltip>
@@ -142,7 +142,7 @@
                 }}
               </v-icon>
               <span class="match-text">
-                {{ $t('masterTableMatch.matchFoundWith') }}
+                {{ t('masterTableMatch.matchFoundWith') }}
                 <strong>{{ currentTableMatch.masterTableTitle }}</strong>
               </span>
               <!-- Diff summary badges -->
@@ -187,7 +187,7 @@
                 variant="tonal"
                 class="ml-3"
               >
-                {{ $t('masterTableMatch.identical') }}
+                {{ t('masterTableMatch.identical') }}
               </v-chip>
             </div>
             <div class="match-actions">
@@ -198,7 +198,7 @@
                 @click="handleShowComparison"
               >
                 <v-icon start size="small">mdi-compare</v-icon>
-                {{ $t('masterTableMatch.viewDifferences') }}
+                {{ t('masterTableMatch.viewDifferences') }}
               </v-btn>
               <v-divider vertical class="mx-2"></v-divider>
               <!-- Action buttons with confirmation -->
@@ -214,10 +214,10 @@
                 @click="showUseMasterConfirmDialog = true"
               >
                 <v-tooltip activator="parent" location="top">
-                  {{ $t('masterTableMatch.option.useMaster.description') }}
+                  {{ t('masterTableMatch.option.useMaster.description') }}
                 </v-tooltip>
                 <v-icon start size="small">mdi-database</v-icon>
-                {{ $t('masterTableMatch.option.useMaster.short') }}
+                {{ t('masterTableMatch.option.useMaster.short') }}
               </v-btn>
               <v-btn
                 size="small"
@@ -233,12 +233,12 @@
                 <v-tooltip activator="parent" location="top">
                   {{
                     currentTableMatch.canReplaceMaster
-                      ? $t('masterTableMatch.option.replaceMaster.description')
-                      : $t('masterTableMatch.option.replaceMaster.notAvailable')
+                      ? t('masterTableMatch.option.replaceMaster.description')
+                      : t('masterTableMatch.option.replaceMaster.notAvailable')
                   }}
                 </v-tooltip>
                 <v-icon start size="small">mdi-database-sync</v-icon>
-                {{ $t('masterTableMatch.option.replaceMaster.short') }}
+                {{ t('masterTableMatch.option.replaceMaster.short') }}
               </v-btn>
             </div>
           </div>
@@ -358,14 +358,14 @@
     <!-- Use Master Confirmation Dialog -->
     <CoreConfirmDialog
       v-model="showUseMasterConfirmDialog"
-      :title="$t('masterTableMatch.confirmUseMaster.title')"
+      :title="t('masterTableMatch.confirmUseMaster.title')"
       :message="
-        $t('masterTableMatch.confirmUseMaster.message', {
+        t('masterTableMatch.confirmUseMaster.message', {
           tableName: currentTable.title,
         })
       "
-      :confirm-text="$t('masterTableMatch.confirmUseMaster.confirm')"
-      :cancel-text="$t('table.cancel')"
+      :confirm-text="t('masterTableMatch.confirmUseMaster.confirm')"
+      :cancel-text="t('table.cancel')"
       confirm-color="var(--primary)"
       @confirm="handleConfirmUseMaster"
       @cancel="showUseMasterConfirmDialog = false"

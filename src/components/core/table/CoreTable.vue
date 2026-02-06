@@ -90,9 +90,38 @@
         @clear-all-filters="handleClearAllFilters"
       />
 
-      <!-- Virtual Table with infinite scroll -->
+      <!-- Alert list (same style as SimpleList) or Virtual Table -->
       <div class="table-container" ref="tableContainer">
+        <!-- Lista de alertas: mismo estilo que SimpleList (v-alert warning tonal) -->
+        <template v-if="displayAsAlertList">
+          <div v-if="localLoading" class="pa-4">
+            <v-skeleton-loader type="text@5"></v-skeleton-loader>
+          </div>
+          <div v-else-if="safeItems.length === 0" class="pa-4">
+            <v-alert type="info" color="var(--primary)" class="no-data-alert">
+              {{ $t('table.noDataAvailable') }}
+            </v-alert>
+          </div>
+          <div v-else class="core-table-alert-list simple-list-content pa-4">
+            <div class="simple-list-items">
+              <v-alert
+                v-for="item in safeItems"
+                :key="item.id"
+                type="warning"
+                variant="tonal"
+                class="simple-list-item"
+                density="comfortable"
+              >
+                <div class="simple-list-item__text">
+                  {{ item[alertListMessageKey] }}
+                </div>
+              </v-alert>
+            </div>
+          </div>
+        </template>
+
         <v-data-table-virtual
+          v-else
           :key="`table-${forceRerender}-${tableKey}`"
           :headers="safeHeaders"
           :items="safeItems"
@@ -546,6 +575,10 @@ interface Props {
   // Foreign key data loading
   loadTableData?: (tableName: string) => Promise<any[]>
   tableData?: Record<string, any[]>
+
+  // Render as list of warning alerts (same style as SimpleList) instead of table
+  displayAsAlertList?: boolean
+  alertListMessageKey?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -596,6 +629,8 @@ const props = withDefaults(defineProps<Props>(), {
   editingData: () => ({}),
   originalData: () => ({}),
   isEditingAnyRow: false,
+  displayAsAlertList: false,
+  alertListMessageKey: 'message',
   loadTableData: () => Promise.resolve([]),
   tableData: () => ({}),
 })
@@ -1650,3 +1685,26 @@ defineExpose({ getRowProps })
 
 <style src="@/assets/styles/components/core/CoreTable.css"></style>
 <style src="@/assets/styles/components/core/CoreTableInlineEdit.css"></style>
+<style scoped>
+/* Modo lista de alertas: mismo estilo que SimpleList (alertas naranjas) */
+.core-table-alert-list.simple-list-content {
+  max-height: calc(100vh - 320px);
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+.core-table-alert-list .simple-list-items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.core-table-alert-list .simple-list-item {
+  margin: 0;
+}
+.core-table-alert-list .simple-list-item__text {
+  font-size: 13px !important;
+  line-height: 1.6;
+  word-wrap: break-word;
+  white-space: normal;
+  color: inherit;
+}
+</style>

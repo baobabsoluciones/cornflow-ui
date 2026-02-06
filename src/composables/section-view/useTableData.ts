@@ -883,6 +883,11 @@ export function useTableData(
     tableTitle: dynamicTableTitle,
     availableFilterFields: dynamicAvailableFilterFields,
     isPrimitiveArray: dynamicIsPrimitiveArray,
+    isValidationMessageList: computed(
+      () =>
+        shouldUseExecutionData.value &&
+        !!executionTableData.isValidationMessageList?.value,
+    ),
     searchPlaceholder: computed(() => t('table.searchPlaceholder')),
     enableSearch: computed(() => true),
     enableFilters: computed(() => true),
