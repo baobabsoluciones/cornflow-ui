@@ -48,6 +48,13 @@
   overflow: hidden;
 }
 
+/* When dashboard is active, allow the section to scroll so the table
+   is not crushed into whatever vertical space remains after widgets. */
+.table-section--dashboard {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 /* ==========================================================================
    Table Card - The v-card wrapper
    ========================================================================== */
@@ -110,15 +117,24 @@
 }
 
 /* ==========================================================================
+   Auto Dashboard - Wrapper for the full dashboard layout
+   ========================================================================== */
+.dashboard-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-height: 0;
+}
+
+/* ==========================================================================
    Auto Dashboard - Widgets Layout (70/30 split)
    ========================================================================== */
 .table-with-widgets {
   display: flex;
   gap: 16px;
   width: 100%;
-  flex: 1;
   min-height: 0;
-  align-items: stretch;
+  align-items: flex-start;
 }
 
 .table-column {
@@ -126,7 +142,8 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  /* Ensure the table always has enough height to show data */
+  min-height: 420px;
 }
 
 .widgets-column {
@@ -137,8 +154,9 @@
   flex-direction: column;
   gap: 16px;
   padding-right: 16px;
+  /* Allow the widgets column to scroll if its content is tall */
+  max-height: 600px;
   overflow-y: auto;
-  max-height: 100%;
 }
 
 /* ==========================================================================
@@ -173,7 +191,6 @@
    Bottom Charts Section - Full width below table
    ========================================================================== */
 .bottom-charts-section {
-  margin-top: 24px;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 16px;
@@ -212,6 +229,7 @@
   .table-column {
     flex: none;
     width: 100%;
+    min-height: 350px;
   }
 
   .widgets-column {
@@ -260,6 +278,10 @@
   .widgets-column {
     gap: 12px;
   }
+
+  .table-column {
+    min-height: 300px;
+  }
 }
 
 /* Small screens (576px - 768px) */
@@ -285,7 +307,6 @@
   }
 
   .bottom-charts-section {
-    margin-top: 16px;
     gap: 12px;
   }
 }
@@ -307,22 +328,5 @@
   .widgets-column {
     gap: 8px;
     padding-right: 0;
-  }
-}
-
-/* Height-based adjustments */
-@media (max-height: 700px) {
-  .widgets-column {
-    max-height: 250px;
-  }
-}
-
-@media (max-height: 600px) {
-  .loading-container {
-    min-height: 200px;
-  }
-
-  .widgets-column {
-    max-height: 200px;
   }
 }

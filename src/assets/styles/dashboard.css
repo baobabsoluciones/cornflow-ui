@@ -9,23 +9,30 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.chart-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.12);
 }
 
 .chart-header {
-  padding: 24px 24px 16px 24px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 20px 24px 12px 24px;
 }
 
 .chart-title {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #6b7280;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--title, #404040);
   line-height: 1.5;
   letter-spacing: 0.01em;
+  text-transform: capitalize;
 }
 
 .chart-content {
-  padding: 16px 24px 24px 24px;
+  padding: 8px 16px 16px 16px;
   flex: 1;
   min-height: 0;
 }
@@ -37,16 +44,17 @@
   border-radius: 12px;
   border: 1px solid rgba(0, 0, 0, 0.08);
   transition: all 0.2s ease;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   overflow: hidden;
 }
 
 .kpi-card:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.12);
 }
 
 .kpi-content {
-  padding: 24px;
+  padding: 20px;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -55,18 +63,18 @@
 
 /* Change Indicators */
 .positive {
-  color: #10b981;
+  color: var(--success, #3ba780);
 }
 
 .negative {
-  color: #ef4444;
+  color: var(--danger, #f44336);
 }
 
 /* Common Text Colors */
 .text-subtitle {
-  color: #6b7280;
+  color: var(--subtitle, #6e6e6e);
 }
 
 .text-title {
-  color: #111827;
+  color: var(--title, #404040);
 }

@@ -60,113 +60,165 @@
       </div>
 
       <!-- Regular table view for non-primitive arrays -->
-      <div v-else-if="!isGroupView" class="table-section mt-5">
+      <div v-else-if="!isGroupView" class="table-section mt-5" :class="{ 'table-section--dashboard': shouldShowWidgets && hasActualWidgets }">
         <!-- Table with widgets layout (70/30) - only if there are actual widgets -->
         <div
           v-if="shouldShowWidgets && hasActualWidgets"
-          class="table-with-widgets"
+          class="dashboard-layout"
         >
-          <div class="table-column">
-            <CoreTable
-              :items="tableData.items.value"
-              :headers="tableData.headers.value"
-              :loading="tableData.loading.value"
-              :table-title="tableData.tableTitle.value"
-              :search-placeholder="tableData.searchPlaceholder.value"
-              :enable-search="tableData.enableSearch.value"
-              :enable-filters="tableData.enableFilters.value"
-              :enable-selection="tableData.enableSelection.value"
-              :enable-actions="tableData.enableActions.value"
-              :enable-bulk-actions="tableData.enableBulkActions.value"
-              :read-only-display="isReadOnlyDataSection"
-              :table-key="effectiveTableKey"
-              :enable-excel-mode="tableData.enableExcelMode.value"
-              :is-cell-modified="tableData.isCellModified"
-              :get-modified-value="tableData.getModifiedValue"
-              :get-row-class="tableData.getRowClass"
-              :can-add="tableData.canAdd.value"
-              :can-edit="tableData.canEdit.value"
-              :can-delete="tableData.canDelete.value"
-              :can-bulk-upload="tableData.canBulkUpload.value"
-              :can-download-excel="tableData.canDownloadExcel.value"
-              :search-value="tableData.searchValue.value"
-              :active-filters="tableData.activeFilters.value"
-              :selected-items="tableData.selectedItems.value"
-              :available-filter-fields="tableData.availableFilterFields.value"
-              :show-add-edit-modal="tableData.showAddEditModal.value"
-              :show-delete-dialog="tableData.showDeleteDialog.value"
-              :show-bulk-delete-dialog="tableData.showBulkDeleteDialog.value"
-              :show-bulk-upload-modal="tableData.showBulkUploadModal.value"
-              :form-fields="tableData.formFields.value"
-              :form-data="tableData.formData.value"
-              :is-editing="tableData.isEditing.value"
-              :saving="tableData.saving.value"
-              :deleting="tableData.deleting.value"
-              :bulk-deleting="tableData.bulkDeleting.value"
-              :uploading="tableData.uploading.value"
-              :downloading="tableData.downloading.value"
-              :editing-row-id="tableData.editingRowId.value"
-              :editing-data="tableData.editingData.value"
-              :original-data="tableData.originalData.value"
-              :is-editing-any-row="tableData.isEditingAnyRow.value"
-              :load-table-data="tableData.loadTableData"
-              :table-data="tableData.tableData.value"
-              @search="tableData.handleSearch"
-              :get-operators-for-field-type="tableData.getOperatorsForFieldType"
-              :get-operator-text="tableData.getOperatorText"
-              :operator-needs-value="tableData.operatorNeedsValue"
-              :operator-needs-second-value="tableData.operatorNeedsSecondValue"
-              :generate-filter-id="tableData.generateFilterId"
-              @add-filter="tableData.handleAddFilter"
-              @remove-filter="tableData.handleRemoveFilter"
-              @clear-all-filters="tableData.handleClearAllFilters"
-              @toggle-filters-panel="tableData.handleToggleFiltersPanel"
-              @select-item="tableData.handleSelectItem"
-              @select-all="tableData.handleSelectAll"
-              @clear-selection="tableData.handleClearSelection"
-              @add-item="tableData.handleAddItem"
-              @edit-item="tableData.handleEditItem"
-              @delete-item="tableData.handleDeleteItem"
-              @bulk-delete="tableData.handleBulkDelete"
-              @save-item="tableData.handleSaveItem"
-              @cancel-edit="() => (tableData.showAddEditModal.value = false)"
-              @bulk-upload="tableData.handleBulkUpload"
-              @download-excel="tableData.handleDownloadExcel"
-              @confirm-delete="tableData.handleConfirmDelete"
-              @confirm-bulk-delete="tableData.handleConfirmBulkDelete"
-              @cancel-delete="() => (tableData.showDeleteDialog.value = false)"
-              @cancel-bulk-delete="
-                () => (tableData.showBulkDeleteDialog.value = false)
-              "
-              @cancel-bulk-upload="
-                () => (tableData.showBulkUploadModal.value = false)
-              "
-              @start-inline-edit="tableData.startInlineEdit"
-              @save-inline-edit="tableData.saveInlineEdit"
-              @cancel-inline-edit="tableData.cancelInlineEdit"
-              @update-inline-field="tableData.updateInlineField"
-              @cell-change="tableData.handleCellChange"
-              @update:searchValue="tableData.handleSearch"
-              @update:activeFilters="
-                (filters) => (tableData.activeFilters.value = filters)
-              "
-              @update:selectedItems="
-                (items) => (tableData.selectedItems.value = items)
-              "
-              @update:showAddEditModal="
-                (show) => (tableData.showAddEditModal.value = show)
-              "
-              @update:showDeleteDialog="
-                (show) => (tableData.showDeleteDialog.value = show)
-              "
-              @update:showBulkDeleteDialog="
-                (show) => (tableData.showBulkDeleteDialog.value = show)
-              "
-              @update:showBulkUploadModal="
-                (show) => (tableData.showBulkUploadModal.value = show)
-              "
-              @update:formData="(data) => (tableData.formData.value = data)"
-            />
+          <!-- Top row: table (70%) + side widgets (30%) -->
+          <div class="table-with-widgets">
+            <div class="table-column">
+              <CoreTable
+                :items="tableData.items.value"
+                :headers="tableData.headers.value"
+                :loading="tableData.loading.value"
+                :table-title="tableData.tableTitle.value"
+                :search-placeholder="tableData.searchPlaceholder.value"
+                :enable-search="tableData.enableSearch.value"
+                :enable-filters="tableData.enableFilters.value"
+                :enable-selection="tableData.enableSelection.value"
+                :enable-actions="tableData.enableActions.value"
+                :enable-bulk-actions="tableData.enableBulkActions.value"
+                :read-only-display="isReadOnlyDataSection"
+                :table-key="effectiveTableKey"
+                :enable-excel-mode="tableData.enableExcelMode.value"
+                :is-cell-modified="tableData.isCellModified"
+                :get-modified-value="tableData.getModifiedValue"
+                :get-row-class="tableData.getRowClass"
+                :can-add="tableData.canAdd.value"
+                :can-edit="tableData.canEdit.value"
+                :can-delete="tableData.canDelete.value"
+                :can-bulk-upload="tableData.canBulkUpload.value"
+                :can-download-excel="tableData.canDownloadExcel.value"
+                :search-value="tableData.searchValue.value"
+                :active-filters="tableData.activeFilters.value"
+                :selected-items="tableData.selectedItems.value"
+                :available-filter-fields="tableData.availableFilterFields.value"
+                :show-add-edit-modal="tableData.showAddEditModal.value"
+                :show-delete-dialog="tableData.showDeleteDialog.value"
+                :show-bulk-delete-dialog="tableData.showBulkDeleteDialog.value"
+                :show-bulk-upload-modal="tableData.showBulkUploadModal.value"
+                :form-fields="tableData.formFields.value"
+                :form-data="tableData.formData.value"
+                :is-editing="tableData.isEditing.value"
+                :saving="tableData.saving.value"
+                :deleting="tableData.deleting.value"
+                :bulk-deleting="tableData.bulkDeleting.value"
+                :uploading="tableData.uploading.value"
+                :downloading="tableData.downloading.value"
+                :editing-row-id="tableData.editingRowId.value"
+                :editing-data="tableData.editingData.value"
+                :original-data="tableData.originalData.value"
+                :is-editing-any-row="tableData.isEditingAnyRow.value"
+                :load-table-data="tableData.loadTableData"
+                :table-data="tableData.tableData.value"
+                @search="tableData.handleSearch"
+                :get-operators-for-field-type="tableData.getOperatorsForFieldType"
+                :get-operator-text="tableData.getOperatorText"
+                :operator-needs-value="tableData.operatorNeedsValue"
+                :operator-needs-second-value="tableData.operatorNeedsSecondValue"
+                :generate-filter-id="tableData.generateFilterId"
+                @add-filter="tableData.handleAddFilter"
+                @remove-filter="tableData.handleRemoveFilter"
+                @clear-all-filters="tableData.handleClearAllFilters"
+                @toggle-filters-panel="tableData.handleToggleFiltersPanel"
+                @select-item="tableData.handleSelectItem"
+                @select-all="tableData.handleSelectAll"
+                @clear-selection="tableData.handleClearSelection"
+                @add-item="tableData.handleAddItem"
+                @edit-item="tableData.handleEditItem"
+                @delete-item="tableData.handleDeleteItem"
+                @bulk-delete="tableData.handleBulkDelete"
+                @save-item="tableData.handleSaveItem"
+                @cancel-edit="() => (tableData.showAddEditModal.value = false)"
+                @bulk-upload="tableData.handleBulkUpload"
+                @download-excel="tableData.handleDownloadExcel"
+                @confirm-delete="tableData.handleConfirmDelete"
+                @confirm-bulk-delete="tableData.handleConfirmBulkDelete"
+                @cancel-delete="() => (tableData.showDeleteDialog.value = false)"
+                @cancel-bulk-delete="
+                  () => (tableData.showBulkDeleteDialog.value = false)
+                "
+                @cancel-bulk-upload="
+                  () => (tableData.showBulkUploadModal.value = false)
+                "
+                @start-inline-edit="tableData.startInlineEdit"
+                @save-inline-edit="tableData.saveInlineEdit"
+                @cancel-inline-edit="tableData.cancelInlineEdit"
+                @update-inline-field="tableData.updateInlineField"
+                @cell-change="tableData.handleCellChange"
+                @update:searchValue="tableData.handleSearch"
+                @update:activeFilters="
+                  (filters) => (tableData.activeFilters.value = filters)
+                "
+                @update:selectedItems="
+                  (items) => (tableData.selectedItems.value = items)
+                "
+                @update:showAddEditModal="
+                  (show) => (tableData.showAddEditModal.value = show)
+                "
+                @update:showDeleteDialog="
+                  (show) => (tableData.showDeleteDialog.value = show)
+                "
+                @update:showBulkDeleteDialog="
+                  (show) => (tableData.showBulkDeleteDialog.value = show)
+                "
+                @update:showBulkUploadModal="
+                  (show) => (tableData.showBulkUploadModal.value = show)
+                "
+                @update:formData="(data) => (tableData.formData.value = data)"
+              />
+            </div>
+            <!-- Widgets column (30%) -->
+            <div class="widgets-column">
+              <!-- KPIs section (2 per row) -->
+              <div v-if="kpiWidgets.length > 0" class="kpis-section">
+                <div
+                  v-for="(widget, index) in kpiWidgets"
+                  :key="`kpi-${index}`"
+                  class="kpi-item"
+                >
+                  <component
+                    :is="getWidgetComponent(widget.type)"
+                    :title="widget.title"
+                    :config="widget.config"
+                  />
+                </div>
+              </div>
+              <!-- Charts section (1 per row) -->
+              <div v-if="sideCharts.length > 0" class="charts-section">
+                <div
+                  v-for="(widget, index) in sideCharts"
+                  :key="`chart-${index}`"
+                  class="chart-item"
+                >
+                  <component
+                    :is="getWidgetComponent(widget.type)"
+                    :title="widget.title"
+                    :config="widget.config"
+                  />
+                </div>
+              </div>
+              <!-- Custom widgets section (side) -->
+              <div v-if="customSideWidgets.length > 0" class="charts-section">
+                <div
+                  v-for="(widget, index) in customSideWidgets"
+                  :key="`custom-side-${index}`"
+                  class="chart-item"
+                >
+                  <component
+                    v-if="tableKey.value && executionType.value"
+                    :is="getWidgetComponent(widget.component)"
+                    :table-data="getTableData(tableKey.value)"
+                    :table-key="tableKey.value"
+                    :execution-data="getExecutionData()"
+                    :execution-type="executionType.value"
+                    v-bind="widget.props || {}"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
           <!-- Additional charts below table (100% width) -->
           <div
@@ -201,55 +253,6 @@
                 :execution-type="executionType.value"
                 v-bind="widget.props || {}"
               />
-            </div>
-          </div>
-          <!-- Widgets column (30%) -->
-          <div class="widgets-column">
-            <!-- KPIs section (2 per row) -->
-            <div v-if="kpiWidgets.length > 0" class="kpis-section">
-              <div
-                v-for="(widget, index) in kpiWidgets"
-                :key="`kpi-${index}`"
-                class="kpi-item"
-              >
-                <component
-                  :is="getWidgetComponent(widget.type)"
-                  :title="widget.title"
-                  :config="widget.config"
-                />
-              </div>
-            </div>
-            <!-- Charts section (1 per row) -->
-            <div v-if="sideCharts.length > 0" class="charts-section">
-              <div
-                v-for="(widget, index) in sideCharts"
-                :key="`chart-${index}`"
-                class="chart-item"
-              >
-                <component
-                  :is="getWidgetComponent(widget.type)"
-                  :title="widget.title"
-                  :config="widget.config"
-                />
-              </div>
-            </div>
-            <!-- Custom widgets section (side) -->
-            <div v-if="customSideWidgets.length > 0" class="charts-section">
-              <div
-                v-for="(widget, index) in customSideWidgets"
-                :key="`custom-side-${index}`"
-                class="chart-item"
-              >
-                <component
-                  v-if="tableKey.value && executionType.value"
-                  :is="getWidgetComponent(widget.component)"
-                  :table-data="getTableData(tableKey.value)"
-                  :table-key="tableKey.value"
-                  :execution-data="getExecutionData()"
-                  :execution-type="executionType.value"
-                  v-bind="widget.props || {}"
-                />
-              </div>
             </div>
           </div>
         </div>

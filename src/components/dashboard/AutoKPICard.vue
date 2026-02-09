@@ -6,9 +6,9 @@
           <div
             v-if="displayIcon"
             class="kpi-icon-wrapper"
-            :style="{ backgroundColor: iconBackgroundColor }"
+            :class="iconColorClass"
           >
-            <v-icon :icon="displayIcon" class="kpi-icon" size="20" />
+            <v-icon :icon="displayIcon" class="kpi-icon" size="18" />
           </div>
           <div class="kpi-title">{{ config.label }}</div>
         </div>
@@ -29,7 +29,7 @@
           v-if="config.change !== undefined && config.period"
           class="kpi-separator"
         >
-          •
+          &middot;
         </div>
         <div v-if="config.period" class="kpi-period">{{ config.period }}</div>
       </div>
@@ -58,31 +58,28 @@ const props = defineProps<Props>()
 // Determine icon to display based on KPI type
 const displayIcon = computed(() => {
   const labelLower = props.config.label.toLowerCase()
-  
+
   // Priority order: check for most specific types first
-  
-  // Check for "máximo" or "maximum" or "max" FIRST (before "total")
-  // Examples: "Produccion Maxima total", "Maximum Production"
+
+  // Check for "maximum" or "max" FIRST (before "total")
   if (
     labelLower.includes('maxima') ||
     labelLower.includes('maximum') ||
     (labelLower.includes('max') && !labelLower.includes('min'))
   ) {
-    return 'mdi-trending-up' // Trending up for maximum
+    return 'mdi-trending-up'
   }
-  
-  // Check for "mínimo" or "minimum" or "min" FIRST (before "total")
-  // Examples: "Produccion Minima total", "Minimum Production"
+
+  // Check for "minimum" or "min" FIRST (before "total")
   if (
     labelLower.includes('minima') ||
     labelLower.includes('minimum') ||
     (labelLower.includes('min') && !labelLower.includes('max'))
   ) {
-    return 'mdi-trending-down' // Trending down for minimum
+    return 'mdi-trending-down'
   }
-  
-  // Check for "promedio" or "average" - must be at the beginning or end
-  // Examples: "Promedio Prima Euro M3", "Prima Euro M3 promedio", "Average Prima"
+
+  // Check for "average" or "promedio"
   if (
     labelLower.startsWith('promedio ') ||
     labelLower.startsWith('average ') ||
@@ -92,12 +89,10 @@ const displayIcon = computed(() => {
     labelLower.includes(' average ') ||
     labelLower.includes('avg ')
   ) {
-    return 'mdi-chart-line-variant' // Line chart variant for averages
+    return 'mdi-chart-line-variant'
   }
-  
-  // Check for "total" or "sum" - must be at the end of the label or standalone
-  // Examples: "Prima Euro M3 total", "Total Prima Euro M3"
-  // This comes last because "total" can appear in other labels
+
+  // Check for "total" or "sum"
   if (
     labelLower.endsWith(' total') ||
     labelLower.startsWith('total ') ||
@@ -105,66 +100,55 @@ const displayIcon = computed(() => {
     labelLower.includes('sum') ||
     labelLower.includes('suma')
   ) {
-    return 'mdi-calculator' // Sum/calculator icon for totals
+    return 'mdi-calculator'
   }
-  
-  // If icon is provided in config (from column type), use it as fallback
+
+  // If icon is provided in config, use it as fallback
   if (props.config.icon) {
     return props.config.icon
   }
-  
+
   // Default icon
   return 'mdi-chart-box'
 })
 
-// Get icon background color based on icon type
-const iconBackgroundColor = computed(() => {
-  const icon = displayIcon.value
+// Get icon color class based on KPI type
+const iconColorClass = computed(() => {
   const labelLower = props.config.label.toLowerCase()
-  
-  // Total/Sum icons - blue
+
   if (
-    icon.includes('calculator') ||
-    labelLower.includes('total') ||
-    labelLower.includes('sum')
-  ) {
-    return 'rgba(9, 132, 198, 0.15)' // Primary blue with opacity
-  }
-  
-  // Average icons - teal
-  if (
-    icon.includes('chart-line') ||
-    labelLower.includes('promedio') ||
-    labelLower.includes('average')
-  ) {
-    return 'rgba(1, 75, 91, 0.15)' // Secondary teal with opacity
-  }
-  
-  // Maximum icons - green
-  if (
-    icon.includes('trending-up') ||
     labelLower.includes('maxima') ||
-    labelLower.includes('maximum')
+    labelLower.includes('maximum') ||
+    (labelLower.includes('max') && !labelLower.includes('min'))
   ) {
-    return 'rgba(59, 167, 128, 0.15)' // Success green with opacity
+    return 'kpi-icon--success'
   }
-  
-  // Minimum icons - orange/warning
+
   if (
-    icon.includes('trending-down') ||
     labelLower.includes('minima') ||
-    labelLower.includes('minimum')
+    labelLower.includes('minimum') ||
+    (labelLower.includes('min') && !labelLower.includes('max'))
   ) {
-    return 'rgba(222, 167, 39, 0.15)' // Warning orange with opacity
+    return 'kpi-icon--warning'
   }
-  
-  // Financial icons - blue
-  if (icon.includes('wallet') || icon.includes('currency') || icon.includes('cash')) {
-    return 'rgba(9, 132, 198, 0.15)' // Primary blue with opacity
+
+  if (
+    labelLower.includes('promedio') ||
+    labelLower.includes('average') ||
+    labelLower.includes('avg')
+  ) {
+    return 'kpi-icon--accent'
   }
-  
-  // Default - light blue
-  return 'rgba(9, 132, 198, 0.15)'
+
+  if (
+    labelLower.includes('total') ||
+    labelLower.includes('sum') ||
+    labelLower.includes('suma')
+  ) {
+    return 'kpi-icon--primary'
+  }
+
+  return 'kpi-icon--primary'
 })
 
 const formattedValue = computed(() => {
@@ -205,7 +189,7 @@ const formatChange = (
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(Math.abs(changeValue))
-    return `${percentage}(${formattedValue})`
+    return `${percentage} (${formattedValue})`
   }
 
   return percentage
@@ -219,7 +203,7 @@ const getChangeClass = (change: number | undefined): string => {
 
 <style scoped>
 .kpi-top-section {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .kpi-header {
@@ -239,26 +223,56 @@ const getChangeClass = (change: number | undefined): string => {
   transition: background-color 0.2s ease;
 }
 
-.kpi-icon {
-  color: var(--primary);
+/* Icon color variants using CSS variables */
+.kpi-icon--primary {
+  background-color: var(--primary-light-variant, #e6f1f7);
+}
+
+.kpi-icon--primary .kpi-icon {
+  color: var(--primary, #326786);
+}
+
+.kpi-icon--accent {
+  background-color: var(--primary-light-variant, #e6f1f7);
+}
+
+.kpi-icon--accent .kpi-icon {
+  color: var(--accent, #4e7f9c);
+}
+
+.kpi-icon--success {
+  background-color: rgba(59, 167, 128, 0.12);
+}
+
+.kpi-icon--success .kpi-icon {
+  color: var(--success, #3ba780);
+}
+
+.kpi-icon--warning {
+  background-color: rgba(255, 180, 88, 0.15);
+}
+
+.kpi-icon--warning .kpi-icon {
+  color: var(--warning, #ffb458);
 }
 
 .kpi-title {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 500;
-  color: var(--subtitle);
-  line-height: 1.5;
+  color: var(--subtitle, #6e6e6e);
+  line-height: 1.4;
   letter-spacing: 0.01em;
   flex: 1;
 }
 
 .kpi-value {
-  font-size: 2rem;
+  font-size: 1.75rem;
   font-weight: 700;
-  color: var(--title);
+  color: var(--title, #404040);
   line-height: 1.2;
-  margin-bottom: 12px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  margin-bottom: 8px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
   letter-spacing: -0.02em;
 }
 
@@ -267,7 +281,7 @@ const getChangeClass = (change: number | undefined): string => {
   align-items: center;
   gap: 6px;
   margin-top: auto;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   line-height: 1.4;
 }
 
@@ -279,22 +293,22 @@ const getChangeClass = (change: number | undefined): string => {
 }
 
 .kpi-separator {
-  color: #9ca3af;
+  color: var(--subtitle, #6e6e6e);
   font-size: 0.75rem;
   margin: 0 2px;
 }
 
 .kpi-period {
-  color: var(--subtitle);
-  font-size: 0.875rem;
+  color: var(--subtitle, #6e6e6e);
+  font-size: 0.8125rem;
   font-weight: 400;
 }
 
 .kpi-change.positive {
-  color: var(--success);
+  color: var(--success, #3ba780);
 }
 
 .kpi-change.negative {
-  color: var(--danger);
+  color: var(--danger, #f44336);
 }
 </style>
