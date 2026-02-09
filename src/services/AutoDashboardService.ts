@@ -22,6 +22,7 @@ export interface TableAnalysis {
   rowCount: number
   schema?: any
   binaryColumns: string[]
+  idColumns: string[]
   codeColumns: string[]
   locationColumns: string[]
 }
@@ -73,42 +74,60 @@ function findCoordinateColumns(
 }
 
 /**
- * Check if a column name indicates it's a code/ID field.
- * Examples: codigo_refineria, code_user, id_product, etc.
+ * Check if a column name indicates it's an ID / identifier field.
+ * These columns should NEVER be aggregated (sum, average, etc.) because
+ * their numeric values carry no meaningful information.
+ *
+ * Catches patterns such as:
+ *   id, _id, id_, id_employee, employee_id, codigo_X, code_X, X_code, etc.
  */
-function isCodeColumn(columnName: string, allColumns: string[]): boolean {
-  const colLower = columnName.toLowerCase()
+function isIdColumn(columnName: string): boolean {
+  const colLower = columnName.toLowerCase().trim()
 
-  const codePatterns = [
-    /^codigo_/,
-    /^code_/,
-    /^id_/,
-    /_codigo$/,
-    /_code$/,
-    /_id$/,
-  ]
-
-  if (codePatterns.some((pattern) => pattern.test(colLower))) {
-    const baseName = colLower
-      .replace(/^(codigo|code|id)_/, '')
-      .replace(/_(codigo|code|id)$/, '')
-
-    const hasCorrespondingColumn = allColumns.some((col) => {
-      const otherColLower = col.toLowerCase()
-      return (
-        otherColLower === baseName ||
-        otherColLower === `${baseName}_name` ||
-        otherColLower === `name_${baseName}`
-      )
-    })
-
-    return hasCorrespondingColumn
+  // Exact matches
+  if (colLower === 'id' || colLower === 'idx' || colLower === 'index') {
+    return true
   }
 
-  if (colLower === 'id') return true
-  if (colLower.endsWith('_id') && colLower !== 'id') return true
+  // Prefix patterns: id_, id., id-, idx_
+  if (/^(id|idx)[_.\-\s]/.test(colLower)) return true
+
+  // Suffix patterns: _id, .id, -id
+  if (/[_.\-\s](id|idx)$/.test(colLower)) return true
+
+  // Contains _id_ or .id. in the middle
+  if (/[_.\-\s](id|idx)[_.\-\s]/.test(colLower)) return true
 
   return false
+}
+
+/**
+ * Check if a column name indicates it's a code/identifier field.
+ * Examples: codigo_refineria, code_user, etc.
+ * These are always excluded from numeric aggregation.
+ */
+function isCodeColumn(columnName: string): boolean {
+  const colLower = columnName.toLowerCase().trim()
+
+  // Code/codigo patterns (always treated as identifiers)
+  const codePatterns = [
+    /^codigo[_.\-\s]/,
+    /^code[_.\-\s]/,
+    /[_.\-\s]codigo$/,
+    /[_.\-\s]code$/,
+    /^cod[_.\-\s]/,
+    /[_.\-\s]cod$/,
+  ]
+
+  return codePatterns.some((pattern) => pattern.test(colLower))
+}
+
+/**
+ * Check whether a column is an identifier (ID or code) that should be
+ * excluded from any numeric aggregation or chart generation.
+ */
+function isIdentifierColumn(columnName: string): boolean {
+  return isIdColumn(columnName) || isCodeColumn(columnName)
 }
 
 /**
@@ -157,6 +176,45 @@ function isNumericValue(val: unknown): boolean {
 }
 
 /**
+ * Heuristic: detect whether a numeric column looks like a sequential
+ * identifier (auto-increment primary key or similar).
+ *
+ * A column is considered a sequential ID when:
+ * - All sample values are integers
+ * - Almost every value is unique (≥ 90%)
+ * - The values roughly span from 1..N (range ≈ count)
+ */
+function looksLikeSequentialId(
+  _columnName: string,
+  sampleValues: unknown[],
+  totalRows: number,
+): boolean {
+  if (sampleValues.length < 5) return false
+
+  const nums = sampleValues.map(Number)
+  // Must all be integers
+  if (!nums.every((n) => Number.isInteger(n))) return false
+
+  const uniqueCount = new Set(nums).size
+  const uniqueRatio = uniqueCount / nums.length
+
+  // Almost all values should be unique
+  if (uniqueRatio < 0.9) return false
+
+  const minVal = Math.min(...nums)
+  const maxVal = Math.max(...nums)
+  const range = maxVal - minVal + 1
+
+  // The range should be close to the total row count (±50%)
+  // This catches patterns like 1, 2, 3, ... N
+  if (range <= totalRows * 1.5 && minVal >= 0 && range >= totalRows * 0.5) {
+    return true
+  }
+
+  return false
+}
+
+/**
  * Common date patterns used for detection.
  */
 const DATE_REGEX_PATTERNS = [
@@ -195,12 +253,15 @@ export function analyzeTable(
   const categoricalColumns: string[] = []
   const dateColumns: string[] = []
   const binaryColumns: string[] = []
+  const idColumns: string[] = []
   const codeColumns: string[] = []
   const locationColumns: string[] = []
 
-  // First pass: identify code columns
+  // First pass: identify ID and code columns (these are never aggregated)
   columns.forEach((col) => {
-    if (isCodeColumn(col, columns)) {
+    if (isIdColumn(col)) {
+      idColumns.push(col)
+    } else if (isCodeColumn(col)) {
       codeColumns.push(col)
     }
   })
@@ -214,11 +275,9 @@ export function analyzeTable(
 
   // Analyze each column
   columns.forEach((col) => {
-    // Skip id columns, code columns, and location columns
+    // Skip identifier columns (id, code), and location columns entirely
     if (
-      col === 'id' ||
-      col.endsWith('_id') ||
-      codeColumns.includes(col) ||
+      isIdentifierColumn(col) ||
       locationColumns.includes(col)
     ) {
       return
@@ -240,6 +299,13 @@ export function analyzeTable(
     // Check if numeric – use strict check that rejects empty strings
     const isNumeric = sampleValues.every((val) => isNumericValue(val))
     if (isNumeric) {
+      // Additional heuristic: if a numeric column looks like a sequential
+      // identifier (all unique integers that form a near-continuous range),
+      // treat it as an ID column instead of a numeric one.
+      if (looksLikeSequentialId(col, sampleValues, data.length)) {
+        idColumns.push(col)
+        return
+      }
       numericColumns.push(col)
       return
     }
@@ -274,6 +340,7 @@ export function analyzeTable(
     rowCount: data.length,
     schema,
     binaryColumns,
+    idColumns,
     codeColumns,
     locationColumns,
   }
@@ -464,10 +531,73 @@ export function formatColumnName(col: string): string {
     .join(' ')
 }
 
+type AggregationMethod = 'sum' | 'avg'
+
+/**
+ * Determine the best aggregation method for a numeric column.
+ *
+ * Uses "average" when the data has multiple rows per group and the column
+ * looks like a rate/ratio/per-unit measure. Falls back to "sum" otherwise.
+ */
+function chooseAggregation(
+  colName: string,
+  data: any[],
+  groupCol: string,
+): AggregationMethod {
+  const colLower = colName.toLowerCase()
+
+  // Columns that semantically represent rates/averages should always be averaged
+  const avgPatterns = [
+    'rate',
+    'ratio',
+    'percentage',
+    'percent',
+    'avg',
+    'average',
+    'mean',
+    'score',
+    'rating',
+    'efficiency',
+    'utilization',
+    'index',
+    'factor',
+    'coefficient',
+    'price',
+    'unit_cost',
+    'per_',
+    '_per_',
+  ]
+  if (avgPatterns.some((p) => colLower.includes(p))) return 'avg'
+
+  // If most groups have multiple rows, average is often more meaningful
+  const groups: Record<string, number> = {}
+  data.forEach((row) => {
+    const key = String(row[groupCol] ?? '')
+    groups[key] = (groups[key] || 0) + 1
+  })
+  const groupValues = Object.values(groups)
+  const avgGroupSize =
+    groupValues.length > 0
+      ? groupValues.reduce((a, b) => a + b, 0) / groupValues.length
+      : 1
+
+  // If average group size > 3, use average (many rows per group)
+  if (avgGroupSize > 3) return 'avg'
+
+  return 'sum'
+}
+
+function aggregate(values: number[], method: AggregationMethod): number {
+  if (values.length === 0) return 0
+  const sum = values.reduce((a, b) => a + b, 0)
+  return method === 'avg' ? roundToTwoDecimals(sum / values.length) : roundToTwoDecimals(sum)
+}
+
 function groupByDate(
   data: any[],
   dateCol: string,
   numericCol: string,
+  aggMethod: AggregationMethod = 'sum',
 ): Array<{ date: string; value: number }> {
   const grouped: Record<string, number[]> = {}
 
@@ -487,9 +617,7 @@ function groupByDate(
     .sort((a, b) => a.localeCompare(b))
     .map((date) => ({
       date,
-      value: roundToTwoDecimals(
-        grouped[date].reduce((a, b) => a + b, 0),
-      ),
+      value: aggregate(grouped[date], aggMethod),
     }))
 }
 
@@ -497,6 +625,7 @@ function groupByCategory(
   data: any[],
   catCol: string,
   numericCol: string,
+  aggMethod: AggregationMethod = 'sum',
 ): Array<{ category: string; value: number }> {
   const grouped: Record<string, number[]> = {}
 
@@ -515,9 +644,7 @@ function groupByCategory(
   return Object.keys(grouped)
     .map((category) => ({
       category,
-      value: roundToTwoDecimals(
-        grouped[category].reduce((a, b) => a + b, 0),
-      ),
+      value: aggregate(grouped[category], aggMethod),
     }))
     .sort((a, b) => b.value - a.value)
 }
@@ -529,6 +656,7 @@ function groupByCategoryMultiSeries(
   data: any[],
   catCol: string,
   numericCols: string[],
+  aggMethods?: AggregationMethod[],
 ): {
   categories: string[]
   series: Array<{ name: string; data: number[] }>
@@ -553,17 +681,91 @@ function groupByCategoryMultiSeries(
   })
 
   const categories = Object.keys(grouped).sort()
-  const series = numericCols.map((col) => ({
-    name: formatColumnName(col),
-    data: categories.map((cat) => {
-      const values = grouped[cat]?.[col] || []
-      return roundToTwoDecimals(
-        values.reduce((a, b) => a + b, 0),
-      )
-    }),
-  }))
+  const series = numericCols.map((col, idx) => {
+    const method = aggMethods?.[idx] ?? 'sum'
+    return {
+      name: formatColumnName(col),
+      data: categories.map((cat) => {
+        const values = grouped[cat]?.[col] || []
+        return aggregate(values, method)
+      }),
+    }
+  })
 
   return { categories, series }
+}
+
+// ---------------------------------------------------------------------------
+// Smart column selection helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Pick the best categorical column for a chart.
+ *
+ * Ranking criteria (lower score = better):
+ * 1. Ideal cardinality for the chart type (pie: 2-8, bar: 3-15)
+ * 2. Avoid columns that look like names or free-text (very high uniqueness)
+ * 3. Prefer columns with meaningful labels (not single-char categories)
+ */
+function pickBestCategoricalColumn(
+  analysis: TableAnalysis,
+  chartType: 'pie' | 'bar',
+): string | null {
+  if (analysis.categoricalColumns.length === 0) return null
+
+  const idealRange =
+    chartType === 'pie' ? { min: 2, max: 8 } : { min: 2, max: 20 }
+
+  const scored = analysis.categoricalColumns.map((col) => {
+    const uniqueValues = new Set(analysis.data.map((row) => String(row[col])))
+    const cardinality = uniqueValues.size
+    let score = 0
+
+    // Penalise if cardinality is outside ideal range
+    if (cardinality < idealRange.min) {
+      score += (idealRange.min - cardinality) * 10
+    } else if (cardinality > idealRange.max) {
+      score += (cardinality - idealRange.max) * 5
+    }
+
+    // Penalise very-high-cardinality columns (likely names / free text)
+    const uniqueRatio = cardinality / analysis.data.length
+    if (uniqueRatio > 0.8) score += 50
+
+    // Penalise columns whose values are all single characters
+    const allSingleChar = [...uniqueValues].every((v) => v.length <= 1)
+    if (allSingleChar) score += 20
+
+    return { col, score, cardinality }
+  })
+
+  scored.sort((a, b) => a.score - b.score)
+
+  const best = scored[0]
+  // Reject if cardinality is completely outside chart limits
+  if (best.cardinality < 2) return null
+  if (chartType === 'pie' && best.cardinality > 15) return null
+  if (chartType === 'bar' && best.cardinality > 30) return null
+
+  return best.col
+}
+
+/**
+ * Pick the best numeric columns for chart series.
+ * Filters out columns that are all-zero and returns up to `maxCols`.
+ */
+function pickBestNumericColumns(
+  analysis: TableAnalysis,
+  maxCols: number,
+): string[] {
+  return analysis.numericColumns
+    .filter((col) => {
+      const values = analysis.data
+        .map((row) => Number(row[col]))
+        .filter((v) => !isNaN(v))
+      return !allValuesAreZero(values)
+    })
+    .slice(0, maxCols)
 }
 
 // ---------------------------------------------------------------------------
@@ -571,7 +773,38 @@ function groupByCategoryMultiSeries(
 // ---------------------------------------------------------------------------
 
 /**
+ * Determine whether "total" (sum) is a meaningful KPI for a column.
+ * Rates, percentages, prices-per-unit, etc. should NOT be summed.
+ */
+function isSummableColumn(colName: string): boolean {
+  const colLower = colName.toLowerCase()
+  const nonSummablePatterns = [
+    'rate',
+    'ratio',
+    'percentage',
+    'percent',
+    'avg',
+    'average',
+    'mean',
+    'score',
+    'rating',
+    'efficiency',
+    'utilization',
+    'index',
+    'factor',
+    'coefficient',
+    'price',
+    'unit_cost',
+    'per_',
+    '_per_',
+  ]
+  return !nonSummablePatterns.some((p) => colLower.includes(p))
+}
+
+/**
  * Generate KPI widgets for numeric columns.
+ * Generates at most 1 KPI per column: Total for summable columns, Average for rate-like columns.
+ * Limits total KPIs to 4 to avoid clutter.
  */
 function generateKPIWidgets(
   analysis: TableAnalysis,
@@ -583,12 +816,15 @@ function generateKPIWidgets(
     return widgets
   }
 
-  // Only generate KPIs when there are a small number of numeric columns
-  if (analysis.numericColumns.length > 4) {
+  // Only generate KPIs when there are a manageable number of numeric columns
+  if (analysis.numericColumns.length > 6) {
     return widgets
   }
 
   analysis.numericColumns.forEach((col) => {
+    // Limit total KPIs to 4
+    if (widgets.length >= 4) return
+
     const values = analysis.data
       .map((row) => Number(row[col]))
       .filter((v) => !isNaN(v))
@@ -600,7 +836,8 @@ function generateKPIWidgets(
     const format = getFormatForColumn(col)
     const columnName = formatColumnName(col)
 
-    if (Math.abs(sum) >= 0.01) {
+    if (isSummableColumn(col) && Math.abs(sum) >= 0.01) {
+      // Show Total for summable columns (count, quantity, amount, etc.)
       widgets.push({
         type: 'kpi',
         title: getTitle('dashboard.widgets.total', { column: columnName }),
@@ -613,9 +850,8 @@ function generateKPIWidgets(
         },
         cols: 4,
       })
-    }
-
-    if (Math.abs(avg) >= 0.01) {
+    } else if (Math.abs(avg) >= 0.01) {
+      // Show Average for rate/percentage/non-summable columns
       widgets.push({
         type: 'kpi',
         title: getTitle('dashboard.widgets.average', { column: columnName }),
@@ -653,13 +889,14 @@ function generateLineChartWidget(
 
   const dateCol = analysis.dateColumns[0]
 
-  // Support multi-series line charts (up to 3 numeric columns)
-  const numericCols = analysis.numericColumns.slice(0, 3)
+  // Support multi-series line charts (up to 3 non-zero numeric columns)
+  const numericCols = pickBestNumericColumns(analysis, 3)
   const series: Array<{ name: string; data: number[] }> = []
   let categories: string[] = []
 
   for (const numericCol of numericCols) {
-    const grouped = groupByDate(analysis.data, dateCol, numericCol)
+    const aggMethod = chooseAggregation(numericCol, analysis.data, dateCol)
+    const grouped = groupByDate(analysis.data, dateCol, numericCol, aggMethod)
     if (grouped.length <= 1) continue
 
     const allValues = grouped.map((g) => g.value)
@@ -707,19 +944,19 @@ function generateBarChartWidget(
     return null
   }
 
-  const catCol = analysis.categoricalColumns[0]
+  // Pick the best categorical column for a bar chart
+  const catCol = pickBestCategoricalColumn(analysis, 'bar')
+  if (!catCol) return null
   if (analysis.binaryColumns.includes(catCol)) return null
 
-  // Check category count
-  const uniqueCategories = new Set(analysis.data.map((row) => String(row[catCol])))
-  if (uniqueCategories.size <= 1 || uniqueCategories.size > 20) return null
-
-  // Use up to 3 numeric columns for multi-series bar chart
-  const numericCols = analysis.numericColumns.slice(0, 3)
+  // Use up to 3 non-zero numeric columns
+  const numericCols = pickBestNumericColumns(analysis, 3)
+  if (numericCols.length === 0) return null
 
   if (numericCols.length === 1) {
-    // Single-series bar chart (original logic)
-    const grouped = groupByCategory(analysis.data, catCol, numericCols[0])
+    // Single-series bar chart with smart aggregation
+    const aggMethod = chooseAggregation(numericCols[0], analysis.data, catCol)
+    const grouped = groupByCategory(analysis.data, catCol, numericCols[0], aggMethod)
     if (grouped.length <= 1) return null
 
     const allValues = grouped.map((g) => g.value)
@@ -747,11 +984,15 @@ function generateBarChartWidget(
     }
   }
 
-  // Multi-series bar chart
+  // Multi-series bar chart with per-column aggregation
+  const aggMethods = numericCols.map((col) =>
+    chooseAggregation(col, analysis.data, catCol),
+  )
   const multiData = groupByCategoryMultiSeries(
     analysis.data,
     catCol,
     numericCols,
+    aggMethods,
   )
   if (multiData.categories.length <= 1) return null
 
@@ -792,10 +1033,15 @@ function generatePieChartWidget(
     return null
   }
 
-  const catCol = analysis.categoricalColumns[0]
-  const numericCol = analysis.numericColumns[0]
-
+  // Pick the best categorical column for a pie chart (low cardinality)
+  const catCol = pickBestCategoricalColumn(analysis, 'pie')
+  if (!catCol) return null
   if (analysis.binaryColumns.includes(catCol)) return null
+
+  // Pick the first non-zero numeric column
+  const numericCols = pickBestNumericColumns(analysis, 1)
+  if (numericCols.length === 0) return null
+  const numericCol = numericCols[0]
 
   const grouped = groupByCategory(analysis.data, catCol, numericCol)
   if (grouped.length < 2 || grouped.length > 10) return null
@@ -824,10 +1070,12 @@ function generatePieChartWidget(
 
 /**
  * Generate area chart widget for cumulative data.
+ * Prefers a numeric column not already used by the line chart.
  */
 function generateAreaChartWidget(
   analysis: TableAnalysis,
   getTitle: TitleGetter,
+  usedCols: Set<string> = new Set(),
 ): DashboardWidget | null {
   if (
     !analysis.hasTimeSeries ||
@@ -838,7 +1086,12 @@ function generateAreaChartWidget(
   }
 
   const dateCol = analysis.dateColumns[0]
-  const numericCol = analysis.numericColumns[0]
+
+  // Prefer a numeric column that hasn't been used by the line chart
+  let numericCol = analysis.numericColumns.find((c) => !usedCols.has(c))
+  // Fall back to first numeric column only if nothing else exists
+  if (!numericCol) numericCol = analysis.numericColumns[0]
+
   const grouped = groupByDate(analysis.data, dateCol, numericCol)
 
   if (grouped.length <= 1) return null
@@ -986,19 +1239,37 @@ export function generateDashboardWidgets(
   // Generate KPI widgets
   widgets.push(...generateKPIWidgets(analysis, getTitle))
 
-  // Generate chart widgets
-  const lineChart = generateLineChartWidget(analysis, getTitle)
-  if (lineChart) widgets.push(lineChart)
+  // Track which numeric columns are already used, to avoid redundant charts
+  const usedNumericCols = new Set<string>()
 
+  // Generate time-series line chart
+  const lineChart = generateLineChartWidget(analysis, getTitle)
+  if (lineChart) {
+    widgets.push(lineChart)
+    // Mark the numeric columns used in the line chart
+    lineChart.config?.series?.forEach((s: any) => {
+      const col = analysis.numericColumns.find(
+        (c) => formatColumnName(c) === s.name,
+      )
+      if (col) usedNumericCols.add(col)
+    })
+  }
+
+  // Generate area chart only if there are unused numeric columns for it,
+  // OR if there are at least 2 numeric columns total (so it's not redundant)
+  if (analysis.numericColumns.length > 1 || !lineChart) {
+    const areaChart = generateAreaChartWidget(analysis, getTitle, usedNumericCols)
+    if (areaChart) widgets.push(areaChart)
+  }
+
+  // Generate categorical charts
   const barChart = generateBarChartWidget(analysis, getTitle)
   if (barChart) widgets.push(barChart)
 
   const pieChart = generatePieChartWidget(analysis, getTitle)
   if (pieChart) widgets.push(pieChart)
 
-  const areaChart = generateAreaChartWidget(analysis, getTitle)
-  if (areaChart) widgets.push(areaChart)
-
+  // Generate map widget
   const mapWidget = generateMapWidget(analysis, getTitle)
   if (mapWidget) widgets.push(mapWidget)
 
