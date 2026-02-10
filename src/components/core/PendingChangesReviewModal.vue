@@ -501,8 +501,9 @@
           {{ t('common.cancel') }}
         </v-btn>
         <v-btn
+          type="button"
           variant="flat"
-          @click="handleSaveAll"
+          @click.stop="handleSaveAll"
           :disabled="totalChangesCount === 0"
           :loading="saving"
           size="small"

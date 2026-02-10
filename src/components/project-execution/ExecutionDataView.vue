@@ -264,9 +264,17 @@
               :get-row-class="getRowClass"
               :is-cell-modified="isCellModified"
               :get-modified-value="getModifiedValue"
-              :can-add="!readOnly && !currentTable.isValidationTable"
+              :can-add="
+                !readOnly &&
+                !currentTable.isValidationTable &&
+                !currentTable.isObjectTable
+              "
               :can-edit="!readOnly && !currentTable.isValidationTable"
-              :can-delete="!readOnly && !currentTable.isValidationTable"
+              :can-delete="
+                !readOnly &&
+                !currentTable.isValidationTable &&
+                !currentTable.isObjectTable
+              "
               :can-bulk-upload="false"
               :can-download-excel="false"
               :search-value="currentTableState.searchValue"
@@ -555,19 +563,78 @@ const instanceTables = computed(() => {
   const instanceData = execution.instance.data
   const schema = instanceSchema.value
   const rawSchema = execution.instance.schema
+  // Schema may be full format { name, instance, solution, config } — use instance.properties when present
+  const instanceSchemaRoot =
+    rawSchema?.instance &&
+    typeof rawSchema.instance === 'object' &&
+    rawSchema.instance.properties
+      ? rawSchema.instance
+      : rawSchema
+  const schemaProperties = instanceSchemaRoot?.properties
   const schemaOrder =
-    rawSchema?.properties && typeof rawSchema.properties === 'object'
-      ? Object.keys(rawSchema.properties)
+    schemaProperties && typeof schemaProperties === 'object'
+      ? Object.keys(schemaProperties)
       : []
 
   const dataKeys = Object.keys(instanceData)
-  const orderedKeys = [
-    ...schemaOrder.filter((k) => dataKeys.includes(k)),
-    ...dataKeys.filter((k) => !schemaOrder.includes(k)),
-  ]
+  // Include schema keys that are object-type (parameters, requirements, penalties, etc.) so we show them even when missing or empty in data
+  const schemaObjectKeys =
+    schemaProperties && typeof schemaProperties === 'object'
+      ? Object.entries(schemaProperties)
+          .filter(([k, prop]: [string, any]) => {
+            if (!prop || typeof prop !== 'object') return false
+            // Explicit object type, or has .properties (treat as object config)
+            const isObjectType =
+              prop.type === 'object' ||
+              (prop.properties && typeof prop.properties === 'object')
+            // Exclude array tables (they have .items for row schema)
+            const isArrayType = prop.type === 'array' && prop.items
+            return isObjectType && !isArrayType
+          })
+          .map(([key]) => key)
+      : []
+  const seen = new Set<string>()
+  const orderedKeys: string[] = []
+  schemaOrder.filter((k) => dataKeys.includes(k)).forEach((k) => {
+    if (!seen.has(k)) {
+      orderedKeys.push(k)
+      seen.add(k)
+    }
+  })
+  schemaObjectKeys.forEach((k) => {
+    if (!seen.has(k)) {
+      orderedKeys.push(k)
+      seen.add(k)
+    }
+  })
+  dataKeys.forEach((k) => {
+    if (!seen.has(k)) {
+      orderedKeys.push(k)
+      seen.add(k)
+    }
+  })
 
   orderedKeys.forEach((tableKey) => {
     const baseData = instanceData[tableKey]
+    const objectSchema = instanceSchemaRoot?.properties?.[tableKey]
+    const hasObjectSchema =
+      objectSchema?.properties && typeof objectSchema.properties === 'object'
+    const isSchemaObjectKey = schemaObjectKeys.includes(tableKey)
+    const isPlainObject =
+      baseData != null &&
+      typeof baseData === 'object' &&
+      !Array.isArray(baseData)
+    // Object-type keys (parameters, requirements, penalties, etc.): show as single-row editable table
+    if (isSchemaObjectKey || (hasObjectSchema && isPlainObject)) {
+      const objectData = isPlainObject ? { ...baseData } : {}
+      const objectTable = createObjectTableObject(
+        tableKey,
+        objectData,
+        instanceSchemaRoot,
+      )
+      tables.push(objectTable)
+      return
+    }
     if (!Array.isArray(baseData)) return
     // In Excel mode, show all base rows (including pending deletes, styled red) plus pending creates (styled green)
     let tableData = baseData
@@ -757,6 +824,70 @@ const createTableObject = (
     headers: headers,
     items: filteredItems,
     originalItems: tableData,
+  }
+}
+
+/** Row id used for object-type keys (single logical "row" representing the whole object). */
+const OBJECT_TABLE_ROW_ID = '__object__'
+
+// Helper to build a table view for object-type instance data (parameters, requirements, penalties, etc.)
+const createObjectTableObject = (
+  tableKey: string,
+  objectData: Record<string, any>,
+  rawSchema: any,
+) => {
+  const objectSchema = rawSchema?.properties?.[tableKey]
+  const selectionHeader = {
+    title: '',
+    value: 'selection',
+    key: 'selection',
+    sortable: false,
+    filterable: false,
+    type: 'selection',
+    required: false,
+    width: '48px',
+  }
+
+  let headers: any[]
+  if (
+    objectSchema?.properties &&
+    typeof objectSchema.properties === 'object'
+  ) {
+    headers = Object.entries(objectSchema.properties).map(
+      ([key, prop]: [string, any]) => ({
+        title: (prop && prop.title) || key,
+        value: key,
+        key,
+        sortable: true,
+        filterable: true,
+        type:
+          prop && prop.type === 'integer'
+            ? 'number'
+            : (prop && prop.type) || 'string',
+        required: (objectSchema.required || []).includes(key),
+        readOnly: (prop && prop.readOnly) || false,
+      }),
+    )
+  } else {
+    const dataHeaders = generateHeaders([{ ...objectData }])
+    headers = dataHeaders.filter(
+      (h: any) => h.key !== 'id' && h.key !== 'selection',
+    )
+  }
+  headers = [selectionHeader, ...headers]
+
+  const title =
+    objectSchema?.title || formatTitle(tableKey.replace(/_/g, ' '))
+  const singleRow = { id: OBJECT_TABLE_ROW_ID, ...objectData }
+  const items = [singleRow]
+
+  return {
+    key: tableKey,
+    title,
+    headers,
+    items,
+    originalItems: items,
+    isObjectTable: true,
   }
 }
 
@@ -1283,7 +1414,13 @@ const getItemSchemaForTypeConversion = (tableKey: string): any => {
     return match.masterTableConfig.get_list.response_schema.items
   }
   const execution = props.execution || generalStore.selectedExecution
-  return execution?.instance?.schema?.properties?.[tableKey]?.items ?? null
+  const schema = execution?.instance?.schema
+  // Schema may be full format { name, instance, solution, config } — use instance.properties when present
+  const instanceRoot =
+    schema?.instance?.properties != null ? schema.instance : schema
+  const propSchema = instanceRoot?.properties?.[tableKey]
+  // For array tables use .items; for object-type keys use the property schema itself (so .properties are the field schemas)
+  return propSchema?.items ?? propSchema ?? null
 }
 
 // Helper function to convert data types based on effective schema (master or instance)
@@ -1428,9 +1565,13 @@ const handleClosePendingChangesModal = () => {
 
 // Handle save all changes from modal (apply edits + creates + deletes to JSON only; no API)
 const handleSaveAllChanges = async () => {
-  if (!props.execution?.instance?.data) return
-
   saveValidationError.value = null
+
+  if (!props.execution?.instance?.data) {
+    saveValidationError.value = t('pendingChanges.saveErrorNoInstanceData')
+    return
+  }
+
   savingChanges.value = true
 
   try {
@@ -1446,9 +1587,11 @@ const handleSaveAllChanges = async () => {
     ])
 
     allTableKeys.forEach((tableKey) => {
-      if (!updatedData[tableKey]) updatedData[tableKey] = []
+      const raw = updatedData[tableKey]
+      // Only process array tables; leave objects (e.g. parameters, requirements, penalties) unchanged
+      if (!Array.isArray(raw)) return
 
-      let tableRows = [...updatedData[tableKey]]
+      let tableRows = [...raw]
 
       // 1. Remove pending deletes
       const deletes = tableChanges.getPendingDeletes(tableKey)
@@ -1489,6 +1632,21 @@ const handleSaveAllChanges = async () => {
       updatedData[tableKey] = tableRows
     })
 
+    // Apply edits for object-type keys (parameters, requirements, penalties, etc.)
+    allTableKeys.forEach((tableKey) => {
+      const raw = updatedData[tableKey]
+      if (Array.isArray(raw)) return
+      if (raw != null && typeof raw !== 'object') return
+      const changes = tableChanges.getChangesForTable(tableKey)
+      const rowChanges = changes?.[OBJECT_TABLE_ROW_ID]
+      if (!rowChanges) return
+      const merged = raw != null && typeof raw === 'object' ? { ...raw } : {}
+      Object.entries(rowChanges).forEach(([fieldKey, change]: [string, any]) => {
+        merged[fieldKey] = change.newValue
+      })
+      updatedData[tableKey] = merged
+    })
+
     // Write back to instance.data
     Object.keys(updatedData).forEach((tableKey) => {
       instance.data[tableKey] = updatedData[tableKey]
@@ -1511,6 +1669,10 @@ const handleSaveAllChanges = async () => {
     emit('save-changes', instance.data)
     tableChanges.clearAllChanges()
     showPendingChangesModal.value = false
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : String(err)
+    saveValidationError.value = message
   } finally {
     savingChanges.value = false
   }

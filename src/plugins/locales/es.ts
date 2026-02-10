@@ -841,6 +841,8 @@ export default {
     changeStaged: 'Cambio añadido a pendientes. Se aplicará al guardar.',
     newRow: 'Nueva fila',
     deletedRow: 'Fila eliminada',
+    saveErrorNoInstanceData:
+      'No hay datos de instancia. No se pueden guardar los cambios.',
   },
   common: {
     close: 'Cerrar',

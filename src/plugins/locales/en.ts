@@ -826,6 +826,8 @@ export default {
     changeStaged: 'Change staged. It will be applied when you save.',
     newRow: 'New row',
     deletedRow: 'Deleted row',
+    saveErrorNoInstanceData:
+      'No instance data available. Changes cannot be saved.',
   },
   common: {
     close: 'Close',
