@@ -10,7 +10,7 @@
             :options="chartOptions"
             :series="series"
             type="donut"
-            height="250"
+            height="220"
           />
           <div v-if="config.totalLabel" class="chart-center-label">
             <div class="chart-center-total">{{ formattedTotal }}</div>
@@ -22,13 +22,19 @@
             v-for="(label, index) in config.labels"
             :key="index"
             class="legend-item"
+            :title="label"
           >
             <div
               class="legend-color"
               :style="{ backgroundColor: legendColors[index] }"
             ></div>
-            <div class="legend-label">{{ label }}</div>
-            <div class="legend-value">{{ formattedSeries[index] }}</div>
+            <div class="legend-text">
+              <span class="legend-label">{{ label }}</span>
+              <span class="legend-stats">
+                <span class="legend-value">{{ formattedSeries[index] }}</span>
+                <span class="legend-percentage">({{ percentages[index] }})</span>
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -39,6 +45,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import VueApexCharts from 'vue3-apexcharts'
+import { getChartColors, getCSSVariable } from '@/utils/chartColors'
 import '@/assets/styles/dashboard.css'
 
 const ApexChart = VueApexCharts
@@ -55,71 +62,22 @@ interface Props {
 
 const props = defineProps<Props>()
 
-/**
- * Get CSS variable value as hex color
- */
-function getCSSVariable(variableName: string): string {
-  if (typeof window === 'undefined') {
-    return '#0984c6' // Fallback for SSR
-  }
-
-  // Try to get from documentElement first, then body
-  let value = getComputedStyle(document.documentElement)
-    .getPropertyValue(variableName)
-    .trim()
-
-  if (!value) {
-    value = getComputedStyle(document.body)
-      .getPropertyValue(variableName)
-      .trim()
-  }
-
-  // Fallback to hardcoded colors if variable not found
-  if (!value) {
-    const fallbacks: Record<string, string> = {
-      '--chart-color-1': '#0984c6',
-      '--chart-color-2': '#065a8e',
-      '--chart-color-3': '#014b5b',
-      '--chart-color-4': '#3ba780',
-      '--chart-color-5': '#0a9d8f',
-      '--chart-color-6': '#4db3d0',
-      '--chart-color-7': '#027a9e',
-      '--chart-color-8': '#2d7a5f',
-      '--chart-color-9': '#5cb8a8',
-      '--chart-color-10': '#1a6b8a',
-    }
-    return fallbacks[variableName] || '#0984c6'
-  }
-
-  return value
-}
-
-/**
- * Get chart colors from CSS variables
- * Returns an array of colors for multiple series
- */
-function getChartColorPalette(count: number): string[] {
-  const colors: string[] = []
-  for (let i = 0; i < count; i++) {
-    const colorIndex = (i % 10) + 1
-    colors.push(getCSSVariable(`--chart-color-${colorIndex}`))
-  }
-  return colors
-}
-
 // Calculate colors once for both chart and legend
 const chartColors = computed(() =>
-  getChartColorPalette(props.config.labels.length),
+  getChartColors(props.config.labels.length),
 )
 
 const legendColors = computed(() => chartColors.value)
 
+const totalValue = computed(() =>
+  props.config.series.reduce((sum, val) => sum + val, 0),
+)
+
 const formattedTotal = computed(() => {
-  const total = props.config.series.reduce((sum, val) => sum + val, 0)
   return new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 0,
     minimumFractionDigits: 0,
-  }).format(total)
+  }).format(totalValue.value)
 })
 
 const formattedSeries = computed(() => {
@@ -131,10 +89,18 @@ const formattedSeries = computed(() => {
   })
 })
 
+const percentages = computed(() => {
+  const total = totalValue.value
+  if (total === 0) return props.config.series.map(() => '0%')
+  return props.config.series.map((value) => {
+    return ((value / total) * 100).toFixed(1) + '%'
+  })
+})
+
 const chartOptions = computed(() => ({
   chart: {
     type: 'donut',
-    height: 250,
+    height: 220,
     toolbar: {
       show: false,
     },
@@ -147,10 +113,7 @@ const chartOptions = computed(() => ({
       breakpoint: 480,
       options: {
         chart: {
-          width: 200,
-        },
-        legend: {
-          position: 'bottom',
+          width: 180,
         },
       },
     },
@@ -159,18 +122,41 @@ const chartOptions = computed(() => ({
     show: false,
   },
   tooltip: {
-    theme: 'light',
+    enabled: true,
+    fillSeriesColor: false,
     style: {
-      fontSize: '12px',
+      fontSize: '13px',
       fontFamily: 'inherit',
+    },
+    custom: ({ series: s, seriesIndex, w }: any) => {
+      const label = w.globals.labels[seriesIndex] || ''
+      const value = s[seriesIndex]
+      const total = s.reduce((a: number, b: number) => a + b, 0)
+      const pct = total > 0 ? ((value / total) * 100).toFixed(1) : '0'
+      const color = chartColors.value[seriesIndex] || '#999'
+      const formattedVal = new Intl.NumberFormat('en-US').format(value)
+      return `<div class="pie-tooltip">
+        <div class="pie-tooltip-header">
+          <span class="pie-tooltip-dot" style="background:${color}"></span>
+          <span class="pie-tooltip-label">${label}</span>
+        </div>
+        <div class="pie-tooltip-body">
+          <span class="pie-tooltip-value">${formattedVal}</span>
+          <span class="pie-tooltip-pct">(${pct}%)</span>
+        </div>
+      </div>`
     },
   },
   dataLabels: {
     enabled: true,
     style: {
-      fontSize: '12px',
+      fontSize: '11px',
       fontFamily: 'inherit',
-      colors: ['white'],
+      fontWeight: 600,
+      colors: ['#ffffff'],
+    },
+    formatter: (val: number) => {
+      return val > 5 ? val.toFixed(1) + '%' : ''
     },
     dropShadow: {
       enabled: false,
@@ -179,13 +165,17 @@ const chartOptions = computed(() => ({
   plotOptions: {
     pie: {
       donut: {
-        size: '65%',
+        size: '62%',
         labels: {
           show: false,
         },
       },
       expandOnClick: false,
     },
+  },
+  stroke: {
+    width: 2,
+    colors: ['#ffffff'],
   },
 }))
 
@@ -194,26 +184,23 @@ const series = computed(() => props.config.series)
 
 <style scoped>
 .chart-content {
-  padding: 20px;
+  padding: 8px 16px 16px 16px;
 }
 
 .chart-wrapper {
   display: flex;
-  gap: 20px;
-  align-items: flex-start;
-  flex: 1;
-  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
 .chart-visual {
   position: relative;
-  flex: 0 0 auto;
-  width: 250px;
-  max-width: 250px;
+  width: 100%;
+  max-width: 220px;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 0;
 }
 
 .chart-center-label {
@@ -228,7 +215,7 @@ const series = computed(() => props.config.series)
 .chart-center-total {
   font-size: 1.25rem;
   font-weight: 700;
-  color: var(--title);
+  color: var(--title, #404040);
   line-height: 1.2;
   margin-bottom: 4px;
   letter-spacing: -0.01em;
@@ -236,63 +223,130 @@ const series = computed(() => props.config.series)
 
 .chart-center-text {
   font-size: 0.75rem;
-  color: var(--subtitle);
+  color: var(--subtitle, #6e6e6e);
   font-weight: 500;
 }
 
+/* ---- Legend (stacked below chart) ---- */
 .chart-legend {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  flex: 1;
-  min-width: 0;
+  gap: 6px;
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 .legend-item {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 3px 4px;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+}
+
+.legend-item:hover {
+  background-color: rgba(0, 0, 0, 0.04);
 }
 
 .legend-color {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 3px;
   flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.legend-text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  flex: 1;
+  min-width: 0;
 }
 
 .legend-label {
   font-size: 0.8125rem;
-  color: var(--title);
+  color: var(--title, #404040);
   font-weight: 500;
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: break-word;
+  line-height: 1.3;
+}
+
+.legend-stats {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
   white-space: nowrap;
 }
 
 .legend-value {
   font-size: 0.8125rem;
-  color: var(--subtitle);
-  font-weight: 400;
-  flex-shrink: 0;
+  color: var(--title, #404040);
+  font-weight: 600;
 }
 
-@media (max-width: 768px) {
-  .chart-wrapper {
-    flex-direction: column;
-    align-items: center;
-  }
+.legend-percentage {
+  font-size: 0.75rem;
+  color: var(--subtitle, #6e6e6e);
+  font-weight: 400;
+}
+</style>
 
-  .chart-visual {
-    width: 100%;
-    max-width: 250px;
-  }
+<!-- Global (non-scoped) styles for custom tooltip rendered by ApexCharts -->
+<style>
+.pie-tooltip {
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 8px 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  min-width: 120px;
+}
 
-  .chart-legend {
-    width: 100%;
-    min-width: auto;
-  }
+.pie-tooltip-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.pie-tooltip-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.pie-tooltip-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333333;
+  word-break: break-word;
+  line-height: 1.3;
+}
+
+.pie-tooltip-body {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding-left: 18px;
+}
+
+.pie-tooltip-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.pie-tooltip-pct {
+  font-size: 12px;
+  font-weight: 400;
+  color: #666666;
 }
 </style>

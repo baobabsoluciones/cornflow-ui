@@ -15,4 +15,16 @@ body {
   --accent: #4e7f9c;
   --dark-accent: #181926;
   --disabled: #f2f4f7;
+
+  /* Chart color palette for auto dashboards */
+  --chart-color-1: #326786;
+  --chart-color-2: #1e3f4f;
+  --chart-color-3: #3ba780;
+  --chart-color-4: #4e7f9c;
+  --chart-color-5: #7fb3cc;
+  --chart-color-6: #2d6a5a;
+  --chart-color-7: #5a9bb5;
+  --chart-color-8: #1a5276;
+  --chart-color-9: #48a999;
+  --chart-color-10: #85c1d4;
 }

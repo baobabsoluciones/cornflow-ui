@@ -35,14 +35,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import VueApexCharts from 'vue3-apexcharts'
-import { getPrimaryColor, getColorWithOpacity } from '@/utils/chartColors'
+import { getChartColors, getCSSVariable } from '@/utils/chartColors'
 import '@/assets/styles/dashboard.css'
 
 const ApexChart = VueApexCharts
-const primaryColor = ref(getPrimaryColor())
-const primaryLight = ref(getColorWithOpacity(primaryColor.value, 0.3))
 
 interface Props {
   title: string
@@ -101,7 +99,7 @@ const formatChange = (
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(Math.abs(changeValue))
-    return `${percentage}(${formattedValue})`
+    return `${percentage} (${formattedValue})`
   }
 
   return percentage
@@ -112,132 +110,144 @@ const getChangeClass = (change: number | undefined): string => {
   return change > 0 ? 'positive' : 'negative'
 }
 
-const chartOptions = computed(() => ({
-  chart: {
-    type: 'line',
-    height: 350,
-    toolbar: {
-      show: false,
+const chartOptions = computed(() => {
+  const seriesCount = props.config.series.length
+  const colors = getChartColors(seriesCount)
+
+  return {
+    chart: {
+      type: 'line',
+      height: 350,
+      toolbar: {
+        show: false,
+      },
+      fontFamily: 'inherit',
+      zoom: {
+        enabled: false,
+      },
     },
-    fontFamily: 'inherit',
-    zoom: {
-      enabled: false,
+    colors,
+    stroke: {
+      curve: 'smooth' as const,
+      width: 2.5,
     },
-  },
-  colors: [primaryColor.value],
-  stroke: {
-    curve: 'smooth',
-    width: 3,
-  },
-  fill: {
-    type: 'gradient',
-    gradient: {
-      shadeIntensity: 1,
-      opacityFrom: 0.7,
-      opacityTo: 0.3,
-      stops: [0, 90, 100],
-      colorStops: [
-        {
-          offset: 0,
-          color: primaryColor.value,
-          opacity: 0.7,
+    fill: {
+      type: 'gradient',
+      gradient: {
+        shadeIntensity: 1,
+        opacityFrom: 0.5,
+        opacityTo: 0.1,
+        stops: [0, 90, 100],
+      },
+    },
+    grid: {
+      borderColor: 'rgba(0, 0, 0, 0.06)',
+      strokeDashArray: 4,
+      xaxis: {
+        lines: {
+          show: false,
         },
-        {
-          offset: 100,
-          color: primaryLight.value,
-          opacity: 0.3,
+      },
+      yaxis: {
+        lines: {
+          show: true,
         },
-      ],
+      },
+      padding: {
+        top: 0,
+        right: 4,
+        bottom: 0,
+        left: 4,
+      },
     },
-  },
-  grid: {
-    borderColor: 'rgba(0, 0, 0, 0.08)',
-    strokeDashArray: 4,
     xaxis: {
-      lines: {
+      categories: props.config.categories,
+      labels: {
+        style: {
+          colors: getCSSVariable('--subtitle'),
+          fontSize: '11px',
+          fontFamily: 'inherit',
+        },
+        rotate: props.config.categories.length > 10 ? -45 : 0,
+        rotateAlways: props.config.categories.length > 15,
+        trim: true,
+        maxHeight: 80,
+      },
+      axisBorder: {
+        show: false,
+      },
+      axisTicks: {
         show: false,
       },
     },
     yaxis: {
-      lines: {
-        show: true,
+      labels: {
+        style: {
+          colors: getCSSVariable('--subtitle'),
+          fontSize: '11px',
+          fontFamily: 'inherit',
+        },
+        formatter: (val: number) => {
+          if (Math.abs(val) >= 1_000_000) {
+            return (val / 1_000_000).toFixed(1) + 'M'
+          }
+          if (Math.abs(val) >= 1_000) {
+            return (val / 1_000).toFixed(1) + 'K'
+          }
+          return val.toFixed(0)
+        },
       },
     },
-    padding: {
-      top: 0,
-      right: 0,
-      bottom: 0,
-      left: 0,
-    },
-  },
-  xaxis: {
-    categories: props.config.categories,
-    labels: {
+    tooltip: {
+      shared: true,
+      intersect: false,
+      theme: 'light',
       style: {
-        colors: 'var(--subtitle)',
         fontSize: '12px',
         fontFamily: 'inherit',
       },
-    },
-    axisBorder: {
-      show: false,
-    },
-    axisTicks: {
-      show: false,
-    },
-  },
-  yaxis: {
-    labels: {
-      style: {
-        colors: 'var(--subtitle)',
-        fontSize: '12px',
-        fontFamily: 'inherit',
-      },
-      formatter: (val: number) => {
-        if (val >= 1000) {
-          return (val / 1000).toFixed(1) + 'K'
-        }
-        return val.toFixed(0)
+      y: {
+        formatter: (val: number) => {
+          return new Intl.NumberFormat('en-US', {
+            maximumFractionDigits: 2,
+          }).format(val)
+        },
       },
     },
-  },
-  tooltip: {
-    shared: true,
-    intersect: false,
-    theme: 'light',
-    style: {
+    legend: {
+      show: seriesCount > 1,
+      position: 'top',
+      horizontalAlign: 'right',
       fontSize: '12px',
       fontFamily: 'inherit',
-    },
-    marker: {
-      fillColors: [primaryColor.value],
-    },
-  },
-  legend: {
-    position: 'top',
-    horizontalAlign: 'right',
-    fontSize: '12px',
-    fontFamily: 'inherit',
-    labels: {
-      colors: 'var(--title)',
+      labels: {
+        colors: getCSSVariable('--title'),
+      },
+      markers: {
+        width: 8,
+        height: 8,
+        radius: 4,
+      },
     },
     markers: {
-      width: 8,
-      height: 8,
-      radius: 4,
+      size: seriesCount === 1 ? 4 : 3,
+      strokeWidth: 0,
+      hover: {
+        size: 6,
+      },
     },
-  },
-  dataLabels: {
-    enabled: false,
-  },
-}))
+    dataLabels: {
+      enabled: false,
+    },
+  }
+})
 
 const series = computed(() => props.config.series)
 </script>
 
 <style scoped>
 .chart-title {
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .chart-total-section {
@@ -248,37 +258,38 @@ const series = computed(() => props.config.series)
 }
 
 .chart-total-label {
-  font-size: 0.875rem;
-  color: #6b7280;
+  font-size: 0.8125rem;
+  color: var(--subtitle, #6e6e6e);
   font-weight: 500;
 }
 
 .chart-total-value {
-  font-size: 1.5rem;
+  font-size: 1.375rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--title, #404040);
   letter-spacing: -0.01em;
 }
 
 .chart-total-change {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   letter-spacing: 0.01em;
 }
 
 .chart-total-period {
-  font-size: 0.875rem;
-  color: #6b7280;
+  font-size: 0.8125rem;
+  color: var(--subtitle, #6e6e6e);
   font-weight: 400;
 }
 
 .chart-message {
-  margin: 16px 24px;
-  padding: 12px 16px;
-  background: #f3f4f6;
+  margin: 12px 24px;
+  padding: 10px 14px;
+  background: var(--primary-light-variant, #e6f1f7);
   border-radius: 8px;
-  font-size: 0.875rem;
-  color: #374151;
+  font-size: 0.8125rem;
+  color: var(--title, #404040);
   line-height: 1.5;
+  border-left: 3px solid var(--primary, #326786);
 }
 </style>

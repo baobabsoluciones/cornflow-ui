@@ -17,61 +17,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import VueApexCharts from 'vue3-apexcharts'
+import { getChartColors, getCSSVariable } from '@/utils/chartColors'
 import '@/assets/styles/dashboard.css'
 
 const ApexChart = VueApexCharts
-
-/**
- * Get CSS variable value as hex color
- */
-function getCSSVariable(variableName: string): string {
-  if (typeof window === 'undefined') {
-    return '#0984c6' // Fallback for SSR
-  }
-
-  // Try to get from documentElement first, then body
-  let value = getComputedStyle(document.documentElement)
-    .getPropertyValue(variableName)
-    .trim()
-
-  if (!value) {
-    value = getComputedStyle(document.body)
-      .getPropertyValue(variableName)
-      .trim()
-  }
-
-  // Fallback to hardcoded colors if variable not found
-  if (!value) {
-    const fallbacks: Record<string, string> = {
-      '--chart-color-1': '#0984c6',
-      '--chart-color-2': '#065a8e',
-      '--chart-color-3': '#014b5b',
-      '--chart-color-4': '#3ba780',
-      '--chart-color-5': '#0a9d8f',
-      '--chart-color-6': '#4db3d0',
-      '--chart-color-7': '#027a9e',
-      '--chart-color-8': '#2d7a5f',
-      '--chart-color-9': '#5cb8a8',
-      '--chart-color-10': '#1a6b8a',
-    }
-    return fallbacks[variableName] || '#0984c6'
-  }
-
-  return value
-}
-
-/**
- * Get chart colors from CSS variables
- * Returns an array of colors for multiple series
- */
-function getChartColorPalette(count: number): string[] {
-  const colors: string[] = []
-  for (let i = 0; i < count; i++) {
-    const colorIndex = (i % 10) + 1
-    colors.push(getCSSVariable(`--chart-color-${colorIndex}`))
-  }
-  return colors
-}
 
 interface Props {
   title: string
@@ -88,7 +37,7 @@ const props = defineProps<Props>()
 
 const chartOptions = computed(() => {
   const seriesCount = props.config.series.length
-  const chartColors = getChartColorPalette(seriesCount)
+  const chartColors = getChartColors(seriesCount)
 
   return {
     chart: {
@@ -104,7 +53,7 @@ const chartOptions = computed(() => {
       bar: {
         horizontal: false,
         columnWidth: '60%',
-        borderRadius: 8,
+        borderRadius: 6,
         borderRadiusApplication: 'end',
         dataLabels: {
           position: 'top',
@@ -112,7 +61,7 @@ const chartOptions = computed(() => {
       },
     },
     grid: {
-      borderColor: 'rgba(0, 0, 0, 0.08)',
+      borderColor: 'rgba(0, 0, 0, 0.06)',
       strokeDashArray: 4,
       xaxis: {
         lines: {
@@ -126,19 +75,23 @@ const chartOptions = computed(() => {
       },
       padding: {
         top: 0,
-        right: 0,
+        right: 4,
         bottom: 0,
-        left: 0,
+        left: 4,
       },
     },
     xaxis: {
       categories: props.config.categories,
       labels: {
         style: {
-          colors: 'var(--subtitle)',
-          fontSize: '12px',
+          colors: getCSSVariable('--subtitle'),
+          fontSize: '11px',
           fontFamily: 'inherit',
         },
+        rotate: props.config.categories.length > 8 ? -45 : 0,
+        rotateAlways: props.config.categories.length > 12,
+        trim: true,
+        maxHeight: 80,
       },
       axisBorder: {
         show: false,
@@ -150,9 +103,18 @@ const chartOptions = computed(() => {
     yaxis: {
       labels: {
         style: {
-          colors: 'var(--subtitle)',
-          fontSize: '12px',
+          colors: getCSSVariable('--subtitle'),
+          fontSize: '11px',
           fontFamily: 'inherit',
+        },
+        formatter: (val: number) => {
+          if (Math.abs(val) >= 1_000_000) {
+            return (val / 1_000_000).toFixed(1) + 'M'
+          }
+          if (Math.abs(val) >= 1_000) {
+            return (val / 1_000).toFixed(1) + 'K'
+          }
+          return val.toFixed(0)
         },
       },
     },
@@ -162,17 +124,22 @@ const chartOptions = computed(() => {
         fontSize: '12px',
         fontFamily: 'inherit',
       },
-      marker: {
-        fillColors: getChartColorPalette(props.config.series.length),
+      y: {
+        formatter: (val: number) => {
+          return new Intl.NumberFormat('en-US', {
+            maximumFractionDigits: 2,
+          }).format(val)
+        },
       },
     },
     legend: {
+      show: seriesCount > 1,
       position: 'top',
       horizontalAlign: 'right',
       fontSize: '12px',
       fontFamily: 'inherit',
       labels: {
-        colors: 'var(--title)',
+        colors: getCSSVariable('--title'),
       },
       markers: {
         width: 8,
