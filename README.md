@@ -55,11 +55,13 @@ The system uses intelligent name normalization to match tables with different na
 - **lowercase**: `etablamaestra` matches `etablamaestra` (if both use the same format)
 
 The normalization process:
+
 1. Converts all names to lowercase
 2. Normalizes separators (hyphens and underscores are treated equivalently)
 3. Detects camelCase patterns and converts them to snake_case for comparison
 
 Examples of matched table names:
+
 - `e_tabla_maestra` ↔ `eTablaMaestra` ↔ `e-tabla-maestra` ↔ `ETablaMaestra`
 - `productos` ↔ `Productos` ↔ `PRODUCTOS`
 - `config_avanzada` ↔ `configAvanzada` ↔ `config-avanzada`
@@ -600,17 +602,18 @@ This file contains **internal application-specific configuration** that is part 
 
 #### Internal configuration parameters reference
 
-| Parameter                     | Type       | Description                                           |
-| ----------------------------- | ---------- | ----------------------------------------------------- |
-| `valuesJsonPath`              | `string`   | Path to the external JSON configuration file          |
-| `useEtlBackend`               | `boolean`  | Enable ETL backend integration                        |
-| `showOpenIdUsername`          | `boolean`  | Display user full name and email from openId login    |
-| `showTablesWithoutSchema`     | `boolean`  | Display tables that don't have a defined schema       |
-| `allowEditInstance`           | `boolean`  | Allow users to edit instances from input data section |
-| `enableAutoInstanceDashboard` | `boolean`  | Auto-generate dashboards for instance tables          |
-| `enableAutoSolutionDashboard` | `boolean`  | Auto-generate dashboards for solution tables          |
-| `enableMasterTableMatching`   | `boolean`  | Enable master table matching during instance review   |
-| `executionSolvers`            | `string[]` | List of available solvers for execution               |
+| Parameter                     | Type       | Description                                                                                                                             |
+| ----------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `valuesJsonPath`              | `string`   | Path to the external JSON configuration file                                                                                            |
+| `useEtlBackend`               | `boolean`  | Enable ETL backend integration                                                                                                          |
+| `sendInstanceFilesAsZip`      | `boolean`  | When true and useEtlBackend is true, send instance files as a single .zip to the ETL backend instead of multiple files (default: false) |
+| `showOpenIdUsername`          | `boolean`  | Display user full name and email from openId login                                                                                      |
+| `showTablesWithoutSchema`     | `boolean`  | Display tables that don't have a defined schema                                                                                         |
+| `allowEditInstance`           | `boolean`  | Allow users to edit instances from input data section                                                                                   |
+| `enableAutoInstanceDashboard` | `boolean`  | Auto-generate dashboards for instance tables                                                                                            |
+| `enableAutoSolutionDashboard` | `boolean`  | Auto-generate dashboards for solution tables                                                                                            |
+| `enableMasterTableMatching`   | `boolean`  | Enable master table matching during instance review                                                                                     |
+| `executionSolvers`            | `string[]` | List of available solvers for execution                                                                                                 |
 
 #### showExtraProjectExecutionColumns
 
@@ -627,11 +630,11 @@ Controls which columns are displayed in the execution history table.
 
 Configuration for the "Latest plan" feature. See [Latest plan documentation](#latest-plan-actual-plan) for details.
 
-| Property           | Type      | Description                                                                                       |
-| ------------------ | --------- | ------------------------------------------------------------------------------------------------- |
+| Property           | Type      | Description                                                                                                                    |
+| ------------------ | --------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `enableLatestPlan` | `boolean` | Master switch to enable/disable the feature (default: `true`). If `false`, disables the feature regardless of other conditions |
-| `defaultView`      | `string`  | Route to redirect after login (`'history-execution'`, `'dashboard'`, `'input-data'`, `'results'`) |
-| `showStarInTabBar` | `boolean` | Show star icon in tab bar for the latest plan                                                     |
+| `defaultView`      | `string`  | Route to redirect after login (`'history-execution'`, `'dashboard'`, `'input-data'`, `'results'`)                              |
+| `showStarInTabBar` | `boolean` | Show star icon in tab bar for the latest plan                                                                                  |
 
 #### sectionTitles
 

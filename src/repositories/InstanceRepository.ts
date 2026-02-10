@@ -1,3 +1,4 @@
+import JSZip from 'jszip'
 import client from '@/api/Api'
 import { useGeneralStore } from '@/stores/general'
 import { InstanceCore } from '@/models/Instance'
@@ -60,9 +61,25 @@ export default class InstanceRepository {
   }
 
   async etlBackend(files: File[]): Promise<any> {
+    const store = useGeneralStore()
+    const sendAsZip = store.appConfig.parameters.sendInstanceFilesAsZip === true
+
     const formData = new FormData()
-    for (const file of files) {
-      formData.append('files', file)
+    if (sendAsZip && files.length > 0) {
+      const zip = new JSZip()
+      for (const file of files) {
+        zip.file(file.name, file)
+      }
+      const zipBlob = await zip.generateAsync({
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 6 },
+      })
+      formData.append('file', zipBlob, 'instance.zip')
+    } else {
+      for (const file of files) {
+        formData.append('files', file)
+      }
     }
 
     const response = await client.post('/etl/', formData, {}, true)
