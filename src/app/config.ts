@@ -13,7 +13,7 @@ const createAppConfig = () => ({
     Solution: Solution,
     parameters: {
       valuesJsonPath: '/values.json',
-      useEtlBackend: true,
+      useEtlBackend: false,
       schema: '' as string,
       showDashboardMainView: true,
       showTablesWithoutSchema: false,
