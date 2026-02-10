@@ -10,7 +10,7 @@
             :options="chartOptions"
             :series="series"
             type="donut"
-            height="250"
+            height="220"
           />
           <div v-if="config.totalLabel" class="chart-center-label">
             <div class="chart-center-total">{{ formattedTotal }}</div>
@@ -22,14 +22,19 @@
             v-for="(label, index) in config.labels"
             :key="index"
             class="legend-item"
+            :title="label"
           >
             <div
               class="legend-color"
               :style="{ backgroundColor: legendColors[index] }"
             ></div>
-            <div class="legend-label">{{ label }}</div>
-            <div class="legend-value">{{ formattedSeries[index] }}</div>
-            <div class="legend-percentage">{{ percentages[index] }}</div>
+            <div class="legend-text">
+              <span class="legend-label">{{ label }}</span>
+              <span class="legend-stats">
+                <span class="legend-value">{{ formattedSeries[index] }}</span>
+                <span class="legend-percentage">({{ percentages[index] }})</span>
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -95,7 +100,7 @@ const percentages = computed(() => {
 const chartOptions = computed(() => ({
   chart: {
     type: 'donut',
-    height: 250,
+    height: 220,
     toolbar: {
       show: false,
     },
@@ -108,10 +113,7 @@ const chartOptions = computed(() => ({
       breakpoint: 480,
       options: {
         chart: {
-          width: 200,
-        },
-        legend: {
-          position: 'bottom',
+          width: 180,
         },
       },
     },
@@ -120,17 +122,29 @@ const chartOptions = computed(() => ({
     show: false,
   },
   tooltip: {
-    theme: 'light',
+    enabled: true,
+    fillSeriesColor: false,
     style: {
-      fontSize: '12px',
+      fontSize: '13px',
       fontFamily: 'inherit',
     },
-    y: {
-      formatter: (val: number) => {
-        const total = totalValue.value
-        const pct = total > 0 ? ((val / total) * 100).toFixed(1) : '0'
-        return `${new Intl.NumberFormat('en-US').format(val)} (${pct}%)`
-      },
+    custom: ({ series: s, seriesIndex, w }: any) => {
+      const label = w.globals.labels[seriesIndex] || ''
+      const value = s[seriesIndex]
+      const total = s.reduce((a: number, b: number) => a + b, 0)
+      const pct = total > 0 ? ((value / total) * 100).toFixed(1) : '0'
+      const color = chartColors.value[seriesIndex] || '#999'
+      const formattedVal = new Intl.NumberFormat('en-US').format(value)
+      return `<div class="pie-tooltip">
+        <div class="pie-tooltip-header">
+          <span class="pie-tooltip-dot" style="background:${color}"></span>
+          <span class="pie-tooltip-label">${label}</span>
+        </div>
+        <div class="pie-tooltip-body">
+          <span class="pie-tooltip-value">${formattedVal}</span>
+          <span class="pie-tooltip-pct">(${pct}%)</span>
+        </div>
+      </div>`
     },
   },
   dataLabels: {
@@ -170,26 +184,23 @@ const series = computed(() => props.config.series)
 
 <style scoped>
 .chart-content {
-  padding: 12px 20px 20px 20px;
+  padding: 8px 16px 16px 16px;
 }
 
 .chart-wrapper {
   display: flex;
-  gap: 20px;
-  align-items: flex-start;
-  flex: 1;
-  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
 .chart-visual {
   position: relative;
-  flex: 0 0 auto;
-  width: 250px;
-  max-width: 250px;
+  width: 100%;
+  max-width: 220px;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 0;
 }
 
 .chart-center-label {
@@ -216,18 +227,27 @@ const series = computed(() => props.config.series)
   font-weight: 500;
 }
 
+/* ---- Legend (stacked below chart) ---- */
 .chart-legend {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  flex: 1;
-  min-width: 0;
+  gap: 6px;
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 .legend-item {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 3px 4px;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+}
+
+.legend-item:hover {
+  background-color: rgba(0, 0, 0, 0.04);
 }
 
 .legend-color {
@@ -235,16 +255,32 @@ const series = computed(() => props.config.series)
   height: 10px;
   border-radius: 3px;
   flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.legend-text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  flex: 1;
+  min-width: 0;
 }
 
 .legend-label {
   font-size: 0.8125rem;
   color: var(--title, #404040);
   font-weight: 500;
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: break-word;
+  line-height: 1.3;
+}
+
+.legend-stats {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
   white-space: nowrap;
 }
 
@@ -252,32 +288,65 @@ const series = computed(() => props.config.series)
   font-size: 0.8125rem;
   color: var(--title, #404040);
   font-weight: 600;
-  flex-shrink: 0;
 }
 
 .legend-percentage {
   font-size: 0.75rem;
   color: var(--subtitle, #6e6e6e);
   font-weight: 400;
-  flex-shrink: 0;
-  min-width: 40px;
-  text-align: right;
+}
+</style>
+
+<!-- Global (non-scoped) styles for custom tooltip rendered by ApexCharts -->
+<style>
+.pie-tooltip {
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 8px 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  min-width: 120px;
 }
 
-@media (max-width: 768px) {
-  .chart-wrapper {
-    flex-direction: column;
-    align-items: center;
-  }
+.pie-tooltip-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
 
-  .chart-visual {
-    width: 100%;
-    max-width: 250px;
-  }
+.pie-tooltip-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  display: inline-block;
+}
 
-  .chart-legend {
-    width: 100%;
-    min-width: auto;
-  }
+.pie-tooltip-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333333;
+  word-break: break-word;
+  line-height: 1.3;
+}
+
+.pie-tooltip-body {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding-left: 18px;
+}
+
+.pie-tooltip-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.pie-tooltip-pct {
+  font-size: 12px;
+  font-weight: 400;
+  color: #666666;
 }
 </style>
