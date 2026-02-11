@@ -25,6 +25,7 @@ import { locale } from '@/plugins/i18n'
 import {
   resolveTableConfigTitles,
   resolveDefaultGroupName,
+  getExecutionConfigFromSchemaConfig,
 } from '@/utils/schemaUtils'
 import { filterTablesByUserSchemas } from '@/services/FrontendAutomationService'
 
@@ -244,9 +245,28 @@ export const useGeneralStore = defineStore('general', {
       try {
         const schema = await this.schemaRepository.getSchema(this.getSchemaName)
         this.schemaConfig = schema
+        this.applySchemaConfigToAppConfig()
       } catch (error) {
         console.error('Error getting schema', error)
       }
+    },
+
+    /**
+     * Updates app config parameters (solverConfig, executionSolvers, configFields) from the
+     * schema's config when available, so the UI uses the backend schema as source of truth.
+     */
+    applySchemaConfigToAppConfig() {
+      const derived = getExecutionConfigFromSchemaConfig(
+        this.schemaConfig?.config,
+      )
+      if (!derived) return
+
+      this.appConfig.parameters.solverConfig = {
+        ...this.appConfig.parameters.solverConfig,
+        defaultSolver: derived.solverConfig.defaultSolver,
+      }
+      this.appConfig.parameters.executionSolvers = derived.executionSolvers
+      this.appConfig.parameters.configFields = derived.configFields
     },
 
     async setConfigurations() {
@@ -312,9 +332,10 @@ export const useGeneralStore = defineStore('general', {
       const currentLocale = locale.value
 
       // Get user schemas for filtering (undefined means full access)
-      const userSchemas = this.user && 'schemas' in this.user
-        ? (this.user as any).schemas
-        : undefined
+      const userSchemas =
+        this.user && 'schemas' in this.user
+          ? (this.user as any).schemas
+          : undefined
 
       // Helper function to resolve default groups
       const resolveConfigWithDefaultGroups = (config: TableSchema) => {
@@ -671,7 +692,11 @@ export const useGeneralStore = defineStore('general', {
      * Returns true if user has no schema restrictions.
      */
     userHasFullAccess(): boolean {
-      if (this.user && 'hasFullAccess' in this.user && typeof this.user.hasFullAccess === 'function') {
+      if (
+        this.user &&
+        'hasFullAccess' in this.user &&
+        typeof this.user.hasFullAccess === 'function'
+      ) {
         return this.user.hasFullAccess()
       }
       // Default to full access if user doesn't have the method

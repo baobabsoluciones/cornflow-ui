@@ -852,6 +852,16 @@ export default {
     error: 'error',
     errors: 'errores',
   },
+  configParams: {
+    msg: 'Mensajes',
+    msgPlaceholder: 'Activar o desactivar mensajes',
+    timeLimit: 'Límite de tiempo',
+    timeLimitPlaceholder: 'Límite de tiempo en segundos',
+    solver: 'Solver',
+    solverPlaceholder: 'Seleccionar solver',
+    minutesSuffix: 'min',
+    secondsSuffix: 'seg',
+  },
   latestPlan: {
     banner: {
       message:

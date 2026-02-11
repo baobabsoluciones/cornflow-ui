@@ -40,15 +40,27 @@ export function transformOpenApiToTableConfig(
 
     // Process each operation
     // Define non-operation keys that should be skipped
-    const nonOperationKeys = ['group', 'title', 'icon', 'schemas', '_originalGroup', '_originalTitle']
-    
+    const nonOperationKeys = [
+      'group',
+      'title',
+      'icon',
+      'schemas',
+      '_originalGroup',
+      '_originalTitle',
+    ]
+
     Object.entries(tableInfo).forEach(
       ([operationKey, operationInfo]: [string, any]) => {
         // Skip non-operation keys
         if (nonOperationKeys.includes(operationKey)) return
-        
+
         // Skip if operationInfo is not a valid operation object
-        if (!operationInfo || typeof operationInfo !== 'object' || !operationInfo.url) return
+        if (
+          !operationInfo ||
+          typeof operationInfo !== 'object' ||
+          !operationInfo.url
+        )
+          return
 
         // Convert operation info to our format
         result[tableKey][operationKey] = {
@@ -159,10 +171,10 @@ function findDefinitionKeyForTable(
   definitions: any,
 ): string | null {
   const definitionKeys = Object.keys(definitions)
-  
+
   // Filter out BulkDelete definitions - they are not table schemas
   const tableDefinitions = definitionKeys.filter(
-    (key) => !key.endsWith('BulkDelete')
+    (key) => !key.endsWith('BulkDelete'),
   )
 
   // Try exact match first (case sensitive)
@@ -719,5 +731,142 @@ function convertJsonSchemaItemToSchema(itemSchema: any): any {
         : false,
     title: itemSchema.title || 'Item',
     _originalTitle: itemSchema.title || 'Item',
+  }
+}
+
+/**
+ * Schema config (JSON Schema) property type to config field type mapping.
+ */
+const SCHEMA_TYPE_TO_FIELD_TYPE: Record<string, string> = {
+  boolean: 'boolean',
+  number: 'number',
+  integer: 'number',
+  string: 'text',
+}
+
+/**
+ * Default icons per field type for schema-derived config fields.
+ */
+const DEFAULT_FIELD_ICONS: Record<string, string> = {
+  boolean: 'mdi-toggle-switch',
+  number: 'mdi-numeric',
+  text: 'mdi-form-textbox',
+  select: 'mdi-format-list-checks',
+}
+
+/**
+ * Builds execution config (solverConfig, executionSolvers, configFields) from the schema's config
+ * JSON Schema. Used when the user enters the app and the schema is loaded so that solver list,
+ * default solver, and config form fields come from the backend schema.
+ *
+ * @param schemaConfig - The config section of the schema response (JSON Schema object with properties)
+ * @returns Object with solverConfig, executionSolvers, and configFields, or null if schemaConfig is invalid
+ */
+export function getExecutionConfigFromSchemaConfig(schemaConfig: any): {
+  solverConfig: { showSolverStep: boolean; defaultSolver: string }
+  executionSolvers: string[]
+  configFields: Array<{
+    key: string
+    title: string
+    placeholder?: string
+    suffix?: string
+    icon?: string
+    type: string
+    default?: unknown
+    options?: Array<{ value: string; label: string }>
+  }>
+} | null {
+  if (
+    !schemaConfig ||
+    typeof schemaConfig !== 'object' ||
+    !schemaConfig.properties
+  ) {
+    return null
+  }
+
+  const props = schemaConfig.properties
+  let defaultSolver = 'MIPModel.gurobi'
+  let executionSolvers: string[] = ['MIPModel.gurobi']
+
+  if (props.solver) {
+    const solverProp = props.solver
+    if (Array.isArray(solverProp.enum) && solverProp.enum.length > 0) {
+      executionSolvers = solverProp.enum.map((v: string) => String(v))
+      defaultSolver =
+        solverProp.default != null
+          ? String(solverProp.default)
+          : executionSolvers[0]
+    }
+  }
+
+  const configFields: Array<{
+    key: string
+    title: string
+    placeholder?: string
+    suffix?: string
+    icon?: string
+    type: string
+    default?: unknown
+    options?: Array<{ value: string; label: string }>
+  }> = []
+
+  // Solver is chosen in the "Select solver" step; msg (messages) is not shown in execution parameters
+  const CONFIG_FIELDS_EXCLUDED_KEYS = ['solver', 'msg']
+
+  for (const [key, prop] of Object.entries(props) as [string, any][]) {
+    if (!prop || typeof prop !== 'object') continue
+    if (CONFIG_FIELDS_EXCLUDED_KEYS.includes(key)) continue
+
+    const schemaType = Array.isArray(prop.type) ? prop.type[0] : prop.type
+    let fieldType = SCHEMA_TYPE_TO_FIELD_TYPE[schemaType] || 'text'
+    const titleKey = `configParams.${key}`
+    const field: {
+      key: string
+      title: string
+      placeholder?: string
+      suffix?: string
+      icon?: string
+      type: string
+      default?: unknown
+      options?: Array<{ value: string; label: string }>
+    } = {
+      key,
+      title: titleKey,
+      placeholder: `${titleKey}Placeholder`,
+      icon: DEFAULT_FIELD_ICONS[fieldType] || 'mdi-tune',
+      type: fieldType,
+    }
+
+    if (prop.default !== undefined) {
+      field.default = prop.default
+    }
+
+    if (Array.isArray(prop.enum) && prop.enum.length > 0) {
+      field.type = 'select'
+      field.options = prop.enum.map((v: string) => ({
+        value: String(v),
+        label: String(v),
+      }))
+      field.icon = DEFAULT_FIELD_ICONS.select
+    }
+
+    if (fieldType === 'number' && key.toLowerCase().includes('time')) {
+      field.suffix =
+        key.toLowerCase() === 'timelimit'
+          ? 'configParams.secondsSuffix'
+          : 'configParams.minutesSuffix'
+      field.icon = 'mdi-timer-sand'
+    }
+
+    configFields.push(field)
+  }
+
+  return {
+    solverConfig: {
+      showSolverStep: false,
+      defaultSolver,
+    },
+    executionSolvers,
+    configFields,
   }
 }

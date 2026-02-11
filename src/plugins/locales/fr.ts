@@ -71,8 +71,9 @@ export default {
             'Affichage des {displayed} premières erreurs sur {total}. Téléchargez la liste complète des erreurs pour voir toutes les erreurs.',
           totalErrors: 'Il y a {total} erreurs',
           andMoreErrors: 'et {count} de plus',
-          errorsDownloadStarted: 'Téléchargement du fichier d\'erreurs démarré',
-          errorsDownloadError: 'Erreur lors du téléchargement du fichier d\'erreurs',
+          errorsDownloadStarted: "Téléchargement du fichier d'erreurs démarré",
+          errorsDownloadError:
+            "Erreur lors du téléchargement du fichier d'erreurs",
         },
       },
       step3: {
@@ -458,12 +459,14 @@ export default {
     alertDescription:
       'Certaines tables de vos données téléchargées correspondent à des tables de configuration existantes. Veuillez choisir comment gérer chaque correspondance ci-dessous.',
     hasDifferences: 'A des différences',
-    hasDifferencesWithMaster: 'Cette table a des différences avec la table de configuration',
+    hasDifferencesWithMaster:
+      'Cette table a des différences avec la table de configuration',
     identical: 'Identiques',
     identicalToMaster: 'Cette table est identique à la table de configuration',
     viewDifferences: 'Comparer',
     matchFoundWith: 'Correspond à:',
-    matchFoundWithMaster: 'Correspond à la table de configuration: {masterTable}',
+    matchFoundWithMaster:
+      'Correspond à la table de configuration: {masterTable}',
     uploadedRows: 'Lignes téléchargées',
     masterRows: 'Lignes du maître',
     newRows: 'Nouvelles lignes',
@@ -493,24 +496,29 @@ export default {
       },
     },
     messages: {
-      usingMasterData: 'Utilisation des données du maître pour la table "{tableName}"',
-      masterTableUpdated: 'La table de configuration "{tableName}" a été mise à jour',
+      usingMasterData:
+        'Utilisation des données du maître pour la table "{tableName}"',
+      masterTableUpdated:
+        'La table de configuration "{tableName}" a été mise à jour',
       updateError: 'Erreur lors de la mise à jour de la table de configuration',
     },
     confirmUseMaster: {
       title: 'Appliquer les données du maître',
-      message: 'Voulez-vous utiliser les données de la table de configuration pour "{tableName}"? Les données téléchargées seront remplacées par les données du maître uniquement pour cette exécution.',
+      message:
+        'Voulez-vous utiliser les données de la table de configuration pour "{tableName}"? Les données téléchargées seront remplacées par les données du maître uniquement pour cette exécution.',
       confirm: 'Appliquer maître',
     },
     confirmReplaceMaster: {
       title: 'Enregistrer dans la table maître',
-      message: 'Voulez-vous enregistrer les données téléchargées dans la table maître "{tableName}"? Cela modifiera définitivement la table de configuration et affectera toutes les exécutions futures.',
+      message:
+        'Voulez-vous enregistrer les données téléchargées dans la table maître "{tableName}"? Cela modifiera définitivement la table de configuration et affectera toutes les exécutions futures.',
       confirm: 'Enregistrer',
     },
   },
   dataComparison: {
     title: 'Comparaison des données: {tableName}',
-    subtitle: 'Comparaison des données téléchargées avec la table de configuration "{masterTable}"',
+    subtitle:
+      'Comparaison des données téléchargées avec la table de configuration "{masterTable}"',
     loading: 'Chargement des données de comparaison...',
     uploadedData: 'Données téléchargées',
     masterData: 'Données du maître',
@@ -543,6 +551,16 @@ export default {
     files: 'fichiers',
     error: 'erreur',
     errors: 'erreurs',
+  },
+  configParams: {
+    msg: 'Messages',
+    msgPlaceholder: 'Activer ou désactiver les messages',
+    timeLimit: 'Limite de temps',
+    timeLimitPlaceholder: 'Limite de temps en secondes',
+    solver: 'Solver',
+    solverPlaceholder: 'Sélectionner le solver',
+    minutesSuffix: 'min',
+    secondsSuffix: 's',
   },
   latestPlan: {
     banner: {
