@@ -75,7 +75,7 @@ export default class InstanceRepository {
         compression: 'DEFLATE',
         compressionOptions: { level: 6 },
       })
-      formData.append('file', zipBlob, 'instance.zip')
+      formData.append('files', zipBlob, 'instance.zip')
     } else {
       for (const file of files) {
         formData.append('files', file)
