@@ -173,8 +173,10 @@ import config from '@/config'
 import { mainLogo, fullLogo } from '@/utils/assets'
 import {
   getNavigationItemsFromConfig,
+  getMasterDataNavigationWithSections,
   filterValidationTablesWithData,
 } from '@/services/FrontendAutomationService'
+import { resolveTitleWithLocale } from '@/utils/i18nUtils'
 import { useSectionTitles } from '@/composables/useSectionTitles'
 
 export default defineComponent({
@@ -237,8 +239,42 @@ export default defineComponent({
         ],
       }
     },
-    // Master data section (visible when there is at least one table in the master configuration schema)
+    // When schema defines sections (available_automations.sections), these go above the default Master data block.
+    masterDataSectionsForDrawer() {
+      const sections = this.store.masterDataSections
+      const configurations = this.store.getConfigurations
+      const masterDataConfig = configurations?.masterData || {}
+
+      if (
+        !sections ||
+        sections.length === 0 ||
+        Object.keys(masterDataConfig).length === 0
+      ) {
+        return []
+      }
+
+      const locale = this.$i18n?.locale ?? 'en'
+      const navWithSections = getMasterDataNavigationWithSections(
+        masterDataConfig,
+        sections,
+        '/configuration',
+      )
+
+      return navWithSections.map((block) => ({
+        title:
+          block.sectionId === null
+            ? this.getSectionTitle('masterData')
+            : resolveTitleWithLocale(block.title, locale, block.sectionId),
+        icon: block.icon,
+        subPages: block.subPages,
+      }))
+    },
+    // Single master data section (used when schema does not define sections)
     masterDataSection() {
+      if (this.masterDataSectionsForDrawer.length > 0) {
+        return null
+      }
+
       const configurations = this.store.getConfigurations
       const masterDataConfig = configurations?.masterData || {}
 
@@ -367,6 +403,20 @@ export default defineComponent({
         subPages: subPages,
       }
     },
+    // App-specific sections (from config: e.g. Agent). Built dynamically like dashboard/instanceDashboard.
+    appSections() {
+      const items = appConfig.getAppSections()
+      return items.map((s) => ({
+        title: this.$t(s.titleKey),
+        icon: s.icon,
+        to: s.to,
+        subPages: s.subPages?.map((sub) => ({
+          title: this.$t(sub.titleKey),
+          icon: sub.icon,
+          to: sub.to,
+        })),
+      }))
+    },
     // All sections combined
     allSections() {
       const sections = []
@@ -374,7 +424,13 @@ export default defineComponent({
       // Always add executions section
       sections.push(this.executionsSection)
 
-      // Add master data section if available
+      // Add app-specific sections (e.g. Agent)
+      this.appSections.forEach((section) => sections.push(section))
+
+      // Add master data: schema-defined sections first (on top), then single Master data section if no schema sections
+      this.masterDataSectionsForDrawer.forEach((section) =>
+        sections.push(section),
+      )
       if (this.masterDataSection) {
         sections.push(this.masterDataSection)
       }

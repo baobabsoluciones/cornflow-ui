@@ -25,8 +25,15 @@ export default class SchemaRepository {
     }
   }
 
-  // Get configuration tables (master data only)
-  async getConfigurationTables(schemaName: string): Promise<any> {
+  /**
+   * Get configuration tables (master data) and optional sections from frontend-automation.
+   * When the schema defines available_automations.sections, sections are returned in order;
+   * they are shown above the default "Master data" block in the drawer.
+   */
+  async getConfigurationTables(schemaName: string): Promise<{
+    config: any
+    sections: Array<{ id: string; title: Record<string, string> | string; icon?: string }>
+  }> {
     const response = await client.get(`/frontend-automation/`, {}, {}, true)
 
     if (response.status === 200) {
@@ -59,11 +66,17 @@ export default class SchemaRepository {
   }
 
   /**
-   * Process the frontend-automation response and transform it to our internal format
+   * Process the frontend-automation response and transform it to our internal format.
+   * When available_automations.sections exists, sections are returned and tables include a section id;
+   * schema sections are shown above the default "Master data" block in the drawer.
+   *
    * @param automationData - The raw response from frontend-automation endpoint
-   * @returns Transformed table configuration
+   * @returns Object with config (table configuration) and sections (section definitions, in order)
    */
-  private processAutomationResponse(automationData: any): any {
+  private processAutomationResponse(automationData: any): {
+    config: any
+    sections: Array<{ id: string; title: Record<string, string> | string; icon?: string }>
+  } {
     // Validate the response structure
     if (!automationData || !automationData.available_automations) {
       throw new Error('Invalid automation data structure')
@@ -76,18 +89,19 @@ export default class SchemaRepository {
       throw new Error('Missing required sections in automation data')
     }
 
-    // Create the structure expected by transformOpenApiToTableConfig
+    // Create the structure expected by transformOpenApiToTableConfig (include sections)
     const processedData = {
       available_automations: {
         tables: available_automations.tables,
         groups: available_automations.groups || {},
+        sections: available_automations.sections || {},
       },
       definitions,
       paths: paths || {},
     }
 
-    // Transform using the existing utility function
-    return transformOpenApiToTableConfig(processedData)
+    const { config, sections } = transformOpenApiToTableConfig(processedData)
+    return { config, sections }
   }
 
   /**

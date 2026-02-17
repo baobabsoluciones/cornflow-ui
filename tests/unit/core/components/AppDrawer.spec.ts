@@ -52,6 +52,7 @@ const {
         showDashboardMainView: true,
       },
     }),
+    getAppSections: vi.fn().mockReturnValue([]),
   }
 
   const mockRouter = {
@@ -227,6 +228,7 @@ describe('AppDrawer.vue', () => {
         showDashboardMainView: true,
       },
     })
+    mockAppConfig.getAppSections.mockReturnValue([])
   })
 
   afterEach(() => {

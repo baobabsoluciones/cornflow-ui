@@ -5,6 +5,11 @@ export interface TableConfig {
   title: string
   icon?: string
   /**
+   * Optional top-level section id (from available_automations.sections).
+   * When set, table is shown under that section in the drawer; sections appear above the default "Master data" block.
+   */
+  section?: string | null
+  /**
    * Optional array of schema (DAG) names that restrict table visibility.
    * - If not defined: Table is visible to ALL users
    * - If empty array []: Table is visible to NO users (hidden)
@@ -13,6 +18,7 @@ export interface TableConfig {
   schemas?: string[]
   _originalGroup?: any
   _originalTitle?: any
+  _originalSection?: any
   // Operations
   get_list?: OperationConfig
   get_item?: OperationConfig

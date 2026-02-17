@@ -55,13 +55,11 @@ The system uses intelligent name normalization to match tables with different na
 - **lowercase**: `etablamaestra` matches `etablamaestra` (if both use the same format)
 
 The normalization process:
-
 1. Converts all names to lowercase
 2. Normalizes separators (hyphens and underscores are treated equivalently)
 3. Detects camelCase patterns and converts them to snake_case for comparison
 
 Examples of matched table names:
-
 - `e_tabla_maestra` ↔ `eTablaMaestra` ↔ `e-tabla-maestra` ↔ `ETablaMaestra`
 - `productos` ↔ `Productos` ↔ `PRODUCTOS`
 - `config_avanzada` ↔ `configAvanzada` ↔ `config-avanzada`
@@ -156,31 +154,43 @@ The frontend-automation system is a powerful schema-driven approach that automat
 1. **Schema definition**: The backend provides an OpenAPI-compatible schema through the `/frontend-automation/` endpoint
 2. **Dynamic generation**: The frontend automatically transforms this schema into interactive table interfaces
 3. **CRUD operations**: Full Create, Read, Update, Delete functionality is generated based on schema definitions
-4. **Grouping support**: Tables can be organized into logical groups for better navigation
+4. **Three-level hierarchy**: Tables are organized as **Section → Group → Table** for navigation (sections and groups are optional)
 
 #### Schema structure
 
-The frontend-automation schema includes:
+The frontend-automation schema includes `available_automations` (tables, groups, and optional sections), plus OpenAPI `paths` and `definitions`:
 
 ```json
 {
   "available_automations": {
+    "sections": {
+      "master-tables": {
+        "title": { "en": "Master tables", "es": "Tablas maestras" },
+        "icon": "mdi-database"
+      },
+      "historical-tables": {
+        "title": { "en": "Historical data", "es": "Histórico" },
+        "icon": "mdi-history"
+      }
+    },
+    "groups": {
+      "group_name": {
+        "title": "Group Display Name",
+        "icon": "mdi-icon-name",
+        "section": "master-tables"
+      }
+    },
     "tables": {
       "table_name": {
         "title": "Table display name",
         "group": "group_name",
+        "section": "master-tables",
         "icon": "mdi-icon-name",
         "get_list": { "url": "/api/endpoint", "http_method": "GET" },
         "post_item": { "url": "/api/endpoint", "http_method": "POST" },
         "put_item": { "url": "/api/endpoint", "http_method": "PUT" },
         "delete_item": { "url": "/api/endpoint", "http_method": "DELETE" },
         "post_bulk": { "url": "/api/endpoint", "http_method": "POST" }
-      }
-    },
-    "groups": {
-      "group_name": {
-        "title": "Group Display Name",
-        "icon": "mdi-icon-name"
       }
     }
   },
@@ -197,6 +207,10 @@ The frontend-automation schema includes:
 }
 ```
 
+- **Sections** (optional): Top-level blocks in the navigation (e.g. "Master tables", "Historical data"). Defined in `available_automations.sections`. When present, they always appear **above** the default "Master data" section in the app drawer.
+- **Groups**: Mid-level grouping; each group can specify a `section` so its tables appear under that section.
+- **Tables**: Each table has `group` and optionally `section`. Table `section` overrides the group’s section when set; if neither table nor group has a section, the table is listed under the default "Master data" block.
+
 #### Features
 
 - **Automatic interface generation**: Tables, forms, and validation are generated from schema
@@ -207,12 +221,15 @@ The frontend-automation schema includes:
 - **Inline editing**: Direct table cell editing capabilities
 - **Export functionality**: Excel export for all table data
 
-#### Table grouping
+#### Navigation hierarchy (sections and groups)
 
-Tables can be organized in two ways:
+Navigation is built as **Section → Group → Table**:
 
-1. **Individual tables**: Each table gets its own navigation item and route
-2. **Grouped tables**: Multiple tables share a group with tabbed interface
+1. **Sections** (optional): If `available_automations.sections` is defined, each section becomes a top-level block in the drawer (with title and icon). Schema-defined sections are always shown **above** the single default "Master data" section. Tables without a section (and tables whose section is not in the schema) are listed under "Master data".
+2. **Groups**: Tables with the same `group` appear together (e.g. as tabs). A group can have a `section` so all its tables appear under that section.
+3. **Tables**: Each table has `group` and optionally `section`. Table-level `section` overrides the group’s section. Tables with no section (and no group section) go under "Master data".
+
+So you can have: (a) only groups and tables (one "Master data" block), or (b) sections from the schema first, then the "Master data" block for any tables that have no section.
 
 #### Multi-schema access control
 
@@ -298,11 +315,12 @@ When a user logs in, the backend returns user information through the `/user/{id
 
 #### Implementation details
 
-- **Repository**: `SchemaRepository.ts` handles API communication
-- **Service**: `FrontendAutomationService.ts` provides utility functions
-- **Utils**: `schemaUtils.ts` handles schema transformation
-- **Component**: `CoreTable.vue` renders the dynamic table interface
-- **View**: `SectionView.vue` manages table display and navigation
+- **Repository**: `SchemaRepository.ts` fetches the schema and returns both table config and `available_automations.sections`; the store keeps sections in `masterDataSections`.
+- **Utils**: `schemaUtils.ts` transforms the schema (including sections and per-table `section` from table/group) into the internal config format.
+- **Service**: `FrontendAutomationService.ts` provides `getMasterDataNavigationWithSections()` to build section → group → table navigation; schema-defined sections are ordered above the default "Master data" block.
+- **Drawer**: `AppDrawer.vue` uses schema sections when present (`masterDataSectionsForDrawer`) and falls back to a single "Master data" section when no schema sections exist.
+- **Component**: `CoreTable.vue` renders the dynamic table interface.
+- **View**: `SectionView.vue` manages table display and navigation.
 
 ## Input data section
 
@@ -426,6 +444,16 @@ Routes are automatically generated based on schema definitions:
 - **Grouped tables**: `/configuration/group/{group-name}`
 - **Input data**: `/input-data/{table-key}` or `/input-data/group/{group-name}`
 - **Results**: `/results/{table-key}` or `/results/group/{group-name}`
+
+### App-specific sections (appSections)
+
+Unlike `dashboardPages` / `instanceDashboardPages` (which add subsections inside Results and Input data), **app sections** define standalone top-level sections and optional subsections in the main navigation and router. They are built dynamically from `src/app/config.ts`:
+
+- **Configuration**: In `createAppConfig()`, set the `appSections` array. Each entry has `path`, `name`, `titleKey`, `icon`, `component` (lazy import), and optional `subPages` with the same shape.
+- **Router**: Routes are registered via `getAppSectionRoutes()` (used in `src/router/index.ts`).
+- **Drawer**: Menu items are built from `getAppSections()` in `AppDrawer.vue` (title resolved with i18n from `titleKey`).
+
+Example: one section with one view (e.g. Agent), or multiple sections with subsections, without touching the router or drawer code.
 
 ### State management
 
@@ -597,23 +625,23 @@ This file contains **internal application-specific configuration** that is part 
   instanceDashboardPages: [],
   instanceDashboardRoutes: [],
   instanceDashboardLayout: [],
+  appSections: [], // App-specific top-level sections and subsections (router + drawer built dynamically)
 }
 ```
 
 #### Internal configuration parameters reference
 
-| Parameter                     | Type       | Description                                                                                                                             |
-| ----------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `valuesJsonPath`              | `string`   | Path to the external JSON configuration file                                                                                            |
-| `useEtlBackend`               | `boolean`  | Enable ETL backend integration                                                                                                          |
-| `sendInstanceFilesAsZip`      | `boolean`  | When true and useEtlBackend is true, send instance files as a single .zip to the ETL backend instead of multiple files (default: false) |
-| `showOpenIdUsername`          | `boolean`  | Display user full name and email from openId login                                                                                      |
-| `showTablesWithoutSchema`     | `boolean`  | Display tables that don't have a defined schema                                                                                         |
-| `allowEditInstance`           | `boolean`  | Allow users to edit instances from input data section                                                                                   |
-| `enableAutoInstanceDashboard` | `boolean`  | Auto-generate dashboards for instance tables                                                                                            |
-| `enableAutoSolutionDashboard` | `boolean`  | Auto-generate dashboards for solution tables                                                                                            |
-| `enableMasterTableMatching`   | `boolean`  | Enable master table matching during instance review                                                                                     |
-| `executionSolvers`            | `string[]` | List of available solvers for execution                                                                                                 |
+| Parameter                     | Type       | Description                                           |
+| ----------------------------- | ---------- | ----------------------------------------------------- |
+| `valuesJsonPath`              | `string`   | Path to the external JSON configuration file          |
+| `useEtlBackend`               | `boolean`  | Enable ETL backend integration                        |
+| `showOpenIdUsername`          | `boolean`  | Display user full name and email from openId login    |
+| `showTablesWithoutSchema`     | `boolean`  | Display tables that don't have a defined schema       |
+| `allowEditInstance`           | `boolean`  | Allow users to edit instances from input data section |
+| `enableAutoInstanceDashboard` | `boolean`  | Auto-generate dashboards for instance tables          |
+| `enableAutoSolutionDashboard` | `boolean`  | Auto-generate dashboards for solution tables          |
+| `enableMasterTableMatching`   | `boolean`  | Enable master table matching during instance review   |
+| `executionSolvers`            | `string[]` | List of available solvers for execution               |
 
 #### showExtraProjectExecutionColumns
 
@@ -630,11 +658,11 @@ Controls which columns are displayed in the execution history table.
 
 Configuration for the "Latest plan" feature. See [Latest plan documentation](#latest-plan-actual-plan) for details.
 
-| Property           | Type      | Description                                                                                                                    |
-| ------------------ | --------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Property           | Type      | Description                                                                                       |
+| ------------------ | --------- | ------------------------------------------------------------------------------------------------- |
 | `enableLatestPlan` | `boolean` | Master switch to enable/disable the feature (default: `true`). If `false`, disables the feature regardless of other conditions |
-| `defaultView`      | `string`  | Route to redirect after login (`'history-execution'`, `'dashboard'`, `'input-data'`, `'results'`)                              |
-| `showStarInTabBar` | `boolean` | Show star icon in tab bar for the latest plan                                                                                  |
+| `defaultView`      | `string`  | Route to redirect after login (`'history-execution'`, `'dashboard'`, `'input-data'`, `'results'`) |
+| `showStarInTabBar` | `boolean` | Show star icon in tab bar for the latest plan                                                     |
 
 #### sectionTitles
 
