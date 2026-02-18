@@ -1,5 +1,8 @@
 import { TableSchema } from '@/config/views'
-import { ConfigurationData } from '@/types/frontendAutomation'
+import {
+  ConfigurationData,
+  AutomationSectionDef,
+} from '@/types/frontendAutomation'
 import { TableOperation } from '@/types/table'
 
 // Helper function to convert text to URL-friendly format
@@ -109,6 +112,84 @@ export function getNavigationItemsFromConfig(
   })
 
   return navigationItems
+}
+
+export interface MasterDataSectionNav {
+  sectionId: string | null
+  /** Multilingual title or string; consumer resolves with locale. */
+  title: Record<string, string> | string
+  icon: string
+  subPages: Array<{
+    title: string
+    icon: string
+    to?: string
+    subPages?: Array<{ key: string; title: string; to: string; icon: string }>
+  }>
+}
+
+/**
+ * Build master data navigation when schema defines sections (available_automations.sections).
+ * Schema sections are returned first (in order); tables with no section go in a final "Master data" block.
+ * Use this so schema sections appear above the default Master data section in the drawer.
+ *
+ * @param config - Master data table configuration (with section on each table)
+ * @param sections - Section definitions from the schema (order preserved)
+ * @param basePath - Base path for configuration routes (e.g. '/configuration')
+ * @returns Array of section blocks: each has title, icon, subPages (groups/tables)
+ */
+export function getMasterDataNavigationWithSections(
+  config: TableSchema,
+  sections: AutomationSectionDef[],
+  basePath: string = '/configuration',
+): MasterDataSectionNav[] {
+  if (!sections || sections.length === 0) {
+    return []
+  }
+
+  const result: MasterDataSectionNav[] = []
+
+  for (const section of sections) {
+    const sectionId = section.id
+    const filteredConfig: TableSchema = {}
+    Object.entries(config).forEach(([key, value]) => {
+      if (value.section === sectionId) {
+        filteredConfig[key] = value
+      }
+    })
+
+    if (Object.keys(filteredConfig).length === 0) {
+      continue
+    }
+
+    const subPages = getNavigationItemsFromConfig(filteredConfig, basePath)
+    result.push({
+      sectionId,
+      title: section.title,
+      icon: section.icon ?? 'mdi-folder',
+      subPages,
+    })
+  }
+
+  // Tables with no section go in a final block (handled by caller with default "Master data" title)
+  const noSectionConfig: TableSchema = {}
+  Object.entries(config).forEach(([key, value]) => {
+    const section = value.section
+    if (section === undefined || section === null) {
+      noSectionConfig[key] = value
+    }
+  })
+
+  if (Object.keys(noSectionConfig).length > 0) {
+    const subPages = getNavigationItemsFromConfig(noSectionConfig, basePath)
+    result.push({
+      sectionId: null,
+      title: 'masterData', // i18n key for "Master data"; consumer resolves
+      icon: 'mdi-database',
+      subPages,
+    })
+  }
+
+  return result
 }
 
 // Helper function to get operation configuration from table config

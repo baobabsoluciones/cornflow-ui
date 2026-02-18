@@ -1,23 +1,44 @@
 // Schema transformation utilities for OpenAPI to internal format conversion
 import { resolveTitleWithLocale } from './i18nUtils'
 
+/** Result of transforming OpenAPI automation schema: table config and optional sections. */
+export interface TransformOpenApiResult {
+  config: any
+  sections: Array<{ id: string; title: Record<string, string> | string; icon?: string }>
+}
+
 // Transform OpenAPI schema to our internal table configuration format
 export function transformOpenApiToTableConfig(
   openApiSchema: any,
   locale: string = 'en',
-): any {
+): TransformOpenApiResult {
   const { available_automations, definitions } = openApiSchema
   const result: any = {}
 
-  // Handle new schema structure with tables and groups
+  // Handle new schema structure with tables, groups, and sections
   const tables = available_automations.tables || available_automations
   const groups = available_automations.groups || {}
+  const sectionsSource = available_automations.sections || {}
+
+  // Build sections array in stable order (object key order)
+  const sections: Array<{ id: string; title: Record<string, string> | string; icon?: string }> =
+    Object.entries(sectionsSource).map(([id, sectionInfo]: [string, any]) => ({
+      id,
+      title: sectionInfo?.title ?? id,
+      icon: sectionInfo?.icon,
+    }))
 
   // Process each table from available_automations.tables
   Object.entries(tables).forEach(([tableKey, tableInfo]: [string, any]) => {
     // Get group information from groups section if it exists
     const groupKey = tableInfo.group
     const groupInfo = groupKey ? groups[groupKey] : null
+
+    // Section: table override, then group section, then null
+    const sectionId =
+      tableInfo.section !== undefined && tableInfo.section !== null
+        ? tableInfo.section
+        : groupInfo?.section ?? null
 
     // Determine the icon - use table icon first, then group icon, then default
     let icon = tableInfo.icon
@@ -31,11 +52,15 @@ export function transformOpenApiToTableConfig(
         : tableInfo.group,
       title: resolveTitleWithLocale(tableInfo.title, locale, tableInfo.title),
       icon: icon, // Include icon from table or group configuration
+      ...(sectionId !== null && { section: sectionId }),
       // Schema access control - preserve schemas property for user access filtering
       ...(tableInfo.schemas !== undefined && { schemas: tableInfo.schemas }),
       // Keep original multilingual data for dynamic resolution
       _originalGroup: groupInfo ? groupInfo.title : tableInfo.group,
       _originalTitle: tableInfo.title,
+      ...(sectionId !== null && {
+        _originalSection: sectionsSource[sectionId]?.title ?? sectionId,
+      }),
     }
 
     // Process each operation
@@ -44,23 +69,20 @@ export function transformOpenApiToTableConfig(
       'group',
       'title',
       'icon',
+      'section',
       'schemas',
       '_originalGroup',
       '_originalTitle',
+      '_originalSection',
     ]
-
+    
     Object.entries(tableInfo).forEach(
       ([operationKey, operationInfo]: [string, any]) => {
         // Skip non-operation keys
         if (nonOperationKeys.includes(operationKey)) return
-
+        
         // Skip if operationInfo is not a valid operation object
-        if (
-          !operationInfo ||
-          typeof operationInfo !== 'object' ||
-          !operationInfo.url
-        )
-          return
+        if (!operationInfo || typeof operationInfo !== 'object' || !operationInfo.url) return
 
         // Convert operation info to our format
         result[tableKey][operationKey] = {
@@ -83,7 +105,7 @@ export function transformOpenApiToTableConfig(
     )
   })
 
-  return result
+  return { config: result, sections }
 }
 
 // Get request schema based on operation type and definitions
@@ -171,10 +193,10 @@ function findDefinitionKeyForTable(
   definitions: any,
 ): string | null {
   const definitionKeys = Object.keys(definitions)
-
+  
   // Filter out BulkDelete definitions - they are not table schemas
   const tableDefinitions = definitionKeys.filter(
-    (key) => !key.endsWith('BulkDelete'),
+    (key) => !key.endsWith('BulkDelete')
   )
 
   // Try exact match first (case sensitive)
@@ -776,11 +798,7 @@ export function getExecutionConfigFromSchemaConfig(schemaConfig: any): {
     options?: Array<{ value: string; label: string }>
   }>
 } | null {
-  if (
-    !schemaConfig ||
-    typeof schemaConfig !== 'object' ||
-    !schemaConfig.properties
-  ) {
+  if (!schemaConfig || typeof schemaConfig !== 'object' || !schemaConfig.properties) {
     return null
   }
 

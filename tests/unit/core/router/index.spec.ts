@@ -10,6 +10,7 @@ const mockAuthService = {
 const mockAppConfig = {
   getDashboardRoutes: vi.fn().mockReturnValue([]),
   getInstanceDashboardRoutes: vi.fn().mockReturnValue([]),
+  getAppSectionRoutes: vi.fn().mockReturnValue([]),
   getCore: vi.fn().mockReturnValue({
     parameters: {
       useHashMode: false,

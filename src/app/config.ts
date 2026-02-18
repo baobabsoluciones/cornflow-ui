@@ -1,6 +1,30 @@
 import { Instance } from '@/app/models/Instance.ts'
 import { Solution } from '@/app/models/Solution.ts'
 import { Experiment } from '@/app/models/Experiment.ts'
+import type { RouteRecordRaw } from 'vue-router'
+
+/**
+ * Definition for an app-specific section (top-level or subsection).
+ * Used to build routes and drawer menu dynamically.
+ */
+export interface AppSectionDef {
+  path: string
+  name: string
+  titleKey: string
+  icon: string
+  component: () => Promise<unknown>
+  subPages?: AppSectionDef[]
+}
+
+/**
+ * Menu item for the drawer (resolved from AppSectionDef).
+ */
+export interface AppSectionMenuItem {
+  titleKey: string
+  icon: string
+  to: string
+  subPages?: { titleKey: string; icon: string; to: string }[]
+}
 
 /**
  * Application configuration factory.
@@ -15,21 +39,22 @@ const createAppConfig = () => ({
       valuesJsonPath: '/values.json',
       useEtlBackend: false,
       sendInstanceFilesAsZip: false,
-      schema: '' as string,
-      showDashboardMainView: true,
+
       showTablesWithoutSchema: false,
       showOpenIdUsername: true,
       showExtraProjectExecutionColumns: {
         showUserName: false,
         showEndCreationDate: true,
-        showTimeLimit: true,
+        showTimeLimit: false,
         showUserFullName: true,
       },
 
       allowEditInstance: true,
 
+      showDashboardMainView: true,
+
       latestPlanConfig: {
-        enableLatestPlan: true,
+        enableLatestPlan: false,
         defaultView: 'history-execution',
         showStarInTabBar: true,
       },
@@ -42,13 +67,14 @@ const createAppConfig = () => ({
       },
 
       enableMasterTableMatching: true,
+      // Overridden from schema config when user enters the app (see general store setSchema + applySchemaConfigToAppConfig)
       solverConfig: {
         showSolverStep: true,
-        defaultSolver: 'mip',
+        defaultSolver: 'mip.gurobi',
       },
       configFieldsConfig: {
-        showConfigFieldsStep: false,
-        autoLoadValues: false,
+        showConfigFieldsStep: true,
+        autoLoadValues: true,
       },
       executionSolvers: ['mip.gurobi'],
       configFields: [
@@ -192,6 +218,11 @@ const createAppConfig = () => ({
   instanceDashboardPages: [],
   instanceDashboardRoutes: [],
   instanceDashboardLayout: [],
+
+  // App-specific sections: top-level sections and subsections (like Agent).
+  // Built dynamically in router and drawer. Same pattern as dashboard/instanceDashboard
+  // but for standalone sections, not nested under instance/result.
+  appSections: [] as AppSectionDef[],
 })
 
 class Config {
@@ -239,6 +270,44 @@ class Config {
 
   getInstanceDashboardLayout() {
     return this.ensureConfig().instanceDashboardLayout
+  }
+
+  /** App-specific sections for the drawer menu. */
+  getAppSections(): AppSectionMenuItem[] {
+    const sections = this.ensureConfig().appSections || []
+    return sections.map((s) => ({
+      titleKey: s.titleKey,
+      icon: s.icon,
+      to: s.path.startsWith('/') ? s.path : `/${s.path}`,
+      subPages: s.subPages?.map((sub) => ({
+        titleKey: sub.titleKey,
+        icon: sub.icon,
+        to: sub.path.startsWith('/') ? sub.path : `/${sub.path}`,
+      })),
+    }))
+  }
+
+  /** Routes for app-specific sections (and their subPages). Used by the router. */
+  getAppSectionRoutes(): RouteRecordRaw[] {
+    const sections = this.ensureConfig().appSections || []
+    const routes: RouteRecordRaw[] = []
+    for (const s of sections) {
+      routes.push({
+        path: s.path.replace(/^\//, ''),
+        name: s.name,
+        component: s.component,
+        keepAlive: true,
+      } as RouteRecordRaw)
+      for (const sub of s.subPages || []) {
+        routes.push({
+          path: sub.path.replace(/^\//, ''),
+          name: sub.name,
+          component: sub.component,
+          keepAlive: true,
+        } as RouteRecordRaw)
+      }
+    }
+    return routes
   }
 }
 

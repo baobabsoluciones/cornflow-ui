@@ -19,7 +19,10 @@ import LatestPlanRepository from '@/repositories/LatestPlanRepository'
 import { toISOStringLocal } from '@/utils/data_io'
 
 // Import utility functions
-import { ConfigurationData } from '@/types/frontendAutomation'
+import {
+  ConfigurationData,
+  AutomationSectionDef,
+} from '@/types/frontendAutomation'
 import { TableSchema } from '@/config/views'
 import { locale } from '@/plugins/i18n'
 import {
@@ -65,6 +68,8 @@ export const useGeneralStore = defineStore('general', {
     cornflowVersion: '',
     configurations: null as ConfigurationData | null,
     rawConfigurations: null as ConfigurationData | null, // Store raw configurations with original multilingual data
+    /** Section definitions from frontend-automation (available_automations.sections). When set, drawer shows these sections above the default Master data block. */
+    masterDataSections: null as AutomationSectionDef[] | null,
     // Latest plan (Actual plan) state
     latestPlanId: null as string | null,
     latestPlanExists: false,
@@ -256,9 +261,7 @@ export const useGeneralStore = defineStore('general', {
      * schema's config when available, so the UI uses the backend schema as source of truth.
      */
     applySchemaConfigToAppConfig() {
-      const derived = getExecutionConfigFromSchemaConfig(
-        this.schemaConfig?.config,
-      )
+      const derived = getExecutionConfigFromSchemaConfig(this.schemaConfig?.config)
       if (!derived) return
 
       this.appConfig.parameters.solverConfig = {
@@ -271,12 +274,17 @@ export const useGeneralStore = defineStore('general', {
 
     async setConfigurations() {
       try {
-        // Get master data from frontend-automation (may be empty if not available)
-        let masterData = {}
+        // Get master data and optional sections from frontend-automation
+        let masterData: TableSchema = {}
+        let masterDataSections: AutomationSectionDef[] | null = null
         try {
-          masterData = await this.schemaRepository.getConfigurationTables(
-            this.getSchemaName,
-          )
+          const result =
+            await this.schemaRepository.getConfigurationTables(
+              this.getSchemaName,
+            )
+          masterData = result.config ?? {}
+          masterDataSections =
+            result.sections && result.sections.length > 0 ? result.sections : null
         } catch (error) {
           console.warn('Frontend automation not available:', error)
           masterData = {}
@@ -304,12 +312,13 @@ export const useGeneralStore = defineStore('general', {
           resultsData = {}
         }
 
-        // Store raw configurations with original multilingual data
+        // Store raw configurations with original multilingual data and section definitions
         this.rawConfigurations = {
           masterData: masterData || {},
           inputData: inputData || {},
           resultsData: resultsData || {},
         }
+        this.masterDataSections = masterDataSections
 
         // Create localized configurations
         this.updateLocalizedConfigurations()
@@ -321,6 +330,7 @@ export const useGeneralStore = defineStore('general', {
           inputData: {} as TableSchema,
           resultsData: {} as TableSchema,
         }
+        this.masterDataSections = null
         this.updateLocalizedConfigurations()
       }
     },
@@ -332,10 +342,9 @@ export const useGeneralStore = defineStore('general', {
       const currentLocale = locale.value
 
       // Get user schemas for filtering (undefined means full access)
-      const userSchemas =
-        this.user && 'schemas' in this.user
-          ? (this.user as any).schemas
-          : undefined
+      const userSchemas = this.user && 'schemas' in this.user
+        ? (this.user as any).schemas
+        : undefined
 
       // Helper function to resolve default groups
       const resolveConfigWithDefaultGroups = (config: TableSchema) => {
@@ -692,11 +701,7 @@ export const useGeneralStore = defineStore('general', {
      * Returns true if user has no schema restrictions.
      */
     userHasFullAccess(): boolean {
-      if (
-        this.user &&
-        'hasFullAccess' in this.user &&
-        typeof this.user.hasFullAccess === 'function'
-      ) {
+      if (this.user && 'hasFullAccess' in this.user && typeof this.user.hasFullAccess === 'function') {
         return this.user.hasFullAccess()
       }
       // Default to full access if user doesn't have the method

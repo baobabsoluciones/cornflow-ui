@@ -19,6 +19,7 @@ import { useGeneralStore } from '@/stores/general'
 
 const dashboardRoutes = appConfig.getDashboardRoutes() || []
 const instanceDashboardRoutes = appConfig.getInstanceDashboardRoutes() || []
+const appSectionRoutes = appConfig.getAppSectionRoutes() || []
 
 let authService = null
 
@@ -122,6 +123,7 @@ const routes: RouteRecordRaw[] = [
         component: DashboardView,
         keepAlive: true,
       },
+      ...appSectionRoutes,
       {
         path: 'configuration/:tableKey',
         name: 'Master Data',
