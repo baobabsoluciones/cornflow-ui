@@ -824,6 +824,7 @@ export default {
     reviewChanges: 'Review changes',
     changesIndicator: '{count} pending changes',
     changeStaged: 'Change staged. It will be applied when you save.',
+    createReverted: 'New row removed. No changes to save.',
     newRow: 'New row',
     deletedRow: 'Deleted row',
     saveErrorNoInstanceData:

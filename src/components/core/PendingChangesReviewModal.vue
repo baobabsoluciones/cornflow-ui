@@ -215,6 +215,7 @@
                                           : val,
                                       )
                                   "
+                                  :type="getInputTypeForHeader(header)"
                                   variant="outlined"
                                   density="compact"
                                   hide-details
@@ -272,6 +273,7 @@
                                         : val,
                                     )
                                 "
+                                :type="getInputTypeForHeader(header)"
                                 variant="outlined"
                                 density="compact"
                                 hide-details
@@ -353,16 +355,16 @@
                       </thead>
                       <tbody>
                         <tr>
-                          <td
-                            v-for="header in getVisibleHeaders(
-                              tableGroup.tableKey,
-                            )"
-                            :key="header.key"
-                            class="pending-changes-modal__td--new"
-                          >
+                            <td
+                              v-for="header in getVisibleHeaders(
+                                tableGroup.tableKey,
+                              )"
+                              :key="header.key"
+                              class="pending-changes-modal__td--new"
+                            >
                             <v-text-field
                               v-if="(header.type || 'string') !== 'boolean'"
-                              :model-value="create.data[header.key]"
+                              :model-value="getCreateFieldDisplayValue(create, header)"
                               @update:model-value="
                                 (val) =>
                                   handleUpdateCreate(
@@ -376,6 +378,7 @@
                                       : val,
                                   )
                               "
+                              :type="getInputTypeForHeader(header)"
                               variant="outlined"
                               density="compact"
                               hide-details
@@ -383,7 +386,7 @@
                             />
                             <v-switch
                               v-else
-                              :model-value="!!create.data[header.key]"
+                              :model-value="!!getCreateFieldDisplayValue(create, header)"
                               @update:model-value="
                                 (val) =>
                                   handleUpdateCreate(
@@ -533,6 +536,7 @@
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useTableChanges } from '@/composables/useTableChanges'
+import { parseJoinFrom } from '@/utils/schemaUtils'
 import CoreConfirmDialog from '@/components/core/table/CoreConfirmDialog.vue'
 
 const { t } = useI18n()
@@ -550,7 +554,16 @@ interface AllRowsData {
 }
 
 interface TableHeaders {
-  [tableKey: string]: Array<{ key: string; title: string; type?: string }>
+  [tableKey: string]: Array<{
+    key: string
+    title: string
+    type?: string
+    joinFrom?: string
+    foreignKeyField?: string
+    /** FK columns (columns_to_join) are hidden from user; only sent to backend */
+    isForeignKey?: boolean
+    hidden?: boolean
+  }>
 }
 
 interface Props {
@@ -560,6 +573,8 @@ interface Props {
   rowIdentifiers?: Record<string, Record<string, string>>
   rowsData?: AllRowsData
   tableHeaders?: TableHeaders
+  /** Referenced table data for resolving joinFrom display (e.g. building name from id). */
+  tableData?: Record<string, any[]>
   /** When provided, only show and count changes for these table keys (e.g. current group). */
   tableKeysFilter?: string[]
 }
@@ -570,6 +585,7 @@ const props = withDefaults(defineProps<Props>(), {
   rowIdentifiers: () => ({}),
   rowsData: () => ({}),
   tableHeaders: () => ({}),
+  tableData: () => ({}),
   tableKeysFilter: undefined,
 })
 
@@ -651,19 +667,18 @@ const getRowData = (tableKey: string, rowId: string): RowData | null => {
   return props.rowsData[tableKey]?.[rowId] || null
 }
 
-// Get headers for a table, filtering out 'id', selection, and other non-data columns
+// Get headers for a table: hide 'id', selection, FK columns (columns_to_join), and other non-display columns.
+// FK fields are only for the backend; user sees only the joined display columns.
 const getVisibleHeaders = (
   tableKey: string,
 ): Array<{ key: string; title: string; type?: string }> => {
   const headers = props.tableHeaders[tableKey] || []
   return headers.filter((h) => {
     const keyLower = (h.key || '').toLowerCase()
-    return (
-      keyLower !== 'id' &&
-      keyLower !== 'selection' &&
-      !keyLower.endsWith('_id') &&
-      keyLower !== 'rowid'
-    )
+    if (keyLower === 'id' || keyLower === 'selection' || keyLower === 'rowid') return false
+    if (keyLower.endsWith('_id')) return false
+    if ((h as any).isForeignKey === true || (h as any).hidden === true) return false
+    return true
   })
 }
 
@@ -703,6 +718,38 @@ const formatValue = (value: any): string => {
   const str = String(value)
   // Truncate long values
   return str.length > 50 ? str.substring(0, 47) + '...' : str
+}
+
+/** Get HTML input type for a header (date, datetime-local, time, number, text). */
+const getInputTypeForHeader = (header: { type?: string }): string => {
+  const t = header.type || 'string'
+  if (t === 'date') return 'date'
+  if (t === 'datetime') return 'datetime-local'
+  if (t === 'time') return 'time'
+  if (t === 'number') return 'number'
+  return 'text'
+}
+
+/** Resolve joinFrom display value for a create row field. */
+const getCreateFieldDisplayValue = (create: { data: Record<string, any> }, header: any): any => {
+  const val = create.data[header.key]
+  if (val != null && val !== '') return val
+  const joinFrom = (header as any).joinFrom
+  const foreignKeyField = (header as any).foreignKeyField
+  if (!joinFrom || !foreignKeyField) return val
+  const fkId = create.data[foreignKeyField]
+  if (fkId == null) return val
+  const joinInfo = parseJoinFrom(joinFrom)
+  if (!joinInfo) return val
+  const tableRows = props.tableData?.[joinInfo.table]
+  if (!Array.isArray(tableRows)) return val
+  const fkField = (header as any).foreignKeyField
+  const refRow = tableRows.find(
+    (r: any) =>
+      String(r?.id) === String(fkId) ||
+      (fkField && String(r?.[fkField]) === String(fkId)),
+  )
+  return refRow && joinInfo.field in refRow ? refRow[joinInfo.field] : val
 }
 
 // Revert handlers

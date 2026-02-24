@@ -1,54 +1,43 @@
 import { computed } from 'vue'
 import useFilters from '@/utils/useFilters'
 
+const COLUMN_ALIGNMENT: Record<string, string> = {
+  boolean: 'center',
+}
+
 export function useTableUtils(
   tableConfig: any,
   allItems: any,
   searchText: any,
   $t: any,
 ) {
-  const getColumnAlignment = (type: string) => {
-    switch (type) {
-      case 'boolean':
-        return 'center'
-      default:
-        return 'start'
-    }
+  const getColumnAlignment = (type: string): string =>
+    COLUMN_ALIGNMENT[type] || 'start'
+
+  const isBooleanField = (fieldKey: string): boolean => {
+    return tableConfig.value?.properties?.[fieldKey]?.type === 'boolean'
   }
 
-  const isBooleanField = (fieldKey: string) => {
-    if (!tableConfig.value?.properties) return false
-    const field = tableConfig.value.properties[fieldKey]
-    return field?.type === 'boolean'
-  }
+  const formatBooleanValue = (value: boolean): string =>
+    value ? $t('table.yes') : $t('table.no')
 
-  const formatBooleanValue = (value: boolean) => {
-    return value ? $t('table.yes') : $t('table.no')
-  }
-
-  const getFieldType = (fieldKey: string) => {
-    if (!tableConfig.value?.properties) return 'string'
-    const field = tableConfig.value.properties[fieldKey]
-    return field?.type || 'string'
+  const getFieldType = (fieldKey: string): string => {
+    return tableConfig.value?.properties?.[fieldKey]?.type || 'string'
   }
 
   const filteredItems = computed(() => {
-    if (!searchText.value || searchText.value.trim() === '') {
-      return allItems.value
-    }
+    if (!searchText.value?.trim()) return allItems.value
 
-    // Use the useFilters utility to filter items
     return useFilters(
       allItems.value,
       searchText.value,
-      {}, // No additional filters for now
-      ['id'], // Ignore 'id' field in search
+      {},
+      ['id'],
     )
   })
 
-  const handleSearch = (searchTextValue: string) => {
-    // The filtering is handled automatically by the filteredItems computed property
-    // This method can be used for additional search logic if needed
+  const handleSearch = (_searchTextValue: string) => {
+    // Filtering is handled by the filteredItems computed property.
   }
 
   return {

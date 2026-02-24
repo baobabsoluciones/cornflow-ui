@@ -183,7 +183,7 @@
             <span v-if="readOnlyDisplay" class="read-only-cell">
               {{
                 formatCellValueForDisplay(
-                  getCellDisplayValue(item, header.key),
+                  getCellDisplayValueForHeader(item, header),
                   header,
                 )
               }}
@@ -202,7 +202,7 @@
                     ? editingData[header.key]
                       ? 'true'
                       : 'false'
-                    : getCellDisplayValue(item, header.key)
+                    : getCellDisplayValueForHeader(item, header)
                       ? 'true'
                       : 'false'
                   : undefined
@@ -252,6 +252,20 @@
                   class="inline-edit-input"
                 />
 
+                <!-- Date, datetime, or time field -->
+                <v-text-field
+                  v-else-if="isDateLikeField(header)"
+                  :model-value="editingData[header.key]"
+                  @update:model-value="
+                    (value) => updateInlineField(header.key, value)
+                  "
+                  :type="getInputTypeForHeader(header)"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  class="inline-edit-input"
+                />
+
                 <!-- Boolean selector (for non-Fijar boolean columns) -->
                 <v-select
                   v-else-if="
@@ -295,9 +309,7 @@
                   @update:model-value="
                     (value) => updateInlineField(header.key, value)
                   "
-                  :type="
-                    getFieldType(header.key) === 'number' ? 'number' : 'text'
-                  "
+                  :type="getInputTypeForHeader(header)"
                   variant="outlined"
                   density="compact"
                   hide-details
@@ -314,7 +326,7 @@
                     isFijarColumn(header) &&
                     getFieldType(header.key) === 'boolean'
                   "
-                  :model-value="getCellDisplayValue(item, header.key)"
+                  :model-value="getCellDisplayValueForHeader(item, header)"
                   @update:model-value="
                     (value) => {
                       if (canEdit && !header.readOnly) {
@@ -323,7 +335,7 @@
                           header.key,
                           value,
                           item.id,
-                          getCellDisplayValue(item, header.key),
+                          getCellDisplayValueForHeader(item, header),
                         )
                       }
                     }
@@ -357,7 +369,7 @@
                 >
                   {{
                     formatCellValueForDisplay(
-                      getCellDisplayValue(item, header.key),
+                      getCellDisplayValueForHeader(item, header),
                       header,
                     )
                   }}
@@ -493,6 +505,7 @@ import CoreFiltersPanel from '@/components/core/table/CoreFiltersPanel.vue'
 import CoreDropdownMenu from '@/components/core/CoreDropdownMenu.vue'
 import { useTableHeight } from '@/composables/core-table/useTableHeight'
 import { useFormFields } from '@/composables/core-table/useFormFields'
+import { parseJoinFrom } from '@/utils/schemaUtils'
 
 // Props - Presentational Component Interface
 interface Props {
@@ -1421,10 +1434,13 @@ const isRowEditing = (itemId: string | number): boolean => {
 }
 
 /**
- * Get the display value for a cell, considering pending modifications
- * In Excel mode, returns the modified value if the cell has been changed
+ * Get the display value for a cell, considering pending modifications.
+ * In Excel mode, returns the modified value if the cell has been changed.
+ * For joinFrom/dependent columns, resolves FK id to display text from referenced table when the row has no joined value (e.g. pending creates).
  */
-const getCellDisplayValue = (item: any, fieldKey: string): any => {
+const getCellDisplayValueForHeader = (item: any, header: any): any => {
+  const fieldKey = header?.key
+  if (!fieldKey) return undefined
   // If in Excel mode and cell is modified, get the modified value
   if (props.enableExcelMode && props.isCellModified(item.id, fieldKey)) {
     const modifiedValue = props.getModifiedValue(item.id, fieldKey)
@@ -1432,7 +1448,41 @@ const getCellDisplayValue = (item: any, fieldKey: string): any => {
       return modifiedValue
     }
   }
-  // Otherwise return the original value
+  let value = item[fieldKey]
+  // Resolve joinFrom display when value is missing but we have FK (e.g. pending create rows)
+  if ((value === undefined || value === null || value === '') && header?.joinFrom && header?.foreignKeyField) {
+    const fkId = item[header.foreignKeyField]
+    if (fkId != null && props.tableData) {
+      const joinInfo = parseJoinFrom(header.joinFrom)
+      if (joinInfo) {
+        const tableRows = props.tableData[joinInfo.table]
+        if (Array.isArray(tableRows)) {
+          const fkField = (header as any).foreignKeyField
+          const row = tableRows.find(
+            (r: any) =>
+              String(r?.id) === String(fkId) ||
+              (fkField && String(r?.[fkField]) === String(fkId)),
+          )
+          if (row && joinInfo.field in row) {
+            value = row[joinInfo.field]
+          }
+        }
+      }
+    }
+  }
+  return value
+}
+
+/**
+ * Get the display value for a cell by field key (used when header is not available, e.g. inline edit state).
+ */
+const getCellDisplayValue = (item: any, fieldKey: string): any => {
+  if (props.enableExcelMode && props.isCellModified(item.id, fieldKey)) {
+    const modifiedValue = props.getModifiedValue(item.id, fieldKey)
+    if (modifiedValue !== undefined) {
+      return modifiedValue
+    }
+  }
   return item[fieldKey]
 }
 
@@ -1474,6 +1524,21 @@ const isTextOrNumberField = (header: any): boolean => {
     !isSelectorField(header) &&
     !hasChoices(header) // Exclude fields with choices (they should be selectors)
   )
+}
+
+/**
+ * Check if a header is a date, datetime, or time field (string format in schema)
+ */
+const isDateLikeField = (header: any): boolean => {
+  const fieldType = getFieldType(header.key)
+  return ['date', 'datetime', 'time'].includes(fieldType)
+}
+
+/**
+ * Get HTML input type for a header (date, datetime-local, time, number, text)
+ */
+const getInputTypeForHeader = (header: any): string => {
+  return formFieldsComposable.getInputType(getFieldType(header.key))
 }
 
 /**

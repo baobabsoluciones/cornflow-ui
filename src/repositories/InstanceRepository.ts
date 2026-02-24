@@ -62,7 +62,8 @@ export default class InstanceRepository {
 
   async etlBackend(files: File[]): Promise<any> {
     const store = useGeneralStore()
-    const sendAsZip = store.appConfig.parameters.sendInstanceFilesAsZip === true
+    const sendAsZip =
+      store.appConfig.parameters.sendInstanceFilesAsZip === true
 
     const formData = new FormData()
     if (sendAsZip && files.length > 0) {
@@ -75,7 +76,7 @@ export default class InstanceRepository {
         compression: 'DEFLATE',
         compressionOptions: { level: 6 },
       })
-      formData.append('files', zipBlob, 'instance.zip')
+      formData.append('file', zipBlob, 'instance.zip')
     } else {
       for (const file of files) {
         formData.append('files', file)
