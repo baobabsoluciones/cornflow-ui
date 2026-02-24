@@ -61,9 +61,9 @@
 
 <template>
   <v-dialog
-    :model-value="modelValue && modelValue === true"
+    :model-value="isModalOpen"
     @update:model-value="emit('update:modelValue', $event)"
-    max-width="480px"
+    max-width="600px"
     persistent
     class="core-modal"
   >
@@ -93,14 +93,14 @@
             <v-row>
               <template v-for="(field, key) in visibleFields" :key="key">
                 <v-col
-                  v-if="field && field.key && field.type"
+                  v-if="isRenderableField(field)"
                   :cols="getFieldCols(field)"
                   :md="getFieldMd(field)"
                   class="pb-0"
                 >
-                  <!-- String/Email/Textarea Fields -->
+                  <!-- String/Email Fields (excluding textarea) -->
                   <div
-                    v-if="field && field.type && isTextType(field.type, field)"
+                    v-if="isStringOrEmailField(field)"
                     class="core-modal__field-wrapper"
                   >
                     <label class="core-modal__field-label">
@@ -109,13 +109,9 @@
                     <v-text-field
                       :model-value="formData[key]"
                       @update:model-value="updateField(key, $event)"
-                      :type="field ? getInputType(field.type) : 'text'"
-                      :required="field ? field.required : false"
-                      :disabled="
-                        field
-                          ? field.readOnly || (mode === 'edit' && key === 'id')
-                          : false
-                      "
+                      :type="getInputType(field.type)"
+                      :required="fieldRequired(field)"
+                      :disabled="isFieldDisabled(field, key)"
                       :rules="getFieldRules(field)"
                       variant="outlined"
                       density="compact"
@@ -126,7 +122,7 @@
 
                   <!-- Textarea Field -->
                   <div
-                    v-else-if="field && field.type === 'textarea'"
+                    v-else-if="isTextareaField(field)"
                     class="core-modal__field-wrapper"
                   >
                     <label class="core-modal__field-label">
@@ -135,8 +131,8 @@
                     <v-textarea
                       :model-value="formData[key]"
                       @update:model-value="updateField(key, $event)"
-                      :required="field ? field.required : false"
-                      :disabled="field ? field.readOnly : false"
+                      :required="fieldRequired(field)"
+                      :disabled="fieldReadOnly(field)"
                       :rules="getFieldRules(field)"
                       variant="outlined"
                       density="compact"
@@ -148,7 +144,7 @@
 
                   <!-- Number Fields -->
                   <div
-                    v-else-if="field && field.type && isNumberType(field.type, field)"
+                    v-else-if="isNumberField(field)"
                     class="core-modal__field-wrapper"
                   >
                     <label class="core-modal__field-label">
@@ -158,11 +154,11 @@
                       :model-value="formData[key]"
                       @update:model-value="updateField(key, $event)"
                       type="number"
-                      :required="field ? field.required : false"
-                      :disabled="field ? field.readOnly : false"
+                      :required="fieldRequired(field)"
+                      :disabled="fieldReadOnly(field)"
                       :rules="getFieldRules(field)"
-                      :min="field ? field.min : undefined"
-                      :max="field ? field.max : undefined"
+                      :min="field?.min"
+                      :max="field?.max"
                       variant="outlined"
                       density="compact"
                       persistent-hint
@@ -172,7 +168,7 @@
 
                   <!-- Boolean fields - Using selector with Yes/No -->
                   <div
-                    v-else-if="field && field.type === 'boolean'"
+                    v-else-if="isBooleanField(field)"
                     class="core-modal__field-wrapper"
                   >
                     <label class="core-modal__field-label">
@@ -184,8 +180,8 @@
                       :items="formFieldsComposable.getChoicesOptions(field)"
                       item-value="value"
                       item-title="text"
-                      :required="field ? field.required : false"
-                      :disabled="field ? field.readOnly : false"
+                      :required="fieldRequired(field)"
+                      :disabled="fieldReadOnly(field)"
                       :rules="getFieldRules(field)"
                       variant="outlined"
                       density="compact"
@@ -195,67 +191,40 @@
                     />
                   </div>
 
-                  <!-- Date Fields -->
+                  <!-- Date, Datetime and Time Fields (same input style; date and datetime with icon) -->
                   <div
-                    v-else-if="field && field.type === 'date'"
+                    v-else-if="isDateLikeField(field)"
                     class="core-modal__field-wrapper"
                   >
                     <label class="core-modal__field-label">
                       {{ field.title || field.label || formatFieldName(key) }}
                     </label>
                     <v-text-field
-                      :model-value="formatDate(formData[key])"
-                      :required="field ? field.required : false"
-                      :disabled="field ? field.readOnly : false"
+                      :model-value="
+                        field.type === 'date'
+                          ? (formData[key] || '').toString().slice(0, 10)
+                          : normalizeDateTimeOrTimeForInput(formData[key], field.type)
+                      "
+                      @update:model-value="
+                        field.type === 'date'
+                          ? updateField(key, $event || undefined)
+                          : updateDateTimeOrTimeField(key, $event, field.type)
+                      "
+                      :type="
+                        field.type === 'date'
+                          ? 'date'
+                          : field.type === 'time'
+                            ? 'time'
+                            : 'datetime-local'
+                      "
+                      :required="fieldRequired(field)"
+                      :disabled="fieldReadOnly(field)"
+                      :rules="getFieldRules(field)"
                       variant="outlined"
                       density="compact"
-                      prepend-inner-icon="mdi-calendar"
                       persistent-hint
-                      class="core-modal__field core-modal__date-field"
-                      @click="openDatePicker(key)"
+                      class="core-modal__field"
                     />
-
-                    <!-- Date Picker Menu -->
-                    <v-menu
-                      v-model="datePickerMenus[key]"
-                      :close-on-content-click="false"
-                      transition="scale-transition"
-                      offset-y
-                      max-width="290px"
-                    >
-                      <template v-slot:activator="{ props }">
-                        <div v-bind="props" style="display: none"></div>
-                      </template>
-
-                      <v-card class="core-modal__date-picker">
-                        <v-date-picker
-                          :model-value="
-                            formData[key] ? new Date(formData[key]) : null
-                          "
-                          @update:model-value="updateDateField(key, $event)"
-                          :min="field ? field.min : undefined"
-                          :max="field ? field.max : undefined"
-                          color="primary"
-                          header-color="primary"
-                          show-adjacent-months
-                        />
-                        <v-card-actions class="justify-end pa-2">
-                          <CoreButton
-                            :text="$t('table.cancel')"
-                            variant="text"
-                            size="small"
-                            @click="datePickerMenus[key] = false"
-                          />
-                          <CoreButton
-                            :text="$t('table.ok')"
-                            variant="filled"
-                            size="small"
-                            color="primary"
-                            @click="datePickerMenus[key] = false"
-                          />
-                        </v-card-actions>
-                      </v-card>
-                    </v-menu>
                   </div>
 
                   <!-- Selector Fields (Foreign Key or Choices) -->
@@ -268,19 +237,14 @@
                     </label>
                     <!-- Use v-select for choices/boolean fields, v-autocomplete for foreign keys -->
                     <v-select
-                      v-if="
-                        (field.choices &&
-                          Array.isArray(field.choices) &&
-                          field.choices.length > 0) ||
-                        field.type === 'boolean'
-                      "
+                      v-if="hasChoicesOptions(field)"
                       :model-value="formData[key]"
                       @update:model-value="updateField(key, $event)"
                       :items="getChoicesOptions(field)"
                       item-value="value"
                       item-title="text"
-                      :required="field ? field.required : false"
-                      :disabled="field ? field.readOnly : false"
+                      :required="fieldRequired(field)"
+                      :disabled="fieldReadOnly(field)"
                       :rules="getFieldRules(field)"
                       variant="outlined"
                       density="compact"
@@ -296,8 +260,8 @@
                       item-value="value"
                       item-title="text"
                       :loading="loadingSelectorOptions[key] || false"
-                      :required="field ? field.required : false"
-                      :disabled="field ? field.readOnly : false"
+                      :required="fieldRequired(field)"
+                      :disabled="fieldReadOnly(field)"
                       :rules="getFieldRules(field)"
                       variant="outlined"
                       density="compact"
@@ -326,7 +290,7 @@
           @click="handleCancel"
         />
         <CoreButton
-          :text="mode === 'edit' ? $t('table.update') : $t('table.save')"
+          :text="submitButtonText"
           variant="filled"
           color="primary"
           size="small"
@@ -388,7 +352,6 @@ const formFieldsComposable = useFormFields({
 })
 
 // State
-const datePickerMenus = ref<Record<string, boolean>>({})
 const formRef = ref<any>(null)
 const isFormValid = ref(false)
 
@@ -396,6 +359,49 @@ const isFormValid = ref(false)
 const visibleFields = formFieldsComposable.visibleFields
 const selectorOptions = formFieldsComposable.selectorOptions
 const loadingSelectorOptions = formFieldsComposable.loadingSelectorOptions
+
+// Computed: modal visibility (avoid inline modelValue && modelValue === true)
+const isModalOpen = computed(() => props.modelValue === true)
+
+// Computed: submit button label by mode
+const submitButtonText = computed(() =>
+  props.mode === 'edit' ? t('table.update') : t('table.save'),
+)
+
+// Field type helpers (used in template v-if / v-else-if instead of inline logic)
+const isRenderableField = (field: FieldConfig | undefined) =>
+  Boolean(field?.key && field?.type)
+
+const isStringOrEmailField = (field: FieldConfig | undefined) =>
+  Boolean(field?.type && formFieldsComposable.isTextType(field.type, field) && field.type !== 'textarea')
+
+const isTextareaField = (field: FieldConfig | undefined) =>
+  Boolean(field?.type === 'textarea')
+
+const isNumberField = (field: FieldConfig | undefined) =>
+  Boolean(field?.type && formFieldsComposable.isNumberType(field.type, field))
+
+const isBooleanField = (field: FieldConfig | undefined) =>
+  Boolean(field?.type === 'boolean')
+
+const isDateLikeField = (field: FieldConfig | undefined) =>
+  Boolean(
+    field &&
+      (field.type === 'date' || field.type === 'datetime' || field.type === 'time'),
+  )
+
+const hasChoicesOptions = (field: FieldConfig | undefined) =>
+  Boolean(
+    field &&
+      ((Array.isArray(field.choices) && field.choices.length > 0) ||
+        field.type === 'boolean'),
+  )
+
+const isFieldDisabled = (field: FieldConfig | undefined, key: string) =>
+  Boolean(field?.readOnly || (props.mode === 'edit' && key === 'id'))
+
+const fieldRequired = (field: FieldConfig | undefined) => Boolean(field?.required)
+const fieldReadOnly = (field: FieldConfig | undefined) => Boolean(field?.readOnly)
 
 // Methods
 const updateField = (key: string, value: any) => {
@@ -416,24 +422,41 @@ const loadSelectorOptions = (fieldKey: string, field: FieldConfig) => {
   formFieldsComposable.loadSelectorOptions(fieldKey, field)
 }
 
-const updateDateField = (key: string, date: Date | null) => {
-  if (date) {
-    const formattedDate = date.toISOString().split('T')[0]
-    updateField(key, formattedDate)
+/** Normalize stored value for datetime-local or time input. */
+const normalizeDateTimeOrTimeForInput = (value: any, fieldType: string): string => {
+  if (value == null || value === '') return ''
+  const str = String(value).trim()
+  if (fieldType === 'time') {
+    if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(str)) return str
+    const d = new Date(`1970-01-01T${str}`)
+    if (!isNaN(d.getTime())) return d.toTimeString().slice(0, 5)
+    return str
+  }
+  // datetime
+  try {
+    const d = new Date(str)
+    if (isNaN(d.getTime())) return str
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  } catch {
+    return str
   }
 }
 
-const openDatePicker = (key: string) => {
-  if (!props.fields[key].readOnly) {
-    datePickerMenus.value[key] = true
+const updateDateTimeOrTimeField = (key: string, value: string, fieldType: string) => {
+  if (value == null || value === '') {
+    updateField(key, undefined)
+    return
   }
+  if (fieldType === 'time') {
+    updateField(key, value)
+    return
+  }
+  updateField(key, value)
 }
 
-// Use composable functions
-const formatDate = formFieldsComposable.formatDate
+// Use composable functions (still used in template)
 const formatFieldName = formFieldsComposable.formatFieldName
-const isTextType = formFieldsComposable.isTextType
-const isNumberType = formFieldsComposable.isNumberType
 const isSelectorType = formFieldsComposable.isSelectorType
 const getInputType = formFieldsComposable.getInputType
 const getFieldCols = formFieldsComposable.getFieldCols
@@ -465,24 +488,6 @@ const handleCancel = () => {
   emit('cancel')
   emit('update:modelValue', false)
 }
-
-// Watchers
-watch(
-  () => props.fields,
-  (newFields) => {
-    // Initialize date picker menus for date fields
-    const dateMenus: Record<string, boolean> = {}
-    if (newFields && typeof newFields === 'object') {
-      Object.entries(newFields).forEach(([key, field]) => {
-        if (field && field.type === 'date') {
-          dateMenus[key] = false
-        }
-      })
-    }
-    datePickerMenus.value = dateMenus
-  },
-  { immediate: true },
-)
 
 // Watch for modal opening to load selector options
 watch(

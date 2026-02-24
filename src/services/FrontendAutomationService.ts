@@ -233,6 +233,16 @@ export function getSectionType(
 }
 
 /**
+ * Returns true if the path is a frontend-automation section (configuration).
+ * Used to avoid prompting "unsaved changes" when navigating between these sections.
+ */
+export function isFrontendAutomationRoute(path: string): boolean {
+  return (
+    path.startsWith('/configuration')
+  )
+}
+
+/**
  * Check if a validation table has data
  */
 export function hasValidationTableData(
@@ -304,6 +314,52 @@ export function getConfigurationBySection(
     default:
       return configurations.masterData
   }
+}
+
+/**
+ * Checks if a table should be shown for the current schema (DAG) the user is viewing.
+ *
+ * - If table has no `schemas` property: Visible in ALL schemas
+ * - If table has empty `schemas` array []: Visible in NO schema (hidden)
+ * - If table has `schemas` with values: Visible only when currentSchema is in that list
+ *
+ * @param tableSchemas - The schemas array from the table configuration (can be undefined)
+ * @param currentSchema - The schema (DAG) the user is currently viewing
+ * @returns true if table should be shown in the current schema context
+ */
+export function isTableVisibleInCurrentSchema(
+  tableSchemas: string[] | undefined,
+  currentSchema: string,
+): boolean {
+  if (tableSchemas === undefined) {
+    return true
+  }
+  if (tableSchemas.length === 0) {
+    return false
+  }
+  return tableSchemas.includes(currentSchema)
+}
+
+/**
+ * Filters a table configuration to only include tables that belong to the current schema.
+ *
+ * @param config - The table schema configuration to filter
+ * @param currentSchema - The schema (DAG) the user is currently viewing
+ * @returns Filtered configuration with only tables valid for the current schema
+ */
+export function filterTablesByCurrentSchema(
+  config: TableSchema,
+  currentSchema: string,
+): TableSchema {
+  if (!config || !currentSchema) return config ?? {}
+
+  const filtered: TableSchema = {}
+  Object.entries(config).forEach(([tableKey, tableConfig]) => {
+    if (isTableVisibleInCurrentSchema(tableConfig.schemas, currentSchema)) {
+      filtered[tableKey] = tableConfig
+    }
+  })
+  return filtered
 }
 
 /**

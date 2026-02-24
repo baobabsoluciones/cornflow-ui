@@ -785,20 +785,16 @@
       :saving="
         isGroupView ? selectedTableData.saving.value : tableData.saving.value
       "
-      :validation-error="null"
-      :rows-data="
-        isGroupView
-          ? aggregatedRowsDataForModal
-          : tableData.rowsDataForModal.value
+      :validation-error="masterTableValidationError"
+      :rows-data="aggregatedRowsDataForModal"
+      :table-headers="aggregatedTableHeadersForModal"
+      :table-data="
+        (isGroupView ? selectedTableData : tableData).tableData.value
       "
-      :table-headers="
-        isGroupView
-          ? aggregatedTableHeadersForModal
-          : tableData.tableHeadersForModal.value
-      "
-      :table-keys-filter="isGroupView ? modifiedTableKeysInGroup : undefined"
+      :table-keys-filter="undefined"
       @save="handleMasterTableSaveAll"
       @close="handleCloseMasterTablePendingModal"
+      @clear-validation-error="masterTableValidationError = null"
       @update:model-value="(v) => (showMasterTablePendingModal = v)"
     />
 
@@ -847,11 +843,12 @@ import PendingChangesReviewModal from '@/components/core/PendingChangesReviewMod
 import { useSectionConfiguration } from '@/composables/section-view/useSectionConfiguration'
 import { useGroupTables } from '@/composables/section-view/useGroupTables'
 import { useSectionDisplay } from '@/composables/section-view/useSectionDisplay'
-import { useTableData } from '@/composables/section-view/useTableData'
+import { useTableData, invalidateTableDataCache } from '@/composables/section-view/useTableData'
 import { useTableChanges } from '@/composables/useTableChanges'
 import { useGeneralStore } from '@/stores/general'
 import { generateAutoDashboard } from '@/services/AutoDashboardService'
 import type { DashboardWidget } from '@/services/AutoDashboardService'
+import { isFrontendAutomationRoute } from '@/services/FrontendAutomationService'
 import AutoKPICard from '@/components/dashboard/AutoKPICard.vue'
 import AutoLineChart from '@/components/dashboard/AutoLineChart.vue'
 import AutoBarChart from '@/components/dashboard/AutoBarChart.vue'
@@ -859,6 +856,8 @@ import AutoPieChart from '@/components/dashboard/AutoPieChart.vue'
 import AutoAreaChart from '@/components/dashboard/AutoAreaChart.vue'
 import AutoMapChart from '@/components/dashboard/AutoMapChart.vue'
 import appConfig from '@/app/config'
+import { getLocalizedMessage } from '@/utils/i18nUtils'
+import { parseJoinFrom, resolveDisplayValuesToFkIds } from '@/utils/schemaUtils'
 
 // Composables
 const { sectionType, currentConfiguration } = useSectionConfiguration()
@@ -930,43 +929,33 @@ const modifiedTableKeysInGroup = computed(() => {
   )
 })
 
+/** Pending changes are shared across all sections/groups; show global count. */
 const hasPendingChanges = computed(() => {
   if (!isConfigurationSection.value) return false
-  if (isGroupView.value) {
-    return modifiedTableKeysInGroup.value.length > 0
-  }
-  return tableData.hasPendingChanges.value
+  return tableChanges.hasChanges.value
 })
 
 const pendingChangesCount = computed(() => {
   if (!isConfigurationSection.value) return 0
-  if (isGroupView.value) {
-    return modifiedTableKeysInGroup.value.reduce((sum, storageKey) => {
-      const changes = tableChanges.getChangesForTable(storageKey)
-      let cellCount = 0
-      if (changes) {
-        cellCount = Object.values(changes).reduce(
-          (rowSum, row) => rowSum + Object.keys(row).length,
-          0,
-        )
-      }
-      const createsCount = tableChanges.getPendingCreates(storageKey).length
-      const deletesCount = tableChanges.getPendingDeletes(storageKey).length
-      return sum + cellCount + createsCount + deletesCount
-    }, 0)
-  }
-  return tableData.pendingChangesCount.value
+  return tableChanges.totalChangesCount.value
 })
 
 const showMasterTablePendingModal = ref(false)
+const masterTableValidationError = ref<string | null>(null)
 const showExitConfirmationModal = ref(false)
 const pendingNavigationNext = ref<((abort?: boolean) => void) | null>(null)
 
 const openMasterTablePendingModal = () => {
+  masterTableValidationError.value = null
   showMasterTablePendingModal.value = true
 }
 
-onBeforeRouteLeave((_to, _from, next) => {
+onBeforeRouteLeave((to, _from, next) => {
+  // When staying within frontend automation sections, do not prompt (changes are shared)
+  if (isFrontendAutomationRoute(to.path)) {
+    next()
+    return
+  }
   if (!isConfigurationSection.value || !hasPendingChanges.value) {
     next()
     return
@@ -990,13 +979,123 @@ const handleCancelExit = () => {
   next?.(false)
 }
 
+/** Extract a single string from API error (message can be string or { en, es, ... }). */
+function getErrorMessage(err: any): string {
+  const raw =
+    err?.message ??
+    err?.response?.content?.message ??
+    err?.response?.data?.message
+  if (typeof raw === 'string') return raw
+  if (raw && typeof raw === 'object') return getLocalizedMessage(raw)
+  return t('table.messages.errorSaving')
+}
+
 const handleMasterTableSaveAll = async () => {
-  if (isGroupView.value) {
-    await saveAllGroupMasterTableChanges()
-  } else {
-    await tableData.saveAllChanges()
+  masterTableValidationError.value = null
+  try {
+    await saveAllMasterTableChanges()
+    showMasterTablePendingModal.value = false
+  } catch (err) {
+    masterTableValidationError.value = getErrorMessage(err)
   }
-  showMasterTablePendingModal.value = false
+}
+
+/** Extract referenced table key from a temp id */
+function getTableKeyFromTempId(tempId: string): string | null {
+  if (typeof tempId !== 'string' || !/^create-/.test(tempId)) return null
+  const parts = tempId.split('-')
+  if (parts.length < 3) return null
+  return parts.slice(1, -2).join('-') || null
+}
+
+/** Topological sort: tables that are referenced (via temp ids in creates) come first. */
+function sortKeysByCreateDependency(
+  keys: string[],
+  getCreates: (key: string) => Array<{ data: Record<string, any> }>,
+): string[] {
+  const keySet = new Set(keys)
+  const deps = new Map<string, Set<string>>()
+  keys.forEach((k) => deps.set(k, new Set()))
+  keys.forEach((storageKey) => {
+    const creates = getCreates(storageKey) || []
+    creates.forEach(({ data }) => {
+      Object.values(data || {}).forEach((val) => {
+        const ref = getTableKeyFromTempId(String(val))
+        if (ref && ref !== storageKey && keySet.has(ref)) {
+          deps.get(storageKey)!.add(ref)
+        }
+      })
+    })
+  })
+  const result: string[] = []
+  const added = new Set<string>()
+  while (result.length < keys.length) {
+    let picked: string | null = null
+    for (const k of keys) {
+      if (added.has(k)) continue
+      const depSet = deps.get(k)!
+      const allDepAdded = [...depSet].every((d) => added.has(d))
+      if (allDepAdded) {
+        picked = k
+        break
+      }
+    }
+    if (picked == null) break
+    result.push(picked)
+    added.add(picked)
+  }
+  keys.forEach((k) => {
+    if (!added.has(k)) result.push(k)
+  })
+  return result
+}
+
+/**
+ * Get the FK field name in this table that references the given table.
+ */
+function getFkFieldNameForReferencedTable(
+  tableConfig: any,
+  referencedTableKey: string,
+): string | null {
+  const props = tableConfig?.get_list?.response_schema?.items?.properties
+  if (!props) return null
+  const refNorm = referencedTableKey.toLowerCase().replace(/-/g, '_')
+  for (const [fkField, prop] of Object.entries(props)) {
+    const p = prop as any
+    if (!p?.columnsToJoin || !Array.isArray(p.columnsToJoin)) continue
+    for (const depKey of p.columnsToJoin) {
+      const dep = props[depKey] as any
+      const joinFrom = dep?.joinFrom
+      if (!joinFrom) continue
+      const joinInfo = parseJoinFrom(joinFrom)
+      if (!joinInfo) continue
+      const tableNorm = joinInfo.table.toLowerCase().replace(/-/g, '_')
+      if (tableNorm === refNorm) return fkField
+    }
+  }
+  return null
+}
+
+/** Replace any temp id in payload with the real id; use correct FK field name. */
+function resolveTempIdsInPayload(
+  payload: Record<string, any>,
+  tempIdToRealId: Record<string, string | number>,
+  tableConfig: any,
+): Record<string, any> {
+  const out = { ...payload }
+  for (const key of Object.keys(out)) {
+    const val = out[key]
+    if (typeof val !== 'string' || !/^create-/.test(val) || !(val in tempIdToRealId)) continue
+    const realId = tempIdToRealId[val]
+    const refTable = getTableKeyFromTempId(val)
+    const fkFieldName = refTable && tableConfig ? getFkFieldNameForReferencedTable(tableConfig, refTable) : null
+    const targetKey = fkFieldName || key
+    if (targetKey !== key) {
+      delete out[key]
+    }
+    out[targetKey] = realId
+  }
+  return out
 }
 
 /** Save pending changes for all modified tables in the current group (deletes → creates → edits). */
@@ -1007,9 +1106,21 @@ const saveAllGroupMasterTableChanges = async () => {
   const { default: TableRepository } = await import(
     '@/repositories/TableRepository'
   )
-  const { t } = useI18n()
 
-  for (const storageKey of keys) {
+  /** Load referenced table data by table name for resolving display values to FK ids. */
+  const loadTableDataForGroup = async (tableName: string): Promise<any[]> => {
+    const refConfig = currentConfiguration.value?.[tableName]
+    if (!refConfig?.get_list) return []
+    const refRepo = new TableRepository(refConfig, t)
+    const data = await refRepo.getList()
+    return Array.isArray(data) ? data : []
+  }
+
+  const getCreates = (storageKey: string) => tableChanges.getPendingCreates(storageKey)
+  const orderedKeys = sortKeysByCreateDependency(keys, getCreates)
+  const tempIdToRealId: Record<string, string | number> = {}
+
+  for (const storageKey of orderedKeys) {
     const configKey = Object.keys(groupTables.value).find(
       (gk) => normalizeTableKey(gk) === storageKey,
     )
@@ -1027,17 +1138,25 @@ const saveAllGroupMasterTableChanges = async () => {
       tableChanges.clearDeletesForTable(storageKey)
     }
 
-    // 2. Apply pending creates (no API until now)
+    // 2. Apply pending creates: resolve FKs (temp id → real id), resolve display values to FK ids, then POST
     const creates = tableChanges.getPendingCreates(storageKey)
     if (config?.post_item && creates.length > 0) {
-      for (const { data } of creates) {
-        const { id: _id, ...payload } = data
-        await repository.createItem(payload)
+      for (const { tempId, data } of creates) {
+        const { id: _id, ...rawPayload } = data
+        const payloadWithTempIds = resolveTempIdsInPayload(rawPayload, tempIdToRealId, config)
+        const payload = await resolveDisplayValuesToFkIds(
+          payloadWithTempIds,
+          config,
+          loadTableDataForGroup,
+        )
+        const result = await repository.createItem(payload)
+        const realId = result?.id ?? result?.pk
+        if (realId != null) tempIdToRealId[tempId] = realId
       }
       tableChanges.clearCreatesForTable(storageKey)
     }
 
-    // 3. Apply cell edits (put)
+    // 3. Apply cell edits (put): resolve display values to FK ids so API receives id_values.
     const changes = tableChanges.getChangesForTable(storageKey)
     if (config?.put_item && changes) {
       const items = await repository.getList()
@@ -1050,7 +1169,16 @@ const saveAllGroupMasterTableChanges = async () => {
             merged[fieldKey] = change.newValue
           },
         )
-        const preparedData = { ...merged }
+        const withTempIds = resolveTempIdsInPayload(
+          { ...merged } as Record<string, any>,
+          tempIdToRealId,
+          config,
+        )
+        const preparedData = await resolveDisplayValuesToFkIds(
+          withTempIds,
+          config,
+          loadTableDataForGroup,
+        )
         delete preparedData.id
         await repository.putItem(rowId, preparedData)
       }
@@ -1058,8 +1186,113 @@ const saveAllGroupMasterTableChanges = async () => {
     }
   }
 
-  // Refresh current tab data so staged creates/deletes are reflected
-  await selectedTableData.loadTableData()
+  // Invalidate cache for each saved table so selectors in other sections see new rows
+  for (const storageKey of orderedKeys) {
+    invalidateTableDataCache(storageKey)
+  }
+
+  // Refresh current tab data so the new record appears in the table
+  await selectedTableData.loadData()
+}
+
+/** Get table config by storage key from current (master) configuration. */
+function getConfigByStorageKey(storageKey: string): any {
+  const config = currentConfiguration.value
+  if (!config || typeof config !== 'object') return null
+  const key = Object.keys(config).find((k) => normalizeTableKey(k) === storageKey)
+  return key ? config[key] : null
+}
+
+/** Save pending changes for ALL modified tables (across sections/groups). */
+const saveAllMasterTableChanges = async () => {
+  const keys = tableChanges.modifiedTableKeys.value
+  if (keys.length === 0) return
+
+  const { default: TableRepository } = await import(
+    '@/repositories/TableRepository'
+  )
+
+  const getCreates = (storageKey: string) =>
+    tableChanges.getPendingCreates(storageKey)
+  const orderedKeys = sortKeysByCreateDependency(keys, getCreates)
+  const tempIdToRealId: Record<string, string | number> = {}
+
+  for (const storageKey of orderedKeys) {
+    const config = getConfigByStorageKey(storageKey)
+    if (!config) continue
+
+    const repository = new TableRepository(config, t)
+    const loadTableDataForSave = (tableName: string) =>
+      tableData.loadTableData(tableName)
+
+    // 1. Pending deletes
+    const deletes = tableChanges.getPendingDeletes(storageKey)
+    if (config?.delete_item && deletes.length > 0) {
+      for (const rowId of deletes) {
+        await repository.deleteItem(rowId)
+      }
+      tableChanges.clearDeletesForTable(storageKey)
+    }
+
+    // 2. Pending creates
+    const creates = tableChanges.getPendingCreates(storageKey)
+    if (config?.post_item && creates.length > 0) {
+      for (const { tempId, data } of creates) {
+        const { id: _id, ...rawPayload } = data
+        const payloadWithTempIds = resolveTempIdsInPayload(
+          rawPayload,
+          tempIdToRealId,
+          config,
+        )
+        const payload = await resolveDisplayValuesToFkIds(
+          payloadWithTempIds,
+          config,
+          loadTableDataForSave,
+        )
+        const result = await repository.createItem(payload)
+        const realId = result?.id ?? result?.pk
+        if (realId != null) tempIdToRealId[tempId] = realId
+      }
+      tableChanges.clearCreatesForTable(storageKey)
+    }
+
+    // 3. Cell edits
+    const changes = tableChanges.getChangesForTable(storageKey)
+    if (config?.put_item && changes) {
+      const items = await repository.getList()
+      for (const [rowId, rowChanges] of Object.entries(changes)) {
+        const row = items.find((i: any) => String(i.id) === rowId)
+        if (!row) continue
+        const merged = { ...row }
+        Object.entries(rowChanges).forEach(
+          ([fieldKey, change]: [string, any]) => {
+            merged[fieldKey] = change.newValue
+          },
+        )
+        const withTempIds = resolveTempIdsInPayload(
+          { ...merged } as Record<string, any>,
+          tempIdToRealId,
+          config,
+        )
+        const preparedData = await resolveDisplayValuesToFkIds(
+          withTempIds,
+          config,
+          loadTableDataForSave,
+        )
+        delete preparedData.id
+        await repository.putItem(rowId, preparedData)
+      }
+      tableChanges.revertTableChanges(storageKey)
+    }
+
+    invalidateTableDataCache(storageKey)
+  }
+
+  if (isGroupView.value) {
+    await selectedTableData.loadData()
+  } else {
+    await tableData.loadData()
+  }
 }
 
 const handleCloseMasterTablePendingModal = () => {
@@ -1111,40 +1344,50 @@ watch(
   { deep: true },
 )
 
-/** Aggregated rowsData and tableHeaders for the review modal (all modified tables in group). */
+/** Aggregated rowsData and tableHeaders for the review modal (all modified tables, across sections). */
 const aggregatedRowsDataForModal = computed(() => {
-  if (!isGroupView.value) return tableData.rowsDataForModal.value
-  const currentKey = selectedTable.value
-    ? normalizeTableKey(selectedTable.value)
-    : ''
+  const allKeys = tableChanges.modifiedTableKeys.value
   const result: Record<string, Record<string, any>> = {}
-  for (const key of modifiedTableKeysInGroup.value) {
-    const cached = groupModalDataCache.value[key]?.rowsData?.[key]
-    const current =
-      key === currentKey
-        ? selectedTableData.rowsDataForModal.value[key]
-        : undefined
-    result[key] = cached ?? current ?? {}
+  const currentKey = isGroupView.value && selectedTable.value
+    ? normalizeTableKey(selectedTable.value)
+    : effectiveTableKey.value
+      ? normalizeTableKey(effectiveTableKey.value)
+      : ''
+  for (const key of allKeys) {
+    if (isGroupView.value) {
+      const cached = groupModalDataCache.value[key]?.rowsData?.[key]
+      const current =
+        key === currentKey ? selectedTableData.rowsDataForModal.value[key] : undefined
+      result[key] = cached ?? current ?? {}
+    } else {
+      result[key] =
+        key === currentKey ? tableData.rowsDataForModal.value[key] ?? {} : {}
+    }
   }
   return result
 })
 
 const aggregatedTableHeadersForModal = computed(() => {
-  if (!isGroupView.value) return tableData.tableHeadersForModal.value
-  const currentKey = selectedTable.value
-    ? normalizeTableKey(selectedTable.value)
-    : ''
+  const allKeys = tableChanges.modifiedTableKeys.value
   const result: Record<
     string,
     Array<{ key: string; title: string; type?: string }>
   > = {}
-  for (const key of modifiedTableKeysInGroup.value) {
-    const cached = groupModalDataCache.value[key]?.tableHeaders?.[key]
-    const current =
-      key === currentKey
-        ? selectedTableData.tableHeadersForModal.value[key]
-        : undefined
-    result[key] = cached ?? current ?? []
+  const currentKey = isGroupView.value && selectedTable.value
+    ? normalizeTableKey(selectedTable.value)
+    : effectiveTableKey.value
+      ? normalizeTableKey(effectiveTableKey.value)
+      : ''
+  for (const key of allKeys) {
+    if (isGroupView.value) {
+      const cached = groupModalDataCache.value[key]?.tableHeaders?.[key]
+      const current =
+        key === currentKey ? selectedTableData.tableHeadersForModal.value[key] : undefined
+      result[key] = cached ?? current ?? []
+    } else {
+      result[key] =
+        key === currentKey ? (tableData.tableHeadersForModal.value[key] ?? []) : []
+    }
   }
   return result
 })

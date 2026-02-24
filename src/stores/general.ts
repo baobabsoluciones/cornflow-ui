@@ -30,7 +30,10 @@ import {
   resolveDefaultGroupName,
   getExecutionConfigFromSchemaConfig,
 } from '@/utils/schemaUtils'
-import { filterTablesByUserSchemas } from '@/services/FrontendAutomationService'
+import {
+  filterTablesByUserSchemas,
+  filterTablesByCurrentSchema,
+} from '@/services/FrontendAutomationService'
 
 export const useGeneralStore = defineStore('general', {
   state: () => ({
@@ -390,11 +393,15 @@ export const useGeneralStore = defineStore('general', {
         this.rawConfigurations.resultsData,
       )
 
-      // Apply user schema filtering to masterData (frontend-automation tables)
-      // Note: inputData and resultsData are from the schema and typically don't need filtering
-      // but we filter masterData which comes from the frontend-automation endpoint
+      // Apply current-schema and user-schema filtering to masterData (frontend-automation tables).
+      // Then apply user permission filter (user's allowed schemas).
+      const currentSchema = this.getSchemaName
+      const masterDataForSchema = filterTablesByCurrentSchema(
+        localizedMasterData,
+        currentSchema,
+      )
       this.configurations = {
-        masterData: filterTablesByUserSchemas(localizedMasterData, userSchemas),
+        masterData: filterTablesByUserSchemas(masterDataForSchema, userSchemas),
         inputData: localizedInputData,
         resultsData: localizedResultsData,
       }

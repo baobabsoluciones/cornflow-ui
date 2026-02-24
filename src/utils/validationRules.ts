@@ -284,6 +284,11 @@ export function getFieldValidationRules(
       validationRules.push(rules.date())
       break
 
+    case 'datetime':
+    case 'time':
+      validationRules.push(rules.date())
+      break
+
     case 'string':
       if (field.minLength !== undefined) {
         validationRules.push(rules.minLength(field.minLength))

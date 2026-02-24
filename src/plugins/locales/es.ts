@@ -839,6 +839,7 @@ export default {
     reviewChanges: 'Revisar cambios',
     changesIndicator: '{count} cambios pendientes',
     changeStaged: 'Cambio añadido a pendientes. Se aplicará al guardar.',
+    createReverted: 'Nueva fila eliminada. No hay cambios que guardar.',
     newRow: 'Nueva fila',
     deletedRow: 'Fila eliminada',
     saveErrorNoInstanceData:

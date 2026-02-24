@@ -7,6 +7,36 @@ export interface TransformOpenApiResult {
   sections: Array<{ id: string; title: Record<string, string> | string; icon?: string }>
 }
 
+// ─── Shared helpers ──────────────────────────────────────────────────────────
+
+const FORMAT_TO_TYPE: Record<string, string> = {
+  'date': 'date',
+  'date-time': 'datetime',
+  'time': 'time',
+}
+
+function hasValidChoices(prop: any): boolean {
+  return Array.isArray(prop?.choices) && prop.choices.length > 0
+}
+
+/**
+ * Generic lookup: find the field whose `columnsProp` array includes `fieldKey`.
+ * Works with both raw OpenAPI props (`columns_to_join`) and converted props (`columnsToJoin`).
+ */
+function findFieldWithColumnsRef(
+  fieldKey: string,
+  properties: Record<string, any>,
+  columnsProp: 'columns_to_join' | 'columnsToJoin',
+): string | null {
+  for (const [key, prop] of Object.entries(properties)) {
+    const columns = (prop as any)?.[columnsProp]
+    if (Array.isArray(columns) && columns.includes(fieldKey)) return key
+  }
+  return null
+}
+
+// ─── Main transform ──────────────────────────────────────────────────────────
+
 // Transform OpenAPI schema to our internal table configuration format
 export function transformOpenApiToTableConfig(
   openApiSchema: any,
@@ -15,12 +45,10 @@ export function transformOpenApiToTableConfig(
   const { available_automations, definitions } = openApiSchema
   const result: any = {}
 
-  // Handle new schema structure with tables, groups, and sections
   const tables = available_automations.tables || available_automations
   const groups = available_automations.groups || {}
   const sectionsSource = available_automations.sections || {}
 
-  // Build sections array in stable order (object key order)
   const sections: Array<{ id: string; title: Record<string, string> | string; icon?: string }> =
     Object.entries(sectionsSource).map(([id, sectionInfo]: [string, any]) => ({
       id,
@@ -28,34 +56,25 @@ export function transformOpenApiToTableConfig(
       icon: sectionInfo?.icon,
     }))
 
-  // Process each table from available_automations.tables
   Object.entries(tables).forEach(([tableKey, tableInfo]: [string, any]) => {
-    // Get group information from groups section if it exists
     const groupKey = tableInfo.group
     const groupInfo = groupKey ? groups[groupKey] : null
 
-    // Section: table override, then group section, then null
     const sectionId =
       tableInfo.section !== undefined && tableInfo.section !== null
         ? tableInfo.section
         : groupInfo?.section ?? null
 
-    // Determine the icon - use table icon first, then group icon, then default
-    let icon = tableInfo.icon
-    if (!icon && groupInfo?.icon) {
-      icon = groupInfo.icon
-    }
+    const icon = tableInfo.icon || groupInfo?.icon
 
     result[tableKey] = {
       group: groupInfo
         ? resolveTitleWithLocale(groupInfo.title, locale, tableInfo.group)
         : tableInfo.group,
       title: resolveTitleWithLocale(tableInfo.title, locale, tableInfo.title),
-      icon: icon, // Include icon from table or group configuration
+      icon,
       ...(sectionId !== null && { section: sectionId }),
-      // Schema access control - preserve schemas property for user access filtering
       ...(tableInfo.schemas !== undefined && { schemas: tableInfo.schemas }),
-      // Keep original multilingual data for dynamic resolution
       _originalGroup: groupInfo ? groupInfo.title : tableInfo.group,
       _originalTitle: tableInfo.title,
       ...(sectionId !== null && {
@@ -63,42 +82,24 @@ export function transformOpenApiToTableConfig(
       }),
     }
 
-    // Process each operation
-    // Define non-operation keys that should be skipped
     const nonOperationKeys = [
-      'group',
-      'title',
-      'icon',
-      'section',
-      'schemas',
-      '_originalGroup',
-      '_originalTitle',
-      '_originalSection',
+      'group', 'title', 'icon', 'section', 'schemas',
+      '_originalGroup', '_originalTitle', '_originalSection',
     ]
-    
+
     Object.entries(tableInfo).forEach(
       ([operationKey, operationInfo]: [string, any]) => {
-        // Skip non-operation keys
         if (nonOperationKeys.includes(operationKey)) return
-        
-        // Skip if operationInfo is not a valid operation object
         if (!operationInfo || typeof operationInfo !== 'object' || !operationInfo.url) return
 
-        // Convert operation info to our format
         result[tableKey][operationKey] = {
           url: operationInfo.url,
           http_method: operationInfo.http_method,
           request_schema: getRequestSchemaFromDefinitions(
-            operationKey,
-            definitions,
-            tableKey,
-            locale,
+            operationKey, definitions, tableKey, locale,
           ),
           response_schema: getResponseSchemaFromDefinitions(
-            operationKey,
-            tableKey,
-            definitions,
-            locale,
+            operationKey, tableKey, definitions, locale,
           ),
         }
       },
@@ -108,73 +109,45 @@ export function transformOpenApiToTableConfig(
   return { config: result, sections }
 }
 
-// Get request schema based on operation type and definitions
+// ─── Schema from definitions ─────────────────────────────────────────────────
+
 export function getRequestSchemaFromDefinitions(
   operationKey: string,
   definitions: any,
   tableKey?: string,
   locale: string = 'en',
 ): any {
-  if (
-    operationKey === 'get_list' ||
-    operationKey === 'get_item' ||
-    operationKey === 'delete_item'
-  ) {
-    return null // These operations don't have request bodies
-  }
+  const readOnlyOps = ['get_list', 'get_item', 'delete_item']
+  if (readOnlyOps.includes(operationKey)) return null
 
-  // Find the correct definition for this table
   const definitionKey = tableKey
     ? findDefinitionKeyForTable(tableKey, definitions)
     : Object.keys(definitions)[0]
 
-  if (!definitionKey || !definitions[definitionKey]) {
-    return null
-  }
+  if (!definitionKey || !definitions[definitionKey]) return null
 
-  const definition = definitions[definitionKey]
-
-  if (operationKey === 'post_bulk') {
-    return {
-      type: 'array',
-      items: convertDefinitionToSchema(definition, locale),
-    }
-  }
-
-  return convertDefinitionToSchema(definition, locale)
+  const schema = convertDefinitionToSchema(definitions[definitionKey], locale)
+  return operationKey === 'post_bulk' ? { type: 'array', items: schema } : schema
 }
 
-// Get response schema based on operation type and definitions
 export function getResponseSchemaFromDefinitions(
   operationKey: string,
   tableKey: string,
   definitions: any,
   locale: string = 'en',
 ): any {
-  // Find the correct definition for this table
   const definitionKey = findDefinitionKeyForTable(tableKey, definitions)
-  if (!definitionKey || !definitions[definitionKey]) {
-    return null
-  }
+  if (!definitionKey || !definitions[definitionKey]) return null
 
-  const definition = definitions[definitionKey]
+  const schema = convertDefinitionToSchema(definitions[definitionKey], locale)
 
-  if (operationKey === 'get_list') {
-    return {
-      type: 'array',
-      items: convertDefinitionToSchema(definition, locale),
-    }
-  }
-
-  if (operationKey === 'get_item') {
-    return convertDefinitionToSchema(definition, locale)
-  }
-
-  // Other operations typically don't return data
+  if (operationKey === 'get_list') return { type: 'array', items: schema }
+  if (operationKey === 'get_item') return schema
   return null
 }
 
-// Helper function to convert snake_case or kebab-case to PascalCase
+// ─── Definition key resolution ───────────────────────────────────────────────
+
 function toPascalCase(str: string): string {
   return str
     .split(/[-_]/)
@@ -182,117 +155,114 @@ function toPascalCase(str: string): string {
     .join('')
 }
 
-// Helper function to normalize a string for comparison (remove underscores, hyphens, lowercase)
 function normalizeForComparison(str: string): string {
   return str.replace(/[-_]/g, '').toLowerCase()
 }
 
-// Helper function to find the correct definition key for a table
 function findDefinitionKeyForTable(
   tableKey: string,
   definitions: any,
 ): string | null {
-  const definitionKeys = Object.keys(definitions)
-  
-  // Filter out BulkDelete definitions - they are not table schemas
-  const tableDefinitions = definitionKeys.filter(
-    (key) => !key.endsWith('BulkDelete')
+  const tableDefinitions = Object.keys(definitions).filter(
+    (key) => !key.endsWith('BulkDelete'),
   )
 
-  // Try exact match first (case sensitive)
-  if (definitions[tableKey] && !tableKey.endsWith('BulkDelete')) return tableKey
+  const tryMatch = (candidate: string): string | null =>
+    candidate && definitions[candidate] && !candidate.endsWith('BulkDelete')
+      ? candidate
+      : null
 
-  // Try case-insensitive exact match
-  const exactMatch = tableDefinitions.find(
+  // Exact match
+  const exact = tryMatch(tableKey)
+  if (exact) return exact
+
+  // Case-insensitive exact match
+  const ciMatch = tableDefinitions.find(
     (key) => key.toLowerCase() === tableKey.toLowerCase(),
   )
-  if (exactMatch) return exactMatch
+  if (ciMatch) return ciMatch
 
-  // Try PascalCase conversion (e.g., e_criterios_bondad -> ECriteriosBondad)
-  const pascalCaseKey = toPascalCase(tableKey)
-  if (definitions[pascalCaseKey] && !pascalCaseKey.endsWith('BulkDelete')) {
-    return pascalCaseKey
-  }
+  // PascalCase conversion
+  const pascalKey = toPascalCase(tableKey)
+  const pascal = tryMatch(pascalKey)
+  if (pascal) return pascal
 
-  // Try normalized comparison (remove underscores/hyphens and compare lowercase)
-  // This handles cases like: e_criterios_bondad vs ECriteriosBondad
+  // Normalized comparison (remove separators, lowercase)
   const normalizedTableKey = normalizeForComparison(tableKey)
   const normalizedMatch = tableDefinitions.find(
     (key) => normalizeForComparison(key) === normalizedTableKey,
   )
   if (normalizedMatch) return normalizedMatch
 
-  // Try capitalized version (simple first letter capitalization)
+  // Simple capitalization
   const capitalizedKey = tableKey.charAt(0).toUpperCase() + tableKey.slice(1)
-  if (definitions[capitalizedKey] && !capitalizedKey.endsWith('BulkDelete')) {
-    return capitalizedKey
-  }
+  const capitalized = tryMatch(capitalizedKey)
+  if (capitalized) return capitalized
 
-  // Try plural forms
+  // Plural forms
   const pluralForms = [
-    pascalCaseKey + 's',
+    pascalKey + 's',
     capitalizedKey + 's',
-    pascalCaseKey.slice(0, -1), // Remove 's' if ends with 's'
+    pascalKey.slice(0, -1),
     capitalizedKey.slice(0, -1),
   ]
-
   for (const form of pluralForms) {
-    if (definitions[form] && !form.endsWith('BulkDelete')) return form
+    const match = tryMatch(form)
+    if (match) return match
   }
 
-  // Do NOT fallback to first available definition - return null if no match found
-  // This prevents incorrect schema associations
   console.warn(`[schemaUtils] Could not find definition for table: ${tableKey}`)
   return null
 }
 
-// Convert OpenAPI definition to our schema format
+// ─── Definition → schema conversion ─────────────────────────────────────────
+
+function resolveFieldType(prop: any): { type: string; format?: string } {
+  if (prop.type === 'string' && prop.format && FORMAT_TO_TYPE[prop.format]) {
+    return { type: FORMAT_TO_TYPE[prop.format], format: prop.format }
+  }
+  return { type: prop.type }
+}
+
 export function convertDefinitionToSchema(
   definition: any,
   locale: string = 'en',
 ): any {
+  const requiredSet = new Set(
+    Array.isArray(definition.required) ? definition.required : [],
+  )
   const properties: any = {}
 
   Object.entries(definition.properties).forEach(
     ([key, prop]: [string, any]) => {
-      // Check if this field has columns_to_join (foreign key field)
       const hasColumnsToJoin =
         prop.columns_to_join && Array.isArray(prop.columns_to_join)
-
-      // Check if this field has join_from (dependent field)
       const hasJoinFrom = prop.join_from && typeof prop.join_from === 'string'
-
-      // Check if this dependent field should be the main selector
       const isMainSelector =
         hasJoinFrom && isMainSelectorField(key, prop, definition.properties)
 
+      const { type, format } = resolveFieldType(prop)
+
       properties[key] = {
         title: resolveTitleWithLocale(prop.title, locale, formatTitle(key)),
-        type: prop.type,
+        type,
+        ...(format && { format }),
         ...(prop.readOnly && { readOnly: prop.readOnly }),
-        // Choices property for select fields (use choices if available, ignore enum completely)
-        ...(prop.choices &&
-          Array.isArray(prop.choices) &&
-          prop.choices.length > 0 && {
-            choices: prop.choices,
-          }),
-        // Foreign key specific properties
+        required: requiredSet.has(key),
+        ...(hasValidChoices(prop) && { choices: prop.choices }),
         ...(hasColumnsToJoin && {
           columnsToJoin: prop.columns_to_join,
           isForeignKey: true,
-          hidden: true, // Hide foreign key fields from UI
+          hidden: true,
         }),
-        // Dependent field specific properties
         ...(hasJoinFrom && {
           joinFrom: prop.join_from,
           isDependentField: true,
-          isMainSelector: isMainSelector,
+          isMainSelector,
           foreignKeyField: findForeignKeyFieldForDependent(
-            key,
-            definition.properties,
+            key, definition.properties,
           ),
         }),
-        // Keep original multilingual data
         _originalTitle: prop.title,
       }
     },
@@ -305,75 +275,69 @@ export function convertDefinitionToSchema(
     additionalProperties: false,
     title: resolveTitleWithLocale(definition.title, locale, definition.title),
     description: resolveTitleWithLocale(
-      definition.description,
-      locale,
-      definition.description,
+      definition.description, locale, definition.description,
     ),
-    // Keep original multilingual data
     _originalTitle: definition.title,
     _originalDescription: definition.description,
   }
 }
 
-// Helper function to find the foreign key field for a dependent field
+// ─── Foreign key / dependent field helpers ────────────────────────────────────
+
+/**
+ * Find the FK field that includes `dependentFieldKey` in its `columns_to_join`
+ * (raw OpenAPI format, used during schema conversion).
+ */
 function findForeignKeyFieldForDependent(
   dependentFieldKey: string,
   properties: any,
 ): string | null {
-  // Look for a field that has this dependent field in its columns_to_join array
-  for (const [key, prop] of Object.entries(properties)) {
-    const propWithColumns = prop as any
-    if (
-      propWithColumns.columns_to_join &&
-      Array.isArray(propWithColumns.columns_to_join)
-    ) {
-      if (propWithColumns.columns_to_join.includes(dependentFieldKey)) {
-        return key
-      }
-    }
-  }
-  return null
+  return findFieldWithColumnsRef(dependentFieldKey, properties, 'columns_to_join')
 }
 
-// Helper function to determine if a dependent field should be the main selector
 function isMainSelectorField(
   fieldKey: string,
-  fieldProp: any,
+  _fieldProp: any,
   properties: any,
 ): boolean {
-  // Find the foreign key field that references this dependent field
   const foreignKeyField = findForeignKeyFieldForDependent(fieldKey, properties)
   if (!foreignKeyField) return false
 
   const foreignKeyProp = properties[foreignKeyField] as any
-  if (
-    !foreignKeyProp.columns_to_join ||
-    !Array.isArray(foreignKeyProp.columns_to_join)
-  ) {
+  const columnsToJoin = foreignKeyProp?.columns_to_join
+  if (!Array.isArray(columnsToJoin) || !columnsToJoin.includes(fieldKey)) {
     return false
   }
 
-  const columnsToJoin = foreignKeyProp.columns_to_join
-
-  // If this field is not in columns_to_join, it's not a selector
-  if (!columnsToJoin.includes(fieldKey)) return false
-
-  // Find the first non-readOnly field in columns_to_join
   for (const columnKey of columnsToJoin) {
     const columnProp = properties[columnKey]
     if (!columnProp) continue
-
-    // If we find a non-readOnly field, it should be the selector
-    if (!columnProp.readOnly) {
-      return columnKey === fieldKey
-    }
+    if (!columnProp.readOnly) return columnKey === fieldKey
   }
 
-  // If all fields are readOnly, the first one is the selector
   return columnsToJoin[0] === fieldKey
 }
 
-// Format property key to readable title
+// ─── Public FK helpers (converted camelCase schema) ──────────────────────────
+
+export function getForeignKeyFieldName(
+  dependentFieldKey: string,
+  schema: any,
+): string | null {
+  if (!schema?.properties) return null
+  return findFieldWithColumnsRef(dependentFieldKey, schema.properties, 'columnsToJoin')
+}
+
+export function getDependentFields(
+  foreignKeyField: string,
+  schema: any,
+): string[] {
+  if (!schema?.properties) return []
+  return (schema.properties[foreignKeyField] as any)?.columnsToJoin || []
+}
+
+// ─── Formatting helpers ──────────────────────────────────────────────────────
+
 export function formatTitle(key: string): string {
   return key
     .split('_')
@@ -381,31 +345,28 @@ export function formatTitle(key: string): string {
     .join(' ')
 }
 
-/**
- * Resolve default group name using i18n translations
- * @param groupKey - The group key ('input-tables' or 'output-tables')
- * @param locale - The current locale
- * @returns Resolved group name
- */
 export function resolveDefaultGroupName(
   groupKey: string,
-  locale: string = 'en',
+  _locale: string = 'en',
 ): string {
-  // This will be resolved by the store using i18n
-  if (groupKey === 'input-tables') {
-    return `table.groups.inputTables`
-  } else if (groupKey === 'output-tables') {
-    return `table.groups.outputTables`
-  }
+  if (groupKey === 'input-tables') return 'table.groups.inputTables'
+  if (groupKey === 'output-tables') return 'table.groups.outputTables'
   return groupKey
 }
 
-/**
- * Resolves table configuration titles dynamically based on current locale
- * @param tableConfig - The table configuration object
- * @param locale - The target locale
- * @returns Updated table configuration with resolved titles
- */
+// ─── Parse join_from ─────────────────────────────────────────────────────────
+
+export function parseJoinFrom(
+  joinFrom: string,
+): { table: string; field: string } | null {
+  if (!joinFrom || typeof joinFrom !== 'string') return null
+  const parts = joinFrom.split('.')
+  if (parts.length !== 2) return null
+  return { table: parts[0], field: parts[1] }
+}
+
+// ─── Locale resolution for table config ──────────────────────────────────────
+
 export function resolveTableConfigTitles(
   tableConfig: any,
   locale: string,
@@ -414,95 +375,52 @@ export function resolveTableConfigTitles(
 
   const resolved = { ...tableConfig }
 
-  // Resolve table-level titles
   Object.keys(resolved).forEach((tableKey) => {
     const table = resolved[tableKey]
-    if (table) {
-      // Resolve table title and group
-      if (table._originalTitle) {
-        table.title = resolveTitleWithLocale(
-          table._originalTitle,
-          locale,
-          table.title,
-        )
-      }
-      if (table._originalGroup) {
-        table.group = resolveTitleWithLocale(
-          table._originalGroup,
-          locale,
-          table.group,
-        )
-      }
+    if (!table) return
 
-      // Resolve schema titles for operations
-      Object.keys(table).forEach((operationKey) => {
-        const operation = table[operationKey]
-        if (operation && typeof operation === 'object') {
-          // Resolve request schema titles
-          if (operation.request_schema) {
-            resolveSchemaObjectTitles(operation.request_schema, locale)
-          }
-          // Resolve response schema titles
-          if (operation.response_schema) {
-            resolveSchemaObjectTitles(operation.response_schema, locale)
-          }
-        }
-      })
+    if (table._originalTitle) {
+      table.title = resolveTitleWithLocale(table._originalTitle, locale, table.title)
     }
+    if (table._originalGroup) {
+      table.group = resolveTitleWithLocale(table._originalGroup, locale, table.group)
+    }
+
+    Object.keys(table).forEach((operationKey) => {
+      const operation = table[operationKey]
+      if (operation && typeof operation === 'object') {
+        if (operation.request_schema) resolveSchemaObjectTitles(operation.request_schema, locale)
+        if (operation.response_schema) resolveSchemaObjectTitles(operation.response_schema, locale)
+      }
+    })
   })
 
   return resolved
 }
 
-/**
- * Recursively resolves titles in schema objects
- * @param schema - The schema object to resolve
- * @param locale - The target locale
- */
 function resolveSchemaObjectTitles(schema: any, locale: string): void {
   if (!schema || typeof schema !== 'object') return
 
-  // Resolve schema title and description
   if (schema._originalTitle) {
-    schema.title = resolveTitleWithLocale(
-      schema._originalTitle,
-      locale,
-      schema.title,
-    )
+    schema.title = resolveTitleWithLocale(schema._originalTitle, locale, schema.title)
   }
   if (schema._originalDescription) {
-    schema.description = resolveTitleWithLocale(
-      schema._originalDescription,
-      locale,
-      schema.description,
-    )
+    schema.description = resolveTitleWithLocale(schema._originalDescription, locale, schema.description)
   }
 
-  // Resolve properties titles
   if (schema.properties) {
-    Object.keys(schema.properties).forEach((propKey) => {
-      const prop = schema.properties[propKey]
-      if (prop && prop._originalTitle) {
-        prop.title = resolveTitleWithLocale(
-          prop._originalTitle,
-          locale,
-          prop.title,
-        )
+    Object.values(schema.properties).forEach((prop: any) => {
+      if (prop?._originalTitle) {
+        prop.title = resolveTitleWithLocale(prop._originalTitle, locale, prop.title)
       }
     })
   }
 
-  // Handle array items
-  if (schema.items) {
-    resolveSchemaObjectTitles(schema.items, locale)
-  }
+  if (schema.items) resolveSchemaObjectTitles(schema.items, locale)
 }
 
-/**
- * Gets available locales from a multilingual title object
- * @param multilingualObject - Object that may contain multilingual titles
- * @returns Array of available locale codes
- */
+// ─── Multilingual helpers ────────────────────────────────────────────────────
+
 export function getAvailableLocales(multilingualObject: any): string[] {
   const locales = new Set<string>()
 
@@ -518,109 +436,75 @@ export function getAvailableLocales(multilingualObject: any): string[] {
   return Array.from(locales).sort((a, b) => a.localeCompare(b))
 }
 
-/**
- * Type guard to check if a title is multilingual
- * @param title - The title to check
- * @returns True if title is a multilingual object
- */
 function isMultilingualTitle(title: any): title is Record<string, string> {
   return title && typeof title === 'object' && !Array.isArray(title)
 }
 
-/**
- * Transform JSON schema (instance/solution) to automation format
- * @param schema - The JSON schema
- * @param checksSchema - The checks schema
- * @param type - The type ('instance' or 'solution')
- * @returns Transformed table configuration in automation format
- */
+// ─── JSON schema → automation format ─────────────────────────────────────────
+
+const DEFAULT_GROUPS: Record<string, Record<string, string>> = {
+  instance: { en: 'Input data', es: 'Datos de entrada', fr: "Tables d'entrée" },
+  solution: { en: 'Solution data', es: 'Datos de la solución', fr: 'Données de la solution' },
+}
+
+const TYPE_TO_GROUP_KEY: Record<string, string> = {
+  instance: 'input-tables',
+  solution: 'output-tables',
+}
+
 export function transformJsonSchemaToAutomationFormat(
   schema: any,
   checksSchema: any,
   type: string,
 ): any {
-  if (!schema || !schema.properties) return {}
+  if (!schema?.properties) return {}
 
   const result: any = {}
+  const defaultGroup = DEFAULT_GROUPS[type] ?? null
 
-  // Determine default group based on type
-  const getDefaultGroup = (type: string) => {
-    if (type === 'instance') {
-      return {
-        en: 'Input data',
-        es: 'Datos de entrada',
-        fr: "Tables d'entrée",
-      }
-    } else if (type === 'solution') {
-      return {
-        en: 'Solution data',
-        es: 'Datos de la solución',
-        fr: 'Données de la solution',
-      }
-    }
-    return null
-  }
-
-  const defaultGroup = getDefaultGroup(type)
-
-  // Process main data tables
   Object.entries(schema.properties).forEach(
     ([tableKey, tableSchema]: [string, any]) => {
-      if (tableSchema.type === 'array' && tableSchema.items) {
-        result[tableKey] = {
-          group: defaultGroup
-            ? type === 'instance'
-              ? 'input-tables'
-              : 'output-tables'
-            : null,
-          title: formatTitle(tableKey),
-          icon: 'mdi-table',
-          _originalTitle: formatTitle(tableKey),
-          _originalGroup: defaultGroup,
-          // Since these are read-only data, we only provide get operations
-          get_list: {
-            url: '', // No actual URL since this is read-only data
-            http_method: 'GET',
-            request_schema: null,
-            response_schema: {
-              type: 'array',
-              items: convertJsonSchemaItemToSchema(tableSchema.items),
-            },
+      if (tableSchema.type !== 'array' || !tableSchema.items) return
+
+      result[tableKey] = {
+        group: defaultGroup ? TYPE_TO_GROUP_KEY[type] || null : null,
+        title: formatTitle(tableKey),
+        icon: 'mdi-table',
+        _originalTitle: formatTitle(tableKey),
+        _originalGroup: defaultGroup,
+        get_list: {
+          url: '',
+          http_method: 'GET',
+          request_schema: null,
+          response_schema: {
+            type: 'array',
+            items: convertJsonSchemaItemToSchema(tableSchema.items),
           },
-        }
+        },
       }
     },
   )
 
-  // Process checks tables if they exist
-  if (checksSchema && checksSchema.properties) {
+  if (checksSchema?.properties) {
     Object.entries(checksSchema.properties).forEach(
       ([checkKey, checkSchema]: [string, any]) => {
-        if (checkSchema.type === 'array' && checkSchema.items) {
-          const itemSchema = convertJsonSchemaItemToSchema(checkSchema.items)
+        if (checkSchema.type !== 'array' || !checkSchema.items) return
 
-          result[checkKey] = {
-            group: 'validations', // All checks go to validations group
-            title: checkSchema.title || formatTitle(checkKey),
-            icon: 'mdi-check-circle-outline',
-            _originalTitle: checkSchema.title || formatTitle(checkKey),
-            _originalGroup: {
-              en: 'Validations',
-              es: 'Validaciones',
-              fr: 'Validations',
-            },
-            // Add primitive array flag to table config
-            isPrimitiveArray: itemSchema.isPrimitiveArray || false,
-            get_list: {
-              url: '',
-              http_method: 'GET',
-              request_schema: null,
-              response_schema: {
-                type: 'array',
-                items: itemSchema,
-              },
-            },
-          }
+        const itemSchema = convertJsonSchemaItemToSchema(checkSchema.items)
+
+        result[checkKey] = {
+          group: 'validations',
+          title: checkSchema.title || formatTitle(checkKey),
+          icon: 'mdi-check-circle-outline',
+          _originalTitle: checkSchema.title || formatTitle(checkKey),
+          _originalGroup: { en: 'Validations', es: 'Validaciones', fr: 'Validations' },
+          isPrimitiveArray: itemSchema.isPrimitiveArray || false,
+          get_list: {
+            url: '',
+            http_method: 'GET',
+            request_schema: null,
+            response_schema: { type: 'array', items: itemSchema },
+          },
         }
       },
     )
@@ -629,96 +513,21 @@ export function transformJsonSchemaToAutomationFormat(
   return result
 }
 
-/**
- * Parse join_from string to extract table and field information
- * @param joinFrom - String in format "table.field"
- * @returns Object with table and field names
- */
-export function parseJoinFrom(
-  joinFrom: string,
-): { table: string; field: string } | null {
-  if (!joinFrom || typeof joinFrom !== 'string') return null
+// ─── JSON schema item conversion ─────────────────────────────────────────────
 
-  const parts = joinFrom.split('.')
-  if (parts.length !== 2) return null
+const PRIMITIVE_TYPES = ['string', 'number', 'integer']
 
-  return {
-    table: parts[0],
-    field: parts[1],
-  }
-}
-
-/**
- * Get foreign key field name from a dependent field configuration
- * @param dependentFieldKey - The dependent field key
- * @param schema - The schema properties
- * @returns Foreign key field name or null
- */
-export function getForeignKeyFieldName(
-  dependentFieldKey: string,
-  schema: any,
-): string | null {
-  if (!schema || !schema.properties) return null
-
-  for (const [key, prop] of Object.entries(schema.properties)) {
-    const propWithColumns = prop as any
-    if (
-      propWithColumns.columnsToJoin &&
-      Array.isArray(propWithColumns.columnsToJoin)
-    ) {
-      if (propWithColumns.columnsToJoin.includes(dependentFieldKey)) {
-        return key
-      }
-    }
-  }
-  return null
-}
-
-/**
- * Get all dependent fields for a foreign key field
- * @param foreignKeyField - The foreign key field name
- * @param schema - The schema properties
- * @returns Array of dependent field names
- */
-export function getDependentFields(
-  foreignKeyField: string,
-  schema: any,
-): string[] {
-  if (!schema || !schema.properties) return []
-
-  const foreignKeyProp = schema.properties[foreignKeyField] as any
-  if (!foreignKeyProp || !foreignKeyProp.columnsToJoin) return []
-
-  return foreignKeyProp.columnsToJoin || []
-}
-
-/**
- * Convert JSON schema item definition to our schema format
- * @param itemSchema - The JSON schema item definition
- * @returns Converted schema
- */
 function convertJsonSchemaItemToSchema(itemSchema: any): any {
-  if (!itemSchema || !itemSchema.properties) {
-    // Check if it's a primitive type (like { type: "string" })
-    if (
-      itemSchema &&
-      (itemSchema.type === 'string' ||
-        itemSchema.type === 'number' ||
-        itemSchema.type === 'integer')
-    ) {
+  if (!itemSchema?.properties) {
+    if (itemSchema && PRIMITIVE_TYPES.includes(itemSchema.type)) {
       return {
         type: itemSchema.type,
-        isPrimitiveArray: true, // Mark as primitive array
+        isPrimitiveArray: true,
         title: itemSchema.title || 'Item',
         _originalTitle: itemSchema.title || 'Item',
       }
     }
-
-    return {
-      type: 'object',
-      properties: {},
-      required: [],
-    }
+    return { type: 'object', properties: {}, required: [] }
   }
 
   const properties: any = {}
@@ -732,12 +541,7 @@ function convertJsonSchemaItemToSchema(itemSchema: any): any {
         ...(prop.description && { description: prop.description }),
         ...(prop.minimum !== undefined && { minimum: prop.minimum }),
         ...(prop.maximum !== undefined && { maximum: prop.maximum }),
-        // Choices property for select fields (use choices if available, ignore enum completely)
-        ...(prop.choices &&
-          Array.isArray(prop.choices) &&
-          prop.choices.length > 0 && {
-            choices: prop.choices,
-          }),
+        ...(hasValidChoices(prop) && { choices: prop.choices }),
         _originalTitle: prop.title || formatTitle(key),
       }
     },
@@ -747,18 +551,64 @@ function convertJsonSchemaItemToSchema(itemSchema: any): any {
     type: 'object',
     properties,
     required: itemSchema.required || [],
-    additionalProperties:
-      itemSchema.additionalProperties !== undefined
-        ? itemSchema.additionalProperties
-        : false,
+    additionalProperties: itemSchema.additionalProperties ?? false,
     title: itemSchema.title || 'Item',
     _originalTitle: itemSchema.title || 'Item',
   }
 }
 
-/**
- * Schema config (JSON Schema) property type to config field type mapping.
- */
+// ─── Display value → FK ID resolution ────────────────────────────────────────
+
+export async function resolveDisplayValuesToFkIds(
+  payload: Record<string, any>,
+  tableConfig: any,
+  loadTableData: (tableName: string) => Promise<any[]>,
+): Promise<Record<string, any>> {
+  const properties = tableConfig?.get_list?.response_schema?.items?.properties
+  if (!properties) return { ...payload }
+
+  const result = { ...payload }
+
+  for (const [fieldKey, prop] of Object.entries(properties)) {
+    const p = prop as any
+    if (!p?.joinFrom || !p?.isDependentField) continue
+
+    const displayValue = result[fieldKey]
+    if (displayValue === undefined || displayValue === null || displayValue === '') continue
+
+    const foreignKeyField = getForeignKeyFieldName(fieldKey, { properties })
+    const joinInfo = foreignKeyField ? parseJoinFrom(p.joinFrom) : null
+
+    if (!foreignKeyField || !joinInfo) {
+      delete result[fieldKey]
+      continue
+    }
+
+    try {
+      const tableRows = await loadTableData(joinInfo.table)
+      const matchingItem = tableRows.find((item: any) => {
+        const refVal = item[joinInfo.field]
+        if (refVal === displayValue) return true
+        return (
+          typeof refVal === 'string' &&
+          typeof displayValue === 'string' &&
+          refVal.trim().toLowerCase() === displayValue.trim().toLowerCase()
+        )
+      })
+      if (matchingItem != null) {
+        result[foreignKeyField] =
+          matchingItem[foreignKeyField] ?? matchingItem.id
+      }
+    } catch (e) {
+      console.error(`Resolve display value for ${fieldKey}:`, e)
+    }
+    delete result[fieldKey]
+  }
+  return result
+}
+
+// ─── Execution config from schema config ─────────────────────────────────────
+
 const SCHEMA_TYPE_TO_FIELD_TYPE: Record<string, string> = {
   boolean: 'boolean',
   number: 'number',
@@ -766,9 +616,6 @@ const SCHEMA_TYPE_TO_FIELD_TYPE: Record<string, string> = {
   string: 'text',
 }
 
-/**
- * Default icons per field type for schema-derived config fields.
- */
 const DEFAULT_FIELD_ICONS: Record<string, string> = {
   boolean: 'mdi-toggle-switch',
   number: 'mdi-numeric',
@@ -776,14 +623,8 @@ const DEFAULT_FIELD_ICONS: Record<string, string> = {
   select: 'mdi-format-list-checks',
 }
 
-/**
- * Builds execution config (solverConfig, executionSolvers, configFields) from the schema's config
- * JSON Schema. Used when the user enters the app and the schema is loaded so that solver list,
- * default solver, and config form fields come from the backend schema.
- *
- * @param schemaConfig - The config section of the schema response (JSON Schema object with properties)
- * @returns Object with solverConfig, executionSolvers, and configFields, or null if schemaConfig is invalid
- */
+const CONFIG_FIELDS_EXCLUDED_KEYS = ['solver', 'msg']
+
 export function getExecutionConfigFromSchemaConfig(schemaConfig: any): {
   solverConfig: { showSolverStep: boolean; defaultSolver: string }
   executionSolvers: string[]
@@ -810,10 +651,9 @@ export function getExecutionConfigFromSchemaConfig(schemaConfig: any): {
     const solverProp = props.solver
     if (Array.isArray(solverProp.enum) && solverProp.enum.length > 0) {
       executionSolvers = solverProp.enum.map((v: string) => String(v))
-      defaultSolver =
-        solverProp.default != null
-          ? String(solverProp.default)
-          : executionSolvers[0]
+      defaultSolver = solverProp.default != null
+        ? String(solverProp.default)
+        : executionSolvers[0]
     }
   }
 
@@ -828,15 +668,13 @@ export function getExecutionConfigFromSchemaConfig(schemaConfig: any): {
     options?: Array<{ value: string; label: string }>
   }> = []
 
-  // Solver is chosen in the "Select solver" step; msg (messages) is not shown in execution parameters
-  const CONFIG_FIELDS_EXCLUDED_KEYS = ['solver', 'msg']
-
   for (const [key, prop] of Object.entries(props) as [string, any][]) {
     if (!prop || typeof prop !== 'object') continue
     if (CONFIG_FIELDS_EXCLUDED_KEYS.includes(key)) continue
 
     const schemaType = Array.isArray(prop.type) ? prop.type[0] : prop.type
-    let fieldType = SCHEMA_TYPE_TO_FIELD_TYPE[schemaType] || 'text'
+    const fieldType = SCHEMA_TYPE_TO_FIELD_TYPE[schemaType] || 'text'
+
     const titleKey = `configParams.${key}`
     const field: {
       key: string
@@ -855,9 +693,7 @@ export function getExecutionConfigFromSchemaConfig(schemaConfig: any): {
       type: fieldType,
     }
 
-    if (prop.default !== undefined) {
-      field.default = prop.default
-    }
+    if (prop.default !== undefined) field.default = prop.default
 
     if (Array.isArray(prop.enum) && prop.enum.length > 0) {
       field.type = 'select'
@@ -869,10 +705,9 @@ export function getExecutionConfigFromSchemaConfig(schemaConfig: any): {
     }
 
     if (fieldType === 'number' && key.toLowerCase().includes('time')) {
-      field.suffix =
-        key.toLowerCase() === 'timelimit'
-          ? 'configParams.secondsSuffix'
-          : 'configParams.minutesSuffix'
+      field.suffix = key.toLowerCase() === 'timelimit'
+        ? 'configParams.secondsSuffix'
+        : 'configParams.minutesSuffix'
       field.icon = 'mdi-timer-sand'
     }
 
@@ -880,10 +715,7 @@ export function getExecutionConfigFromSchemaConfig(schemaConfig: any): {
   }
 
   return {
-    solverConfig: {
-      showSolverStep: false,
-      defaultSolver,
-    },
+    solverConfig: { showSolverStep: false, defaultSolver },
     executionSolvers,
     configFields,
   }

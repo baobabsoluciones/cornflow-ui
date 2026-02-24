@@ -11,9 +11,10 @@ export interface TableConfig {
   section?: string | null
   /**
    * Optional array of schema (DAG) names that restrict table visibility.
-   * - If not defined: Table is visible to ALL users
-   * - If empty array []: Table is visible to NO users (hidden)
-   * - If has values: Table is visible only to users with access to ANY of the listed schemas
+   * - If not defined: Table is visible in all schemas and to all users with access
+   * - If empty array []: Table is hidden in all schemas
+   * - If has values: Table is shown only when the current schema (DAG being viewed) is in this list,
+   *   and only to users with access to that schema
    */
   schemas?: string[]
   _originalGroup?: any
