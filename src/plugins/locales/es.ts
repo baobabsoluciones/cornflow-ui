@@ -524,6 +524,9 @@ export default {
       removeAll: 'Eliminar todo',
       apply: 'Aplicar filtros',
       cancel: 'Cancelar',
+      dateFrom: 'Desde',
+      dateTo: 'Hasta',
+      reset: 'Restablecer',
       activeFilters: 'Filtros activos',
       operators: {
         is: 'es',

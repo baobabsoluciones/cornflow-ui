@@ -2,6 +2,7 @@ import { TableSchema } from '@/config/views'
 import {
   ConfigurationData,
   AutomationSectionDef,
+  type DateRangeFilterConfig,
 } from '@/types/frontendAutomation'
 import { TableOperation } from '@/types/table'
 
@@ -190,6 +191,53 @@ export function getMasterDataNavigationWithSections(
   }
 
   return result
+}
+
+/**
+ * Extract date range filter configs from get_list query parameters.
+ * Pairs datetime_gte + datetime_lte with symmetric are shown as a single "from / to" filter.
+ */
+export function getDateRangeFilterConfigs(getListConfig: {
+  parameters?: Array<{
+    name: string
+    is_filter?: boolean
+    filter_info?: { filters_on?: string | null; filter_type: string; symmetric?: string | null }
+  }>
+}): DateRangeFilterConfig[] {
+  const params = getListConfig?.parameters
+  if (!Array.isArray(params)) return []
+
+  const byName = new Map(params.map((p) => [p.name, p]))
+  const result: DateRangeFilterConfig[] = []
+  const seen = new Set<string>()
+
+  for (const p of params) {
+    if (!p?.is_filter || !p?.filter_info) continue
+    const info = p.filter_info
+    if (info.filter_type === 'datetime_gte' && info.symmetric) {
+      const lteParam = byName.get(info.symmetric)
+      if (lteParam?.filter_info?.filter_type === 'datetime_lte' && !seen.has(p.name)) {
+        seen.add(p.name)
+        seen.add(lteParam.name)
+        const filtersOn = info.filters_on ?? lteParam.filter_info?.filters_on ?? ''
+        result.push({
+          paramGte: p.name,
+          paramLte: lteParam.name,
+          filtersOn,
+          label: formatFilterColumnLabel(filtersOn),
+        })
+      }
+    }
+  }
+  return result
+}
+
+function formatFilterColumnLabel(key: string): string {
+  if (!key) return ''
+  return key
+    .split(/[-_]/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ')
 }
 
 // Helper function to get operation configuration from table config

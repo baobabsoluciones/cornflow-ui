@@ -37,12 +37,36 @@ function findFieldWithColumnsRef(
 
 // ─── Main transform ──────────────────────────────────────────────────────────
 
+/** Normalize path for matching (ensure single trailing slash). */
+function normalizePathKey(url: string): string {
+  const s = (url || '').trim()
+  if (!s) return ''
+  return s.endsWith('/') ? s : s + '/'
+}
+
+/**
+ * Get GET method parameters from paths for a given URL (e.g. get_list).
+ * Paths keys may be "/e-planificaciones-atenea/"; url may be "/e-planificaciones-atenea/".
+ */
+function getGetParametersFromPath(paths: Record<string, any>, url: string): any[] | undefined {
+  if (!paths || typeof url !== 'string') return undefined
+  const normalized = normalizePathKey(url)
+  const pathEntry =
+    paths[url] ??
+    paths[normalized] ??
+    paths[url.replace(/\/$/, '')] ??
+    paths[url + '/'] ??
+    paths[Object.keys(paths).find((k) => normalizePathKey(k) === normalized) ?? '']
+  const getParams = pathEntry?.get?.parameters
+  return Array.isArray(getParams) ? getParams : undefined
+}
+
 // Transform OpenAPI schema to our internal table configuration format
 export function transformOpenApiToTableConfig(
   openApiSchema: any,
   locale: string = 'en',
 ): TransformOpenApiResult {
-  const { available_automations, definitions } = openApiSchema
+  const { available_automations, definitions, paths } = openApiSchema
   const result: any = {}
 
   const tables = available_automations.tables || available_automations
@@ -92,6 +116,12 @@ export function transformOpenApiToTableConfig(
         if (nonOperationKeys.includes(operationKey)) return
         if (!operationInfo || typeof operationInfo !== 'object' || !operationInfo.url) return
 
+        // Use parameters from table config if present; otherwise for get_list try to merge from paths
+        let parameters = Array.isArray(operationInfo.parameters) ? operationInfo.parameters : undefined
+        if (operationKey === 'get_list' && !parameters && paths) {
+          parameters = getGetParametersFromPath(paths, operationInfo.url)
+        }
+
         result[tableKey][operationKey] = {
           url: operationInfo.url,
           http_method: operationInfo.http_method,
@@ -101,6 +131,7 @@ export function transformOpenApiToTableConfig(
           response_schema: getResponseSchemaFromDefinitions(
             operationKey, tableKey, definitions, locale,
           ),
+          ...(Array.isArray(parameters) && parameters.length > 0 && { parameters }),
         }
       },
     )

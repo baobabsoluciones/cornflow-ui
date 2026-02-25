@@ -33,14 +33,21 @@ export default class TableRepository {
     }
 
     const operationConfig = getOperationConfig(this.tableConfig, operation)
-    const url = buildApiUrl(operationConfig.url, params)
+    // Separate path params (for URL substitution) from query params (for GET query string)
+    const { queryParams: getQueryParams, ...pathParams } = params
+    const url = buildApiUrl(operationConfig.url, pathParams)
     const method = operationConfig.http_method.toLowerCase()
+
+    const queryParams =
+      method === 'get' && getQueryParams != null && typeof getQueryParams === 'object'
+        ? (getQueryParams as Record<string, any>)
+        : {}
 
     let response
     try {
       switch (method) {
         case 'get':
-          response = await client.get(url, {}, {}, true)
+          response = await client.get(url, queryParams, {}, true)
           break
         case 'post':
           response = await client.post(url, data, {}, true)
@@ -76,9 +83,11 @@ export default class TableRepository {
     }
   }
 
-  // Get all items
-  async getList(): Promise<any[]> {
-    return this.performOperation(TableOperation.GET_LIST)
+  // Get all items (optional query params for filters, e.g. date range)
+  async getList(queryParams?: Record<string, any>): Promise<any[]> {
+    return this.performOperation(TableOperation.GET_LIST, {
+      queryParams: queryParams ?? {},
+    })
   }
 
   // Get a single item by ID

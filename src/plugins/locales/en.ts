@@ -512,6 +512,9 @@ export default {
       removeAll: 'Remove all',
       apply: 'Apply filters',
       cancel: 'Cancel',
+      dateFrom: 'From',
+      dateTo: 'To',
+      reset: 'Reset',
       activeFilters: 'Active filters',
       operators: {
         is: 'is',

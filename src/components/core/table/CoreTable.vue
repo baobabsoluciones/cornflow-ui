@@ -7,10 +7,47 @@
     }"
   >
     <v-card :elevation="elevation">
-      <!-- Search and Action buttons -->
-      <div class="d-flex justify-space-between align-center ma-4 ga-2">
-        <!-- Search and Filter -->
-        <div class="d-flex align-center ga-2">
+      <!-- Search and Action buttons (same row, no wrap) -->
+      <div class="core-table__toolbar d-flex justify-space-between align-center ma-4 ga-2">
+        <template v-if="dateRangeFilterConfigs && dateRangeFilterConfigs.length > 0">
+          <div
+            v-for="config in dateRangeFilterConfigs"
+            :key="config.paramGte"
+            class="core-table__date-range d-flex align-center ga-1 flex-shrink-0"
+          >
+            <v-text-field
+              :model-value="getDateRangeFrom(config.paramGte)"
+              :label="$t('table.filters.dateFrom')"
+              type="date"
+              density="compact"
+              variant="outlined"
+              hide-details
+              class="core-table__date-range-input"
+              @update:model-value="(v) => setDateRangeFrom(config.paramGte, v)"
+            />
+            <v-text-field
+              :model-value="getDateRangeTo(config.paramGte)"
+              :label="$t('table.filters.dateTo')"
+              type="date"
+              density="compact"
+              variant="outlined"
+              hide-details
+              class="core-table__date-range-input"
+              @update:model-value="(v) => setDateRangeTo(config.paramGte, v)"
+            />
+            <v-btn
+              v-if="hasDateRangeValue(config.paramGte)"
+              icon="mdi-close"
+              size="small"
+              variant="text"
+              density="compact"
+              :title="$t('table.filters.reset')"
+              @click="clearDateRange(config.paramGte)"
+            />
+          </div>
+        </template>
+        <!-- Search and Filter (this block can scroll horizontally; date range stays outside to avoid label clipping) -->
+        <div class="core-table__toolbar-left d-flex align-center ga-2">
           <!-- Search Input -->
           <CoreSearchInput
             v-if="enableSearch"
@@ -560,6 +597,11 @@ interface Props {
   operatorNeedsSecondValue?: (operator: string) => boolean
   generateFilterId?: () => string
 
+  // API date range filters
+  dateRangeFilterConfigs?: Array<{ paramGte: string; paramLte: string; filtersOn: string; label: string }>
+  dateRangeValues?: Record<string, { from: string; to: string }>
+  dateRangeLoading?: boolean
+
   // Modal States
   showAddEditModal?: boolean
   showDeleteDialog?: boolean
@@ -625,6 +667,9 @@ const props = withDefaults(defineProps<Props>(), {
   operatorNeedsValue: () => () => false,
   operatorNeedsSecondValue: () => () => false,
   generateFilterId: () => () => '',
+  dateRangeFilterConfigs: () => [],
+  dateRangeValues: () => ({}),
+  dateRangeLoading: false,
   showAddEditModal: false,
   showDeleteDialog: false,
   showBulkDeleteDialog: false,
@@ -657,6 +702,8 @@ interface Emits {
   (e: 'add-filter', filter: any): void
   (e: 'remove-filter', filterId: string): void
   (e: 'clear-all-filters'): void
+  (e: 'apply-date-range', payload: { key: string; from: string; to: string }): void
+  (e: 'reset-date-range', key: string): void
   (e: 'toggle-filters-panel', show: boolean): void
 
   // Selection Events
@@ -728,6 +775,60 @@ const computedSearchPlaceholder = computed(() => {
 
 // Local UI state only
 const showFiltersPanel = ref(false)
+
+// Date range (left of Search): local state, auto-apply when both from and to are set
+const localDateRange = ref<Record<string, { from: string; to: string }>>({})
+const dateRangeApplyDebounce = ref<ReturnType<typeof setTimeout> | null>(null)
+
+watch(
+  () => [props.dateRangeValues, props.dateRangeFilterConfigs] as const,
+  ([vals, configs]) => {
+    const next: Record<string, { from: string; to: string }> = {}
+    for (const c of configs || []) {
+      next[c.paramGte] = (vals || {})[c.paramGte] ?? { from: '', to: '' }
+    }
+    localDateRange.value = next
+  },
+  { immediate: true },
+)
+
+const getDateRangeFrom = (key: string) => localDateRange.value[key]?.from ?? ''
+const getDateRangeTo = (key: string) => localDateRange.value[key]?.to ?? ''
+
+const scheduleApplyDateRange = (key: string) => {
+  if (dateRangeApplyDebounce.value) clearTimeout(dateRangeApplyDebounce.value)
+  dateRangeApplyDebounce.value = setTimeout(() => {
+    const cur = localDateRange.value[key]
+    if (cur?.from && cur?.to) {
+      emit('apply-date-range', { key, from: cur.from, to: cur.to })
+    }
+    dateRangeApplyDebounce.value = null
+  }, 400)
+}
+
+const setDateRangeFrom = (key: string, v: string) => {
+  const cur = localDateRange.value[key] ?? { from: '', to: '' }
+  localDateRange.value = { ...localDateRange.value, [key]: { ...cur, from: v } }
+  if (!v) emit('reset-date-range', key)
+  else if (cur.to) scheduleApplyDateRange(key)
+}
+
+const setDateRangeTo = (key: string, v: string) => {
+  const cur = localDateRange.value[key] ?? { from: '', to: '' }
+  localDateRange.value = { ...localDateRange.value, [key]: { ...cur, to: v } }
+  if (!v) emit('reset-date-range', key)
+  else if (cur.from) scheduleApplyDateRange(key)
+}
+
+const hasDateRangeValue = (key: string) => {
+  const cur = localDateRange.value[key]
+  return !!(cur?.from || cur?.to)
+}
+
+const clearDateRange = (key: string) => {
+  localDateRange.value = { ...localDateRange.value, [key]: { from: '', to: '' } }
+  emit('reset-date-range', key)
+}
 
 // Critical refs for loading management
 const forceRerender = ref(0)
@@ -878,6 +979,10 @@ onDeactivated(() => {
 
 onBeforeUnmount(() => {
   clearFijarListeners()
+  if (dateRangeApplyDebounce.value) {
+    clearTimeout(dateRangeApplyDebounce.value)
+    dateRangeApplyDebounce.value = null
+  }
 })
 
 // Watch for items changes to update row classes
@@ -1304,6 +1409,14 @@ const handleRemoveFilter = (filterId: string) => {
 
 const handleClearAllFilters = () => {
   emit('clear-all-filters')
+}
+
+const handleApplyDateRange = (payload: { key: string; from: string; to: string }) => {
+  emit('apply-date-range', payload)
+}
+
+const handleResetDateRange = (key: string) => {
+  emit('reset-date-range', key)
 }
 
 const toggleFiltersPanel = () => {
