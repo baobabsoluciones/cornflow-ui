@@ -55,11 +55,13 @@ The system uses intelligent name normalization to match tables with different na
 - **lowercase**: `etablamaestra` matches `etablamaestra` (if both use the same format)
 
 The normalization process:
+
 1. Converts all names to lowercase
 2. Normalizes separators (hyphens and underscores are treated equivalently)
 3. Detects camelCase patterns and converts them to snake_case for comparison
 
 Examples of matched table names:
+
 - `e_tabla_maestra` ↔ `eTablaMaestra` ↔ `e-tabla-maestra` ↔ `ETablaMaestra`
 - `productos` ↔ `Productos` ↔ `PRODUCTOS`
 - `config_avanzada` ↔ `configAvanzada` ↔ `config-avanzada`
@@ -207,6 +209,129 @@ The frontend-automation schema includes `available_automations` (tables, groups,
 }
 ```
 
+##### Required fields
+
+The `required` array in each table definition lists property names that must be filled:
+
+- **Create modal**: Required fields are shown and cannot be left empty; the form does not submit until all required fields are valid.
+- **Validation**: Submitting (Add/Save) is blocked when any required field is missing; an error message is shown.
+
+```json
+{
+  "definitions": {
+    "MyTable": {
+      "properties": {
+        "id": { "type": "integer", "readOnly": true },
+        "programa": {
+          "type": "string",
+          "title": { "en": "Program", "es": "Programa" }
+        },
+        "periodo": {
+          "type": "string",
+          "title": { "en": "Period", "es": "Periodo" }
+        }
+      },
+      "required": ["programa", "periodo"]
+    }
+  }
+}
+```
+
+##### Date and time formats (string + format)
+
+For `type: "string"`, the optional `format` property controls the input and display:
+
+| `format`    | Input in modal / table                   | Description            |
+| ----------- | ---------------------------------------- | ---------------------- |
+| `date`      | Date picker / `type="date"`              | Date only (YYYY-MM-DD) |
+| `date-time` | Datetime input / `type="datetime-local"` | Date and time          |
+| `time`      | Time input / `type="time"`               | Time (HH:mm)           |
+
+These apply in the **add/edit modal** and in **inline table editing** (including the pending-changes review modal).
+
+Example:
+
+```json
+{
+  "fecha_inicio": {
+    "type": "string",
+    "format": "date",
+    "title": { "en": "Start Date", "es": "Fecha Inicio" }
+  },
+  "fecha_fin": {
+    "type": "string",
+    "format": "date",
+    "title": { "en": "End Date", "es": "Fecha Fin" }
+  }
+}
+```
+
+##### Parameters (paths)
+
+Endpoints in the schema are described in the **`paths`** block (OpenAPI style). Each path can define **parameters** for the request:
+
+- **Path parameters**: e.g. `id` or `idx` for operations on a single item (`in: "path"`).
+- **Query parameters**: e.g. filters, `limit`, `offset` for list operations (`in: "query"`).
+- **Body parameters**: request body for POST/PUT/PATCH (`in: "body"` with `schema` / `$ref`).
+
+For **GET list** (e.g. `paths["/my-entities/"].get.parameters`), query parameters can include metadata so the frontend builds filter UI automatically:
+
+- **`is_filter`**: `true` for parameters that act as list filters.
+- **`filter_info`**: object with:
+  - **`filters_on`**: column name the filter applies to (or `null` for global/limit/offset).
+  - **`filter_type`**: e.g. `string_contains`, `numeric_eq`, **`datetime_gte`**, **`datetime_lte`**, etc.
+  - **`symmetric`**: name of the “pair” parameter for range filters (see below).
+
+If a table’s `get_list` in `available_automations.tables` does **not** include a `parameters` array, the frontend **merges** the GET method’s `parameters` from the matching path (by URL) into that table’s `get_list`. So you can define parameters only in `paths` and the UI will still use them.
+
+###### Date range filters (Desde / Hasta)
+
+When the GET list has two query parameters with:
+
+- `is_filter: true`
+- `filter_info.filter_type`: **`datetime_gte`** and **`datetime_lte`**
+- `filter_info.symmetric`: each parameter’s name pointing to the other (e.g. `fecha_gte` ↔ `fecha_lte`)
+
+the frontend shows a **date range** filter to the **left of the Search** bar: two date inputs (“Desde” / “Hasta”) and an optional clear button. This block is only rendered when the table has such parameters. The list request is sent **when both dates are set** (with a short debounce); clearing either date resets the filter and reloads without those query params.
+
+Example in `paths`:
+
+```json
+"/e-planificaciones-atenea/": {
+  "get": {
+    "parameters": [
+      {
+        "name": "fecha_gte",
+        "in": "query",
+        "required": false,
+        "type": "string",
+        "format": "date",
+        "is_filter": true,
+        "filter_info": {
+          "filters_on": "fecha",
+          "filter_type": "datetime_gte",
+          "symmetric": "fecha_lte"
+        }
+      },
+      {
+        "name": "fecha_lte",
+        "in": "query",
+        "required": false,
+        "type": "string",
+        "format": "date",
+        "is_filter": true,
+        "filter_info": {
+          "filters_on": "fecha",
+          "filter_type": "datetime_lte",
+          "symmetric": "fecha_gte"
+        }
+      }
+    ],
+    "responses": { "default": { "schema": { ... } } }
+  }
+}
+```
+
 - **Sections** (optional): Top-level blocks in the navigation (e.g. "Master tables", "Historical data"). Defined in `available_automations.sections`. When present, they always appear **above** the default "Master data" section in the app drawer.
 - **Groups**: Mid-level grouping; each group can specify a `section` so its tables appear under that section.
 - **Tables**: Each table has `group` and optionally `section`. Table `section` overrides the group’s section when set; if neither table nor group has a section, the table is listed under the default "Master data" block.
@@ -217,7 +342,7 @@ The frontend-automation schema includes `available_automations` (tables, groups,
 - **Multi-language support**: Titles and descriptions support multiple languages
 - **Foreign key relationships**: Automatic handling of foreign key dependencies
 - **Bulk operations**: Support for bulk upload, update, and delete operations
-- **Advanced filtering**: Dynamic filter generation based on field types
+- **Advanced filtering**: Dynamic filter generation based on field types; list query parameters (section 3.1) support date range filters (“Desde” / “Hasta”) when the path defines `datetime_gte` / `datetime_lte` with `symmetric`
 - **Inline editing**: Direct table cell editing capabilities
 - **Export functionality**: Excel export for all table data
 
@@ -658,11 +783,11 @@ Controls which columns are displayed in the execution history table.
 
 Configuration for the "Latest plan" feature. See [Latest plan documentation](#latest-plan-actual-plan) for details.
 
-| Property           | Type      | Description                                                                                       |
-| ------------------ | --------- | ------------------------------------------------------------------------------------------------- |
+| Property           | Type      | Description                                                                                                                    |
+| ------------------ | --------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `enableLatestPlan` | `boolean` | Master switch to enable/disable the feature (default: `true`). If `false`, disables the feature regardless of other conditions |
-| `defaultView`      | `string`  | Route to redirect after login (`'history-execution'`, `'dashboard'`, `'input-data'`, `'results'`) |
-| `showStarInTabBar` | `boolean` | Show star icon in tab bar for the latest plan                                                     |
+| `defaultView`      | `string`  | Route to redirect after login (`'history-execution'`, `'dashboard'`, `'input-data'`, `'results'`)                              |
+| `showStarInTabBar` | `boolean` | Show star icon in tab bar for the latest plan                                                                                  |
 
 #### sectionTitles
 
