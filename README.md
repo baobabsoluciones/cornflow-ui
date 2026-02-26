@@ -356,6 +356,34 @@ Navigation is built as **Section → Group → Table**:
 
 So you can have: (a) only groups and tables (one "Master data" block), or (b) sections from the schema first, then the "Master data" block for any tables that have no section.
 
+#### Sub-sections within frontend-automation sections
+
+You can add **custom sub-sections** (e.g. dashboards or custom views) inside any section that comes from the schema (`available_automations.sections`). Those sub-sections are configured in `src/app/config.ts` and appear in the drawer under that section, alongside the section’s tables.
+
+- **Configuration**: In `createAppConfig()`, set `frontendAutomationSectionSubsections`: a map from **section id** (same as in the schema, e.g. `planificaciones-atenea`) to an array of sub-section definitions.
+- **Each sub-section** has: `path` (URL segment, e.g. `dashboard`), `name`, `titleKey` (i18n), `icon`, and `component` (lazy-loaded Vue component).
+- **Route**: Sub-sections are served under `/configuration/section/{sectionId}/{path}` (e.g. `/configuration/section/planificaciones-atenea/dashboard`).
+- **Drawer**: The app merges these entries into the master data navigation: for each schema section, the drawer shows the section’s tables plus the configured sub-sections. All configuration for this feature lives under `src/app/` (config, views, locales).
+
+Example: add a dashboard view inside the "Planificaciones Atenea" section:
+
+```typescript
+// src/app/config.ts
+frontendAutomationSectionSubsections: {
+  'planificaciones-atenea': [
+    {
+      path: 'dashboard',
+      name: 'Atenea Planning Dashboard',
+      titleKey: 'ateneaPlanning.dashboardTitle',
+      icon: 'mdi-view-dashboard',
+      component: () => import('@/app/views/AteneaPlanningDashboardView.vue'),
+    },
+  ],
+},
+```
+
+Add the corresponding keys (e.g. `ateneaPlanning.dashboardTitle`) in `src/app/plugins/locales/` (en, es, fr) and create the view component in `src/app/views/`.
+
 #### Multi-schema access control
 
 Tables can be restricted to users who have access to specific schemas (DAGs). This is controlled by the optional `schemas` property in the table configuration.
@@ -443,9 +471,10 @@ When a user logs in, the backend returns user information through the `/user/{id
 - **Repository**: `SchemaRepository.ts` fetches the schema and returns both table config and `available_automations.sections`; the store keeps sections in `masterDataSections`.
 - **Utils**: `schemaUtils.ts` transforms the schema (including sections and per-table `section` from table/group) into the internal config format.
 - **Service**: `FrontendAutomationService.ts` provides `getMasterDataNavigationWithSections()` to build section → group → table navigation; schema-defined sections are ordered above the default "Master data" block.
-- **Drawer**: `AppDrawer.vue` uses schema sections when present (`masterDataSectionsForDrawer`) and falls back to a single "Master data" section when no schema sections exist.
+- **Drawer**: `AppDrawer.vue` uses schema sections when present (`masterDataSectionsForDrawer`) and falls back to a single "Master data" section when no schema sections exist. It merges in config-driven sub-sections from `frontendAutomationSectionSubsections` (see [Sub-sections within frontend-automation sections](#sub-sections-within-frontend-automation-sections)).
 - **Component**: `CoreTable.vue` renders the dynamic table interface.
 - **View**: `SectionView.vue` manages table display and navigation.
+- **Section sub-sections**: Routes for config-defined sub-sections use `configuration/section/:sectionId/:subsectionKey`; `ConfigurationSectionSubsectionView.vue` (in `src/app/views/`) loads and renders the component from config.
 
 ## Input data section
 
@@ -567,6 +596,7 @@ Routes are automatically generated based on schema definitions:
 
 - **Individual tables**: `/configuration/{table-key}`
 - **Grouped tables**: `/configuration/group/{group-name}`
+- **Configuration section sub-sections**: `/configuration/section/{section-id}/{subsection-path}` (for custom views added via `frontendAutomationSectionSubsections` in `src/app/config.ts`)
 - **Input data**: `/input-data/{table-key}` or `/input-data/group/{group-name}`
 - **Results**: `/results/{table-key}` or `/results/group/{group-name}`
 
@@ -579,6 +609,20 @@ Unlike `dashboardPages` / `instanceDashboardPages` (which add subsections inside
 - **Drawer**: Menu items are built from `getAppSections()` in `AppDrawer.vue` (title resolved with i18n from `titleKey`).
 
 Example: one section with one view (e.g. Agent), or multiple sections with subsections, without touching the router or drawer code.
+
+### Frontend-automation section subsections (frontendAutomationSectionSubsections)
+
+Custom sub-sections (e.g. dashboards) can be added **inside** a frontend-automation section (from `available_automations.sections`). Configure them in `src/app/config.ts` under `frontendAutomationSectionSubsections`: key = section id from the schema, value = array of sub-section definitions.
+
+| Property    | Type     | Description                                                                            |
+| ----------- | -------- | -------------------------------------------------------------------------------------- |
+| `path`      | `string` | URL segment (e.g. `dashboard`). Full path: `/configuration/section/{sectionId}/{path}` |
+| `name`      | `string` | Route/component name                                                                   |
+| `titleKey`  | `string` | i18n key for the drawer label                                                          |
+| `icon`      | `string` | Material Design icon (e.g. `mdi-view-dashboard`)                                       |
+| `component` | function | Lazy-loaded Vue component: `() => import('@/app/views/...')`                           |
+
+See [Sub-sections within frontend-automation sections](#sub-sections-within-frontend-automation-sections) for a full example.
 
 ### State management
 
@@ -750,6 +794,7 @@ This file contains **internal application-specific configuration** that is part 
   instanceDashboardPages: [],
   instanceDashboardRoutes: [],
   instanceDashboardLayout: [],
+  frontendAutomationSectionSubsections: {}, // Sub-sections inside schema-defined master data sections (e.g. dashboards). Key = section id from schema.
   appSections: [], // App-specific top-level sections and subsections (router + drawer built dynamically)
 }
 ```

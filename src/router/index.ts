@@ -12,6 +12,7 @@ import HistoryExecutionView from '@/views/HistoryExecutionView.vue'
 import DashboardView from '@/views/DashboardView.vue'
 import UserSettingsView from '@/views/UserSettingsView.vue'
 import SectionView from '@/views/SectionView.vue'
+import ConfigurationSectionSubsectionView from '@/views/ConfigurationSectionSubsectionView.vue'
 import getAuthService from '@/services/AuthServiceFactory'
 import config from '@/config'
 import appConfig from '@/app/config'
@@ -124,6 +125,12 @@ const routes: RouteRecordRaw[] = [
         keepAlive: true,
       },
       ...appSectionRoutes,
+      {
+        path: 'configuration/section/:sectionId/:subsectionKey',
+        name: 'Configuration section subsection',
+        component: ConfigurationSectionSubsectionView,
+        keepAlive: true,
+      },
       {
         path: 'configuration/:tableKey',
         name: 'Master Data',

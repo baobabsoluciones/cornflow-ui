@@ -27,6 +27,19 @@ export interface AppSectionMenuItem {
 }
 
 /**
+ * Sub-section definition for a frontend-automation section.
+ * Allows adding custom views (e.g. dashboards) inside a section that comes from the schema.
+ */
+export interface FrontendAutomationSubsectionDef {
+  /** URL path segment (e.g. 'dashboard'). Full path will be /configuration/section/{sectionId}/{path}. */
+  path: string
+  name: string
+  titleKey: string
+  icon: string
+  component: () => Promise<unknown>
+}
+
+/**
  * Application configuration factory.
  * See README.md section "Internal app configuration" for detailed documentation.
  */
@@ -218,6 +231,12 @@ const createAppConfig = () => ({
   instanceDashboardPages: [],
   instanceDashboardRoutes: [],
   instanceDashboardLayout: [],
+
+  /** Sub-sections to add inside frontend-automation sections (section id -> list of extra views). */
+  frontendAutomationSectionSubsections: {} as Record<
+    string,
+    FrontendAutomationSubsectionDef[]
+  >,
 
   // App-specific sections: top-level sections and subsections (like Agent).
   // Built dynamically in router and drawer. Same pattern as dashboard/instanceDashboard
