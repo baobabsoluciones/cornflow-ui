@@ -539,8 +539,8 @@ describe('Router Navigation Guards', () => {
       const rootRoute = routes.find((route) => route.path === '/')
       const childRoutes = rootRoute?.children || []
 
-      // Should have exactly 10 default child routes when instance dashboard routes is null
-      expect(childRoutes.length).toBe(10)
+      // Should have exactly 11 default child routes when instance dashboard routes is null
+      expect(childRoutes.length).toBe(11)
     })
   })
 
