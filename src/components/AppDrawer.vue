@@ -260,14 +260,28 @@ export default defineComponent({
         '/configuration',
       )
 
-      return navWithSections.map((block) => ({
-        title:
-          block.sectionId === null
-            ? this.getSectionTitle('masterData')
-            : resolveTitleWithLocale(block.title, locale, block.sectionId),
-        icon: block.icon,
-        subPages: block.subPages,
-      }))
+      return navWithSections.map((block) => {
+        const subPages = [...(block.subPages || [])]
+        if (block.sectionId) {
+          const extraSubsections =
+            appConfig.getFrontendAutomationSectionSubsections(block.sectionId)
+          extraSubsections.forEach((def) => {
+            subPages.push({
+              title: this.$t(def.titleKey),
+              icon: def.icon,
+              to: `/configuration/section/${block.sectionId}/${def.path}`,
+            })
+          })
+        }
+        return {
+          title:
+            block.sectionId === null
+              ? this.getSectionTitle('masterData')
+              : resolveTitleWithLocale(block.title, locale, block.sectionId),
+          icon: block.icon,
+          subPages,
+        }
+      })
     },
     // Single master data section (used when schema does not define sections)
     masterDataSection() {

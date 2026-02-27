@@ -55,11 +55,13 @@ The system uses intelligent name normalization to match tables with different na
 - **lowercase**: `etablamaestra` matches `etablamaestra` (if both use the same format)
 
 The normalization process:
+
 1. Converts all names to lowercase
 2. Normalizes separators (hyphens and underscores are treated equivalently)
 3. Detects camelCase patterns and converts them to snake_case for comparison
 
 Examples of matched table names:
+
 - `e_tabla_maestra` ↔ `eTablaMaestra` ↔ `e-tabla-maestra` ↔ `ETablaMaestra`
 - `productos` ↔ `Productos` ↔ `PRODUCTOS`
 - `config_avanzada` ↔ `configAvanzada` ↔ `config-avanzada`
@@ -207,6 +209,129 @@ The frontend-automation schema includes `available_automations` (tables, groups,
 }
 ```
 
+##### Required fields
+
+The `required` array in each table definition lists property names that must be filled:
+
+- **Create modal**: Required fields are shown and cannot be left empty; the form does not submit until all required fields are valid.
+- **Validation**: Submitting (Add/Save) is blocked when any required field is missing; an error message is shown.
+
+```json
+{
+  "definitions": {
+    "MyTable": {
+      "properties": {
+        "id": { "type": "integer", "readOnly": true },
+        "programa": {
+          "type": "string",
+          "title": { "en": "Program", "es": "Programa" }
+        },
+        "periodo": {
+          "type": "string",
+          "title": { "en": "Period", "es": "Periodo" }
+        }
+      },
+      "required": ["programa", "periodo"]
+    }
+  }
+}
+```
+
+##### Date and time formats (string + format)
+
+For `type: "string"`, the optional `format` property controls the input and display:
+
+| `format`    | Input in modal / table                   | Description            |
+| ----------- | ---------------------------------------- | ---------------------- |
+| `date`      | Date picker / `type="date"`              | Date only (YYYY-MM-DD) |
+| `date-time` | Datetime input / `type="datetime-local"` | Date and time          |
+| `time`      | Time input / `type="time"`               | Time (HH:mm)           |
+
+These apply in the **add/edit modal** and in **inline table editing** (including the pending-changes review modal).
+
+Example:
+
+```json
+{
+  "fecha_inicio": {
+    "type": "string",
+    "format": "date",
+    "title": { "en": "Start Date", "es": "Fecha Inicio" }
+  },
+  "fecha_fin": {
+    "type": "string",
+    "format": "date",
+    "title": { "en": "End Date", "es": "Fecha Fin" }
+  }
+}
+```
+
+##### Parameters (paths)
+
+Endpoints in the schema are described in the **`paths`** block (OpenAPI style). Each path can define **parameters** for the request:
+
+- **Path parameters**: e.g. `id` or `idx` for operations on a single item (`in: "path"`).
+- **Query parameters**: e.g. filters, `limit`, `offset` for list operations (`in: "query"`).
+- **Body parameters**: request body for POST/PUT/PATCH (`in: "body"` with `schema` / `$ref`).
+
+For **GET list** (e.g. `paths["/my-entities/"].get.parameters`), query parameters can include metadata so the frontend builds filter UI automatically:
+
+- **`is_filter`**: `true` for parameters that act as list filters.
+- **`filter_info`**: object with:
+  - **`filters_on`**: column name the filter applies to (or `null` for global/limit/offset).
+  - **`filter_type`**: e.g. `string_contains`, `numeric_eq`, **`datetime_gte`**, **`datetime_lte`**, etc.
+  - **`symmetric`**: name of the “pair” parameter for range filters (see below).
+
+If a table’s `get_list` in `available_automations.tables` does **not** include a `parameters` array, the frontend **merges** the GET method’s `parameters` from the matching path (by URL) into that table’s `get_list`. So you can define parameters only in `paths` and the UI will still use them.
+
+###### Date range filters (Desde / Hasta)
+
+When the GET list has two query parameters with:
+
+- `is_filter: true`
+- `filter_info.filter_type`: **`datetime_gte`** and **`datetime_lte`**
+- `filter_info.symmetric`: each parameter’s name pointing to the other (e.g. `fecha_gte` ↔ `fecha_lte`)
+
+the frontend shows a **date range** filter to the **left of the Search** bar: two date inputs (“Desde” / “Hasta”) and an optional clear button. This block is only rendered when the table has such parameters. The list request is sent **when both dates are set** (with a short debounce); clearing either date resets the filter and reloads without those query params.
+
+Example in `paths`:
+
+```json
+"/e-planificaciones-atenea/": {
+  "get": {
+    "parameters": [
+      {
+        "name": "fecha_gte",
+        "in": "query",
+        "required": false,
+        "type": "string",
+        "format": "date",
+        "is_filter": true,
+        "filter_info": {
+          "filters_on": "fecha",
+          "filter_type": "datetime_gte",
+          "symmetric": "fecha_lte"
+        }
+      },
+      {
+        "name": "fecha_lte",
+        "in": "query",
+        "required": false,
+        "type": "string",
+        "format": "date",
+        "is_filter": true,
+        "filter_info": {
+          "filters_on": "fecha",
+          "filter_type": "datetime_lte",
+          "symmetric": "fecha_gte"
+        }
+      }
+    ],
+    "responses": { "default": { "schema": { ... } } }
+  }
+}
+```
+
 - **Sections** (optional): Top-level blocks in the navigation (e.g. "Master tables", "Historical data"). Defined in `available_automations.sections`. When present, they always appear **above** the default "Master data" section in the app drawer.
 - **Groups**: Mid-level grouping; each group can specify a `section` so its tables appear under that section.
 - **Tables**: Each table has `group` and optionally `section`. Table `section` overrides the group’s section when set; if neither table nor group has a section, the table is listed under the default "Master data" block.
@@ -217,7 +342,7 @@ The frontend-automation schema includes `available_automations` (tables, groups,
 - **Multi-language support**: Titles and descriptions support multiple languages
 - **Foreign key relationships**: Automatic handling of foreign key dependencies
 - **Bulk operations**: Support for bulk upload, update, and delete operations
-- **Advanced filtering**: Dynamic filter generation based on field types
+- **Advanced filtering**: Dynamic filter generation based on field types; list query parameters (section 3.1) support date range filters (“Desde” / “Hasta”) when the path defines `datetime_gte` / `datetime_lte` with `symmetric`
 - **Inline editing**: Direct table cell editing capabilities
 - **Export functionality**: Excel export for all table data
 
@@ -230,6 +355,34 @@ Navigation is built as **Section → Group → Table**:
 3. **Tables**: Each table has `group` and optionally `section`. Table-level `section` overrides the group’s section. Tables with no section (and no group section) go under "Master data".
 
 So you can have: (a) only groups and tables (one "Master data" block), or (b) sections from the schema first, then the "Master data" block for any tables that have no section.
+
+#### Sub-sections within frontend-automation sections
+
+You can add **custom sub-sections** (e.g. dashboards or custom views) inside any section that comes from the schema (`available_automations.sections`). Those sub-sections are configured in `src/app/config.ts` and appear in the drawer under that section, alongside the section’s tables.
+
+- **Configuration**: In `createAppConfig()`, set `frontendAutomationSectionSubsections`: a map from **section id** (same as in the schema, e.g. `planificaciones-atenea`) to an array of sub-section definitions.
+- **Each sub-section** has: `path` (URL segment, e.g. `dashboard`), `name`, `titleKey` (i18n), `icon`, and `component` (lazy-loaded Vue component).
+- **Route**: Sub-sections are served under `/configuration/section/{sectionId}/{path}` (e.g. `/configuration/section/planificaciones-atenea/dashboard`).
+- **Drawer**: The app merges these entries into the master data navigation: for each schema section, the drawer shows the section’s tables plus the configured sub-sections. All configuration for this feature lives under `src/app/` (config, views, locales).
+
+Example: add a dashboard view inside the "Planificaciones Atenea" section:
+
+```typescript
+// src/app/config.ts
+frontendAutomationSectionSubsections: {
+  'planificaciones-atenea': [
+    {
+      path: 'dashboard',
+      name: 'Atenea Planning Dashboard',
+      titleKey: 'ateneaPlanning.dashboardTitle',
+      icon: 'mdi-view-dashboard',
+      component: () => import('@/app/views/AteneaPlanningDashboardView.vue'),
+    },
+  ],
+},
+```
+
+Add the corresponding keys (e.g. `ateneaPlanning.dashboardTitle`) in `src/app/plugins/locales/` (en, es, fr) and create the view component in `src/app/views/`.
 
 #### Multi-schema access control
 
@@ -318,9 +471,10 @@ When a user logs in, the backend returns user information through the `/user/{id
 - **Repository**: `SchemaRepository.ts` fetches the schema and returns both table config and `available_automations.sections`; the store keeps sections in `masterDataSections`.
 - **Utils**: `schemaUtils.ts` transforms the schema (including sections and per-table `section` from table/group) into the internal config format.
 - **Service**: `FrontendAutomationService.ts` provides `getMasterDataNavigationWithSections()` to build section → group → table navigation; schema-defined sections are ordered above the default "Master data" block.
-- **Drawer**: `AppDrawer.vue` uses schema sections when present (`masterDataSectionsForDrawer`) and falls back to a single "Master data" section when no schema sections exist.
+- **Drawer**: `AppDrawer.vue` uses schema sections when present (`masterDataSectionsForDrawer`) and falls back to a single "Master data" section when no schema sections exist. It merges in config-driven sub-sections from `frontendAutomationSectionSubsections` (see [Sub-sections within frontend-automation sections](#sub-sections-within-frontend-automation-sections)).
 - **Component**: `CoreTable.vue` renders the dynamic table interface.
 - **View**: `SectionView.vue` manages table display and navigation.
+- **Section sub-sections**: Routes for config-defined sub-sections use `configuration/section/:sectionId/:subsectionKey`; `ConfigurationSectionSubsectionView.vue` (in `src/app/views/`) loads and renders the component from config.
 
 ## Input data section
 
@@ -442,6 +596,7 @@ Routes are automatically generated based on schema definitions:
 
 - **Individual tables**: `/configuration/{table-key}`
 - **Grouped tables**: `/configuration/group/{group-name}`
+- **Configuration section sub-sections**: `/configuration/section/{section-id}/{subsection-path}` (for custom views added via `frontendAutomationSectionSubsections` in `src/app/config.ts`)
 - **Input data**: `/input-data/{table-key}` or `/input-data/group/{group-name}`
 - **Results**: `/results/{table-key}` or `/results/group/{group-name}`
 
@@ -454,6 +609,20 @@ Unlike `dashboardPages` / `instanceDashboardPages` (which add subsections inside
 - **Drawer**: Menu items are built from `getAppSections()` in `AppDrawer.vue` (title resolved with i18n from `titleKey`).
 
 Example: one section with one view (e.g. Agent), or multiple sections with subsections, without touching the router or drawer code.
+
+### Frontend-automation section subsections (frontendAutomationSectionSubsections)
+
+Custom sub-sections (e.g. dashboards) can be added **inside** a frontend-automation section (from `available_automations.sections`). Configure them in `src/app/config.ts` under `frontendAutomationSectionSubsections`: key = section id from the schema, value = array of sub-section definitions.
+
+| Property    | Type     | Description                                                                            |
+| ----------- | -------- | -------------------------------------------------------------------------------------- |
+| `path`      | `string` | URL segment (e.g. `dashboard`). Full path: `/configuration/section/{sectionId}/{path}` |
+| `name`      | `string` | Route/component name                                                                   |
+| `titleKey`  | `string` | i18n key for the drawer label                                                          |
+| `icon`      | `string` | Material Design icon (e.g. `mdi-view-dashboard`)                                       |
+| `component` | function | Lazy-loaded Vue component: `() => import('@/app/views/...')`                           |
+
+See [Sub-sections within frontend-automation sections](#sub-sections-within-frontend-automation-sections) for a full example.
 
 ### State management
 
@@ -625,6 +794,7 @@ This file contains **internal application-specific configuration** that is part 
   instanceDashboardPages: [],
   instanceDashboardRoutes: [],
   instanceDashboardLayout: [],
+  frontendAutomationSectionSubsections: {}, // Sub-sections inside schema-defined master data sections (e.g. dashboards). Key = section id from schema.
   appSections: [], // App-specific top-level sections and subsections (router + drawer built dynamically)
 }
 ```
@@ -658,11 +828,11 @@ Controls which columns are displayed in the execution history table.
 
 Configuration for the "Latest plan" feature. See [Latest plan documentation](#latest-plan-actual-plan) for details.
 
-| Property           | Type      | Description                                                                                       |
-| ------------------ | --------- | ------------------------------------------------------------------------------------------------- |
+| Property           | Type      | Description                                                                                                                    |
+| ------------------ | --------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `enableLatestPlan` | `boolean` | Master switch to enable/disable the feature (default: `true`). If `false`, disables the feature regardless of other conditions |
-| `defaultView`      | `string`  | Route to redirect after login (`'history-execution'`, `'dashboard'`, `'input-data'`, `'results'`) |
-| `showStarInTabBar` | `boolean` | Show star icon in tab bar for the latest plan                                                     |
+| `defaultView`      | `string`  | Route to redirect after login (`'history-execution'`, `'dashboard'`, `'input-data'`, `'results'`)                              |
+| `showStarInTabBar` | `boolean` | Show star icon in tab bar for the latest plan                                                                                  |
 
 #### sectionTitles
 

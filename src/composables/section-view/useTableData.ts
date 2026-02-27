@@ -3,7 +3,10 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { showSnackbar } from '@/services/SnackbarService'
 import { useExecutionTableData } from './useExecutionTableData'
-import { getSectionType } from '@/services/FrontendAutomationService'
+import {
+  getSectionType,
+  getDateRangeFilterConfigs,
+} from '@/services/FrontendAutomationService'
 import { useGeneralStore } from '@/stores/general'
 import { useTableChanges } from '@/composables/useTableChanges'
 import type { Ref, ComputedRef } from 'vue'
@@ -65,6 +68,16 @@ export function useTableData(
 
   // Table changes for Excel-like editing (master tables only)
   const tableChanges = useTableChanges()
+
+  // API query params for get_list (e.g. date range filters)
+  const apiQueryParams = ref<Record<string, string>>({})
+  // Date range filter configs from get_list.parameters (datetime_gte + datetime_lte with symmetric)
+  const apiDateRangeFilterConfigs = computed(() => {
+    if (!tableConfig.value?.get_list || shouldUseExecutionData.value) return []
+    return getDateRangeFilterConfigs(tableConfig.value.get_list)
+  })
+  // Local date range values for the UI (keyed by paramGte)
+  const dateRangeValues = ref<Record<string, { from: string; to: string }>>({})
 
   /**
    * Normalize table key for storage/read so it's consistent when the same tab
@@ -644,7 +657,8 @@ export function useTableData(
       const TableRepository = (await import('@/repositories/TableRepository'))
         .default
       const repository = new TableRepository(tableConfig.value, t)
-      const data = await repository.getList()
+      const queryParams = { ...apiQueryParams.value }
+      const data = await repository.getList(Object.keys(queryParams).length > 0 ? queryParams : undefined)
       // Don't update state if this load was superseded or cancelled (e.g. user navigated away)
       if (myLoadId !== loadIdRef.value) return
       const baseItems = Array.isArray(data) ? data : []
@@ -670,6 +684,19 @@ export function useTableData(
   const cancelLoadData = () => {
     loadIdRef.value++
   }
+
+  // Initialize date range values when configs change
+  watch(
+    apiDateRangeFilterConfigs,
+    (configs) => {
+      const next: Record<string, { from: string; to: string }> = {}
+      for (const c of configs) {
+        next[c.paramGte] = dateRangeValues.value[c.paramGte] ?? { from: '', to: '' }
+      }
+      dateRangeValues.value = next
+    },
+    { immediate: true },
+  )
 
   // Watch for config changes (only for master tables)
   watch(
@@ -1209,6 +1236,11 @@ export function useTableData(
     tableData: tableDataWithPendingCreates,
     invalidateTableDataCache,
 
+    // API date range filters
+    apiDateRangeFilterConfigs,
+    dateRangeValues,
+    apiQueryParams,
+
     // Filter functions
     getOperatorsForFieldType,
     getOperatorText,
@@ -1237,6 +1269,28 @@ export function useTableData(
     },
     handleClearAllFilters: () => {
       activeFilters.value = []
+    },
+    handleApplyDateRange: (key: string, payload: { from: string; to: string }) => {
+      const config = apiDateRangeFilterConfigs.value.find((c) => c.paramGte === key)
+      if (!config) return
+      if (payload.from) apiQueryParams.value[config.paramGte] = payload.from
+      else delete apiQueryParams.value[config.paramGte]
+      if (payload.to) apiQueryParams.value[config.paramLte] = payload.to
+      else delete apiQueryParams.value[config.paramLte]
+      apiQueryParams.value = { ...apiQueryParams.value }
+      dateRangeValues.value[key] = { from: payload.from, to: payload.to }
+      dateRangeValues.value = { ...dateRangeValues.value }
+      if (!shouldUseExecutionData.value) loadData()
+    },
+    handleResetDateRange: (key: string) => {
+      const config = apiDateRangeFilterConfigs.value.find((c) => c.paramGte === key)
+      if (!config) return
+      delete apiQueryParams.value[config.paramGte]
+      delete apiQueryParams.value[config.paramLte]
+      apiQueryParams.value = { ...apiQueryParams.value }
+      dateRangeValues.value[key] = { from: '', to: '' }
+      dateRangeValues.value = { ...dateRangeValues.value }
+      if (!shouldUseExecutionData.value) loadData()
     },
     handleToggleFiltersPanel: (show: boolean) => {
       // This is handled by CoreTable internally
@@ -1332,7 +1386,8 @@ export function useTableData(
           await repository.createItem(preparedData)
         }
 
-        const reloadedData = await repository.getList()
+        const q = Object.keys(apiQueryParams.value).length > 0 ? apiQueryParams.value : undefined
+        const reloadedData = await repository.getList(q)
         items.value = Array.isArray(reloadedData) ? reloadedData : []
         showAddEditModal.value = false
         formData.value = {}
@@ -1398,7 +1453,8 @@ export function useTableData(
         }
 
         // Reload data and close modal
-        const reloadedData = await repository.getList()
+        const q = Object.keys(apiQueryParams.value).length > 0 ? apiQueryParams.value : undefined
+        const reloadedData = await repository.getList(q)
         items.value = Array.isArray(reloadedData) ? reloadedData : []
         showBulkUploadModal.value = false
 
@@ -1465,7 +1521,8 @@ export function useTableData(
 
         await repository.deleteItem(id)
 
-        const reloadedData = await repository.getList()
+        const q = Object.keys(apiQueryParams.value).length > 0 ? apiQueryParams.value : undefined
+        const reloadedData = await repository.getList(q)
         items.value = Array.isArray(reloadedData) ? reloadedData : []
         showDeleteDialog.value = false
         formData.value = {}
@@ -1534,7 +1591,8 @@ export function useTableData(
         const idsToDelete = selectedItems.value.map((item) => item.id)
         await repository.deleteBulk(idsToDelete)
 
-        const reloadedData = await repository.getList()
+        const q = Object.keys(apiQueryParams.value).length > 0 ? apiQueryParams.value : undefined
+        const reloadedData = await repository.getList(q)
         items.value = Array.isArray(reloadedData) ? reloadedData : []
         selectedItems.value = []
         showBulkDeleteDialog.value = false
@@ -1669,7 +1727,8 @@ export function useTableData(
         // 3. Cell edits
         const changes = tableChanges.getChangesForTable(storageKey)
         if (config?.put_item && changes && Object.keys(changes).length > 0) {
-          const currentItems = await repository.getList()
+          const q = Object.keys(apiQueryParams.value).length > 0 ? apiQueryParams.value : undefined
+          const currentItems = await repository.getList(q)
           for (const [rowId, rowChanges] of Object.entries(changes)) {
             const row = currentItems.find((i: any) => String(i.id) === rowId)
             if (!row) continue
@@ -1740,7 +1799,8 @@ export function useTableData(
         await repository.createBulk(data)
 
         // Reload data and close modal
-        const reloadedData = await repository.getList()
+        const q = Object.keys(apiQueryParams.value).length > 0 ? apiQueryParams.value : undefined
+        const reloadedData = await repository.getList(q)
         items.value = Array.isArray(reloadedData) ? reloadedData : []
         showBulkUploadModal.value = false
 

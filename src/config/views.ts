@@ -36,6 +36,16 @@ export interface OperationConfig {
   http_method: string
   request_schema?: any
   response_schema?: any
+  /** Query parameters from path (e.g. filters with is_filter + filter_info). */
+  parameters?: Array<{
+    name: string
+    in: string
+    required?: boolean
+    type?: string
+    format?: string
+    is_filter?: boolean
+    filter_info?: { filters_on?: string | null; filter_type: string; symmetric?: string | null }
+  }>
 }
 
 export interface TableSchema {

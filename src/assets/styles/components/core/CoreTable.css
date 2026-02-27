@@ -466,3 +466,32 @@ table.v-data-table-virtual tbody tr.row-fijar-active:hover,
   background-color: transparent !important;
   background: transparent !important;
 }
+
+/* Toolbar: filters + search in one row (no wrap) */
+.core-table__toolbar {
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.core-table__toolbar-left {
+  flex-wrap: nowrap;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.core-table__toolbar-left::-webkit-scrollbar {
+  height: 6px;
+}
+
+/* Date range (left of Search) - only when table has date parameters */
+.core-table__date-range {
+  flex-shrink: 0;
+}
+
+.core-table__date-range-input {
+  max-width: 160px;
+  min-width: 140px;
+}

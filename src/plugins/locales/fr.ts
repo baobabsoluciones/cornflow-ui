@@ -360,6 +360,9 @@ export default {
       clearAll: 'Tout effacer',
       apply: 'Appliquer les filtres',
       cancel: 'Annuler',
+      dateFrom: 'Du',
+      dateTo: 'Au',
+      reset: 'Réinitialiser',
       activeFilters: 'Filtres actifs',
       operators: {
         is: 'est',
