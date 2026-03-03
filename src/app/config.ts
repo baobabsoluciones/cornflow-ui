@@ -328,6 +328,23 @@ class Config {
     }
     return routes
   }
+
+  /** Sub-sections for a frontend-automation section (for drawer menu and route resolution). */
+  getFrontendAutomationSectionSubsections(
+    sectionId: string,
+  ): FrontendAutomationSubsectionDef[] {
+    const map = this.ensureConfig().frontendAutomationSectionSubsections ?? {}
+    return map[sectionId] ?? []
+  }
+
+  /** Get a single subsection def by section id and path segment. Used by the subsection wrapper view. */
+  getFrontendAutomationSubsectionDef(
+    sectionId: string,
+    subsectionPath: string,
+  ): FrontendAutomationSubsectionDef | null {
+    const list = this.getFrontendAutomationSectionSubsections(sectionId)
+    return list.find((def) => def.path === subsectionPath) ?? null
+  }
 }
 
 const appConfig = new Config()
