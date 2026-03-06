@@ -576,6 +576,9 @@ export default {
     confirmBulkDelete: 'Confirmar eliminación múltiple',
     bulkDeleteMessage:
       '¿Está seguro de que desea eliminar {count} elementos? Esta acción no se puede deshacer.',
+    deletingPleaseWait: 'Eliminando. Espere, por favor.',
+    overwritingPleaseWait: 'Procesando los datos. Espere, por favor.',
+    uploadingPleaseWait: 'Procesando su solicitud. Espere, por favor.',
     bulkDeleteSuccess: '{count} elementos eliminados correctamente',
     bulkDeleteAllFailed: 'Error al eliminar todos los elementos seleccionados',
     bulkDeletePartialFailed:
@@ -826,6 +829,7 @@ export default {
     revertAll: 'Revertir todo',
     revertAllChanges: 'Revertir todos los cambios',
     saveAllChanges: 'Guardar todos los cambios',
+    processingChanges: 'Se están procesando los cambios. Espere, por favor.',
     confirmRevertAll: {
       title: 'Revertir todos los cambios',
       message:

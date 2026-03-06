@@ -400,6 +400,9 @@ export default {
     confirmBulkDelete: 'Confirmer la suppression en lot',
     bulkDeleteMessage:
       'Êtes-vous sûr de vouloir supprimer {count} éléments ? Cette action ne peut pas être annulée.',
+    deletingPleaseWait: 'Suppression en cours. Veuillez patienter.',
+    overwritingPleaseWait: 'Traitement des données en cours. Veuillez patienter.',
+    uploadingPleaseWait: 'Traitement de votre demande en cours. Veuillez patienter.',
     bulkDeleteSuccess: '{count} éléments supprimés avec succès',
     bulkDeleteAllFailed:
       'Échec de la suppression de tous les éléments sélectionnés',

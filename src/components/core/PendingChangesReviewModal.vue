@@ -64,6 +64,18 @@
           <div v-html="validationError"></div>
         </v-alert>
 
+        <!-- Processing changes message -->
+        <v-alert
+          v-if="saving"
+          type="info"
+          variant="tonal"
+          density="comfortable"
+          class="mb-4 pending-changes-modal__processing-alert"
+          :model-value="true"
+        >
+          {{ t('pendingChanges.processingChanges') }}
+        </v-alert>
+
         <!-- No changes state -->
         <div v-if="fullGroupedByTable.length === 0" class="pending-changes-modal__empty">
           <div class="pending-changes-modal__empty-icon">
@@ -129,6 +141,7 @@
                       <v-btn
                         size="x-small"
                         variant="text"
+                        :disabled="saving"
                         @click="
                           revertRowChanges(
                             tableGroup.tableKey,
@@ -328,6 +341,7 @@
                       <v-btn
                         size="x-small"
                         variant="text"
+                        :disabled="saving"
                         @click="
                           tableChanges.revertCreate(
                             tableGroup.tableKey,
@@ -424,6 +438,7 @@
                       <v-btn
                         size="x-small"
                         variant="text"
+                        :disabled="saving"
                         @click="
                           tableChanges.revertDelete(
                             tableGroup.tableKey,
@@ -487,7 +502,7 @@
         <v-btn
           variant="text"
           @click="handleRevertAll"
-          :disabled="totalChangesCount === 0"
+          :disabled="totalChangesCount === 0 || saving"
           size="small"
           class="pending-changes-modal__revert-all-btn"
         >
@@ -500,6 +515,7 @@
           @click="handleClose"
           size="small"
           class="pending-changes-modal__cancel-btn"
+          :disabled="saving"
         >
           {{ t('common.cancel') }}
         </v-btn>
@@ -507,7 +523,7 @@
           type="button"
           variant="flat"
           @click.stop="handleSaveAll"
-          :disabled="totalChangesCount === 0"
+          :disabled="totalChangesCount === 0 || saving"
           :loading="saving"
           size="small"
           class="pending-changes-modal__save-btn"
@@ -1121,6 +1137,10 @@ watch(
 
 .pending-changes-modal__save-btn:hover {
   box-shadow: 0 2px 8px rgba(50, 103, 134, 0.3);
+}
+
+.pending-changes-modal__processing-alert {
+  font-weight: 500;
 }
 
 .pending-changes-modal__save-btn:disabled {

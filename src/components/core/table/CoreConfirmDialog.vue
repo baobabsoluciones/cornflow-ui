@@ -81,6 +81,9 @@
         class="core-modal-base__content core-confirm-dialog__content"
       >
         <p class="core-confirm-dialog__message">{{ message }}</p>
+        <p v-if="loading && loadingMessage" class="core-confirm-dialog__loading-message">
+          {{ loadingMessage }}
+        </p>
       </v-card-text>
 
       <!-- Actions -->
@@ -100,6 +103,7 @@
           variant="filled"
           :background-color="confirmColor"
           :loading="loading"
+          :disabled="loading"
           size="small"
           @click="handleConfirm"
         />
@@ -120,6 +124,8 @@ interface Props {
   cancelText?: string
   confirmColor?: string
   loading?: boolean
+  /** Shown below the message when loading is true (e.g. "Deleting, please wait...") */
+  loadingMessage?: string
   persistent?: boolean
 }
 
@@ -128,6 +134,7 @@ const props = withDefaults(defineProps<Props>(), {
   cancelText: 'Cancel',
   confirmColor: 'var(--primary)',
   loading: false,
+  loadingMessage: '',
   persistent: true,
 })
 

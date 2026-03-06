@@ -496,6 +496,7 @@
       :cancel-text="$t('table.cancel')"
       confirm-color="var(--danger)"
       :loading="bulkDeleting"
+      :loading-message="$t('table.deletingPleaseWait')"
       @confirm="handleConfirmBulkDelete"
       @cancel="handleCancelBulkDelete"
       @update:model-value="

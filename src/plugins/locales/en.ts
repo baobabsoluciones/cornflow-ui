@@ -563,6 +563,9 @@ export default {
     confirmBulkDelete: 'Confirm bulk delete',
     bulkDeleteMessage:
       'Are you sure you want to delete {count} items? This action cannot be undone.',
+    deletingPleaseWait: 'Deleting, please wait...',
+    overwritingPleaseWait: 'Processing your data. Please wait...',
+    uploadingPleaseWait: 'Processing your request. Please wait...',
     bulkDeleteSuccess: '{count} items deleted successfully',
     bulkDeleteAllFailed: 'Failed to delete all selected items',
     bulkDeletePartialFailed: 'Items with IDs {ids} could not be deleted',
@@ -811,6 +814,7 @@ export default {
     revertAll: 'Revert all',
     revertAllChanges: 'Revert all changes',
     saveAllChanges: 'Save all changes',
+    processingChanges: 'Processing your changes. Please wait...',
     confirmRevertAll: {
       title: 'Revert all changes',
       message:

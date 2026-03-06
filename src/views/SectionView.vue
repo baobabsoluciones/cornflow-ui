@@ -792,9 +792,7 @@
     <PendingChangesReviewModal
       v-if="isConfigurationSection"
       v-model="showMasterTablePendingModal"
-      :saving="
-        isGroupView ? selectedTableData.saving.value : tableData.saving.value
-      "
+      :saving="masterTableSaving"
       :validation-error="masterTableValidationError"
       :rows-data="aggregatedRowsDataForModal"
       :table-headers="aggregatedTableHeadersForModal"
@@ -951,6 +949,7 @@ const pendingChangesCount = computed(() => {
 })
 
 const showMasterTablePendingModal = ref(false)
+const masterTableSaving = ref(false)
 const masterTableValidationError = ref<string | null>(null)
 const showExitConfirmationModal = ref(false)
 const pendingNavigationNext = ref<((abort?: boolean) => void) | null>(null)
@@ -1002,11 +1001,14 @@ function getErrorMessage(err: any): string {
 
 const handleMasterTableSaveAll = async () => {
   masterTableValidationError.value = null
+  masterTableSaving.value = true
   try {
     await saveAllMasterTableChanges()
     showMasterTablePendingModal.value = false
   } catch (err) {
     masterTableValidationError.value = getErrorMessage(err)
+  } finally {
+    masterTableSaving.value = false
   }
 }
 
@@ -1235,41 +1237,72 @@ const saveAllMasterTableChanges = async () => {
     const loadTableDataForSave = (tableName: string) =>
       tableData.loadTableData(tableName)
 
-    // 1. Pending deletes
+    // 1. Pending deletes (use bulk when supported to avoid N calls)
     const deletes = tableChanges.getPendingDeletes(storageKey)
-    if (config?.delete_item && deletes.length > 0) {
-      for (const rowId of deletes) {
-        await repository.deleteItem(rowId)
+    if (deletes.length > 0) {
+      if (config?.delete_bulk) {
+        await repository.deleteBulk(deletes)
+      } else if (config?.delete_item) {
+        for (const rowId of deletes) {
+          await repository.deleteItem(rowId)
+        }
       }
       tableChanges.clearDeletesForTable(storageKey)
     }
 
-    // 2. Pending creates
+    // 2. Pending creates (use bulk when supported to avoid N calls)
     const creates = tableChanges.getPendingCreates(storageKey)
-    if (config?.post_item && creates.length > 0) {
-      for (const { tempId, data } of creates) {
-        const { id: _id, ...rawPayload } = data
-        const payloadWithTempIds = resolveTempIdsInPayload(
-          rawPayload,
-          tempIdToRealId,
-          config,
+    if (creates.length > 0) {
+      if (config?.post_bulk) {
+        const payloads = await Promise.all(
+          creates.map(async ({ data }) => {
+            const { id: _id, ...rawPayload } = data
+            const payloadWithTempIds = resolveTempIdsInPayload(
+              rawPayload,
+              tempIdToRealId,
+              config,
+            )
+            return resolveDisplayValuesToFkIds(
+              payloadWithTempIds,
+              config,
+              loadTableDataForSave,
+            )
+          }),
         )
-        const payload = await resolveDisplayValuesToFkIds(
-          payloadWithTempIds,
-          config,
-          loadTableDataForSave,
-        )
-        const result = await repository.createItem(payload)
-        const realId = result?.id ?? result?.pk
-        if (realId != null) tempIdToRealId[tempId] = realId
+        const result = await repository.createBulk(payloads)
+        const createdItems = Array.isArray(result) ? result : [result]
+        createdItems.forEach((item: any, i: number) => {
+          const tempId = creates[i]?.tempId
+          const realId = item?.id ?? item?.pk
+          if (tempId != null && realId != null) tempIdToRealId[tempId] = realId
+        })
+      } else if (config?.post_item) {
+        for (const { tempId, data } of creates) {
+          const { id: _id, ...rawPayload } = data
+          const payloadWithTempIds = resolveTempIdsInPayload(
+            rawPayload,
+            tempIdToRealId,
+            config,
+          )
+          const payload = await resolveDisplayValuesToFkIds(
+            payloadWithTempIds,
+            config,
+            loadTableDataForSave,
+          )
+          const result = await repository.createItem(payload)
+          const realId = result?.id ?? result?.pk
+          if (realId != null) tempIdToRealId[tempId] = realId
+        }
       }
       tableChanges.clearCreatesForTable(storageKey)
     }
 
-    // 3. Cell edits
+    // 3. Cell edits (run putItem in parallel batches for speed)
     const changes = tableChanges.getChangesForTable(storageKey)
-    if (config?.put_item && changes) {
+    if (config?.put_item && changes && Object.keys(changes).length > 0) {
       const items = await repository.getList()
+      const CONCURRENT_PUTS = 10
+      const putTasks: Array<{ rowId: string; merged: Record<string, any> }> = []
       for (const [rowId, rowChanges] of Object.entries(changes)) {
         const row = items.find((i: any) => String(i.id) === rowId)
         if (!row) continue
@@ -1284,13 +1317,28 @@ const saveAllMasterTableChanges = async () => {
           tempIdToRealId,
           config,
         )
-        const preparedData = await resolveDisplayValuesToFkIds(
-          withTempIds,
-          config,
-          loadTableDataForSave,
+        putTasks.push({ rowId, merged: withTempIds })
+      }
+      const resolvedPayloads = await Promise.all(
+        putTasks.map(({ merged }) =>
+          resolveDisplayValuesToFkIds(
+            merged,
+            config,
+            loadTableDataForSave,
+          ),
+        ),
+      )
+      for (const p of resolvedPayloads) delete p.id
+      for (let i = 0; i < putTasks.length; i += CONCURRENT_PUTS) {
+        const batch = putTasks.slice(i, i + CONCURRENT_PUTS)
+        await Promise.all(
+          batch.map((task, j) =>
+            repository.putItem(
+              task.rowId,
+              resolvedPayloads[i + j],
+            ),
+          ),
         )
-        delete preparedData.id
-        await repository.putItem(rowId, preparedData)
       }
       tableChanges.revertTableChanges(storageKey)
     }

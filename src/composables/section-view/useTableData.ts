@@ -3,10 +3,7 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { showSnackbar } from '@/services/SnackbarService'
 import { useExecutionTableData } from './useExecutionTableData'
-import {
-  getSectionType,
-  getDateRangeFilterConfigs,
-} from '@/services/FrontendAutomationService'
+import { getSectionType } from '@/services/FrontendAutomationService'
 import { useGeneralStore } from '@/stores/general'
 import { useTableChanges } from '@/composables/useTableChanges'
 import type { Ref, ComputedRef } from 'vue'
@@ -22,35 +19,19 @@ import {
 import { useFormFields } from '@/composables/core-table/useFormFields'
 import { exportTableToExcel } from '@/utils/data_io'
 import readXlsxFile from 'read-excel-file'
-import { parseJoinFrom, getForeignKeyFieldName, resolveDisplayValuesToFkIds } from '@/utils/schemaUtils'
+import { parseJoinFrom, getForeignKeyFieldName } from '@/utils/schemaUtils'
 
-// Shared table data cache so all SectionViews and selectors see the same data.
-// Invalidated when a table is saved so new rows appear in other sections' selectors.
-const sharedTableDataCache = ref<Record<string, any[]>>({})
+/** Shared cache for table data (referenced tables loaded via loadTableData). Used so cache can be invalidated across composable instances. */
+const sharedTableDataCache: Record<string, any[]> = {}
 
 /**
- * Invalidate cached list for a table (and keys that normalize to the same or match by suffix).
- * Call after saving creates/edits so other sections' selectors refetch and show the new row.
+ * Invalidates the cached data for a table so the next loadTableData for that table will refetch.
+ * Call after saving/changing a table so selectors and joined data elsewhere see fresh data.
  */
 export function invalidateTableDataCache(tableKey: string): void {
-  if (!tableKey) return
-  const normalized = String(tableKey).toLowerCase().replace(/-/g, '_')
-  const cache = sharedTableDataCache.value
-  const toDelete: string[] = []
-  for (const key of Object.keys(cache)) {
-    const n = String(key).toLowerCase().replace(/-/g, '_')
-    if (
-      n === normalized ||
-      key === tableKey ||
-      tableKey.endsWith('_' + key) ||
-      key.endsWith('_' + tableKey) ||
-      normalized.endsWith('_' + n) ||
-      n.endsWith('_' + normalized)
-    ) {
-      toDelete.push(key)
-    }
+  if (tableKey) {
+    delete sharedTableDataCache[tableKey]
   }
-  toDelete.forEach((k) => delete cache[k])
 }
 
 // Business logic composable for SectionView
@@ -68,16 +49,6 @@ export function useTableData(
 
   // Table changes for Excel-like editing (master tables only)
   const tableChanges = useTableChanges()
-
-  // API query params for get_list (e.g. date range filters)
-  const apiQueryParams = ref<Record<string, string>>({})
-  // Date range filter configs from get_list.parameters (datetime_gte + datetime_lte with symmetric)
-  const apiDateRangeFilterConfigs = computed(() => {
-    if (!tableConfig.value?.get_list || shouldUseExecutionData.value) return []
-    return getDateRangeFilterConfigs(tableConfig.value.get_list)
-  })
-  // Local date range values for the UI (keyed by paramGte)
-  const dateRangeValues = ref<Record<string, { from: string; to: string }>>({})
 
   /**
    * Normalize table key for storage/read so it's consistent when the same tab
@@ -169,6 +140,8 @@ export function useTableData(
   const error = ref<string | null>(null)
   const searchValue = ref('')
   const activeFilters = ref<any[]>([])
+  const apiDateRangeFilterConfigs = ref<any[]>([])
+  const dateRangeValues = ref<Record<string, { from: string; to: string }>>({})
   const selectedItems = ref<any[]>([])
   const showAddEditModal = ref(false)
   const showDeleteDialog = ref(false)
@@ -184,130 +157,74 @@ export function useTableData(
   const editingRowId = ref<string | number | null>(null)
   const editingData = ref({})
   const originalData = ref({})
-  const tableDataCache = sharedTableDataCache
+  const tableDataCache = ref<Record<string, any[]>>(sharedTableDataCache)
   // Cancel in-flight loadData when view is deactivated so we don't update state after navigate-away
   const loadIdRef = ref(0)
 
-  /** Return API list for a table plus any pending creates so dropdowns show new rows. */
-  const mergePendingCreatesIntoTableList = (
-    tableName: string,
-    baseList: any[],
-  ): any[] => {
-    const normalizedName = normalizeTableKeyForStorage(tableName)
-    const allKeysWithCreates = tableChanges.modifiedTableKeys.value
-    const pendingCreatesFromAllMatchingKeys: Array<{ tempId: string; data: any }> = []
-    const seenTempIds = new Set<string>()
-    for (const storageKey of allKeysWithCreates) {
-      const normalizedKey = normalizeTableKeyForStorage(storageKey)
-      const isSameTable =
-        normalizedKey === normalizedName ||
-        storageKey === tableName ||
-        storageKey.endsWith('_' + tableName) ||
-        normalizedKey.endsWith('_' + normalizedName) ||
-        normalizedName.endsWith('_' + normalizedKey)
-      if (!isSameTable) continue
-      const pending = tableChanges.getPendingCreates(storageKey) ?? []
-      for (const create of pending) {
-        if (seenTempIds.has(create.tempId)) continue
-        seenTempIds.add(create.tempId)
-        pendingCreatesFromAllMatchingKeys.push(create)
-      }
-    }
-    const createdRows = pendingCreatesFromAllMatchingKeys.map(
-      ({ tempId, data: rowData }) => ({
-        ...rowData,
-        id: tempId,
-      }),
-    )
-    return [...baseList, ...createdRows]
-  }
-
-  /**
-   * Find table config by table name.
-   * Tries exact key first, then match by normalized key or key ending with _tableName,
-   */
-  const findTableConfigByTableName = (
-    configurations: {
-      masterData?: Record<string, any>
-      inputData?: Record<string, any>
-      resultsData?: Record<string, any>
-    },
-    tableName: string,
-  ): any => {
-    if (!configurations || !tableName) return null
-    const normalizedName = normalizeTableKeyForStorage(tableName)
-    const sections = [
-      configurations.masterData,
-      configurations.inputData,
-      configurations.resultsData,
-    ] as (Record<string, any> | undefined)[]
-    for (const section of sections) {
-      if (!section) continue
-      if (section[tableName]) return section[tableName]
-      for (const [key] of Object.entries(section)) {
-        const normalizedKey = normalizeTableKeyForStorage(key)
-        if (normalizedKey === normalizedName) return section[key]
-        if (key.endsWith('_' + tableName) || key.endsWith('_' + normalizedName))
-          return section[key]
-        if (normalizedName.endsWith('_' + normalizedKey)) return section[key]
-      }
-    }
-    return null
-  }
-
   // Function to load data from related tables (for foreign key selectors)
   const loadTableData = async (tableName: string): Promise<any[]> => {
-    // Check if data is already cached (API data only)
-    let baseData = tableDataCache.value[tableName]
-    if (baseData === undefined) {
-      try {
-        const { default: TableRepository } = await import(
-          '@/repositories/TableRepository'
-        )
+    // Check if data is already cached
+    if (tableDataCache.value[tableName]) {
+      return tableDataCache.value[tableName]
+    }
 
-        // Get configurations from the general store
-        const configurations = generalStore.getConfigurations
-        if (!configurations) {
-          console.warn('Table configurations not available')
-          return []
-        }
+    try {
+      const { default: TableRepository } = await import(
+        '@/repositories/TableRepository'
+      )
 
-        // Find table config by exact key or normalized name
-        const tableConfigFound = findTableConfigByTableName(
-          configurations,
-          tableName,
-        )
-
-        if (!tableConfigFound || !tableConfigFound.get_list) {
-          console.warn(`Table configuration not found for: ${tableName}`)
-          return []
-        }
-
-        // Create repository and load data
-        const repository = new TableRepository(tableConfigFound, t)
-        const data = await repository.getList()
-        baseData = Array.isArray(data) ? data : []
-        tableDataCache.value[tableName] = baseData
-      } catch (error) {
-        console.error(`Error loading data for table ${tableName}:`, error)
+      // Get configurations from the general store
+      const configurations = generalStore.getConfigurations
+      if (!configurations) {
+        console.warn('Table configurations not available')
         return []
       }
-    }
-    return mergePendingCreatesIntoTableList(tableName, baseData)
-  }
 
-  /** Table data for forms: cache plus pending creates per table so dropdowns show new rows. */
-  const tableDataWithPendingCreates = computed(() => {
-    const cache = tableDataCache.value
-    const merged: Record<string, any[]> = {}
-    for (const tableName of Object.keys(cache)) {
-      merged[tableName] = mergePendingCreatesIntoTableList(
-        tableName,
-        cache[tableName] || [],
-      )
+      // Search for the table configuration in all sections
+      let tableConfigFound = null
+
+      // Check in masterData
+      if (configurations.masterData && configurations.masterData[tableName]) {
+        tableConfigFound = configurations.masterData[tableName]
+      }
+
+      // Check in inputData if not found
+      if (
+        !tableConfigFound &&
+        configurations.inputData &&
+        configurations.inputData[tableName]
+      ) {
+        tableConfigFound = configurations.inputData[tableName]
+      }
+
+      // Check in resultsData if not found
+      if (
+        !tableConfigFound &&
+        configurations.resultsData &&
+        configurations.resultsData[tableName]
+      ) {
+        tableConfigFound = configurations.resultsData[tableName]
+      }
+
+      if (!tableConfigFound || !tableConfigFound.get_list) {
+        console.warn(`Table configuration not found for: ${tableName}`)
+        return []
+      }
+
+      // Create repository and load data
+      const repository = new TableRepository(tableConfigFound, t)
+      const data = await repository.getList()
+      const resultData = Array.isArray(data) ? data : []
+
+      // Cache the data
+      tableDataCache.value[tableName] = resultData
+
+      return resultData
+    } catch (error) {
+      console.error(`Error loading data for table ${tableName}:`, error)
+      return []
     }
-    return merged
-  })
+  }
 
   // Use form fields composable for data preparation
   const formFieldsComposable = useFormFields({
@@ -322,11 +239,9 @@ export function useTableData(
         title: prop.title || key,
         type: prop.type === 'integer' ? 'number' : prop.type,
         required:
-          prop.required ??
           tableConfig.value.get_list.response_schema.items.required?.includes(
             key,
-          ) ??
-          false,
+          ) || false,
         isForeignKey: prop.isForeignKey || false,
         isDependentField: prop.isDependentField || false,
         isMainSelector: prop.isMainSelector || false,
@@ -336,13 +251,12 @@ export function useTableData(
         hidden: prop.hidden || false,
         readOnly: prop.readOnly || false,
         choices: prop.choices || undefined,
-        format: prop.format || undefined,
       }))
     }),
     formData: computed(() => (isEditing.value ? formData.value : {})),
     mode: computed(() => (isEditing.value ? 'edit' : 'add')),
     loadTableData,
-    tableData: tableDataWithPendingCreates,
+    tableData: tableDataCache as any, // Type assertion needed due to Ref vs ComputedRef distinction
   })
 
   // Filtered items based on active filters and search
@@ -373,11 +287,9 @@ export function useTableData(
         filterable: true,
         type: prop.type === 'integer' ? 'number' : prop.type,
         required:
-          prop.required ??
           tableConfig.value.get_list.response_schema.items.required?.includes(
             key,
-          ) ??
-          false,
+          ) || false,
         // Foreign key properties
         isForeignKey: prop.isForeignKey || false,
         isDependentField: prop.isDependentField || false,
@@ -389,7 +301,6 @@ export function useTableData(
         readOnly: prop.readOnly || false,
         // Choices property
         choices: prop.choices || undefined,
-        format: prop.format || undefined,
       }))
 
     // Add selection column if selection is enabled
@@ -458,88 +369,138 @@ export function useTableData(
    * Helper: Compare values for matching (handles string case-insensitivity)
    */
   const fieldValuesMatch = (fieldValue: any, rowValue: any): boolean => {
-    if (typeof fieldValue === 'string' && typeof rowValue === 'string') {
-      return fieldValue.toLowerCase() === rowValue.toLowerCase()
+    if (
+      fieldValue === undefined ||
+      fieldValue === null ||
+      rowValue === undefined ||
+      rowValue === null
+    ) {
+      return false
     }
-    return fieldValue === rowValue
+    if (typeof fieldValue === 'string' && typeof rowValue === 'string') {
+      return fieldValue.trim().toLowerCase() === rowValue.trim().toLowerCase()
+    }
+    return String(fieldValue) === String(rowValue)
   }
 
   /**
-   * Helper: Process a single dependent field in a row
+   * Normalize a value for use as map key (consistent for matching).
    */
-  const processRowDependentField = async (
-    mappedRow: Record<string, any>,
-    fieldKey: string,
-    prop: any,
-    properties: any,
-  ): Promise<void> => {
-    const foreignKeyField = getForeignKeyFieldName(fieldKey, { properties })
-    if (!foreignKeyField) {
-      delete mappedRow[fieldKey]
-      return
-    }
-
-    const joinInfo = parseJoinFrom(prop.joinFrom)
-    if (!joinInfo) {
-      delete mappedRow[fieldKey]
-      return
-    }
-
-    try {
-      const relatedTableData = await loadTableData(joinInfo.table)
-      const matchingItem = relatedTableData.find((item) =>
-        fieldValuesMatch(item[joinInfo.field], mappedRow[fieldKey]),
-      )
-
-      if (matchingItem?.id !== undefined) {
-        mappedRow[foreignKeyField] = matchingItem.id
-      } else {
-        console.warn(
-          `No matching item found for ${fieldKey}="${mappedRow[fieldKey]}" in table ${joinInfo.table}`,
-        )
-      }
-    } catch (error) {
-      console.error(
-        `Error loading related table ${joinInfo.table} for field ${fieldKey}:`,
-        error,
-      )
-    }
-    delete mappedRow[fieldKey]
+  const normalizeMatchKey = (value: any): string => {
+    if (value === undefined || value === null) return ''
+    if (typeof value === 'string') return value.trim().toLowerCase()
+    return String(value)
   }
 
-  // Map dependent fields to foreign key IDs
+  /**
+   * Map dependent fields to foreign key IDs. Works for any table and columns_to_join.
+   * - Loads each referenced table once per batch (not per row).
+   * - Prefers matching by the first column in columns_to_join (usually the unique code, e.g. codigo_puerto)
+   *   so that tables where the same display name exists for different codes (e.g. puerto "BARCELONA" for
+   *   codigo_puerto H086 and I080DOS) resolve correctly.
+   * - When the row has no value for the first column, falls back to matching by display field(s).
+   */
   const mapDependentFieldsToIds = async (parsedData: any[]): Promise<any[]> => {
     const properties =
       tableConfig.value?.get_list?.response_schema?.items?.properties
     if (!properties) return parsedData
 
-    return Promise.all(
-      parsedData.map(async (row) => {
-        const mappedRow: Record<string, any> = { ...row }
+    // 1) Collect FK fields (those with columns_to_join) and ref table from first dependent's joinFrom
+    interface FkConfig {
+      fkField: string
+      columnsToJoin: string[]
+      refTable: string
+      refTableData: any[]
+      refByFirstColumn: Map<string, any>
+    }
+    const fkConfigs: FkConfig[] = []
 
-        // Process dependent fields with values
-        for (const [fieldKey, fieldProp] of Object.entries(properties)) {
-          const prop = fieldProp as any
-          if (hasValidDependentValue(prop, mappedRow[fieldKey])) {
-            await processRowDependentField(
-              mappedRow,
-              fieldKey,
-              prop,
-              properties,
+    for (const [fkField, fkProp] of Object.entries(properties)) {
+      const prop = fkProp as any
+      const columnsToJoin = prop.columnsToJoin ?? prop.columns_to_join
+      if (!Array.isArray(columnsToJoin) || columnsToJoin.length === 0) continue
+
+      const firstDepKey = columnsToJoin[0]
+      const firstDepProp = (properties as any)[firstDepKey]
+      const joinFrom = firstDepProp?.joinFrom ?? firstDepProp?.join_from
+      if (!joinFrom) continue
+
+      const joinInfo = parseJoinFrom(joinFrom)
+      if (!joinInfo) continue
+
+      const refTableData = await loadTableData(joinInfo.table)
+      const refByFirstColumn = new Map<string, any>()
+      for (const refRow of refTableData) {
+        const key = normalizeMatchKey(refRow[firstDepKey])
+        if (key !== '' && !refByFirstColumn.has(key)) {
+          refByFirstColumn.set(key, refRow)
+        }
+      }
+
+      fkConfigs.push({
+        fkField,
+        columnsToJoin,
+        refTable: joinInfo.table,
+        refTableData,
+        refByFirstColumn,
+      })
+    }
+
+    // 2) Map each row: resolve each FK and remove dependent fields
+    return parsedData.map((row) => {
+      const mappedRow: Record<string, any> = { ...row }
+
+      for (const config of fkConfigs) {
+        const { fkField, columnsToJoin, refTableData, refByFirstColumn } =
+          config
+        const firstColumn = columnsToJoin[0]
+
+        const firstColValue = mappedRow[firstColumn]
+        const hasFirstCol =
+          firstColValue !== undefined &&
+          firstColValue !== null &&
+          String(firstColValue).trim() !== ''
+
+        let match: any = null
+        if (hasFirstCol) {
+          match = refByFirstColumn.get(normalizeMatchKey(firstColValue)) ?? null
+        }
+        if (!match && refTableData.length > 0) {
+          for (const depKey of columnsToJoin) {
+            const rowVal = mappedRow[depKey]
+            if (
+              rowVal === undefined ||
+              rowVal === null ||
+              String(rowVal).trim() === ''
             )
+              continue
+            const found = refTableData.find((refRow) =>
+              fieldValuesMatch(refRow[depKey], rowVal),
+            )
+            if (found) {
+              match = found
+              break
+            }
           }
         }
 
-        // Remove remaining dependent fields
-        for (const [fieldKey, fieldProp] of Object.entries(properties)) {
-          if ((fieldProp as any).isDependentField) {
-            delete mappedRow[fieldKey]
-          }
+        if (match?.id !== undefined) {
+          mappedRow[fkField] = match.id
         }
+        for (const depKey of columnsToJoin) {
+          delete mappedRow[depKey]
+        }
+      }
 
-        return mappedRow
-      }),
-    )
+      // Remove any remaining dependent fields not handled above (e.g. readOnly joined columns)
+      for (const [fieldKey, fieldProp] of Object.entries(properties)) {
+        if ((fieldProp as any).isDependentField) {
+          delete mappedRow[fieldKey]
+        }
+      }
+
+      return mappedRow
+    })
   }
 
   // Helper function to parse Excel files
@@ -642,6 +603,79 @@ export function useTableData(
     throw new Error(t('table.messages.invalidFileFormat'))
   }
 
+  /**
+   * Fetch list from repository and enrich with joined columns (frontend join).
+   */
+  const fetchListEnriched = async (
+    repository: { getList: () => Promise<any[]> },
+    config: any,
+  ): Promise<any[]> => {
+    const data = await repository.getList()
+    const rawItems = Array.isArray(data) ? data : []
+    const properties = config?.get_list?.response_schema?.items?.properties
+    if (!properties || rawItems.length === 0) return rawItems
+    return enrichItemsWithJoinedColumns(rawItems, properties)
+  }
+
+  /**
+   * Enrich list items with joined column values from referenced tables.
+   * For each FK field (columns_to_join), loads the referenced table and sets
+   * each dependent field (e.g. factoria) from the joined row so the table
+   * displays the correct label (e.g. factory name) instead of the code or id.
+   */
+  const enrichItemsWithJoinedColumns = async (
+    data: any[],
+    properties: Record<string, any>,
+  ): Promise<any[]> => {
+    if (!Array.isArray(data) || data.length === 0 || !properties) return data
+
+    const result = data.map((item) => ({ ...item }))
+
+    for (const [fkKey, fkProp] of Object.entries(properties)) {
+      const columnsToJoin = fkProp.columnsToJoin ?? fkProp.columns_to_join
+      if (!Array.isArray(columnsToJoin) || columnsToJoin.length === 0) continue
+
+      const firstDepKey = columnsToJoin[0]
+      const firstDepProp = properties[firstDepKey]
+      const firstJoinFrom = firstDepProp?.joinFrom ?? firstDepProp?.join_from
+      if (!firstJoinFrom) continue
+
+      const joinInfo = parseJoinFrom(firstJoinFrom)
+      if (!joinInfo) continue
+
+      let refRows: any[] = []
+      try {
+        refRows = await loadTableData(joinInfo.table)
+      } catch (e) {
+        console.warn(
+          `[useTableData] Could not load join table ${joinInfo.table} for ${fkKey}:`,
+          e,
+        )
+        continue
+      }
+
+      const refById = new Map(refRows.map((r) => [String(r?.id ?? ''), r]))
+
+      for (const item of result) {
+        const fkId = item[fkKey]
+        if (fkId === undefined || fkId === null) continue
+        const refRow = refById.get(String(fkId))
+        if (!refRow) continue
+
+        for (const depKey of columnsToJoin) {
+          const depProp = properties[depKey]
+          const joinFrom = depProp?.joinFrom ?? depProp?.join_from
+          if (!joinFrom) continue
+          const depJoinInfo = parseJoinFrom(joinFrom)
+          if (!depJoinInfo || !(depJoinInfo.field in refRow)) continue
+          item[depKey] = refRow[depJoinInfo.field]
+        }
+      }
+    }
+
+    return result
+  }
+
   // Load data function for master tables
   const loadData = async () => {
     if (!tableConfig.value || !tableConfig.value.get_list) {
@@ -657,19 +691,9 @@ export function useTableData(
       const TableRepository = (await import('@/repositories/TableRepository'))
         .default
       const repository = new TableRepository(tableConfig.value, t)
-      const queryParams = { ...apiQueryParams.value }
-      const data = await repository.getList(Object.keys(queryParams).length > 0 ? queryParams : undefined)
-      // Don't update state if this load was superseded or cancelled (e.g. user navigated away)
+      const enriched = await fetchListEnriched(repository, tableConfig.value)
       if (myLoadId !== loadIdRef.value) return
-      const baseItems = Array.isArray(data) ? data : []
-      // Merge pending creates so they still appear after navigating away and back
-      const storageKey = normalizeTableKeyForStorage(tableKey.value)
-      const pending = tableChanges.getPendingCreates(storageKey) ?? []
-      const createdRows = pending.map(({ tempId, data: rowData }) => ({
-        ...rowData,
-        id: tempId,
-      }))
-      items.value = [...baseItems, ...createdRows]
+      items.value = enriched
     } catch (err) {
       if (myLoadId !== loadIdRef.value) return
       console.error('Error in loadData:', err)
@@ -685,19 +709,6 @@ export function useTableData(
     loadIdRef.value++
   }
 
-  // Initialize date range values when configs change
-  watch(
-    apiDateRangeFilterConfigs,
-    (configs) => {
-      const next: Record<string, { from: string; to: string }> = {}
-      for (const c of configs) {
-        next[c.paramGte] = dateRangeValues.value[c.paramGte] ?? { from: '', to: '' }
-      }
-      dateRangeValues.value = next
-    },
-    { immediate: true },
-  )
-
   // Watch for config changes (only for master tables)
   watch(
     tableConfig,
@@ -709,19 +720,6 @@ export function useTableData(
 
       if (newConfig && newConfig.get_list) {
         loadData()
-        // Preload joinFrom tables so tableData has them for resolving FK display (e.g. pending creates)
-        const properties =
-          newConfig.get_list?.response_schema?.items?.properties
-        if (properties) {
-          const tablesToLoad = new Set<string>()
-          for (const prop of Object.values(properties) as any[]) {
-            if (prop?.joinFrom && typeof prop.joinFrom === 'string') {
-              const tableName = prop.joinFrom.split('.')[0]
-              if (tableName) tablesToLoad.add(tableName)
-            }
-          }
-          tablesToLoad.forEach((tableName) => loadTableData(tableName))
-        }
       }
     },
     { immediate: true },
@@ -1131,42 +1129,9 @@ export function useTableData(
     }),
     rowsDataForModal: computed(() => {
       const storageKey = normalizeTableKeyForStorage(tableKey.value)
-      const headers = dynamicHeaders.value
-      const refData = tableDataWithPendingCreates.value
-      const enrich = (item: any) => {
-        let out = item
-        for (const header of headers) {
-          const h = header as any
-          if (
-            !h?.joinFrom ||
-            !h?.foreignKeyField ||
-            (item[header.key] != null && item[header.key] !== '')
-          )
-            continue
-          const fkId = item[h.foreignKeyField]
-          if (fkId == null) continue
-          const joinInfo = parseJoinFrom(h.joinFrom)
-          if (!joinInfo) continue
-          const tableRows = refData[joinInfo.table]
-          if (!Array.isArray(tableRows)) continue
-          const refRow = tableRows.find(
-            (r: any) =>
-              String(r?.id) === String(fkId) ||
-              String(r?.[h.foreignKeyField]) === String(fkId),
-          )
-          if (refRow && joinInfo.field in refRow) {
-            if (out === item) out = { ...item }
-            ;(out as any)[header.key] = refRow[joinInfo.field]
-          }
-        }
-        return out
-      }
       return {
         [storageKey]: Object.fromEntries(
-          dynamicItems.value.map((item: any) => [
-            String(item.id),
-            enrich(item),
-          ]),
+          dynamicItems.value.map((item: any) => [String(item.id), item]),
         ),
       }
     }),
@@ -1200,11 +1165,9 @@ export function useTableData(
           title: prop.title || key,
           type: prop.type === 'integer' ? 'number' : prop.type,
           required:
-            prop.required ??
             tableConfig.value.get_list.response_schema.items.required?.includes(
               key,
-            ) ??
-            false,
+            ) || false,
           // Foreign key properties
           isForeignKey: prop.isForeignKey || false,
           isDependentField: prop.isDependentField || false,
@@ -1216,7 +1179,6 @@ export function useTableData(
           readOnly: prop.readOnly || false,
           // Choices property for select fields
           choices: prop.choices || undefined,
-          format: prop.format || undefined,
         }))
     }),
     formData,
@@ -1233,13 +1195,7 @@ export function useTableData(
 
     // Foreign key data loading
     loadTableData,
-    tableData: tableDataWithPendingCreates,
-    invalidateTableDataCache,
-
-    // API date range filters
-    apiDateRangeFilterConfigs,
-    dateRangeValues,
-    apiQueryParams,
+    tableData: tableDataCache,
 
     // Filter functions
     getOperatorsForFieldType,
@@ -1247,6 +1203,8 @@ export function useTableData(
     operatorNeedsValue,
     operatorNeedsSecondValue,
     generateFilterId,
+    apiDateRangeFilterConfigs,
+    dateRangeValues,
 
     // Event handlers (simplified)
     handleSearch,
@@ -1270,27 +1228,11 @@ export function useTableData(
     handleClearAllFilters: () => {
       activeFilters.value = []
     },
-    handleApplyDateRange: (key: string, payload: { from: string; to: string }) => {
-      const config = apiDateRangeFilterConfigs.value.find((c) => c.paramGte === key)
-      if (!config) return
-      if (payload.from) apiQueryParams.value[config.paramGte] = payload.from
-      else delete apiQueryParams.value[config.paramGte]
-      if (payload.to) apiQueryParams.value[config.paramLte] = payload.to
-      else delete apiQueryParams.value[config.paramLte]
-      apiQueryParams.value = { ...apiQueryParams.value }
-      dateRangeValues.value[key] = { from: payload.from, to: payload.to }
-      dateRangeValues.value = { ...dateRangeValues.value }
-      if (!shouldUseExecutionData.value) loadData()
+    handleApplyDateRange: (_key: string, _range: { from: string; to: string }) => {
+      // Date range filters not used for master tables; no-op
     },
-    handleResetDateRange: (key: string) => {
-      const config = apiDateRangeFilterConfigs.value.find((c) => c.paramGte === key)
-      if (!config) return
-      delete apiQueryParams.value[config.paramGte]
-      delete apiQueryParams.value[config.paramLte]
-      apiQueryParams.value = { ...apiQueryParams.value }
-      dateRangeValues.value[key] = { from: '', to: '' }
-      dateRangeValues.value = { ...dateRangeValues.value }
-      if (!shouldUseExecutionData.value) loadData()
+    handleResetDateRange: (_key: string) => {
+      // Date range filters not used for master tables; no-op
     },
     handleToggleFiltersPanel: (show: boolean) => {
       // This is handled by CoreTable internally
@@ -1342,17 +1284,9 @@ export function useTableData(
         const wasEditing = isEditing.value
         const mode = wasEditing ? 'edit' : 'add'
 
-        // Resolve display values (join_from) to foreign key IDs before preparing payload
-        const rawData = { ...(formData.value as Record<string, any>) }
-        const resolvedData = await resolveDisplayValuesToFkIds(
-          rawData,
-          tableConfig.value,
-          loadTableData,
-        )
-
         // Use composable to prepare data (filters dependent fields and handles id)
         const preparedData = formFieldsComposable.prepareFormDataForSubmit(
-          resolvedData as any,
+          formData.value as any,
           mode,
         )
 
@@ -1386,9 +1320,7 @@ export function useTableData(
           await repository.createItem(preparedData)
         }
 
-        const q = Object.keys(apiQueryParams.value).length > 0 ? apiQueryParams.value : undefined
-        const reloadedData = await repository.getList(q)
-        items.value = Array.isArray(reloadedData) ? reloadedData : []
+        items.value = await fetchListEnriched(repository, tableConfig.value)
         showAddEditModal.value = false
         formData.value = {}
         isEditing.value = false
@@ -1452,10 +1384,8 @@ export function useTableData(
           await repository.createBulk(mappedData)
         }
 
-        // Reload data and close modal
-        const q = Object.keys(apiQueryParams.value).length > 0 ? apiQueryParams.value : undefined
-        const reloadedData = await repository.getList(q)
-        items.value = Array.isArray(reloadedData) ? reloadedData : []
+        // Reload data and close modal (enrich so joined columns show correctly)
+        items.value = await fetchListEnriched(repository, tableConfig.value)
         showBulkUploadModal.value = false
 
         // Show success message
@@ -1491,19 +1421,6 @@ export function useTableData(
       // Master tables in Excel mode: stage delete (row stays visible in red until Save all)
       if (enableExcelMode.value) {
         const storageKey = normalizeTableKeyForStorage(tableKey.value)
-        const isPendingCreate =
-          typeof id === 'string' && String(id).startsWith('create-')
-
-        if (isPendingCreate) {
-          // Row was only a pending create (not saved): revert the create and remove from list; no delete to stage
-          tableChanges.revertCreate(storageKey, id)
-          items.value = items.value.filter((i: any) => String(i?.id) !== String(id))
-          showDeleteDialog.value = false
-          formData.value = {}
-          showSnackbar(t('pendingChanges.createReverted'), 'success')
-          return
-        }
-
         const rowData = formData.value as Record<string, any>
         tableChanges.recordDelete(storageKey, id, rowData)
         showDeleteDialog.value = false
@@ -1521,9 +1438,7 @@ export function useTableData(
 
         await repository.deleteItem(id)
 
-        const q = Object.keys(apiQueryParams.value).length > 0 ? apiQueryParams.value : undefined
-        const reloadedData = await repository.getList(q)
-        items.value = Array.isArray(reloadedData) ? reloadedData : []
+        items.value = await fetchListEnriched(repository, tableConfig.value)
         showDeleteDialog.value = false
         formData.value = {}
 
@@ -1547,34 +1462,9 @@ export function useTableData(
       // Master tables in Excel mode: stage deletes (rows stay visible in red until Save all)
       if (enableExcelMode.value) {
         const storageKey = normalizeTableKeyForStorage(tableKey.value)
-        const pendingCreateIds = new Set(
-          selectedItems.value
-            .filter(
-              (item: any) =>
-                typeof item?.id === 'string' &&
-                String(item.id).startsWith('create-'),
-            )
-            .map((item: any) => String(item.id)),
-        )
-        const realRows = selectedItems.value.filter(
-          (item: any) => !pendingCreateIds.has(String(item?.id)),
-        )
-
-        // Revert pending creates: remove from creates list and from items
-        pendingCreateIds.forEach((tempId) => {
-          tableChanges.revertCreate(storageKey, tempId)
-        })
-        if (pendingCreateIds.size > 0) {
-          items.value = items.value.filter(
-            (i: any) => !pendingCreateIds.has(String(i?.id)),
-          )
-        }
-
-        // Stage deletes only for rows that exist on the server
-        realRows.forEach((item: any) =>
+        selectedItems.value.forEach((item: any) =>
           tableChanges.recordDelete(storageKey, item.id, item),
         )
-
         selectedItems.value = []
         showBulkDeleteDialog.value = false
         showSnackbar(t('pendingChanges.changeStaged'), 'success')
@@ -1591,9 +1481,7 @@ export function useTableData(
         const idsToDelete = selectedItems.value.map((item) => item.id)
         await repository.deleteBulk(idsToDelete)
 
-        const q = Object.keys(apiQueryParams.value).length > 0 ? apiQueryParams.value : undefined
-        const reloadedData = await repository.getList(q)
-        items.value = Array.isArray(reloadedData) ? reloadedData : []
+        items.value = await fetchListEnriched(repository, tableConfig.value)
         selectedItems.value = []
         showBulkDeleteDialog.value = false
 
@@ -1636,29 +1524,16 @@ export function useTableData(
         )
         const repository = new TableRepository(tableConfig.value, t)
 
-        // Resolve display values (join_from) to foreign key IDs before preparing payload
-        const rawData = { ...(editingData.value as Record<string, any>) }
-        const resolvedData = await resolveDisplayValuesToFkIds(
-          rawData,
-          tableConfig.value,
-          loadTableData,
-        )
-
         // Use composable to prepare data (filters dependent fields and excludes id)
         const preparedData = formFieldsComposable.prepareFormDataForSubmit(
-          resolvedData as any,
+          editingData.value as any,
           'edit',
         )
 
         await repository.putItem(editingRowId.value, preparedData)
 
-        // Update local data and reset editing state
-        const itemIndex = items.value.findIndex(
-          (item) => item.id === editingRowId.value,
-        )
-        if (itemIndex >= 0) {
-          items.value[itemIndex] = { ...editingData.value }
-        }
+        // Reload list so joined columns are resolved
+        items.value = await fetchListEnriched(repository, tableConfig.value)
 
         editingRowId.value = null
         editingData.value = {}
@@ -1700,35 +1575,46 @@ export function useTableData(
         )
         const repository = new TableRepository(config, t)
 
-        // 1. Pending deletes
+        // 1. Pending deletes (use bulk when supported to avoid N calls)
         const deletes = tableChanges.getPendingDeletes(storageKey)
-        if (config?.delete_item && deletes.length > 0) {
-          for (const rowId of deletes) {
-            await repository.deleteItem(rowId)
+        if (deletes.length > 0) {
+          if (config?.delete_bulk) {
+            await repository.deleteBulk(deletes)
+          } else if (config?.delete_item) {
+            for (const rowId of deletes) {
+              await repository.deleteItem(rowId)
+            }
           }
           tableChanges.clearDeletesForTable(storageKey)
         }
 
-        // 2. Pending creates
+        // 2. Pending creates (use bulk when supported to avoid N calls)
         const creates = tableChanges.getPendingCreates(storageKey)
-        if (config?.post_item && creates.length > 0) {
-          for (const { data } of creates) {
-            const { id: _id, ...rawPayload } = data
-            const payloadWithIds = await resolveDisplayValuesToFkIds(
-              rawPayload,
-              config,
-              loadTableData,
-            )
-            await repository.createItem(payloadWithIds)
+        if (creates.length > 0) {
+          if (config?.post_bulk) {
+            const payloads = creates.map(({ data }) => {
+              const { id: _id, ...rest } = data
+              return formFieldsComposable.prepareFormDataForSubmit(
+                rest as any,
+                'add',
+              )
+            })
+            await repository.createBulk(payloads)
+          } else if (config?.post_item) {
+            for (const { data } of creates) {
+              const { id: _id, ...payload } = data
+              await repository.createItem(payload)
+            }
           }
           tableChanges.clearCreatesForTable(storageKey)
         }
 
-        // 3. Cell edits
+        // 3. Cell edits (run putItem in parallel batches for speed)
         const changes = tableChanges.getChangesForTable(storageKey)
         if (config?.put_item && changes && Object.keys(changes).length > 0) {
-          const q = Object.keys(apiQueryParams.value).length > 0 ? apiQueryParams.value : undefined
-          const currentItems = await repository.getList(q)
+          const currentItems = await repository.getList()
+          const CONCURRENT_PUTS = 10
+          const putTasks: Array<{ rowId: string; preparedData: any }> = []
           for (const [rowId, rowChanges] of Object.entries(changes)) {
             const row = currentItems.find((i: any) => String(i.id) === rowId)
             if (!row) continue
@@ -1738,23 +1624,25 @@ export function useTableData(
                 merged[fieldKey] = change.newValue
               },
             )
-            const mergedWithFkIds = await resolveDisplayValuesToFkIds(
-              merged as Record<string, any>,
-              config,
-              loadTableData,
-            )
             const preparedData = formFieldsComposable.prepareFormDataForSubmit(
-              mergedWithFkIds as any,
+              merged as any,
               'edit',
             )
-            await repository.putItem(rowId, preparedData)
+            putTasks.push({ rowId, preparedData })
+          }
+          for (let i = 0; i < putTasks.length; i += CONCURRENT_PUTS) {
+            const batch = putTasks.slice(i, i + CONCURRENT_PUTS)
+            await Promise.all(
+              batch.map(({ rowId, preparedData }) =>
+                repository.putItem(rowId, preparedData),
+              ),
+            )
           }
           tableChanges.revertTableChanges(storageKey)
         }
 
         await loadData()
         showSnackbar(t('table.messages.itemUpdated'), 'success')
-        invalidateTableDataCache(storageKey)
       } catch (err) {
         console.error('Error saving all changes:', err)
         error.value =
@@ -1763,7 +1651,6 @@ export function useTableData(
           err instanceof Error ? err.message : t('table.messages.errorSaving'),
           'error',
         )
-        throw err
       } finally {
         saving.value = false
       }
@@ -1798,10 +1685,8 @@ export function useTableData(
 
         await repository.createBulk(data)
 
-        // Reload data and close modal
-        const q = Object.keys(apiQueryParams.value).length > 0 ? apiQueryParams.value : undefined
-        const reloadedData = await repository.getList(q)
-        items.value = Array.isArray(reloadedData) ? reloadedData : []
+        // Reload data and close modal (enrich so joined columns show correctly)
+        items.value = await fetchListEnriched(repository, tableConfig.value)
         showBulkUploadModal.value = false
 
         // Show success message

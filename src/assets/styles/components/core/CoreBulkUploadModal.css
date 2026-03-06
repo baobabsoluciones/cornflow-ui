@@ -5,6 +5,11 @@
   margin-bottom: 20px;
 }
 
+.core-bulk-upload-modal__operation-section--disabled {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
 .core-bulk-upload-modal__section-label {
   display: block;
   font-size: 16px;
@@ -131,6 +136,10 @@
 }
 
 .core-bulk-upload-modal__error-alert {
+  margin-bottom: 0;
+}
+
+.core-bulk-upload-modal__loading-alert {
   margin-bottom: 0;
 }
 

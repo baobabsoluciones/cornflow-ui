@@ -87,6 +87,7 @@
         <div
           v-if="showOperationSelection"
           class="core-bulk-upload-modal__operation-section"
+          :class="{ 'core-bulk-upload-modal__operation-section--disabled': loading }"
         >
           <div class="core-bulk-upload-modal__options-list">
             <div
@@ -96,7 +97,7 @@
                 'core-bulk-upload-modal__option-card--selected':
                   selectedOperation === 'post_bulk',
               }"
-              @click="selectedOperation = 'post_bulk'"
+              @click="!loading && (selectedOperation = 'post_bulk')"
             >
               <v-checkbox
                 :model-value="selectedOperation === 'post_bulk'"
@@ -120,7 +121,7 @@
                 'core-bulk-upload-modal__option-card--selected':
                   selectedOperation === 'overwrite_all',
               }"
-              @click="selectedOperation = 'overwrite_all'"
+              @click="!loading && (selectedOperation = 'overwrite_all')"
             >
               <v-checkbox
                 :model-value="selectedOperation === 'overwrite_all'"
@@ -225,6 +226,16 @@
                 </div>
               </div>
             </v-alert>
+
+            <!-- Loading message during overwrite/upload -->
+            <v-alert
+              v-if="loading"
+              type="info"
+              variant="tonal"
+              class="core-bulk-upload-modal__loading-alert mt-3"
+            >
+              {{ $t('table.uploadingPleaseWait') }}
+            </v-alert>
           </div>
         </transition>
 
@@ -257,7 +268,7 @@
           color="primary"
           size="small"
           :loading="loading"
-          :disabled="!hasValidFiles"
+          :disabled="!hasValidFiles || loading"
           @click="handleUpload"
         />
       </v-card-actions>
