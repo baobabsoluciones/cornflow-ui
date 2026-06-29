@@ -62,7 +62,7 @@ export function useExecutionExcel(
       )
 
       const experiment = new Experiment(instance, emptySolution)
-      const filename = (execution.value.name || 'execution').replace(/\./g, '-')
+      const filename = (execution.value.name || 'execution').replaceAll('.', '-')
 
       // Download only instance (saveSolution = false)
       await experiment.downloadExcel(filename, true, false)

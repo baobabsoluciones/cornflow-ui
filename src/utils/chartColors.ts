@@ -37,7 +37,7 @@ const THEME_FALLBACKS: Record<string, string> = {
  * or when the variable is not defined.
  */
 export function getCSSVariable(variableName: string): string {
-  if (typeof window === 'undefined') {
+  if (globalThis.window === undefined) {
     return (
       CHART_COLOR_FALLBACKS[variableName] ||
       THEME_FALLBACKS[variableName] ||
@@ -101,9 +101,9 @@ export function getChartColors(count: number): string[] {
 export function getColorWithOpacity(color: string, opacity: number): string {
   if (color.startsWith('#')) {
     const hex = color.replace('#', '')
-    const r = parseInt(hex.slice(0, 2), 16)
-    const g = parseInt(hex.slice(2, 4), 16)
-    const b = parseInt(hex.slice(4, 6), 16)
+    const r = Number.parseInt(hex.slice(0, 2), 16)
+    const g = Number.parseInt(hex.slice(2, 4), 16)
+    const b = Number.parseInt(hex.slice(4, 6), 16)
     return `rgba(${r}, ${g}, ${b}, ${opacity})`
   }
   return color

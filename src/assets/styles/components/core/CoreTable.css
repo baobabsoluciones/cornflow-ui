@@ -365,7 +365,6 @@
 table.v-data-table-virtual tbody tr.row-fijar-active,
 .v-data-table-virtual tbody tr.row-fijar-active,
 .v-data-table-virtual tbody tr.row-fijar-active.v-data-table__tr {
-  background-color: rgba(241, 249, 253, 0.6) !important;
   background: rgba(241, 249, 253, 0.6) !important;
 }
 
@@ -388,7 +387,6 @@ table.v-data-table-virtual tbody tr.row-fijar-active,
 table.v-data-table-virtual tbody tr.row-fijar-active:hover,
 .v-data-table-virtual tbody tr.row-fijar-active:hover,
 .v-data-table-virtual tbody tr.row-fijar-active.v-data-table__tr:hover {
-  background-color: rgba(241, 249, 253, 0.8) !important;
   background: rgba(241, 249, 253, 0.8) !important;
 }
 
@@ -401,7 +399,6 @@ table.v-data-table-virtual tbody tr.row-fijar-active:hover,
 .core-table-container
   :deep(.v-data-table-virtual .v-table tbody tr.row-fijar-active td),
 .v-data-table-virtual tbody tr.row-fijar-active td {
-  background-color: transparent !important;
   background: transparent !important;
 }
 
@@ -416,7 +413,6 @@ table.v-data-table-virtual tbody tr.row-fijar-active:hover,
       tbody
       tr:has(td [data-fijar-value='true'])
   ) {
-  background-color: rgba(241, 249, 253, 0.6) !important;
   background: rgba(241, 249, 253, 0.6) !important;
 }
 
@@ -430,7 +426,6 @@ table.v-data-table-virtual tbody tr.row-fijar-active:hover,
       tbody
       tr:has(td [data-fijar-value='true']):hover
   ) {
-  background-color: rgba(241, 249, 253, 0.8) !important;
   background: rgba(241, 249, 253, 0.8) !important;
 }
 
@@ -442,13 +437,11 @@ table.v-data-table-virtual tbody tr.row-fijar-active:hover,
   :deep(.v-data-table-virtual .v-table__wrapper table tbody tr.row-new),
 .v-data-table-virtual tbody tr.row-new,
 .v-data-table-virtual tbody tr.row-new.v-data-table__tr {
-  background-color: rgba(76, 175, 80, 0.12) !important;
   background: rgba(76, 175, 80, 0.12) !important;
 }
 
 .core-table-container :deep(.v-data-table-virtual tbody tr.row-new td),
 .v-data-table-virtual tbody tr.row-new td {
-  background-color: transparent !important;
   background: transparent !important;
 }
 
@@ -457,13 +450,11 @@ table.v-data-table-virtual tbody tr.row-fijar-active:hover,
   :deep(.v-data-table-virtual .v-table__wrapper table tbody tr.row-deleted),
 .v-data-table-virtual tbody tr.row-deleted,
 .v-data-table-virtual tbody tr.row-deleted.v-data-table__tr {
-  background-color: rgba(198, 40, 40, 0.1) !important;
   background: rgba(198, 40, 40, 0.1) !important;
 }
 
 .core-table-container :deep(.v-data-table-virtual tbody tr.row-deleted td),
 .v-data-table-virtual tbody tr.row-deleted td {
-  background-color: transparent !important;
   background: transparent !important;
 }
 

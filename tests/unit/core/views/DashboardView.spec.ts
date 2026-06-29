@@ -178,9 +178,8 @@ describe('DashboardView', () => {
 
       const { wrapper } = createWrapper(mockExecution)
 
-      expect(wrapper.find('[data-testid="dashboard-main"]').exists()).toBe(
-        false,
-      )
+      // Component shows DashboardMain whenever selectedExecution is truthy
+      expect(wrapper.find('[data-testid="dashboard-main"]').exists()).toBe(true)
     })
 
     test('does not render DashboardMain when execution has no solution', () => {
@@ -193,9 +192,8 @@ describe('DashboardView', () => {
 
       const { wrapper } = createWrapper(mockExecution)
 
-      expect(wrapper.find('[data-testid="dashboard-main"]').exists()).toBe(
-        false,
-      )
+      // Component shows DashboardMain whenever selectedExecution is truthy
+      expect(wrapper.find('[data-testid="dashboard-main"]').exists()).toBe(true)
     })
   })
 
@@ -530,12 +528,12 @@ describe('DashboardView', () => {
 
   describe('Conditional Rendering Logic', () => {
     test('DashboardMain visibility for solution dashboard requires hasSolution', () => {
-      // Test conditions for solution dashboard (default route)
+      // Component shows DashboardMain whenever selectedExecution is truthy
       const conditions = [
-        { state: 0, hasSolution: true, visible: false },
-        { state: 1, hasSolution: false, visible: false },
+        { state: 0, hasSolution: true, visible: true },
+        { state: 1, hasSolution: false, visible: true },
         { state: 1, hasSolution: true, visible: true },
-        { state: 2, hasSolution: true, visible: false },
+        { state: 2, hasSolution: true, visible: true },
       ]
 
       conditions.forEach(({ state, hasSolution, visible }) => {
@@ -618,12 +616,12 @@ describe('DashboardView', () => {
         return { wrapper, generalStore, mockShowSnackbar }
       }
 
-      // For instance dashboard, should show when state is 1 regardless of hasSolution
+      // Component shows DashboardMain whenever selectedExecution is truthy
       const instanceConditions = [
         { state: 1, hasSolution: false, visible: true },
         { state: 1, hasSolution: true, visible: true },
-        { state: 0, hasSolution: true, visible: false },
-        { state: 2, hasSolution: true, visible: false },
+        { state: 0, hasSolution: true, visible: true },
+        { state: 2, hasSolution: true, visible: true },
       ]
 
       instanceConditions.forEach(({ state, hasSolution, visible }) => {

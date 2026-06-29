@@ -13,6 +13,11 @@ export class User {
    * - If defined with values, user only sees tables that match these schemas.
    */
   schemas?: string[]
+  /**
+   * Roles assigned to the user. Used for view/endpoint permission checks.
+   * If undefined or empty, no extra restrictions apply.
+   */
+  roles?: { id: number; name: string }[]
 
   constructor(
     id: string,
@@ -21,6 +26,7 @@ export class User {
     firstName: string,
     lastName: string,
     schemas?: string[],
+    roles?: { id: number; name: string }[],
   ) {
     this.id = id
     this.username = username
@@ -29,6 +35,7 @@ export class User {
     this.lastName = lastName
     this.fullName = getUserFullName(firstName, lastName) || username
     this.schemas = schemas
+    this.roles = roles
   }
 
   /**
@@ -46,7 +53,7 @@ export class User {
    */
   hasSchemaAccess(schemaName: string): boolean {
     if (this.hasFullAccess()) return true
-    return this.schemas!.includes(schemaName)
+    return this.schemas.includes(schemaName)
   }
 
   /**
@@ -57,6 +64,6 @@ export class User {
   hasAnySchemaAccess(schemaNames: string[]): boolean {
     if (this.hasFullAccess()) return true
     if (!schemaNames || schemaNames.length === 0) return true // No restriction
-    return schemaNames.some((schema) => this.schemas!.includes(schema))
+    return schemaNames.some((schema) => this.schemas.includes(schema))
   }
 }

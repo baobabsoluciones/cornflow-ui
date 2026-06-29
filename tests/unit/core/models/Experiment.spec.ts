@@ -1,22 +1,29 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, test, expect, vi, beforeEach } from 'vitest'
 import { ExperimentCore } from '@/models/Experiment'
 
 // Mock dependencies
 vi.mock('@/utils/data_io', () => ({
-  schemaDataToTable: vi.fn()
+  schemaDataToTable: vi.fn(),
+  buildExcelBuffer: vi
+    .fn()
+    .mockResolvedValue({ bytes: new Uint8Array(8), format: 'xlsx' }),
 }))
 
 vi.mock('exceljs', () => {
   const mockWorkbook = {
     xlsx: {
-      writeBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(8))
-    }
+      writeBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(8)),
+    },
   }
   return {
     default: {
-      Workbook: vi.fn(() => mockWorkbook)
+      Workbook: vi.fn(function () {
+        return mockWorkbook
+      }),
     },
-    Workbook: vi.fn(() => mockWorkbook)
+    Workbook: vi.fn(function () {
+      return mockWorkbook
+    }),
   }
 })
 
@@ -27,30 +34,33 @@ const mockRevokeObjectURL = vi.fn()
 
 Object.defineProperty(global, 'document', {
   value: {
-    createElement: mockCreateElement
+    createElement: mockCreateElement,
   },
-  writable: true
+  writable: true,
 })
 
 Object.defineProperty(global, 'window', {
   value: {
     URL: {
       createObjectURL: mockCreateObjectURL,
-      revokeObjectURL: mockRevokeObjectURL
-    }
+      revokeObjectURL: mockRevokeObjectURL,
+    },
   },
-  writable: true
+  writable: true,
 })
 
 Object.defineProperty(global, 'Blob', {
-  value: vi.fn(() => ({})),
-  writable: true
+  value: vi.fn(function () {
+    return {}
+  }),
+  writable: true,
 })
 
 describe('ExperimentCore', () => {
   let mockInstance: any
   let mockSolution: any
   let mockSchemaDataToTable: any
+  let mockBuildExcelBuffer: any
   let mockWorkbook: any
   let experiment: ExperimentCore
 
@@ -60,12 +70,17 @@ describe('ExperimentCore', () => {
     // Setup mocks
     const dataIo = await import('@/utils/data_io')
     mockSchemaDataToTable = dataIo.schemaDataToTable
+    mockBuildExcelBuffer = dataIo.buildExcelBuffer
+    ;(mockBuildExcelBuffer as any).mockResolvedValue({
+      bytes: new Uint8Array(8),
+      format: 'xlsx',
+    })
 
     const ExcelJS = await import('exceljs')
     mockWorkbook = {
       xlsx: {
-        writeBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(8))
-      }
+        writeBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(8)),
+      },
     }
     // The mock is already set up in vi.mock above
 
@@ -73,7 +88,7 @@ describe('ExperimentCore', () => {
     const mockLink = {
       href: '',
       download: '',
-      click: vi.fn()
+      click: vi.fn(),
     }
     mockCreateElement.mockReturnValue(mockLink)
     mockCreateObjectURL.mockReturnValue('blob:mock-url')
@@ -82,20 +97,16 @@ describe('ExperimentCore', () => {
     mockInstance = {
       hasInstance: vi.fn(),
       data: { table1: [{ id: 1, name: 'Item 1' }] },
-      schema: { type: 'object' }
+      schema: { type: 'object' },
     }
 
     mockSolution = {
       hasSolution: vi.fn(),
       data: { results: [{ cost: 100, profit: 200 }] },
-      schema: { type: 'object' }
+      schema: { type: 'object' },
     }
 
     experiment = new ExperimentCore(mockInstance, mockSolution)
-  })
-
-  afterEach(() => {
-    vi.restoreAllMocks()
   })
 
   describe('constructor', () => {
@@ -105,13 +116,19 @@ describe('ExperimentCore', () => {
     })
 
     test('should handle null instance', () => {
-      const experimentWithNullInstance = new ExperimentCore(null as any, mockSolution)
+      const experimentWithNullInstance = new ExperimentCore(
+        null as any,
+        mockSolution,
+      )
       expect(experimentWithNullInstance.instance).toBeNull()
       expect(experimentWithNullInstance.solution).toBe(mockSolution)
     })
 
     test('should handle null solution', () => {
-      const experimentWithNullSolution = new ExperimentCore(mockInstance, null as any)
+      const experimentWithNullSolution = new ExperimentCore(
+        mockInstance,
+        null as any,
+      )
       expect(experimentWithNullSolution.instance).toBe(mockInstance)
       expect(experimentWithNullSolution.solution).toBeNull()
     })
@@ -135,13 +152,19 @@ describe('ExperimentCore', () => {
     })
 
     test('should handle null solution', () => {
-      const experimentWithNullSolution = new ExperimentCore(mockInstance, null as any)
+      const experimentWithNullSolution = new ExperimentCore(
+        mockInstance,
+        null as any,
+      )
       expect(() => experimentWithNullSolution.hasSolution()).toThrow()
     })
 
     test('should handle solution without hasSolution method', () => {
       const invalidSolution = { data: {}, schema: {} }
-      const experimentWithInvalidSolution = new ExperimentCore(mockInstance, invalidSolution as any)
+      const experimentWithInvalidSolution = new ExperimentCore(
+        mockInstance,
+        invalidSolution as any,
+      )
       expect(() => experimentWithInvalidSolution.hasSolution()).toThrow()
     })
 
@@ -154,8 +177,8 @@ describe('ExperimentCore', () => {
 
     test('should handle solution.hasSolution returning non-boolean values', () => {
       const testValues = [null, undefined, 0, 1, '', 'string', {}, []]
-      
-      testValues.forEach(value => {
+
+      testValues.forEach((value) => {
         mockSolution.hasSolution.mockReturnValue(value)
         expect(experiment.hasSolution()).toBe(value)
       })
@@ -174,13 +197,19 @@ describe('ExperimentCore', () => {
     })
 
     test('should handle null instance', () => {
-      const experimentWithNullInstance = new ExperimentCore(null as any, mockSolution)
+      const experimentWithNullInstance = new ExperimentCore(
+        null as any,
+        mockSolution,
+      )
       expect(() => experimentWithNullInstance.hasInstance()).toThrow()
     })
 
     test('should handle instance without hasInstance method', () => {
       const invalidInstance = { data: {}, schema: {} }
-      const experimentWithInvalidInstance = new ExperimentCore(invalidInstance as any, mockSolution)
+      const experimentWithInvalidInstance = new ExperimentCore(
+        invalidInstance as any,
+        mockSolution,
+      )
       expect(() => experimentWithInvalidInstance.hasInstance()).toThrow()
     })
 
@@ -193,8 +222,8 @@ describe('ExperimentCore', () => {
 
     test('should handle instance.hasInstance returning non-boolean values', () => {
       const testValues = [null, undefined, 0, 1, '', 'string', {}, []]
-      
-      testValues.forEach(value => {
+
+      testValues.forEach((value) => {
         mockInstance.hasInstance.mockReturnValue(value)
         expect(experiment.hasInstance()).toBe(value)
       })
@@ -205,8 +234,7 @@ describe('ExperimentCore', () => {
     test('should download instance and solution by default', async () => {
       await experiment.downloadExcel('test-execution')
 
-      expect(mockSchemaDataToTable).toHaveBeenCalledTimes(2)
-      // expect(mockWorkbook.xlsx.writeBuffer).toHaveBeenCalledTimes(2)
+      expect(mockBuildExcelBuffer).toHaveBeenCalledTimes(2)
       expect(mockCreateElement).toHaveBeenCalledTimes(2)
       expect(mockCreateObjectURL).toHaveBeenCalledTimes(2)
     })
@@ -214,24 +242,21 @@ describe('ExperimentCore', () => {
     test('should download only instance when saveInstance=true, saveSolution=false', async () => {
       await experiment.downloadExcel('test-execution', true, false)
 
-      expect(mockSchemaDataToTable).toHaveBeenCalledTimes(1)
-      // expect(mockWorkbook.xlsx.writeBuffer).toHaveBeenCalledTimes(1)
+      expect(mockBuildExcelBuffer).toHaveBeenCalledTimes(1)
       expect(mockCreateElement).toHaveBeenCalledTimes(1)
     })
 
     test('should download only solution when saveInstance=false, saveSolution=true', async () => {
       await experiment.downloadExcel('test-execution', false, true)
 
-      expect(mockSchemaDataToTable).toHaveBeenCalledTimes(1)
-      // expect(mockWorkbook.xlsx.writeBuffer).toHaveBeenCalledTimes(1)
+      expect(mockBuildExcelBuffer).toHaveBeenCalledTimes(1)
       expect(mockCreateElement).toHaveBeenCalledTimes(1)
     })
 
     test('should download nothing when both saveInstance and saveSolution are false', async () => {
       await experiment.downloadExcel('test-execution', false, false)
 
-      expect(mockSchemaDataToTable).not.toHaveBeenCalled()
-      expect(mockWorkbook.xlsx.writeBuffer).not.toHaveBeenCalled()
+      expect(mockBuildExcelBuffer).not.toHaveBeenCalled()
       expect(mockCreateElement).not.toHaveBeenCalled()
     })
 
@@ -240,32 +265,38 @@ describe('ExperimentCore', () => {
 
       expect(mockCreateElement).toHaveBeenCalledTimes(2)
       const calls = mockCreateElement.mock.results
-      expect(calls[0].value.download).toBe('solution_execution')
-      expect(calls[1].value.download).toBe('solution_execution')
+      expect(calls[0].value.download).toBe('solution_execution.xlsx')
+      expect(calls[1].value.download).toBe('solution_execution.xlsx')
     })
 
     test('should sanitize filename by replacing dots with hyphens', async () => {
       await experiment.downloadExcel('test.execution.v1.0')
 
       const calls = mockCreateElement.mock.results
-      expect(calls[0].value.download).toBe('solution_test-execution-v1-0')
-      expect(calls[1].value.download).toBe('solution_test-execution-v1-0')
+      expect(calls[0].value.download).toBe('solution_test-execution-v1-0.xlsx')
+      expect(calls[1].value.download).toBe('solution_test-execution-v1-0.xlsx')
     })
 
     test('should handle special characters in filename', async () => {
-      await experiment.downloadExcel('test@#$%^&*()execution.with.special.chars')
+      await experiment.downloadExcel(
+        'test@#$%^&*()execution.with.special.chars',
+      )
 
       const calls = mockCreateElement.mock.results
-      expect(calls[0].value.download).toBe('solution_test@#$%^&*()execution-with-special-chars')
-      expect(calls[1].value.download).toBe('solution_test@#$%^&*()execution-with-special-chars')
+      expect(calls[0].value.download).toBe(
+        'solution_test@#$%^&*()execution-with-special-chars.xlsx',
+      )
+      expect(calls[1].value.download).toBe(
+        'solution_test@#$%^&*()execution-with-special-chars.xlsx',
+      )
     })
 
     test('should handle empty filename', async () => {
       await experiment.downloadExcel('')
 
       const calls = mockCreateElement.mock.results
-      expect(calls[0].value.download).toBe('solution_')
-      expect(calls[1].value.download).toBe('solution_')
+      expect(calls[0].value.download).toBe('solution_.xlsx')
+      expect(calls[1].value.download).toBe('solution_.xlsx')
     })
 
     test('should handle null instance data', async () => {
@@ -273,8 +304,7 @@ describe('ExperimentCore', () => {
 
       await experiment.downloadExcel('test-null-instance', true, false)
 
-      expect(mockSchemaDataToTable).not.toHaveBeenCalled()
-      expect(mockWorkbook.xlsx.writeBuffer).not.toHaveBeenCalled()
+      expect(mockBuildExcelBuffer).not.toHaveBeenCalled()
     })
 
     test('should handle null solution data', async () => {
@@ -282,8 +312,7 @@ describe('ExperimentCore', () => {
 
       await experiment.downloadExcel('test-null-solution', false, true)
 
-      expect(mockSchemaDataToTable).not.toHaveBeenCalled()
-      expect(mockWorkbook.xlsx.writeBuffer).not.toHaveBeenCalled()
+      expect(mockBuildExcelBuffer).not.toHaveBeenCalled()
     })
 
     test('should handle null instance', async () => {
@@ -291,8 +320,7 @@ describe('ExperimentCore', () => {
 
       await experiment.downloadExcel('test-null-instance', true, false)
 
-      expect(mockSchemaDataToTable).not.toHaveBeenCalled()
-      expect(mockWorkbook.xlsx.writeBuffer).not.toHaveBeenCalled()
+      expect(mockBuildExcelBuffer).not.toHaveBeenCalled()
     })
 
     test('should handle null solution', async () => {
@@ -300,8 +328,7 @@ describe('ExperimentCore', () => {
 
       await experiment.downloadExcel('test-null-solution', false, true)
 
-      expect(mockSchemaDataToTable).not.toHaveBeenCalled()
-      expect(mockWorkbook.xlsx.writeBuffer).not.toHaveBeenCalled()
+      expect(mockBuildExcelBuffer).not.toHaveBeenCalled()
     })
 
     test('should create proper Excel file structure', async () => {
@@ -313,36 +340,43 @@ describe('ExperimentCore', () => {
       const secondLink = calls[1].value
 
       expect(firstLink.href).toBe('blob:mock-url')
-      expect(firstLink.download).toBe('solution_test-structure')
+      expect(firstLink.download).toBe('solution_test-structure.xlsx')
       expect(firstLink.click).toHaveBeenCalledTimes(2)
 
       expect(secondLink.href).toBe('blob:mock-url')
-      expect(secondLink.download).toBe('solution_test-structure')
+      expect(secondLink.download).toBe('solution_test-structure.xlsx')
       expect(secondLink.click).toHaveBeenCalledTimes(2)
     })
 
     test('should handle Excel buffer creation error', async () => {
-      mockWorkbook.xlsx.writeBuffer.mockRejectedValue(new Error('Buffer creation failed'))
+      mockBuildExcelBuffer.mockRejectedValueOnce(
+        new Error('Buffer creation failed'),
+      )
 
-      const result = await experiment.downloadExcel('test-error')
-      expect(result).toBeUndefined()
+      await expect(experiment.downloadExcel('test-error')).rejects.toThrow(
+        'Buffer creation failed',
+      )
     })
 
-    test('should handle schemaDataToTable error', async () => {
-      mockSchemaDataToTable.mockImplementation(() => {
+    test('should propagate buildExcelBuffer errors', async () => {
+      mockBuildExcelBuffer.mockImplementationOnce(() => {
         throw new Error('Schema processing failed')
       })
 
-      await expect(experiment.downloadExcel('test-schema-error')).rejects.toThrow('Schema processing failed')
+      await expect(
+        experiment.downloadExcel('test-schema-error'),
+      ).rejects.toThrow('Schema processing failed')
     })
 
     test('should handle Blob creation error', async () => {
       const originalBlob = global.Blob
-      global.Blob = vi.fn(() => {
+      global.Blob = vi.fn(function () {
         throw new Error('Blob creation failed')
       }) as any
 
-      await expect(experiment.downloadExcel('test-blob-error')).rejects.toThrow('Blob creation failed')
+      await expect(experiment.downloadExcel('test-blob-error')).rejects.toThrow(
+        'Blob creation failed',
+      )
 
       global.Blob = originalBlob
     })
@@ -352,7 +386,9 @@ describe('ExperimentCore', () => {
         throw new Error('URL creation failed')
       })
 
-      await expect(experiment.downloadExcel('test-url-error')).rejects.toThrow('URL creation failed')
+      await expect(experiment.downloadExcel('test-url-error')).rejects.toThrow(
+        'URL creation failed',
+      )
     })
 
     test('should handle very long filenames', async () => {
@@ -361,24 +397,28 @@ describe('ExperimentCore', () => {
 
       const calls = mockCreateElement.mock.results
       const expectedFilename = 'a'.repeat(1000) + '-execution'
-      expect(calls[0].value.download).toBe(`solution_${expectedFilename}`)
-      expect(calls[1].value.download).toBe(`solution_${expectedFilename}`)
+      expect(calls[0].value.download).toBe(`solution_${expectedFilename}.xlsx`)
+      expect(calls[1].value.download).toBe(`solution_${expectedFilename}.xlsx`)
     })
 
     test('should handle multiple dots in filename', async () => {
       await experiment.downloadExcel('test.execution.v1.0.final.xlsx')
 
       const calls = mockCreateElement.mock.results
-      expect(calls[0].value.download).toBe('solution_test-execution-v1-0-final-xlsx')
-      expect(calls[1].value.download).toBe('solution_test-execution-v1-0-final-xlsx')
+      expect(calls[0].value.download).toBe(
+        'solution_test-execution-v1-0-final-xlsx.xlsx',
+      )
+      expect(calls[1].value.download).toBe(
+        'solution_test-execution-v1-0-final-xlsx.xlsx',
+      )
     })
 
     test('should handle unicode characters in filename', async () => {
       await experiment.downloadExcel('测试.执行.文件名')
 
       const calls = mockCreateElement.mock.results
-      expect(calls[0].value.download).toBe('solution_测试-执行-文件名')
-      expect(calls[1].value.download).toBe('solution_测试-执行-文件名')
+      expect(calls[0].value.download).toBe('solution_测试-执行-文件名.xlsx')
+      expect(calls[1].value.download).toBe('solution_测试-执行-文件名.xlsx')
     })
   })
 
@@ -427,7 +467,10 @@ describe('ExperimentCore', () => {
       const circularInstance: any = { hasInstance: vi.fn(), data: {} }
       circularInstance.self = circularInstance
 
-      const experimentWithCircular = new ExperimentCore(circularInstance, mockSolution)
+      const experimentWithCircular = new ExperimentCore(
+        circularInstance,
+        mockSolution,
+      )
       expect(experimentWithCircular.instance.self).toBe(circularInstance)
     })
 
@@ -440,11 +483,16 @@ describe('ExperimentCore', () => {
       const largeInstance = {
         hasInstance: vi.fn().mockReturnValue(true),
         data: largeData,
-        schema: {}
+        schema: {},
       }
 
-      const experimentWithLargeData = new ExperimentCore(largeInstance, mockSolution)
-      expect(Object.keys(experimentWithLargeData.instance.data)).toHaveLength(10000)
+      const experimentWithLargeData = new ExperimentCore(
+        largeInstance,
+        mockSolution,
+      )
+      expect(Object.keys(experimentWithLargeData.instance.data)).toHaveLength(
+        10000,
+      )
     })
 
     test('should handle instance and solution with same reference', () => {
@@ -452,11 +500,16 @@ describe('ExperimentCore', () => {
         hasInstance: vi.fn().mockReturnValue(true),
         hasSolution: vi.fn().mockReturnValue(true),
         data: { shared: 'data' },
-        schema: {}
+        schema: {},
       }
 
-      const experimentWithSameRef = new ExperimentCore(sameObject as any, sameObject as any)
-      expect(experimentWithSameRef.instance).toBe(experimentWithSameRef.solution)
+      const experimentWithSameRef = new ExperimentCore(
+        sameObject as any,
+        sameObject as any,
+      )
+      expect(experimentWithSameRef.instance).toBe(
+        experimentWithSameRef.solution,
+      )
     })
   })
 })

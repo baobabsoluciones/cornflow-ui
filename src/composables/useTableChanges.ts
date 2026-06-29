@@ -50,6 +50,67 @@ const pendingDeletes = ref<
   Record<string, Array<{ rowId: string; data?: Record<string, any> }>>
 >({})
 
+// --- Helper functions extracted to avoid deep nesting (SonarQube S2004) ---
+
+function pushChangeToSummary(
+  summary: ChangesSummary[],
+  tableKey: string,
+  tableTitle: string,
+  rowId: string,
+  rowIdentifier: string,
+  fieldKey: string,
+  change: FieldChange,
+) {
+  summary.push({
+    tableKey,
+    tableTitle,
+    rowId,
+    rowIdentifier,
+    fieldKey,
+    fieldTitle: change.fieldTitle || fieldKey,
+    oldValue: change.oldValue,
+    newValue: change.newValue,
+    timestamp: change.timestamp,
+  })
+}
+
+function applyRowChangesToItem(
+  item: any,
+  rowChanges: Record<string, FieldChange>,
+) {
+  Object.entries(rowChanges).forEach(([fieldKey, change]) => {
+    item[fieldKey] = change.newValue
+  })
+}
+
+function collectGroupedFields(
+  rowGroup: { rowId: string; fields: Array<{ fieldKey: string; oldValue: any; newValue: any }> },
+  rowChanges: Record<string, FieldChange>,
+) {
+  Object.entries(rowChanges).forEach(([fieldKey, change]) => {
+    rowGroup.fields.push({
+      fieldKey,
+      oldValue: change.oldValue,
+      newValue: change.newValue,
+    })
+  })
+}
+
+function collectFullGroupedFields(
+  fields: Array<{ fieldKey: string; oldValue: any; newValue: any }>,
+  rowChanges: Record<string, FieldChange>,
+) {
+  Object.entries(rowChanges).forEach(([fieldKey, change]) => {
+    fields.push({
+      fieldKey,
+      oldValue: change.oldValue,
+      newValue: change.newValue,
+    })
+  })
+}
+
+// --------------------------------------------------------------------------
+
 /**
  * Composable for managing table changes
  */
@@ -252,6 +313,27 @@ export function useTableChanges() {
   ): void => {
     const idStr = String(rowId)
     if (!idStr || idStr === 'undefined') return
+
+    // If the row is a pending create (not persisted yet), deleting it cancels the create.
+    // Do not record a delete in this case because there is no DB row to delete.
+    const creates = pendingCreates.value[tableKey] ?? []
+    const pendingCreateIndex = creates.findIndex((c) => c.tempId === idStr)
+    if (pendingCreateIndex !== -1) {
+      creates.splice(pendingCreateIndex, 1)
+      if (creates.length === 0) {
+        delete pendingCreates.value[tableKey]
+      }
+
+      // Defensive cleanup: remove any transient cell edits for this temp row id.
+      if (pendingChanges.value[tableKey]?.[idStr]) {
+        delete pendingChanges.value[tableKey][idStr]
+        if (Object.keys(pendingChanges.value[tableKey]).length === 0) {
+          delete pendingChanges.value[tableKey]
+        }
+      }
+      return
+    }
+
     if (!pendingDeletes.value[tableKey]) {
       pendingDeletes.value[tableKey] = []
     }
@@ -419,25 +501,15 @@ export function useTableChanges() {
   ): ChangesSummary[] => {
     const summary: ChangesSummary[] = []
 
-    Object.entries(pendingChanges.value).forEach(([tableKey, tableChanges]) => {
-      Object.entries(tableChanges).forEach(([rowId, rowChanges]) => {
-        Object.entries(rowChanges).forEach(([fieldKey, change]) => {
-          summary.push({
-            tableKey,
-            tableTitle: tableTitles.value[tableKey] || tableKey,
-            rowId,
-            rowIdentifier: getRowIdentifier
-              ? getRowIdentifier(tableKey, rowId)
-              : rowId,
-            fieldKey,
-            fieldTitle: change.fieldTitle || fieldKey,
-            oldValue: change.oldValue,
-            newValue: change.newValue,
-            timestamp: change.timestamp,
-          })
-        })
-      })
-    })
+    for (const [tableKey, tableChanges] of Object.entries(pendingChanges.value)) {
+      for (const [rowId, rowChanges] of Object.entries(tableChanges)) {
+        const tableTitle = tableTitles.value[tableKey] || tableKey
+        const rowIdentifier = getRowIdentifier ? getRowIdentifier(tableKey, rowId) : rowId
+        for (const [fieldKey, change] of Object.entries(rowChanges)) {
+          pushChangeToSummary(summary, tableKey, tableTitle, rowId, rowIdentifier, fieldKey, change)
+        }
+      }
+    }
 
     // Sort by timestamp (most recent first)
     return summary.sort((a, b) => b.timestamp - a.timestamp)
@@ -495,21 +567,19 @@ export function useTableChanges() {
   ): Record<string, any[]> => {
     const updatedData = JSON.parse(JSON.stringify(data)) // Deep clone
 
-    Object.entries(pendingChanges.value).forEach(([tableKey, tableChanges]) => {
-      if (!updatedData[tableKey]) return
+    for (const [tableKey, tableChanges] of Object.entries(pendingChanges.value)) {
+      if (!updatedData[tableKey]) continue
 
-      Object.entries(tableChanges).forEach(([rowId, rowChanges]) => {
+      for (const [rowId, rowChanges] of Object.entries(tableChanges)) {
         const rowIndex = updatedData[tableKey].findIndex(
           (item: any) => String(item.id) === rowId,
         )
 
         if (rowIndex !== -1) {
-          Object.entries(rowChanges).forEach(([fieldKey, change]) => {
-            updatedData[tableKey][rowIndex][fieldKey] = change.newValue
-          })
+          applyRowChangesToItem(updatedData[tableKey][rowIndex], rowChanges)
         }
-      })
-    })
+      }
+    }
 
     return updatedData
   }
@@ -554,13 +624,7 @@ export function useTableChanges() {
           }>,
         }
 
-        Object.entries(rowChanges).forEach(([fieldKey, change]) => {
-          rowGroup.fields.push({
-            fieldKey,
-            oldValue: change.oldValue,
-            newValue: change.newValue,
-          })
-        })
+        collectGroupedFields(rowGroup, rowChanges)
 
         if (rowGroup.fields.length > 0) {
           tableGroup.changes.push(rowGroup)
@@ -612,13 +676,7 @@ export function useTableChanges() {
             oldValue: any
             newValue: any
           }> = []
-          Object.entries(rowChanges).forEach(([fieldKey, change]) => {
-            fields.push({
-              fieldKey,
-              oldValue: change.oldValue,
-              newValue: change.newValue,
-            })
-          })
+          collectFullGroupedFields(fields, rowChanges)
           if (fields.length > 0) changes.push({ rowId, fields })
         })
       }

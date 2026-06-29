@@ -79,12 +79,12 @@ interface ConfigValues {
     }
   
     private async loadConfig(): Promise<ConfigValues> {
-      if (this.loadPromise) return this.loadPromise;
+      if (this.loadPromise !== null) return this.loadPromise;
   
       this.loadPromise = new Promise<ConfigValues>((resolve, reject) => {
-        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const isLocalhost = globalThis.window.location.hostname === 'localhost' || globalThis.window.location.hostname === '127.0.0.1';
         const valuesJsonPath = appConfig.getCore().parameters.valuesJsonPath;
-        const configUrl = isLocalhost ? valuesJsonPath : `https://${window.location.hostname}${valuesJsonPath}`;
+        const configUrl = isLocalhost ? valuesJsonPath : `https://${globalThis.window.location.hostname}${valuesJsonPath}`;
         
         fetch(configUrl)
           .then(response => response.json())

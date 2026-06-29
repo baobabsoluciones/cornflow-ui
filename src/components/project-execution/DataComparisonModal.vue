@@ -182,12 +182,16 @@
                         <v-icon class="mr-2" size="18" color="white">mdi-upload</v-icon>
                         <span>{{ $t('dataComparison.uploadedData') }}</span>
                         <v-chip size="x-small" variant="tonal" class="ml-auto data-comparison-modal__panel-chip">
-                          {{ instanceData.length }}
+                          {{ displayInstanceData.length }}
                         </v-chip>
                       </div>
                       <div class="data-comparison-modal__virtual-table">
                         <!-- Virtual table header -->
                         <div class="data-comparison-modal__vtable-header">
+                          <div
+                            v-if="allowRowDelete"
+                            class="data-comparison-modal__vtable-header-cell data-comparison-modal__vtable-header-cell--action"
+                          ></div>
                           <div
                             v-for="header in tableHeaders"
                             :key="header.key"
@@ -198,22 +202,39 @@
                         </div>
                         <!-- Virtual scroll body -->
                         <v-virtual-scroll
-                          :items="instanceData"
+                          :items="displayInstanceData"
                           :height="virtualTableHeight"
                           item-height="40"
                           class="data-comparison-modal__vtable-body"
                         >
-                          <template #default="{ item }">
+                          <template #default="{ item, index }">
                             <div
                               class="data-comparison-modal__vtable-row"
                               :class="getRowClass(item, 'instance')"
                             >
                               <div
+                                v-if="allowRowDelete"
+                                class="data-comparison-modal__vtable-cell data-comparison-modal__vtable-cell--action"
+                              >
+                                <v-btn
+                                  variant="text"
+                                  size="x-small"
+                                  density="compact"
+                                  :color="item.__pendingDelete ? 'error' : 'grey'"
+                                  @click.stop="deleteInstanceRow(index)"
+                                >
+                                  <v-icon size="15">mdi-delete</v-icon>
+                                  <v-tooltip activator="parent" location="right">
+                                    {{ $t('dataComparison.deleteRow') }}
+                                  </v-tooltip>
+                                </v-btn>
+                              </div>
+                              <div
                                 v-for="header in tableHeaders"
                                 :key="header.key"
                                 class="data-comparison-modal__vtable-cell"
                               >
-                                {{ formatValue(item[header.key]) }}
+                                {{ formatValue(getCellValue(item, header.key)) }}
                               </div>
                             </div>
                           </template>
@@ -227,12 +248,16 @@
                         <v-icon class="mr-2" size="18" color="white">mdi-database</v-icon>
                         <span>{{ $t('dataComparison.masterData') }}</span>
                         <v-chip size="x-small" variant="tonal" class="ml-auto data-comparison-modal__panel-chip">
-                          {{ masterData.length }}
+                          {{ displayMasterData.length }}
                         </v-chip>
                       </div>
                       <div class="data-comparison-modal__virtual-table">
                         <!-- Virtual table header -->
                         <div class="data-comparison-modal__vtable-header">
+                          <div
+                            v-if="allowRowRestore"
+                            class="data-comparison-modal__vtable-header-cell data-comparison-modal__vtable-header-cell--restore"
+                          ></div>
                           <div
                             v-for="header in tableHeaders"
                             :key="header.key"
@@ -243,22 +268,40 @@
                         </div>
                         <!-- Virtual scroll body -->
                         <v-virtual-scroll
-                          :items="masterData"
+                          :items="displayMasterData"
                           :height="virtualTableHeight"
                           item-height="40"
                           class="data-comparison-modal__vtable-body"
                         >
-                          <template #default="{ item }">
+                          <template #default="{ item, index }">
                             <div
                               class="data-comparison-modal__vtable-row"
                               :class="getRowClass(item, 'master')"
                             >
                               <div
+                                v-if="allowRowRestore"
+                                class="data-comparison-modal__vtable-cell data-comparison-modal__vtable-cell--restore"
+                              >
+                                <v-btn
+                                  v-if="getRowClass(item, 'master') !== '' && !restoredMasterIndices.has(index)"
+                                  variant="text"
+                                  size="x-small"
+                                  density="compact"
+                                  color="primary"
+                                  @click.stop="restoreMasterRow(index)"
+                                >
+                                  <v-icon size="16">mdi-arrow-left</v-icon>
+                                  <v-tooltip activator="parent" location="right">
+                                    {{ $t('dataComparison.restoreRow') }}
+                                  </v-tooltip>
+                                </v-btn>
+                              </div>
+                              <div
                                 v-for="header in tableHeaders"
                                 :key="header.key"
                                 class="data-comparison-modal__vtable-cell"
                               >
-                                {{ formatValue(item[header.key]) }}
+                                {{ formatValue(getCellValue(item, header.key)) }}
                               </div>
                             </div>
                           </template>
@@ -311,70 +354,109 @@
                   <p class="data-comparison-modal__empty-text">{{ $t('dataComparison.noChangesInFilter') }}</p>
                 </div>
 
-                <!-- Changes list -->
-                <v-virtual-scroll
+                <!-- Changes list (scrollable; variable row height so all fields fit) -->
+                <div
                   v-else
-                  :items="filteredChanges"
-                  height="400"
-                  item-height="80"
+                  class="data-comparison-modal__changes-scroll"
                 >
-                  <template #default="{ item }">
-                    <div class="data-comparison-modal__change-item" :class="'data-comparison-modal__change-item--' + item.type">
-                      <div class="data-comparison-modal__change-icon-wrap" :class="'data-comparison-modal__change-icon-wrap--' + item.type">
-                        <v-icon v-if="item.type === 'added'" size="18" color="white">
-                          mdi-plus
-                        </v-icon>
-                        <v-icon
-                          v-else-if="item.type === 'removed'"
-                          size="18"
-                          color="white"
-                        >
-                          mdi-minus
-                        </v-icon>
-                        <v-icon
-                          v-else-if="item.type === 'modified'"
-                          size="18"
-                          color="white"
-                        >
-                          mdi-pencil
-                        </v-icon>
+                  <div
+                    v-for="(item, changeIndex) in filteredChanges"
+                    :key="changeItemKey(item, changeIndex)"
+                    class="data-comparison-modal__change-item"
+                    :class="'data-comparison-modal__change-item--' + item.type"
+                  >
+                    <div
+                      class="data-comparison-modal__change-icon-wrap"
+                      :class="'data-comparison-modal__change-icon-wrap--' + item.type"
+                    >
+                      <v-icon v-if="item.type === 'added'" size="18" color="white">
+                        mdi-plus
+                      </v-icon>
+                      <v-icon
+                        v-else-if="item.type === 'removed'"
+                        size="18"
+                        color="white"
+                      >
+                        mdi-minus
+                      </v-icon>
+                      <v-icon
+                        v-else-if="item.type === 'modified'"
+                        size="18"
+                        color="white"
+                      >
+                        mdi-pencil
+                      </v-icon>
+                    </div>
+                    <div class="data-comparison-modal__change-body">
+                      <div class="data-comparison-modal__change-type">
+                        {{ $t(`dataComparison.changeType.${item.type}`) }}
                       </div>
-                      <div class="data-comparison-modal__change-body">
-                        <div class="data-comparison-modal__change-type">
-                          {{ $t(`dataComparison.changeType.${item.type}`) }}
-                        </div>
-                        <div v-if="item.type === 'added'" class="data-comparison-modal__change-data">
-                          <code>{{ formatRowPreview(item.instanceRow) }}</code>
-                        </div>
-                        <div
-                          v-else-if="item.type === 'removed'"
-                          class="data-comparison-modal__change-data"
-                        >
-                          <code>{{ formatRowPreview(item.masterRow) }}</code>
-                        </div>
-                        <div
-                          v-else-if="item.type === 'modified'"
-                          class="data-comparison-modal__change-data"
-                        >
-                          <div
-                            v-for="change in item.changes"
-                            :key="change.field"
-                            class="data-comparison-modal__field-change"
+                      <div v-if="item.type === 'added'" class="data-comparison-modal__change-data">
+                        <div class="data-comparison-modal__modified-inline-row">
+                          <span
+                            v-for="ent in getRowPreviewEntries(item.instanceRow)"
+                            :key="ent.key"
+                            class="data-comparison-modal__mod-seg data-comparison-modal__mod-seg--same"
                           >
-                            <strong>{{ change.field }}:</strong>
-                            <span class="data-comparison-modal__old-value">{{
-                              formatValue(change.masterValue)
-                            }}</span>
-                            <v-icon size="14" class="data-comparison-modal__arrow-icon">mdi-arrow-right</v-icon>
-                            <span class="data-comparison-modal__new-value">{{
-                              formatValue(change.instanceValue)
-                            }}</span>
-                          </div>
+                            <strong class="data-comparison-modal__field-name">{{ ent.key }}:</strong>
+                            <span class="data-comparison-modal__mod-same-val">{{ ent.value }}</span>
+                          </span>
+                        </div>
+                      </div>
+                      <div
+                        v-else-if="item.type === 'removed'"
+                        class="data-comparison-modal__change-data"
+                      >
+                        <div class="data-comparison-modal__modified-inline-row">
+                          <span
+                            v-for="ent in getRowPreviewEntries(item.masterRow)"
+                            :key="ent.key"
+                            class="data-comparison-modal__mod-seg data-comparison-modal__mod-seg--same"
+                          >
+                            <strong class="data-comparison-modal__field-name">{{ ent.key }}:</strong>
+                            <span class="data-comparison-modal__mod-same-val">{{ ent.value }}</span>
+                          </span>
+                        </div>
+                      </div>
+                      <div
+                        v-else-if="item.type === 'modified'"
+                        class="data-comparison-modal__change-data data-comparison-modal__change-data--modified"
+                      >
+                        <div class="data-comparison-modal__modified-inline-row">
+                          <template
+                            v-for="line in getModifiedRowDisplayLines(item)"
+                            :key="line.field"
+                          >
+                            <span
+                              v-if="line.changed"
+                              class="data-comparison-modal__mod-seg data-comparison-modal__mod-seg--diff"
+                            >
+                              <strong class="data-comparison-modal__field-name">{{ line.field }}</strong>
+                              <span class="data-comparison-modal__old-value">{{
+                                formatValue(line.masterValue)
+                              }}</span>
+                              <v-icon size="12" class="data-comparison-modal__arrow-icon">
+                                mdi-arrow-right
+                              </v-icon>
+                              <span class="data-comparison-modal__new-value">{{
+                                formatValue(line.instanceValue)
+                              }}</span>
+                            </span>
+                            <span
+                              v-else
+                              class="data-comparison-modal__mod-seg data-comparison-modal__mod-seg--same"
+                            >
+                              <strong class="data-comparison-modal__field-name">{{ line.field }}:</strong>
+                              <span class="data-comparison-modal__mod-same-val">{{
+                                formatValue(line.unchangedValue)
+                              }}</span>
+                            </span>
+                          </template>
                         </div>
                       </div>
                     </div>
-                  </template>
-                </v-virtual-scroll>
+                  </div>
+                </div>
               </div>
             </v-window-item>
           </v-window>
@@ -398,10 +480,18 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type {
-  DiffSummary,
-  RowDiff,
+import {
+  getMasterCompareRowContext,
+  type DiffSummary,
+  type RowDiff,
 } from '@/composables/project-execution/useMasterTableMatch'
+import {
+  getExcludedKeysForMasterTableCompare,
+  buildRowMatchKey,
+  resolveComparableLowercasedKeys,
+} from '@/utils/schemaUtils'
+import { normalizeValue, areRowsDifferent } from '@/utils/rowComparison'
+import { buildOrderedFieldKeys } from '@/utils/compareFieldOrder'
 
 interface Props {
   modelValue: boolean
@@ -410,18 +500,82 @@ interface Props {
   instanceData: any[]
   masterData: any[]
   diffSummary: DiffSummary
+  /** Master table config (for excluding columns_to_join / display join fields from compare UI). */
+  masterTableConfig?: any
+  /** Full instance payload (all tables) for dictionary-based display normalization. */
+  fullInstanceData?: Record<string, any>
+  /**
+   * Columns declared for this table in the instance JSON schema. When provided,
+   * the comparison and the column headers restrict themselves to these columns
+   * (case-insensitive), so columns present only on the uploaded data or only on
+   * the master payload are ignored.
+   */
+  instanceSchemaColumns?: string[]
+  /** When true, shows per-row restore buttons on master panel rows (git-diff style). */
+  allowRowRestore?: boolean
+  /** When true, shows per-row delete buttons on instance panel rows. */
+  allowRowDelete?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  masterTableConfig: undefined,
+  fullInstanceData: undefined,
+  instanceSchemaColumns: undefined,
+  allowRowRestore: false,
+  allowRowDelete: false,
+})
+
+const compareExcludedKeys = computed(() =>
+  getExcludedKeysForMasterTableCompare(props.masterTableConfig),
+)
+
+/** Match keys + normalized row views (aligned with useMasterTableMatch). */
+const compareRowContext = computed(() =>
+  getMasterCompareRowContext(
+    props.instanceData,
+    props.masterData,
+    props.tableName,
+    props.fullInstanceData,
+  ),
+)
+
+const matchKeyFields = computed(() => compareRowContext.value.keyFields)
+
+/** Rows for display (normalized when app config defines dictionaries). Preserves __pending* markers. */
+const displayInstanceData = computed(() => {
+  const { normInstByKey, keyFields } = compareRowContext.value
+  return props.instanceData.map((row) => {
+    const normalized = normInstByKey.get(buildRowMatchKey(row, keyFields)) ?? row
+    // Carry __pending* markers through normalization so row styling still works
+    const markers: Record<string, any> = {}
+    for (const k of Object.keys(row)) {
+      if (k.startsWith('__')) markers[k] = row[k]
+    }
+    return Object.keys(markers).length > 0 ? { ...normalized, ...markers } : normalized
+  })
+})
+
+const displayMasterData = computed(() => {
+  const { normMasterByKey, keyFields } = compareRowContext.value
+  return props.masterData.map(
+    (row) => normMasterByKey.get(buildRowMatchKey(row, keyFields)) ?? row,
+  )
+})
+
+const getStableRowKey = (row: any): string =>
+  buildRowMatchKey(row, matchKeyFields.value)
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
+  (e: 'restore-master-row', originalRow: any): void
+  (e: 'delete-instance-row', originalRow: any): void
 }>()
 
 const viewMode = ref('summary')
 const changeFilter = ref('all')
 const isFullscreen = ref(false)
 const isLoading = ref(true)
+const restoredMasterIndices = ref(new Set<number>())
 
 const toggleFullscreen = () => {
   isFullscreen.value = !isFullscreen.value
@@ -438,7 +592,7 @@ watch(
   (newValue) => {
     if (newValue) {
       isLoading.value = true
-      // Small delay to allow Vue to render the modal structure first
+      restoredMasterIndices.value = new Set()
       setTimeout(() => {
         isLoading.value = false
       }, 300)
@@ -447,65 +601,126 @@ watch(
   { immediate: true },
 )
 
-// Generate table headers from data
+/**
+ * Look up a row value by header key with case-insensitive fallback, so columns
+ * whose case differs between uploaded and master data still render in the same
+ * column without producing empty cells.
+ */
+const getCellValue = (row: any, headerKey: string): any => {
+  if (!row || typeof row !== 'object') return undefined
+  if (headerKey in row) return row[headerKey]
+  const target = headerKey.toLowerCase()
+  for (const k of Object.keys(row)) {
+    if (k.toLowerCase() === target) return row[k]
+  }
+  return undefined
+}
+
+// Generate table headers — restricted to the instance JSON schema columns when
+// provided (case-insensitive), so extra columns on either side are ignored.
 const tableHeaders = computed(() => {
-  const allData = [...props.instanceData, ...props.masterData]
+  const allData = [...displayInstanceData.value, ...displayMasterData.value]
   if (allData.length === 0) return []
 
-  const allKeys = new Set<string>()
+  const excluded = compareExcludedKeys.value
+  const excludedLower = new Set(
+    Array.from(excluded).map((k) => k.toLowerCase()),
+  )
+
+  // Pick a canonical original-case label for each lowercased column.
+  // When the schema declares columns, prefer that casing; otherwise use the
+  // first occurrence seen in the data.
+  const labelByLower = new Map<string, string>()
+  if (props.instanceSchemaColumns && props.instanceSchemaColumns.length > 0) {
+    for (const k of props.instanceSchemaColumns) {
+      labelByLower.set(k.toLowerCase(), k)
+    }
+  }
+
+  const seenLower = new Set<string>()
+  const headers: { title: string; key: string; sortable: boolean }[] = []
+  const allowedLower = props.instanceSchemaColumns
+    ? new Set(props.instanceSchemaColumns.map((k) => k.toLowerCase()))
+    : null
+
   allData.forEach((item) => {
     Object.keys(item).forEach((key) => {
-      if (key !== 'id' && key !== '_id') {
-        allKeys.add(key)
+      const lower = key.toLowerCase()
+      if (
+        lower === 'id' ||
+        lower === '_id' ||
+        key.startsWith('__') ||
+        excludedLower.has(lower)
+      ) {
+        return
       }
+      if (allowedLower && !allowedLower.has(lower)) return
+      if (seenLower.has(lower)) return
+      seenLower.add(lower)
+      const title = labelByLower.get(lower) ?? key
+      headers.push({ title, key: title, sortable: true })
     })
   })
 
-  return Array.from(allKeys).map((key) => ({
-    title: key,
-    key: key,
-    sortable: true,
-  }))
+  // Include schema columns even when no row exposes them yet, so the column
+  // header is still visible to the user as part of the compared structure.
+  if (allowedLower) {
+    for (const col of props.instanceSchemaColumns!) {
+      const lower = col.toLowerCase()
+      if (excludedLower.has(lower) || seenLower.has(lower)) continue
+      seenLower.add(lower)
+      headers.push({ title: col, key: col, sortable: true })
+    }
+  }
+
+  return headers
 })
 
 // Calculate detailed differences
 const detailedDiffs = computed((): RowDiff[] => {
+  const excluded = compareExcludedKeys.value
   const diffs: RowDiff[] = []
-  const primaryKey = getPrimaryKey()
+  const { keyFields, normInstByKey, normMasterByKey } = compareRowContext.value
 
-  // Create maps
   const instanceMap = new Map<string, any>()
   const masterMap = new Map<string, any>()
 
   props.instanceData.forEach((row) => {
-    const key = getRowKey(row, primaryKey)
+    const key = buildRowMatchKey(row, keyFields)
     instanceMap.set(key, row)
   })
 
   props.masterData.forEach((row) => {
-    const key = getRowKey(row, primaryKey)
+    const key = buildRowMatchKey(row, keyFields)
     masterMap.set(key, row)
   })
 
-  // Process instance rows
   instanceMap.forEach((instanceRow, key) => {
     const masterRow = masterMap.get(key)
-    if (!masterRow) {
-      diffs.push({ type: 'added', instanceRow })
-    } else if (areRowsDifferent(instanceRow, masterRow)) {
+    const instanceCompare = normInstByKey.get(key) ?? instanceRow
+    const masterCompare = masterRow
+      ? normMasterByKey.get(key) ?? masterRow
+      : undefined
+    if (!masterCompare) {
+      diffs.push({ type: 'added', instanceRow: instanceCompare })
+    } else if (
+      areRowsDifferent(instanceCompare, masterCompare, props.instanceSchemaColumns, excluded)
+    ) {
       diffs.push({
         type: 'modified',
-        instanceRow,
-        masterRow,
-        changes: getRowChanges(instanceRow, masterRow),
+        instanceRow: instanceCompare,
+        masterRow: masterCompare,
+        changes: getRowChanges(instanceCompare, masterCompare, excluded),
       })
     }
   })
 
-  // Process master rows not in instance
   masterMap.forEach((masterRow, key) => {
     if (!instanceMap.has(key)) {
-      diffs.push({ type: 'removed', masterRow })
+      diffs.push({
+        type: 'removed',
+        masterRow: normMasterByKey.get(key) ?? masterRow,
+      })
     }
   })
 
@@ -527,163 +742,62 @@ const totalChanges = computed(() => {
   )
 })
 
-// Helper functions
-const getPrimaryKey = (): string => {
-  const allData = [...props.instanceData, ...props.masterData]
-  if (allData.length === 0) return 'id'
-
-  const firstItem = allData[0]
-  const keys = Object.keys(firstItem)
-
-  // IMPORTANT: Prefer domain-specific identifier patterns BEFORE internal 'id'
-  // because instance data may have generated internal IDs that don't match master data
-  const idPatterns = [
-    'codigo_',
-    'codigo',
-    'code_',
-    'code',
-    'key_',
-    'key',
-    'nombre',
-    'name',
-  ]
-  for (const pattern of idPatterns) {
-    const match = keys.find((k) =>
-      k.toLowerCase().startsWith(pattern.toLowerCase()),
-    )
-    if (match) return match
+/** Populate a lowercased value map and register the first original-case label seen. */
+const collectRowEntries = (
+  row: any,
+  valuesByLower: Map<string, any>,
+  labelFor: Map<string, string>,
+): void => {
+  if (!row || typeof row !== 'object') return
+  for (const k of Object.keys(row)) {
+    const lower = k.toLowerCase()
+    valuesByLower.set(lower, row[k])
+    if (!labelFor.has(lower)) labelFor.set(lower, k)
   }
+}
 
-  // Only use 'id' if no domain-specific key was found AND it doesn't look like a generated ID
-  // Check if the id values look like domain IDs (short, simple values) vs generated ones
-  if (keys.includes('id')) {
-    const sampleId = firstItem['id']
-    // If ID looks like a generated internal ID (contains underscore + long string), skip it
-    if (
-      typeof sampleId === 'string' &&
-      sampleId.includes('_') &&
-      sampleId.length > 20
-    ) {
-      // Generated internal ID, skip
-    } else {
-      return 'id'
-    }
+/** Register original-case labels for schema columns not already labelled. */
+const registerSchemaLabels = (labelFor: Map<string, string>): void => {
+  if (!props.instanceSchemaColumns) return
+  for (const k of props.instanceSchemaColumns) {
+    const lower = k.toLowerCase()
+    if (!labelFor.has(lower)) labelFor.set(lower, k)
   }
-
-  // Fallback to first non-id field
-  const firstNonId = keys.find((k) => k !== 'id' && k !== '_id')
-  return firstNonId || keys[0] || 'id'
-}
-
-const getRowKey = (row: any, primaryKey: string): string => {
-  return String(row[primaryKey] ?? JSON.stringify(row))
-}
-
-/**
- * Normalize a string value for comparison
- */
-const normalizeStringValue = (value: string): any => {
-  const trimmed = value.trim()
-  if (trimmed === '') return null
-
-  // Try to convert to number if it looks like one
-  // Using non-capturing group to avoid ReDoS vulnerability
-  if (/^-?\d+(?:\.\d+)?$/.test(trimmed)) {
-    const num = parseFloat(trimmed)
-    if (!isNaN(num)) {
-      return Number.isInteger(num) ? num : Math.round(num * 1000000) / 1000000
-    }
-  }
-
-  // Try to convert to boolean
-  const lowerTrimmed = trimmed.toLowerCase()
-  if (lowerTrimmed === 'true') return true
-  if (lowerTrimmed === 'false') return false
-
-  return trimmed
-}
-
-/**
- * Normalize a number value for comparison
- */
-const normalizeNumberValue = (value: number): number | null => {
-  if (isNaN(value)) return null
-  return Number.isInteger(value) ? value : Math.round(value * 1000000) / 1000000
-}
-
-/**
- * Normalize a value for comparison
- * Handles type coercion between strings and numbers, trims strings, etc.
- */
-const normalizeValue = (value: any): any => {
-  if (value === null || value === undefined || value === '') return null
-  if (typeof value === 'string') return normalizeStringValue(value)
-  if (typeof value === 'number') return normalizeNumberValue(value)
-  if (typeof value === 'boolean') return value
-  if (typeof value === 'object') return JSON.stringify(value)
-  return value
-}
-
-const areRowsDifferent = (row1: any, row2: any): boolean => {
-  const ignoredFields = ['id', '_id', 'created_at', 'updated_at']
-  const allKeys = new Set([...Object.keys(row1), ...Object.keys(row2)])
-
-  for (const key of allKeys) {
-    if (ignoredFields.includes(key)) continue
-
-    const val1 = normalizeValue(row1[key])
-    const val2 = normalizeValue(row2[key])
-
-    // Both null are equal
-    if (val1 === null && val2 === null) {
-      continue
-    }
-
-    // One is null, the other isn't
-    if (val1 === null || val2 === null) {
-      return true
-    }
-
-    // Compare normalized values
-    if (val1 !== val2) {
-      return true
-    }
-  }
-
-  return false
 }
 
 const getRowChanges = (
   instanceRow: any,
   masterRow: any,
+  excludedKeys: Set<string> = new Set(),
 ): { field: string; instanceValue: any; masterValue: any }[] => {
-  const ignoredFields = ['id', '_id', 'created_at', 'updated_at']
   const changes: { field: string; instanceValue: any; masterValue: any }[] = []
 
-  const allKeys = new Set([
-    ...Object.keys(instanceRow),
-    ...Object.keys(masterRow),
-  ])
+  const labelFor = new Map<string, string>()
+  const map1 = new Map<string, any>()
+  const map2 = new Map<string, any>()
+  collectRowEntries(instanceRow, map1, labelFor)
+  collectRowEntries(masterRow, map2, labelFor)
+  registerSchemaLabels(labelFor)
 
-  allKeys.forEach((key) => {
-    if (ignoredFields.includes(key)) return
+  const keysLower = resolveComparableLowercasedKeys({
+    row1: instanceRow,
+    row2: masterRow,
+    allowedColumns: props.instanceSchemaColumns,
+    excludedKeys,
+  })
 
-    const instanceVal = instanceRow[key]
-    const masterVal = masterRow[key]
+  keysLower.forEach((lower) => {
+    const instanceVal = map1.get(lower)
+    const masterVal = map2.get(lower)
 
-    // Use normalized values for comparison
     const normalizedInstance = normalizeValue(instanceVal)
     const normalizedMaster = normalizeValue(masterVal)
 
-    // Both null are equal
-    if (normalizedInstance === null && normalizedMaster === null) {
-      return
-    }
+    if (normalizedInstance === null && normalizedMaster === null) return
 
-    // Compare normalized values
     if (normalizedInstance !== normalizedMaster) {
       changes.push({
-        field: key,
+        field: labelFor.get(lower) ?? lower,
         instanceValue: instanceVal,
         masterValue: masterVal,
       })
@@ -693,30 +807,135 @@ const getRowChanges = (
   return changes
 }
 
+/** One line in the "Cambios" view for a modified row: either a diff or an unchanged field (context). */
+interface ModifiedRowFieldLine {
+  field: string
+  changed: boolean
+  masterValue?: any
+  instanceValue?: any
+  unchangedValue?: any
+}
+
+/**
+ * Full row context for modified rows: all comparable columns, same order as side-by-side headers.
+ * Unchanged fields are shown with a muted style; changed fields keep old → new.
+ */
+const getModifiedRowDisplayLines = (item: RowDiff): ModifiedRowFieldLine[] => {
+  if (
+    item.type !== 'modified' ||
+    !item.instanceRow ||
+    !item.masterRow ||
+    !item.changes
+  ) {
+    return []
+  }
+  const { instanceRow, masterRow, changes } = item
+  const changeMap = new Map(changes.map((c) => [c.field, c]))
+  const excluded = compareExcludedKeys.value
+  const headerKeys = tableHeaders.value.map((h) => h.key)
+  const ordered = buildOrderedFieldKeys(
+    instanceRow,
+    masterRow,
+    excluded,
+    headerKeys,
+    matchKeyFields.value,
+    props.instanceSchemaColumns,
+  )
+
+  // `field` is the canonical-case label; `getRowChanges` keyed by the same
+  // label, but rows might still hold the original different casing.
+  const changeMapLower = new Map<string, (typeof changes)[number]>()
+  changeMap.forEach((value, key) => changeMapLower.set(key.toLowerCase(), value))
+
+  const lines: ModifiedRowFieldLine[] = []
+  for (const field of ordered) {
+    const lower = field.toLowerCase()
+    const ch = changeMapLower.get(lower)
+    if (ch) {
+      lines.push({
+        field,
+        changed: true,
+        masterValue: ch.masterValue,
+        instanceValue: ch.instanceValue,
+      })
+    } else {
+      lines.push({
+        field,
+        changed: false,
+        unchangedValue:
+          getCellValue(instanceRow, field) ?? getCellValue(masterRow, field),
+      })
+    }
+  }
+  return lines
+}
+
+/** All comparable fields for added/removed rows (no truncation). */
+const getRowPreviewEntries = (row: any): { key: string; value: string }[] => {
+  if (!row) return []
+  const excluded = compareExcludedKeys.value
+  const excludedLower = new Set(
+    Array.from(excluded).map((k) => k.toLowerCase()),
+  )
+  const allowedLower =
+    props.instanceSchemaColumns && props.instanceSchemaColumns.length > 0
+      ? new Set(props.instanceSchemaColumns.map((k) => k.toLowerCase()))
+      : null
+
+  const keys = Object.keys(row).filter((k) => {
+    const lower = k.toLowerCase()
+    if (lower === 'id' || lower === '_id') return false
+    if (excludedLower.has(lower)) return false
+    if (allowedLower && !allowedLower.has(lower)) return false
+    return true
+  })
+  return keys.map((k) => ({ key: k, value: formatValue(row[k]) }))
+}
+
+const changeItemKey = (item: RowDiff, index: number): string => {
+  if (item.type === 'modified' && item.instanceRow) {
+    return `m-${getStableRowKey(item.instanceRow)}`
+  }
+  if (item.type === 'added' && item.instanceRow) {
+    return `a-${getStableRowKey(item.instanceRow)}`
+  }
+  if (item.type === 'removed' && item.masterRow) {
+    return `r-${getStableRowKey(item.masterRow)}`
+  }
+  return `x-${index}`
+}
+
 const getRowClass = (item: any, source: 'instance' | 'master'): string => {
-  const primaryKey = getPrimaryKey()
-  const key = getRowKey(item, primaryKey)
+  const excluded = compareExcludedKeys.value
+  const key = getStableRowKey(item)
 
   if (source === 'instance') {
-    // Check if row exists in master
+    // Pending-state rows get their own class regardless of master comparison
+    if (item.__pendingDelete) return 'row-pending-delete'
+    if (item.__pendingCreate) return 'row-pending-create'
+
     const masterMap = new Map<string, any>()
-    props.masterData.forEach((row) => {
-      masterMap.set(getRowKey(row, primaryKey), row)
+    displayMasterData.value.forEach((row) => {
+      masterMap.set(getStableRowKey(row), row)
     })
 
     if (!masterMap.has(key)) return 'row-added'
     const masterRow = masterMap.get(key)
-    if (areRowsDifferent(item, masterRow)) return 'row-modified'
+    if (areRowsDifferent(item, masterRow, props.instanceSchemaColumns, excluded))
+      return 'row-modified'
   } else {
-    // Check if row exists in instance
     const instanceMap = new Map<string, any>()
-    props.instanceData.forEach((row) => {
-      instanceMap.set(getRowKey(row, primaryKey), row)
-    })
+    // Exclude pending-delete rows from match so master shows them as "removed"
+    displayInstanceData.value
+      .filter((row) => !row.__pendingDelete)
+      .forEach((row) => {
+        instanceMap.set(getStableRowKey(row), row)
+      })
 
     if (!instanceMap.has(key)) return 'row-removed'
     const instanceRow = instanceMap.get(key)
-    if (areRowsDifferent(instanceRow, item)) return 'row-modified'
+    if (areRowsDifferent(instanceRow, item, props.instanceSchemaColumns, excluded))
+      return 'row-modified'
   }
 
   return ''
@@ -728,15 +947,23 @@ const formatValue = (value: any): string => {
   return String(value)
 }
 
-const formatRowPreview = (row: any): string => {
-  if (!row) return '-'
-  const keys = Object.keys(row).filter((k) => k !== 'id' && k !== '_id')
-  const preview = keys.slice(0, 3).map((k) => `${k}: ${formatValue(row[k])}`)
-  return preview.join(', ') + (keys.length > 3 ? ', ...' : '')
-}
-
 const close = () => {
   emit('update:modelValue', false)
+}
+
+const restoreMasterRow = (index: number) => {
+  const originalRow = props.masterData[index]
+  if (originalRow !== undefined) {
+    restoredMasterIndices.value = new Set([...restoredMasterIndices.value, index])
+    emit('restore-master-row', originalRow)
+  }
+}
+
+const deleteInstanceRow = (index: number) => {
+  const originalRow = props.instanceData[index]
+  if (originalRow !== undefined) {
+    emit('delete-instance-row', originalRow)
+  }
 }
 </script>
 
@@ -1017,7 +1244,7 @@ const close = () => {
 }
 
 .data-comparison-modal__panel-chip {
-  background-color: rgba(255, 255, 255, 0.2) !important;
+  background-color: rgba(0, 0, 0, 0.22) !important;
   color: white !important;
   font-weight: 600;
 }
@@ -1080,6 +1307,36 @@ const close = () => {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--title, #404040);
+}
+
+.data-comparison-modal__vtable-cell--restore,
+.data-comparison-modal__vtable-header-cell--restore,
+.data-comparison-modal__vtable-cell--action,
+.data-comparison-modal__vtable-header-cell--action {
+  flex: 0 0 auto;
+  width: 36px;
+  min-width: 36px;
+  padding: 4px 4px;
+  justify-content: center;
+  position: sticky;
+  left: 0;
+  background: inherit;
+  z-index: 1;
+}
+
+.data-comparison-modal__vtable-row.row-pending-delete {
+  background-color: color-mix(in srgb, var(--danger, #f44336) 8%, transparent) !important;
+  opacity: 0.65;
+}
+
+.data-comparison-modal__vtable-row.row-pending-delete .data-comparison-modal__vtable-cell {
+  text-decoration: line-through;
+  color: var(--danger, #f44336);
+}
+
+.data-comparison-modal__vtable-row.row-pending-create {
+  background-color: color-mix(in srgb, var(--primary, #326786) 8%, transparent) !important;
+  border-left: 3px dashed var(--primary, #326786);
 }
 
 /* Row status colors */
@@ -1172,6 +1429,7 @@ const close = () => {
 .data-comparison-modal__change-item--modified {
   background-color: color-mix(in srgb, var(--warning, #ffb458) 6%, white);
   border-left: 3px solid var(--warning, #ffb458);
+  padding: 8px 12px;
 }
 
 .data-comparison-modal__change-icon-wrap {
@@ -1221,6 +1479,48 @@ const close = () => {
   font-size: 0.72rem;
 }
 
+.data-comparison-modal__field-name {
+  color: var(--title, #404040);
+  font-weight: 600;
+}
+
+/** One wrapping row: all field segments inline (unchanged + diffs). */
+.data-comparison-modal__modified-inline-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 14px;
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.data-comparison-modal__mod-seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 3px 5px;
+  max-width: 100%;
+}
+
+.data-comparison-modal__mod-seg--same {
+  color: var(--subtitle, #6e6e6e);
+}
+
+.data-comparison-modal__mod-seg--same .data-comparison-modal__field-name {
+  margin-right: 2px;
+}
+
+.data-comparison-modal__mod-same-val {
+  word-break: break-word;
+  min-width: 0;
+}
+
+.data-comparison-modal__mod-seg--diff .data-comparison-modal__field-name::after {
+  content: ':';
+  font-weight: 600;
+  color: var(--title, #404040);
+}
+
 .data-comparison-modal__field-change {
   margin-bottom: 4px;
   display: flex;
@@ -1242,6 +1542,12 @@ const close = () => {
 .data-comparison-modal__new-value {
   color: var(--success, #3ba780);
   font-weight: 600;
+}
+
+.data-comparison-modal__changes-scroll {
+  max-height: 480px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 /* ── Footer actions ── */

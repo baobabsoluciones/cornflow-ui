@@ -7,6 +7,10 @@ export default {
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // Real exceljs requires uuid; npm overrides pin uuid ESM-only, which breaks CJS require in exceljs during Vitest.
+      exceljs: fileURLToPath(
+        new URL('./tests/unit/core/mocks/exceljs-stub.ts', import.meta.url),
+      ),
     },
   },
   server: {

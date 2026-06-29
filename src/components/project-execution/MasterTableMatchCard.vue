@@ -125,8 +125,9 @@
             </template>
           </v-radio>
 
-          <!-- Option 3: Replace master data -->
+          <!-- Option 3: Replace master data (optional, controlled by app config) -->
           <v-radio
+            v-if="showReplaceMasterOption"
             value="replace_master"
             color="warning"
             :disabled="!canReplaceMaster"
@@ -158,27 +159,33 @@
       :instance-data="match.instanceData"
       :master-data="match.masterData"
       :diff-summary="match.diffSummary"
+      :master-table-config="match.masterTableConfig"
+      :full-instance-data="match.fullInstanceData"
+      :instance-schema-columns="match.instanceSchemaColumns"
     />
   </v-card>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import type { TableMatch } from '@/composables/project-execution/useMasterTableMatch'
 import DataComparisonModal from './DataComparisonModal.vue'
 
 interface Props {
   match: TableMatch
   canReplaceMaster?: boolean
+  /** When false, the "Replace master" option is hidden (e.g. when enableReplaceMasterWithUploaded is off). */
+  showReplaceMasterOption?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   canReplaceMaster: true,
+  showReplaceMasterOption: true,
 })
 
-defineEmits<{
-  (e: 'update:choice', tableKey: string, choice: string): void
-}>()
+defineEmits<
+  (e: 'update:choice', tableKey: string, choice: string) => void
+>()
 
 const showDiffModal = ref(false)
 </script>

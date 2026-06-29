@@ -190,7 +190,7 @@ export function useTableConfig(props: { formatDateByTime: boolean }) {
     try {
       showExtraColumns =
         generalStore.appConfig.parameters?.showExtraProjectExecutionColumns
-    } catch (error) {
+    } catch {
       return `basic-${tableId.value}`
     }
 

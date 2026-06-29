@@ -1,6 +1,44 @@
 export default {
+  $vuetify: {
+    dataFooter: {
+      itemsPerPageText: 'Elementos por página:',
+      itemsPerPageAll: 'Todos',
+      pageText: '{0}-{1} de {2}',
+      nextPage: 'Página siguiente',
+      prevPage: 'Página anterior',
+      firstPage: 'Primera página',
+      lastPage: 'Última página',
+    },
+    dataTable: {
+      itemsPerPageText: 'Elementos por página:',
+      ariaLabel: {
+        sortDescending: 'Orden descendente.',
+        sortAscending: 'Orden ascendente.',
+        sortNone: 'Sin ordenar.',
+        activateAscending: 'Activar para ordenar ascendente.',
+        activateDescending: 'Activar para ordenar descendente.',
+      },
+      sortBy: 'Ordenar por',
+    },
+    pagination: {
+      ariaLabel: {
+        root: 'Navegación de paginación',
+        currentPage: 'Página {0}, página actual',
+        page: 'Ir a la página {0}',
+        next: 'Página siguiente',
+        previous: 'Página anterior',
+        first: 'Primera página',
+        last: 'Última página',
+      },
+    },
+    noDataText: 'No hay datos disponibles',
+    loading: 'Cargando...',
+  },
   DecisionOps: 'DecisionOps',
   baobab: 'baobab',
+  general: {
+    loading: 'Cargando...',
+  },
   projectExecution: {
     title: 'Ejecución',
     description:
@@ -75,6 +113,7 @@ export default {
           instanceLoaded: 'Instancia cargada con éxito',
           instancesLoaded:
             'Archivos combinados para crear la instancia y cargados con éxito',
+          warningTitle: 'Advertencia',
           loadInstance: 'Cargar instancia',
           selectedFiles: 'Archivos seleccionados',
           invalidFileFormat:
@@ -92,6 +131,15 @@ export default {
           andMoreErrors: 'y {count} más',
           errorsDownloadStarted: 'Descarga del archivo de errores iniciada',
           errorsDownloadError: 'Error al descargar el archivo de errores',
+          noFilesSelectedError: 'Selecciona al menos un archivo',
+          optionalOrDivider: 'o',
+          loadFromDb: 'Obtener todos los datos de base de datos',
+          loadParameters: 'Cargar parámetros',
+          alternativeParametersHint:
+            'Introduce los siguientes parámetros y cárgalos como datos de instancia',
+          noParametersDataError: 'No hay datos de parámetros para enviar',
+          noParametersSheetsError:
+            'No se pudo generar el archivo a partir de los parámetros (revisa los nombres de tabla en la configuración)',
         },
       },
       reviewInstance: {
@@ -171,6 +219,7 @@ export default {
           instanceLoaded: 'Instancia cargada con éxito',
           instancesLoaded:
             'Archivos combinados para crear la instancia y cargados con éxito',
+          warningTitle: 'Advertencia',
           loadInstance: 'Cargar instancia',
           selectedFiles: 'Archivos seleccionados',
           invalidFileFormat:
@@ -188,6 +237,15 @@ export default {
           andMoreErrors: 'y {count} más',
           errorsDownloadStarted: 'Descarga del archivo de errores iniciada',
           errorsDownloadError: 'Error al descargar el archivo de errores',
+          noFilesSelectedError: 'Selecciona al menos un archivo',
+          optionalOrDivider: 'o',
+          loadFromDb: 'Obtener todos los datos de base de datos',
+          loadParameters: 'Cargar parámetros',
+          alternativeParametersHint:
+            'Introduce los siguientes parámetros y cárgalos como datos de instancia',
+          noParametersDataError: 'No hay datos de parámetros para enviar',
+          noParametersSheetsError:
+            'No se pudo generar el archivo a partir de los parámetros (revisa los nombres de tabla en la configuración)',
         },
       },
       step4: {
@@ -252,6 +310,10 @@ export default {
     },
     stagingWarning:
       'Estás en un entorno de pruebas, destinado solamente a desarrollo y testeo. Para ejecuciones reales, por favor utiliza el entorno de producción.',
+    checks: {
+      blockingErrorsFound:
+        'Se han encontrado errores en la verificación de datos. Corrígelos antes de continuar.',
+    },
   },
   executionTable: {
     date: 'Hora',
@@ -309,6 +371,7 @@ export default {
     loading: 'Cargando',
     loadExecution: 'Cargar ejecución',
     deleteExecution: 'Eliminar ejecución',
+    replanning: 'Replanificación',
   },
   logIn: {
     subtitle: '¡Inicia sesión para empezar!',
@@ -385,7 +448,9 @@ export default {
     from: 'Desde',
     to: 'Hasta',
     noData: 'No se encontraron datos para el rango de fechas seleccionado',
+    loading: 'Cargando ejecuciones...',
     createNewExecution: 'Crear nueva ejecución',
+    hideReplanned: 'Mostrar solo ejecuciones del modelo',
   },
   inputOutputData: {
     title: 'Gestión del proyecto',
@@ -419,6 +484,10 @@ export default {
     deleteButton: 'Eliminar',
     cancelButton: 'Cancelar',
     errorDownloadingExcel: 'Ocurrió un error al descargar el excel',
+    filesRegenerating:
+      'Se están regenerando los archivos de la ejecución. Inténtalo de nuevo en unos momentos.',
+    filesRegenerationTimeout:
+      'La regeneración de los archivos está tardando más de lo esperado. Inténtalo de nuevo más tarde.',
     generating: 'Generando...',
     download: 'Descargar',
     downloadDataChecks: 'Descargar excel',
@@ -470,7 +539,24 @@ export default {
     results: 'Resultados',
   },
   sectionView: {
-    editInputData: 'Editar datos de entrada',
+    editInputData:
+      'Crear nueva ejecución a partir de los datos de entrada actuales',
+    downloadInstance: 'Descargar instancia',
+    downloadSolution: 'Descargar solución',
+    downloadExcel: 'Descargar excel',
+    downloadSuccess: 'Archivo descargado correctamente',
+    downloadError: 'Error al descargar el archivo',
+    downloadNoData: 'No hay datos para descargar',
+    etlMetadataInfo: {
+      fromDbTooltip:
+        'Esta tabla contiene la información disponible en la base de datos en el momento de la ejecución.',
+      notFromDbTooltip:
+        'Esta tabla proviene de un fichero cargado por el usuario.',
+      fromDbValueTooltip:
+        'Este valor contiene la información disponible en la base de datos en el momento de la ejecución.',
+      notFromDbValueTooltip:
+        'Este valor proviene de un fichero cargado por el usuario.',
+    },
     exitConfirmation: {
       title: 'Salir con cambios sin guardar',
       message:
@@ -478,8 +564,14 @@ export default {
       confirmButton: 'Sí, salir',
       cancelButton: 'Cancelar',
     },
+    editAllMasterTables: 'Cargar todas las tablas maestras',
+    editAllMasterTablesTitle: 'Cargar todas las tablas maestras',
+    editAllMasterTablesSuccess: 'Tablas maestras actualizadas correctamente',
+    validationWarningTab: 'Esta tabla contiene advertencias',
+    validationErrorTab: 'Esta tabla contiene errores',
   },
   table: {
+    loading: 'Cargando datos...',
     noDataAvailable: 'No hay datos disponibles para esta tabla',
     loadingError: 'Error al cargar los datos de la tabla',
     apiNotSupported: 'API no disponible o operación no soportada',
@@ -507,6 +599,9 @@ export default {
     fieldReadOnly: 'Este campo no se puede editar',
     upload: 'Subir',
     selectFile: 'Seleccionar archivo',
+    selectFiles: 'Seleccionar archivos',
+    multipleFileAccumulateHint:
+      'Puedes añadir más archivos en otra selección; se unen a la lista (si repites nombre, se sustituye).',
     dragAndDrop: 'Arrastra y suelta archivos aquí o haz clic para seleccionar',
     supportedFormats: 'Formatos soportados:',
     filters: {
@@ -541,7 +636,12 @@ export default {
       },
     },
     maxFileSize: 'Tamaño máximo de archivo',
+    downloadFullMessage: 'Descargar mensaje completo',
     uploadMode: 'Modo de carga',
+    updateMode: 'Actualizar datos existentes',
+    updateModeDescription:
+      'Los registros existentes se actualizarán con los nuevos datos. Los registros nuevos se añadirán a la tabla.',
+    recommended: 'Recomendado',
     addMode: 'Añadir a datos existentes',
     addModeDescription:
       'Agregar nuevos registros a los datos existentes de la tabla. Los registros actuales se conservarán.',
@@ -565,6 +665,15 @@ export default {
       errorBulkUpload: 'Error en la carga masiva',
       downloadExcelSuccess: 'Archivo excel descargado correctamente',
       errorDownloadExcelTable: 'Error al descargar archivo excel',
+      fileProcessingError: 'Error al procesar archivo',
+      bulkUploadReferenceNotFound:
+        'Fila {row}: no existe ningún registro para {fieldKey}="{fieldValue}" en la tabla de referencia "{tableName}". La carga se ha cancelado.',
+      asyncUploadQueued: 'Esperando para empezar…',
+      asyncUploadProcessing:
+        'Cargando datos — {count} filas importadas hasta ahora',
+      asyncUploadCompleted: 'Listo — {count} filas importadas',
+      asyncUploadFailed: 'No se pudo procesar la carga',
+      asyncUploadNotFound: 'Carga no encontrada',
     },
     downloadExcelTable: 'Descargar excel',
     downloadExcelSuccess: 'Archivo excel descargado correctamente',
@@ -578,7 +687,7 @@ export default {
       '¿Está seguro de que desea eliminar {count} elementos? Esta acción no se puede deshacer.',
     deletingPleaseWait: 'Eliminando. Espere, por favor.',
     overwritingPleaseWait: 'Procesando los datos. Espere, por favor.',
-    uploadingPleaseWait: 'Procesando su solicitud. Espere, por favor.',
+    uploadingPleaseWait: 'Subiendo datos… Espere, por favor.',
     bulkDeleteSuccess: '{count} elementos eliminados correctamente',
     bulkDeleteAllFailed: 'Error al eliminar todos los elementos seleccionados',
     bulkDeletePartialFailed:
@@ -591,9 +700,20 @@ export default {
     invalidFileFormat: 'Formato de archivo inválido',
     fileProcessingError: 'Error al procesar archivo',
     noValidDataFound: 'No se encontraron datos válidos en el archivo',
+    bulkEdit: 'Edición masiva',
+    bulkEditDescription: 'Editar {count} elementos seleccionados. Deja un campo en blanco para mantener los valores existentes sin cambios.',
+    bulkEditNoChange: 'Sin cambios',
+    bulkEditHint: 'Solo los campos rellenados se aplicarán a los elementos seleccionados.',
+    applyToSelected: 'Aplicar a seleccionados',
+    bulkEditApplied: '{count} elementos actualizados correctamente',
     yes: 'Sí',
     no: 'No',
     search: 'Buscar',
+    forceRetry: {
+      title: 'Confirmar sobrescritura',
+      accept: 'Sobrescribir de todos modos',
+      reject: 'Cancelar',
+    },
     repository: {
       operationNotSupported: 'Esta acción no está disponible para esta tabla',
       unsupportedHttpMethod: 'Ocurrió un error al procesar tu solicitud',
@@ -802,6 +922,11 @@ export default {
       modified: 'Modificados',
     },
     noChangesInFilter: 'No hay cambios en este filtro',
+    restoreRow: 'Restaurar esta fila desde el maestro',
+    restoreRowQueued:
+      'Fila en cola para restaurar — revisa y guarda en la tabla',
+    deleteRow: 'Eliminar esta fila de los datos subidos',
+    deleteRowQueued: 'Fila en cola para eliminar — revisa y guarda en la tabla',
     changeType: {
       added: 'Fila añadida',
       removed: 'Fila eliminada',
@@ -865,43 +990,144 @@ export default {
     msgPlaceholder: 'Activar o desactivar mensajes',
     timeLimit: 'Límite de tiempo',
     timeLimitPlaceholder: 'Límite de tiempo en segundos',
+    timeLimitPlaceholderMinutes: 'Límite de tiempo en minutos',
     solver: 'Solver',
     solverPlaceholder: 'Seleccionar solver',
     minutesSuffix: 'min',
     secondsSuffix: 'seg',
   },
-  latestPlan: {
-    banner: {
-      message:
-        'No hay un plan actual configurado. Establece un plan como actual para cargarlo automáticamente al iniciar sesión.',
-      actionButton: 'Ir al historial',
+  historical: {
+    toggleExecution: 'Datos de ejecución',
+    toggleHistorical: 'Datos históricos',
+    dateFrom: 'Desde',
+    dateTo: 'Hasta',
+    load: 'Cargar',
+    creating: 'Creando ejecución histórica...',
+    checking: 'Ejecutando comprobaciones...',
+    polling: 'Calculando KPIs...',
+    error: 'Error al cargar datos históricos',
+    statusCalculationError:
+      'Ha habido un problema al calcular los datos históricos.',
+    noData: 'No hay datos históricos disponibles para el rango seleccionado',
+    clear: 'Limpiar',
+    checksErrorTitle: 'Se encontraron errores en los checks de la solución',
+    checksErrorDescription:
+      'No se pudieron calcular los KPIs porque los checks de la solución contienen errores. Revisa los detalles a continuación.',
+    showErrors: 'Ver detalle de errores',
+    hideErrors: 'Ocultar detalle de errores',
+    checksWarningTitle: 'KPIs calculados con advertencias',
+    checksWarningDescription:
+      'Los KPIs se han calculado correctamente, pero algunas tablas de checks contienen advertencias. Revisa los detalles a continuación.',
+    showWarnings: 'Ver detalle de advertencias',
+    hideWarnings: 'Ocultar detalle de advertencias',
+    viewingHistoricalData: 'Viendo datos históricos',
+  },
+  notFound: {
+    title: 'Página no encontrada',
+    message: 'La página que buscas no existe.',
+    forbiddenTitle: 'Acceso denegado',
+    forbiddenMessage: 'No tienes permiso para ver esta página.',
+    goHome: 'Ir al inicio',
+  },
+  rolesManagement: {
+    title: 'Gestión de roles',
+    description: 'Gestiona los roles y asígnalos a los usuarios.',
+    adminSection: 'Administración',
+    rolesTitle: 'Roles',
+    usersTitle: 'Usuarios',
+    addRole: 'Añadir rol',
+    editRole: 'Editar rol',
+    roleName: 'Nombre del rol',
+    deleteRoleTitle: 'Eliminar rol',
+    deleteRoleMessage: '¿Estás seguro de que quieres eliminar el rol "{name}"? Se eliminará de todos los usuarios asignados.',
+    delete: 'Eliminar',
+    cancel: 'Cancelar',
+    save: 'Guardar',
+    searchUsers: 'Buscar usuarios...',
+    colUsername: 'Usuario',
+    colName: 'Nombre',
+    colEmail: 'Correo electrónico',
+    colRoles: 'Roles',
+    noRoles: 'No hay roles definidos aún.',
+    noRoles2: 'Sin roles',
+    errorLoadRoles: 'Error al cargar los roles.',
+    errorLoadUsers: 'Error al cargar los usuarios.',
+    errorSaveRole: 'Error al guardar el rol.',
+    errorDeleteRole: 'Error al eliminar el rol.',
+    errorAssignRole: 'Error al actualizar los roles del usuario.',
+    roleCreated: 'Rol creado correctamente.',
+    roleUpdated: 'Rol actualizado correctamente.',
+    roleDeleted: 'Rol eliminado correctamente.',
+    roleAssigned: 'Roles del usuario actualizados correctamente.',
+    allUsers: 'Todos los usuarios',
+    allUsersSubtitle: 'Vista combinada de todos los roles',
+    filteringByRole: 'Filtrando por rol',
+    rolePermissionsTitle: 'Permisos del rol',
+    noPermissionsDefined: 'Sin permisos definidos para este rol.',
+    noDescription: 'Sin descripción',
+    roleMeta: {
+      admin: {
+        description: 'Acceso total · gestiona usuarios y roles',
+        permissions: [
+          'Leer instancias y soluciones',
+          'Crear y lanzar ejecuciones',
+          'Editar datos maestros',
+          'Gestionar usuarios y roles',
+        ],
+      },
+      planner: {
+        description: 'Crea ejecuciones y edita datos maestros',
+        permissions: [
+          'Leer instancias y soluciones',
+          'Crear y lanzar ejecuciones',
+          'Editar datos maestros',
+        ],
+      },
+      viewer: {
+        description: 'Solo lectura sobre ejecuciones',
+        permissions: ['Leer instancias y soluciones'],
+      },
+      service: {
+        description: 'Cuenta técnica para integraciones',
+        permissions: [
+          'Leer instancias y soluciones',
+          'Crear y lanzar ejecuciones',
+        ],
+      },
+      ie_viewer: {
+        description: 'Visualización limitada al entorno IE',
+        permissions: ['Leer instancias y soluciones'],
+      },
     },
-    chip: {
-      current: 'Actual',
+  },
+  externalEtl: {
+    switch: {
+      fromDbLabel: 'Esta tabla se ha obtenido de la base de datos.',
+      fromExcelLabel:
+        'Esta tabla se ha subido desde un archivo en el paso anterior.',
+      editedFromDbLabel:
+        'Se han realizado cambios manuales y la tabla ya no es idéntica a la de base de datos.',
+      reuploadedLabel:
+        'Los datos de esta tabla proceden de un archivo Excel importado.',
+      fixTable: 'Fijar tabla',
+      replaceWithDb: 'Usar datos de la base de datos',
+      staticMode: 'Modo estático',
+      staticModeTooltip:
+        'La tabla se mantendrá tal como está y no se actualizará desde la base de datos al calcular la última solución.',
+      trackChanges: 'Actualizar con BD',
+      trackChangesTooltip:
+        'La tabla se actualizará con los últimos datos de la base de datos al calcular la última solución.',
+      useExcelData: 'Usar datos del Excel',
+      useDbData: 'Usar datos de la base de datos',
+      default: 'Por defecto',
+      fromDb: 'Desde base de datos',
+      fixed: 'Fijado',
     },
-    fab: {
-      tooltip: 'Establecer esta ejecución como plan actual',
-      setAsCurrent: 'Fijar como plan actual',
-      isCurrentPlan: 'Este es el plan actual',
-    },
-    actions: {
-      setAsCurrent: 'Establecer como plan actual',
-      isCurrentPlan: 'Este es el Plan Actual',
-    },
-    modal: {
-      title: 'Establecer como plan actual',
-      message:
-        '¿Estás seguro de que quieres establecer esta ejecución como el plan actual? Se cargará automáticamente cuando inicies sesión.',
-      executionLabel: 'Ejecución',
-      replaceWarning: 'Esto reemplazará a "{name}" como plan actual.',
-      confirmButton: 'Establecer como actual',
-      cancelButton: 'Cancelar',
-      errorMessage:
-        'Ha ocurrido un error al establecer el plan actual. Por favor, inténtalo de nuevo.',
-    },
-    snackbar: {
-      success: 'Plan actual establecido con éxito',
-      error: 'Error al establecer el plan actual',
+    parameter: {
+      fromDb: 'Desde base de datos (se actualizará)',
+      fixed: 'Fijado (se mantiene el valor actual)',
+      cannotBeFromDb: 'Siempre proporcionado por el usuario',
+      columnFromDb: 'Desde base de datos',
     },
   },
 }

@@ -18,6 +18,7 @@ import type { Ref, ComputedRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { getFieldValidationRules } from '@/utils/validationRules'
 import { parseJoinFrom } from '@/utils/schemaUtils'
+import { resolveTitleWithLocale } from '@/utils/i18nUtils'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -37,7 +38,7 @@ export interface FieldConfig {
   title?: string
   label?: string
   required?: boolean
-  readOnly?: boolean
+  frontendReadOnly?: boolean
   placeholder?: string
   min?: number | string
   max?: number | string
@@ -53,6 +54,9 @@ export interface FieldConfig {
   joinFrom?: string
   foreignKeyField?: string
   hidden?: boolean
+  visible?: boolean
+  /** When set, the selector shows this option first; selecting it sends null for the FK. Title can be string or multilingual. */
+  valueNone?: { title: string | Record<string, string> }
   options?: Array<{ value: any; text: string }>
   loadingOptions?: boolean
   choices?: any[]
@@ -78,7 +82,10 @@ export interface UseFormFieldsProps {
 
 // ─── Ref unwrap helper ───────────────────────────────────────────────────────
 
-function unwrapRef<T>(value: ComputedRef<T> | Ref<T> | T | undefined | null, fallback: T): T {
+function unwrapRef<T>(
+  value: ComputedRef<T> | Ref<T> | T | undefined | null,
+  fallback: T,
+): T {
   if (value === undefined || value === null) return fallback
   if (typeof value === 'object' && value !== null && 'value' in value) {
     return (value as Ref<T>).value
@@ -106,7 +113,7 @@ const FIELD_TYPE_TO_INPUT: Record<string, string> = {
 // ─── Main composable ────────────────────────────────────────────────────────
 
 export function useFormFields(props: UseFormFieldsProps) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
 
   const selectorOptions = ref<
     Record<string, Array<{ value: any; text: string }>>
@@ -116,9 +123,8 @@ export function useFormFields(props: UseFormFieldsProps) {
   // ── Unwrap accessors ────────────────────────────────────────────────────
 
   const getFields = () => unwrapRef(props.fields, [] as FieldConfig[])
-  const getFormData = () => unwrapRef(props.formData, {} as Record<string, any>)
-  const getMode = (): 'add' | 'edit' => unwrapRef(props.mode, 'add' as const)
-  const getTableData = () => unwrapRef(props.tableData, {} as Record<string, any[]>)
+  const getTableData = () =>
+    unwrapRef(props.tableData, {} as Record<string, any[]>)
 
   // ── Visible fields ──────────────────────────────────────────────────────
 
@@ -129,14 +135,20 @@ export function useFormFields(props: UseFormFieldsProps) {
     const entries: [string, FieldConfig][] = Array.isArray(fields)
       ? fields
           .filter((f) => f?.key)
-          .map((f) => [f.key!, f] as [string, FieldConfig])
+          .map((f) => [f.key, f] as [string, FieldConfig])
       : Object.entries(fields).map(
-          ([key, f]) => [key, { ...f, key: f.key || key }] as [string, FieldConfig],
+          ([key, f]) =>
+            [key, { ...f, key: f.key || key }] as [string, FieldConfig],
         )
 
     const filtered: Record<string, FieldConfig> = {}
     for (const [key, field] of entries) {
-      if (key !== 'id' && !field.hidden && !field.isForeignKey) {
+      if (
+        key !== 'id' &&
+        !field.hidden &&
+        field.visible !== false &&
+        !field.isForeignKey
+      ) {
         filtered[key] = field
       }
     }
@@ -201,7 +213,7 @@ export function useFormFields(props: UseFormFieldsProps) {
 
   const formatFieldName = (key: string): string => {
     return key
-      .replace(/([A-Z])/g, ' $1')
+      .replaceAll(/([A-Z])/g, ' $1')
       .replace(/^./, (str) => str.toUpperCase())
       .trim()
   }
@@ -230,8 +242,11 @@ export function useFormFields(props: UseFormFieldsProps) {
     const str = String(value)
     try {
       const d = new Date(str)
-      if (isNaN(d.getTime())) return str
-      return d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
+      if (Number.isNaN(d.getTime())) return str
+      return d.toLocaleString(undefined, {
+        dateStyle: 'short',
+        timeStyle: 'short',
+      })
     } catch {
       return str
     }
@@ -243,7 +258,7 @@ export function useFormFields(props: UseFormFieldsProps) {
     if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(str)) return str
     try {
       const d = new Date(`1970-01-01T${str}`)
-      if (isNaN(d.getTime())) return str
+      if (Number.isNaN(d.getTime())) return str
       return d.toTimeString().slice(0, 8)
     } catch {
       return str
@@ -282,7 +297,10 @@ export function useFormFields(props: UseFormFieldsProps) {
       ]
     }
     if (Array.isArray(field.choices) && field.choices.length > 0) {
-      return field.choices.map((choice) => ({ value: choice, text: String(choice) }))
+      return field.choices.map((choice) => ({
+        value: choice,
+        text: String(choice),
+      }))
     }
     return []
   }
@@ -306,13 +324,27 @@ export function useFormFields(props: UseFormFieldsProps) {
 
     try {
       const tableDataValue = getTableData()
-      const rows = tableDataValue?.[joinInfo.table]
-        ?? await props.loadTableData(joinInfo.table)
+      const rows =
+        tableDataValue?.[joinInfo.table] ??
+        (await props.loadTableData(joinInfo.table))
 
-      selectorOptions.value[fieldKey] = rows.map((item) => ({
+      const options = rows.map((item) => ({
         value: item[joinInfo.field],
         text: item[joinInfo.field],
       }))
+      if (field.valueNone?.title) {
+        const currentLocale = locale?.value ?? 'en'
+        const noneText =
+          typeof field.valueNone.title === 'string'
+            ? field.valueNone.title
+            : resolveTitleWithLocale(field.valueNone.title, currentLocale, '')
+        selectorOptions.value[fieldKey] = [
+          { value: null, text: noneText },
+          ...options,
+        ]
+      } else {
+        selectorOptions.value[fieldKey] = options
+      }
     } catch (error) {
       console.error(`Error loading options for ${fieldKey}:`, error)
       selectorOptions.value[fieldKey] = []
@@ -356,6 +388,55 @@ export function useFormFields(props: UseFormFieldsProps) {
     }
   }
 
+  const handleMainSelectorUpdate = (
+    changedFieldKey: string,
+    newValue: any,
+    formData: Record<string, any>,
+    fields: Record<string, any>,
+    changedField: any,
+    joinInfo: { table: string; field: string },
+    tableRows: any[],
+  ): Record<string, any> => {
+    const foreignKeyField = changedField.foreignKeyField
+    if (!foreignKeyField) return formData
+
+    if (newValue === null && changedField.valueNone?.title) {
+      formData[foreignKeyField] = null
+      const currentLocale = locale?.value ?? 'en'
+      formData[changedFieldKey] =
+        typeof changedField.valueNone.title === 'string'
+          ? changedField.valueNone.title
+          : resolveTitleWithLocale(changedField.valueNone.title, currentLocale, '')
+      return formData
+    }
+
+    const matchingItem = tableRows.find((item) => item[joinInfo.field] === newValue)
+    if (!matchingItem) return formData
+
+    formData[foreignKeyField] = matchingItem[foreignKeyField] ?? matchingItem.id
+
+    const foreignKeyFieldConfig = fields[foreignKeyField]
+    if (foreignKeyFieldConfig?.columnsToJoin) {
+      updateColumnsFromMatch(formData, fields, foreignKeyFieldConfig.columnsToJoin, matchingItem, changedFieldKey)
+    }
+
+    return formData
+  }
+
+  const handleForeignKeyUpdate = (
+    newValue: any,
+    formData: Record<string, any>,
+    fields: Record<string, any>,
+    changedField: any,
+    tableRows: any[],
+  ): Record<string, any> => {
+    const matchingItem = tableRows.find((item) => item.id === newValue)
+    if (matchingItem) {
+      updateColumnsFromMatch(formData, fields, changedField.columnsToJoin, matchingItem)
+    }
+    return formData
+  }
+
   const updateDependentFields = (
     changedFieldKey: string,
     newValue: any,
@@ -371,26 +452,9 @@ export function useFormFields(props: UseFormFieldsProps) {
     const tableRows = getTableData()?.[joinInfo.table] || []
 
     if (changedField.isDependentField && changedField.isMainSelector) {
-      const foreignKeyField = changedField.foreignKeyField
-      if (!foreignKeyField) return formData
-
-      const matchingItem = tableRows.find((item) => item[joinInfo.field] === newValue)
-      if (!matchingItem) return formData
-
-      formData[foreignKeyField] = matchingItem[foreignKeyField] ?? matchingItem.id
-
-      const foreignKeyFieldConfig = fields[foreignKeyField]
-      if (foreignKeyFieldConfig?.columnsToJoin) {
-        updateColumnsFromMatch(
-          formData, fields, foreignKeyFieldConfig.columnsToJoin,
-          matchingItem, changedFieldKey,
-        )
-      }
+      return handleMainSelectorUpdate(changedFieldKey, newValue, formData, fields, changedField, joinInfo, tableRows)
     } else if (changedField.isForeignKey && changedField.columnsToJoin) {
-      const matchingItem = tableRows.find((item) => item.id === newValue)
-      if (matchingItem) {
-        updateColumnsFromMatch(formData, fields, changedField.columnsToJoin, matchingItem)
-      }
+      return handleForeignKeyUpdate(newValue, formData, fields, changedField, tableRows)
     }
 
     return formData
@@ -413,31 +477,40 @@ export function useFormFields(props: UseFormFieldsProps) {
   }
 
   const isTempId = (value: any): boolean =>
-    typeof value === 'string' && /^create-/.test(value)
+    typeof value === 'string' && value.startsWith('create-')
 
   const toInteger = (value: any): number => {
-    const result = typeof value === 'number' ? Math.floor(value) : parseInt(String(value), 10)
-    return isNaN(result) ? 0 : result
+    const result =
+      typeof value === 'number'
+        ? Math.floor(value)
+        : Number.parseInt(String(value), 10)
+    return Number.isNaN(result) ? 0 : result
   }
 
   const toNumber = (value: any): number => {
-    const result = typeof value === 'number' ? value : parseFloat(String(value))
-    return isNaN(result) ? 0 : result
+    const result =
+      typeof value === 'number' ? value : Number.parseFloat(String(value))
+    return Number.isNaN(result) ? 0 : result
   }
 
   const toBoolean = (value: any): boolean => {
     if (typeof value === 'boolean') return value
-    if (typeof value === 'string') return value.toLowerCase() === 'true' || value === '1'
+    if (typeof value === 'string')
+      return value.toLowerCase() === 'true' || value === '1'
     return Boolean(value)
   }
 
   const convertValueByType = (value: any, fieldType: string): any => {
     if (isTempId(value)) return value
     switch (fieldType) {
-      case 'integer': return toInteger(value)
-      case 'number': return toNumber(value)
-      case 'boolean': return toBoolean(value)
-      default: return value
+      case 'integer':
+        return toInteger(value)
+      case 'number':
+        return toNumber(value)
+      case 'boolean':
+        return toBoolean(value)
+      default:
+        return value
     }
   }
 
@@ -461,9 +534,12 @@ export function useFormFields(props: UseFormFieldsProps) {
   const prepareFormDataForSubmit = (
     formData: Record<string, any>,
     _mode: 'add' | 'edit' = 'add',
+    options?: { keepDependentFields?: boolean },
   ): Record<string, any> => {
     let data = convertFormDataTypes(formData)
-    data = filterDependentFields(data)
+    if (!options?.keepDependentFields) {
+      data = filterDependentFields(data)
+    }
     const { id: _id, ...dataWithoutId } = data
     return dataWithoutId
   }

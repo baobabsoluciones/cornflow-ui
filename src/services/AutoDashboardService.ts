@@ -53,11 +53,11 @@ function findCoordinateColumns(
   if (latCol && lonCol) {
     const sampleSize = Math.min(10, data.length)
     const validSamples = data.slice(0, sampleSize).filter((row) => {
-      const lat = Number(row[latCol!])
-      const lon = Number(row[lonCol!])
+      const lat = Number(row[latCol])
+      const lon = Number(row[lonCol])
       return (
-        !isNaN(lat) &&
-        !isNaN(lon) &&
+        !Number.isNaN(lat) &&
+        !Number.isNaN(lon) &&
         lat >= -90 &&
         lat <= 90 &&
         lon >= -180 &&
@@ -156,7 +156,7 @@ function isBinaryColumn(
 
   if (sampleValues.length === 0) return false
 
-  const uniqueValues = new Set(sampleValues.map((v) => Number(v)))
+  const uniqueValues = new Set(sampleValues.map(Number))
   return uniqueValues.size <= 2 && uniqueValues.has(0) && uniqueValues.has(1)
 }
 
@@ -165,12 +165,12 @@ function isBinaryColumn(
  */
 function isNumericValue(val: unknown): boolean {
   if (val == null) return false
-  if (typeof val === 'number') return !isNaN(val)
+  if (typeof val === 'number') return !Number.isNaN(val)
   if (typeof val === 'string') {
     const trimmed = val.trim()
     // Reject empty strings – Number('') is 0, which is misleading
     if (trimmed === '') return false
-    return !isNaN(Number(trimmed))
+    return !Number.isNaN(Number(trimmed))
   }
   return false
 }
@@ -228,7 +228,7 @@ const DATE_REGEX_PATTERNS = [
  * Check if a value looks like a date string.
  */
 function isDateValue(val: unknown): boolean {
-  if (val instanceof Date) return !isNaN(val.getTime())
+  if (val instanceof Date) return !Number.isNaN(val.getTime())
   if (typeof val !== 'string') return false
   return DATE_REGEX_PATTERNS.some((regex) => regex.test(val))
 }
@@ -269,8 +269,7 @@ export function analyzeTable(
   // Check for coordinate columns (lat/lon pairs)
   const coordinateCols = findCoordinateColumns(columns, data)
   if (coordinateCols.latCol && coordinateCols.lonCol) {
-    locationColumns.push(coordinateCols.latCol)
-    locationColumns.push(coordinateCols.lonCol)
+    locationColumns.push(coordinateCols.latCol, coordinateCols.lonCol)
   }
 
   // Analyze each column
@@ -522,8 +521,8 @@ function getFormatForColumn(
 
 export function formatColumnName(col: string): string {
   return col
-    .replace(/_/g, ' ')
-    .replace(/([A-Z])/g, ' $1')
+    .replaceAll('_', ' ')
+    .replaceAll(/([A-Z])/g, ' $1')
     .trim()
     .split(' ')
     .filter(Boolean)
@@ -532,6 +531,32 @@ export function formatColumnName(col: string): string {
 }
 
 type AggregationMethod = 'sum' | 'avg'
+
+/**
+ * Column-name fragments that mark a numeric column as a rate/ratio/per-unit
+ * measure. Such columns should be averaged rather than summed (their totals
+ * are not meaningful). Shared by `chooseAggregation` and `isSummableColumn`.
+ */
+const RATE_LIKE_PATTERNS = [
+  'rate',
+  'ratio',
+  'percentage',
+  'percent',
+  'avg',
+  'average',
+  'mean',
+  'score',
+  'rating',
+  'efficiency',
+  'utilization',
+  'index',
+  'factor',
+  'coefficient',
+  'price',
+  'unit_cost',
+  'per_',
+  '_per_',
+]
 
 /**
  * Determine the best aggregation method for a numeric column.
@@ -547,27 +572,7 @@ function chooseAggregation(
   const colLower = colName.toLowerCase()
 
   // Columns that semantically represent rates/averages should always be averaged
-  const avgPatterns = [
-    'rate',
-    'ratio',
-    'percentage',
-    'percent',
-    'avg',
-    'average',
-    'mean',
-    'score',
-    'rating',
-    'efficiency',
-    'utilization',
-    'index',
-    'factor',
-    'coefficient',
-    'price',
-    'unit_cost',
-    'per_',
-    '_per_',
-  ]
-  if (avgPatterns.some((p) => colLower.includes(p))) return 'avg'
+  if (RATE_LIKE_PATTERNS.some((p) => colLower.includes(p))) return 'avg'
 
   // If most groups have multiple rows, average is often more meaningful
   const groups: Record<string, number> = {}
@@ -593,25 +598,41 @@ function aggregate(values: number[], method: AggregationMethod): number {
   return method === 'avg' ? roundToTwoDecimals(sum / values.length) : roundToTwoDecimals(sum)
 }
 
+/**
+ * Group a single numeric column's values by a string key, applying the same
+ * key/value validity rules used by both the date and category groupings.
+ * `keyOf` converts a raw cell into the grouping key (and may discard a row by
+ * returning a falsy value).
+ */
+function groupNumericByKey(
+  data: any[],
+  numericCol: string,
+  keyOf: (row: any) => string,
+): Record<string, number[]> {
+  const grouped: Record<string, number[]> = {}
+
+  data.forEach((row) => {
+    const key = keyOf(row)
+    const value = Number(row[numericCol])
+
+    if (key && !Number.isNaN(value)) {
+      if (!grouped[key]) {
+        grouped[key] = []
+      }
+      grouped[key].push(value)
+    }
+  })
+
+  return grouped
+}
+
 function groupByDate(
   data: any[],
   dateCol: string,
   numericCol: string,
   aggMethod: AggregationMethod = 'sum',
 ): Array<{ date: string; value: number }> {
-  const grouped: Record<string, number[]> = {}
-
-  data.forEach((row) => {
-    const date = row[dateCol]
-    const value = Number(row[numericCol])
-
-    if (date && !isNaN(value)) {
-      if (!grouped[date]) {
-        grouped[date] = []
-      }
-      grouped[date].push(value)
-    }
-  })
+  const grouped = groupNumericByKey(data, numericCol, (row) => row[dateCol])
 
   return Object.keys(grouped)
     .sort((a, b) => a.localeCompare(b))
@@ -627,19 +648,7 @@ function groupByCategory(
   numericCol: string,
   aggMethod: AggregationMethod = 'sum',
 ): Array<{ category: string; value: number }> {
-  const grouped: Record<string, number[]> = {}
-
-  data.forEach((row) => {
-    const category = String(row[catCol])
-    const value = Number(row[numericCol])
-
-    if (category && !isNaN(value)) {
-      if (!grouped[category]) {
-        grouped[category] = []
-      }
-      grouped[category].push(value)
-    }
-  })
+  const grouped = groupNumericByKey(data, numericCol, (row) => String(row[catCol]))
 
   return Object.keys(grouped)
     .map((category) => ({
@@ -671,7 +680,7 @@ function groupByCategoryMultiSeries(
     }
     numericCols.forEach((col) => {
       const value = Number(row[col])
-      if (!isNaN(value)) {
+      if (!Number.isNaN(value)) {
         if (!grouped[category][col]) {
           grouped[category][col] = []
         }
@@ -680,7 +689,7 @@ function groupByCategoryMultiSeries(
     })
   })
 
-  const categories = Object.keys(grouped).sort()
+  const categories = Object.keys(grouped).sort((a, b) => String(a).localeCompare(String(b)))
   const series = numericCols.map((col, idx) => {
     const method = aggMethods?.[idx] ?? 'sum'
     return {
@@ -762,7 +771,7 @@ function pickBestNumericColumns(
     .filter((col) => {
       const values = analysis.data
         .map((row) => Number(row[col]))
-        .filter((v) => !isNaN(v))
+        .filter((v) => !Number.isNaN(v))
       return !allValuesAreZero(values)
     })
     .slice(0, maxCols)
@@ -773,32 +782,61 @@ function pickBestNumericColumns(
 // ---------------------------------------------------------------------------
 
 /**
+ * Shared time-series precondition for the line and area charts. Returns the
+ * primary date column when the analysis supports a time-series chart, or null
+ * when it does not (same guard both charts previously inlined).
+ */
+function resolveTimeSeriesDateColumn(analysis: TableAnalysis): string | null {
+  if (
+    !analysis.hasTimeSeries ||
+    analysis.dateColumns.length === 0 ||
+    analysis.numericColumns.length === 0
+  ) {
+    return null
+  }
+  return analysis.dateColumns[0]
+}
+
+/**
+ * Shared categorical precondition for the bar and pie charts. Returns the best
+ * categorical column for the given chart type, or null when the analysis does
+ * not support a categorical chart or the chosen column is binary.
+ */
+function resolveCategoricalColumn(
+  analysis: TableAnalysis,
+  chartType: 'pie' | 'bar',
+): string | null {
+  if (
+    !analysis.hasCategories ||
+    analysis.categoricalColumns.length === 0 ||
+    analysis.numericColumns.length === 0
+  ) {
+    return null
+  }
+
+  const catCol = pickBestCategoricalColumn(analysis, chartType)
+  if (!catCol) return null
+  if (analysis.binaryColumns.includes(catCol)) return null
+
+  return catCol
+}
+
+/**
+ * Validate a grouped series: it must contain more than one bucket and have at
+ * least one non-zero value. Shared by the single-series bar and area charts.
+ */
+function hasPlottableSeries(values: number[]): boolean {
+  if (values.length <= 1) return false
+  return !allValuesAreZero(values)
+}
+
+/**
  * Determine whether "total" (sum) is a meaningful KPI for a column.
  * Rates, percentages, prices-per-unit, etc. should NOT be summed.
  */
 function isSummableColumn(colName: string): boolean {
   const colLower = colName.toLowerCase()
-  const nonSummablePatterns = [
-    'rate',
-    'ratio',
-    'percentage',
-    'percent',
-    'avg',
-    'average',
-    'mean',
-    'score',
-    'rating',
-    'efficiency',
-    'utilization',
-    'index',
-    'factor',
-    'coefficient',
-    'price',
-    'unit_cost',
-    'per_',
-    '_per_',
-  ]
-  return !nonSummablePatterns.some((p) => colLower.includes(p))
+  return !RATE_LIKE_PATTERNS.some((p) => colLower.includes(p))
 }
 
 /**
@@ -806,6 +844,35 @@ function isSummableColumn(colName: string): boolean {
  * Generates at most 1 KPI per column: Total for summable columns, Average for rate-like columns.
  * Limits total KPIs to 4 to avoid clutter.
  */
+/**
+ * Build a single KPI widget. The Total and Average KPIs share the exact same
+ * shape and only differ in the i18n title key and the value, so they are built
+ * through this helper to avoid duplicated widget literals.
+ */
+function buildKpiWidget(
+  tableKey: string,
+  titleKey: string,
+  columnName: string,
+  value: number,
+  format: 'number' | 'currency' | 'percentage',
+  icon: string,
+  getTitle: TitleGetter,
+): DashboardWidget {
+  const title = getTitle(titleKey, { column: columnName })
+  return {
+    type: 'kpi',
+    title,
+    tableKey,
+    config: {
+      value,
+      label: title,
+      format,
+      icon,
+    },
+    cols: 4,
+  }
+}
+
 function generateKPIWidgets(
   analysis: TableAnalysis,
   getTitle: TitleGetter,
@@ -827,7 +894,7 @@ function generateKPIWidgets(
 
     const values = analysis.data
       .map((row) => Number(row[col]))
-      .filter((v) => !isNaN(v))
+      .filter((v) => !Number.isNaN(v))
     if (values.length === 0 || allValuesAreZero(values)) return
 
     const sum = roundToTwoDecimals(values.reduce((a, b) => a + b, 0))
@@ -838,34 +905,30 @@ function generateKPIWidgets(
 
     if (isSummableColumn(col) && Math.abs(sum) >= 0.01) {
       // Show Total for summable columns (count, quantity, amount, etc.)
-      widgets.push({
-        type: 'kpi',
-        title: getTitle('dashboard.widgets.total', { column: columnName }),
-        tableKey: analysis.tableKey,
-        config: {
-          value: sum,
-          label: getTitle('dashboard.widgets.total', { column: columnName }),
+      widgets.push(
+        buildKpiWidget(
+          analysis.tableKey,
+          'dashboard.widgets.total',
+          columnName,
+          sum,
           format,
           icon,
-        },
-        cols: 4,
-      })
+          getTitle,
+        ),
+      )
     } else if (Math.abs(avg) >= 0.01) {
       // Show Average for rate/percentage/non-summable columns
-      widgets.push({
-        type: 'kpi',
-        title: getTitle('dashboard.widgets.average', { column: columnName }),
-        tableKey: analysis.tableKey,
-        config: {
-          value: avg,
-          label: getTitle('dashboard.widgets.average', {
-            column: columnName,
-          }),
+      widgets.push(
+        buildKpiWidget(
+          analysis.tableKey,
+          'dashboard.widgets.average',
+          columnName,
+          avg,
           format,
           icon,
-        },
-        cols: 4,
-      })
+          getTitle,
+        ),
+      )
     }
   })
 
@@ -879,15 +942,8 @@ function generateLineChartWidget(
   analysis: TableAnalysis,
   getTitle: TitleGetter,
 ): DashboardWidget | null {
-  if (
-    !analysis.hasTimeSeries ||
-    analysis.dateColumns.length === 0 ||
-    analysis.numericColumns.length === 0
-  ) {
-    return null
-  }
-
-  const dateCol = analysis.dateColumns[0]
+  const dateCol = resolveTimeSeriesDateColumn(analysis)
+  if (!dateCol) return null
 
   // Support multi-series line charts (up to 3 non-zero numeric columns)
   const numericCols = pickBestNumericColumns(analysis, 3)
@@ -936,18 +992,9 @@ function generateBarChartWidget(
   analysis: TableAnalysis,
   getTitle: TitleGetter,
 ): DashboardWidget | null {
-  if (
-    !analysis.hasCategories ||
-    analysis.categoricalColumns.length === 0 ||
-    analysis.numericColumns.length === 0
-  ) {
-    return null
-  }
-
   // Pick the best categorical column for a bar chart
-  const catCol = pickBestCategoricalColumn(analysis, 'bar')
+  const catCol = resolveCategoricalColumn(analysis, 'bar')
   if (!catCol) return null
-  if (analysis.binaryColumns.includes(catCol)) return null
 
   // Use up to 3 non-zero numeric columns
   const numericCols = pickBestNumericColumns(analysis, 3)
@@ -957,10 +1004,7 @@ function generateBarChartWidget(
     // Single-series bar chart with smart aggregation
     const aggMethod = chooseAggregation(numericCols[0], analysis.data, catCol)
     const grouped = groupByCategory(analysis.data, catCol, numericCols[0], aggMethod)
-    if (grouped.length <= 1) return null
-
-    const allValues = grouped.map((g) => g.value)
-    if (allValuesAreZero(allValues)) return null
+    if (!hasPlottableSeries(grouped.map((g) => g.value))) return null
 
     const numericColName = formatColumnName(numericCols[0])
     const catColName = formatColumnName(catCol)
@@ -1025,18 +1069,9 @@ function generatePieChartWidget(
   analysis: TableAnalysis,
   getTitle: TitleGetter,
 ): DashboardWidget | null {
-  if (
-    !analysis.hasCategories ||
-    analysis.categoricalColumns.length === 0 ||
-    analysis.numericColumns.length === 0
-  ) {
-    return null
-  }
-
   // Pick the best categorical column for a pie chart (low cardinality)
-  const catCol = pickBestCategoricalColumn(analysis, 'pie')
+  const catCol = resolveCategoricalColumn(analysis, 'pie')
   if (!catCol) return null
-  if (analysis.binaryColumns.includes(catCol)) return null
 
   // Pick the first non-zero numeric column
   const numericCols = pickBestNumericColumns(analysis, 1)
@@ -1077,15 +1112,8 @@ function generateAreaChartWidget(
   getTitle: TitleGetter,
   usedCols: Set<string> = new Set(),
 ): DashboardWidget | null {
-  if (
-    !analysis.hasTimeSeries ||
-    analysis.dateColumns.length === 0 ||
-    analysis.numericColumns.length === 0
-  ) {
-    return null
-  }
-
-  const dateCol = analysis.dateColumns[0]
+  const dateCol = resolveTimeSeriesDateColumn(analysis)
+  if (!dateCol) return null
 
   // Prefer a numeric column that hasn't been used by the line chart
   let numericCol = analysis.numericColumns.find((c) => !usedCols.has(c))
@@ -1094,10 +1122,7 @@ function generateAreaChartWidget(
 
   const grouped = groupByDate(analysis.data, dateCol, numericCol)
 
-  if (grouped.length <= 1) return null
-
-  const allValues = grouped.map((g) => g.value)
-  if (allValuesAreZero(allValues)) return null
+  if (!hasPlottableSeries(grouped.map((g) => g.value))) return null
 
   let cumulative = 0
   const numericColName = formatColumnName(numericCol)
@@ -1143,9 +1168,9 @@ function collectCoordinateData(
     const value = Number(row[valueCol]) || 0
 
     const isValidCoordinate =
-      !isNaN(lat) &&
-      !isNaN(lon) &&
-      !isNaN(value) &&
+      !Number.isNaN(lat) &&
+      !Number.isNaN(lon) &&
+      !Number.isNaN(value) &&
       lat >= -90 &&
       lat <= 90 &&
       lon >= -180 &&

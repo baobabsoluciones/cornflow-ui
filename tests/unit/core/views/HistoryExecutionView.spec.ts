@@ -25,14 +25,19 @@ vi.mock('@/components/core/CoreTitleView.vue', () => ({
   }
 }))
 
-// Mock Mango UI components
-vi.mock('mango-ui', () => ({
-  MPanelData: {
-    name: 'MPanelData',
-    template: '<div data-testid="m-panel-data"><slot name="custom-checkbox" /><slot name="table" :itemData="data" :showHeaders="true" /></div>',
+// HistoryExecutionView uses CorePanelData 
+vi.mock('@/components/core/CorePanelData.vue', () => ({
+  default: {
+    name: 'CorePanelData',
+    template:
+      '<div data-testid="m-panel-data" class="mt-5">' +
+      '<slot name="extra-filters" />' +
+      '<slot name="custom-checkbox" />' +
+      '<slot name="table" :itemData="[]" :showHeaders="true" />' +
+      '</div>',
     props: ['data', 'checkboxOptions', 'language', 'noDataMessage'],
-    emits: ['date-range-changed']
-  }
+    emits: ['date-range-changed'],
+  },
 }))
 
 const createWrapper = () => {
@@ -96,18 +101,18 @@ const createWrapper = () => {
           template: '<div data-testid="core-title-view"></div>',
           props: ['icon', 'title', 'description', 'dropdownItems']
         },
-        'MPanelData': { 
-          name: 'MPanelData',
-          template: '<div data-testid="m-panel-data" class="mt-5"><slot>From To</slot></div>',
-          props: ['data', 'checkboxOptions', 'language', 'noDataMessage']
-        },
+        CorePanelData: false,
         ProjectExecutionsTable: true,
         'v-col': { template: '<div><slot /></div>' },
-        'v-text-field': { 
-          template: '<input />',
+        'v-text-field': {
+          template: '<span class="v-text-field-stub">{{ label }}</span>',
           props: ['label', 'type', 'modelValue'],
-          emits: ['update:modelValue']
-        }
+          emits: ['update:modelValue'],
+        },
+        'v-checkbox': {
+          template: '<label class="v-checkbox-stub"><slot /></label>',
+          props: ['modelValue', 'label', 'color'],
+        },
       }
     }
   })
@@ -133,7 +138,7 @@ describe('HistoryExecutionView', () => {
       expect(wrapper.find('[data-testid="m-panel-data"]').exists()).toBe(true)
     })
 
-    test('renders custom date range picker in MPanelData slot', () => {
+    test('renders custom date range picker in CorePanelData slot', () => {
       const { wrapper } = createWrapper()
 
       expect(wrapper.text()).toContain('From')
@@ -151,9 +156,9 @@ describe('HistoryExecutionView', () => {
       expect(titleView.props('description')).toBe('View past executions')
     })
 
-    test('passes correct props to MPanelData', () => {
+    test('passes correct props to CorePanelData', () => {
       const { wrapper } = createWrapper()
-      const panelData = wrapper.findComponent({ name: 'MPanelData' })
+      const panelData = wrapper.findComponent({ name: 'CorePanelData' })
 
       expect(Array.isArray(panelData.props('data'))).toBe(true)
       expect(Array.isArray(panelData.props('checkboxOptions'))).toBe(true)

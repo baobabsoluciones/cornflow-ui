@@ -32,6 +32,11 @@ const {
     getMasterDataConfig: {},
     getInputDataConfig: {},
     getOutputDataConfig: {},
+    getConfigurations: {},
+    masterDataSections: [],
+    masterDataGroups: undefined,
+    appInstanceDashboardPages: [],
+    setDrawerPinned: () => {},
     selectedExecution: null,
     appConfig: {
       parameters: {
@@ -229,6 +234,14 @@ describe('AppDrawer.vue', () => {
       },
     })
     mockAppConfig.getAppSections.mockReturnValue([])
+
+    // Reset shared store state mutated by some tests
+    mockStore.selectedExecution = null
+    mockStore.getConfigurations = {}
+    mockStore.masterDataSections = []
+    mockStore.masterDataGroups = undefined
+    mockStore.appInstanceDashboardPages = []
+    mockStore.getUser = mockUser
   })
 
   afterEach(() => {
@@ -651,6 +664,169 @@ describe('AppDrawer.vue', () => {
       wrapper = await createWrapper()
 
       expect(wrapper.vm.$options.inheritAttrs).toBe(false)
+    })
+  })
+
+  describe('Pin and Rail behaviour (added)', () => {
+    test('togglePin pins drawer: expands, disables hover, updates store', async () => {
+      mockStore.setDrawerPinned = vi.fn()
+      wrapper = await createWrapper()
+      await wrapper.vm.$nextTick()
+
+      wrapper.vm.togglePin()
+
+      expect(wrapper.vm.isPinned).toBe(true)
+      expect(wrapper.vm.mini).toBe(false)
+      expect(wrapper.vm.hover).toBe(false)
+      expect(mockStore.setDrawerPinned).toHaveBeenCalledWith(true)
+    })
+
+    test('togglePin twice unpins drawer: minimizes and re-enables hover', async () => {
+      mockStore.setDrawerPinned = vi.fn()
+      wrapper = await createWrapper()
+      await wrapper.vm.$nextTick()
+
+      wrapper.vm.togglePin()
+      wrapper.vm.togglePin()
+
+      expect(wrapper.vm.isPinned).toBe(false)
+      expect(wrapper.vm.mini).toBe(true)
+      expect(wrapper.vm.hover).toBe(true)
+      expect(mockStore.setDrawerPinned).toHaveBeenLastCalledWith(false)
+    })
+
+    test('handleRailUpdate ignored while pinned', async () => {
+      mockStore.setDrawerPinned = vi.fn()
+      wrapper = await createWrapper()
+      await wrapper.vm.$nextTick()
+
+      wrapper.vm.togglePin() // pin -> mini false
+      wrapper.vm.handleRailUpdate(true)
+
+      expect(wrapper.vm.mini).toBe(false)
+    })
+  })
+
+  describe('Section active helpers (added)', () => {
+    test('isSectionActive matches exact route', async () => {
+      wrapper = await createWrapper()
+      await wrapper.vm.$nextTick()
+
+      wrapper.vm.$route.path = '/agent'
+      expect(wrapper.vm.isSectionActive({ to: '/agent' })).toBe(true)
+      expect(wrapper.vm.isSectionActive({ to: '/other' })).toBe(false)
+    })
+
+    test('isSectionActive false when section has no to', async () => {
+      wrapper = await createWrapper()
+      await wrapper.vm.$nextTick()
+      expect(wrapper.vm.isSectionActive({ title: 'x' })).toBe(false)
+    })
+
+    test('isSubPageItemActive detects nested route prefix', async () => {
+      wrapper = await createWrapper()
+      await wrapper.vm.$nextTick()
+
+      wrapper.vm.$route.path = '/configuration/section/abc'
+      expect(
+        wrapper.vm.isSubPageItemActive({ to: '/configuration/section' }),
+      ).toBe(true)
+    })
+
+    test('isSubPageItemActive false for unrelated route', async () => {
+      wrapper = await createWrapper()
+      await wrapper.vm.$nextTick()
+
+      wrapper.vm.$route.path = '/elsewhere'
+      expect(wrapper.vm.isSubPageItemActive({ to: '/configuration' })).toBe(false)
+    })
+
+    test('isSubPageItemActive false for null subPage', async () => {
+      wrapper = await createWrapper()
+      await wrapper.vm.$nextTick()
+      expect(wrapper.vm.isSubPageItemActive(null)).toBe(false)
+    })
+
+    test('navigateTo prefixes a leading slash', async () => {
+      wrapper = await createWrapper()
+      await wrapper.vm.$nextTick()
+
+      wrapper.vm.navigateTo('/already-absolute')
+      expect(mockRouter.push).toHaveBeenCalledWith('/already-absolute')
+    })
+  })
+
+  describe('Data sections with selected execution (added)', () => {
+    const baseExecution = {
+      experiment: { instance: { data: {} }, solution: { data: {} } },
+      instance: { data: {} },
+      solution: { data: {} },
+      state: 1,
+    }
+
+    test('inputDataSection and resultsSection appear when execution selected', async () => {
+      mockStore.selectedExecution = { ...baseExecution }
+      mockStore.getConfigurations = {
+        masterData: {},
+        inputData: {},
+        resultsData: {},
+      }
+      mockStore.masterDataSections = []
+      mockStore.masterDataGroups = undefined
+      mockStore.appInstanceDashboardPages = []
+      mockStore.appDashboardPages = []
+
+      wrapper = await createWrapper()
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.vm.inputDataSection).not.toBeNull()
+      expect(wrapper.vm.resultsSection).not.toBeNull()
+      expect(wrapper.vm.hasSelectedExecution).toBe(true)
+
+      // reset
+      mockStore.selectedExecution = null
+    })
+
+    test('inputDataSection null without selected execution', async () => {
+      mockStore.selectedExecution = null
+      wrapper = await createWrapper()
+      await wrapper.vm.$nextTick()
+      expect(wrapper.vm.inputDataSection).toBeNull()
+      expect(wrapper.vm.resultsSection).toBeNull()
+    })
+
+    test('masterDataSection built from configurations', async () => {
+      mockStore.selectedExecution = null
+      mockStore.masterDataSections = []
+      mockStore.getConfigurations = {
+        masterData: {
+          tableA: { title: 'Table A', icon: 'mdi-table', group: null },
+        },
+      }
+      wrapper = await createWrapper()
+      await wrapper.vm.$nextTick()
+      expect(wrapper.vm.masterDataSection).not.toBeNull()
+      expect(wrapper.vm.masterDataSection.subPages).toBeDefined()
+    })
+
+    test('isAdmin and adminSection reflect user roles + config', async () => {
+      mockStore.getUser = {
+        ...mockUser,
+        roles: [{ name: 'admin' }],
+      }
+      mockAppConfig.getCore.mockReturnValue({
+        parameters: {
+          showOpenIdUsername: true,
+          showDashboardMainView: true,
+          enableRolesManagement: true,
+        },
+      })
+      wrapper = await createWrapper()
+      await wrapper.vm.$nextTick()
+      expect(wrapper.vm.isAdmin).toBe(true)
+      expect(wrapper.vm.adminSection).not.toBeNull()
+      // reset
+      mockStore.getUser = mockUser
     })
   })
 

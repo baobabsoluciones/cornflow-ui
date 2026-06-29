@@ -16,9 +16,9 @@
         @dropdown-item-click="handleDropdownItemClick"
       />
 
-      <!-- Pending changes bar (master tables / configuration only) -->
+      <!-- Pending changes bar (master tables / configuration or solution recalculation) -->
       <div
-        v-if="isConfigurationSection && hasPendingChanges"
+        v-if="(isConfigurationSection || isRecalculationSection) && hasPendingChanges"
         class="pending-changes-bar mt-3"
       >
         <v-chip color="success" variant="tonal" size="small" class="mr-2">
@@ -30,10 +30,21 @@
           }}
         </v-chip>
         <v-btn
+          v-if="isConfigurationSection"
           color="success"
           variant="flat"
           size="small"
           @click="openMasterTablePendingModal"
+        >
+          <v-icon start size="small">mdi-eye</v-icon>
+          {{ $t('pendingChanges.reviewChanges') }}
+        </v-btn>
+        <v-btn
+          v-else-if="isRecalculationSection"
+          color="primary"
+          variant="flat"
+          size="small"
+          @click="openRecalculationPendingModal"
         >
           <v-icon start size="small">mdi-eye</v-icon>
           {{ $t('pendingChanges.reviewChanges') }}
@@ -60,7 +71,13 @@
       </div>
 
       <!-- Regular table view for non-primitive arrays -->
-      <div v-else-if="!isGroupView" class="table-section mt-5" :class="{ 'table-section--dashboard': shouldShowWidgets && hasActualWidgets }">
+      <div
+        v-else-if="!isGroupView"
+        class="table-section mt-5"
+        :class="{
+          'table-section--dashboard': shouldShowWidgets && hasActualWidgets,
+        }"
+      >
         <!-- Table with widgets layout (70/30) - only if there are actual widgets -->
         <div
           v-if="shouldShowWidgets && hasActualWidgets"
@@ -69,112 +86,33 @@
           <!-- Top row: table (70%) + side widgets (30%) -->
           <div class="table-with-widgets">
             <div class="table-column">
-              <CoreTable
-                :items="tableData.items.value"
-                :headers="tableData.headers.value"
-                :loading="tableData.loading.value"
-                :table-title="tableData.tableTitle.value"
-                :search-placeholder="tableData.searchPlaceholder.value"
-                :enable-search="tableData.enableSearch.value"
-                :enable-filters="tableData.enableFilters.value"
-                :enable-selection="tableData.enableSelection.value"
-                :enable-actions="tableData.enableActions.value"
-                :enable-bulk-actions="tableData.enableBulkActions.value"
-                :read-only-display="isReadOnlyDataSection"
+              <SectionSingleTable
+                :table-data="tableData"
+                :is-read-only-data-section="isReadOnlyDataSection"
                 :table-key="effectiveTableKey"
-                :enable-excel-mode="tableData.enableExcelMode.value"
-                :is-cell-modified="tableData.isCellModified"
-                :get-modified-value="tableData.getModifiedValue"
-                :get-row-class="tableData.getRowClass"
-                :can-add="tableData.canAdd.value"
-                :can-edit="tableData.canEdit.value"
-                :can-delete="tableData.canDelete.value"
-                :can-bulk-upload="tableData.canBulkUpload.value"
-                :can-download-excel="tableData.canDownloadExcel.value"
-                :search-value="tableData.searchValue.value"
-                :active-filters="tableData.activeFilters.value"
-                :selected-items="tableData.selectedItems.value"
-                :available-filter-fields="tableData.availableFilterFields.value"
-                :show-add-edit-modal="tableData.showAddEditModal.value"
-                :show-delete-dialog="tableData.showDeleteDialog.value"
-                :show-bulk-delete-dialog="tableData.showBulkDeleteDialog.value"
-                :show-bulk-upload-modal="tableData.showBulkUploadModal.value"
-                :form-fields="tableData.formFields.value"
-                :form-data="tableData.formData.value"
-                :is-editing="tableData.isEditing.value"
-                :saving="tableData.saving.value"
-                :deleting="tableData.deleting.value"
-                :bulk-deleting="tableData.bulkDeleting.value"
-                :uploading="tableData.uploading.value"
-                :downloading="tableData.downloading.value"
-                :editing-row-id="tableData.editingRowId.value"
-                :editing-data="tableData.editingData.value"
-                :original-data="tableData.originalData.value"
-                :is-editing-any-row="tableData.isEditingAnyRow.value"
-                :load-table-data="tableData.loadTableData"
-                :table-data="tableData.tableData.value"
-                @search="tableData.handleSearch"
-                :get-operators-for-field-type="tableData.getOperatorsForFieldType"
-                :get-operator-text="tableData.getOperatorText"
-                :operator-needs-value="tableData.operatorNeedsValue"
-                :operator-needs-second-value="tableData.operatorNeedsSecondValue"
-                :generate-filter-id="tableData.generateFilterId"
-                :date-range-filter-configs="tableData.apiDateRangeFilterConfigs.value"
-                :date-range-values="tableData.dateRangeValues.value"
-                :date-range-loading="tableData.loading.value"
-                @add-filter="tableData.handleAddFilter"
-                @remove-filter="tableData.handleRemoveFilter"
-                @clear-all-filters="tableData.handleClearAllFilters"
-                @apply-date-range="(p) => tableData.handleApplyDateRange(p.key, { from: p.from, to: p.to })"
-                @reset-date-range="tableData.handleResetDateRange"
-                @toggle-filters-panel="tableData.handleToggleFiltersPanel"
-                @select-item="tableData.handleSelectItem"
-                @select-all="tableData.handleSelectAll"
-                @clear-selection="tableData.handleClearSelection"
-                @add-item="tableData.handleAddItem"
-                @edit-item="tableData.handleEditItem"
-                @delete-item="tableData.handleDeleteItem"
-                @bulk-delete="tableData.handleBulkDelete"
-                @save-item="tableData.handleSaveItem"
-                @cancel-edit="() => (tableData.showAddEditModal.value = false)"
-                @bulk-upload="tableData.handleBulkUpload"
-                @download-excel="tableData.handleDownloadExcel"
-                @confirm-delete="tableData.handleConfirmDelete"
-                @confirm-bulk-delete="tableData.handleConfirmBulkDelete"
-                @cancel-delete="() => (tableData.showDeleteDialog.value = false)"
-                @cancel-bulk-delete="
-                  () => (tableData.showBulkDeleteDialog.value = false)
+                :header-origin-indicators="
+                  etlHeaderOriginIndicatorsForSingleTable
                 "
-                @cancel-bulk-upload="
-                  () => (tableData.showBulkUploadModal.value = false)
-                "
-                @start-inline-edit="tableData.startInlineEdit"
-                @save-inline-edit="tableData.saveInlineEdit"
-                @cancel-inline-edit="tableData.cancelInlineEdit"
-                @update-inline-field="tableData.updateInlineField"
-                @cell-change="tableData.handleCellChange"
-                @update:searchValue="tableData.handleSearch"
-                @update:activeFilters="
-                  (filters) => (tableData.activeFilters.value = filters)
-                "
-                @update:selectedItems="
-                  (items) => (tableData.selectedItems.value = items)
-                "
-                @update:showAddEditModal="
-                  (show) => (tableData.showAddEditModal.value = show)
-                "
-                @update:showDeleteDialog="
-                  (show) => (tableData.showDeleteDialog.value = show)
-                "
-                @update:showBulkDeleteDialog="
-                  (show) => (tableData.showBulkDeleteDialog.value = show)
-                "
-                @update:showBulkUploadModal="
-                  (show) => (tableData.showBulkUploadModal.value = show)
-                "
-                @update:formData="(data) => (tableData.formData.value = data)"
+                :with-row-class="true"
+                @bulk-edit="() => handleBulkEditEvent('single')"
               />
             </div>
+            <!-- Force retry dialog when overwrite_all returns offer_force_retry (teleported for z-index) -->
+            <Teleport to="body">
+              <ForceRetryConfirmDialog
+                v-if="tableData.forceRetryOffer?.value"
+                :model-value="!!tableData.forceRetryOffer?.value"
+                :message="tableData.forceRetryOffer?.value?.message ?? ''"
+                :loading="!!tableData.forceRetryLoading?.value"
+                @confirm="tableData.acceptForceRetry"
+                @cancel="tableData.rejectForceRetry"
+                @update:model-value="
+                  (v) => {
+                    if (!v) tableData.rejectForceRetry()
+                  }
+                "
+              />
+            </Teleport>
             <!-- Widgets column (30%) -->
             <div class="widgets-column">
               <!-- KPIs section (2 per row) -->
@@ -262,111 +200,30 @@
           </div>
         </div>
         <!-- Regular table without widgets -->
-        <CoreTable
+        <SectionSingleTable
           v-else
-          :items="tableData.items.value"
-          :headers="tableData.headers.value"
-          :loading="tableData.loading.value"
-          :table-title="tableData.tableTitle.value"
-          :search-placeholder="tableData.searchPlaceholder.value"
-          :enable-search="tableData.enableSearch.value"
-          :enable-filters="tableData.enableFilters.value"
-          :enable-selection="tableData.enableSelection.value"
-          :enable-actions="tableData.enableActions.value"
-          :enable-bulk-actions="tableData.enableBulkActions.value"
-          :read-only-display="isReadOnlyDataSection"
+          :table-data="tableData"
+          :is-read-only-data-section="isReadOnlyDataSection"
           :table-key="effectiveTableKey"
-          :enable-excel-mode="tableData.enableExcelMode.value"
-          :is-cell-modified="tableData.isCellModified"
-          :get-modified-value="tableData.getModifiedValue"
-          :can-add="tableData.canAdd.value"
-          :can-edit="tableData.canEdit.value"
-          :can-delete="tableData.canDelete.value"
-          :can-bulk-upload="tableData.canBulkUpload.value"
-          :can-download-excel="tableData.canDownloadExcel.value"
-          :search-value="tableData.searchValue.value"
-          :active-filters="tableData.activeFilters.value"
-          :selected-items="tableData.selectedItems.value"
-          :available-filter-fields="tableData.availableFilterFields.value"
-          :show-add-edit-modal="tableData.showAddEditModal.value"
-          :show-delete-dialog="tableData.showDeleteDialog.value"
-          :show-bulk-delete-dialog="tableData.showBulkDeleteDialog.value"
-          :show-bulk-upload-modal="tableData.showBulkUploadModal.value"
-          :form-fields="tableData.formFields.value"
-          :form-data="tableData.formData.value"
-          :is-editing="tableData.isEditing.value"
-          :saving="tableData.saving.value"
-          :deleting="tableData.deleting.value"
-          :bulk-deleting="tableData.bulkDeleting.value"
-          :uploading="tableData.uploading.value"
-          :downloading="tableData.downloading.value"
-          :editing-row-id="tableData.editingRowId.value"
-          :editing-data="tableData.editingData.value"
-          :original-data="tableData.originalData.value"
-          :is-editing-any-row="tableData.isEditingAnyRow.value"
-          :load-table-data="tableData.loadTableData"
-          :table-data="tableData.tableData.value"
-          @search="tableData.handleSearch"
-          :get-operators-for-field-type="tableData.getOperatorsForFieldType"
-          :get-operator-text="tableData.getOperatorText"
-          :operator-needs-value="tableData.operatorNeedsValue"
-          :operator-needs-second-value="tableData.operatorNeedsSecondValue"
-          :generate-filter-id="tableData.generateFilterId"
-          :date-range-filter-configs="tableData.apiDateRangeFilterConfigs.value"
-          :date-range-values="tableData.dateRangeValues.value"
-          :date-range-loading="tableData.loading.value"
-          @add-filter="tableData.handleAddFilter"
-          @remove-filter="tableData.handleRemoveFilter"
-          @clear-all-filters="tableData.handleClearAllFilters"
-          @apply-date-range="(p) => tableData.handleApplyDateRange(p.key, { from: p.from, to: p.to })"
-          @reset-date-range="tableData.handleResetDateRange"
-          @toggle-filters-panel="tableData.handleToggleFiltersPanel"
-          @select-item="tableData.handleSelectItem"
-          @select-all="tableData.handleSelectAll"
-          @clear-selection="tableData.handleClearSelection"
-          @add-item="tableData.handleAddItem"
-          @edit-item="tableData.handleEditItem"
-          @delete-item="tableData.handleDeleteItem"
-          @bulk-delete="tableData.handleBulkDelete"
-          @save-item="tableData.handleSaveItem"
-          @cancel-edit="() => (tableData.showAddEditModal.value = false)"
-          @bulk-upload="tableData.handleBulkUpload"
-          @download-excel="tableData.handleDownloadExcel"
-          @confirm-delete="tableData.handleConfirmDelete"
-          @confirm-bulk-delete="tableData.handleConfirmBulkDelete"
-          @cancel-delete="() => (tableData.showDeleteDialog.value = false)"
-          @cancel-bulk-delete="
-            () => (tableData.showBulkDeleteDialog.value = false)
-          "
-          @cancel-bulk-upload="
-            () => (tableData.showBulkUploadModal.value = false)
-          "
-          @start-inline-edit="tableData.startInlineEdit"
-          @save-inline-edit="tableData.saveInlineEdit"
-          @cancel-inline-edit="tableData.cancelInlineEdit"
-          @update-inline-field="tableData.updateInlineField"
-          @cell-change="tableData.handleCellChange"
-          @update:searchValue="tableData.handleSearch"
-          @update:activeFilters="
-            (filters) => (tableData.activeFilters.value = filters)
-          "
-          @update:selectedItems="
-            (items) => (tableData.selectedItems.value = items)
-          "
-          @update:showAddEditModal="
-            (show) => (tableData.showAddEditModal.value = show)
-          "
-          @update:showDeleteDialog="
-            (show) => (tableData.showDeleteDialog.value = show)
-          "
-          @update:showBulkDeleteDialog="
-            (show) => (tableData.showBulkDeleteDialog.value = show)
-          "
-          @update:showBulkUploadModal="
-            (show) => (tableData.showBulkUploadModal.value = show)
-          "
-          @update:formData="(data) => (tableData.formData.value = data)"
+          :header-origin-indicators="etlHeaderOriginIndicatorsForSingleTable"
+          @bulk-edit="() => handleBulkEditEvent('single')"
         />
+        <!-- Force retry dialog when overwrite_all returns offer_force_retry (no-widgets layout; teleported for z-index) -->
+        <Teleport to="body">
+          <ForceRetryConfirmDialog
+            v-if="tableData.forceRetryOffer?.value"
+            :model-value="!!tableData.forceRetryOffer?.value"
+            :message="tableData.forceRetryOffer?.value?.message ?? ''"
+            :loading="!!tableData.forceRetryLoading?.value"
+            @confirm="tableData.acceptForceRetry"
+            @cancel="tableData.rejectForceRetry"
+            @update:model-value="
+              (v) => {
+                if (!v) tableData.rejectForceRetry()
+              }
+            "
+          />
+        </Teleport>
       </div>
 
       <!-- Group view with tabs (for grouped tables) -->
@@ -381,8 +238,57 @@
               v-for="(table, index) in tabsData"
               :key="table.value"
               :value="index"
+              :title="table.text"
+              :tooltip="table.text"
             >
-              {{ table.text }}
+              <span>{{ table.text }}</span>
+              <!-- Validation table warning/error indicator -->
+              <v-tooltip
+                v-if="isValidationsGroup && groupTables[table.value] != null"
+                location="top"
+              >
+                <template #activator="{ props: tooltipProps }">
+                  <v-icon
+                    v-bind="tooltipProps"
+                    size="16"
+                    :color="groupTables[table.value]?.is_warning ? 'warning' : 'error'"
+                    class="ml-1"
+                  >
+                    {{ groupTables[table.value]?.is_warning ? 'mdi-alert-outline' : 'mdi-alert-circle-outline' }}
+                  </v-icon>
+                </template>
+                <span>{{
+                  groupTables[table.value]?.is_warning
+                    ? $t('sectionView.validationWarningTab')
+                    : $t('sectionView.validationErrorTab')
+                }}</span>
+              </v-tooltip>
+              <v-tooltip
+                v-if="showEtlTabOriginIndicatorsForTable(table.value)"
+                location="top"
+              >
+                <template #activator="{ props: tooltipProps }">
+                  <v-icon
+                    v-bind="tooltipProps"
+                    size="16"
+                    :color="isTableFromDb(table.value) ? 'success' : 'primary'"
+                    class="ml-2"
+                  >
+                    {{
+                      isTableFromDb(table.value)
+                        ? 'mdi-database-check'
+                        : 'mdi-file-document-outline'
+                    }}
+                  </v-icon>
+                </template>
+                <span>
+                  {{
+                    isTableFromDb(table.value)
+                      ? t('sectionView.etlMetadataInfo.fromDbTooltip')
+                      : t('sectionView.etlMetadataInfo.notFromDbTooltip')
+                  }}
+                </span>
+              </v-tooltip>
             </CoreTab>
           </CoreTabs>
 
@@ -393,158 +299,15 @@
               class="table-with-widgets"
             >
               <div class="table-column">
-                <!-- Check if it's a primitive array and render SimpleList -->
-                <SimpleList
-                  v-if="selectedTableData.isPrimitiveArray.value"
-                  :items="selectedTableData.items.value"
-                  :loading="selectedTableData.loading.value"
-                  :search-value="selectedTableData.searchValue.value"
-                  :enable-search="selectedTableData.enableSearch.value"
-                  :can-download-excel="selectedTableData.canDownloadExcel.value"
-                  :search-placeholder="
-                    selectedTableData.searchPlaceholder.value
-                  "
-                  :elevation="0"
-                  @search="selectedTableData.handleSearch"
-                  @update:searchValue="selectedTableData.handleSearch"
-                  @download-excel="selectedTableData.handleDownloadExcel"
-                />
-
-                <!-- Regular table view for non-primitive arrays -->
-                <CoreTable
-                  v-else
-                  :items="selectedTableData.items.value"
-                  :headers="selectedTableData.headers.value"
-                  :loading="selectedTableData.loading.value"
-                  :table-title="selectedTableData.tableTitle.value"
-                  :search-placeholder="
-                    selectedTableData.searchPlaceholder.value
-                  "
-                  :elevation="0"
-                  :display-as-alert-list="
-                    selectedTableData.isValidationMessageList?.value ?? false
-                  "
-                  alert-list-message-key="message"
-                  :enable-search="selectedTableData.enableSearch.value"
-                  :enable-filters="selectedTableData.enableFilters.value"
-                  :enable-selection="selectedTableData.enableSelection.value"
-                  :enable-actions="selectedTableData.enableActions.value"
-                  :enable-bulk-actions="
-                    selectedTableData.enableBulkActions.value
-                  "
-                  :read-only-display="isReadOnlyDataSection"
+                <SectionGroupTable
+                  :table-data="selectedTableData"
+                  :is-table-ui-loading="isTableUiLoading"
+                  :is-read-only-data-section="isReadOnlyDataSection"
                   :table-key="selectedTable"
-                  :enable-excel-mode="selectedTableData.enableExcelMode.value"
-                  :is-cell-modified="selectedTableData.isCellModified"
-                  :get-modified-value="selectedTableData.getModifiedValue"
-                  :get-row-class="selectedTableData.getRowClass"
-                  :can-add="selectedTableData.canAdd.value"
-                  :can-edit="selectedTableData.canEdit.value"
-                  :can-delete="selectedTableData.canDelete.value"
-                  :can-bulk-upload="selectedTableData.canBulkUpload.value"
-                  :can-download-excel="selectedTableData.canDownloadExcel.value"
-                  :search-value="selectedTableData.searchValue.value"
-                  :active-filters="selectedTableData.activeFilters.value"
-                  :selected-items="selectedTableData.selectedItems.value"
-                  :available-filter-fields="
-                    selectedTableData.availableFilterFields.value
+                  :header-origin-indicators="
+                    etlHeaderOriginIndicatorsForSelectedTable
                   "
-                  :show-add-edit-modal="
-                    selectedTableData.showAddEditModal.value
-                  "
-                  :show-delete-dialog="selectedTableData.showDeleteDialog.value"
-                  :show-bulk-delete-dialog="
-                    selectedTableData.showBulkDeleteDialog.value
-                  "
-                  :show-bulk-upload-modal="
-                    selectedTableData.showBulkUploadModal.value
-                  "
-                  :form-fields="selectedTableData.formFields.value"
-                  :form-data="selectedTableData.formData.value"
-                  :is-editing="selectedTableData.isEditing.value"
-                  :saving="selectedTableData.saving.value"
-                  :deleting="selectedTableData.deleting.value"
-                  :bulk-deleting="selectedTableData.bulkDeleting.value"
-                  :uploading="selectedTableData.uploading.value"
-                  :downloading="selectedTableData.downloading.value"
-                  :editing-row-id="selectedTableData.editingRowId.value"
-                  :editing-data="selectedTableData.editingData.value"
-                  :original-data="selectedTableData.originalData.value"
-                  :is-editing-any-row="selectedTableData.isEditingAnyRow.value"
-                  :load-table-data="selectedTableData.loadTableData"
-                  :table-data="selectedTableData.tableData.value"
-                  @search="selectedTableData.handleSearch"
-                  :get-operators-for-field-type="
-                    selectedTableData.getOperatorsForFieldType
-                  "
-                  :get-operator-text="selectedTableData.getOperatorText"
-                  :operator-needs-value="selectedTableData.operatorNeedsValue"
-                  :operator-needs-second-value="
-                    selectedTableData.operatorNeedsSecondValue
-                  "
-                  :generate-filter-id="selectedTableData.generateFilterId"
-                  @add-filter="selectedTableData.handleAddFilter"
-                  @remove-filter="selectedTableData.handleRemoveFilter"
-                  @clear-all-filters="selectedTableData.handleClearAllFilters"
-                  @toggle-filters-panel="
-                    selectedTableData.handleToggleFiltersPanel
-                  "
-                  @select-item="selectedTableData.handleSelectItem"
-                  @select-all="selectedTableData.handleSelectAll"
-                  @clear-selection="selectedTableData.handleClearSelection"
-                  @add-item="selectedTableData.handleAddItem"
-                  @edit-item="selectedTableData.handleEditItem"
-                  @delete-item="selectedTableData.handleDeleteItem"
-                  @bulk-delete="selectedTableData.handleBulkDelete"
-                  @save-item="selectedTableData.handleSaveItem"
-                  @cancel-edit="
-                    () => (selectedTableData.showAddEditModal.value = false)
-                  "
-                  @bulk-upload="selectedTableData.handleBulkUpload"
-                  @download-excel="selectedTableData.handleDownloadExcel"
-                  @confirm-delete="selectedTableData.handleConfirmDelete"
-                  @confirm-bulk-delete="
-                    selectedTableData.handleConfirmBulkDelete
-                  "
-                  @cancel-delete="
-                    () => (selectedTableData.showDeleteDialog.value = false)
-                  "
-                  @cancel-bulk-delete="
-                    () => (selectedTableData.showBulkDeleteDialog.value = false)
-                  "
-                  @cancel-bulk-upload="
-                    () => (selectedTableData.showBulkUploadModal.value = false)
-                  "
-                  @start-inline-edit="selectedTableData.startInlineEdit"
-                  @save-inline-edit="selectedTableData.saveInlineEdit"
-                  @cancel-inline-edit="selectedTableData.cancelInlineEdit"
-                  @update-inline-field="selectedTableData.updateInlineField"
-                  @cell-change="selectedTableData.handleCellChange"
-                  @update:searchValue="selectedTableData.handleSearch"
-                  @update:activeFilters="
-                    (filters) =>
-                      (selectedTableData.activeFilters.value = filters)
-                  "
-                  @update:selectedItems="
-                    (items) => (selectedTableData.selectedItems.value = items)
-                  "
-                  @update:showAddEditModal="
-                    (show) => (selectedTableData.showAddEditModal.value = show)
-                  "
-                  @update:showDeleteDialog="
-                    (show) => (selectedTableData.showDeleteDialog.value = show)
-                  "
-                  @update:showBulkDeleteDialog="
-                    (show) =>
-                      (selectedTableData.showBulkDeleteDialog.value = show)
-                  "
-                  @update:showBulkUploadModal="
-                    (show) =>
-                      (selectedTableData.showBulkUploadModal.value = show)
-                  "
-                  @update:formData="
-                    (data) => (selectedTableData.formData.value = data)
-                  "
+                  @bulk-edit="() => handleBulkEditEvent('group')"
                 />
               </div>
               <!-- Widgets column (30%) -->
@@ -604,149 +367,35 @@
               </div>
             </div>
             <!-- Regular table without widgets -->
-            <template v-else>
-              <!-- Check if it's a primitive array and render SimpleList -->
-              <SimpleList
-                v-if="selectedTableData.isPrimitiveArray.value"
-                :items="selectedTableData.items.value"
-                :loading="selectedTableData.loading.value"
-                :search-value="selectedTableData.searchValue.value"
-                :enable-search="selectedTableData.enableSearch.value"
-                :can-download-excel="selectedTableData.canDownloadExcel.value"
-                :search-placeholder="selectedTableData.searchPlaceholder.value"
-                :elevation="0"
-                @search="selectedTableData.handleSearch"
-                @update:searchValue="selectedTableData.handleSearch"
-                @download-excel="selectedTableData.handleDownloadExcel"
-              />
-
-              <!-- Regular table view for non-primitive arrays -->
-              <CoreTable
-                v-else
-                :items="selectedTableData.items.value"
-                :headers="selectedTableData.headers.value"
-                :loading="selectedTableData.loading.value"
-                :table-title="selectedTableData.tableTitle.value"
-                :search-placeholder="selectedTableData.searchPlaceholder.value"
-                :elevation="0"
-                :display-as-alert-list="
-                  selectedTableData.isValidationMessageList?.value ?? false
+            <SectionGroupTable
+              v-else
+              :table-data="selectedTableData"
+              :is-table-ui-loading="isTableUiLoading"
+              :is-read-only-data-section="isReadOnlyDataSection"
+              :table-key="selectedTable"
+              :header-origin-indicators="
+                etlHeaderOriginIndicatorsForSelectedTable
+              "
+              @bulk-edit="() => handleBulkEditEvent('group')"
+            />
+            <!-- Force retry for group view: outside widgets/no-widgets branches so it always mounts -->
+            <Teleport to="body">
+              <ForceRetryConfirmDialog
+                v-if="selectedTableData.forceRetryOffer?.value"
+                :model-value="!!selectedTableData.forceRetryOffer?.value"
+                :message="
+                  selectedTableData.forceRetryOffer?.value?.message ?? ''
                 "
-                alert-list-message-key="message"
-                :enable-search="selectedTableData.enableSearch.value"
-                :enable-filters="selectedTableData.enableFilters.value"
-                :enable-selection="selectedTableData.enableSelection.value"
-                :enable-actions="selectedTableData.enableActions.value"
-                :enable-bulk-actions="selectedTableData.enableBulkActions.value"
-                :read-only-display="isReadOnlyDataSection"
-                :table-key="selectedTable"
-                :enable-excel-mode="selectedTableData.enableExcelMode.value"
-                :is-cell-modified="selectedTableData.isCellModified"
-                :get-modified-value="selectedTableData.getModifiedValue"
-                :get-row-class="selectedTableData.getRowClass"
-                :can-add="selectedTableData.canAdd.value"
-                :can-edit="selectedTableData.canEdit.value"
-                :can-delete="selectedTableData.canDelete.value"
-                :can-bulk-upload="selectedTableData.canBulkUpload.value"
-                :can-download-excel="selectedTableData.canDownloadExcel.value"
-                :search-value="selectedTableData.searchValue.value"
-                :active-filters="selectedTableData.activeFilters.value"
-                :selected-items="selectedTableData.selectedItems.value"
-                :available-filter-fields="
-                  selectedTableData.availableFilterFields.value
-                "
-                :show-add-edit-modal="selectedTableData.showAddEditModal.value"
-                :show-delete-dialog="selectedTableData.showDeleteDialog.value"
-                :show-bulk-delete-dialog="
-                  selectedTableData.showBulkDeleteDialog.value
-                "
-                :show-bulk-upload-modal="
-                  selectedTableData.showBulkUploadModal.value
-                "
-                :form-fields="selectedTableData.formFields.value"
-                :form-data="selectedTableData.formData.value"
-                :is-editing="selectedTableData.isEditing.value"
-                :saving="selectedTableData.saving.value"
-                :deleting="selectedTableData.deleting.value"
-                :bulk-deleting="selectedTableData.bulkDeleting.value"
-                :uploading="selectedTableData.uploading.value"
-                :downloading="selectedTableData.downloading.value"
-                :editing-row-id="selectedTableData.editingRowId.value"
-                :editing-data="selectedTableData.editingData.value"
-                :original-data="selectedTableData.originalData.value"
-                :is-editing-any-row="selectedTableData.isEditingAnyRow.value"
-                :load-table-data="selectedTableData.loadTableData"
-                :table-data="selectedTableData.tableData.value"
-                @search="selectedTableData.handleSearch"
-                :get-operators-for-field-type="
-                  selectedTableData.getOperatorsForFieldType
-                "
-                :get-operator-text="selectedTableData.getOperatorText"
-                :operator-needs-value="selectedTableData.operatorNeedsValue"
-                :operator-needs-second-value="
-                  selectedTableData.operatorNeedsSecondValue
-                "
-                :generate-filter-id="selectedTableData.generateFilterId"
-                @add-filter="selectedTableData.handleAddFilter"
-                @remove-filter="selectedTableData.handleRemoveFilter"
-                @clear-all-filters="selectedTableData.handleClearAllFilters"
-                @toggle-filters-panel="
-                  selectedTableData.handleToggleFiltersPanel
-                "
-                @select-item="selectedTableData.handleSelectItem"
-                @select-all="selectedTableData.handleSelectAll"
-                @clear-selection="selectedTableData.handleClearSelection"
-                @add-item="selectedTableData.handleAddItem"
-                @edit-item="selectedTableData.handleEditItem"
-                @delete-item="selectedTableData.handleDeleteItem"
-                @bulk-delete="selectedTableData.handleBulkDelete"
-                @save-item="selectedTableData.handleSaveItem"
-                @cancel-edit="
-                  () => (selectedTableData.showAddEditModal.value = false)
-                "
-                @bulk-upload="selectedTableData.handleBulkUpload"
-                @download-excel="selectedTableData.handleDownloadExcel"
-                @confirm-delete="selectedTableData.handleConfirmDelete"
-                @confirm-bulk-delete="selectedTableData.handleConfirmBulkDelete"
-                @cancel-delete="
-                  () => (selectedTableData.showDeleteDialog.value = false)
-                "
-                @cancel-bulk-delete="
-                  () => (selectedTableData.showBulkDeleteDialog.value = false)
-                "
-                @cancel-bulk-upload="
-                  () => (selectedTableData.showBulkUploadModal.value = false)
-                "
-                @start-inline-edit="selectedTableData.startInlineEdit"
-                @save-inline-edit="selectedTableData.saveInlineEdit"
-                @cancel-inline-edit="selectedTableData.cancelInlineEdit"
-                @update-inline-field="selectedTableData.updateInlineField"
-                @cell-change="selectedTableData.handleCellChange"
-                @update:searchValue="selectedTableData.handleSearch"
-                @update:activeFilters="
-                  (filters) => (selectedTableData.activeFilters.value = filters)
-                "
-                @update:selectedItems="
-                  (items) => (selectedTableData.selectedItems.value = items)
-                "
-                @update:showAddEditModal="
-                  (show) => (selectedTableData.showAddEditModal.value = show)
-                "
-                @update:showDeleteDialog="
-                  (show) => (selectedTableData.showDeleteDialog.value = show)
-                "
-                @update:showBulkDeleteDialog="
-                  (show) =>
-                    (selectedTableData.showBulkDeleteDialog.value = show)
-                "
-                @update:showBulkUploadModal="
-                  (show) => (selectedTableData.showBulkUploadModal.value = show)
-                "
-                @update:formData="
-                  (data) => (selectedTableData.formData.value = data)
+                :loading="!!selectedTableData.forceRetryLoading?.value"
+                @confirm="selectedTableData.acceptForceRetry"
+                @cancel="selectedTableData.rejectForceRetry"
+                @update:model-value="
+                  (v) => {
+                    if (!v) selectedTableData.rejectForceRetry()
+                  }
                 "
               />
-            </template>
+            </Teleport>
           </v-card-text>
           <!-- Additional charts below table (100% width) for group view -->
           <div
@@ -806,6 +455,81 @@
       @update:model-value="(v) => (showMasterTablePendingModal = v)"
     />
 
+    <!-- Pending changes review modal (solution recalculation) -->
+    <PendingChangesReviewModal
+      v-if="isRecalculationSection"
+      v-model="showRecalculationPendingModal"
+      :saving="recalculationSaving"
+      :validation-error="recalculationValidationError"
+      :rows-data="aggregatedRowsDataForModal"
+      :table-headers="aggregatedTableHeadersForModal"
+      :table-data="
+        (isGroupView ? selectedTableData : tableData).tableData.value
+      "
+      :table-keys-filter="undefined"
+      :save-button-text="$t('recalculation.solutionRecalc.recalculateButton')"
+      :save-button-icon="'mdi-refresh'"
+      @save="handleSolutionRecalculation"
+      @close="handleCloseRecalculationPendingModal"
+      @clear-validation-error="recalculationValidationError = null"
+      @update:model-value="(v) => (showRecalculationPendingModal = v)"
+    />
+
+    <!-- Force retry dialog when save-all bulk delete returns offer_force_retry -->
+    <Teleport to="body">
+      <ForceRetryConfirmDialog
+        v-if="forceRetryOfferFromSaveAll"
+        :model-value="!!forceRetryOfferFromSaveAll"
+        :message="forceRetryOfferFromSaveAll?.message ?? ''"
+        :loading="forceRetryLoadingFromSaveAll"
+        @confirm="handleForceRetryConfirmFromSaveAll"
+        @cancel="forceRetryOfferFromSaveAll = null"
+        @update:model-value="
+          (v) => {
+            if (!v) forceRetryOfferFromSaveAll = null
+          }
+        "
+      />
+    </Teleport>
+
+    <CoreBulkEditModal
+      v-if="showBulkEditModal"
+      :model-value="showBulkEditModal"
+      :headers="activeBulkEditHeaders"
+      :selected-count="activeBulkEditSelectedCount"
+      @apply="handleBulkEditApply"
+      @cancel="showBulkEditModal = false"
+      @update:model-value="(v) => (showBulkEditModal = v)"
+    />
+
+    <CoreBulkUploadModal
+      v-if="isConfigurationSection"
+      v-model="showEditAllMasterTablesModal"
+      :title="$t('sectionView.editAllMasterTablesTitle')"
+      :accepted-formats="['.xlsx', '.json', '.csv']"
+      :multiple="true"
+      :loading="editAllMasterTablesUploading"
+      :available-operations="['post_update_bulk', 'post_bulk', 'overwrite_all']"
+      @upload="handleEditAllMasterTablesUpload"
+      @cancel="showEditAllMasterTablesModal = false"
+    />
+
+    <Teleport to="body">
+      <ForceRetryConfirmDialog
+        v-if="editAllTablesForceContext"
+        :model-value="!!editAllTablesForceContext"
+        :message="editAllTablesForceContext.message"
+        :loading="editAllTablesForceLoading"
+        @confirm="confirmEditAllTablesForceRetry"
+        @cancel="cancelEditAllTablesForceRetry"
+        @update:model-value="
+          (v) => {
+            if (!v) cancelEditAllTablesForceRetry()
+          }
+        "
+      />
+    </Teleport>
+
     <!-- Exit confirmation when leaving with unsaved pending changes (configuration) -->
     <MBaseModal
       v-model="showExitConfirmationModal"
@@ -839,24 +563,48 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, ref, onMounted, onDeactivated } from 'vue'
+import { computed, watch, ref, inject, onDeactivated } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import CoreTable from '@/components/core/table/CoreTable.vue'
+import { formatDateForFilename } from '@/utils/date'
 import SimpleList from '@/components/core/SimpleList.vue'
 import CoreTab from '@/components/core/CoreTab.vue'
 import CoreTabs from '@/components/core/CoreTabs.vue'
 import CoreTitleView from '@/components/core/CoreTitleView.vue'
 import PendingChangesReviewModal from '@/components/core/PendingChangesReviewModal.vue'
+import ForceRetryConfirmDialog from '@/components/core/table/ForceRetryConfirmDialog.vue'
+import SectionSingleTable from '@/components/section-view/SectionSingleTable.vue'
+import SectionGroupTable from '@/components/section-view/SectionGroupTable.vue'
+import { isForceRetryOfferError } from '@/repositories/TableRepository'
 import { useSectionConfiguration } from '@/composables/section-view/useSectionConfiguration'
 import { useGroupTables } from '@/composables/section-view/useGroupTables'
 import { useSectionDisplay } from '@/composables/section-view/useSectionDisplay'
-import { useTableData, invalidateTableDataCache } from '@/composables/section-view/useTableData'
+import {
+  useTableData,
+  invalidateTableDataCache,
+  invalidateAllTableDataCaches,
+} from '@/composables/section-view/useTableData'
+import { ensureItemIds } from '@/composables/section-view/useExecutionTableData'
+import CoreBulkUploadModal from '@/components/core/table/CoreBulkUploadModal.vue'
+import CoreBulkEditModal from '@/components/core/table/CoreBulkEditModal.vue'
+import {
+  postEditAllTables,
+  mapBulkUiOperationToEditAllApi,
+} from '@/repositories/EditAllTablesRepository'
+import type { EditAllTablesApiOperation } from '@/types/frontendAutomation'
 import { useTableChanges } from '@/composables/useTableChanges'
 import { useGeneralStore } from '@/stores/general'
+import { useRecalculationController } from '@/composables/section-view/useRecalculationController'
 import { generateAutoDashboard } from '@/services/AutoDashboardService'
 import type { DashboardWidget } from '@/services/AutoDashboardService'
-import { isFrontendAutomationRoute } from '@/services/FrontendAutomationService'
+import {
+  isFrontendAutomationRoute,
+  isExecutionDataSectionRoute,
+  isValidationGroup,
+  isValidationLikeGroup,
+  getInstanceTableKeysOrderedByMasterHierarchy,
+  normalizeTableKeyForHierarchyMatch,
+} from '@/services/FrontendAutomationService'
 import AutoKPICard from '@/components/dashboard/AutoKPICard.vue'
 import AutoLineChart from '@/components/dashboard/AutoLineChart.vue'
 import AutoBarChart from '@/components/dashboard/AutoBarChart.vue'
@@ -864,8 +612,28 @@ import AutoPieChart from '@/components/dashboard/AutoPieChart.vue'
 import AutoAreaChart from '@/components/dashboard/AutoAreaChart.vue'
 import AutoMapChart from '@/components/dashboard/AutoMapChart.vue'
 import appConfig from '@/app/config'
-import { getLocalizedMessage } from '@/utils/i18nUtils'
-import { parseJoinFrom, resolveDisplayValuesToFkIds } from '@/utils/schemaUtils'
+import {
+  resolveDisplayValuesToFkIds,
+  normalizeGetListResponseToRows,
+} from '@/utils/schemaUtils'
+import {
+  sortKeysByCreateDependency,
+  resolveTempIdsInPayload,
+} from '@/utils/tableCreateDependencies'
+import {
+  resolveInstanceDataKeyForChangeKey,
+  collectEditedEtlParameterKeysFromPendingChanges,
+} from '@/utils/etlParameterCollection'
+import {
+  normalizeTableKey,
+  resolveCurrentModalKey,
+  resolveRowsDataForKey,
+  resolveTableHeadersForKey,
+} from '@/utils/sectionModalResolvers'
+import {
+  getErrorMessage,
+  getConfigByStorageKey,
+} from '@/utils/sectionSaveHelpers'
 
 // Composables
 const { sectionType, currentConfiguration } = useSectionConfiguration()
@@ -890,7 +658,21 @@ const {
   tabsData,
   handleTabChange,
   resolvedTableKey,
+  tableSwitching,
 } = useGroupTables(currentConfiguration, sectionType)
+
+/**
+ * Loading signal handed to CoreTable. Combines the existing data-loading
+ * state from each `useTableData` instance with `tableSwitching` (true while a
+ * group-tab change is in flight) so the centered overlay shows up the moment
+ * the user clicks a tab — before the heavy reactivity work fires.
+ */
+const isTableUiLoading = (
+  tableDataInstance: { loading: { value: boolean } } | null | undefined,
+): boolean => {
+  if (tableSwitching.value) return true
+  return !!tableDataInstance?.loading?.value
+}
 
 const { title, description, currentIcon } = useSectionDisplay(
   sectionType,
@@ -908,24 +690,49 @@ const executionType = computed(() => {
   return null
 })
 
-// Read-only display: input-data and results show data as plain table (no editing UI, no green cells)
-const isReadOnlyDataSection = computed(
-  () => sectionType.value === 'input-data' || sectionType.value === 'results',
+const isRecalculationEnabled = computed(
+  () => appConfig.getCore().parameters.enableSolutionRecalculation === true,
 )
+
+// Read-only display: input-data and results show data as plain table unless recalculation is enabled
+const isReadOnlyDataSection = computed(() => {
+  if (
+    isRecalculationEnabled.value &&
+    (sectionType.value === 'input-data' || sectionType.value === 'results')
+  ) {
+    return false
+  }
+  return sectionType.value === 'input-data' || sectionType.value === 'results'
+})
 
 // Configuration (master tables) section: show pending changes bar and review modal
 const isConfigurationSection = computed(
   () => sectionType.value === 'configuration',
 )
 
+const isRecalculationSection = computed(
+  () =>
+    isRecalculationEnabled.value &&
+    (sectionType.value === 'input-data' || sectionType.value === 'results'),
+)
+
 // Shared table changes (so bar and modal are common across all tabs in group view)
 const tableChanges = useTableChanges()
 
-/** Normalize table key for storage (match useTableData) so we filter by current group. */
-const normalizeTableKey = (key: string): string => {
-  if (!key) return ''
-  return String(key).toLowerCase().replace(/-/g, '_')
-}
+/**
+ * Snapshot of rows/headers per table key while browsing Input data / Results during
+ * solution recalculation, so the review modal can show instance + solution edits together
+ * after navigating between sections (single-table routes have no live row map off-route).
+ */
+const recalculationModalDataCache = ref<
+  Record<
+    string,
+    {
+      rowsData: Record<string, any>
+      tableHeaders: Array<{ key: string; title: string; type?: string }>
+    }
+  >
+>({})
 
 /** In group view: modified table keys that belong to the current group. */
 const modifiedTableKeysInGroup = computed(() => {
@@ -939,33 +746,433 @@ const modifiedTableKeysInGroup = computed(() => {
 
 /** Pending changes are shared across all sections/groups; show global count. */
 const hasPendingChanges = computed(() => {
-  if (!isConfigurationSection.value) return false
+  if (!isConfigurationSection.value && !isRecalculationSection.value) return false
   return tableChanges.hasChanges.value
 })
 
 const pendingChangesCount = computed(() => {
-  if (!isConfigurationSection.value) return 0
+  if (!isConfigurationSection.value && !isRecalculationSection.value) return 0
   return tableChanges.totalChangesCount.value
 })
 
+const showBulkEditModal = ref(false)
+const bulkEditSource = ref<'single' | 'group'>('single')
 const showMasterTablePendingModal = ref(false)
 const masterTableSaving = ref(false)
 const masterTableValidationError = ref<string | null>(null)
+/** When save-all triggers delete and backend returns offer_force_retry, show dialog and retry with force. */
+const forceRetryOfferFromSaveAll = ref<{
+  message: string
+  storageKey: string
+  ids: (string | number)[]
+} | null>(null)
+const forceRetryLoadingFromSaveAll = ref(false)
+
+const recalculation = useRecalculationController()
+const enableRecalculation = computed(
+  () => appConfig.getCore().parameters.enableRecalculationOnMasterEdit === true,
+)
+
+// Solution recalculation modal state
+const showRecalculationPendingModal = ref(false)
+const recalculationSaving = ref(false)
+const recalculationValidationError = ref<string | null>(null)
+
+const openRecalculationPendingModal = () => {
+  showRecalculationPendingModal.value = true
+}
+
+const handleCloseRecalculationPendingModal = () => {
+  recalculationValidationError.value = null
+  showRecalculationPendingModal.value = false
+}
+
+/**
+ * Applies pending changes to a deep copy of the given data object (same logic
+ * as ExecutionDataView.handleSaveAllChanges but decoupled from the component).
+ * For execution data rows that lack an `id` field, the same deterministic
+ * `ensureItemIds` scheme used by useExecutionTableData is applied so that
+ * staged changes (recorded against `__row_N` IDs) can be matched correctly.
+ * Synthetic IDs are stripped from the final output.
+ */
+const applyPendingChangesToData = (
+  originalData: Record<string, any>,
+): Record<string, any> => {
+  const updatedData = JSON.parse(JSON.stringify(originalData))
+
+  const normalize = (k: string) => String(k).toLowerCase().replaceAll('-', '_')
+
+  // Build a map from normalized data key → actual data key so changes stored
+  // under the normalized key can be applied to the correct data entry.
+  const normalizedToDataKey: Record<string, string> = {}
+  for (const dk of Object.keys(updatedData)) {
+    normalizedToDataKey[normalize(dk)] = dk
+  }
+
+  // Merge original data keys with any modified keys from useTableChanges.
+  const allNormalizedKeys = new Set([
+    ...Object.keys(normalizedToDataKey),
+    ...tableChanges.modifiedTableKeys.value,
+  ])
+
+  allNormalizedKeys.forEach((nk) => {
+    const dataKey = normalizedToDataKey[nk] ?? nk
+    const raw = updatedData[dataKey]
+    if (!Array.isArray(raw)) return
+
+    let tableRows = ensureItemIds([...raw])
+
+    const deletes = tableChanges.getPendingDeletes(nk)
+    if (deletes.length > 0) {
+      const deleteSet = new Set(deletes.map(String))
+      tableRows = tableRows.filter(
+        (row: any) => !deleteSet.has(String(row.id)),
+      )
+    }
+
+    const changes = tableChanges.getChangesForTable(nk)
+    if (changes) {
+      tableRows = tableRows.map((row: any) => {
+        const rowChanges = changes[String(row.id)]
+        if (!rowChanges) return row
+        const merged = { ...row }
+        Object.entries(rowChanges).forEach(
+          ([fieldKey, change]: [string, any]) => {
+            merged[fieldKey] = change.newValue
+          },
+        )
+        return merged
+      })
+    }
+
+    const creates = tableChanges.getPendingCreates(nk)
+    creates.forEach((c) => {
+      const { id: _tempId, ...rest } = c.data
+      tableRows.push(rest)
+    })
+
+    // Strip synthetic IDs before sending to the API
+    updatedData[dataKey] = tableRows.map((row: any) => {
+      if (typeof row.id === 'string' && row.id.startsWith('__row_')) {
+        const { id: _, ...rest } = row
+        return rest
+      }
+      return row
+    })
+  })
+
+  // Object-type keys (parameters, requirements, etc.)
+  allNormalizedKeys.forEach((nk) => {
+    const dataKey = normalizedToDataKey[nk] ?? nk
+    const raw = updatedData[dataKey]
+    if (Array.isArray(raw)) return
+    if (raw != null && typeof raw !== 'object') return
+    const changes = tableChanges.getChangesForTable(nk)
+    if (!changes) return
+    const merged = raw != null && typeof raw === 'object' ? { ...raw } : {}
+
+    const OBJECT_ROW_ID = '__object__'
+    const rowChangesHorizontal = changes[OBJECT_ROW_ID]
+    if (rowChangesHorizontal) {
+      Object.entries(rowChangesHorizontal).forEach(
+        ([fieldKey, change]: [string, any]) => {
+          merged[fieldKey] = change.newValue
+        },
+      )
+    } else {
+      for (const rowId of Object.keys(changes)) {
+        const rowChanges = changes[rowId]
+        if (rowChanges?.value) {
+          merged[rowId] = rowChanges.value.newValue
+        }
+      }
+    }
+    updatedData[dataKey] = merged
+  })
+
+  return updatedData
+}
+
+const handleSolutionRecalculation = async () => {
+  recalculationValidationError.value = null
+  recalculationSaving.value = true
+
+  try {
+    const exec = generalStore.selectedExecution
+    if (!exec) {
+      recalculationValidationError.value = t(
+        'recalculation.solutionRecalc.noExecutionError',
+      )
+      return
+    }
+
+    const instanceData =
+      exec.experiment?.instance?.data ?? exec.instance?.data
+    const solutionData =
+      exec.experiment?.solution?.data ?? exec.solution?.data
+
+    if (!instanceData || !solutionData) {
+      recalculationValidationError.value = t(
+        'recalculation.solutionRecalc.noDataError',
+      )
+      return
+    }
+
+    const passEtlEditedMetadata =
+      appConfig.getCore().parameters.enableSolutionRecalculation === true &&
+      appConfig.getCore().parameters.etl.enableEtlMetadataAndReview === true &&
+      Boolean(instanceData.__metadata__)
+
+    const instanceBeforeEdits = JSON.parse(JSON.stringify(instanceData))
+
+    const etlEditedInstanceTableDataKeys = passEtlEditedMetadata
+      ? Array.from(
+          new Set(
+            tableChanges.modifiedTableKeys.value
+              .map((mk) => resolveInstanceDataKeyForChangeKey(instanceData, mk))
+              .filter((k): k is string => k != null),
+          ),
+        )
+      : undefined
+    const etlEditedParametersFromDbKeys = passEtlEditedMetadata
+      ? collectEditedEtlParameterKeysFromPendingChanges(
+          instanceData,
+          instanceData.__metadata__?.parameters_from_db ?? [],
+          {
+            modifiedTableKeys: tableChanges.modifiedTableKeys.value,
+            getChangesForTable: tableChanges.getChangesForTable,
+          },
+        )
+      : undefined
+
+    const editedInstanceData = applyPendingChangesToData(instanceData)
+    const editedSolutionData = applyPendingChangesToData(solutionData)
+
+    // Preserve __metadata__ from original instance data
+    if (instanceData.__metadata__) {
+      editedInstanceData.__metadata__ = JSON.parse(
+        JSON.stringify(instanceData.__metadata__),
+      )
+    }
+
+    showRecalculationPendingModal.value = false
+    tableChanges.clearAllChanges()
+    recalculationModalDataCache.value = {}
+
+    const executionName = recalculation.buildRecalculationExecutionName(
+      exec.name || 'Recalculated',
+    )
+
+    await recalculation.runSolutionRecalculation({
+      instanceData: editedInstanceData,
+      solutionData: editedSolutionData,
+      executionName,
+      executionDescription: exec.description || '',
+      executionConfig: exec.config || {},
+      ...(passEtlEditedMetadata
+        ? {
+            etlInstanceDataBeforeEdits: instanceBeforeEdits,
+            etlEditedInstanceTableDataKeys,
+            etlEditedParametersFromDbKeys,
+          }
+        : {}),
+    })
+  } catch (err: any) {
+    recalculationValidationError.value =
+      err?.message || t('recalculation.solutionRecalc.genericError')
+  } finally {
+    recalculationSaving.value = false
+  }
+}
+
 const showExitConfirmationModal = ref(false)
 const pendingNavigationNext = ref<((abort?: boolean) => void) | null>(null)
+
+const showEditAllMasterTablesModal = ref(false)
+const editAllMasterTablesUploading = ref(false)
+const pendingEditAllFiles = ref<File[]>([])
+const pendingEditAllApiOperation = ref<EditAllTablesApiOperation>('post_bulk')
+const editAllTablesForceContext = ref<{
+  message: string
+  forceTableKeys?: string[]
+  retryTableKeys?: string[]
+} | null>(null)
+const editAllTablesForceLoading = ref(false)
+
+const canEditAllMasterTables = computed(() => {
+  if (!appConfig.getCore().parameters.enableReplaceMasterWithUploaded) return false
+  if (sectionType.value !== 'configuration') return false
+  const cfg = currentConfiguration.value
+  if (!cfg || typeof cfg !== 'object') return false
+  return Object.keys(cfg).length > 0
+})
+
+const handleEditAllMasterTablesUpload = async (uploadData: {
+  files: File[]
+  operation: string
+}) => {
+  if (!uploadData?.files?.length) {
+    showSnackbar?.(t('table.messages.errorBulkUpload'), 'error')
+    return
+  }
+  let postEditAllSucceeded = false
+  editAllMasterTablesUploading.value = true
+  try {
+    const apiOp = mapBulkUiOperationToEditAllApi(uploadData.operation)
+    pendingEditAllFiles.value = uploadData.files
+    pendingEditAllApiOperation.value = apiOp
+    await postEditAllTables(uploadData.files, apiOp)
+    postEditAllSucceeded = true
+  } catch (err) {
+    if (
+      isForceRetryOfferError(err) &&
+      pendingEditAllApiOperation.value === 'overwrite_all'
+    ) {
+      editAllTablesForceContext.value = {
+        message: err.message,
+        forceTableKeys: err.forceTableKeys,
+        retryTableKeys: err.retryTableKeys,
+      }
+      showEditAllMasterTablesModal.value = false
+      return
+    }
+    const msg =
+      err instanceof Error ? err.message : t('table.messages.errorBulkUpload')
+    showSnackbar?.(msg, 'error')
+  } finally {
+    editAllMasterTablesUploading.value = false
+    if (postEditAllSucceeded) {
+      showEditAllMasterTablesModal.value = false
+    }
+  }
+
+  if (!postEditAllSucceeded) return
+
+  try {
+    invalidateAllTableDataCaches()
+    if (isGroupView.value) {
+      await selectedTableData.loadData()
+    } else {
+      await tableData.loadData()
+    }
+    showSnackbar?.(t('sectionView.editAllMasterTablesSuccess'), 'success')
+    if (enableRecalculation.value) {
+      await recalculation.checkPlanDataAfterMasterDataChange()
+    }
+  } catch (err) {
+    const msg =
+      err instanceof Error ? err.message : t('table.messages.errorBulkUpload')
+    showSnackbar?.(msg, 'error')
+  }
+}
+
+const confirmEditAllTablesForceRetry = async () => {
+  if (!editAllTablesForceContext.value) return
+  const files = pendingEditAllFiles.value
+  const op = pendingEditAllApiOperation.value
+  if (!files.length || op !== 'overwrite_all') {
+    editAllTablesForceContext.value = null
+    return
+  }
+  const ctx = editAllTablesForceContext.value
+  const forceKeys = ctx.forceTableKeys ?? []
+  const retryKeys = ctx.retryTableKeys ?? []
+  editAllTablesForceLoading.value = true
+  try {
+    await postEditAllTables(files, op, {
+      force: forceKeys,
+      retry: retryKeys,
+      forceBoolean:
+        forceKeys.length === 0 && retryKeys.length === 0 ? true : undefined,
+    })
+    editAllTablesForceContext.value = null
+    pendingEditAllFiles.value = []
+    showEditAllMasterTablesModal.value = false
+    invalidateAllTableDataCaches()
+    if (isGroupView.value) {
+      await selectedTableData.loadData()
+    } else {
+      await tableData.loadData()
+    }
+    showSnackbar?.(t('sectionView.editAllMasterTablesSuccess'), 'success')
+    if (enableRecalculation.value) {
+      await recalculation.checkPlanDataAfterMasterDataChange()
+    }
+  } catch (err) {
+    if (isForceRetryOfferError(err)) {
+      editAllTablesForceContext.value = {
+        message: err.message,
+        forceTableKeys: err.forceTableKeys,
+        retryTableKeys: err.retryTableKeys,
+      }
+      return
+    }
+    showSnackbar?.(
+      err instanceof Error ? err.message : t('table.messages.errorBulkUpload'),
+      'error',
+    )
+    editAllTablesForceContext.value = null
+  } finally {
+    editAllTablesForceLoading.value = false
+  }
+}
+
+const cancelEditAllTablesForceRetry = () => {
+  editAllTablesForceContext.value = null
+  pendingEditAllFiles.value = []
+}
 
 const openMasterTablePendingModal = () => {
   masterTableValidationError.value = null
   showMasterTablePendingModal.value = true
 }
 
-onBeforeRouteLeave((to, _from, next) => {
-  // When staying within frontend automation sections, do not prompt (changes are shared)
-  if (isFrontendAutomationRoute(to.path)) {
+const handleBulkEditEvent = (source: 'single' | 'group') => {
+  bulkEditSource.value = source
+  showBulkEditModal.value = true
+}
+
+const handleBulkEditApply = (fieldValues: Record<string, any>) => {
+  const handler = bulkEditSource.value === 'group'
+    ? selectedTableData.handleBulkEdit
+    : tableData.handleBulkEdit
+  if (handler) handler(fieldValues)
+  showBulkEditModal.value = false
+}
+
+const activeBulkEditHeaders = computed(() => {
+  const td = bulkEditSource.value === 'group' ? selectedTableData : tableData
+  return td.headers.value
+})
+
+const activeBulkEditSelectedCount = computed(() => {
+  const td = bulkEditSource.value === 'group' ? selectedTableData : tableData
+  return td.selectedItems.value.length
+})
+
+onBeforeRouteLeave((to, from, next) => {
+  // Master tables: only skip the dialog when both ends are under /configuration/*
+  // (leaving Input/Results for configuration still counts as leaving the execution edit area).
+  if (
+    isFrontendAutomationRoute(to.path) &&
+    isFrontendAutomationRoute(from.path)
+  ) {
     next()
     return
   }
-  if (!isConfigurationSection.value || !hasPendingChanges.value) {
+  // Solution recalculation: only Input data ↔ Results (/output-data) share one buffer;
+  // any other destination (configuration, dashboard, …) must show the leave dialog.
+  if (
+    isRecalculationEnabled.value &&
+    hasPendingChanges.value &&
+    isRecalculationSection.value &&
+    isExecutionDataSectionRoute(to.path) &&
+    isExecutionDataSectionRoute(from.path)
+  ) {
+    next()
+    return
+  }
+  if ((!isConfigurationSection.value && !isRecalculationSection.value) || !hasPendingChanges.value) {
     next()
     return
   }
@@ -976,6 +1183,8 @@ onBeforeRouteLeave((to, _from, next) => {
 const handleConfirmExit = () => {
   showExitConfirmationModal.value = false
   tableChanges.clearAllChanges()
+  groupModalDataCache.value = {}
+  recalculationModalDataCache.value = {}
   const next = pendingNavigationNext.value
   pendingNavigationNext.value = null
   next?.()
@@ -988,126 +1197,144 @@ const handleCancelExit = () => {
   next?.(false)
 }
 
-/** Extract a single string from API error (message can be string or { en, es, ... }). */
-function getErrorMessage(err: any): string {
-  const raw =
-    err?.message ??
-    err?.response?.content?.message ??
-    err?.response?.data?.message
-  if (typeof raw === 'string') return raw
-  if (raw && typeof raw === 'object') return getLocalizedMessage(raw)
-  return t('table.messages.errorSaving')
-}
-
 const handleMasterTableSaveAll = async () => {
   masterTableValidationError.value = null
   masterTableSaving.value = true
   try {
     await saveAllMasterTableChanges()
     showMasterTablePendingModal.value = false
+
+    if (enableRecalculation.value) {
+      await recalculation.checkPlanDataAfterMasterDataChange()
+    }
   } catch (err) {
-    masterTableValidationError.value = getErrorMessage(err)
+    if (isForceRetryOfferError(err)) {
+      return
+    }
+    masterTableValidationError.value = getErrorMessage(err, t('table.messages.errorSaving'))
   } finally {
     masterTableSaving.value = false
   }
 }
 
-/** Extract referenced table key from a temp id */
-function getTableKeyFromTempId(tempId: string): string | null {
-  if (typeof tempId !== 'string' || !/^create-/.test(tempId)) return null
-  const parts = tempId.split('-')
-  if (parts.length < 3) return null
-  return parts.slice(1, -2).join('-') || null
+const handleForceRetryConfirmFromSaveAll = async () => {
+  const offer = forceRetryOfferFromSaveAll.value
+  if (!offer) return
+  forceRetryLoadingFromSaveAll.value = true
+  try {
+    const config = getConfigByStorageKey(currentConfiguration.value, offer.storageKey)
+    if (!config) throw new Error('Table config not found')
+    const { default: TableRepository } = await import(
+      '@/repositories/TableRepository'
+    )
+    const repository = new TableRepository(config, t)
+    await repository.deleteBulk(offer.ids, { force: true })
+    tableChanges.clearDeletesForTable(offer.storageKey)
+    forceRetryOfferFromSaveAll.value = null
+    await saveAllMasterTableChanges()
+    showMasterTablePendingModal.value = false
+    if (enableRecalculation.value) {
+      await recalculation.checkPlanDataAfterMasterDataChange()
+    }
+  } catch (err) {
+    if (isForceRetryOfferError(err)) {
+      return
+    }
+    masterTableValidationError.value = getErrorMessage(err, t('table.messages.errorSaving'))
+    forceRetryOfferFromSaveAll.value = null
+  } finally {
+    forceRetryLoadingFromSaveAll.value = false
+  }
 }
 
-/** Topological sort: tables that are referenced (via temp ids in creates) come first. */
-function sortKeysByCreateDependency(
-  keys: string[],
-  getCreates: (key: string) => Array<{ data: Record<string, any> }>,
-): string[] {
-  const keySet = new Set(keys)
-  const deps = new Map<string, Set<string>>()
-  keys.forEach((k) => deps.set(k, new Set()))
-  keys.forEach((storageKey) => {
-    const creates = getCreates(storageKey) || []
-    creates.forEach(({ data }) => {
-      Object.values(data || {}).forEach((val) => {
-        const ref = getTableKeyFromTempId(String(val))
-        if (ref && ref !== storageKey && keySet.has(ref)) {
-          deps.get(storageKey)!.add(ref)
-        }
-      })
-    })
-  })
-  const result: string[] = []
-  const added = new Set<string>()
-  while (result.length < keys.length) {
-    let picked: string | null = null
-    for (const k of keys) {
-      if (added.has(k)) continue
-      const depSet = deps.get(k)!
-      const allDepAdded = [...depSet].every((d) => added.has(d))
-      if (allDepAdded) {
-        picked = k
-        break
-      }
+/** Apply pending deletes for a single table in a group save operation. */
+async function applyGroupDeletes(
+  storageKey: string,
+  config: any,
+  repository: any,
+): Promise<void> {
+  const deletes = tableChanges.getPendingDeletes(storageKey)
+  if (config?.delete_item && deletes.length > 0) {
+    for (const rowId of deletes) {
+      await repository.deleteItem(rowId)
     }
-    if (picked == null) break
-    result.push(picked)
-    added.add(picked)
+    tableChanges.clearDeletesForTable(storageKey)
   }
-  keys.forEach((k) => {
-    if (!added.has(k)) result.push(k)
-  })
-  return result
+}
+
+/** Apply pending creates for a single table in a group save operation. */
+async function applyGroupCreates(
+  storageKey: string,
+  config: any,
+  repository: any,
+  tempIdToRealId: Record<string, string | number>,
+  loadTableDataForGroup: (tableName: string) => Promise<any[]>,
+): Promise<void> {
+  const creates = tableChanges.getPendingCreates(storageKey)
+  if (config?.post_item && creates.length > 0) {
+    for (const { tempId, data } of creates) {
+      const { id: _id, ...rawPayload } = data
+      const payloadWithTempIds = resolveTempIdsInPayload(rawPayload, tempIdToRealId, config)
+      const payload = await resolveDisplayValuesToFkIds(payloadWithTempIds, config, loadTableDataForGroup)
+      const result = await repository.createItem(payload)
+      const realId = result?.id ?? result?.pk
+      if (realId != null) tempIdToRealId[tempId] = realId
+    }
+    tableChanges.clearCreatesForTable(storageKey)
+  }
 }
 
 /**
- * Get the FK field name in this table that references the given table.
+ * Build the PUT payload for one edited row: locate the row in `items` by id,
+ * merge its pending field changes, then resolve temp ids. Returns `null` when
+ * the row is no longer present in `items` (caller should skip it).
  */
-function getFkFieldNameForReferencedTable(
-  tableConfig: any,
-  referencedTableKey: string,
-): string | null {
-  const props = tableConfig?.get_list?.response_schema?.items?.properties
-  if (!props) return null
-  const refNorm = referencedTableKey.toLowerCase().replace(/-/g, '_')
-  for (const [fkField, prop] of Object.entries(props)) {
-    const p = prop as any
-    if (!p?.columnsToJoin || !Array.isArray(p.columnsToJoin)) continue
-    for (const depKey of p.columnsToJoin) {
-      const dep = props[depKey] as any
-      const joinFrom = dep?.joinFrom
-      if (!joinFrom) continue
-      const joinInfo = parseJoinFrom(joinFrom)
-      if (!joinInfo) continue
-      const tableNorm = joinInfo.table.toLowerCase().replace(/-/g, '_')
-      if (tableNorm === refNorm) return fkField
-    }
-  }
-  return null
+function buildPutPayloadWithTempIds(
+  rowId: string,
+  rowChanges: Record<string, any>,
+  items: any[],
+  tempIdToRealId: Record<string, string | number>,
+  config: any,
+): Record<string, any> | null {
+  const row = items.find((i: any) => String(i.id) === rowId)
+  if (!row) return null
+  const merged = { ...row }
+  Object.entries(rowChanges).forEach(([fieldKey, change]: [string, any]) => {
+    merged[fieldKey] = change.newValue
+  })
+  return resolveTempIdsInPayload(
+    { ...merged } as Record<string, any>,
+    tempIdToRealId,
+    config,
+  )
 }
 
-/** Replace any temp id in payload with the real id; use correct FK field name. */
-function resolveTempIdsInPayload(
-  payload: Record<string, any>,
+/** Apply pending cell edits for a single table in a group save operation. */
+async function applyGroupEdits(
+  storageKey: string,
+  config: any,
+  repository: any,
   tempIdToRealId: Record<string, string | number>,
-  tableConfig: any,
-): Record<string, any> {
-  const out = { ...payload }
-  for (const key of Object.keys(out)) {
-    const val = out[key]
-    if (typeof val !== 'string' || !/^create-/.test(val) || !(val in tempIdToRealId)) continue
-    const realId = tempIdToRealId[val]
-    const refTable = getTableKeyFromTempId(val)
-    const fkFieldName = refTable && tableConfig ? getFkFieldNameForReferencedTable(tableConfig, refTable) : null
-    const targetKey = fkFieldName || key
-    if (targetKey !== key) {
-      delete out[key]
+  loadTableDataForGroup: (tableName: string) => Promise<any[]>,
+): Promise<void> {
+  const changes = tableChanges.getChangesForTable(storageKey)
+  if (config?.put_item && changes) {
+    const items = normalizeGetListResponseToRows(await repository.getList(), config)
+    for (const [rowId, rowChanges] of Object.entries(changes)) {
+      const withTempIds = buildPutPayloadWithTempIds(
+        rowId,
+        rowChanges,
+        items,
+        tempIdToRealId,
+        config,
+      )
+      if (!withTempIds) continue
+      const preparedData = await resolveDisplayValuesToFkIds(withTempIds, config, loadTableDataForGroup)
+      delete preparedData.id
+      await repository.putItem(rowId, preparedData)
     }
-    out[targetKey] = realId
+    tableChanges.revertTableChanges(storageKey)
   }
-  return out
 }
 
 /** Save pending changes for all modified tables in the current group (deletes → creates → edits). */
@@ -1125,10 +1352,11 @@ const saveAllGroupMasterTableChanges = async () => {
     if (!refConfig?.get_list) return []
     const refRepo = new TableRepository(refConfig, t)
     const data = await refRepo.getList()
-    return Array.isArray(data) ? data : []
+    return normalizeGetListResponseToRows(data, refConfig)
   }
 
-  const getCreates = (storageKey: string) => tableChanges.getPendingCreates(storageKey)
+  const getCreates = (storageKey: string) =>
+    tableChanges.getPendingCreates(storageKey)
   const orderedKeys = sortKeysByCreateDependency(keys, getCreates)
   const tempIdToRealId: Record<string, string | number> = {}
 
@@ -1141,61 +1369,14 @@ const saveAllGroupMasterTableChanges = async () => {
     const config = groupTables.value[configKey]
     const repository = new TableRepository(config, t)
 
-    // 1. Apply pending deletes (no API until now)
-    const deletes = tableChanges.getPendingDeletes(storageKey)
-    if (config?.delete_item && deletes.length > 0) {
-      for (const rowId of deletes) {
-        await repository.deleteItem(rowId)
-      }
-      tableChanges.clearDeletesForTable(storageKey)
-    }
+    // 1. Apply pending deletes
+    await applyGroupDeletes(storageKey, config, repository)
 
     // 2. Apply pending creates: resolve FKs (temp id → real id), resolve display values to FK ids, then POST
-    const creates = tableChanges.getPendingCreates(storageKey)
-    if (config?.post_item && creates.length > 0) {
-      for (const { tempId, data } of creates) {
-        const { id: _id, ...rawPayload } = data
-        const payloadWithTempIds = resolveTempIdsInPayload(rawPayload, tempIdToRealId, config)
-        const payload = await resolveDisplayValuesToFkIds(
-          payloadWithTempIds,
-          config,
-          loadTableDataForGroup,
-        )
-        const result = await repository.createItem(payload)
-        const realId = result?.id ?? result?.pk
-        if (realId != null) tempIdToRealId[tempId] = realId
-      }
-      tableChanges.clearCreatesForTable(storageKey)
-    }
+    await applyGroupCreates(storageKey, config, repository, tempIdToRealId, loadTableDataForGroup)
 
     // 3. Apply cell edits (put): resolve display values to FK ids so API receives id_values.
-    const changes = tableChanges.getChangesForTable(storageKey)
-    if (config?.put_item && changes) {
-      const items = await repository.getList()
-      for (const [rowId, rowChanges] of Object.entries(changes)) {
-        const row = items.find((i: any) => String(i.id) === rowId)
-        if (!row) continue
-        const merged = { ...row }
-        Object.entries(rowChanges).forEach(
-          ([fieldKey, change]: [string, any]) => {
-            merged[fieldKey] = change.newValue
-          },
-        )
-        const withTempIds = resolveTempIdsInPayload(
-          { ...merged } as Record<string, any>,
-          tempIdToRealId,
-          config,
-        )
-        const preparedData = await resolveDisplayValuesToFkIds(
-          withTempIds,
-          config,
-          loadTableDataForGroup,
-        )
-        delete preparedData.id
-        await repository.putItem(rowId, preparedData)
-      }
-      tableChanges.revertTableChanges(storageKey)
-    }
+    await applyGroupEdits(storageKey, config, repository, tempIdToRealId, loadTableDataForGroup)
   }
 
   // Invalidate cache for each saved table so selectors in other sections see new rows
@@ -1207,12 +1388,131 @@ const saveAllGroupMasterTableChanges = async () => {
   await selectedTableData.loadData()
 }
 
-/** Get table config by storage key from current (master) configuration. */
-function getConfigByStorageKey(storageKey: string): any {
-  const config = currentConfiguration.value
-  if (!config || typeof config !== 'object') return null
-  const key = Object.keys(config).find((k) => normalizeTableKey(k) === storageKey)
-  return key ? config[key] : null
+/** Apply pending deletes for a single table in the global save operation (bulk when supported). */
+async function applyAllDeletes(
+  storageKey: string,
+  config: any,
+  repository: any,
+): Promise<void> {
+  const deletes = tableChanges.getPendingDeletes(storageKey)
+  if (deletes.length === 0) return
+  try {
+    if (config?.delete_bulk) {
+      await repository.deleteBulk(deletes)
+    } else if (config?.delete_item) {
+      for (const rowId of deletes) {
+        await repository.deleteItem(rowId)
+      }
+    }
+  } catch (err) {
+    if (isForceRetryOfferError(err) && config?.delete_bulk) {
+      forceRetryOfferFromSaveAll.value = {
+        message: err.message,
+        storageKey,
+        ids: deletes,
+      }
+      throw err
+    }
+    throw err
+  }
+  tableChanges.clearDeletesForTable(storageKey)
+}
+
+/** Apply bulk creates for a single table in the global save operation. */
+async function applyBulkCreates(
+  creates: Array<{ tempId: string; data: any }>,
+  config: any,
+  repository: any,
+  tempIdToRealId: Record<string, string | number>,
+  loadTableDataForSave: (tableName: string) => Promise<any[]>,
+): Promise<void> {
+  const payloads = await Promise.all(
+    creates.map(async ({ data }) => {
+      const { id: _id, ...rawPayload } = data
+      const payloadWithTempIds = resolveTempIdsInPayload(rawPayload, tempIdToRealId, config)
+      return resolveDisplayValuesToFkIds(payloadWithTempIds, config, loadTableDataForSave)
+    }),
+  )
+  const result = await repository.createBulk(payloads)
+  const createdItems = Array.isArray(result) ? result : [result]
+  createdItems.forEach((item: any, i: number) => {
+    const tempId = creates[i]?.tempId
+    const realId = item?.id ?? item?.pk
+    if (tempId != null && realId != null) tempIdToRealId[tempId] = realId
+  })
+}
+
+/** Apply single creates for a single table in the global save operation. */
+async function applySingleCreates(
+  creates: Array<{ tempId: string; data: any }>,
+  config: any,
+  repository: any,
+  tempIdToRealId: Record<string, string | number>,
+  loadTableDataForSave: (tableName: string) => Promise<any[]>,
+): Promise<void> {
+  for (const { tempId, data } of creates) {
+    const { id: _id, ...rawPayload } = data
+    const payloadWithTempIds = resolveTempIdsInPayload(rawPayload, tempIdToRealId, config)
+    const payload = await resolveDisplayValuesToFkIds(payloadWithTempIds, config, loadTableDataForSave)
+    const result = await repository.createItem(payload)
+    const realId = result?.id ?? result?.pk
+    if (realId != null) tempIdToRealId[tempId] = realId
+  }
+}
+
+/** Apply pending creates for a single table in the global save operation (bulk when supported). */
+async function applyAllCreates(
+  storageKey: string,
+  config: any,
+  repository: any,
+  tempIdToRealId: Record<string, string | number>,
+  loadTableDataForSave: (tableName: string) => Promise<any[]>,
+): Promise<void> {
+  const creates = tableChanges.getPendingCreates(storageKey)
+  if (creates.length === 0) return
+  if (config?.post_bulk) {
+    await applyBulkCreates(creates, config, repository, tempIdToRealId, loadTableDataForSave)
+  } else if (config?.post_item) {
+    await applySingleCreates(creates, config, repository, tempIdToRealId, loadTableDataForSave)
+  }
+  tableChanges.clearCreatesForTable(storageKey)
+}
+
+/** Apply pending cell edits for a single table in the global save operation (batched parallel puts). */
+async function applyAllEdits(
+  storageKey: string,
+  config: any,
+  repository: any,
+  tempIdToRealId: Record<string, string | number>,
+  loadTableDataForSave: (tableName: string) => Promise<any[]>,
+): Promise<void> {
+  const changes = tableChanges.getChangesForTable(storageKey)
+  if (!config?.put_item || !changes || Object.keys(changes).length === 0) return
+  const items = normalizeGetListResponseToRows(await repository.getList(), config)
+  const CONCURRENT_PUTS = 10
+  const putTasks: Array<{ rowId: string; merged: Record<string, any> }> = []
+  for (const [rowId, rowChanges] of Object.entries(changes)) {
+    const withTempIds = buildPutPayloadWithTempIds(
+      rowId,
+      rowChanges,
+      items,
+      tempIdToRealId,
+      config,
+    )
+    if (!withTempIds) continue
+    putTasks.push({ rowId, merged: withTempIds })
+  }
+  const resolvedPayloads = await Promise.all(
+    putTasks.map(({ merged }) => resolveDisplayValuesToFkIds(merged, config, loadTableDataForSave)),
+  )
+  for (const p of resolvedPayloads) delete p.id
+  for (let i = 0; i < putTasks.length; i += CONCURRENT_PUTS) {
+    const batch = putTasks.slice(i, i + CONCURRENT_PUTS)
+    await Promise.all(
+      batch.map((task, j) => repository.putItem(task.rowId, resolvedPayloads[i + j])),
+    )
+  }
+  tableChanges.revertTableChanges(storageKey)
 }
 
 /** Save pending changes for ALL modified tables (across sections/groups). */
@@ -1230,7 +1530,7 @@ const saveAllMasterTableChanges = async () => {
   const tempIdToRealId: Record<string, string | number> = {}
 
   for (const storageKey of orderedKeys) {
-    const config = getConfigByStorageKey(storageKey)
+    const config = getConfigByStorageKey(currentConfiguration.value, storageKey)
     if (!config) continue
 
     const repository = new TableRepository(config, t)
@@ -1238,110 +1538,13 @@ const saveAllMasterTableChanges = async () => {
       tableData.loadTableData(tableName)
 
     // 1. Pending deletes (use bulk when supported to avoid N calls)
-    const deletes = tableChanges.getPendingDeletes(storageKey)
-    if (deletes.length > 0) {
-      if (config?.delete_bulk) {
-        await repository.deleteBulk(deletes)
-      } else if (config?.delete_item) {
-        for (const rowId of deletes) {
-          await repository.deleteItem(rowId)
-        }
-      }
-      tableChanges.clearDeletesForTable(storageKey)
-    }
+    await applyAllDeletes(storageKey, config, repository)
 
     // 2. Pending creates (use bulk when supported to avoid N calls)
-    const creates = tableChanges.getPendingCreates(storageKey)
-    if (creates.length > 0) {
-      if (config?.post_bulk) {
-        const payloads = await Promise.all(
-          creates.map(async ({ data }) => {
-            const { id: _id, ...rawPayload } = data
-            const payloadWithTempIds = resolveTempIdsInPayload(
-              rawPayload,
-              tempIdToRealId,
-              config,
-            )
-            return resolveDisplayValuesToFkIds(
-              payloadWithTempIds,
-              config,
-              loadTableDataForSave,
-            )
-          }),
-        )
-        const result = await repository.createBulk(payloads)
-        const createdItems = Array.isArray(result) ? result : [result]
-        createdItems.forEach((item: any, i: number) => {
-          const tempId = creates[i]?.tempId
-          const realId = item?.id ?? item?.pk
-          if (tempId != null && realId != null) tempIdToRealId[tempId] = realId
-        })
-      } else if (config?.post_item) {
-        for (const { tempId, data } of creates) {
-          const { id: _id, ...rawPayload } = data
-          const payloadWithTempIds = resolveTempIdsInPayload(
-            rawPayload,
-            tempIdToRealId,
-            config,
-          )
-          const payload = await resolveDisplayValuesToFkIds(
-            payloadWithTempIds,
-            config,
-            loadTableDataForSave,
-          )
-          const result = await repository.createItem(payload)
-          const realId = result?.id ?? result?.pk
-          if (realId != null) tempIdToRealId[tempId] = realId
-        }
-      }
-      tableChanges.clearCreatesForTable(storageKey)
-    }
+    await applyAllCreates(storageKey, config, repository, tempIdToRealId, loadTableDataForSave)
 
     // 3. Cell edits (run putItem in parallel batches for speed)
-    const changes = tableChanges.getChangesForTable(storageKey)
-    if (config?.put_item && changes && Object.keys(changes).length > 0) {
-      const items = await repository.getList()
-      const CONCURRENT_PUTS = 10
-      const putTasks: Array<{ rowId: string; merged: Record<string, any> }> = []
-      for (const [rowId, rowChanges] of Object.entries(changes)) {
-        const row = items.find((i: any) => String(i.id) === rowId)
-        if (!row) continue
-        const merged = { ...row }
-        Object.entries(rowChanges).forEach(
-          ([fieldKey, change]: [string, any]) => {
-            merged[fieldKey] = change.newValue
-          },
-        )
-        const withTempIds = resolveTempIdsInPayload(
-          { ...merged } as Record<string, any>,
-          tempIdToRealId,
-          config,
-        )
-        putTasks.push({ rowId, merged: withTempIds })
-      }
-      const resolvedPayloads = await Promise.all(
-        putTasks.map(({ merged }) =>
-          resolveDisplayValuesToFkIds(
-            merged,
-            config,
-            loadTableDataForSave,
-          ),
-        ),
-      )
-      for (const p of resolvedPayloads) delete p.id
-      for (let i = 0; i < putTasks.length; i += CONCURRENT_PUTS) {
-        const batch = putTasks.slice(i, i + CONCURRENT_PUTS)
-        await Promise.all(
-          batch.map((task, j) =>
-            repository.putItem(
-              task.rowId,
-              resolvedPayloads[i + j],
-            ),
-          ),
-        )
-      }
-      tableChanges.revertTableChanges(storageKey)
-    }
+    await applyAllEdits(storageKey, config, repository, tempIdToRealId, loadTableDataForSave)
 
     invalidateTableDataCache(storageKey)
   }
@@ -1355,6 +1558,7 @@ const saveAllMasterTableChanges = async () => {
 
 const handleCloseMasterTablePendingModal = () => {
   showMasterTablePendingModal.value = false
+  forceRetryOfferFromSaveAll.value = null
 }
 
 // Table data management - Business logic layer
@@ -1402,58 +1606,80 @@ watch(
   { deep: true },
 )
 
+/** Merge current table modal snapshots into a cross-route cache for solution recalculation. */
+watch(
+  [
+    () => isRecalculationSection.value,
+    () => isGroupView.value,
+    () => tableData.rowsDataForModal.value,
+    () => tableData.tableHeadersForModal.value,
+    () => selectedTableData.rowsDataForModal.value,
+    () => selectedTableData.tableHeadersForModal.value,
+  ],
+  () => {
+    if (!isRecalculationSection.value) return
+    const rd = isGroupView.value
+      ? selectedTableData.rowsDataForModal.value
+      : tableData.rowsDataForModal.value
+    const th = isGroupView.value
+      ? selectedTableData.tableHeadersForModal.value
+      : tableData.tableHeadersForModal.value
+    if (!rd || typeof rd !== 'object') return
+    const next = { ...recalculationModalDataCache.value }
+    for (const k of Object.keys(rd)) {
+      const headers = th[k]
+      next[k] = {
+        rowsData: rd[k] ?? {},
+        tableHeaders: Array.isArray(headers) ? headers : [],
+      }
+    }
+    recalculationModalDataCache.value = next
+  },
+  { deep: true },
+)
+
 /** Aggregated rowsData and tableHeaders for the review modal (all modified tables, across sections). */
 const aggregatedRowsDataForModal = computed(() => {
   const allKeys = tableChanges.modifiedTableKeys.value
   const result: Record<string, Record<string, any>> = {}
-  const currentKey = isGroupView.value && selectedTable.value
-    ? normalizeTableKey(selectedTable.value)
-    : effectiveTableKey.value
-      ? normalizeTableKey(effectiveTableKey.value)
-      : ''
+  const currentKey = resolveCurrentModalKey(isGroupView.value, selectedTable.value, effectiveTableKey.value)
+  const liveRd = isGroupView.value
+    ? selectedTableData.rowsDataForModal.value
+    : tableData.rowsDataForModal.value
   for (const key of allKeys) {
-    if (isGroupView.value) {
-      const cached = groupModalDataCache.value[key]?.rowsData?.[key]
-      const current =
-        key === currentKey ? selectedTableData.rowsDataForModal.value[key] : undefined
-      result[key] = cached ?? current ?? {}
-    } else {
-      result[key] =
-        key === currentKey ? tableData.rowsDataForModal.value[key] ?? {} : {}
-    }
+    result[key] = resolveRowsDataForKey(
+      key,
+      currentKey,
+      isRecalculationSection.value,
+      isGroupView.value,
+      liveRd,
+      recalculationModalDataCache.value,
+      groupModalDataCache.value,
+    )
   }
   return result
 })
 
 const aggregatedTableHeadersForModal = computed(() => {
   const allKeys = tableChanges.modifiedTableKeys.value
-  const result: Record<
-    string,
-    Array<{ key: string; title: string; type?: string }>
-  > = {}
-  const currentKey = isGroupView.value && selectedTable.value
-    ? normalizeTableKey(selectedTable.value)
-    : effectiveTableKey.value
-      ? normalizeTableKey(effectiveTableKey.value)
-      : ''
+  const result: Record<string, Array<{ key: string; title: string; type?: string }>> = {}
+  const currentKey = resolveCurrentModalKey(isGroupView.value, selectedTable.value, effectiveTableKey.value)
+  const liveTh = isGroupView.value
+    ? selectedTableData.tableHeadersForModal.value
+    : tableData.tableHeadersForModal.value
   for (const key of allKeys) {
-    if (isGroupView.value) {
-      const cached = groupModalDataCache.value[key]?.tableHeaders?.[key]
-      const current =
-        key === currentKey ? selectedTableData.tableHeadersForModal.value[key] : undefined
-      result[key] = cached ?? current ?? []
-    } else {
-      result[key] =
-        key === currentKey ? (tableData.tableHeadersForModal.value[key] ?? []) : []
-    }
+    result[key] = resolveTableHeadersForKey(
+      key,
+      currentKey,
+      isRecalculationSection.value,
+      isGroupView.value,
+      liveTh,
+      recalculationModalDataCache.value,
+      groupModalDataCache.value,
+    )
   }
   return result
 })
-
-// Per-tab search and filters state (only used in group view) so each tab has independent filter/search
-const perTabSearchAndFilters = ref<
-  Record<string, { searchValue: string; activeFilters: any[] }>
->({})
 
 // Create a unified data source that uses the correct instance
 const activeTableData = computed(() => {
@@ -1475,21 +1701,6 @@ watch(
       newTableKey !== oldTableKey || newSelectedTable !== oldSelectedTable
 
     if (isTableChange) {
-      // In group view: persist search and filters for the tab we're leaving, restore for the tab we're entering
-      if (isGroupView.value && oldSelectedTable) {
-        perTabSearchAndFilters.value[oldSelectedTable] = {
-          searchValue: selectedTableData.searchValue.value,
-          activeFilters: [...selectedTableData.activeFilters.value],
-        }
-      }
-      if (isGroupView.value && newSelectedTable) {
-        const saved = perTabSearchAndFilters.value[newSelectedTable]
-        selectedTableData.searchValue.value = saved?.searchValue ?? ''
-        selectedTableData.activeFilters.value = saved?.activeFilters
-          ? [...saved.activeFilters]
-          : []
-      }
-
       // Reset inline editing state for both table instances
       // Note: isEditingAnyRow is a computed based on editingRowId, so we only need to reset editingRowId
       if (tableData) {
@@ -1512,7 +1723,19 @@ watch(
 const route = useRoute()
 const router = useRouter()
 const generalStore = useGeneralStore()
+
+watch(
+  () => generalStore.selectedExecution?.executionId,
+  (id, prev) => {
+    if (id === prev) return
+    groupModalDataCache.value = {}
+    recalculationModalDataCache.value = {}
+  },
+)
+
 const { locale, t } = useI18n()
+const showSnackbar =
+  inject<(message: string, type?: string) => void>('showSnackbar')
 
 // Interface for custom widget configuration
 interface CustomWidgetConfig {
@@ -1842,27 +2065,379 @@ const getWidgetComponent = (type: string) => {
   return components[type] || AutoKPICard
 }
 
-// Dropdown menu items for SectionView
-const dropdownMenuItems = computed(() => {
-  const items = []
+const etlTablesFromDbNormalized = computed<Set<string>>(() => {
+  const execution = generalStore.selectedExecution
+  const instanceData =
+    execution?.experiment?.instance?.data ?? execution?.instance?.data
 
-  // Add "Edit input data" option if:
-  // 1. allowEditInstance is enabled
-  // 2. We're in input-data section
-  // 3. There's a selected execution with an instance
+  if (!instanceData || typeof instanceData !== 'object') {
+    return new Set<string>()
+  }
+
+  const metadata = (instanceData as Record<string, any>).__metadata__
+  if (!metadata || typeof metadata !== 'object') {
+    return new Set<string>()
+  }
+
+  const tablesFromDb = Array.isArray(metadata.tables_from_db)
+    ? metadata.tables_from_db.filter(
+        (tableName: unknown) => typeof tableName === 'string',
+      )
+    : []
+
+  return new Set(
+    tablesFromDb.map((tableName: string) =>
+      normalizeTableKeyForHierarchyMatch(tableName),
+    ),
+  )
+})
+
+const etlParametersFromDbNormalized = computed<Set<string>>(() => {
+  const execution = generalStore.selectedExecution
+  const instanceData =
+    execution?.experiment?.instance?.data ?? execution?.instance?.data
+
+  if (!instanceData || typeof instanceData !== 'object') {
+    return new Set<string>()
+  }
+
+  const metadata = (instanceData as Record<string, any>).__metadata__
+  if (!metadata || typeof metadata !== 'object') {
+    return new Set<string>()
+  }
+
+  const parametersFromDb = Array.isArray(metadata.parameters_from_db)
+    ? metadata.parameters_from_db.filter(
+        (parameterName: unknown) => typeof parameterName === 'string',
+      )
+    : []
+
+  return new Set(
+    parametersFromDb.map((parameterName: string) => {
+      const dotIndex = parameterName.lastIndexOf('.')
+      if (dotIndex === -1) {
+        return normalizeTableKeyForHierarchyMatch(parameterName)
+      }
+      const tableName = parameterName.slice(0, dotIndex)
+      const fieldName = parameterName.slice(dotIndex + 1)
+      return `${normalizeTableKeyForHierarchyMatch(tableName)}.${normalizeTableKeyForHierarchyMatch(fieldName)}`
+    }),
+  )
+})
+
+const isObjectParameterTable = (tableKey: string): boolean => {
+  const config = currentConfiguration.value?.[tableKey]
+  const responseSchema = config?.get_list?.response_schema
+  if (!responseSchema || typeof responseSchema !== 'object') return false
+  const isObjectType =
+    responseSchema.type === 'object' ||
+    (responseSchema.properties && !responseSchema.items)
+  return Boolean(isObjectType)
+}
+
+const showEtlTabOriginIndicators = computed(() => {
+  if (isValidationLikeGroup(groupName.value)) return false
+  if (sectionType.value !== 'input-data') return false
+  if (!isGroupView.value) return false
+  if (appConfig.getCore().parameters.etl.enableEtlMetadataAndReview !== true) {
+    return false
+  }
+  return etlTablesFromDbNormalized.value.size > 0
+})
+
+const isTableFromDb = (tableKey: string) =>
+  etlTablesFromDbNormalized.value.has(
+    normalizeTableKeyForHierarchyMatch(tableKey),
+  )
+
+const showEtlTabOriginIndicatorsForTable = (tableKey: string): boolean => {
+  if (!showEtlTabOriginIndicators.value) return false
+  if (isObjectParameterTable(tableKey)) return false
+  return true
+}
+
+const buildHeaderOriginIndicators = (
+  currentTableKey: string | null | undefined,
+  headers: Array<{ key?: string }>,
+): Record<string, { source: 'db' | 'file'; tooltip?: string }> => {
+  if (isValidationLikeGroup(groupName.value)) {
+    return {}
+  }
   if (
-    appConfig.getCore().parameters.allowEditInstance &&
-    sectionType.value === 'input-data' &&
-    generalStore.selectedExecution &&
-    (generalStore.selectedExecution.instance ||
-      generalStore.selectedExecution.experiment?.instance)
+    sectionType.value !== 'input-data' ||
+    appConfig.getCore().parameters.etl.enableEtlMetadataAndReview !== true
   ) {
+    return {}
+  }
+  if (!currentTableKey || !isObjectParameterTable(currentTableKey)) return {}
+
+  const normalizedTable = normalizeTableKeyForHierarchyMatch(currentTableKey)
+  const result: Record<string, { source: 'db' | 'file'; tooltip?: string }> = {}
+  headers
+    .map((h) => String(h?.key ?? ''))
+    .filter((key) => key && key !== 'selection' && key !== 'id')
+    .forEach((key) => {
+      const normalizedField = normalizeTableKeyForHierarchyMatch(key)
+      const metadataKey = `${normalizedTable}.${normalizedField}`
+      const source: 'db' | 'file' = etlParametersFromDbNormalized.value.has(
+        metadataKey,
+      )
+        ? 'db'
+        : 'file'
+      result[key] = {
+        source,
+        tooltip:
+          source === 'db'
+            ? t('sectionView.etlMetadataInfo.fromDbValueTooltip')
+            : t('sectionView.etlMetadataInfo.notFromDbValueTooltip'),
+      }
+    })
+  return result
+}
+
+const etlHeaderOriginIndicatorsForSingleTable = computed(() =>
+  buildHeaderOriginIndicators(tableKey.value, tableData.headers.value as any[]),
+)
+
+const etlHeaderOriginIndicatorsForSelectedTable = computed(() =>
+  buildHeaderOriginIndicators(
+    selectedTable.value,
+    selectedTableData.headers.value as any[],
+  ),
+)
+
+// Build filename for downloads from selected execution
+const downloadFilename = computed(() => {
+  const exec = generalStore.selectedExecution
+  if (!exec) return 'execution'
+  const name = (exec.name || 'execution').toLowerCase().replaceAll(/\s+/g, '_')
+  return `${name}-${formatDateForFilename(exec.createdAt)}`
+})
+
+/**
+ * For instance downloads, place tables matched to frontend-automation master tables first,
+ * sorted by master order, then keep remaining instance tables in their original order.
+ */
+const getInstancePreferredTableOrderForDownload = (): string[] => {
+  const exec = generalStore.selectedExecution
+  const instanceData = exec?.experiment?.instance?.data ?? exec?.instance?.data
+  const instanceKeys = instanceData ? Object.keys(instanceData) : []
+  if (instanceKeys.length === 0) return []
+
+  const masterDataConfig = generalStore.getConfigurations?.masterData
+  if (!masterDataConfig || typeof masterDataConfig !== 'object') return []
+
+  return getInstanceTableKeysOrderedByMasterHierarchy(
+    instanceKeys,
+    masterDataConfig,
+    generalStore.masterDataSections ?? undefined,
+    generalStore.masterDataGroups ?? undefined,
+  )
+}
+
+/**
+ * When `useBackendExecutionFilesDownload` is true, route input-data / results
+ * downloads through `generalStore.getDataToDownload(...)` so they use the same
+ * backend-zip endpoint (`GET /execution/files/<id>/`) as the history execution
+ * table — including its fallback to a local Excel build when the backend has
+ * no file available.
+ *
+ * Returns `true` if the backend flow ran (success or backend-handled fallback);
+ * `false` when the flag is off or the selected execution has no id (callers
+ * should then use their per-section local Excel build).
+ */
+const tryBackendExecutionFilesDownload = async (
+  exec: any,
+): Promise<boolean> => {
+  const useBackend =
+    appConfig.getCore().parameters?.useBackendExecutionFilesDownload === true
+  if (!useBackend) return false
+  const executionId = exec?.executionId ?? exec?.id
+  if (!executionId) return false
+
+  try {
+    await generalStore.getDataToDownload(executionId, true, true)
+    showSnackbar?.(t('sectionView.downloadSuccess'), 'success')
+  } catch (error) {
+    const i18nKey = (error as { i18nKey?: string })?.i18nKey
+    const message = i18nKey ? t(i18nKey) : t('sectionView.downloadError')
+    showSnackbar?.(message, 'error')
+  }
+  return true
+}
+
+// Download instance only - file is instance (reuses Experiment.downloadExcel)
+const downloadInstanceExcel = async () => {
+  const exec = generalStore.selectedExecution
+  if (!exec?.experiment?.instance?.data) {
+    showSnackbar?.(t('sectionView.downloadNoData'), 'error')
+    return
+  }
+  if (await tryBackendExecutionFilesDownload(exec)) return
+  try {
+    const preferredTableOrder = getInstancePreferredTableOrderForDownload()
+    await exec.experiment.downloadExcel(
+      downloadFilename.value,
+      true,
+      false,
+      preferredTableOrder,
+    )
+    showSnackbar?.(t('sectionView.downloadSuccess'), 'success')
+  } catch {
+    showSnackbar?.(t('sectionView.downloadError'), 'error')
+  }
+}
+
+// Download solution only - file is solution (reuses Experiment.downloadExcel)
+const downloadSolutionExcel = async () => {
+  const exec = generalStore.selectedExecution
+  if (!exec?.experiment?.solution?.data) {
+    showSnackbar?.(t('sectionView.downloadNoData'), 'error')
+    return
+  }
+  if (await tryBackendExecutionFilesDownload(exec)) return
+  try {
+    await exec.experiment.downloadExcel(downloadFilename.value, false, true)
+    showSnackbar?.(t('sectionView.downloadSuccess'), 'success')
+  } catch {
+    showSnackbar?.(t('sectionView.downloadError'), 'error')
+  }
+}
+
+// When in Validaciones group: download instance checks (input-data) or solution checks (results)
+const isValidationsGroup = computed(() => isValidationGroup(groupName.value))
+
+const downloadInstanceChecksExcel = async () => {
+  const exec = generalStore.selectedExecution
+  const checks =
+    exec?.experiment?.instance?.dataChecks ?? exec?.instance?.dataChecks
+  if (
+    !checks ||
+    typeof checks !== 'object' ||
+    Object.keys(checks).length === 0
+  ) {
+    showSnackbar?.(t('sectionView.downloadNoData'), 'error')
+    return
+  }
+  try {
+    await exec.experiment.downloadInstanceChecksExcel(downloadFilename.value)
+    showSnackbar?.(t('sectionView.downloadSuccess'), 'success')
+  } catch {
+    showSnackbar?.(t('sectionView.downloadError'), 'error')
+  }
+}
+
+/** Return true when the selected execution has a non-empty instance dataChecks object. */
+function execHasInstanceChecks(exec: any): boolean {
+  const checks = exec?.experiment?.instance?.dataChecks ?? exec?.instance?.dataChecks
+  return (
+    exec != null &&
+    checks != null &&
+    typeof checks === 'object' &&
+    Object.keys(checks).length > 0
+  )
+}
+
+/** Return true when the selected execution has a non-empty solution dataChecks object. */
+function execHasSolutionChecks(exec: any): boolean {
+  const checks = exec?.experiment?.solution?.dataChecks ?? exec?.solution?.dataChecks
+  return (
+    exec != null &&
+    checks != null &&
+    typeof checks === 'object' &&
+    Object.keys(checks).length > 0
+  )
+}
+
+const downloadSolutionChecksExcel = async () => {
+  const exec = generalStore.selectedExecution
+  const checks =
+    exec?.experiment?.solution?.dataChecks ?? exec?.solution?.dataChecks
+  if (
+    !checks ||
+    typeof checks !== 'object' ||
+    Object.keys(checks).length === 0
+  ) {
+    showSnackbar?.(t('sectionView.downloadNoData'), 'error')
+    return
+  }
+  try {
+    await exec.experiment.downloadSolutionChecksExcel(downloadFilename.value)
+    showSnackbar?.(t('sectionView.downloadSuccess'), 'success')
+  } catch {
+    showSnackbar?.(t('sectionView.downloadError'), 'error')
+  }
+}
+
+/** Build the dropdown items shown for the `input-data` section. */
+function buildInputDataDropdownItems(exec: any): any[] {
+  const items: any[] = []
+  const hasInstance = exec?.experiment?.instance?.data ?? exec?.instance?.data
+  const canEdit =
+    appConfig.getCore().parameters.allowEditInstance &&
+    exec &&
+    (exec.instance || exec.experiment?.instance)
+
+  if (canEdit) {
     items.push({
       id: 'edit-input-data',
       title: t('sectionView.editInputData'),
       icon: 'mdi-pencil',
       action: () => navigateToEditInstance(),
     })
+  }
+  if (exec && (isValidationsGroup.value ? execHasInstanceChecks(exec) : hasInstance)) {
+    items.push({
+      id: 'download-excel',
+      title: t('sectionView.downloadExcel'),
+      icon: 'mdi-file-excel',
+      action: () =>
+        isValidationsGroup.value
+          ? downloadInstanceChecksExcel()
+          : downloadInstanceExcel(),
+    })
+  }
+  return items
+}
+
+/** Build the dropdown items shown for the `results` section. */
+function buildResultsDropdownItems(exec: any): any[] {
+  const items: any[] = []
+  const hasSolution = exec?.experiment?.solution?.data ?? exec?.solution?.data
+
+  if (exec && (isValidationsGroup.value ? execHasSolutionChecks(exec) : hasSolution)) {
+    items.push({
+      id: 'download-excel',
+      title: t('sectionView.downloadExcel'),
+      icon: 'mdi-file-excel',
+      action: () =>
+        isValidationsGroup.value
+          ? downloadSolutionChecksExcel()
+          : downloadSolutionExcel(),
+    })
+  }
+  return items
+}
+
+// Dropdown menu items for SectionView
+const dropdownMenuItems = computed(() => {
+  const items: any[] = []
+  if (sectionType.value === 'configuration' && canEditAllMasterTables.value) {
+    items.push({
+      id: 'edit-all-master-tables',
+      title: t('sectionView.editAllMasterTables'),
+      icon: 'mdi-database-import',
+      action: () => {
+        showEditAllMasterTablesModal.value = true
+      },
+    })
+  }
+
+  const exec = generalStore.selectedExecution
+  if (sectionType.value === 'input-data') {
+    items.push(...buildInputDataDropdownItems(exec))
+  } else if (sectionType.value === 'results') {
+    items.push(...buildResultsDropdownItems(exec))
   }
 
   return items
@@ -1877,11 +2452,10 @@ const navigateToEditInstance = () => {
   generalStore.incrementUploadComponentKey()
 }
 
-// Handle dropdown item click
-const handleDropdownItemClick = (item: any) => {
-  if (item.action) {
-    item.action()
-  }
+// Handle dropdown item click — do not call item.action() here; CoreDropdownMenu
+// already runs it on click, so calling it again would trigger downloads twice.
+const handleDropdownItemClick = (_item: any) => {
+  // Optional: add analytics or other side effects only when needed
 }
 
 // Cancel in-flight table loads when view is deactivated (keep-alive) so GET doesn't update state after navigate-away

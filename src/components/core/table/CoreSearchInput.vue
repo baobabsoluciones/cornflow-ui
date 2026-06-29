@@ -137,14 +137,12 @@ const inputRef = ref<HTMLInputElement>()
 
 // Computed
 const computedPlaceholder = computed(() => {
-  return props.showShortcut && !isFocused.value
-    ? props.placeholder
-    : props.placeholder
+  return props.placeholder
 })
 
 const shortcutKey = computed(() => {
   // Detect if user is on Mac
-  return navigator.platform.toUpperCase().indexOf('MAC') >= 0 ? '⌘' : 'Ctrl'
+  return navigator.platform.toUpperCase().includes('MAC') ? '⌘' : 'Ctrl'
 })
 
 // Methods

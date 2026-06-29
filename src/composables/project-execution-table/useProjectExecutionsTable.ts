@@ -1,5 +1,4 @@
-import { computed, watch, nextTick, ref, onMounted, onBeforeUnmount } from 'vue';
-import { useI18n } from 'vue-i18n';
+import { computed, watch, nextTick, ref, onMounted } from 'vue';
 import { useGeneralStore } from '@/stores/general';
 import { useTableConfig } from './useTableConfig';
 import { useTableDOMManipulation } from './useTableDOMManipulation';
@@ -34,7 +33,6 @@ interface HeaderItem {
 }
 
 export function useProjectExecutionsTable(props: ExecutionTableProps) {
-  const { t } = useI18n();
   const generalStore = useGeneralStore();
   
   // Set up state
@@ -79,7 +77,8 @@ export function useProjectExecutionsTable(props: ExecutionTableProps) {
     cancelDelete,
     handleDownload,
     getSolverName,
-    getTimeLimit
+    getTimeLimit,
+    getTimeLimitDisplayUnitI18nKey,
   } = useExecutionActions();
   
   // Connect the state from execution actions (two-way sync)
@@ -151,6 +150,7 @@ export function useProjectExecutionsTable(props: ExecutionTableProps) {
     getSolutionInfo,
     getSolverName,
     getTimeLimit,
+    getTimeLimitDisplayUnitI18nKey,
     handleResize
   };
 }

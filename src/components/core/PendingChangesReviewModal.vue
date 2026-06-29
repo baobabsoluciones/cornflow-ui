@@ -204,8 +204,8 @@
                                 <v-icon size="14" class="pending-changes-modal__arrow-icon"
                                   >mdi-arrow-right</v-icon
                                 >
-                                <v-text-field
-                                  v-if="(header.type || 'string') !== 'boolean'"
+                                <PendingChangeFieldInput
+                                  :header="header"
                                   :model-value="
                                     getRowFieldValue(
                                       tableGroup.tableKey,
@@ -214,37 +214,7 @@
                                       rowGroup,
                                     )
                                   "
-                                  @update:model-value="
-                                    (val) =>
-                                      emit(
-                                        'update-change',
-                                        tableGroup.tableKey,
-                                        rowGroup.rowId,
-                                        header.key,
-                                        header.type === 'number'
-                                          ? val === ''
-                                            ? undefined
-                                            : Number(val)
-                                          : val,
-                                      )
-                                  "
-                                  :type="getInputTypeForHeader(header)"
-                                  variant="outlined"
-                                  density="compact"
-                                  hide-details
-                                  class="pending-changes-modal__input"
-                                />
-                                <v-switch
-                                  v-else
-                                  :model-value="
-                                    !!getRowFieldValue(
-                                      tableGroup.tableKey,
-                                      rowGroup.rowId,
-                                      header.key,
-                                      rowGroup,
-                                    )
-                                  "
-                                  @update:model-value="
+                                  @update="
                                     (val) =>
                                       emit(
                                         'update-change',
@@ -254,16 +224,12 @@
                                         val,
                                       )
                                   "
-                                  hide-details
-                                  density="compact"
-                                  color="primary"
-                                  class="pending-changes-modal__switch"
                                 />
                               </div>
                             </template>
                             <template v-else>
-                              <v-text-field
-                                v-if="(header.type || 'string') !== 'boolean'"
+                              <PendingChangeFieldInput
+                                :header="header"
                                 :model-value="
                                   getRowFieldValue(
                                     tableGroup.tableKey,
@@ -272,37 +238,7 @@
                                     rowGroup,
                                   )
                                 "
-                                @update:model-value="
-                                  (val) =>
-                                    emit(
-                                      'update-change',
-                                      tableGroup.tableKey,
-                                      rowGroup.rowId,
-                                      header.key,
-                                      header.type === 'number'
-                                        ? val === ''
-                                          ? undefined
-                                          : Number(val)
-                                        : val,
-                                    )
-                                "
-                                :type="getInputTypeForHeader(header)"
-                                variant="outlined"
-                                density="compact"
-                                hide-details
-                                class="pending-changes-modal__input"
-                              />
-                              <v-switch
-                                v-else
-                                :model-value="
-                                  !!getRowFieldValue(
-                                    tableGroup.tableKey,
-                                    rowGroup.rowId,
-                                    header.key,
-                                    rowGroup,
-                                  )
-                                "
-                                @update:model-value="
+                                @update="
                                   (val) =>
                                     emit(
                                       'update-change',
@@ -312,10 +248,6 @@
                                       val,
                                     )
                                 "
-                                hide-details
-                                density="compact"
-                                color="primary"
-                                class="pending-changes-modal__switch"
                               />
                             </template>
                           </td>
@@ -528,8 +460,8 @@
           size="small"
           class="pending-changes-modal__save-btn"
         >
-          <v-icon start size="small">mdi-content-save-all</v-icon>
-          {{ t('pendingChanges.saveAllChanges') }}
+          <v-icon start size="small">{{ saveIcon }}</v-icon>
+          {{ saveText }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -553,7 +485,9 @@ import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useTableChanges } from '@/composables/useTableChanges'
 import { parseJoinFrom } from '@/utils/schemaUtils'
+import { resolveTitle } from '@/utils/i18nUtils'
 import CoreConfirmDialog from '@/components/core/table/CoreConfirmDialog.vue'
+import PendingChangeFieldInput from '@/components/core/PendingChangeFieldInput.vue'
 
 const { t } = useI18n()
 
@@ -593,6 +527,10 @@ interface Props {
   tableData?: Record<string, any[]>
   /** When provided, only show and count changes for these table keys (e.g. current group). */
   tableKeysFilter?: string[]
+  /** Custom text for the primary action button. Defaults to i18n 'pendingChanges.saveAllChanges'. */
+  saveButtonText?: string
+  /** Custom icon for the primary action button. Defaults to 'mdi-content-save-all'. */
+  saveButtonIcon?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -603,6 +541,8 @@ const props = withDefaults(defineProps<Props>(), {
   tableHeaders: () => ({}),
   tableData: () => ({}),
   tableKeysFilter: undefined,
+  saveButtonText: undefined,
+  saveButtonIcon: undefined,
 })
 
 const emit = defineEmits<{
@@ -622,6 +562,11 @@ const emit = defineEmits<{
   (e: 'revert-table', tableKey: string): void
   (e: 'revert-all'): void
 }>()
+
+const saveText = computed(() =>
+  props.saveButtonText ?? t('pendingChanges.saveAllChanges'),
+)
+const saveIcon = computed(() => props.saveButtonIcon ?? 'mdi-content-save-all')
 
 const clearValidationError = () => {
   emit('clear-validation-error')
@@ -754,7 +699,10 @@ const getCreateFieldDisplayValue = (create: { data: Record<string, any> }, heade
   const foreignKeyField = (header as any).foreignKeyField
   if (!joinFrom || !foreignKeyField) return val
   const fkId = create.data[foreignKeyField]
-  if (fkId == null) return val
+  if (fkId == null)
+    return (header as any).valueNone?.title
+      ? resolveTitle((header as any).valueNone.title, '')
+      : val
   const joinInfo = parseJoinFrom(joinFrom)
   if (!joinInfo) return val
   const tableRows = props.tableData?.[joinInfo.table]

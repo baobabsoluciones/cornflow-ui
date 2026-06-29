@@ -1,4 +1,5 @@
 import { computed } from 'vue'
+import { getListResponseRowProperties } from '@/utils/schemaUtils'
 
 export function useTableHeaders(
   localizedTableConfig: any,
@@ -24,12 +25,13 @@ export function useTableHeaders(
 
     // Generate headers from localized table config schema
     const configToUse = localizedTableConfig.value || tableConfig.value
-    if (configToUse?.get_list?.response_schema?.items?.properties) {
-      const properties = configToUse.get_list.response_schema.items.properties
+    const rowSchema = getListResponseRowProperties(configToUse)
+    if (rowSchema?.properties) {
+      const properties = rowSchema.properties
       const dataHeaders = Object.entries(properties)
         .filter(([key, value]: [string, any]) => {
-          // Filter out 'id' column and readOnly fields
-          return key !== 'id' && !value.readOnly
+          // Filter out 'id' column and frontendReadOnly fields
+          return key !== 'id' && !value.frontendReadOnly
         })
         .map(([key, value]: [string, any]) => ({
           title: value.title || key,

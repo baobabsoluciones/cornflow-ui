@@ -1,7 +1,80 @@
 import readXlsxFile, { readSheetNames } from 'read-excel-file'
 import i18n from '@/plugins/i18n'
 import { formatDateForExcel } from '@/utils/date'
+import { getListResponseRowProperties } from '@/utils/schemaUtils'
 import * as ExcelJS from 'exceljs'
+import {
+  parseExcelInWorker,
+  buildExcelBufferInWorker,
+} from '@/utils/excelWorkerClient'
+import {
+  applyCellBorder,
+  getAlternatingFill,
+  isFieldVisible,
+  prepareSheetData,
+  estimateSheetCellCount,
+  processObjectTypeWorksheet,
+} from '@/utils/excelStyling'
+
+// read-excel-file fails on xlsx files above ~8MB; use ExcelJS for those
+const LARGE_FILE_THRESHOLD_BYTES = 8 * 1024 * 1024
+
+type FileInput = File | Blob | ArrayBuffer
+
+function isLargeFile(file: FileInput): boolean {
+  if (file instanceof ArrayBuffer)
+    return file.byteLength > LARGE_FILE_THRESHOLD_BYTES
+  return file.size > LARGE_FILE_THRESHOLD_BYTES
+}
+
+async function fileToArrayBuffer(
+  file: FileInput,
+): Promise<ArrayBuffer> {
+  if (file instanceof ArrayBuffer) return file
+  return file.arrayBuffer()
+}
+
+async function readTableWithExcelJS(
+  file: FileInput,
+  key: string,
+  useFirstColumnAsKeys = false,
+  req = null,
+): Promise<any[]> {
+  const buffer = await fileToArrayBuffer(file)
+  const workbook = new ExcelJS.Workbook()
+  await workbook.xlsx.load(buffer)
+  const worksheet = workbook.getWorksheet(key)
+  if (!worksheet) {
+    if (!req) return []
+    throw new Error(`Sheet "${key}" not found`)
+  }
+
+  const allRows: any[][] = []
+  worksheet.eachRow((row) => {
+    allRows.push(row.values as any[])
+  })
+
+  // ExcelJS row.values is 1-indexed (index 0 is undefined)
+  const normalizedRows = allRows.map((row) => row.slice(1))
+
+  if (useFirstColumnAsKeys) {
+    return normalizedRows.map((row) => ({
+      [String(row[0] ?? '')]: row[1] ?? null,
+    }))
+  }
+
+  const cols = normalizedRows.shift()
+  if (!cols) return []
+
+  const formattedCols = cols.map((col) => {
+    if (col instanceof Date) return formatDateForExcel(col)
+    return col
+  })
+
+  return normalizedRows.map((row) =>
+    Object.fromEntries(formattedCols.map((col, i) => [col, row[i] ?? null])),
+  )
+}
 
 const readTable = function (
   file,
@@ -9,6 +82,10 @@ const readTable = function (
   useFirstColumnAsKeys = false,
   req = null,
 ) {
+  if (isLargeFile(file)) {
+    return readTableWithExcelJS(file, key, useFirstColumnAsKeys, req)
+  }
+
   return readXlsxFile(file, { sheet: key })
     .then((rows) => {
       if (useFirstColumnAsKeys) {
@@ -35,12 +112,11 @@ const readTable = function (
       }
     })
     .catch((error) => {
-      const regex = new RegExp('Sheet ".+" not found')
+      const regex = /Sheet ".+" not found/
       if (regex.test(error.message) && !req) {
         return []
-      } else {
-        throw error
       }
+      throw error
     })
 }
 
@@ -55,7 +131,7 @@ function processRowValue(value: any, fieldFormat: string | undefined): any {
     return null
   }
   if (typeof value === 'number' && value % 1 !== 0) {
-    return parseFloat(value.toFixed(4))
+    return Number.parseFloat(value.toFixed(4))
   }
   return value
 }
@@ -75,8 +151,34 @@ function processTableRow(
   )
 }
 
-const loadExcel = async function (file: File | Blob | ArrayBuffer, schema: { properties: Record<string, any>; required?: string[] }) {
-  const sheetNames = await readSheetNames(file)
+async function getSheetNames(
+  file: FileInput,
+): Promise<string[]> {
+  if (isLargeFile(file)) {
+    const buffer = await fileToArrayBuffer(file)
+    const workbook = new ExcelJS.Workbook()
+    await workbook.xlsx.load(buffer)
+    return workbook.worksheets.map((ws) => ws.name)
+  }
+  return readSheetNames(file)
+}
+
+const loadExcel = async function (
+  file: FileInput,
+  schema: { properties: Record<string, any>; required?: string[] },
+) {
+  // Fast path for large files: offload parsing to a Web Worker so the UI
+  // doesn't freeze for tens of seconds on 500k-row sheets. The worker already
+  // contains its own ExcelJS → SheetJS fallback chain, so any error it raises
+  // is final (no point retrying the same parsers on the main thread). Only
+  // when no worker is available (jsdom/SSR) do we fall through to the legacy
+  // main-thread path below.
+  if (isLargeFile(file)) {
+    const buffer = await fileToArrayBuffer(file)
+    const fromWorker = await parseExcelInWorker(buffer, schema)
+    if (fromWorker) return fromWorker
+  }
+  const sheetNames = await getSheetNames(file)
   const schemaTableNames = Object.keys(schema.properties)
   const required = schema.required || []
 
@@ -86,95 +188,52 @@ const loadExcel = async function (file: File | Blob | ArrayBuffer, schema: { pro
     const isRequired = required.includes(tab)
     const useFirstColumnAsKeys = isInSchema && tabSchema?.type === 'object'
 
-    const getFieldFormat = (fieldKey: string): 'date' | 'date-time' | 'hour' | undefined => {
+    const getFieldFormat = (
+      fieldKey: string,
+    ): 'date' | 'date-time' | 'hour' | undefined => {
       if (!isInSchema || !tabSchema) return undefined
-      if (tabSchema.type === 'array' && tabSchema.items?.properties?.[fieldKey]) {
-        const format = tabSchema.items.properties[fieldKey].format
-        return format === 'date' || format === 'date-time' || format === 'hour' ? format : undefined
+      const objectProp =
+        tabSchema.type === 'object' && tabSchema.properties
+          ? tabSchema.properties[fieldKey]
+          : null
+      const prop =
+        tabSchema.type === 'array' && tabSchema.items?.properties
+          ? tabSchema.items.properties[fieldKey]
+          : objectProp
+      if (prop?.format) {
+        return prop.format === 'date' ||
+          prop.format === 'date-time' ||
+          prop.format === 'hour'
+          ? prop.format
+          : undefined
       }
       return undefined
     }
 
     const table = await readTable(file, tab, useFirstColumnAsKeys, isRequired)
-    
+
     if (!Array.isArray(table)) {
       return [tab, table]
     }
 
-    const processedTable = table.map((row) => processTableRow(row, getFieldFormat))
+    const processedTable = table.map((row) =>
+      processTableRow(row, getFieldFormat),
+    )
+
+    // Parameter (object-type) tables: Excel has key-value rows; merge into a single object for instance/API.
+    if (useFirstColumnAsKeys && processedTable.length > 0) {
+      const merged = processedTable.reduce(
+        (acc: Record<string, any>, row) => ({ ...acc, ...row }),
+        {},
+      )
+      return [tab, merged]
+    }
+
     return [tab, processedTable]
   }
 
   const results = await Promise.all(sheetNames.map((tab) => readTab(tab)))
   return Object.fromEntries(results)
-}
-
-/**
- * Applies standard border style to a cell
- */
-function applyCellBorder(cell: any): void {
-  cell.border = {
-    top: { style: 'thin' },
-    left: { style: 'thin' },
-    bottom: { style: 'thin' },
-    right: { style: 'thin' },
-  }
-}
-
-/**
- * Gets alternating row fill color
- */
-function getAlternatingFill(index: number): any {
-  return {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: index % 2 === 0 ? 'FFFFFFFF' : 'FFF2F2F2' },
-  }
-}
-
-/**
- * Checks if a field should be visible in export
- */
-function isFieldVisible(
-  key: string,
-  schema: Record<string, any> | null,
-  sheetName: string,
-  isObjectType: boolean,
-): boolean {
-  if (key === 'id') return false
-  if (!schema) return true
-
-  const propertySchema = isObjectType
-    ? schema.properties?.[sheetName]?.properties?.[key]
-    : schema.properties?.[sheetName]?.items?.properties?.[key]
-
-  return propertySchema?.visible !== false
-}
-
-/**
- * Processes object type worksheet (key-value pairs)
- */
-function processObjectTypeWorksheet(
-  worksheet: any,
-  sheetData: any[],
-  schema: Record<string, any> | null,
-  sheetName: string,
-): void {
-  const tableData = Object.entries(sheetData[0] as Record<string, any>).filter(
-    ([key]) => isFieldVisible(key, schema, sheetName, true),
-  )
-
-  worksheet.addRows(tableData)
-  worksheet.getColumn(1).width = 20
-  worksheet.getColumn(2).width = 30
-
-  tableData.forEach((_, index) => {
-    ;['A', 'B'].forEach((col) => {
-      const cell = worksheet.getCell(`${col}${index + 1}`)
-      cell.fill = getAlternatingFill(index)
-      applyCellBorder(cell)
-    })
-  })
 }
 
 /**
@@ -219,39 +278,29 @@ function processArrayTypeWorksheet(
   })
 }
 
-/**
- * Prepares sheet data, creating empty row if needed
- */
-function prepareSheetData(
-  sheetData: any[],
-  schema: Record<string, any> | null,
-  sheetName: string,
-): any[] | null {
-  if (sheetData.length > 0) return sheetData
-
-  const requiredHeaders = schema?.properties?.[sheetName]?.items?.required
-  if (!requiredHeaders) return null
-
-  return [
-    requiredHeaders.reduce((acc: Record<string, any>, header: string) => {
-      acc[header] = null
-      return acc
-    }, {}),
-  ]
-}
-
 // This function writes all sheets according to the schema
 async function schemaDataToTable(
   wb: any,
   data: Record<string, any>,
   schema: Record<string, any> | null = null,
+  options: { includeTablesWithoutSchema?: boolean } = {},
 ) {
-  const dataArray: Array<[string, any[]]> = Object.entries(data).map(([sheetName, sheetData]) => {
-    const normalizedData = Array.isArray(sheetData) ? sheetData : [sheetData]
-    return [sheetName, normalizedData] as [string, any[]]
-  })
+  const includeTablesWithoutSchema = options.includeTablesWithoutSchema ?? true
+  const dataArray: Array<[string, any[]]> = Object.entries(data).map(
+    ([sheetName, sheetData]) => {
+      const normalizedData = Array.isArray(sheetData) ? sheetData : [sheetData]
+      return [sheetName, normalizedData] as [string, any[]]
+    },
+  )
 
   for (const [sheetName, rawSheetData] of dataArray) {
+    if (
+      !includeTablesWithoutSchema &&
+      schema != null &&
+      schema.properties?.[sheetName] == null
+    ) {
+      continue
+    }
     if (schema?.properties?.[sheetName]?.visible === false) continue
 
     const sheetData = prepareSheetData(rawSheetData, schema, sheetName)
@@ -266,6 +315,241 @@ async function schemaDataToTable(
       processArrayTypeWorksheet(worksheet, sheetData, schema, sheetName)
     }
   }
+}
+
+/**
+ * Outcome of a build: bytes plus the actual on-disk format. For very large
+ * datasets we degrade gracefully from styled XLSX (ExcelJS) → plain XLSX
+ * (SheetJS) → ZIP of CSV files (one per sheet) so the download survives
+ * datasets that would otherwise crash the tab with OOM. Callers use `format`
+ * to pick the right filename extension.
+ */
+export interface ExcelBuildResult {
+  bytes: Uint8Array
+  format: 'xlsx' | 'zip'
+}
+
+/**
+ * Above this cell count we skip the worker entirely and write CSV-in-zip on
+ * the main thread. Reason: `postMessage` runs a structured-clone of the
+ * input payload, which *duplicates* every row in memory. At >2M cells a
+ * solution table is already several GB; doubling that to send it to the
+ * worker is what crashed the tab with "Out of Memory" even after the
+ * SheetJS worker fix landed.
+ *
+ * The CSV-zip path streams rows directly from the source `data` reference
+ * (no clone) and yields back to the event loop between chunks so the
+ * loading overlay keeps painting.
+ */
+const HUGE_BUILD_CELL_THRESHOLD = 2_000_000
+
+function csvEscape(v: any): string {
+  if (v === null || v === undefined) return ''
+  const s = typeof v === 'string' ? v : String(v)
+  if (
+    s.includes(',') ||
+    s.includes('"') ||
+    s.includes('\n') ||
+    s.includes('\r')
+  ) {
+    return '"' + s.replaceAll('"', '""') + '"'
+  }
+  return s
+}
+
+/** Yield to the event loop so the UI can paint between heavy chunks. */
+function yieldToEventLoop(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0))
+}
+
+const CSV_ZIP_ROW_CHUNK = 1000
+
+/** Build a function that strips path-unsafe characters and keeps names unique. */
+function makeSheetNameSanitizer(): (name: string) => string {
+  const usedSheetNames = new Set<string>()
+  return (name: string): string => {
+    // Strip path-unsafe characters and keep names unique within the zip.
+    const safe = name.replaceAll(/[\\/:*?"<>|]/g, '_').slice(0, 80) || 'sheet'
+    let candidate = safe
+    let n = 1
+    while (usedSheetNames.has(candidate)) {
+      candidate = `${safe}_${n++}`
+    }
+    usedSheetNames.add(candidate)
+    return candidate
+  }
+}
+
+/** Decide whether a sheet should be skipped based on schema visibility. */
+function shouldSkipCsvSheet(
+  sheetName: string,
+  schema: Record<string, any> | null,
+  includeTablesWithoutSchema: boolean,
+): boolean {
+  if (
+    !includeTablesWithoutSchema &&
+    schema != null &&
+    schema.properties?.[sheetName] == null
+  ) {
+    return true
+  }
+  return schema?.properties?.[sheetName]?.visible === false
+}
+
+/** Serialize an object-type sheet (parameter dict) as a name,value CSV. */
+function objectSheetToCsv(sheet: Record<string, any>): string {
+  const lines = ['name,value']
+  for (const [k, v] of Object.entries(sheet)) {
+    lines.push(`${csvEscape(k)},${csvEscape(v)}`)
+  }
+  return lines.join('\n')
+}
+
+/** Pick the visible headers (excluding `id`) for an array-type sheet. */
+function visibleCsvHeaders(
+  firstRow: Record<string, any>,
+  sheetName: string,
+  schema: Record<string, any> | null,
+): string[] {
+  return Object.keys(firstRow).filter((h) => {
+    if (h === 'id') return false
+    const propSchema = schema?.properties?.[sheetName]?.items?.properties?.[h]
+    return propSchema?.visible !== false
+  })
+}
+
+/**
+ * Build CSV in chunks; each chunk becomes a Blob part. Blobs can be gigabytes
+ * without sitting in the JS heap. Yields once per chunk so the browser can
+ * repaint the loading overlay and won't show the "page unresponsive" prompt.
+ */
+async function arraySheetToCsvBlob(
+  rows: any[],
+  headers: string[],
+): Promise<Blob> {
+  const chunks: BlobPart[] = []
+  chunks.push(headers.map(csvEscape).join(',') + '\n')
+
+  let buffer = ''
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i]
+    let line = ''
+    for (let j = 0; j < headers.length; j++) {
+      if (j > 0) line += ','
+      line += csvEscape(row[headers[j]])
+    }
+    buffer += line + '\n'
+
+    if ((i + 1) % CSV_ZIP_ROW_CHUNK === 0) {
+      chunks.push(buffer)
+      buffer = ''
+      await yieldToEventLoop()
+    }
+  }
+  if (buffer.length > 0) chunks.push(buffer)
+
+  return new Blob(chunks, { type: 'text/csv' })
+}
+
+/**
+ * Streams the data to a ZIP-of-CSVs on the main thread. Memory profile is
+ * essentially the source `data` plus the zip's intermediate Blobs (which
+ * Chrome can spill to disk — they don't sit in the JS heap). 1k-row chunks
+ * keep individual string allocations small; an event-loop yield after each
+ * chunk lets the loading overlay tick.
+ */
+async function buildAsCsvZip(
+  data: Record<string, any>,
+  schema: Record<string, any> | null,
+  options: { includeTablesWithoutSchema?: boolean } = {},
+): Promise<Uint8Array> {
+  const includeTablesWithoutSchema = options.includeTablesWithoutSchema ?? true
+  // Dynamic import keeps JSZip out of the main bundle when it's not needed.
+  const JSZip = (await import('jszip')).default
+  const zip = new JSZip()
+
+  const sanitizeSheetName = makeSheetNameSanitizer()
+
+  for (const [sheetName, rawSheetData] of Object.entries(data)) {
+    if (shouldSkipCsvSheet(sheetName, schema, includeTablesWithoutSchema)) {
+      continue
+    }
+
+    const normalizedData = Array.isArray(rawSheetData)
+      ? rawSheetData
+      : [rawSheetData]
+    if (normalizedData.length === 0) continue
+    if (!normalizedData[0] || typeof normalizedData[0] !== 'object') continue
+
+    const filename = `${sanitizeSheetName(sheetName)}.csv`
+
+    if (schema?.properties?.[sheetName]?.type === 'object') {
+      // Object-type sheets are tiny (parameter dicts) — one-shot is fine.
+      zip.file(filename, objectSheetToCsv(normalizedData[0]))
+      continue
+    }
+
+    // Honour schema visibility for array-type sheets.
+    const headers = visibleCsvHeaders(normalizedData[0], sheetName, schema)
+    if (headers.length === 0) {
+      zip.file(filename, '')
+      continue
+    }
+
+    zip.file(filename, await arraySheetToCsvBlob(normalizedData, headers))
+  }
+
+  const blob = await zip.generateAsync({
+    type: 'blob',
+    streamFiles: true,
+    compression: 'DEFLATE',
+    compressionOptions: { level: 3 },
+  })
+  // The final blob can be huge; converting to Uint8Array doubles peak briefly
+  // but our caller wraps it in a Blob URL immediately and drops the array.
+  const arrayBuffer = await blob.arrayBuffer()
+  return new Uint8Array(arrayBuffer)
+}
+
+/**
+ * Build an xlsx (or zip-of-csv for huge datasets) file as raw bytes from an
+ * instance/solution `data` dict.
+ *
+ * Routing rules:
+ *  - ≤ `HUGE_BUILD_CELL_THRESHOLD` cells → Excel worker (ExcelJS/SheetJS
+ *    inside). Output is real `.xlsx`.
+ *  - > `HUGE_BUILD_CELL_THRESHOLD` cells → main-thread CSV-zip path, so we
+ *    avoid the structured-clone duplication of multi-GB payloads.
+ *  - No worker available (jsdom/SSR) → ExcelJS on main thread (legacy).
+ *
+ * Callers use the returned `format` to choose the file extension.
+ */
+async function buildExcelBuffer(
+  data: Record<string, any>,
+  schema: Record<string, any> | null = null,
+  options: { includeTablesWithoutSchema?: boolean } = {},
+): Promise<ExcelBuildResult> {
+  const cellCount = estimateSheetCellCount(data, schema)
+
+  if (cellCount > HUGE_BUILD_CELL_THRESHOLD) {
+    const bytes = await buildAsCsvZip(data, schema, options)
+    return { bytes, format: 'zip' }
+  }
+
+  const fromWorker = await buildExcelBufferInWorker(data, schema, options)
+  if (fromWorker) return { bytes: fromWorker, format: 'xlsx' }
+
+  const workbook = new ExcelJS.Workbook()
+  await schemaDataToTable(workbook, data, schema, options)
+  const buf = await workbook.xlsx.writeBuffer()
+  let bytes: Uint8Array
+  if (buf instanceof Uint8Array) bytes = buf
+  else if (buf instanceof ArrayBuffer) bytes = new Uint8Array(buf)
+  else {
+    const view = buf as ArrayBufferView
+    bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength)
+  }
+  return { bytes, format: 'xlsx' }
 }
 
 const toISOStringLocal = function (date, isEndDate = false) {
@@ -296,7 +580,6 @@ const toISOStringLocal = function (date, isEndDate = false) {
 }
 
 const formatDateForHeaders = function (date, locale = i18n.global.locale) {
-  const today = new Date()
   const itemDate = new Date(date)
   const options: Intl.DateTimeFormatOptions = {
     weekday: 'long',
@@ -305,11 +588,9 @@ const formatDateForHeaders = function (date, locale = i18n.global.locale) {
     day: 'numeric',
   }
 
-  let formattedDate = new Intl.DateTimeFormat(locale.value, options).format(
+  const formattedDate = new Intl.DateTimeFormat(locale.value, options).format(
     itemDate,
   )
-  itemDate.toDateString() ===
-    new Date(today.setDate(today.getDate() - 1)).toDateString()
 
   return formattedDate
 }
@@ -327,7 +608,7 @@ function formatDate(dateString) {
 function getNumberFromLetter(letter) {
   let number = 0
   for (let i = 0; i < letter.length; i++) {
-    number = number * 26 + (letter.charCodeAt(i) - 'A'.charCodeAt(0) + 1)
+    number = number * 26 + (letter.codePointAt(i) - 'A'.codePointAt(0) + 1)
   }
   return number
 }
@@ -336,7 +617,7 @@ function getLetterFromNumber(number) {
   let result = ''
   while (number > 0) {
     const remainder = (number - 1) % 26
-    result = String.fromCharCode(65 + remainder) + result
+    result = String.fromCodePoint(65 + remainder) + result
     number = Math.floor((number - 1) / 26)
   }
   return result
@@ -347,26 +628,33 @@ function getLetterFromNumber(number) {
  */
 function shouldExcludeField(key: string, fieldSchema: any): boolean {
   if (key === 'id') return true
-  if (fieldSchema?.readOnly) return true
+  if (fieldSchema?.visible === false) return true
+  if (fieldSchema?.frontendReadOnly) return true
   if (fieldSchema?.hidden) return true
   if (fieldSchema?.isForeignKey) return true
-  if (fieldSchema?.columnsToJoin && Array.isArray(fieldSchema.columnsToJoin)) return true
+  if (fieldSchema?.columnsToJoin && Array.isArray(fieldSchema.columnsToJoin))
+    return true
   return false
 }
 
 /**
  * Extracts schema fields from table config
  */
-function extractSchemaFields(tableConfig: any, items: any[]): {
+function extractSchemaFields(
+  tableConfig: any,
+  items: any[],
+): {
   schemaFields: Array<{ key: string; type: string; required: boolean }>
   backendKeys: string[]
 } {
-  const schemaFields: Array<{ key: string; type: string; required: boolean }> = []
+  const schemaFields: Array<{ key: string; type: string; required: boolean }> =
+    []
   const backendKeys: string[] = []
 
-  const properties = tableConfig?.get_list?.response_schema?.items?.properties
+  const rowSchema = getListResponseRowProperties(tableConfig)
+  const properties = rowSchema?.properties
   if (properties) {
-    const requiredFields = tableConfig.get_list?.response_schema?.items?.required || []
+    const requiredFields = rowSchema.required
     Object.entries(properties).forEach(([key, fieldSchema]: [string, any]) => {
       if (!shouldExcludeField(key, fieldSchema)) {
         schemaFields.push({
@@ -411,10 +699,11 @@ function addExportDataRows(
   worksheet: any,
   items: any[],
   schemaFields: Array<{ key: string; type: string }>,
+  t?: any,
 ): void {
   items.forEach((item, index) => {
     const rowData = schemaFields.map((field) =>
-      formatValueByType(item[field.key], field.type),
+      formatValueByType(item[field.key], field.type, t),
     )
     const row = worksheet.addRow(rowData)
 
@@ -486,20 +775,37 @@ function applyExportBorders(
 /**
  * Downloads workbook as Excel file
  */
-async function downloadExcelFile(workbook: ExcelJS.Workbook, tableName: string): Promise<void> {
+async function downloadExcelFile(
+  workbook: ExcelJS.Workbook,
+  tableName: string,
+): Promise<void> {
   const excelBuffer = await workbook.xlsx.writeBuffer()
   const blob = new Blob([excelBuffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   })
   const link = document.createElement('a')
-  link.href = window.URL.createObjectURL(blob)
+  link.href = globalThis.window.URL.createObjectURL(blob)
   link.download = `${tableName}_${new Date().toISOString().split('T')[0]}.xlsx`
   link.click()
-  window.URL.revokeObjectURL(link.href)
+  globalThis.window.URL.revokeObjectURL(link.href)
 }
 
 /**
- * Exports table data to Excel file with proper formatting based on backend schema
+ * Display column for Excel export (same as table: key = item key, title = header text).
+ */
+export interface ExportDisplayHeader {
+  key: string
+  title?: string
+  type?: string
+}
+
+/**
+ * Exports table data to Excel file with proper formatting based on backend schema.
+ * When displayHeaders is provided (e.g. from the table's visible headers), exports
+ * exactly those columns in that order. Both the sheet name and the header row use
+ * backend keys (not translated titles) so the file can be re-uploaded and matched
+ * back to its table (master tables, instance/solution) without name errors.
+ * `tableTitle` is kept for signature compatibility but no longer names the sheet.
  */
 async function exportTableToExcel(
   items,
@@ -507,51 +813,90 @@ async function exportTableToExcel(
   tableName,
   tableTitle,
   t,
+  displayHeaders?: ExportDisplayHeader[],
 ) {
   const workbook = new ExcelJS.Workbook()
-  const worksheet = workbook.addWorksheet(tableTitle || tableName)
+  // Use the saved table key (not the translated title) as the sheet name so the
+  // master-table matcher recognises the table on re-upload (see loadExcel /
+  // useMasterTableMatch.detectMatches, which match by Object.keys(data)).
+  const worksheet = workbook.addWorksheet(tableName || tableTitle)
 
-  const { schemaFields, backendKeys } = extractSchemaFields(tableConfig, items)
+  let schemaFields: Array<{ key: string; type: string; required?: boolean }>
+  let headerRowLabels: string[]
 
-  if (backendKeys.length === 0) {
+  if (displayHeaders && displayHeaders.length > 0) {
+    const properties = getListResponseRowProperties(tableConfig)?.properties
+    schemaFields = displayHeaders.map((h) => ({
+      key: h.key,
+      type:
+        h.type ||
+        properties?.[h.key]?.type ||
+        'string',
+      required: false,
+    }))
+    headerRowLabels = displayHeaders.map((h) => h.key)
+  } else {
+    const extracted = extractSchemaFields(tableConfig, items)
+    schemaFields = extracted.schemaFields
+    headerRowLabels = extracted.backendKeys
+  }
+
+  if (headerRowLabels.length === 0) {
     await downloadExcelFile(workbook, tableName)
     return
   }
 
-  worksheet.addRow(backendKeys)
+  worksheet.addRow(headerRowLabels)
   styleExportHeaderRow(worksheet)
 
   if (items && items.length > 0) {
-    addExportDataRows(worksheet, items, schemaFields)
+    addExportDataRows(worksheet, items, schemaFields, t)
   }
 
   setColumnFormats(worksheet, schemaFields)
 
   const lastRow = items && items.length > 0 ? items.length + 1 : 1
-  applyExportBorders(worksheet, lastRow, backendKeys.length)
+  applyExportBorders(worksheet, lastRow, headerRowLabels.length)
 
   await downloadExcelFile(workbook, tableName)
+}
+
+/** Coerce an arbitrary value into a boolean using the same truthy rules as the table. */
+function coerceToBoolean(value: any): boolean {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'number') return value !== 0
+  if (typeof value === 'string') {
+    const v = value.trim().toLowerCase()
+    const truthy = ['true', '1', 'yes', 'y', 'sí', 'si', 'oui']
+    return truthy.includes(v)
+  }
+  return Boolean(value)
 }
 
 /**
  * Format value according to its schema type for Excel export
  */
-function formatValueByType(value, type) {
+function formatValueByType(value, type, t?: any) {
   if (value === null || value === undefined) {
     return ''
   }
 
   switch (type) {
-    case 'boolean':
-      return typeof value === 'boolean'
-        ? value
-        : value === 'true' || value === '1'
+    case 'boolean': {
+      const bool = coerceToBoolean(value)
+      // Write booleans as the same Yes/No text the table shows. Avoids issues
+      // where ExcelJS boolean cells combined with text column format render
+      // inconsistently across Excel locales.
+      const yes = (typeof t === 'function' ? t('table.yes') : null) || 'Yes'
+      const no = (typeof t === 'function' ? t('table.no') : null) || 'No'
+      return bool ? yes : no
+    }
     case 'integer':
       return typeof value === 'number'
         ? Math.floor(value)
-        : parseInt(value) || 0
+        : Number.parseInt(value) || 0
     case 'number':
-      return typeof value === 'number' ? value : parseFloat(value) || 0
+      return typeof value === 'number' ? value : Number.parseFloat(value) || 0
     case 'string':
     default:
       return String(value)
@@ -561,6 +906,7 @@ function formatValueByType(value, type) {
 export {
   loadExcel,
   schemaDataToTable,
+  buildExcelBuffer,
   exportTableToExcel,
   toISOStringLocal,
   formatDateForHeaders,

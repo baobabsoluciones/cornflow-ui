@@ -37,6 +37,7 @@
             :existingInstanceErrors="existingInstanceErrors"
             @filesSelected="handleFilesSelected"
             @instanceSelected="handleInstanceSelected"
+            @externalEtlData="handleExternalEtlData"
             @update:existingInstanceErrors="existingInstanceErrors = $event"
             class="mt-4"
           >
@@ -50,6 +51,8 @@
             :newExecution="newExecution"
             :instanceErrors="existingInstanceErrors"
             :isEditMode="isEditMode"
+            :externalEtlFlow="externalEtlFlow.isActive ? externalEtlFlow.state : null"
+            :is-step-active="currentStep === reviewInstanceStepIndex"
             @update:instance="handleInstanceSelected"
             @update:instanceErrors="existingInstanceErrors = $event"
             @has-pending-changes="hasPendingTableChanges = $event"
@@ -62,6 +65,7 @@
             :newExecution="newExecution"
             @update:instance="handleInstanceSelected"
             @checks-launching="checksLaunching = $event"
+            @blocking-errors="checksHasBlockingErrors = $event"
           />
         </template>
 
@@ -85,6 +89,7 @@
           <CreateExecutionSolve
             :newExecution="newExecution"
             @resetAndLoadNewExecution="resetAndLoadNewExecution"
+            @executionLaunched="executionAlreadyLaunched = true"
           ></CreateExecutionSolve>
         </template>
       </template>
@@ -124,7 +129,7 @@
   <!-- Unsaved changes warning modal (for step changes) -->
   <UnsavedChangesWarningModal
     v-model="showUnsavedChangesModal"
-    :changes-count="tableChanges.totalChangesCount.value"
+    :changes-count="tableChanges.totalChangesCount"
     @stay="handleStayOnStep"
     @leave="handleLeaveStep"
   />
@@ -139,9 +144,10 @@ import CreateExecutionSolve from '@/components/project-execution/CreateExecution
 import CreateExecutionConfigParams from '@/components/project-execution/CreateExecutionConfigParams.vue'
 import UnsavedChangesWarningModal from '@/components/core/UnsavedChangesWarningModal.vue'
 import { useGeneralStore } from '@/stores/general'
-import { inject, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { inject } from 'vue'
+import { useRoute } from 'vue-router'
 import { useTableChanges } from '@/composables/useTableChanges'
+import { useEtlFlowController } from '@/composables/project-execution/useEtlFlowController'
 
 export default {
   components: {
@@ -167,8 +173,10 @@ export default {
       },
       existingInstanceErrors: null,
       checksLaunching: false,
+      checksHasBlockingErrors: false,
       isEditMode: false,
       showExitConfirmationModal: false,
+      executionAlreadyLaunched: false,
       pendingNavigation: null,
       pendingNavigationTo: null,
       componentKey: 0,
@@ -178,6 +186,7 @@ export default {
       pendingStepChange: null,
       formStepsKey: 0,
       tableChanges: useTableChanges(),
+      externalEtlFlow: useEtlFlowController(),
     }
   },
   created() {
@@ -192,6 +201,12 @@ export default {
     this.initializeStep()
   },
   beforeRouteLeave(to, from, next) {
+    // If the last step (solve) was already executed, allow leaving without confirmation
+    if (this.executionAlreadyLaunched) {
+      next()
+      return
+    }
+
     // Check if there's any progress to lose (including pending table changes)
     const hasProgress = this.hasProgressToLose() || this.hasPendingTableChanges
 
@@ -261,7 +276,7 @@ export default {
         const reviewIndex = steps.findIndex(
           (step) => step.key === 'reviewInstance',
         )
-        this.currentStep = reviewIndex >= 0 ? reviewIndex : 0
+        this.currentStep = Math.max(reviewIndex, 0)
       })
     },
 
@@ -270,7 +285,7 @@ export default {
       // Use tableChanges.hasChanges (singleton) so we don't depend on child event timing
       const currentStepKey = this.steps[this.currentStep]?.key
       const hasPending =
-        this.tableChanges.hasChanges.value || this.hasPendingTableChanges
+        this.tableChanges.hasChanges || this.hasPendingTableChanges
       if (currentStepKey === 'reviewInstance' && hasPending) {
         // Store the pending step change and show warning modal; do NOT update currentStep
         this.pendingStepChange = newStep
@@ -283,8 +298,70 @@ export default {
       await this.proceedWithStepChange(newStep)
     },
 
+    // Submit the external ETL update when leaving reviewInstance going forward.
+    // Returns true if the step change should be aborted (submit failed).
+    async submitExternalEtlUpdate() {
+      try {
+        const instanceData = this.newExecution.instance?.data
+        if (instanceData) {
+          const { data: finalData, warning } =
+            await this.externalEtlFlow.submitUpdate(instanceData)
+          const { Instance } = this.generalStore.appConfig
+          const schemas = this.generalStore.getSchemaConfig
+          const updatedInstance = new Instance(
+            null,
+            finalData,
+            schemas.instanceSchema,
+            schemas.instanceChecksSchema,
+            this.generalStore.getSchemaName,
+          )
+          this.newExecution.instance = updatedInstance
+          this.externalEtlFlow.reset()
+          if (warning && this.showSnackbar) {
+            this.showSnackbar(warning, 'warning', { persistent: true })
+          }
+        }
+        return false
+      } catch (error) {
+        console.error('ETL update failed:', error)
+        if (this.showSnackbar) {
+          this.showSnackbar(error.message || 'ETL update failed', 'error')
+        }
+        // Force MFormSteps to re-render at the current step so the UI doesn't visually advance
+        this.formStepsKey += 1
+        return true
+      }
+    },
+
+    // Whether config field values must be auto-loaded before moving to the given step
+    shouldAutoLoadConfigFieldValues(nextStepKey) {
+      const configFieldsConfig =
+        this.generalStore.appConfig.parameters.configFieldsConfig
+      const stepNeedsValues =
+        nextStepKey === 'checkData' ||
+        nextStepKey === 'configParams' ||
+        nextStepKey === 'solve'
+      return (
+        !configFieldsConfig?.showConfigFieldsStep &&
+        configFieldsConfig?.autoLoadValues &&
+        stepNeedsValues
+      )
+    },
+
     async proceedWithStepChange(newStep) {
-      // If we're skipping the solver step, ensure the solver is set
+      const currentStepKey = this.steps[this.currentStep]?.key
+      // (no shell instance needed: with ETL the user must always load via a button)
+
+      // If leaving reviewInstance with external ETL flow active, submit the update first
+      const leavingReviewWithEtl =
+        currentStepKey === 'reviewInstance' &&
+        this.externalEtlFlow.isActive &&
+        newStep > this.currentStep
+      if (leavingReviewWithEtl) {
+        const aborted = await this.submitExternalEtlUpdate()
+        if (aborted) return
+      }
+
       if (
         !this.generalStore.appConfig.parameters.solverConfig?.showSolverStep
       ) {
@@ -293,15 +370,7 @@ export default {
       }
       // If we're skipping the config fields step, ensure values are loaded before steps that need them
       const nextStepKey = this.steps[newStep]?.key
-      if (
-        !this.generalStore.appConfig.parameters.configFieldsConfig
-          ?.showConfigFieldsStep &&
-        this.generalStore.appConfig.parameters.configFieldsConfig
-          ?.autoLoadValues &&
-        (nextStepKey === 'checkData' ||
-          nextStepKey === 'configParams' ||
-          nextStepKey === 'solve')
-      ) {
+      if (this.shouldAutoLoadConfigFieldValues(nextStepKey)) {
         await this.loadConfigFieldValues()
       }
       this.currentStep = newStep
@@ -440,9 +509,9 @@ export default {
 
     convertValueByType(value, type) {
       if (type === 'float') {
-        return parseFloat(value)
+        return Number.parseFloat(value)
       } else if (type === 'number') {
-        return parseInt(value)
+        return Number.parseInt(value)
       }
       return value
     },
@@ -536,6 +605,10 @@ export default {
       return order
     },
 
+
+    handleExternalEtlData(rawData) {
+      this.externalEtlFlow.initializeFromEtlResponse(rawData)
+    },
     handleFilesSelected(files) {
       this.selectedFiles = [...files]
     },
@@ -552,8 +625,8 @@ export default {
       }
     },
     resetAndLoadNewExecution() {
+      this.externalEtlFlow.reset()
       Object.assign(this.$data, this.$options.data())
-      // Reinitialize the store since we reset the data
       this.generalStore = useGeneralStore()
     },
 
@@ -640,11 +713,10 @@ export default {
 
       return (
         (currentStepKey === 'nameDescription' && !this.newExecution.name) ||
-        (currentStepKey === 'loadInstance' &&
-          (!this.newExecution.instance || this.existingInstanceErrors)) ||
+        (currentStepKey === 'loadInstance' && this.loadInstanceStepBlocked) ||
         (currentStepKey === 'reviewInstance' &&
           (!this.newExecution.instance || this.existingInstanceErrors)) ||
-        (currentStepKey === 'checkData' && this.checksLaunching) ||
+        (currentStepKey === 'checkData' && (this.checksLaunching || this.checksHasBlockingErrors)) ||
         (this.generalStore.appConfig.parameters.solverConfig?.showSolverStep &&
           currentStepKey === 'selectSolver' &&
           !this.newExecution.config.solver) ||
@@ -678,6 +750,31 @@ export default {
     },
     steps() {
       return this.getExecutionSteps()
+    },
+    reviewInstanceStepIndex() {
+      return this.steps.findIndex((s) => s.key === 'reviewInstance')
+    },
+    loadInstanceStepBlocked() {
+      const currentStepKey = this.steps[this.currentStep]?.key
+      if (currentStepKey !== 'loadInstance') return false
+
+      if (this.existingInstanceErrors) return true
+
+      const etl = this.generalStore.appConfig.parameters.etl
+
+      // When ETL is active (useEtlBackend, enableLoadFromDb or alternativeParameterFields),
+      // the user must always load data via one of the available buttons before continuing.
+      const isEtlMode =
+        etl?.useEtlBackend ||
+        etl?.enableLoadFromDb ||
+        (etl?.alternativeParameterFields?.length ?? 0) > 0
+
+      if (isEtlMode) {
+        return !this.newExecution.instance
+      }
+
+      // Default: file upload required
+      return !this.newExecution.instance
     },
     isConfigFieldsIncomplete() {
       const fields = this.generalStore.appConfig.parameters.configFields || []

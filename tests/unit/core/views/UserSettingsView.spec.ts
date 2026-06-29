@@ -6,6 +6,18 @@ import { createI18n } from 'vue-i18n'
 import UserSettingsView from '@/views/UserSettingsView.vue'
 import { useGeneralStore } from '@/stores/general'
 
+const mockChangeLanguage = vi.hoisted(() => vi.fn())
+
+vi.mock('@/plugins/i18n', () => ({
+  default: {
+    global: {
+      locale: { value: 'en' },
+    },
+  },
+  changeLanguage: mockChangeLanguage,
+  locale: { value: 'en' },
+}))
+
 // Mock config
 const mockConfig = vi.hoisted(() => ({
   auth: {
@@ -79,6 +91,8 @@ const createWrapper = (authType = 'cornflow') => {
     }
   })
 
+  mockChangeLanguage.mockClear()
+
   // Mock the store
   const generalStore = useGeneralStore()
   generalStore.user = { id: 1, name: 'Test User' }
@@ -137,7 +151,7 @@ const createWrapper = (authType = 'cornflow') => {
     }
   })
 
-  return { wrapper, generalStore, mockShowSnackbar }
+  return { wrapper, generalStore, mockShowSnackbar, i18n }
 }
 
 describe('UserSettingsView', () => {
@@ -377,11 +391,18 @@ describe('UserSettingsView', () => {
 
   describe('Watchers', () => {
     test('language watcher updates locale', async () => {
-      const { wrapper } = createWrapper()
-      
-      await wrapper.setData({ language: 'es' })
-      
-      expect(wrapper.vm.locale).toBe('es')
+      const { wrapper, i18n } = createWrapper()
+      const languageWatcher = wrapper.vm.$options.watch?.language
+      const handler =
+        typeof languageWatcher === 'function'
+          ? languageWatcher
+          : languageWatcher?.handler
+
+      handler.call(wrapper.vm, 'es', 'en')
+      await wrapper.vm.$nextTick()
+
+      expect(mockChangeLanguage).toHaveBeenCalledWith('es')
+      expect(i18n.global.locale.value).toBe('es')
     })
   })
 

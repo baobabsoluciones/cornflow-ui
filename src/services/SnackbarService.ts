@@ -1,8 +1,12 @@
 import { reactive } from 'vue'
 
+export const MAX_SNACKBAR_MESSAGE_LENGTH = 150
+
 export interface SnackbarState {
   show: boolean
   message: string
+  /** Full message for download when message is truncated (length > MAX_SNACKBAR_MESSAGE_LENGTH). */
+  fullMessage: string | null
   color: string
   timeout: number
 }
@@ -24,6 +28,7 @@ export type SnackbarColor = keyof typeof SNACKBAR_COLORS
 export const snackbar = reactive<SnackbarState>({
   show: false,
   message: '',
+  fullMessage: null,
   color: SNACKBAR_COLORS.success,
   timeout: DEFAULT_TIMEOUT,
 })
@@ -38,11 +43,18 @@ export function showSnackbar(
     timeout ?? (color === 'error' ? ERROR_TIMEOUT : DEFAULT_TIMEOUT)
 
   snackbar.show = true
-  snackbar.message = message
+  if (message.length > MAX_SNACKBAR_MESSAGE_LENGTH) {
+    snackbar.message = message.slice(0, MAX_SNACKBAR_MESSAGE_LENGTH) + '…'
+    snackbar.fullMessage = message
+  } else {
+    snackbar.message = message
+    snackbar.fullMessage = null
+  }
   snackbar.color = SNACKBAR_COLORS[color]
   snackbar.timeout = effectiveTimeout
 }
 
 export function hideSnackbar(): void {
   snackbar.show = false
+  snackbar.fullMessage = null
 }

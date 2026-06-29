@@ -505,6 +505,11 @@ describe('data_io utilities', () => {
     test('processes object data correctly', async () => {
       const mockWorkbook = {
         addWorksheet: vi.fn().mockReturnValue({
+          addRow: vi.fn().mockReturnValue({
+            eachCell: vi.fn((cb: (cell: any) => void) => {
+              cb({ fill: {}, font: {}, border: {} })
+            }),
+          }),
           addRows: vi.fn(),
           getColumn: vi.fn().mockReturnValue({ width: 0 }),
           getCell: vi.fn().mockReturnValue({
@@ -595,6 +600,46 @@ describe('data_io utilities', () => {
       await schemaDataToTable(mockWorkbook, data, schema)
 
       expect(mockWorkbook.addWorksheet).toHaveBeenCalledWith('EmptyTable')
+    })
+
+    test('skips tables without schema when includeTablesWithoutSchema is false', async () => {
+      const mockWorkbook = {
+        addWorksheet: vi.fn().mockReturnValue({
+          addRows: vi.fn(),
+          getColumn: vi.fn().mockReturnValue({ width: 0 }),
+          getCell: vi.fn().mockReturnValue({
+            fill: {},
+            font: {},
+            border: {},
+          }),
+        }),
+      }
+
+      const data = {
+        KnownTable: [{ id: 1, name: 'Known' }],
+        UnknownTable: [{ id: 2, name: 'Unknown' }],
+      }
+
+      const schema = {
+        properties: {
+          KnownTable: {
+            type: 'array',
+            items: {
+              properties: {
+                id: { type: 'integer' },
+                name: { type: 'string' },
+              },
+            },
+          },
+        },
+      }
+
+      await schemaDataToTable(mockWorkbook, data, schema, {
+        includeTablesWithoutSchema: false,
+      })
+
+      expect(mockWorkbook.addWorksheet).toHaveBeenCalledWith('KnownTable')
+      expect(mockWorkbook.addWorksheet).not.toHaveBeenCalledWith('UnknownTable')
     })
   })
 })

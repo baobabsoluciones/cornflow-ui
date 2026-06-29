@@ -1,9 +1,17 @@
 import { ref, computed } from 'vue'
 import TableRepository from '@/repositories/TableRepository'
 import { TableOperation } from '@/types/table'
-import { resolveTableConfigTitles } from '@/utils/schemaUtils'
+import {
+  resolveTableConfigTitles,
+  getListResponseRowProperties,
+  normalizeGetListResponseToRows,
+} from '@/utils/schemaUtils'
 import { exportTableToExcel } from '@/utils/data_io'
 import readXlsxFile from 'read-excel-file'
+import {
+  detectDelimiter,
+  parseCsvContent as parseCsvWithDelimiter,
+} from '@/utils/csvUtils'
 
 export function useTableOperations(
   tableConfig: any,
@@ -50,17 +58,11 @@ export function useTableOperations(
   })
 
   const canAddItems = computed(() => {
-    return (
-      tableRepository.value &&
-      tableRepository.value.isOperationSupported(TableOperation.POST_ITEM)
-    )
+    return tableRepository.value?.isOperationSupported(TableOperation.POST_ITEM)
   })
 
   const canEditItems = computed(() => {
-    return (
-      tableRepository.value &&
-      tableRepository.value.isOperationSupported(TableOperation.PUT_ITEM)
-    )
+    return tableRepository.value?.isOperationSupported(TableOperation.PUT_ITEM)
   })
 
   const canDeleteItems = computed(() => {
@@ -125,10 +127,13 @@ export function useTableOperations(
     loading.value = true
     try {
       if (
-        tableRepository.value &&
-        tableRepository.value.isOperationSupported(TableOperation.GET_LIST)
+        tableRepository.value?.isOperationSupported(TableOperation.GET_LIST)
       ) {
-        allItems.value = await tableRepository.value.getList()
+        const raw = await tableRepository.value.getList()
+        allItems.value = normalizeGetListResponseToRows(
+          raw,
+          tableConfig.value,
+        )
       } else {
         allItems.value = []
       }
@@ -168,13 +173,13 @@ export function useTableOperations(
   }
 
   const initializeFormFields = () => {
-    if (tableConfig.value?.get_list?.response_schema?.items?.properties) {
-      const properties =
-        tableConfig.value.get_list.response_schema.items.properties
-      // Filter out 'id' field and readOnly fields from form fields
+    const rowSchema = getListResponseRowProperties(tableConfig.value)
+    if (rowSchema?.properties) {
+      const properties = rowSchema.properties
+      // Filter out 'id' field and frontendReadOnly fields from form fields
       const filteredProperties: any = {}
       Object.entries(properties).forEach(([key, field]: [string, any]) => {
-        if (key !== 'id' && !field.readOnly) {
+        if (key !== 'id' && !field.frontendReadOnly) {
           filteredProperties[key] = field
         }
       })
@@ -209,13 +214,13 @@ export function useTableOperations(
     saving.value = true
     try {
       if (isEditing.value) {
-        await tableRepository.value!.putItem(
+        await tableRepository.value.putItem(
           currentItem.value.id,
           formDataToSave,
         )
         showSnackbar($t('table.itemUpdated'), 'success')
       } else {
-        await tableRepository.value!.createItem(formDataToSave)
+        await tableRepository.value.createItem(formDataToSave)
         showSnackbar($t('table.itemAdded'), 'success')
       }
       await loadData()
@@ -239,7 +244,7 @@ export function useTableOperations(
   const confirmDelete = async () => {
     deleting.value = true
     try {
-      await tableRepository.value!.deleteItem(itemToDelete.value.id)
+      await tableRepository.value.deleteItem(itemToDelete.value.id)
       showSnackbar($t('table.itemDeleted'), 'success')
       await loadData()
       showDeleteDialog.value = false
@@ -262,20 +267,27 @@ export function useTableOperations(
   }
 
   const processBulkUpload = async (uploadData: any) => {
-    if (!uploadData || !uploadData.files || uploadData.files.length === 0)
+    if (!uploadData?.files || uploadData.files.length === 0)
       return
 
     uploading.value = true
     try {
       const file = uploadData.files[0]
-      const data = await parseUploadFile(file)
+      const parsed = await parseUploadFile(file)
 
-      if (Array.isArray(data) && data.length > 0) {
-        // Call the appropriate method based on the selected operation
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const data = parsed.map((row) =>
+          Object.fromEntries(
+            Object.entries(row).map(([k, v]) => [
+              k,
+              v === '' || v === undefined ? null : v,
+            ]),
+          ),
+        )
         if (uploadData.operation === 'overwrite_all') {
-          await tableRepository.value!.overwriteAll(data)
+          await tableRepository.value.overwriteAll(data)
         } else {
-          await tableRepository.value!.createBulk(data)
+          await tableRepository.value.createBulk(data)
         }
 
         showSnackbar($t('table.bulkUploadSuccess'), 'success')
@@ -300,22 +312,23 @@ export function useTableOperations(
       const obj: any = {}
       headers.forEach((header, index) => {
         const value = row[index]
-        obj[header] = value === null || value === undefined ? '' : value
+        obj[header] =
+          value === null || value === undefined || value === '' ? null : value
       })
       return obj
     })
   }
 
   /**
-   * Helper: Parse CSV content to objects
+   * Helper: Parse CSV content to objects (supports comma, semicolon, and tab delimiters)
    */
   const parseCsvContent = (content: string): any[] => {
-    const lines = content.split('\n').filter((line) => line.trim())
-    if (lines.length < 2) throw new Error('Invalid CSV format')
-
-    const headers = lines[0].split(',').map((h) => h.trim())
-    const dataRows = lines.slice(1).map((line) => line.split(',').map((v) => v.trim()))
-    return rowsToObjects(headers, dataRows)
+    const trimmed = content.trim()
+    if (!trimmed) throw new Error('Invalid CSV format')
+    const delimiter = detectDelimiter(trimmed)
+    const { tableData } = parseCsvWithDelimiter(trimmed, delimiter)
+    if (!tableData || tableData.length === 0) throw new Error('Invalid CSV format')
+    return tableData
   }
 
   /**
@@ -344,32 +357,21 @@ export function useTableOperations(
     }
 
     // Handle text-based files (JSON, CSV)
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
+    if (extension !== 'json' && extension !== 'csv') {
+      throw new Error($t('table.invalidFileFormat'))
+    }
+    try {
+      const content = await file.text()
 
-      reader.onload = (e) => {
-        try {
-          const content = e.target!.result as string
-
-          if (extension === 'json') {
-            const jsonData = JSON.parse(content)
-            resolve(Array.isArray(jsonData) ? jsonData : [jsonData])
-          } else if (extension === 'csv') {
-            resolve(parseCsvContent(content))
-          } else {
-            reject(new Error($t('table.invalidFileFormat')))
-          }
-        } catch (error) {
-          console.error('File parsing error:', error)
-          reject(new Error($t('table.fileProcessingError')))
-        }
+      if (extension === 'json') {
+        const jsonData = JSON.parse(content)
+        return Array.isArray(jsonData) ? jsonData : [jsonData]
       }
-
-      reader.onerror = () => {
-        reject(new Error($t('table.fileProcessingError')))
-      }
-      reader.readAsText(file)
-    })
+      return parseCsvContent(content)
+    } catch (error) {
+      console.error('File parsing error:', error)
+      throw new Error($t('table.fileProcessingError'))
+    }
   }
 
   const downloadExcel = async () => {
@@ -405,7 +407,7 @@ export function useTableOperations(
 
     for (const item of items) {
       try {
-        await tableRepository.value!.deleteItem(item.id)
+        await tableRepository.value.deleteItem(item.id)
         success.push(item.id)
       } catch (error) {
         console.error(`Failed to delete item ${item.id}:`, error)
@@ -431,7 +433,7 @@ export function useTableOperations(
 
   const confirmBulkDelete = async (selectedItems: any[]) => {
     bulkDeleting.value = true
-    const repo = tableRepository.value!
+    const repo = tableRepository.value
     const supportsDeleteItem = repo.isOperationSupported(TableOperation.DELETE_ITEM)
     const supportsDeleteBulk = repo.isOperationSupported(TableOperation.DELETE_BULK)
 

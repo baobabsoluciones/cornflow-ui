@@ -6,6 +6,7 @@
     :disabled="disabled"
     :value="value"
     :data-tab-value="value"
+    :title="tooltip ?? (title || undefined)"
     type="button"
     role="tab"
     :aria-selected="isSelected"
@@ -19,9 +20,11 @@
         <v-icon :icon="prependIcon || icon" size="20" />
       </span>
       <span class="m-tab__content" :style="contentStyle">
-        <slot>
-          <span v-if="title">{{ title }}</span>
-        </slot>
+        <span class="m-tab__label">
+          <slot>
+            <span v-if="title">{{ title }}</span>
+          </slot>
+        </span>
       </span>
       <span v-if="appendIcon" class="m-tab__append">
         <v-icon :icon="appendIcon" size="20" />
@@ -42,6 +45,8 @@ import { computed, inject, ref, onMounted, onUnmounted, watch } from 'vue'
 interface Props {
   value?: string | number
   title?: string
+  /** Full text for native title (tooltip) when label is truncated */
+  tooltip?: string
   disabled?: boolean
   prependIcon?: string
   appendIcon?: string
@@ -54,6 +59,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   value: undefined,
   title: undefined,
+  tooltip: undefined,
   disabled: false,
   prependIcon: undefined,
   appendIcon: undefined,
@@ -228,14 +234,22 @@ onUnmounted(() => {
   }
 })
 
-// Update registration when label changes
+// Update registration when tab index (value), title, or label text changes — required when parent reorders tabs (e.g. instance table sort)
 watch(
-  () => [props.title, tabElementRef.value?.textContent],
-  () => {
-    if (tabsContext?.registerTab && props.value !== undefined) {
-      tabsContext.registerTab(props.value, getTabLabel(), tabElementRef.value)
+  () => [props.value, props.title, tabElementRef.value?.textContent],
+  (newVals, oldVals) => {
+    if (!tabsContext?.registerTab || props.value === undefined) return
+    const oldValue = oldVals?.[0]
+    if (
+      oldValue !== undefined &&
+      oldValue !== props.value &&
+      tabsContext.unregisterTab
+    ) {
+      tabsContext.unregisterTab(oldValue as string | number)
     }
+    tabsContext.registerTab(props.value, getTabLabel(), tabElementRef.value)
   },
+  { flush: 'post' },
 )
 </script>
 
@@ -246,9 +260,9 @@ watch(
   align-items: center;
   justify-content: center;
   min-width: 90px;
-  max-width: 360px;
+  max-width: 420px;
   height: 48px;
-  padding: 0 24px;
+  padding: 0 20px;
   background-color: transparent !important;
   border: none;
   border-bottom: 3px solid transparent;
@@ -258,12 +272,10 @@ watch(
   transition:
     color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
     border-bottom-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   -webkit-tap-highlight-color: transparent;
   flex-shrink: 0;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .m-tab:hover:not(.m-tab--disabled) {
@@ -302,6 +314,7 @@ watch(
   justify-content: center;
   gap: 8px;
   width: 100%;
+  min-width: 0;
   height: 100%;
 }
 
@@ -314,13 +327,10 @@ watch(
 }
 
 .m-tab__content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
   font-size: 0.875rem !important;
   font-weight: 500 !important;
   line-height: 1.75 !important;
@@ -328,6 +338,16 @@ watch(
   text-transform: uppercase !important;
   color: inherit;
   transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: center;
+}
+
+.m-tab__label {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .m-tab--selected .m-tab__content {
@@ -347,11 +367,6 @@ watch(
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 2px 2px 0 0;
   z-index: 1;
-}
-
-/* Indicator is hidden when tab is selected (we use border instead) */
-.m-tab--selected .m-tab__indicator {
-  display: none !important;
 }
 
 .m-tab--stacked .m-tab__wrapper {

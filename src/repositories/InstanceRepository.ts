@@ -1,7 +1,8 @@
-import JSZip from 'jszip'
 import client from '@/api/Api'
 import { useGeneralStore } from '@/stores/general'
 import { InstanceCore } from '@/models/Instance'
+import { getMessageFromResponseContent } from '@/utils/i18nUtils'
+import { stripInvisibleParameterPropertiesFromInstanceData } from '@/utils/schemaUtils'
 
 export default class InstanceRepository {
   // Get instance by id
@@ -37,17 +38,27 @@ export default class InstanceRepository {
     if (response.status === 201) {
       return response.content
     } else {
-      throw new Error(
-        `Error launching instance data checks: Status ${response.status} - ${response?.content?.message || 'Unknown error'}`,
+      const msg = getMessageFromResponseContent(
+        response?.content,
+        `Error launching instance data checks: Status ${response.status}`,
       )
+      throw new Error(msg)
     }
   }
 
   async createInstance(data) {
+    const store = useGeneralStore()
+    const instanceSchema = store.schemaConfig?.instanceSchema
+    const cleanedData = instanceSchema
+      ? stripInvisibleParameterPropertiesFromInstanceData(
+          data.instance.data,
+          instanceSchema,
+        )
+      : data.instance.data
     const json = {
-      data: data.instance.data,
+      data: cleanedData,
       name: data.name,
-      schema: useGeneralStore().getSchemaName,
+      schema: store.getSchemaName,
     }
     const response = await client.post('/instance/', json, {
       'Content-Type': 'application/json',
@@ -58,45 +69,5 @@ export default class InstanceRepository {
     } else {
       throw new Error('Error creating instance')
     }
-  }
-
-  async etlBackend(files: File[]): Promise<any> {
-    const store = useGeneralStore()
-    const sendAsZip =
-      store.appConfig.parameters.sendInstanceFilesAsZip === true
-
-    const formData = new FormData()
-    if (sendAsZip && files.length > 0) {
-      const zip = new JSZip()
-      for (const file of files) {
-        zip.file(file.name, file)
-      }
-      const zipBlob = await zip.generateAsync({
-        type: 'blob',
-        compression: 'DEFLATE',
-        compressionOptions: { level: 6 },
-      })
-      formData.append('file', zipBlob, 'instance.zip')
-    } else {
-      for (const file of files) {
-        formData.append('files', file)
-      }
-    }
-
-    const response = await client.post('/etl/', formData, {}, true)
-
-    if (response.status === 200 || response.status === 201) {
-      return response.content
-    }
-
-    const error: any = new Error('Upload failed')
-    if (Array.isArray(response.content)) {
-      error.details = response.content
-    } else if (response.content && Array.isArray(response.content.errors)) {
-      error.details = response.content.errors
-    } else if (response.content && response.content.message) {
-      error.message = response.content.message
-    }
-    throw error
   }
 }

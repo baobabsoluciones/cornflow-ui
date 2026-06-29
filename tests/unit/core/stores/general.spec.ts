@@ -108,61 +108,82 @@ vi.mock('@/api/Api', () => ({
   },
 }))
 
-// Mock repositories with comprehensive methods
-const mockSchemaRepository = {
-  getSchema: vi.fn(),
-}
+// Master-data config now comes from the frontend-automation premium module via the
+// extension registry. Override that hook; keep the rest of the registry real.
+const mockLoadPremiumMasterDataConfig = vi.hoisted(() => vi.fn())
+vi.mock('@/plugins/extensions', async (orig) => ({
+  ...((await orig()) as object),
+  loadPremiumMasterDataConfig: mockLoadPremiumMasterDataConfig,
+}))
 
-const mockExecutionRepository = {
+// Mock repositories with comprehensive methods
+const mockSchemaRepository = vi.hoisted(() => ({
+  getSchema: vi.fn(),
+}))
+
+const mockExecutionRepository = vi.hoisted(() => ({
   getExecutions: vi.fn(),
+  getExecutionState: vi.fn(),
   loadExecution: vi.fn(),
   createExecution: vi.fn(),
   uploadSolutionData: vi.fn(),
   deleteExecution: vi.fn(),
   getDataToDownload: vi.fn(),
-}
+}))
 
-const mockInstanceRepository = {
+const mockInstanceRepository = vi.hoisted(() => ({
   getInstance: vi.fn(),
   createInstance: vi.fn(),
   launchInstanceDataChecks: vi.fn(),
-}
+}))
 
-const mockUserRepository = {
+const mockUserRepository = vi.hoisted(() => ({
   getUserById: vi.fn(),
   changePassword: vi.fn(),
-}
+}))
 
-const mockLicenceRepository = {
+const mockLicenceRepository = vi.hoisted(() => ({
   getLicences: vi.fn(),
-}
+}))
 
-const mockVersionRepository = {
+const mockVersionRepository = vi.hoisted(() => ({
   getCornflowVersion: vi.fn(),
-}
+}))
 
 vi.mock('@/repositories/SchemaRepository', () => ({
-  default: vi.fn(() => mockSchemaRepository),
+  default: vi.fn(function () {
+    return mockSchemaRepository
+  }),
 }))
 
 vi.mock('@/repositories/ExecutionRepository', () => ({
-  default: vi.fn(() => mockExecutionRepository),
+  default: vi.fn(function () {
+    return mockExecutionRepository
+  }),
 }))
 
 vi.mock('@/repositories/InstanceRepository', () => ({
-  default: vi.fn(() => mockInstanceRepository),
+  default: vi.fn(function () {
+    return mockInstanceRepository
+  }),
 }))
 
 vi.mock('@/repositories/UserRepository', () => ({
-  default: vi.fn(() => mockUserRepository),
+  default: vi.fn(function () {
+    return mockUserRepository
+  }),
 }))
 
 vi.mock('@/repositories/LicenceRepository', () => ({
-  default: vi.fn(() => mockLicenceRepository),
+  default: vi.fn(function () {
+    return mockLicenceRepository
+  }),
 }))
 
 vi.mock('@/repositories/VersionRepository', () => ({
-  default: vi.fn(() => mockVersionRepository),
+  default: vi.fn(function () {
+    return mockVersionRepository
+  }),
 }))
 
 // Mock utility modules - keeping only the ones that exist
@@ -171,6 +192,9 @@ describe('General Store', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    // Default: no premium master-data unless a test opts in (avoids impl leaking
+    // across tests, since clearAllMocks keeps mockResolvedValue implementations).
+    mockLoadPremiumMasterDataConfig.mockReset()
   })
 
   describe('State', () => {
@@ -1112,12 +1136,20 @@ describe('General Store', () => {
       const updatedExecution = { ...execution, state: 1 }
 
       store.loadedExecutions = [execution]
+      // Poll uses lightweight state first; full payload loads only after a transition.
+      mockExecutionRepository.getExecutionState.mockResolvedValue({
+        state: 1,
+        id: '1',
+      })
       mockExecutionRepository.loadExecution.mockResolvedValue(updatedExecution)
 
       store.autoLoadExecutions()
 
       await vi.advanceTimersByTimeAsync(4000)
 
+      expect(mockExecutionRepository.getExecutionState).toHaveBeenCalledWith(
+        execution.executionId,
+      )
       expect(mockExecutionRepository.loadExecution).toHaveBeenCalledWith(
         execution.executionId,
       )
@@ -1132,6 +1164,457 @@ describe('General Store', () => {
       store.autoLoadExecutions()
 
       expect(clearIntervalSpy).toHaveBeenCalledWith(123)
+    })
+  })
+
+  // ─── Helpers for the additional coverage suites ────────────────────────────
+  // The store builds its repositories from real constructors (the heavy network
+  // methods bottom out in the mocked `@/api/Api`). For deterministic control we
+  // overwrite the repository instances on the store with lightweight fakes.
+  function fakeWarningsRepo() {
+    return {
+      getWarnings: vi.fn(),
+    }
+  }
+  function fakeRoleRepo() {
+    return {
+      getAllUserRoleAssignments: vi.fn().mockResolvedValue([]),
+    }
+  }
+
+  // Latest-plan store behaviour lives in
+  // tests/unit/core/modules/latest-plan/latestPlanStore.spec.ts after the carve.
+
+  describe('Warnings', () => {
+    test('fetchWarnings returns early when disabled', async () => {
+      const store = useGeneralStore()
+      store.appConfig.parameters.enableWarnings = false
+      const repo = fakeWarningsRepo()
+      store.warningsRepository = repo as any
+
+      await store.fetchWarnings()
+
+      expect(repo.getWarnings).not.toHaveBeenCalled()
+    })
+
+    test('fetchWarnings stores results when enabled', async () => {
+      const store = useGeneralStore()
+      store.appConfig.parameters.enableWarnings = true
+      const repo = fakeWarningsRepo()
+      repo.getWarnings.mockResolvedValue([{ message: 'w1' }])
+      store.warningsRepository = repo as any
+
+      await store.fetchWarnings()
+
+      expect(store.warnings).toEqual([{ message: 'w1' }])
+      expect(store.getWarnings).toEqual([{ message: 'w1' }])
+    })
+
+    test('fetchWarnings swallows errors to empty array', async () => {
+      const store = useGeneralStore()
+      store.appConfig.parameters.enableWarnings = true
+      store.warnings = [{ message: 'old' }] as any
+      const repo = fakeWarningsRepo()
+      repo.getWarnings.mockRejectedValue(new Error('fail'))
+      store.warningsRepository = repo as any
+
+      await store.fetchWarnings()
+
+      expect(store.warnings).toEqual([])
+    })
+  })
+
+  describe('fetchUser with role assignments', () => {
+    test('derives roles and admin status', async () => {
+      const store = useGeneralStore()
+      const session = await import('@/services/AuthService')
+      vi.mocked(session.default.getUserId).mockReturnValue('7' as any)
+      mockUserRepository.getUserById.mockResolvedValue({ id: '7', roles: [] })
+      const roleRepo = {
+        getAllUserRoleAssignments: vi.fn().mockResolvedValue([
+          { user_id: 7, role_id: 1, role: 'admin' },
+          { user_id: 99, role_id: 2, role: 'viewer' },
+        ]),
+      }
+      store.roleRepository = roleRepo as any
+
+      await store.fetchUser()
+
+      expect((store.user as any).roles).toEqual([{ id: 1, name: 'admin' }])
+      expect(sessionStorage.getItem('isAdmin')).toBe('true')
+      expect(JSON.parse(sessionStorage.getItem('userRoles') || '[]')).toEqual([
+        'admin',
+      ])
+      expect(store.isAdmin).toBe(true)
+    })
+  })
+
+  describe('runHistoricalKpiFlow & historical helpers', () => {
+    beforeEach(() => vi.useFakeTimers())
+    afterEach(() => vi.useRealTimers())
+
+    test('create error sets error banner', async () => {
+      const store = useGeneralStore()
+      const execRepo = {
+        createHistoricalKpisExecution: vi
+          .fn()
+          .mockRejectedValue(new Error('create-hist-fail')),
+      }
+      store.executionRepository = execRepo as any
+
+      await store.runHistoricalKpiFlow('2024-01-01', '2024-01-31')
+
+      expect(store.historical.bannerMode).toBe('error')
+      expect(store.historical.errorMessage).toBe('create-hist-fail')
+    })
+
+    test('data-check error sets error banner', async () => {
+      const store = useGeneralStore()
+      const execRepo = {
+        createHistoricalKpisExecution: vi.fn().mockResolvedValue('h1'),
+        startDataCheckKpisForExecution: vi
+          .fn()
+          .mockRejectedValue(new Error('dc-fail')),
+      }
+      store.executionRepository = execRepo as any
+
+      await store.runHistoricalKpiFlow('2024-01-01', '2024-01-31')
+
+      expect(store.historical.executionId).toBe('h1')
+      expect(store.historical.bannerMode).toBe('error')
+    })
+
+    test('successful flow with KPIs and no checks -> done', async () => {
+      const store = useGeneralStore()
+      const execRepo = {
+        createHistoricalKpisExecution: vi.fn().mockResolvedValue('h1'),
+        startDataCheckKpisForExecution: vi.fn().mockResolvedValue(undefined),
+        loadExecution: vi.fn().mockResolvedValue({
+          state: 1,
+          experiment: {
+            solution: { rawKpis: { kpi1: 5 }, dataChecks: {} },
+            instance: { dataChecks: {} },
+          },
+        }),
+      }
+      store.executionRepository = execRepo as any
+
+      await store.runHistoricalKpiFlow('2024-01-01', '2024-01-31')
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(store.historical.bannerMode).toBe('done')
+      expect(store.historical.execution).toBeTruthy()
+    })
+
+    test('negative state -> error', async () => {
+      const store = useGeneralStore()
+      const execRepo = {
+        createHistoricalKpisExecution: vi.fn().mockResolvedValue('h1'),
+        startDataCheckKpisForExecution: vi.fn().mockResolvedValue(undefined),
+        loadExecution: vi.fn().mockResolvedValue({ state: -1 }),
+      }
+      store.executionRepository = execRepo as any
+
+      await store.runHistoricalKpiFlow('2024-01-01', '2024-01-31')
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(store.historical.bannerMode).toBe('error')
+    })
+
+    test('checks present with empty KPIs -> checks_error', async () => {
+      const store = useGeneralStore()
+      const execRepo = {
+        createHistoricalKpisExecution: vi.fn().mockResolvedValue('h1'),
+        startDataCheckKpisForExecution: vi.fn().mockResolvedValue(undefined),
+        loadExecution: vi.fn().mockResolvedValue({
+          state: 1,
+          experiment: {
+            solution: { rawKpis: {}, dataChecks: { t: [{ x: 1 }] } },
+            instance: { dataChecks: {} },
+          },
+        }),
+      }
+      store.executionRepository = execRepo as any
+
+      await store.runHistoricalKpiFlow('2024-01-01', '2024-01-31')
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(store.historical.bannerMode).toBe('checks_error')
+      expect(store.historical.checksData).toBeTruthy()
+    })
+
+    test('checks present with KPIs -> checks_warning', async () => {
+      const store = useGeneralStore()
+      const execRepo = {
+        createHistoricalKpisExecution: vi.fn().mockResolvedValue('h1'),
+        startDataCheckKpisForExecution: vi.fn().mockResolvedValue(undefined),
+        loadExecution: vi.fn().mockResolvedValue({
+          state: 1,
+          experiment: {
+            solution: { rawKpis: { k: 1 }, dataChecks: { t: [{ x: 1 }] } },
+            instance: { dataChecks: {} },
+          },
+        }),
+      }
+      store.executionRepository = execRepo as any
+
+      await store.runHistoricalKpiFlow('2024-01-01', '2024-01-31')
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(store.historical.bannerMode).toBe('checks_warning')
+    })
+
+    test('still-running reschedules poll', async () => {
+      const store = useGeneralStore()
+      const execRepo = {
+        createHistoricalKpisExecution: vi.fn().mockResolvedValue('h1'),
+        startDataCheckKpisForExecution: vi.fn().mockResolvedValue(undefined),
+        loadExecution: vi
+          .fn()
+          .mockResolvedValueOnce({ state: 0 })
+          .mockResolvedValueOnce({
+            state: 1,
+            experiment: {
+              solution: { rawKpis: { k: 1 }, dataChecks: {} },
+              instance: { dataChecks: {} },
+            },
+          }),
+      }
+      store.executionRepository = execRepo as any
+
+      await store.runHistoricalKpiFlow('2024-01-01', '2024-01-31')
+      await vi.advanceTimersByTimeAsync(0)
+      expect(store.historical.bannerMode).toBe('polling')
+      await vi.advanceTimersByTimeAsync(4000)
+
+      expect(store.historical.bannerMode).toBe('done')
+    })
+
+    test('clearHistoricalExecution resets state', () => {
+      const store = useGeneralStore()
+      store.historical = {
+        execution: {} as any,
+        dateRange: { from: 'a', to: 'b' },
+        bannerMode: 'done',
+        executionId: 'x',
+        errorMessage: 'err',
+        checksData: {},
+        checksWarningKeys: ['k'],
+      }
+      store.clearHistoricalExecution()
+      expect(store.historical.bannerMode).toBe('idle')
+      expect(store.historical.execution).toBeNull()
+      expect(store.historical.executionId).toBeNull()
+      expect(store.historicalState.bannerMode).toBe('idle')
+    })
+  })
+
+  describe('refreshRunningExecution', () => {
+    test('no-op when state still running', async () => {
+      const store = useGeneralStore()
+      const execRepo = {
+        getExecutionState: vi.fn().mockResolvedValue({ state: 0 }),
+        loadExecution: vi.fn(),
+      }
+      store.executionRepository = execRepo as any
+
+      await store.refreshRunningExecution({
+        executionId: 'r1',
+        state: 0,
+      } as LoadedExecution)
+
+      expect(execRepo.loadExecution).not.toHaveBeenCalled()
+    })
+
+    test('refreshes and updates selected when transitioned', async () => {
+      const store = useGeneralStore()
+      const updated = { executionId: 'r1', state: 1 }
+      const execRepo = {
+        getExecutionState: vi.fn().mockResolvedValue({ state: 1 }),
+        loadExecution: vi.fn().mockResolvedValue(updated),
+      }
+      store.executionRepository = execRepo as any
+      store.selectedExecution = { executionId: 'r1', state: 0 } as any
+      const addSpy = vi
+        .spyOn(store, 'addLoadedExecution')
+        .mockImplementation(() => {})
+
+      await store.refreshRunningExecution({
+        executionId: 'r1',
+        state: 0,
+      } as LoadedExecution)
+
+      expect(addSpy).toHaveBeenCalledWith(updated)
+      expect(store.selectedExecution).toEqual(updated)
+    })
+
+    test('swallows errors', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const store = useGeneralStore()
+      const execRepo = {
+        getExecutionState: vi.fn().mockRejectedValue(new Error('state-fail')),
+      }
+      store.executionRepository = execRepo as any
+
+      await store.refreshRunningExecution({
+        executionId: 'r1',
+        state: 0,
+      } as LoadedExecution)
+
+      expect(consoleSpy).toHaveBeenCalled()
+      consoleSpy.mockRestore()
+    })
+  })
+
+  describe('User access getters', () => {
+    test('getUserSchemas returns schemas when present', () => {
+      const store = useGeneralStore()
+      store.user = { schemas: ['a', 'b'] } as any
+      expect(store.getUserSchemas).toEqual(['a', 'b'])
+    })
+
+    test('getUserSchemas returns undefined without schemas', () => {
+      const store = useGeneralStore()
+      store.user = {} as any
+      expect(store.getUserSchemas).toBeUndefined()
+    })
+
+    test('userHasFullAccess uses user method when available', () => {
+      const store = useGeneralStore()
+      store.user = { hasFullAccess: () => false } as any
+      expect(store.userHasFullAccess).toBe(false)
+    })
+
+    test('userHasFullAccess defaults to true', () => {
+      const store = useGeneralStore()
+      store.user = {} as any
+      expect(store.userHasFullAccess).toBe(true)
+    })
+  })
+
+  describe('applySchemaConfigToAppConfig', () => {
+    test('applies derived solver config from schema', () => {
+      const store = useGeneralStore()
+      store.schemaConfig = {
+        config: {
+          properties: {
+            solver: { enum: ['s1', 's2'], default: 's1' },
+          },
+        },
+      } as any
+
+      store.applySchemaConfigToAppConfig()
+
+      expect(store.appConfig.parameters.executionSolvers).toBeDefined()
+    })
+
+    test('no-op when schema has no derivable config', () => {
+      const store = useGeneralStore()
+      store.schemaConfig = {} as any
+      const before = store.appConfig.parameters.executionSolvers
+      store.applySchemaConfigToAppConfig()
+      expect(store.appConfig.parameters.executionSolvers).toBe(before)
+    })
+  })
+
+  describe('setConfigurations', () => {
+    test('builds raw configurations from the premium master-data hook + schema repo', async () => {
+      const store = useGeneralStore()
+      mockLoadPremiumMasterDataConfig.mockResolvedValue({
+        config: { md: { title: 'MD' } },
+        sections: [{ key: 's', order: 1 }],
+        groups: [{ key: 'g', order: 1 }],
+      })
+      const repo = {
+        getInstanceTables: vi.fn().mockResolvedValue({ in: {} }),
+        getSolutionTables: vi.fn().mockResolvedValue({ out: {} }),
+      }
+      store.schemaRepository = repo as any
+
+      await store.setConfigurations()
+
+      expect(store.rawConfigurations).toBeTruthy()
+      expect(store.masterDataSections).toEqual([{ key: 's', order: 1 }])
+      expect(store.masterDataGroups).toEqual([{ key: 'g', order: 1 }])
+      expect(store.configurations).not.toBeNull()
+    })
+
+    test('no master-data when no premium module provides it', async () => {
+      const store = useGeneralStore()
+      // No frontend-automation module registered: hook returns null.
+      mockLoadPremiumMasterDataConfig.mockResolvedValue(null)
+      const repo = {
+        getInstanceTables: vi.fn().mockResolvedValue({ in: {} }),
+        getSolutionTables: vi.fn().mockResolvedValue({ out: {} }),
+      }
+      store.schemaRepository = repo as any
+
+      await store.setConfigurations()
+
+      expect(store.rawConfigurations?.masterData).toEqual({})
+      expect(store.masterDataSections).toBeNull()
+      expect(store.masterDataGroups).toBeNull()
+    })
+
+    test('falls back to empty config when all sources reject', async () => {
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const store = useGeneralStore()
+      mockLoadPremiumMasterDataConfig.mockRejectedValue(new Error('no fa'))
+      const repo = {
+        getInstanceTables: vi.fn().mockRejectedValue(new Error('no in')),
+        getSolutionTables: vi.fn().mockRejectedValue(new Error('no out')),
+      }
+      store.schemaRepository = repo as any
+
+      await store.setConfigurations()
+
+      expect(store.rawConfigurations).toEqual({
+        masterData: {},
+        inputData: {},
+        resultsData: {},
+      })
+      expect(store.masterDataSections).toBeNull()
+      consoleSpy.mockRestore()
+    })
+  })
+
+  describe('initializeData guard', () => {
+    test('returns early when already initialized', async () => {
+      const store = useGeneralStore()
+      store.dataInitialized = true
+      const fetchUserSpy = vi
+        .spyOn(store, 'fetchUser')
+        .mockResolvedValue(undefined as any)
+
+      await store.initializeData()
+
+      expect(fetchUserSpy).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('updateLocalizedConfigurations', () => {
+    test('returns early when no raw configurations', () => {
+      const store = useGeneralStore()
+      store.rawConfigurations = null
+      store.updateLocalizedConfigurations()
+      expect(store.configurations).toBeNull()
+    })
+
+    test('builds localized configurations from raw', () => {
+      const store = useGeneralStore()
+      store.rawConfigurations = {
+        masterData: {},
+        inputData: {},
+        resultsData: {},
+      } as any
+      store.user = {} as any
+
+      store.updateLocalizedConfigurations()
+
+      expect(store.configurations).not.toBeNull()
+      expect(store.configurations).toHaveProperty('masterData')
+      expect(store.configurations).toHaveProperty('inputData')
+      expect(store.configurations).toHaveProperty('resultsData')
     })
   })
 })

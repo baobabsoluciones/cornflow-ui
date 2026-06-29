@@ -45,7 +45,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import VueApexCharts from 'vue3-apexcharts'
-import { getChartColors, getCSSVariable } from '@/utils/chartColors'
+import { getChartColors } from '@/utils/chartColors'
 import '@/assets/styles/dashboard.css'
 
 const ApexChart = VueApexCharts

@@ -24,7 +24,7 @@ function getTranslatedKeyword(keyword: string, t?: TranslateFunction): string {
   const keywordKey = `validation.keywords.${keyword}`
   const translated = t(keywordKey)
   // If translation exists (not the same as key), return it, otherwise return original keyword
-  return translated !== keywordKey ? translated : keyword
+  return translated === keywordKey ? keyword : translated
 }
 
 /**
@@ -35,19 +35,19 @@ function getTranslatedParam(paramKey: string, t?: TranslateFunction): string {
   
   const paramKeyTranslation = `validation.params.${paramKey}`
   const translated = t(paramKeyTranslation)
-  return translated !== paramKeyTranslation ? translated : paramKey
+  return translated === paramKeyTranslation ? paramKey : translated
 }
 
 /**
  * Keywords that require the 'limit' parameter
  */
-const LIMIT_KEYWORDS = ['maximum', 'minimum', 'maxLength', 'minLength']
+const LIMIT_KEYWORDS = new Set(['maximum', 'minimum', 'maxLength', 'minLength'])
 
 /**
  * Get translation params for a specific keyword
  */
 function getKeywordParams(keyword: string, params: Record<string, any>): Record<string, any> {
-  if (LIMIT_KEYWORDS.includes(keyword) && params.limit !== undefined) {
+  if (LIMIT_KEYWORDS.has(keyword) && params.limit !== undefined) {
     return { limit: params.limit }
   }
   if (keyword === 'type') {
@@ -73,7 +73,7 @@ function extractFieldName(instancePath: string): string {
   }
   
   // Return the last non-empty part (the field name)
-  return parts[parts.length - 1] || ''
+  return parts.at(-1) || ''
 }
 
 /**
@@ -106,7 +106,7 @@ function getTranslatedType(type: string, t?: TranslateFunction): string {
   
   const typeKey = `validation.types.${type}`
   const translated = t(typeKey)
-  return translated !== typeKey ? translated : type
+  return translated === typeKey ? type : translated
 }
 
 /**
@@ -208,7 +208,7 @@ function groupSimilarErrors(errors: any[]): Map<string, any[]> {
     if (!groups.has(groupKey)) {
       groups.set(groupKey, [])
     }
-    groups.get(groupKey)!.push(error)
+    groups.get(groupKey).push(error)
   }
   
   return groups
@@ -245,10 +245,15 @@ function formatGroupedErrors(
         const params = error.params || {}
         const message = error.message || ''
         
-        errorText = formattedPath 
+        errorText = formattedPath
           ? `<strong>${formattedPath}</strong>: ${translatedKeyword}`
           : translatedKeyword
-        
+
+        // When there is no path/keyword (e.g. ETL backend error), show message as main text
+        if (!errorText && message) {
+          errorText = message
+        }
+
         if (Object.keys(params).length > 0) {
           const paramsStr = Object.entries(params)
             .map(([key, value]) => {
@@ -258,8 +263,8 @@ function formatGroupedErrors(
             .join(', ')
           errorText += ` (${paramsStr})`
         }
-        
-        if (message && !message.includes(keyword)) {
+
+        if (message && !message.includes(keyword) && errorText !== message) {
           errorText += ` - ${message}`
         }
       }
@@ -337,7 +342,7 @@ export function formatSingleErrorWithTitle(
  */
 export function formatErrorDetails(
   title: string,
-  errorDetails: ValidationError[] | string[] | any,
+  errorDetails: any,
   fallbackMessage: string,
   t?: TranslateFunction,
 ): string {

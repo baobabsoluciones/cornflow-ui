@@ -12,9 +12,7 @@
  * const emailRules = [rules.required(), rules.email()]
  */
 
-export interface ValidationRule {
-  (value: any): boolean | string
-}
+export type ValidationRule = (value: any) => boolean | string
 
 export interface FieldConfig {
   type?: string
@@ -72,7 +70,7 @@ export function createValidationRules(
       return (v: any) => {
         if (v === null || v === undefined || v === '') return true // Optional field
         const numValue = Number(v)
-        if (isNaN(numValue)) return t('validation.invalidNumber')
+        if (Number.isNaN(numValue)) return t('validation.invalidNumber')
         return (
           numValue >= minValue ||
           customMessage ||
@@ -88,7 +86,7 @@ export function createValidationRules(
       return (v: any) => {
         if (v === null || v === undefined || v === '') return true // Optional field
         const numValue = Number(v)
-        if (isNaN(numValue)) return t('validation.invalidNumber')
+        if (Number.isNaN(numValue)) return t('validation.invalidNumber')
         return (
           numValue <= maxValue ||
           customMessage ||
@@ -150,7 +148,7 @@ export function createValidationRules(
         if (v === null || v === undefined || v === '') return true // Optional field
         const numValue = Number(v)
         return (
-          !isNaN(numValue) || customMessage || t('validation.invalidNumber')
+          !Number.isNaN(numValue) || customMessage || t('validation.invalidNumber')
         )
       }
     },
@@ -162,7 +160,7 @@ export function createValidationRules(
       return (v: any) => {
         if (v === null || v === undefined || v === '') return true // Optional field
         const numValue = Number(v)
-        if (isNaN(numValue))
+        if (Number.isNaN(numValue))
           return customMessage || t('validation.invalidNumber')
         return (
           Number.isInteger(numValue) || customMessage || t('validation.integer')
@@ -192,7 +190,9 @@ export function createValidationRules(
       return (v: any) => {
         if (!v) return true // Optional field
         const date = new Date(v)
-        return !isNaN(date.getTime()) || customMessage || t('validation.date')
+        return (
+          !Number.isNaN(date.getTime()) || customMessage || t('validation.date')
+        )
       }
     },
 

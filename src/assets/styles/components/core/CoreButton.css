@@ -6,7 +6,6 @@
   border: none;
   outline: none;
   cursor: pointer;
-  font-family: inherit;
 
   /* Flexbox for alignment */
   display: inline-flex;

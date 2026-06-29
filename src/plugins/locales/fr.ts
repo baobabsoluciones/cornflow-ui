@@ -1,4 +1,42 @@
 export default {
+  $vuetify: {
+    dataFooter: {
+      itemsPerPageText: 'Éléments par page :',
+      itemsPerPageAll: 'Tous',
+      pageText: '{0}-{1} sur {2}',
+      nextPage: 'Page suivante',
+      prevPage: 'Page précédente',
+      firstPage: 'Première page',
+      lastPage: 'Dernière page',
+    },
+    dataTable: {
+      itemsPerPageText: 'Éléments par page :',
+      ariaLabel: {
+        sortDescending: 'Tri décroissant.',
+        sortAscending: 'Tri croissant.',
+        sortNone: 'Non trié.',
+        activateAscending: 'Activer pour trier par ordre croissant.',
+        activateDescending: 'Activer pour trier par ordre décroissant.',
+      },
+      sortBy: 'Trier par',
+    },
+    pagination: {
+      ariaLabel: {
+        root: 'Navigation de pagination',
+        currentPage: 'Page {0}, page actuelle',
+        page: 'Aller à la page {0}',
+        next: 'Page suivante',
+        previous: 'Page précédente',
+        first: 'Première page',
+        last: 'Dernière page',
+      },
+    },
+    noDataText: 'Aucune donnée disponible',
+    loading: 'Chargement...',
+  },
+  general: {
+    loading: 'Chargement...',
+  },
   projectExecution: {
     title: 'Exécution du projet',
     description:
@@ -71,8 +109,9 @@ export default {
             'Affichage des {displayed} premières erreurs sur {total}. Téléchargez la liste complète des erreurs pour voir toutes les erreurs.',
           totalErrors: 'Il y a {total} erreurs',
           andMoreErrors: 'et {count} de plus',
-          errorsDownloadStarted: 'Téléchargement du fichier d\'erreurs démarré',
-          errorsDownloadError: 'Erreur lors du téléchargement du fichier d\'erreurs',
+          errorsDownloadStarted: "Téléchargement du fichier d'erreurs démarré",
+          errorsDownloadError:
+            "Erreur lors du téléchargement du fichier d'erreurs",
         },
       },
       step3: {
@@ -85,6 +124,44 @@ export default {
         descriptionTitleField: 'Description',
         namePlaceholder: 'Veuillez insérer un nom',
         descriptionPlaceholder: 'Veuillez insérer une description',
+        loadInstance: {
+          dragAndDropDescription:
+            "Faites glisser et déposez votre ou vos fichiers d'instance ici",
+          uploadFile: 'Télécharger le fichier',
+          noSchemaError:
+            "Aucun schéma n'a été trouvé : êtes-vous connecté au serveur ?",
+          instanceSchemaError: "L'instance ne respecte pas le schéma",
+          instanceLoaded: 'Instance chargée avec succès',
+          instancesLoaded:
+            'Fichiers fusionnés pour créer l’instance et chargés avec succès',
+          warningTitle: 'Avertissement',
+          loadInstance: "Charger l'instance",
+          selectedFiles: 'Fichiers sélectionnés',
+          invalidFileFormat:
+            'Format de fichier non valide. Veuillez réessayer.',
+          unexpectedError:
+            "Une erreur inattendue s'est produite. Veuillez réessayer.",
+          instanceLoadedWithErrors: 'Instance chargée avec des erreurs',
+          noValidInstancesError:
+            'Aucune instance valide trouvée dans les fichiers téléchargés',
+          downloadExcel: 'Télécharger Excel',
+          downloadAllErrors: 'Télécharger toutes les erreurs',
+          showingErrorsTruncated:
+            'Affichage des {displayed} premières erreurs sur {total}. Téléchargez la liste complète des erreurs pour voir toutes les erreurs.',
+          totalErrors: 'Il y a {total} erreurs',
+          andMoreErrors: 'et {count} de plus',
+          errorsDownloadStarted: "Téléchargement du fichier d'erreurs démarré",
+          errorsDownloadError:
+            "Erreur lors du téléchargement du fichier d'erreurs",
+          noFilesSelectedError: 'Veuillez sélectionner au moins un fichier',
+          optionalOrDivider: 'ou',
+          loadParameters: 'Charger les paramètres',
+          alternativeParametersHint:
+            'Saisissez les valeurs ci-dessous et chargez-les comme données d’instance',
+          noParametersDataError: 'Aucune donnée de paramètre à envoyer',
+          noParametersSheetsError:
+            'Impossible de générer le fichier à partir des paramètres (vérifiez les noms de tables dans la configuration)',
+        },
       },
       step4: {
         title: 'Sélectionner le solveur',
@@ -129,6 +206,10 @@ export default {
     },
     stagingWarning:
       "Vous travaillez actuellement dans un environnement de test. Cet environnement est destiné uniquement aux tests et au développement. Pour des exécutions réelles, veuillez utiliser l'environnement de production.",
+    checks: {
+      blockingErrorsFound:
+        'Des erreurs ont été trouvées lors de la vérification des données. Veuillez les corriger avant de continuer.',
+    },
   },
   executionTable: {
     date: 'Temps',
@@ -244,7 +325,9 @@ export default {
     from: 'De',
     to: 'À',
     noData: 'Aucune donnée trouvée pour la plage de dates sélectionnée',
+    loading: 'Chargement des exécutions...',
     createNewExecution: 'créer une nouvelle exécution',
+    hideReplanned: 'Afficher uniquement les exécutions du modèle',
   },
   inputOutputData: {
     inputTitle: "Données d'entrée",
@@ -267,6 +350,10 @@ export default {
     false: 'Faux',
     errorDownloadingExcel:
       "Une erreur s'est produite lors du téléchargement de l'Excel",
+    filesRegenerating:
+      "Les fichiers de l'exécution sont en cours de régénération. Veuillez réessayer dans quelques instants.",
+    filesRegenerationTimeout:
+      'La régénération des fichiers prend plus de temps que prévu. Veuillez réessayer plus tard.',
     generating: 'Génération...',
     download: 'Télécharger',
     downloadDataChecks: 'Télécharger excel',
@@ -318,7 +405,25 @@ export default {
     inputData: "Données d'entrée",
     results: 'Résultats',
   },
+  sectionView: {
+    etlMetadataInfo: {
+      fromDbTooltip:
+        "Cette table contient les informations disponibles dans la base de données au moment de l'exécution.",
+      notFromDbTooltip:
+        "Cette table provient d'un fichier importé par l'utilisateur.",
+      fromDbValueTooltip:
+        "Cette valeur contient les informations disponibles dans la base de données au moment de l'exécution.",
+      notFromDbValueTooltip:
+        "Cette valeur provient d'un fichier importé par l'utilisateur.",
+    },
+    editAllMasterTables: 'Importer toutes les tables de référence',
+    editAllMasterTablesTitle: 'Importer toutes les tables de référence',
+    editAllMasterTablesSuccess: 'Tables de référence mises à jour',
+    validationWarningTab: 'Cette table contient des avertissements',
+    validationErrorTab: 'Cette table contient des erreurs',
+  },
   table: {
+    loading: 'Chargement des données...',
     noDataAvailable: 'Aucune donnée disponible pour cette table',
     loadingError:
       "Erreur lors du chargement des données de la table depuis l'API",
@@ -344,6 +449,9 @@ export default {
     clickToEdit: 'Cliquez pour modifier',
     upload: 'Télécharger',
     selectFile: 'Sélectionner un Fichier',
+    selectFiles: 'Sélectionner des fichiers',
+    multipleFileAccumulateHint:
+      'Vous pouvez ajouter d’autres fichiers dans une sélection suivante ; ils sont fusionnés (doublons remplacés).',
     dragAndDrop:
       'Glissez et déposez les fichiers ici ou cliquez pour sélectionner',
     filters: {
@@ -379,7 +487,12 @@ export default {
     supportedFormats:
       'Formats supportés: Excel (.xlsx), JSON (.json), CSV (.csv)',
     maxFileSize: 'Taille maximale du fichier',
+    downloadFullMessage: 'Télécharger le message complet',
     uploadMode: 'Mode de téléchargement',
+    updateMode: 'Mettre à jour les données existantes',
+    updateModeDescription:
+      'Les enregistrements existants seront mis à jour avec les nouvelles données. Les nouveaux enregistrements seront ajoutés à la table.',
+    recommended: 'Recommandé',
     addMode: 'Ajouter aux données existantes',
     addModeDescription:
       'Ajouter de nouveaux enregistrements aux données existantes de la table. Les enregistrements actuels seront préservés.',
@@ -401,8 +514,9 @@ export default {
     bulkDeleteMessage:
       'Êtes-vous sûr de vouloir supprimer {count} éléments ? Cette action ne peut pas être annulée.',
     deletingPleaseWait: 'Suppression en cours. Veuillez patienter.',
-    overwritingPleaseWait: 'Traitement des données en cours. Veuillez patienter.',
-    uploadingPleaseWait: 'Traitement de votre demande en cours. Veuillez patienter.',
+    overwritingPleaseWait:
+      'Traitement des données en cours. Veuillez patienter.',
+    uploadingPleaseWait: 'Envoi des données en cours… Veuillez patienter.',
     bulkDeleteSuccess: '{count} éléments supprimés avec succès',
     bulkDeleteAllFailed:
       'Échec de la suppression de tous les éléments sélectionnés',
@@ -415,9 +529,30 @@ export default {
     errorBulkUpload: 'Erreur lors du téléchargement en masse',
     invalidFileFormat: 'Format de fichier invalide',
     fileProcessingError: 'Erreur lors du traitement du fichier',
+    messages: {
+      bulkUploadReferenceNotFound:
+        'Ligne {row} : aucun enregistrement pour {fieldKey}="{fieldValue}" dans la table de référence « {tableName} ». Téléchargement annulé.',
+      asyncUploadQueued: 'En attente de démarrage…',
+      asyncUploadProcessing:
+        'Chargement des données — {count} lignes importées jusqu’à présent',
+      asyncUploadCompleted: 'Terminé — {count} lignes importées',
+      asyncUploadFailed: 'Le téléchargement n’a pas pu être traité',
+      asyncUploadNotFound: 'Téléchargement introuvable',
+    },
+    bulkEdit: 'Édition en masse',
+    bulkEditDescription: 'Modifier {count} éléments sélectionnés. Laissez un champ vide pour conserver les valeurs existantes.',
+    bulkEditNoChange: 'Sans changement',
+    bulkEditHint: 'Seuls les champs renseignés seront appliqués aux éléments sélectionnés.',
+    applyToSelected: 'Appliquer à la sélection',
+    bulkEditApplied: '{count} éléments mis à jour avec succès',
     yes: 'Oui',
     no: 'Non',
     search: 'Rechercher',
+    forceRetry: {
+      title: "Confirmer l'écrasement",
+      accept: 'Écraser quand même',
+      reject: 'Annuler',
+    },
   },
   validation: {
     required: 'Ce champ est obligatoire',
@@ -464,12 +599,14 @@ export default {
     alertDescription:
       'Certaines tables de vos données téléchargées correspondent à des tables de configuration existantes. Veuillez choisir comment gérer chaque correspondance ci-dessous.',
     hasDifferences: 'A des différences',
-    hasDifferencesWithMaster: 'Cette table a des différences avec la table de configuration',
+    hasDifferencesWithMaster:
+      'Cette table a des différences avec la table de configuration',
     identical: 'Identiques',
     identicalToMaster: 'Cette table est identique à la table de configuration',
     viewDifferences: 'Comparer',
     matchFoundWith: 'Correspond à:',
-    matchFoundWithMaster: 'Correspond à la table de configuration: {masterTable}',
+    matchFoundWithMaster:
+      'Correspond à la table de configuration: {masterTable}',
     uploadedRows: 'Lignes téléchargées',
     masterRows: 'Lignes du maître',
     newRows: 'Nouvelles lignes',
@@ -499,24 +636,29 @@ export default {
       },
     },
     messages: {
-      usingMasterData: 'Utilisation des données du maître pour la table "{tableName}"',
-      masterTableUpdated: 'La table de configuration "{tableName}" a été mise à jour',
+      usingMasterData:
+        'Utilisation des données du maître pour la table "{tableName}"',
+      masterTableUpdated:
+        'La table de configuration "{tableName}" a été mise à jour',
       updateError: 'Erreur lors de la mise à jour de la table de configuration',
     },
     confirmUseMaster: {
       title: 'Appliquer les données du maître',
-      message: 'Voulez-vous utiliser les données de la table de configuration pour "{tableName}"? Les données téléchargées seront remplacées par les données du maître uniquement pour cette exécution.',
+      message:
+        'Voulez-vous utiliser les données de la table de configuration pour "{tableName}"? Les données téléchargées seront remplacées par les données du maître uniquement pour cette exécution.',
       confirm: 'Appliquer maître',
     },
     confirmReplaceMaster: {
       title: 'Enregistrer dans la table maître',
-      message: 'Voulez-vous enregistrer les données téléchargées dans la table maître "{tableName}"? Cela modifiera définitivement la table de configuration et affectera toutes les exécutions futures.',
+      message:
+        'Voulez-vous enregistrer les données téléchargées dans la table maître "{tableName}"? Cela modifiera définitivement la table de configuration et affectera toutes les exécutions futures.',
       confirm: 'Enregistrer',
     },
   },
   dataComparison: {
     title: 'Comparaison des données: {tableName}',
-    subtitle: 'Comparaison des données téléchargées avec la table de configuration "{masterTable}"',
+    subtitle:
+      'Comparaison des données téléchargées avec la table de configuration "{masterTable}"',
     loading: 'Chargement des données de comparaison...',
     uploadedData: 'Données téléchargées',
     masterData: 'Données du maître',
@@ -555,43 +697,142 @@ export default {
     msgPlaceholder: 'Activer ou désactiver les messages',
     timeLimit: 'Limite de temps',
     timeLimitPlaceholder: 'Limite de temps en secondes',
+    timeLimitPlaceholderMinutes: 'Limite de temps en minutes',
     solver: 'Solver',
     solverPlaceholder: 'Sélectionner le solver',
     minutesSuffix: 'min',
     secondsSuffix: 's',
   },
-  latestPlan: {
-    banner: {
-      message:
-        "Aucun plan actuel n'est défini. Définissez un plan comme actuel pour le charger automatiquement lors de la connexion.",
-      actionButton: "Aller à l'historique",
+  historical: {
+    toggleExecution: "Données d'exécution",
+    toggleHistorical: 'Données historiques',
+    dateFrom: 'Du',
+    dateTo: 'Au',
+    load: 'Charger',
+    creating: "Création de l'exécution historique...",
+    checking: 'Vérifications en cours...',
+    polling: 'Calcul des KPIs...',
+    error: 'Erreur lors du chargement des données historiques',
+    statusCalculationError:
+      'Un problème est survenu lors du calcul des données historiques.',
+    noData: 'Aucune donnée historique disponible pour la plage sélectionnée',
+    clear: 'Effacer',
+    checksErrorTitle: 'Des erreurs ont été trouvées dans les vérifications',
+    checksErrorDescription:
+      "Les KPI n'ont pas pu être calculés car les vérifications de la solution contiennent des erreurs. Consultez les détails ci-dessous.",
+    showErrors: 'Afficher les détails des erreurs',
+    hideErrors: 'Masquer les détails des erreurs',
+    checksWarningTitle: 'KPIs calculés avec des avertissements',
+    checksWarningDescription:
+      'Les KPI ont été calculés avec succès, mais certaines tables de vérification contiennent des avertissements. Consultez les détails ci-dessous.',
+    showWarnings: 'Afficher les détails des avertissements',
+    hideWarnings: 'Masquer les détails des avertissements',
+    viewingHistoricalData: 'Affichage des données historiques',
+  },
+  notFound: {
+    title: 'Page introuvable',
+    message: 'La page que vous cherchez n\'existe pas.',
+    forbiddenTitle: 'Accès refusé',
+    forbiddenMessage: 'Vous n\'avez pas la permission de voir cette page.',
+    goHome: 'Retour à l\'accueil',
+  },
+  rolesManagement: {
+    title: 'Gestion des rôles',
+    description: 'Gérez les rôles et assignez-les aux utilisateurs.',
+    adminSection: 'Administration',
+    rolesTitle: 'Rôles',
+    usersTitle: 'Utilisateurs',
+    addRole: 'Ajouter un rôle',
+    editRole: 'Modifier le rôle',
+    roleName: 'Nom du rôle',
+    deleteRoleTitle: 'Supprimer le rôle',
+    deleteRoleMessage: 'Êtes-vous sûr de vouloir supprimer le rôle "{name}" ? Il sera retiré de tous les utilisateurs assignés.',
+    delete: 'Supprimer',
+    cancel: 'Annuler',
+    save: 'Enregistrer',
+    searchUsers: 'Rechercher des utilisateurs...',
+    colUsername: "Nom d'utilisateur",
+    colName: 'Nom',
+    colEmail: 'E-mail',
+    colRoles: 'Rôles',
+    noRoles: 'Aucun rôle défini pour le moment.',
+    noRoles2: 'Aucun rôle',
+    errorLoadRoles: 'Erreur lors du chargement des rôles.',
+    errorLoadUsers: 'Erreur lors du chargement des utilisateurs.',
+    errorSaveRole: "Erreur lors de l'enregistrement du rôle.",
+    errorDeleteRole: 'Erreur lors de la suppression du rôle.',
+    errorAssignRole: "Erreur lors de la mise à jour des rôles de l'utilisateur.",
+    roleCreated: 'Rôle créé avec succès.',
+    roleUpdated: 'Rôle mis à jour avec succès.',
+    roleDeleted: 'Rôle supprimé avec succès.',
+    roleAssigned: "Rôles de l'utilisateur mis à jour avec succès.",
+    allUsers: 'Tous les utilisateurs',
+    allUsersSubtitle: 'Vue combinée de tous les rôles',
+    filteringByRole: 'Filtrage par rôle',
+    rolePermissionsTitle: 'Permissions du rôle',
+    noPermissionsDefined: 'Aucune permission définie pour ce rôle.',
+    noDescription: 'Aucune description',
+    roleMeta: {
+      admin: {
+        description: 'Accès complet · gère utilisateurs et rôles',
+        permissions: [
+          'Lire les instances et solutions',
+          'Créer et lancer des exécutions',
+          'Modifier les données maîtres',
+          'Gérer les utilisateurs et rôles',
+        ],
+      },
+      planner: {
+        description: 'Crée des exécutions et modifie les données maîtres',
+        permissions: [
+          'Lire les instances et solutions',
+          'Créer et lancer des exécutions',
+          'Modifier les données maîtres',
+        ],
+      },
+      viewer: {
+        description: 'Lecture seule sur les exécutions',
+        permissions: ['Lire les instances et solutions'],
+      },
+      service: {
+        description: 'Compte technique pour les intégrations',
+        permissions: [
+          'Lire les instances et solutions',
+          'Créer et lancer des exécutions',
+        ],
+      },
+      ie_viewer: {
+        description: "Visibilité limitée à l'environnement IE",
+        permissions: ['Lire les instances et solutions'],
+      },
     },
-    chip: {
-      current: 'Actuel',
+  },
+  externalEtl: {
+    switch: {
+      fromDbLabel: 'Cette table a été obtenue depuis la base de données.',
+      fromExcelLabel:
+        "Cette table a été importée depuis un fichier à l'étape précédente.",
+      editedFromDbLabel:
+        "Des modifications manuelles ont été effectuées et la table n'est plus identique à celle de la base de données.",
+      reuploadedLabel:
+        'Les données de cette table proviennent d’un fichier Excel importé.',
+      fixTable: 'Fixer la table',
+      replaceWithDb: 'Utiliser les données de la base',
+      staticMode: 'Mode statique',
+      staticModeTooltip: 'La table sera conservée telle quelle et ne sera pas mise à jour depuis la base de données lors du calcul de la dernière solution.',
+      trackChanges: 'Suivre les changements',
+      trackChangesTooltip: 'La table sera mise à jour avec les dernières données de la base de données lors du calcul de la dernière solution.',
+      useExcelData: 'Utiliser les données Excel',
+      useDbData: 'Utiliser les données de la base',
+      default: 'Par défaut',
+      fromDb: 'Depuis BD',
+      fixed: 'Fixé',
     },
-    fab: {
-      tooltip: 'Définir cette exécution comme plan actuel',
-      setAsCurrent: 'Définir comme plan actuel',
-      isCurrentPlan: "C'est le plan actuel",
-    },
-    actions: {
-      setAsCurrent: 'Définir comme plan actuel',
-      isCurrentPlan: "C'est le plan actuel",
-    },
-    modal: {
-      title: 'Définir comme plan actuel',
-      message:
-        'Êtes-vous sûr de vouloir définir cette exécution comme le plan actuel ? Il sera chargé automatiquement lors de votre connexion.',
-      executionLabel: 'Exécution',
-      replaceWarning: 'Cela remplacera "{name}" comme plan actuel.',
-      confirmButton: 'Définir comme actuel',
-      cancelButton: 'Annuler',
-      errorMessage:
-        "Une erreur s'est produite lors de la définition du plan actuel. Veuillez réessayer.",
-    },
-    snackbar: {
-      success: 'Plan actuel défini avec succès',
-      error: 'Erreur lors de la définition du plan actuel',
+    parameter: {
+      fromDb: 'Depuis la base de données (sera actualisé)',
+      fixed: 'Fixé (valeur actuelle conservée)',
+      cannotBeFromDb: "Toujours fourni par l'utilisateur",
+      columnFromDb: 'Depuis BD',
     },
   },
 }

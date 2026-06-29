@@ -20,7 +20,7 @@
  * - loading (Boolean): Loading state for upload button
  * - multiple (Boolean): Allow multiple file selection
  * - maxSize (Number): Maximum file size in bytes
- * - availableOperations (Array): Available bulk operations ['post_bulk', 'overwrite_all']
+ * - availableOperations (Array): Available bulk operations ['post_update_bulk', 'post_bulk', 'overwrite_all']
  *
  * Usage examples:
  *
@@ -91,6 +91,40 @@
         >
           <div class="core-bulk-upload-modal__options-list">
             <div
+              v-if="availableOperations.includes('post_update_bulk')"
+              class="core-bulk-upload-modal__option-card"
+              :class="{
+                'core-bulk-upload-modal__option-card--selected':
+                  selectedOperation === 'post_update_bulk',
+              }"
+              @click="!loading && (selectedOperation = 'post_update_bulk')"
+            >
+              <v-checkbox
+                :model-value="selectedOperation === 'post_update_bulk'"
+                hide-details
+                class="core-bulk-upload-modal__option-checkbox"
+              />
+              <div class="core-bulk-upload-modal__option-content">
+                <div
+                  class="core-bulk-upload-modal__option-title core-bulk-upload-modal__option-title-row"
+                >
+                  <span>{{ $t('table.updateMode') }}</span>
+                  <v-chip
+                    size="x-small"
+                    color="primary"
+                    variant="tonal"
+                    class="core-bulk-upload-modal__recommended-chip"
+                  >
+                    {{ $t('table.recommended') }}
+                  </v-chip>
+                </div>
+                <div class="core-bulk-upload-modal__option-description">
+                  {{ $t('table.updateModeDescription') }}
+                </div>
+              </div>
+            </div>
+
+            <div
               v-if="availableOperations.includes('post_bulk')"
               class="core-bulk-upload-modal__option-card"
               :class="{
@@ -147,15 +181,19 @@
             class="core-bulk-upload-modal__upload-section"
           >
             <v-file-input
-              v-model="selectedFiles"
-              :label="$t('table.selectFile')"
+              :model-value="fileInputModelValue"
+              :label="
+                multiple ? $t('table.selectFiles') : $t('table.selectFile')
+              "
               :accept="acceptedFormatsString"
               :multiple="multiple"
+              :counter="multiple"
               variant="outlined"
               density="compact"
               focused
               show-size
               class="core-bulk-upload-modal__file-input"
+              @update:model-value="handleFileInputUpdate"
             >
               <template v-slot:selection="{ fileNames }">
                 <template v-for="fileName in fileNames" :key="fileName">
@@ -165,15 +203,21 @@
                 </template>
               </template>
             </v-file-input>
+            <p
+              v-if="multiple"
+              class="text-caption text-medium-emphasis mt-1 mb-0"
+            >
+              {{ $t('table.multipleFileAccumulateHint') }}
+            </p>
 
             <!-- File Information -->
             <div
-              v-if="selectedFiles && selectedFiles.length > 0"
+              v-if="normalizedSelectedFiles.length > 0"
               class="core-bulk-upload-modal__file-info"
             >
               <div
-                v-for="file in selectedFiles"
-                :key="file.name"
+                v-for="file in normalizedSelectedFiles"
+                :key="`${file.name}-${file.size}-${file.lastModified}`"
                 class="core-bulk-upload-modal__file-item"
               >
                 <v-icon
@@ -215,7 +259,7 @@
                       {{ acceptedFormatsString }}
                     </span>
                   </div>
-                  <div v-if="maxSize">
+                  <div v-if="maxSize != null && maxSize > 0">
                     <span class="core-bulk-upload-modal__info-label">
                       {{ $t('table.maxFileSize') }}:
                     </span>
@@ -227,15 +271,22 @@
               </div>
             </v-alert>
 
-            <!-- Loading message during overwrite/upload -->
-            <v-alert
+            <!-- Loading state during overwrite/upload -->
+            <div
               v-if="loading"
-              type="info"
-              variant="tonal"
-              class="core-bulk-upload-modal__loading-alert mt-3"
+              class="core-bulk-upload-modal__loading-state mt-3"
             >
-              {{ $t('table.uploadingPleaseWait') }}
-            </v-alert>
+              <v-progress-circular
+                indeterminate
+                color="primary"
+                size="24"
+                width="3"
+                class="core-bulk-upload-modal__loading-spinner"
+              />
+              <span class="core-bulk-upload-modal__loading-text">
+                {{ progressMessage || $t('table.uploadingPleaseWait') }}
+              </span>
+            </div>
           </div>
         </transition>
 
@@ -295,6 +346,8 @@ interface Props {
   multiple?: boolean
   maxSize?: number
   availableOperations?: string[]
+  /** Live progress text shown in the loading state (e.g. async upload status + rows loaded). */
+  progressMessage?: string
 }
 
 // Props
@@ -303,8 +356,9 @@ const props = withDefaults(defineProps<Props>(), {
   acceptedFormats: () => ['.xlsx', '.json', '.csv'],
   loading: false,
   multiple: false,
-  maxSize: 10485760, // 10MB default
+  maxSize: 0, // 0 = no client-side limit (server has no limit)
   availableOperations: () => ['post_bulk'],
+  progressMessage: '',
 })
 
 // Emits
@@ -317,6 +371,31 @@ const emit = defineEmits<{
 // Composables
 const { t: $t } = useI18n()
 
+/** Possible shapes of a v-file-input model value. */
+type FileInput = File[] | File | FileList
+
+/** Normalize v-file-input model (File | File[] | FileList) to a File array. */
+function toFileArray(
+  value: File[] | File | FileList | null | undefined,
+): File[] {
+  if (value == null) return []
+  if (Array.isArray(value)) {
+    return value.filter((f): f is File => f instanceof File)
+  }
+  if (value instanceof FileList) return Array.from(value)
+  if (value instanceof File) return [value]
+  return []
+}
+
+/** Merge new picker result into existing list (dedupe by name + size + lastModified). */
+function mergeUniqueFiles(existing: File[], incoming: File[]): File[] {
+  const map = new Map<string, File>()
+  const key = (f: File) => `${f.name}\0${f.size}\0${f.lastModified}`
+  for (const f of existing) map.set(key(f), f)
+  for (const f of incoming) map.set(key(f), f)
+  return [...map.values()]
+}
+
 // State
 const selectedFiles = ref<File[] | File | FileList | null>(null)
 const errorMessage = ref('')
@@ -327,26 +406,41 @@ const acceptedFormatsString = computed(() => {
   return props.acceptedFormats.join(', ')
 })
 
-const hasValidFiles = computed(() => {
-  // Handle different formats that v-file-input might return
-  let hasFiles = false
+const normalizedSelectedFiles = computed(() =>
+  toFileArray(selectedFiles.value),
+)
 
-  if (selectedFiles.value) {
-    if (selectedFiles.value instanceof File) {
-      // Single file when multiple=false
-      hasFiles = true
-    } else if (Array.isArray(selectedFiles.value)) {
-      hasFiles = selectedFiles.value.length > 0
-    } else if (selectedFiles.value instanceof FileList) {
-      hasFiles = selectedFiles.value.length > 0
-    } else if (typeof selectedFiles.value === 'object') {
-      // Check if it's a single file object or has file properties
-      hasFiles =
-        (selectedFiles.value as any).name ||
-        Object.keys(selectedFiles.value).length > 0
-    }
+/** Bound value for v-file-input (Vuetify expects File[] when multiple). */
+const fileInputModelValue = computed(() => {
+  if (props.multiple) {
+    return normalizedSelectedFiles.value
   }
+  return selectedFiles.value instanceof File ? selectedFiles.value : null
+})
 
+function handleFileInputUpdate(
+  val: File | File[] | FileList | null | undefined,
+) {
+  if (!props.multiple) {
+    if (val == null) {
+      selectedFiles.value = null
+      return
+    }
+    const arr = toFileArray(val as FileInput)
+    selectedFiles.value = arr[0] ?? null
+    return
+  }
+  const incoming = toFileArray(val as FileInput)
+  if (incoming.length === 0) {
+    selectedFiles.value = []
+    return
+  }
+  const existing = toFileArray(selectedFiles.value)
+  selectedFiles.value = mergeUniqueFiles(existing, incoming)
+}
+
+const hasValidFiles = computed(() => {
+  const hasFiles = normalizedSelectedFiles.value.length > 0
   const noError = !errorMessage.value
   const hasOperation = !showOperationSelection.value || selectedOperation.value
 
@@ -379,6 +473,33 @@ const forceInitializeOperation = () => {
   }
 }
 
+const normalizeToFileArray = (files: FileInput): File[] | null => {
+  if (Array.isArray(files)) return files
+  if (files instanceof FileList) return Array.from(files)
+  if (typeof files === 'object' && (files as any).name) return [files as File]
+  if (typeof files === 'object' && Object.keys(files).length === 0) return null
+  return []
+}
+
+const validateSingleFile = (file: File): boolean => {
+  if (!file || !file.name) return true
+
+  if (props.maxSize != null && props.maxSize > 0 && file.size > props.maxSize) {
+    errorMessage.value = `${file.name} exceeds maximum file size of ${formatFileSize(props.maxSize)}`
+    selectedFiles.value = props.multiple ? [] : null
+    return false
+  }
+
+  const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase()
+  if (!props.acceptedFormats.includes(fileExtension)) {
+    errorMessage.value = `${file.name} is not a supported file format. Supported formats: ${acceptedFormatsString.value}`
+    selectedFiles.value = props.multiple ? [] : null
+    return false
+  }
+
+  return true
+}
+
 const validateFiles = (files: File[] | File | FileList | null) => {
   errorMessage.value = ''
 
@@ -387,47 +508,23 @@ const validateFiles = (files: File[] | File | FileList | null) => {
   }
 
   // Handle different file formats
-  let fileArray: File[] = []
-
-  if (Array.isArray(files)) {
-    fileArray = files
-  } else if (files instanceof FileList) {
-    fileArray = Array.from(files)
-  } else if (typeof files === 'object' && (files as any).name) {
-    // Single file object
-    fileArray = [files as File]
-  } else if (typeof files === 'object' && Object.keys(files).length === 0) {
-    // Empty object, no files selected
-    return
-  }
+  const fileArray = normalizeToFileArray(files)
+  if (fileArray === null) return
 
   // Validate files
   for (const file of fileArray) {
-    if (!file || !file.name) continue
-
-    // Check file size
-    if (props.maxSize && file.size > props.maxSize) {
-      errorMessage.value = `${file.name} exceeds maximum file size of ${formatFileSize(props.maxSize)}`
-      selectedFiles.value = null
-      return
-    }
-
-    // Check file format
-    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase()
-    if (!props.acceptedFormats.includes(fileExtension)) {
-      errorMessage.value = `${file.name} is not a supported file format. Supported formats: ${acceptedFormatsString.value}`
-      selectedFiles.value = null
-      return
-    }
+    if (!validateSingleFile(file)) return
   }
 }
 
 const removeFile = (fileToRemove: File) => {
-  if (selectedFiles.value) {
-    const updatedFiles = Array.from(selectedFiles.value as any).filter(
-      (file: File) => file !== fileToRemove,
-    )
-    selectedFiles.value = updatedFiles.length > 0 ? updatedFiles : null
+  if (selectedFiles.value == null) return
+  const current = toFileArray(selectedFiles.value)
+  const updatedFiles = current.filter((file: File) => file !== fileToRemove)
+  if (updatedFiles.length === 0) {
+    selectedFiles.value = props.multiple ? [] : null
+  } else {
+    selectedFiles.value = props.multiple ? updatedFiles : updatedFiles[0]!
   }
 }
 
@@ -453,33 +550,13 @@ const formatFileSize = (bytes: number): string => {
   const k = 1024
   const sizes = ['Bytes', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
 const handleUpload = () => {
   if (hasValidFiles.value) {
     const operation = selectedOperation.value || defaultOperation.value
-
-    // Extract actual File objects from selectedFiles
-    let actualFiles: File[] = []
-
-    if (selectedFiles.value instanceof File) {
-      // Single file when multiple=false
-      actualFiles = [selectedFiles.value]
-    } else if (Array.isArray(selectedFiles.value)) {
-      actualFiles = selectedFiles.value.filter(
-        (file: any) => file instanceof File,
-      )
-    } else if (selectedFiles.value instanceof FileList) {
-      actualFiles = Array.from(selectedFiles.value)
-    } else if (
-      typeof selectedFiles.value === 'object' &&
-      selectedFiles.value &&
-      (selectedFiles.value as any).name
-    ) {
-      // Single file object
-      actualFiles = [selectedFiles.value as File]
-    }
+    const actualFiles = toFileArray(selectedFiles.value)
 
     emit('upload', {
       files: actualFiles,
@@ -497,16 +574,19 @@ const handleCancel = () => {
 watch(
   () => props.modelValue,
   (newValue) => {
-    if (!newValue) {
-      // Reset when modal is closed
-      selectedFiles.value = null
-      errorMessage.value = ''
-      selectedOperation.value = null
-    } else {
+    if (newValue) {
       // When modal opens, force set default operation with a small delay
       nextTick(() => {
         forceInitializeOperation()
+        if (props.multiple && selectedFiles.value == null) {
+          selectedFiles.value = []
+        }
       })
+    } else {
+      // Reset when modal is closed
+      selectedFiles.value = props.multiple ? [] : null
+      errorMessage.value = ''
+      selectedOperation.value = null
     }
   },
 )

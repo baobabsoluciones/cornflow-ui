@@ -1,6 +1,44 @@
 export default {
+  $vuetify: {
+    dataFooter: {
+      itemsPerPageText: 'Items per page:',
+      itemsPerPageAll: 'All',
+      pageText: '{0}-{1} of {2}',
+      nextPage: 'Next page',
+      prevPage: 'Previous page',
+      firstPage: 'First page',
+      lastPage: 'Last page',
+    },
+    dataTable: {
+      itemsPerPageText: 'Items per page:',
+      ariaLabel: {
+        sortDescending: 'Sorted descending.',
+        sortAscending: 'Sorted ascending.',
+        sortNone: 'Not sorted.',
+        activateAscending: 'Activate to sort ascending.',
+        activateDescending: 'Activate to sort descending.',
+      },
+      sortBy: 'Sort by',
+    },
+    pagination: {
+      ariaLabel: {
+        root: 'Pagination navigation',
+        currentPage: 'Page {0}, current page',
+        page: 'Go to page {0}',
+        next: 'Next page',
+        previous: 'Previous page',
+        first: 'First page',
+        last: 'Last page',
+      },
+    },
+    noDataText: 'No data available',
+    loading: 'Loading...',
+  },
   DecisionOps: 'DecisionOps',
   baobab: 'baobab',
+  general: {
+    loading: 'Loading...',
+  },
   projectExecution: {
     title: 'Project execution',
     description:
@@ -73,6 +111,7 @@ export default {
           instanceLoaded: 'Instance loaded successfully',
           instancesLoaded:
             'Files merged to create the instance and loaded successfully',
+          warningTitle: 'Warning',
           loadInstance: 'Load Instance',
           selectedFiles: 'Selected Files',
           invalidFileFormat: 'Invalid file format. Please try again.',
@@ -88,6 +127,15 @@ export default {
           andMoreErrors: 'and {count} more',
           errorsDownloadStarted: 'Error file download started',
           errorsDownloadError: 'Error downloading error file',
+          noFilesSelectedError: 'Please select at least one file',
+          optionalOrDivider: 'or',
+          loadFromDb: 'Get all data from database',
+          loadParameters: 'Load parameters',
+          alternativeParametersHint:
+            'Enter the values below and load them as instance data',
+          noParametersDataError: 'No parameter data to send',
+          noParametersSheetsError:
+            'Could not build a file from the parameters (check table names in config)',
         },
       },
       reviewInstance: {
@@ -167,6 +215,7 @@ export default {
           instanceLoaded: 'Instance loaded successfully',
           instancesLoaded:
             'Files merged to create the instance and loaded successfully',
+          warningTitle: 'Warning',
           loadInstance: 'Load Instance',
           selectedFiles: 'Selected Files',
           invalidFileFormat: 'Invalid file format. Please try again.',
@@ -182,6 +231,15 @@ export default {
           andMoreErrors: 'and {count} more',
           errorsDownloadStarted: 'Error file download started',
           errorsDownloadError: 'Error downloading error file',
+          noFilesSelectedError: 'Please select at least one file',
+          optionalOrDivider: 'or',
+          loadFromDb: 'Get all data from database',
+          loadParameters: 'Load parameters',
+          alternativeParametersHint:
+            'Enter the values below and load them as instance data',
+          noParametersDataError: 'No parameter data to send',
+          noParametersSheetsError:
+            'Could not build a file from the parameters (check table names in config)',
         },
       },
       step4: {
@@ -246,6 +304,10 @@ export default {
     },
     stagingWarning:
       'You are currently working in a staging environment. This environment is intended for testing and development purposes only. For real executions, please switch to the production environment.',
+    checks: {
+      blockingErrorsFound:
+        'Errors were found during data verification. Please fix them before continuing.',
+    },
   },
   executionTable: {
     date: 'Time',
@@ -301,6 +363,7 @@ export default {
     loading: 'Loading',
     loadExecution: 'Load execution',
     deleteExecution: 'Delete execution',
+    replanning: 'Replanning',
   },
   logIn: {
     subtitle: 'Log in to get started!',
@@ -373,7 +436,9 @@ export default {
     from: 'From',
     to: 'To',
     noData: ' No data found for the selected range dates',
+    loading: 'Loading executions...',
     createNewExecution: 'Create new execution',
+    hideReplanned: 'Show model executions only',
   },
   inputOutputData: {
     title: 'Project management',
@@ -407,6 +472,10 @@ export default {
     deleteButton: 'Delete',
     cancelButton: 'Cancel',
     errorDownloadingExcel: 'An error occurred while downloading the excel',
+    filesRegenerating:
+      'Execution files are being regenerated. Please try again in a few moments.',
+    filesRegenerationTimeout:
+      'Regeneration of execution files is taking longer than expected. Please try again later.',
     generating: 'Generating...',
     download: 'Download',
     downloadDataChecks: 'Download excel',
@@ -458,7 +527,22 @@ export default {
     results: 'Results',
   },
   sectionView: {
-    editInputData: 'Edit input data',
+    editInputData: 'Create new execution from current input data',
+    downloadInstance: 'Download instance',
+    downloadSolution: 'Download solution',
+    downloadExcel: 'Download Excel',
+    downloadSuccess: 'File downloaded successfully',
+    downloadError: 'Error downloading file',
+    downloadNoData: 'No data to download',
+    etlMetadataInfo: {
+      fromDbTooltip:
+        'This table contains the information available in the database at execution time.',
+      notFromDbTooltip: 'This table comes from a file uploaded by the user.',
+      fromDbValueTooltip:
+        'This value contains the information available in the database at execution time.',
+      notFromDbValueTooltip:
+        'This value comes from a file uploaded by the user.',
+    },
     exitConfirmation: {
       title: 'Leave with unsaved changes',
       message:
@@ -466,8 +550,14 @@ export default {
       confirmButton: 'Yes, leave',
       cancelButton: 'Cancel',
     },
+    editAllMasterTables: 'Upload all master tables',
+    editAllMasterTablesTitle: 'Upload all master tables',
+    editAllMasterTablesSuccess: 'Master tables updated successfully',
+    validationWarningTab: 'This table contains warnings',
+    validationErrorTab: 'This table contains errors',
   },
   table: {
+    loading: 'Loading data...',
     noDataAvailable: 'No data available for this table',
     loadingError: 'Error loading table data',
     apiNotSupported: 'API not available or operation not supported',
@@ -494,6 +584,9 @@ export default {
     fieldReadOnly: 'This field cannot be edited',
     upload: 'Upload',
     selectFile: 'Select file',
+    selectFiles: 'Select files',
+    multipleFileAccumulateHint:
+      'You can add more files in another selection; they are merged with the list (duplicates by name are replaced).',
     dragAndDrop: 'Drag and drop files here or click to select',
     supportedFormats: 'Supported formats:',
     searchPlaceholder: 'Search...',
@@ -529,6 +622,11 @@ export default {
       },
     },
     maxFileSize: 'Maximum file size',
+    downloadFullMessage: 'Download full message',
+    updateMode: 'Update existing data',
+    updateModeDescription:
+      'Existing records will be updated with the new data. New records will be added to the table.',
+    recommended: 'Recommended',
     addMode: 'Add to existing data',
     addModeDescription:
       'Append new records to the existing table data. Existing records will be preserved.',
@@ -552,6 +650,14 @@ export default {
       errorBulkUpload: 'Error in bulk upload',
       downloadExcelSuccess: 'Excel file downloaded successfully',
       errorDownloadExcelTable: 'Error downloading Excel file',
+      fileProcessingError: 'Error processing file',
+      bulkUploadReferenceNotFound:
+        'Row {row}: no matching record for {fieldKey}="{fieldValue}" in reference table "{tableName}". Upload was cancelled.',
+      asyncUploadQueued: 'Waiting to start…',
+      asyncUploadProcessing: 'Loading data — {count} rows imported so far',
+      asyncUploadCompleted: 'Done — {count} rows imported',
+      asyncUploadFailed: 'The upload could not be processed',
+      asyncUploadNotFound: 'Upload not found',
     },
     downloadExcelTable: 'Download Excel',
     downloadExcelSuccess: 'Excel file downloaded successfully',
@@ -565,7 +671,7 @@ export default {
       'Are you sure you want to delete {count} items? This action cannot be undone.',
     deletingPleaseWait: 'Deleting, please wait...',
     overwritingPleaseWait: 'Processing your data. Please wait...',
-    uploadingPleaseWait: 'Processing your request. Please wait...',
+    uploadingPleaseWait: 'Uploading data… Please wait.',
     bulkDeleteSuccess: '{count} items deleted successfully',
     bulkDeleteAllFailed: 'Failed to delete all selected items',
     bulkDeletePartialFailed: 'Items with IDs {ids} could not be deleted',
@@ -577,9 +683,20 @@ export default {
     invalidFileFormat: 'Invalid file format',
     fileProcessingError: 'Error processing file',
     noValidDataFound: 'No valid data found in file',
+    bulkEdit: 'Bulk edit',
+    bulkEditDescription: 'Edit {count} selected items. Leave a field blank to keep existing values unchanged.',
+    bulkEditNoChange: 'No change',
+    bulkEditHint: 'Only filled fields will be applied to the selected items.',
+    applyToSelected: 'Apply to selected',
+    bulkEditApplied: '{count} items updated successfully',
     yes: 'Yes',
     no: 'No',
     search: 'Search',
+    forceRetry: {
+      title: 'Confirm overwrite',
+      accept: 'Overwrite anyway',
+      reject: 'Cancel',
+    },
     repository: {
       operationNotSupported: 'This action is not available for this table',
       unsupportedHttpMethod: 'An error occurred while processing your request',
@@ -787,6 +904,10 @@ export default {
       modified: 'Modified',
     },
     noChangesInFilter: 'No changes in this filter',
+    restoreRow: 'Restore this row from master',
+    restoreRowQueued: 'Row queued for restore — review and save in the table',
+    deleteRow: 'Delete this row from uploaded data',
+    deleteRowQueued: 'Row queued for deletion — review and save in the table',
     changeType: {
       added: 'Added row',
       removed: 'Removed row',
@@ -850,43 +971,143 @@ export default {
     msgPlaceholder: 'Enable or disable messages',
     timeLimit: 'Time limit',
     timeLimitPlaceholder: 'Time limit in seconds',
+    timeLimitPlaceholderMinutes: 'Time limit in minutes',
     solver: 'Solver',
     solverPlaceholder: 'Select solver',
     minutesSuffix: 'min',
     secondsSuffix: 'sec',
   },
-  latestPlan: {
-    banner: {
-      message:
-        'No current plan is set. Set a plan as current to load it automatically when you log in.',
-      actionButton: 'Go to history',
+  historical: {
+    toggleExecution: 'Execution data',
+    toggleHistorical: 'Historical data',
+    dateFrom: 'From',
+    dateTo: 'To',
+    load: 'Load',
+    creating: 'Creating historical execution...',
+    checking: 'Running data checks...',
+    polling: 'Calculating KPIs...',
+    error: 'Error loading historical data',
+    statusCalculationError:
+      'There was a problem calculating the historical data.',
+    noData: 'No historical data available for the selected range',
+    clear: 'Clear',
+    checksErrorTitle: 'Solution checks found errors',
+    checksErrorDescription:
+      'KPIs could not be calculated because the solution checks contain errors. Review the details below.',
+    showErrors: 'Show error details',
+    hideErrors: 'Hide error details',
+    checksWarningTitle: 'KPIs calculated with warnings',
+    checksWarningDescription:
+      'The KPIs were calculated successfully, but some check tables contain warnings. Review the details below.',
+    showWarnings: 'Show warning details',
+    hideWarnings: 'Hide warning details',
+    viewingHistoricalData: 'Viewing historical data',
+  },
+  notFound: {
+    title: 'Page not found',
+    message: 'The page you are looking for does not exist.',
+    forbiddenTitle: 'Access denied',
+    forbiddenMessage: 'You do not have permission to view this page.',
+    goHome: 'Go to home',
+  },
+  rolesManagement: {
+    title: 'Roles management',
+    description: 'Manage roles and assign them to users.',
+    adminSection: 'Administration',
+    rolesTitle: 'Roles',
+    usersTitle: 'Users',
+    addRole: 'Add role',
+    editRole: 'Edit role',
+    roleName: 'Role name',
+    deleteRoleTitle: 'Delete role',
+    deleteRoleMessage: 'Are you sure you want to delete the role "{name}"? This will remove it from all assigned users.',
+    delete: 'Delete',
+    cancel: 'Cancel',
+    save: 'Save',
+    searchUsers: 'Search users...',
+    colUsername: 'Username',
+    colName: 'Name',
+    colEmail: 'Email',
+    colRoles: 'Roles',
+    noRoles: 'No roles defined yet.',
+    noRoles2: 'No roles',
+    errorLoadRoles: 'Error loading roles.',
+    errorLoadUsers: 'Error loading users.',
+    errorSaveRole: 'Error saving role.',
+    errorDeleteRole: 'Error deleting role.',
+    errorAssignRole: 'Error updating user roles.',
+    roleCreated: 'Role created successfully.',
+    roleUpdated: 'Role updated successfully.',
+    roleDeleted: 'Role deleted successfully.',
+    roleAssigned: 'User roles updated successfully.',
+    allUsers: 'All users',
+    allUsersSubtitle: 'Combined view of every role',
+    filteringByRole: 'Filtering by role',
+    rolePermissionsTitle: 'Role permissions',
+    noPermissionsDefined: 'No permissions defined for this role.',
+    noDescription: 'No description',
+    roleMeta: {
+      admin: {
+        description: 'Full access · manages users and roles',
+        permissions: [
+          'Read instances and solutions',
+          'Create and launch executions',
+          'Edit master data',
+          'Manage users and roles',
+        ],
+      },
+      planner: {
+        description: 'Creates executions and edits master data',
+        permissions: [
+          'Read instances and solutions',
+          'Create and launch executions',
+          'Edit master data',
+        ],
+      },
+      viewer: {
+        description: 'Read-only access to executions',
+        permissions: ['Read instances and solutions'],
+      },
+      service: {
+        description: 'Technical account for integrations',
+        permissions: [
+          'Read instances and solutions',
+          'Create and launch executions',
+        ],
+      },
+      ie_viewer: {
+        description: 'Limited visibility into the IE environment',
+        permissions: ['Read instances and solutions'],
+      },
     },
-    chip: {
-      current: 'Current',
+  },
+  externalEtl: {
+    switch: {
+      fromDbLabel: 'This table was obtained from the database.',
+      fromExcelLabel:
+        'This table was uploaded from a file in the previous step.',
+      editedFromDbLabel:
+        'Manual changes have been made and the table is no longer identical to the database.',
+      reuploadedLabel: 'Data in this table was imported from an Excel file.',
+      fixTable: 'Fix table',
+      replaceWithDb: 'Use database values',
+      staticMode: 'Static mode',
+      staticModeTooltip:
+        'The table will be kept as-is and will not be refreshed from the database when calculating the latest solution.',
+      trackChanges: 'Track changes',
+      trackChangesTooltip:
+        'The table will be refreshed with the latest data from the database when calculating the latest solution.',
+      useExcelData: 'Use Excel data',
+      useDbData: 'Use database data',
+      default: 'Default',
+      fromDb: 'From database',
+      fixed: 'Fixed',
     },
-    fab: {
-      tooltip: 'Set this execution as current plan',
-      setAsCurrent: 'Set as current plan',
-      isCurrentPlan: 'This is the current plan',
-    },
-    actions: {
-      setAsCurrent: 'Set as current plan',
-      isCurrentPlan: 'This is the current plan',
-    },
-    modal: {
-      title: 'Set as current plan',
-      message:
-        'Are you sure you want to set this execution as the current plan? It will be loaded automatically when you log in.',
-      executionLabel: 'Execution',
-      replaceWarning: 'This will replace "{name}" as the current plan.',
-      confirmButton: 'Set as current',
-      cancelButton: 'Cancel',
-      errorMessage:
-        'An error occurred while setting the current plan. Please try again.',
-    },
-    snackbar: {
-      success: 'Current plan set successfully',
-      error: 'Error setting current plan',
+    parameter: {
+      fromDb: 'From database (will refresh)',
+      fixed: 'Fixed (current value kept)',
+      cannotBeFromDb: 'Always user-provided',
+      columnFromDb: 'From database',
     },
   },
 }

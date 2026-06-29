@@ -77,6 +77,13 @@ vi.mock('@/views/SectionView.vue', () => ({
   default: { name: 'SectionView', template: '<div>Section</div>' },
 }))
 
+vi.mock('@/views/ConfigurationSectionSubsectionView.vue', () => ({
+  default: {
+    name: 'ConfigurationSectionSubsectionView',
+    template: '<div>ConfigurationSectionSubsection</div>',
+  },
+}))
+
 // Mock API service to prevent initialization delays
 vi.mock('@/api/Api', () => ({
   default: {
@@ -118,6 +125,7 @@ describe('Router Navigation Guards', () => {
     vi.clearAllMocks()
     vi.resetModules()
     // Ensure config mock is properly set up
+    mockConfig.useHashMode = false
     mockConfig.initConfig.mockResolvedValue(undefined)
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
@@ -400,14 +408,13 @@ describe('Router Navigation Guards', () => {
 
   describe('Router history mode configuration', () => {
     test('should use web history when useHashMode is false', async () => {
+      mockConfig.useHashMode = false
       mockAppConfig.getCore.mockReturnValue({
         parameters: {
           useHashMode: false,
         },
       })
 
-      // Re-import to get fresh instance with new config
-      vi.resetModules()
       const { default: router } = await import('@/router/index')
 
       expect(router).toBeDefined()
@@ -419,14 +426,13 @@ describe('Router Navigation Guards', () => {
     })
 
     test('should use hash history when useHashMode is true', async () => {
+      mockConfig.useHashMode = true
       mockAppConfig.getCore.mockReturnValue({
         parameters: {
           useHashMode: true,
         },
       })
 
-      // Re-import to get fresh instance with new config
-      vi.resetModules()
       const { default: router } = await import('@/router/index')
 
       expect(router).toBeDefined()
@@ -447,8 +453,6 @@ describe('Router Navigation Guards', () => {
 
       mockAppConfig.getDashboardRoutes.mockReturnValue(customDashboardRoutes)
 
-      // Re-import to get fresh instance with new config
-      vi.resetModules()
       const { default: router } = await import('@/router/index')
 
       const routes = router.getRoutes()
@@ -481,8 +485,6 @@ describe('Router Navigation Guards', () => {
         customInstanceDashboardRoutes,
       )
 
-      // Re-import to get fresh instance with new config
-      vi.resetModules()
       const { default: router } = await import('@/router/index')
 
       const routes = router.getRoutes()
@@ -501,8 +503,6 @@ describe('Router Navigation Guards', () => {
     test('should handle empty dashboard routes array', async () => {
       mockAppConfig.getDashboardRoutes.mockReturnValue([])
 
-      // Re-import to get fresh instance with new config
-      vi.resetModules()
       const { default: router } = await import('@/router/index')
 
       const routes = router.getRoutes()
@@ -539,8 +539,9 @@ describe('Router Navigation Guards', () => {
       const rootRoute = routes.find((route) => route.path === '/')
       const childRoutes = rootRoute?.children || []
 
-      // Should have exactly 11 default child routes when instance dashboard routes is null
-      expect(childRoutes.length).toBe(11)
+      // Static children include roles-management and not-found (instance dashboard spread is empty when null).
+      // Agent is no longer a core route (extracted to the premium agent module, injected via addRoute).
+      expect(childRoutes.length).toBe(13)
     })
   })
 

@@ -4,8 +4,7 @@
   </v-system-bar>
 </template>
 <script lang="ts">
-import { defineComponent } from 'vue';
-import { inject } from 'vue';
+import { defineComponent, inject } from 'vue';
 
 export default defineComponent({
   name: 'CoreAppHeader',

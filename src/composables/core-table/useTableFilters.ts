@@ -1,6 +1,7 @@
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import type { ComputedRef } from 'vue'
 import { generateSecureId } from '@/utils/tableFilterUtils'
+import { getListResponseRowProperties } from '@/utils/schemaUtils'
 
 // Filter types based on field types
 export type FilterOperator =
@@ -35,7 +36,7 @@ export interface FilterField {
   columnsToJoin?: string[]
   foreignKeyField?: string
   hidden?: boolean
-  readOnly?: boolean
+  frontendReadOnly?: boolean
 }
 
 export interface FilterGroup {
@@ -61,13 +62,13 @@ export function useTableFilters<T extends Record<string, any>>(
     const fields: FilterField[] = []
 
     // Get fields from response schema (get_list operation)
-    const getListOperation = tableConfig.value.get_list
-    if (getListOperation?.response_schema?.items?.properties) {
-      const properties = getListOperation.response_schema.items.properties
+    const rowSchema = getListResponseRowProperties(tableConfig.value)
+    if (rowSchema?.properties) {
+      const properties = rowSchema.properties
 
       Object.entries(properties).forEach(([key, prop]: [string, any]) => {
-        // Skip id and readOnly fields for filtering
-        if (key === 'id' || prop.readOnly) return
+        // Skip id and frontendReadOnly fields for filtering
+        if (key === 'id' || prop.frontendReadOnly) return
 
         fields.push({
           key,
@@ -200,11 +201,12 @@ export function useTableFilters<T extends Record<string, any>>(
       case 'is_less_than_or_equal':
         return Number(fieldValue) <= Number(value)
 
-      case 'is_between':
+      case 'is_between': {
         const numValue = Number(fieldValue)
         const minValue = Number(value)
         const maxValue = Number(value2)
         return numValue >= minValue && numValue <= maxValue
+      }
 
       default:
         return true
@@ -223,19 +225,22 @@ export function useTableFilters<T extends Record<string, any>>(
 
     switch (fieldType) {
       case 'number':
-      case 'integer':
+      case 'integer': {
         // Convert both to numbers for comparison
         const numFieldValue = Number(fieldValue)
         const numFilterValue = Number(filterValue)
         // Handle NaN cases
-        if (isNaN(numFieldValue) || isNaN(numFilterValue)) return false
+        if (Number.isNaN(numFieldValue) || Number.isNaN(numFilterValue))
+          return false
         return numFieldValue === numFilterValue
+      }
 
-      case 'boolean':
+      case 'boolean': {
         // Convert both to boolean for comparison
         const boolFieldValue = Boolean(fieldValue)
         const boolFilterValue = Boolean(filterValue)
         return boolFieldValue === boolFilterValue
+      }
 
       case 'string':
       default:

@@ -15,11 +15,13 @@ describe('CoreTabs', () => {
     vuetify = createVuetify()
 
     // Mock ResizeObserver
-    global.ResizeObserver = vi.fn().mockImplementation(() => ({
-      observe: vi.fn(),
-      unobserve: vi.fn(),
-      disconnect: vi.fn(),
-    }))
+    global.ResizeObserver = vi.fn(function () {
+      return {
+        observe: vi.fn(),
+        unobserve: vi.fn(),
+        disconnect: vi.fn(),
+      }
+    })
   })
 
   afterEach(() => {
@@ -456,11 +458,13 @@ describe('CoreTabs', () => {
 
     test('cleans up ResizeObserver on unmount', () => {
       const disconnectSpy = vi.fn()
-      global.ResizeObserver = vi.fn().mockImplementation(() => ({
-        observe: vi.fn(),
-        unobserve: vi.fn(),
-        disconnect: disconnectSpy,
-      }))
+      global.ResizeObserver = vi.fn(function () {
+        return {
+          observe: vi.fn(),
+          unobserve: vi.fn(),
+          disconnect: disconnectSpy,
+        }
+      })
 
       wrapper = createWrapper()
       wrapper.unmount()

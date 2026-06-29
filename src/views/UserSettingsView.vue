@@ -144,7 +144,7 @@ export default {
         (value) =>
           /[a-z]/.test(value) || this.$t('settings.passwordRuleCharacters'),
         (value) =>
-          /[0-9]/.test(value) || this.$t('settings.passwordRuleCharacters'),
+          /\d/.test(value) || this.$t('settings.passwordRuleCharacters'),
         (value) =>
           /[!?@#$%^&*)(+=.<>{}[\],/¿¡:;'"|~`_-]/.test(value) ||
           this.$t('settings.passwordRuleCharacters'),
@@ -183,31 +183,6 @@ export default {
       this.locale = newLang
       // Use the new changeLanguage function to update configurations
       changeLanguage(newLang)
-    },
-  },
-  methods: {
-    resetPasswordFields() {
-      this.newPassword = undefined
-      this.confirmPassword = undefined
-      this.passwordRules.every((rule) => rule(this.newPassword) === true)
-      this.passwordRules.every((rule) => rule(this.confirmPassword) === true)
-    },
-    async changePassword() {
-      try {
-        const user = this.generalStore.getUser
-        const result = await this.generalStore.changeUserPassword(
-          user.id,
-          this.newPassword,
-        )
-        if (result) {
-          this.resetPasswordFields()
-          this.showSnackbar(this.$t('settings.snackbarMessageSuccess'))
-        } else {
-          this.showSnackbar(this.$t('settings.snackbarMessageError'), 'error')
-        }
-      } catch (error) {
-        this.showSnackbar(this.$t('settings.snackbarMessageError'), 'error')
-      }
     },
   },
   computed: {
@@ -267,6 +242,7 @@ export default {
           this.showSnackbar(this.$t('settings.snackbarMessageError'), 'error')
         }
       } catch (error) {
+        console.error('Failed to change password:', error)
         this.showSnackbar(this.$t('settings.snackbarMessageError'), 'error')
       }
     },

@@ -1,9 +1,32 @@
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGeneralStore } from '@/stores/general'
+import {
+  getListResponseRowProperties,
+  normalizeGetListResponseToRows,
+  isParameterPropertySchemaVisible,
+  normalizeJsonSchemaPropertyTypeForUi,
+} from '@/utils/schemaUtils'
 
 /** Key for the single column when validation data is array of strings (shown as alert list) */
 const VALIDATION_MESSAGE_FIELD = 'message'
+
+/**
+ * Ensures every row has an `id` property using a deterministic index-based scheme.
+ * Execution data often lacks explicit IDs; without them CoreTable editing,
+ * selection, and row identification break.
+ * The same function is exported so `applyPendingChangesToData` can assign
+ * matching IDs before reconciling staged changes.
+ */
+export function ensureItemIds(rows: any[]): any[] {
+  if (!Array.isArray(rows) || rows.length === 0) return rows
+  const needsId = rows.some((r) => r.id == null)
+  if (!needsId) return rows
+  return rows.map((row, index) => {
+    if (row.id != null) return row
+    return { ...row, id: `__row_${index}` }
+  })
+}
 
 /**
  * Composable for handling execution data (instance/solution) tables
@@ -52,38 +75,49 @@ export function useExecutionTableData(
     return tableConfig.value?.isPrimitiveArray || false
   })
 
+  const getExecutionDataByType = (execution: any, type: string) => {
+    if (type === 'instance') {
+      return execution.experiment?.instance || execution.instance
+    }
+    if (type === 'solution') {
+      return execution.experiment?.solution || execution.solution
+    }
+    return undefined
+  }
+
   // Get table data from execution
   const tableData = computed(() => {
     if (!selectedExecution.value || !tableKey.value) return []
 
     try {
-      let executionData
-      if (executionType.value === 'instance') {
-        executionData =
-          selectedExecution.value.experiment?.instance ||
-          selectedExecution.value.instance
-      } else if (executionType.value === 'solution') {
-        executionData =
-          selectedExecution.value.experiment?.solution ||
-          selectedExecution.value.solution
-      }
+      const executionData = getExecutionDataByType(
+        selectedExecution.value,
+        executionType.value,
+      )
 
       if (!executionData) return []
 
-      // Choose data source based on table type
-      let dataSource
+      let data: any
+
       if (isValidationTable.value) {
-        // For validation tables, look in dataChecks
-        dataSource = executionData.dataChecks
+        const dataChecks = executionData.dataChecks
+        if (!dataChecks) return []
+        data = dataChecks[tableKey.value]
+      } else if (tableConfig.value?._isFromRawKpis) {
+        const rawKpis = executionData.rawKpis
+        if (!rawKpis || typeof rawKpis !== 'object') return []
+        const sourceKey =
+          tableConfig.value._rawKpisSourceKey ?? tableKey.value
+        data = rawKpis[sourceKey]
       } else {
-        // For regular tables, look in data
-        dataSource = executionData.data
+        const ds = executionData.data
+        if (!ds) return []
+        data = ds[tableKey.value]
       }
 
-      if (!dataSource) return []
-
-      const data = dataSource[tableKey.value]
-
+      if (tableConfig.value) {
+        return normalizeGetListResponseToRows(data, tableConfig.value)
+      }
       return Array.isArray(data) ? data : []
     } catch (err) {
       console.error('Error getting table data:', err)
@@ -103,42 +137,48 @@ export function useExecutionTableData(
           filterable: true,
           type: 'string',
           required: false,
-          readOnly: true,
+          frontendReadOnly: true,
         },
       ]
     }
 
-    if (!tableConfig.value?.get_list?.response_schema?.items?.properties)
-      return []
+    const rowSchema = getListResponseRowProperties(tableConfig.value)
+    if (!rowSchema) return []
 
-    const properties =
-      tableConfig.value.get_list.response_schema.items.properties
-    return Object.entries(properties).map(
-      ([key, prop]: [string, any]) => ({
+    const properties = rowSchema.properties
+    const requiredList = rowSchema.required
+    return Object.entries(properties)
+      .filter(([, prop]) => isParameterPropertySchemaVisible(prop))
+      .map(([key, prop]: [string, any]) => ({
         title: prop.title || key,
         value: key,
         key: key,
         sortable: true,
         filterable: true,
-        type: prop.type === 'integer' ? 'number' : prop.type,
-        required:
-          tableConfig.value.get_list.response_schema.items.required?.includes(
-            key,
-          ) || false,
-        readOnly: prop.readOnly || false,
+        type: normalizeJsonSchemaPropertyTypeForUi(prop),
+        required: requiredList.includes(key) || false,
+        frontendReadOnly: prop.frontendReadOnly || false,
         choices: prop.choices || undefined,
-      }),
-    )
+      }))
   })
 
-  // Get available filter fields from headers
+  // Keep filter fields aligned with visible table columns.
   const availableFilterFields = computed(() => {
-    return headers.value.map((header) => ({
-      key: header.key || header.value,
-      title: header.title,
-      type: header.type,
-      filterable: header.filterable,
-    }))
+    return headers.value
+      .filter(
+        (header) =>
+          header.value !== 'selection' &&
+          header.filterable &&
+          !header.hidden &&
+          !header.isForeignKey &&
+          !(header.columnsToJoin && Array.isArray(header.columnsToJoin)),
+      )
+      .map((header) => ({
+        key: header.key || header.value,
+        title: header.title,
+        type: header.type,
+        filterable: header.filterable,
+      }))
   })
 
   // Table title
@@ -164,7 +204,7 @@ export function useExecutionTableData(
           [VALIDATION_MESSAGE_FIELD]: String(item),
         }))
       } else {
-        items.value = data
+        items.value = ensureItemIds(data)
       }
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error'

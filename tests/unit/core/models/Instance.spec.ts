@@ -1,39 +1,40 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, test, expect, vi, beforeEach } from 'vitest'
 import { InstanceCore } from '@/models/Instance'
 
 // Mock dependencies
+const { mockValidate, mockAjv, MockAjv } = vi.hoisted(() => {
+  const mockValidate = vi.fn()
+  const mockAjv = {
+    compile: vi.fn(function () {
+      return mockValidate
+    })
+  }
+  const MockAjv = vi.fn(function () {
+    return mockAjv
+  })
+  return { mockValidate, mockAjv, MockAjv }
+})
+
 vi.mock('@/utils/data_io', () => ({
   loadExcel: vi.fn()
 }))
 
 vi.mock('ajv', () => ({
-  default: vi.fn(() => ({
-    compile: vi.fn(() => vi.fn())
-  }))
+  default: MockAjv
 }))
 
 describe('InstanceCore', () => {
   let mockLoadExcel: any
-  let mockAjv: any
-  let mockValidate: any
 
   beforeEach(async () => {
     vi.clearAllMocks()
+    mockValidate.mockReset()
+    mockAjv.compile.mockImplementation(function () {
+      return mockValidate
+    })
 
-    // Setup mocks
     const dataIo = await import('@/utils/data_io')
     mockLoadExcel = dataIo.loadExcel
-
-    const Ajv = await import('ajv')
-    mockValidate = vi.fn()
-    mockAjv = {
-      compile: vi.fn(() => mockValidate)
-    }
-    Ajv.default = vi.fn(() => mockAjv)
-  })
-
-  afterEach(() => {
-    vi.restoreAllMocks()
   })
 
   describe('constructor', () => {
@@ -272,8 +273,11 @@ describe('InstanceCore', () => {
 
       await instance.checkSchema()
 
-      const AjvConstructor = (await import('ajv')).default
-      expect(AjvConstructor).toHaveBeenCalledWith({ strict: false, allErrors: true })
+      expect(MockAjv).toHaveBeenCalledWith({
+        strict: false,
+        allErrors: true,
+        coerceTypes: true,
+      })
     })
 
     test('should handle schema compilation errors', async () => {
@@ -449,8 +453,8 @@ describe('InstanceCore', () => {
       expect(result.id).toBeNull()
       expect(result.schemaName).toBe('csv-schema')
       expect(result.data.test).toHaveLength(2)
-      expect(result.data.test[0]).toEqual({ id: 1, name: 'Item1', value: 100 })
-      expect(result.data.test[1]).toEqual({ id: 2, name: 'Item2', value: 200 })
+      expect(result.data.test[0]).toEqual({ id: '1', name: 'Item1', value: '100' })
+      expect(result.data.test[1]).toEqual({ id: '2', name: 'Item2', value: '200' })
     })
 
     test('should create instance from CSV with semicolon delimiter', async () => {
@@ -460,7 +464,7 @@ describe('InstanceCore', () => {
       const result = await InstanceCore.fromCsv(csvText, 'test.csv', mockSchema, {}, 'csv-schema')
 
       expect(result.data.test).toHaveLength(2)
-      expect(result.data.test[0]).toEqual({ id: 1, name: 'Item1', value: 100 })
+      expect(result.data.test[0]).toEqual({ id: '1', name: 'Item1', value: '100' })
     })
 
     test('should create instance from CSV with tab delimiter', async () => {
@@ -470,7 +474,7 @@ describe('InstanceCore', () => {
       const result = await InstanceCore.fromCsv(csvText, 'test.csv', mockSchema, {}, 'csv-schema')
 
       expect(result.data.test).toHaveLength(2)
-      expect(result.data.test[0]).toEqual({ id: 1, name: 'Item1', value: 100 })
+      expect(result.data.test[0]).toEqual({ id: '1', name: 'Item1', value: '100' })
     })
 
     test('should handle quoted CSV values', async () => {
@@ -480,11 +484,11 @@ describe('InstanceCore', () => {
       const result = await InstanceCore.fromCsv(csvText, 'quoted.csv', mockSchema, {}, 'csv-schema')
 
       expect(result.data.quoted[0].name).toBe('Item 1')
-      // The CSV parser stops at the quote, so we get partial string
-      expect(result.data.quoted[0].description).toBe('"Description with')
-      expect(result.data.quoted[1].name).toBe('Item 2')
-      // This malformed CSV has a quote in the middle that terminates the string
-      expect(result.data.quoted[1].description).toBe('Description with\' quotes')
+      // RFC 4180 parser correctly preserves the embedded comma inside quotes
+      expect(result.data.quoted[0].description).toBe('Description with, comma')
+      // Single quotes are not special; treated as literal characters
+      expect(result.data.quoted[1].name).toBe("'Item 2'")
+      expect(result.data.quoted[1].description).toBe("'Description with' quotes'")
     })
 
     test('should handle empty lines in CSV', async () => {
@@ -494,8 +498,8 @@ describe('InstanceCore', () => {
       const result = await InstanceCore.fromCsv(csvText, 'empty-lines.csv', mockSchema, {}, 'csv-schema')
 
       expect(result.data['empty-lines']).toHaveLength(2)
-      expect(result.data['empty-lines'][0]).toEqual({ id: 1, name: 'Item1' })
-      expect(result.data['empty-lines'][1]).toEqual({ id: 2, name: 'Item2' })
+      expect(result.data['empty-lines'][0]).toEqual({ id: '1', name: 'Item1' })
+      expect(result.data['empty-lines'][1]).toEqual({ id: '2', name: 'Item2' })
     })
 
     test('should handle CSV with different value types', async () => {
@@ -505,10 +509,10 @@ describe('InstanceCore', () => {
       const result = await InstanceCore.fromCsv(csvText, 'types.csv', mockSchema, {}, 'csv-schema')
 
       expect(result.data.types[0]).toEqual({
-        id: 1,
+        id: '1',
         name: 'Item1',
         active: 'true',
-        score: 95.5,
+        score: '95.5',
         notes: 'Good'
       })
     })
@@ -546,8 +550,8 @@ describe('InstanceCore', () => {
 
       const result = await InstanceCore.fromCsv(csvText, 'mismatched.csv', mockSchema, {}, 'csv-schema')
 
-      expect(result.data.mismatched[0]).toEqual({ id: 1, name: 'Item1' })
-      expect(result.data.mismatched[1]).toEqual({ id: 2, name: 'Item2', value: 200 })
+      expect(result.data.mismatched[0]).toEqual({ id: '1', name: 'Item1' })
+      expect(result.data.mismatched[1]).toEqual({ id: '2', name: 'Item2', value: '200' })
     })
   })
 

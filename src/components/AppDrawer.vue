@@ -164,7 +164,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, Suspense, inject } from 'vue'
+import { defineComponent, inject } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGeneralStore } from '@/stores/general'
 import getAuthService from '@/services/AuthServiceFactory'
@@ -175,9 +175,13 @@ import {
   getNavigationItemsFromConfig,
   getMasterDataNavigationWithSections,
   filterValidationTablesWithData,
+  enrichConfigWithChecksData,
 } from '@/services/FrontendAutomationService'
+import { applyKpiDisplayMode } from '@/utils/kpiTableUtils'
 import { resolveTitleWithLocale } from '@/utils/i18nUtils'
 import { useSectionTitles } from '@/composables/useSectionTitles'
+import { isViewAllowed } from '@/app/rolesConfig'
+import { getPremiumDrawerSections } from '@/plugins/extensions'
 
 export default defineComponent({
   name: 'CoreAppDrawer',
@@ -208,6 +212,14 @@ export default defineComponent({
   computed: {
     appName() {
       return config.name || 'Application'
+    },
+    isAdmin() {
+      const user = this.store.getUser
+      return user?.roles?.some((r: { name: string }) => r.name === 'admin') ?? false
+    },
+    currentUserRoleNames() {
+      const user = this.store.getUser
+      return user?.roles?.map((r: { name: string }) => r.name) ?? []
     },
     user() {
       return {
@@ -258,6 +270,7 @@ export default defineComponent({
         masterDataConfig,
         sections,
         '/configuration',
+        this.store.masterDataGroups ?? undefined,
       )
 
       return navWithSections.map((block) => {
@@ -314,11 +327,16 @@ export default defineComponent({
       const configurations = this.store.getConfigurations
       let inputDataConfig = configurations?.inputData || {}
 
-      // Filter validation tables to only show those with data
       if (this.store.selectedExecution) {
         const instanceData =
           this.store.selectedExecution.experiment?.instance ||
           this.store.selectedExecution.instance
+        const locale = this.$i18n?.locale ?? 'en'
+        inputDataConfig = enrichConfigWithChecksData(
+          inputDataConfig,
+          instanceData,
+          locale,
+        )
         inputDataConfig = filterValidationTablesWithData(
           inputDataConfig,
           instanceData,
@@ -365,15 +383,32 @@ export default defineComponent({
       const configurations = this.store.getConfigurations
       let resultsDataConfig = configurations?.resultsData || {}
 
-      // Filter validation tables to only show those with data
       if (this.store.selectedExecution) {
         const solutionData =
           this.store.selectedExecution.experiment?.solution ||
           this.store.selectedExecution.solution
+        const locale = this.$i18n?.locale ?? 'en'
+        resultsDataConfig = enrichConfigWithChecksData(
+          resultsDataConfig,
+          solutionData,
+          locale,
+        )
         resultsDataConfig = filterValidationTablesWithData(
           resultsDataConfig,
           solutionData,
         )
+
+        const kpiMode =
+          appConfig.getCore().parameters?.kpiTablesDisplayMode ?? 'disabled'
+        if (kpiMode !== 'disabled' && solutionData) {
+          const rawKpis = solutionData.rawKpis ?? null
+          resultsDataConfig = applyKpiDisplayMode(
+            resultsDataConfig,
+            rawKpis,
+            kpiMode,
+            locale,
+          )
+        }
       }
 
       const navigationItems = getNavigationItemsFromConfig(
@@ -420,43 +455,103 @@ export default defineComponent({
     // App-specific sections (from config: e.g. Agent). Built dynamically like dashboard/instanceDashboard.
     appSections() {
       const items = appConfig.getAppSections()
-      return items.map((s) => ({
-        title: this.$t(s.titleKey),
-        icon: s.icon,
-        to: s.to,
-        subPages: s.subPages?.map((sub) => ({
-          title: this.$t(sub.titleKey),
-          icon: sub.icon,
-          to: sub.to,
-        })),
-      }))
+      const visibleWhenExecutionSelected = (entry) =>
+        !entry.requiresSelectedExecution || this.hasSelectedExecution
+
+      return items
+        .filter(visibleWhenExecutionSelected)
+        .map((s) => ({
+          title: this.$t(s.titleKey),
+          icon: s.icon,
+          to: s.to,
+          subPages: s.subPages
+            ?.filter(visibleWhenExecutionSelected)
+            .map((sub) => ({
+              title: this.$t(sub.titleKey),
+              icon: sub.icon,
+              to: sub.to,
+            })),
+        }))
+        .filter((s) => s.to != null || (s.subPages?.length ?? 0) > 0)
+    },
+    /**
+     * Drawer entries contributed by premium modules (enterprise). Empty when none registered.
+     * Maps the declarative PremiumDrawerSection (i18n keys) to the resolved drawer item shape.
+     */
+    premiumDrawerSections() {
+      return getPremiumDrawerSections()
+        .map((s) => ({
+          title: this.$t(s.titleKey),
+          icon: s.icon,
+          to: s.to,
+          subPages: s.subPages?.map((sub) => ({
+            title: this.$t(sub.titleKey),
+            icon: sub.icon,
+            to: sub.to,
+          })),
+        }))
+        .filter((s) => s.to != null || (s.subPages?.length ?? 0) > 0)
+    },
+    // Admin section (only visible to admins when enableRolesManagement is true)
+    adminSection() {
+      if (!this.isAdmin) return null
+      if (!appConfig.getCore().parameters.enableRolesManagement) return null
+      return {
+        title: this.$t('rolesManagement.adminSection'),
+        icon: 'mdi-shield-account',
+        subPages: [
+          {
+            title: this.$t('rolesManagement.title'),
+            icon: 'mdi-account-key',
+            to: '/roles-management',
+          },
+        ],
+      }
     },
     // All sections combined
     allSections() {
+      const roleNames = this.currentUserRoleNames
+      const allowed = (viewId) => isViewAllowed(roleNames, viewId)
       const sections = []
 
-      // Always add executions section
-      sections.push(this.executionsSection)
+      // Add executions section (filter sub-pages by role; skip section if no pages remain)
+      const execSub = this.executionsSection.subPages?.filter((p) => {
+        if (p.to === '/history-execution') return allowed('history-execution')
+        if (p.to === '/project-execution') return allowed('project-execution')
+        return true
+      })
+      if (execSub && execSub.length > 0) {
+        sections.push({ ...this.executionsSection, subPages: execSub })
+      }
 
-      // Add app-specific sections (e.g. Agent)
+      // Premium modules (enterprise) inject their drawer entries here (e.g. Agent).
+      this.premiumDrawerSections.forEach((section) => sections.push(section))
+
       this.appSections.forEach((section) => sections.push(section))
 
       // Add master data: schema-defined sections first (on top), then single Master data section if no schema sections
-      this.masterDataSectionsForDrawer.forEach((section) =>
-        sections.push(section),
-      )
-      if (this.masterDataSection) {
-        sections.push(this.masterDataSection)
+      if (allowed('configuration')) {
+        this.masterDataSectionsForDrawer.forEach((section) =>
+          sections.push(section),
+        )
+        if (this.masterDataSection) {
+          sections.push(this.masterDataSection)
+        }
       }
 
-      // Add input data section if execution is selected
-      if (this.inputDataSection) {
+      // Add input data section if execution is selected and role allows it
+      if (this.inputDataSection && allowed('input-data')) {
         sections.push(this.inputDataSection)
       }
 
-      // Add results section if execution is selected
-      if (this.resultsSection) {
+      // Add results section if execution is selected and role allows it
+      if (this.resultsSection && allowed('results')) {
         sections.push(this.resultsSection)
+      }
+
+      // Add admin section for admin users
+      if (this.adminSection) {
+        sections.push(this.adminSection)
       }
 
       return sections
@@ -506,7 +601,6 @@ export default defineComponent({
     },
     isSubPageActive(subPages) {
       if (!subPages) return false
-      const currentPath = this.$route.path
 
       // Check if current route matches or starts with any subPage route
       return subPages.some((subPage) => {
@@ -622,11 +716,6 @@ export default defineComponent({
   height: 20px;
 }
 
-.d-flex.align-center {
-  min-height: 40px;
-  align-items: center;
-}
-
 .subpages .d-flex.align-center {
   min-height: 36px;
   align-items: center;
@@ -682,6 +771,7 @@ export default defineComponent({
 .d-flex.align-center {
   width: 100%;
   min-height: 48px;
+  align-items: center;
   transition: all 0.3s ease;
   white-space: nowrap;
   overflow: hidden;

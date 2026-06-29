@@ -731,4 +731,378 @@ describe('ProjectExecutionView', () => {
       expect(formSteps.exists()).toBe(true)
     })
   })
+
+  describe('Step change with pending changes', () => {
+    test('handleStepChange blocks navigation and shows modal when on reviewInstance with pending changes', async () => {
+      const { wrapper } = createWrapper()
+      // Move to reviewInstance step
+      const reviewIndex = wrapper.vm.steps.findIndex(
+        (s) => s.key === 'reviewInstance',
+      )
+      wrapper.vm.currentStep = reviewIndex
+      wrapper.vm.hasPendingTableChanges = true
+      const before = wrapper.vm.currentStep
+
+      await wrapper.vm.handleStepChange(reviewIndex + 1)
+
+      expect(wrapper.vm.showUnsavedChangesModal).toBe(true)
+      expect(wrapper.vm.pendingStepChange).toBe(reviewIndex + 1)
+      // Step does not advance
+      expect(wrapper.vm.currentStep).toBe(before)
+    })
+
+    test('handleStayOnStep closes the modal and clears pending step change', () => {
+      const { wrapper } = createWrapper()
+      wrapper.vm.pendingStepChange = 3
+      wrapper.vm.showUnsavedChangesModal = true
+
+      wrapper.vm.handleStayOnStep()
+
+      expect(wrapper.vm.pendingStepChange).toBeNull()
+      expect(wrapper.vm.showUnsavedChangesModal).toBe(false)
+    })
+
+    test('handleLeaveStep clears changes and proceeds with the pending step', () => {
+      const { wrapper } = createWrapper()
+      const clearSpy = vi.spyOn(wrapper.vm.tableChanges, 'clearAllChanges')
+      const proceedSpy = vi
+        .spyOn(wrapper.vm, 'proceedWithStepChange')
+        .mockResolvedValue(undefined)
+      wrapper.vm.pendingStepChange = 2
+      wrapper.vm.hasPendingTableChanges = true
+
+      wrapper.vm.handleLeaveStep()
+
+      expect(clearSpy).toHaveBeenCalled()
+      expect(wrapper.vm.hasPendingTableChanges).toBe(false)
+      expect(proceedSpy).toHaveBeenCalledWith(2)
+      expect(wrapper.vm.showUnsavedChangesModal).toBe(false)
+    })
+
+    test('handleStepChange proceeds normally when no pending changes', async () => {
+      const { wrapper } = createWrapper()
+      const proceedSpy = vi
+        .spyOn(wrapper.vm, 'proceedWithStepChange')
+        .mockResolvedValue(undefined)
+
+      await wrapper.vm.handleStepChange(1)
+
+      expect(proceedSpy).toHaveBeenCalledWith(1)
+    })
+  })
+
+  describe('External ETL submit on leaving reviewInstance', () => {
+    test('submitExternalEtlUpdate applies returned data and resets the flow', async () => {
+      const { wrapper, generalStore } = createWrapper()
+      generalStore.appConfig.Instance = vi.fn(function (id, data) {
+        return { id, data }
+      })
+      Object.defineProperty(generalStore, 'getSchemaConfig', {
+        get: () => ({ instanceSchema: {}, instanceChecksSchema: {} }),
+        configurable: true,
+      })
+      Object.defineProperty(generalStore, 'getSchemaName', {
+        get: () => 'schema',
+        configurable: true,
+      })
+      wrapper.vm.newExecution.instance = { data: { t: [] } }
+      wrapper.vm.externalEtlFlow.submitUpdate = vi
+        .fn()
+        .mockResolvedValue({ data: { t: [1] }, warning: null })
+      const resetSpy = vi.spyOn(wrapper.vm.externalEtlFlow, 'reset')
+
+      const aborted = await wrapper.vm.submitExternalEtlUpdate()
+
+      expect(aborted).toBe(false)
+      expect(wrapper.vm.externalEtlFlow.submitUpdate).toHaveBeenCalled()
+      expect(resetSpy).toHaveBeenCalled()
+      expect(wrapper.vm.newExecution.instance.data).toEqual({ t: [1] })
+    })
+
+    test('submitExternalEtlUpdate shows a warning snackbar when one is returned', async () => {
+      const { wrapper, generalStore, mockShowSnackbar } = createWrapper()
+      generalStore.appConfig.Instance = vi.fn(function (id, data) {
+        return { id, data }
+      })
+      Object.defineProperty(generalStore, 'getSchemaConfig', {
+        get: () => ({ instanceSchema: {}, instanceChecksSchema: {} }),
+        configurable: true,
+      })
+      Object.defineProperty(generalStore, 'getSchemaName', {
+        get: () => 'schema',
+        configurable: true,
+      })
+      wrapper.vm.newExecution.instance = { data: { t: [] } }
+      wrapper.vm.externalEtlFlow.submitUpdate = vi
+        .fn()
+        .mockResolvedValue({ data: {}, warning: 'heads up' })
+
+      await wrapper.vm.submitExternalEtlUpdate()
+
+      expect(mockShowSnackbar).toHaveBeenCalledWith('heads up', 'warning', {
+        persistent: true,
+      })
+    })
+
+    test('submitExternalEtlUpdate returns true (aborts) on error', async () => {
+      const { wrapper, mockShowSnackbar } = createWrapper()
+      wrapper.vm.newExecution.instance = { data: { t: [] } }
+      wrapper.vm.externalEtlFlow.submitUpdate = vi
+        .fn()
+        .mockRejectedValue(new Error('etl failed'))
+      const keyBefore = wrapper.vm.formStepsKey
+
+      const aborted = await wrapper.vm.submitExternalEtlUpdate()
+
+      expect(aborted).toBe(true)
+      expect(mockShowSnackbar).toHaveBeenCalledWith('etl failed', 'error')
+      expect(wrapper.vm.formStepsKey).toBe(keyBefore + 1)
+    })
+
+    test('submitExternalEtlUpdate returns false when no instance data', async () => {
+      const { wrapper } = createWrapper()
+      wrapper.vm.newExecution.instance = null
+      const aborted = await wrapper.vm.submitExternalEtlUpdate()
+      expect(aborted).toBe(false)
+    })
+
+    test('handleExternalEtlData forwards raw data to the flow', () => {
+      const { wrapper } = createWrapper()
+      const initSpy = vi.spyOn(
+        wrapper.vm.externalEtlFlow,
+        'initializeFromEtlResponse',
+      )
+      wrapper.vm.handleExternalEtlData({ tables: {} })
+      expect(initSpy).toHaveBeenCalledWith({ tables: {} })
+    })
+  })
+
+  describe('validateInstanceSchema', () => {
+    test('returns early when there is no instance', async () => {
+      const { wrapper } = createWrapper()
+      wrapper.vm.newExecution.instance = null
+      await wrapper.vm.validateInstanceSchema()
+      expect(wrapper.vm.existingInstanceErrors).toBeNull()
+    })
+
+    test('clears errors when validation passes', async () => {
+      const { wrapper } = createWrapper()
+      wrapper.vm.existingInstanceErrors = 'old'
+      wrapper.vm.newExecution.instance = {
+        checkSchema: vi.fn().mockResolvedValue([]),
+      }
+      await wrapper.vm.validateInstanceSchema()
+      expect(wrapper.vm.existingInstanceErrors).toBeNull()
+    })
+
+    test('sets errors and shows a snackbar when validation fails', async () => {
+      const { wrapper, mockShowSnackbar } = createWrapper()
+      wrapper.vm.newExecution.instance = {
+        checkSchema: vi
+          .fn()
+          .mockResolvedValue([{ instancePath: '/x', message: 'bad', keyword: 'type', schemaPath: '#', params: {} }]),
+      }
+      await wrapper.vm.validateInstanceSchema()
+      expect(wrapper.vm.existingInstanceErrors).toBeTruthy()
+      expect(mockShowSnackbar).toHaveBeenCalled()
+    })
+
+    test('handles exceptions thrown during validation', async () => {
+      const { wrapper, mockShowSnackbar } = createWrapper()
+      wrapper.vm.newExecution.instance = {
+        checkSchema: vi.fn().mockRejectedValue(new Error('schema boom')),
+      }
+      await wrapper.vm.validateInstanceSchema()
+      expect(wrapper.vm.existingInstanceErrors).toContain('schema boom')
+      expect(mockShowSnackbar).toHaveBeenCalled()
+    })
+  })
+
+  describe('step ordering helpers', () => {
+    test('calculates name/solve order with both optional steps shown', () => {
+      const { wrapper } = createWrapper({
+        solverConfig: { showSolverStep: true, defaultSolver: 'd' },
+        configFieldsConfig: { showConfigFieldsStep: true, autoLoadValues: false },
+      })
+      expect(wrapper.vm.calculateNameDescriptionStepOrder()).toBe(6)
+      expect(wrapper.vm.calculateSolveStepOrder()).toBe(7)
+    })
+
+    test('calculates name/solve order with no optional steps', () => {
+      const { wrapper } = createWrapper({
+        solverConfig: { showSolverStep: false, defaultSolver: 'd' },
+        configFieldsConfig: { showConfigFieldsStep: false, autoLoadValues: false },
+      })
+      expect(wrapper.vm.calculateNameDescriptionStepOrder()).toBe(4)
+      expect(wrapper.vm.calculateSolveStepOrder()).toBe(5)
+    })
+
+    test('reviewInstanceStepIndex resolves the review step position', () => {
+      const { wrapper } = createWrapper()
+      const idx = wrapper.vm.reviewInstanceStepIndex
+      expect(wrapper.vm.steps[idx].key).toBe('reviewInstance')
+    })
+  })
+
+  describe('config field value extraction', () => {
+    test('getArrayByValueLookup finds the matching entry value', () => {
+      const { wrapper } = createWrapper()
+      const arr = [
+        { code: 'a', val: 1 },
+        { code: 'b', val: 2 },
+      ]
+      const result = wrapper.vm.getArrayByValueLookup(
+        { lookupParam: 'code', param: 'b', lookupValue: 'val' },
+        arr,
+      )
+      expect(result).toBe(2)
+    })
+
+    test('getArrayByValueLookup returns undefined when not found', () => {
+      const { wrapper } = createWrapper()
+      const result = wrapper.vm.getArrayByValueLookup(
+        { lookupParam: 'code', param: 'z', lookupValue: 'val' },
+        [{ code: 'a', val: 1 }],
+      )
+      expect(result).toBeUndefined()
+    })
+
+    test('convertValueByType converts floats, numbers and passthrough', () => {
+      const { wrapper } = createWrapper()
+      expect(wrapper.vm.convertValueByType('1.5', 'float')).toBe(1.5)
+      expect(wrapper.vm.convertValueByType('3', 'number')).toBe(3)
+      expect(wrapper.vm.convertValueByType('keep', 'string')).toBe('keep')
+    })
+
+    test('hasValidDataSource reflects presence of source data', () => {
+      const { wrapper } = createWrapper()
+      wrapper.vm.newExecution.instance = { data: { src: { a: 1 } } }
+      expect(wrapper.vm.hasValidDataSource({ source: 'src' })).toBeTruthy()
+      expect(wrapper.vm.hasValidDataSource({ source: 'missing' })).toBeFalsy()
+    })
+
+    test('extractFieldValue falls back to default without a valid source', () => {
+      const { wrapper } = createWrapper()
+      wrapper.vm.newExecution.instance = { data: {} }
+      expect(
+        wrapper.vm.extractFieldValue({ source: 'x', default: 'def' }),
+      ).toBe('def')
+    })
+  })
+
+  describe('exit confirmation flow', () => {
+    test('hasProgressToLose is true when a name is set', () => {
+      const { wrapper } = createWrapper()
+      wrapper.vm.newExecution.name = 'My Execution'
+      expect(wrapper.vm.hasProgressToLose()).toBeTruthy()
+    })
+
+    test('hasProgressToLose is false with a fresh state', () => {
+      const { wrapper } = createWrapper()
+      wrapper.vm.newExecution = {
+        instance: null,
+        config: {},
+        name: null,
+        description: null,
+      }
+      wrapper.vm.selectedFiles = []
+      wrapper.vm.currentStep = 0
+      expect(wrapper.vm.hasProgressToLose()).toBeFalsy()
+    })
+
+    test('handleCancelExit closes the modal and cancels navigation', () => {
+      const { wrapper } = createWrapper()
+      const next = vi.fn()
+      wrapper.vm.pendingNavigation = next
+      wrapper.vm.showExitConfirmationModal = true
+
+      wrapper.vm.handleCancelExit()
+
+      expect(wrapper.vm.showExitConfirmationModal).toBe(false)
+      expect(next).toHaveBeenCalledWith(false)
+      expect(wrapper.vm.pendingNavigation).toBeNull()
+    })
+
+    test('handleConfirmExit resets data and navigates', async () => {
+      const { wrapper } = createWrapper()
+      const next = vi.fn()
+      wrapper.vm.pendingNavigation = next
+      wrapper.vm.pendingNavigationTo = { path: '/somewhere' }
+      wrapper.vm.newExecution.name = 'dirty'
+      wrapper.vm.showExitConfirmationModal = true
+
+      wrapper.vm.handleConfirmExit()
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.vm.showExitConfirmationModal).toBe(false)
+      expect(wrapper.vm.pendingNavigation).toBeNull()
+      expect(next).toHaveBeenCalled()
+    })
+  })
+
+  describe('beforeRouteLeave guard', () => {
+    test('allows navigation when execution was already launched', () => {
+      const { wrapper } = createWrapper()
+      wrapper.vm.executionAlreadyLaunched = true
+      const next = vi.fn()
+      wrapper.vm.$options.beforeRouteLeave.call(wrapper.vm, {}, {}, next)
+      expect(next).toHaveBeenCalledWith()
+    })
+
+    test('allows navigation when there is no progress to lose', () => {
+      const { wrapper } = createWrapper()
+      wrapper.vm.executionAlreadyLaunched = false
+      vi.spyOn(wrapper.vm, 'hasProgressToLose').mockReturnValue(false)
+      wrapper.vm.hasPendingTableChanges = false
+      const next = vi.fn()
+      wrapper.vm.$options.beforeRouteLeave.call(wrapper.vm, {}, {}, next)
+      expect(next).toHaveBeenCalledWith()
+    })
+
+    test('shows the confirmation modal when there is progress to lose', () => {
+      const { wrapper } = createWrapper()
+      wrapper.vm.executionAlreadyLaunched = false
+      vi.spyOn(wrapper.vm, 'hasProgressToLose').mockReturnValue(true)
+      const next = vi.fn()
+      const to = { path: '/x' }
+      wrapper.vm.$options.beforeRouteLeave.call(wrapper.vm, to, {}, next)
+      expect(wrapper.vm.showExitConfirmationModal).toBe(true)
+      expect(wrapper.vm.pendingNavigation).toBe(next)
+      expect(wrapper.vm.pendingNavigationTo).toEqual(to)
+      expect(next).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('loadInstanceStepBlocked computed', () => {
+    test('returns false when not on the loadInstance step', () => {
+      const { wrapper } = createWrapper()
+      // default currentStep is 0 (loadInstance in non-edit mode) — force a non-load step
+      const reviewIndex = wrapper.vm.steps.findIndex(
+        (s) => s.key === 'reviewInstance',
+      )
+      wrapper.vm.currentStep = reviewIndex
+      expect(wrapper.vm.loadInstanceStepBlocked).toBe(false)
+    })
+
+    test('is blocked on loadInstance step when no instance and no etl', () => {
+      const { wrapper } = createWrapper()
+      const loadIndex = wrapper.vm.steps.findIndex(
+        (s) => s.key === 'loadInstance',
+      )
+      wrapper.vm.currentStep = loadIndex
+      wrapper.vm.newExecution.instance = null
+      expect(wrapper.vm.loadInstanceStepBlocked).toBe(true)
+    })
+
+    test('is blocked when there are existing instance errors', () => {
+      const { wrapper } = createWrapper()
+      const loadIndex = wrapper.vm.steps.findIndex(
+        (s) => s.key === 'loadInstance',
+      )
+      wrapper.vm.currentStep = loadIndex
+      wrapper.vm.newExecution.instance = { data: {} }
+      wrapper.vm.existingInstanceErrors = 'boom'
+      expect(wrapper.vm.loadInstanceStepBlocked).toBe(true)
+    })
+  })
 })

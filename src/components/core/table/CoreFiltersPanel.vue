@@ -53,8 +53,9 @@
                   @update:model-value="handleNewFilterFieldChange"
                 />
 
-                <!-- Operator Selection -->
+                <!-- Operator: hidden for date/datetime and boolean fields -->
                 <v-select
+                  v-if="!isDateOnlyFilterField && !isBooleanFilterField"
                   v-model="newFilter.operator"
                   :items="operatorOptions"
                   :label="t('table.filters.operator')"
@@ -66,8 +67,46 @@
                   @update:model-value="handleNewFilterOperatorChange"
                 />
 
-                <!-- Value Input -->
-                <div v-if="operatorNeedsValue(newFilter.operator)" class="mb-2">
+                <!-- Boolean: direct Sí/No selector, no operator needed -->
+                <template v-if="isBooleanFilterField">
+                  <v-select
+                    v-model="newFilter.value"
+                    :items="booleanOptions"
+                    :label="t('table.filters.value')"
+                    item-title="text"
+                    item-value="value"
+                    variant="outlined"
+                    density="compact"
+                    class="mb-2"
+                  />
+                </template>
+
+                <!-- Date / datetime: only Desde + Hasta (operator is_between, hidden) -->
+                <template v-else-if="isDateOnlyFilterField">
+                  <div class="mb-2">
+                    <v-text-field
+                      v-model="newFilter.value"
+                      :label="t('table.filters.dateFrom')"
+                      :type="dateInputTypeForField(currentFieldType)"
+                      variant="outlined"
+                      density="compact"
+                    />
+                    <v-text-field
+                      v-model="newFilter.value2"
+                      :label="t('table.filters.dateTo')"
+                      :type="dateInputTypeForField(currentFieldType)"
+                      variant="outlined"
+                      density="compact"
+                      class="mt-2"
+                    />
+                  </div>
+                </template>
+
+                <!-- Value Input (non-date, non-boolean fields) -->
+                <div
+                  v-else-if="operatorNeedsValue(newFilter.operator)"
+                  class="mb-2"
+                >
                   <!-- String/Text input -->
                   <v-text-field
                     v-if="currentFieldType === 'string'"
@@ -87,28 +126,21 @@
                     density="compact"
                   />
 
-                  <!-- Boolean input -->
-                  <v-select
-                    v-else-if="currentFieldType === 'boolean'"
+                  <!-- Fallback for unknown types -->
+                  <v-text-field
+                    v-else
                     v-model="newFilter.value"
-                    :items="booleanOptions"
                     :label="t('table.filters.value')"
-                    item-title="text"
-                    item-value="value"
                     variant="outlined"
                     density="compact"
                   />
 
-                  <!-- Second value for "between" operator -->
+                  <!-- Second value for "between" operator (numeric range) -->
                   <v-text-field
                     v-if="operatorNeedsSecondValue(newFilter.operator)"
                     v-model="newFilter.value2"
                     :label="t('table.filters.valueTo')"
-                    :type="
-                      ['number', 'integer'].includes(currentFieldType)
-                        ? 'number'
-                        : 'text'
-                    "
+                    :type="value2InputType"
                     variant="outlined"
                     density="compact"
                     class="mt-2"
@@ -150,6 +182,7 @@ import type {
   FilterField,
   FilterOperator,
 } from '@/composables/core-table/useTableFilters'
+import { isDateLikeFieldType } from '@/utils/tableFilterUtils'
 
 // Props
 interface Props {
@@ -213,12 +246,34 @@ const operatorOptions = computed(() => {
 })
 
 const booleanOptions = computed(() => [
-  { text: t('common.yes'), value: true },
-  { text: t('common.no'), value: false },
+  { text: t('table.yes'), value: true },
+  { text: t('table.no'), value: false },
 ])
+
+const isDateOnlyFilterField = computed(() =>
+  isDateLikeFieldType(currentFieldType.value),
+)
+
+const isBooleanFilterField = computed(() => currentFieldType.value === 'boolean')
+
+const dateInputTypeForField = (t: string): 'date' | 'datetime-local' => {
+  if (t === 'date-time' || t === 'datetime') return 'datetime-local'
+  return 'date'
+}
+
+const value2InputType = computed(() => {
+  const typ = currentFieldType.value
+  if (['number', 'integer'].includes(typ)) return 'number'
+  return 'text'
+})
 
 const isNewFilterValid = computed(() => {
   if (!newFilter.value.field) return false
+  if (isDateOnlyFilterField.value) {
+    const from = String(newFilter.value.value ?? '').trim()
+    const to = String(newFilter.value.value2 ?? '').trim()
+    return from !== '' || to !== ''
+  }
   if (props.operatorNeedsValue(newFilter.value.operator)) {
     if (newFilter.value.value === '' || newFilter.value.value == null)
       return false
@@ -250,6 +305,33 @@ const getFilterDisplayText = (filter: FilterCondition): string => {
     return `${fieldTitle} ${operatorText}`
   }
 
+  if (field?.type === 'boolean') {
+    const boolLabel =
+      filter.value === true || filter.value === 'true'
+        ? t('table.yes')
+        : t('table.no')
+    return `${fieldTitle}: ${boolLabel}`
+  }
+
+  if (
+    filter.operator === 'is_between' &&
+    field &&
+    isDateLikeFieldType(field.type)
+  ) {
+    const from = formatFilterValueForDisplay(filter.value)
+    const to = formatFilterValueForDisplay(filter.value2)
+    if (from && to) {
+      return `${fieldTitle}: ${from} – ${to}`
+    }
+    if (from) {
+      return `${fieldTitle} ${t('table.filters.dateFrom')}: ${from}`
+    }
+    if (to) {
+      return `${fieldTitle} ${t('table.filters.dateTo')}: ${to}`
+    }
+    return fieldTitle
+  }
+
   if (filter.operator === 'is_between' && filter.value2 !== undefined) {
     return `${fieldTitle} ${operatorText} ${formatFilterValueForDisplay(filter.value)} ${t('table.filters.and').toLowerCase()} ${formatFilterValueForDisplay(filter.value2)}`
   }
@@ -258,10 +340,17 @@ const getFilterDisplayText = (filter: FilterCondition): string => {
 }
 
 const handleNewFilterFieldChange = (newFieldKey: string) => {
-  const fieldType = currentFieldType.value
-  const availableOperators = props.getOperatorsForFieldType(fieldType)
+  const field = props.availableFields.find((f) => f.key === newFieldKey)
+  const fieldType = field?.type || 'string'
 
-  // Reset operator and values when field changes
+  if (isDateLikeFieldType(fieldType)) {
+    newFilter.value.operator = 'is_between'
+    newFilter.value.value = ''
+    newFilter.value.value2 = ''
+    return
+  }
+
+  const availableOperators = props.getOperatorsForFieldType(fieldType)
   newFilter.value.operator = availableOperators[0]
   newFilter.value.value = ''
   newFilter.value.value2 = undefined
@@ -278,6 +367,10 @@ const handleNewFilterOperatorChange = (newOperator: any) => {
 }
 
 const applyNewFilter = () => {
+  const op = isDateOnlyFilterField.value
+    ? 'is_between'
+    : (newFilter.value.operator as FilterOperator)
+
   // Normalize filter values based on field types (newFilter is a ref, so .value holds { field, operator, value, value2 })
   let value: string | number | boolean = newFilter.value.value
   let value2: string | number | undefined = newFilter.value.value2
@@ -301,7 +394,7 @@ const applyNewFilter = () => {
   const normalizedFilter: FilterCondition = {
     id: props.generateFilterId(),
     field: newFilter.value.field,
-    operator: newFilter.value.operator as FilterOperator,
+    operator: op,
     value,
     value2,
   }
@@ -322,11 +415,14 @@ const cancelAddFilter = () => {
 const resetNewFilter = () => {
   const firstField = props.availableFields[0]
   if (firstField) {
+    const dateLike = isDateLikeFieldType(firstField.type)
     newFilter.value = {
       field: firstField.key,
-      operator: props.getOperatorsForFieldType(firstField.type)[0],
+      operator: dateLike
+        ? 'is_between'
+        : props.getOperatorsForFieldType(firstField.type)[0],
       value: '',
-      value2: undefined,
+      value2: dateLike ? '' : undefined,
     }
   }
 }
@@ -343,7 +439,8 @@ const handleClearAllFilters = () => {
 watch(
   () => props.availableFields,
   (fields) => {
-    if (fields.length > 0 && !newFilter.value.field) {
+    const hasCurrentField = fields.some((f) => f.key === newFilter.value.field)
+    if (fields.length > 0 && (!newFilter.value.field || !hasCurrentField)) {
       resetNewFilter()
     }
   },

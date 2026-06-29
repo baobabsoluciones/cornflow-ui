@@ -2,6 +2,21 @@ import configService from '@/services/ConfigService';
 import appConfig from '@/app/config';
 import { parseBoolean } from '@/utils/common';
 
+// Builds the auth object from VITE_APP_AUTH_* environment variables.
+// Shared by the env-vars branch and the error fallback in initConfig().
+function buildAuthFromEnv() {
+  return {
+    type: import.meta.env.VITE_APP_AUTH_TYPE || 'cornflow',
+    clientId: import.meta.env.VITE_APP_AUTH_CLIENT_ID || '',
+    authority: import.meta.env.VITE_APP_AUTH_AUTHORITY || '',
+    redirectUri: import.meta.env.VITE_APP_AUTH_REDIRECT_URI || '',
+    region: import.meta.env.VITE_APP_AUTH_REGION || '',
+    userPoolId: import.meta.env.VITE_APP_AUTH_USER_POOL_ID || '',
+    domain: import.meta.env.VITE_APP_AUTH_DOMAIN || '',
+    providers: import.meta.env.VITE_APP_AUTH_PROVIDERS ? import.meta.env.VITE_APP_AUTH_PROVIDERS.split(',') : []
+  };
+}
+
 const config = {
   backend: '',
   schema: '',
@@ -81,16 +96,7 @@ const config = {
         this.isDeveloperMode = parseBoolean(import.meta.env.VITE_APP_IS_DEVELOPER_MODE) ?? config.isDeveloperMode;
         this.enableSignup = parseBoolean(import.meta.env.VITE_APP_ENABLE_SIGNUP) ?? config.enableSignup;
         
-        this.auth = {
-          type: import.meta.env.VITE_APP_AUTH_TYPE || 'cornflow',
-          clientId: import.meta.env.VITE_APP_AUTH_CLIENT_ID || '',
-          authority: import.meta.env.VITE_APP_AUTH_AUTHORITY || '',
-          redirectUri: import.meta.env.VITE_APP_AUTH_REDIRECT_URI || '',
-          region: import.meta.env.VITE_APP_AUTH_REGION || '',
-          userPoolId: import.meta.env.VITE_APP_AUTH_USER_POOL_ID || '',
-          domain: import.meta.env.VITE_APP_AUTH_DOMAIN || '',
-          providers: import.meta.env.VITE_APP_AUTH_PROVIDERS ? import.meta.env.VITE_APP_AUTH_PROVIDERS.split(',') : []
-        };
+        this.auth = buildAuthFromEnv();
       }
     } catch (error) {
       console.error('Error initializing config:', error);
@@ -106,16 +112,7 @@ const config = {
       this.isDeveloperMode = parseBoolean(import.meta.env.VITE_APP_IS_DEVELOPER_MODE) ?? false;
       this.enableSignup = parseBoolean(import.meta.env.VITE_APP_ENABLE_SIGNUP) ?? false;
       
-      this.auth = {
-        type: import.meta.env.VITE_APP_AUTH_TYPE || 'cornflow',
-        clientId: import.meta.env.VITE_APP_AUTH_CLIENT_ID || '',
-        authority: import.meta.env.VITE_APP_AUTH_AUTHORITY || '',
-        redirectUri: import.meta.env.VITE_APP_AUTH_REDIRECT_URI || '',
-        region: import.meta.env.VITE_APP_AUTH_REGION || '',
-        userPoolId: import.meta.env.VITE_APP_AUTH_USER_POOL_ID || '',
-        domain: import.meta.env.VITE_APP_AUTH_DOMAIN || '',
-        providers: import.meta.env.VITE_APP_AUTH_PROVIDERS ? import.meta.env.VITE_APP_AUTH_PROVIDERS.split(',') : []
-      };
+      this.auth = buildAuthFromEnv();
     }
   },
   

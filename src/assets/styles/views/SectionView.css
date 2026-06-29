@@ -96,6 +96,27 @@
 }
 
 /* ==========================================================================
+   Section tabs (CoreTabs / CoreTab) - Long table names with ellipsis
+   ========================================================================== */
+.section-view .table-card .m-tab {
+  max-width: min(480px, 55vw);
+}
+
+.section-view .table-card .m-tab__content {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.section-view .table-card .m-tab__label {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
    Vuetify Component Overrides
    ========================================================================== */
 .section-view :deep(.v-tab) {

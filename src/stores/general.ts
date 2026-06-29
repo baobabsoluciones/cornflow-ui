@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { markRaw } from 'vue'
 import session from '@/services/AuthService'
 import appConfig from '@/app/config'
 import config from '@/config'
@@ -14,7 +15,13 @@ import ExecutionRepository from '@/repositories/ExecutionRepository'
 import InstanceRepository from '@/repositories/InstanceRepository'
 import LicenceRepository from '@/repositories/LicenceRepository'
 import VersionRepository from '@/repositories/VersionRepository'
-import LatestPlanRepository from '@/repositories/LatestPlanRepository'
+import {
+  runPremiumInitialDataHooks,
+  loadPremiumMasterDataConfig,
+} from '@/plugins/extensions'
+import RoleRepository from '@/repositories/RoleRepository'
+import WarningsRepository from '@/repositories/WarningsRepository'
+import type { Warning } from '@/repositories/WarningsRepository'
 
 import { toISOStringLocal } from '@/utils/data_io'
 
@@ -22,18 +29,69 @@ import { toISOStringLocal } from '@/utils/data_io'
 import {
   ConfigurationData,
   AutomationSectionDef,
+  AutomationGroupDef,
 } from '@/types/frontendAutomation'
 import { TableSchema } from '@/config/views'
-import { locale } from '@/plugins/i18n'
+import { i18n, locale } from '@/plugins/i18n'
 import {
   resolveTableConfigTitles,
-  resolveDefaultGroupName,
   getExecutionConfigFromSchemaConfig,
 } from '@/utils/schemaUtils'
 import {
   filterTablesByUserSchemas,
   filterTablesByCurrentSchema,
 } from '@/services/FrontendAutomationService'
+import { hasAnyChecksData } from '@/utils/dataChecks'
+
+export type HistoricalBannerMode =
+  | 'idle'
+  | 'creating'
+  | 'data_check'
+  | 'polling'
+  | 'done'
+  | 'checks_error'
+  | 'checks_warning'
+  | 'error'
+
+export interface HistoricalState {
+  execution: LoadedExecution | null
+  dateRange: { from: string; to: string }
+  bannerMode: HistoricalBannerMode
+  executionId: string | null
+  errorMessage: string | null
+  checksData: Record<string, any[]> | null
+  /** Keys of check tables defined as is_warning:true in the schema (warnings only, not errors). */
+  checksWarningKeys: string[] | null
+}
+
+function extractWarningKeysFromSchema(solutionChecksSchema: any): string[] {
+  if (!solutionChecksSchema?.properties) return []
+  return Object.entries(solutionChecksSchema.properties)
+    .filter(([, prop]: [string, any]) => prop?.is_warning === true)
+    .map(([key]) => key)
+}
+
+function buildNonEmptyChecksMap(dataChecks: any): Record<string, any[]> {
+  const checksMap: Record<string, any[]> = {}
+  if (dataChecks && typeof dataChecks === 'object') {
+    for (const [key, val] of Object.entries(dataChecks)) {
+      if (Array.isArray(val) && val.length > 0) {
+        checksMap[key] = val
+      }
+    }
+  }
+  return checksMap
+}
+
+const HISTORICAL_POLL_MS = 4000
+let historicalPollTimer: ReturnType<typeof setTimeout> | null = null
+
+function clearHistoricalPollTimer() {
+  if (historicalPollTimer) {
+    clearTimeout(historicalPollTimer)
+    historicalPollTimer = null
+  }
+}
 
 export const useGeneralStore = defineStore('general', {
   state: () => ({
@@ -43,7 +101,9 @@ export const useGeneralStore = defineStore('general', {
     userRepository: new UserRepository(),
     licenceRepository: new LicenceRepository(),
     versionRepository: new VersionRepository(),
-    latestPlanRepository: new LatestPlanRepository(),
+    roleRepository: new RoleRepository(),
+    warningsRepository: new WarningsRepository(),
+    warnings: [] as Warning[],
     notifications: [] as {
       message: string
       type: 'success' | 'warning' | 'info' | 'error'
@@ -71,149 +131,79 @@ export const useGeneralStore = defineStore('general', {
     cornflowVersion: '',
     configurations: null as ConfigurationData | null,
     rawConfigurations: null as ConfigurationData | null, // Store raw configurations with original multilingual data
-    /** Section definitions from frontend-automation (available_automations.sections). When set, drawer shows these sections above the default Master data block. */
+    /** Section definitions from frontend-automation (available_automations.sections). When set, drawer shows these sections above the default Master data block. Sorted by order. */
     masterDataSections: null as AutomationSectionDef[] | null,
-    // Latest plan (Actual plan) state
-    latestPlanId: null as string | null,
-    latestPlanExists: false,
-    latestPlanLoading: false,
-    showLatestPlanBanner: false,
-    latestPlanFeatureAvailable: false, // Indicates if the feature is available
+    /** Group definitions from frontend-automation (available_automations.groups). Used to sort groups within sections. Sorted by order. */
+    masterDataGroups: null as AutomationGroupDef[] | null,
+    /** True while initial data (schema, configurations, drawer tables) is loading after login. */
+    initialDataLoading: false,
+    /** True once initializeData has been called at least once (prevents duplicate fetches). */
+    dataInitialized: false,
+
+    /** Historical KPIs execution state (persists across navigation). */
+    historical: {
+      execution: null,
+      dateRange: { from: '', to: '' },
+      bannerMode: 'idle',
+      executionId: null,
+      errorMessage: null,
+      checksData: null,
+      checksWarningKeys: null,
+    } as HistoricalState,
   }),
   actions: {
     async initializeData() {
-      // Ensure the API client has the token loaded
-      const apiClient = await import('@/api/Api')
-      apiClient.default.initializeToken?.()
-
-      await this.fetchUser()
-      await this.fetchCornflowVersion()
-      await this.setSchema()
-      await this.setConfigurations()
-      await this.fetchLicences()
-
-      // Load the latest plan after other data is initialized
-      await this.fetchLatestPlan()
-    },
-
-    /**
-     * Fetches the latest plan ID and loads it automatically.
-     * This feature is only available when:
-     * 1. isExternalApp is true
-     * 2. The backend supports the /plan-latest/ endpoint
-     */
-    async fetchLatestPlan() {
-      this.latestPlanLoading = true
+      if (this.dataInitialized) return
+      this.dataInitialized = true
+      this.initialDataLoading = true
       try {
-        const result = await this.latestPlanRepository.getLatestPlan()
+        // Ensure the API client has the token loaded
+        const apiClient = await import('@/api/Api')
+        apiClient.default.initializeToken?.()
 
-        // Check if the feature is available
-        if (!result.featureAvailable) {
-          // Feature not available - disable everything
-          this.latestPlanFeatureAvailable = false
-          this.latestPlanId = null
-          this.latestPlanExists = false
-          this.showLatestPlanBanner = false
-          return
-        }
+        await this.fetchUser()
+        await this.fetchCornflowVersion()
+        await this.setSchema()
+        await this.setConfigurations()
+        await this.fetchLicences()
+        await this.fetchWarnings()
 
-        // Feature is available
-        this.latestPlanFeatureAvailable = true
-        this.latestPlanId = result.execution_id
-        this.latestPlanExists = result.exists
-
-        if (result.execution_id) {
-          // Automatically load the latest plan execution
-          await this.fetchLoadedExecution(result.execution_id)
-          this.setSelectedExecution(result.execution_id)
-          this.showLatestPlanBanner = false
-        } else {
-          // No latest plan exists - show banner to prompt user to set one
-          this.showLatestPlanBanner = true
-        }
-      } catch (error) {
-        console.error('Error fetching latest plan:', error)
-        this.latestPlanFeatureAvailable = false
-        this.latestPlanId = null
-        this.latestPlanExists = false
-        this.showLatestPlanBanner = false
+        // Let premium modules run their post-login init (e.g. latest-plan
+        // prefetch). The core does not know about any specific module.
+        await runPremiumInitialDataHooks()
       } finally {
-        this.latestPlanLoading = false
+        this.initialDataLoading = false
       }
     },
 
-    /**
-     * Sets an execution as the latest plan
-     * Only available when the feature is available (isExternalApp + backend support)
-     */
-    async setLatestPlan(executionId: string): Promise<boolean> {
-      if (!this.latestPlanFeatureAvailable) {
-        console.warn('Set latest plan is not available')
-        return false
-      }
-
+    async fetchWarnings() {
+      if (!this.appConfig.parameters.enableWarnings) return
       try {
-        const success =
-          await this.latestPlanRepository.setLatestPlan(executionId)
-
-        if (success) {
-          this.latestPlanId = executionId
-          this.latestPlanExists = true
-          this.showLatestPlanBanner = false
-
-          // Ensure the execution is loaded and selected
-          const existingExecution = this.loadedExecutions.find(
-            (exec) => exec.executionId === executionId,
-          )
-
-          if (!existingExecution) {
-            await this.fetchLoadedExecution(executionId)
-          }
-
-          this.setSelectedExecution(executionId)
-        }
-
-        return success
-      } catch (error) {
-        console.error('Error setting latest plan:', error)
-        return false
+        this.warnings = await this.warningsRepository.getWarnings()
+      } catch {
+        this.warnings = []
       }
-    },
-
-    /**
-     * Checks if the latest plan feature is available
-     * Returns true only if isExternalApp is true AND the backend supports the endpoint
-     */
-    isSetLatestPlanAvailable(): boolean {
-      return this.latestPlanFeatureAvailable
-    },
-
-    /**
-     * Dismisses the latest plan banner
-     */
-    dismissLatestPlanBanner() {
-      this.showLatestPlanBanner = false
-    },
-
-    /**
-     * Checks if an execution is the current latest plan
-     */
-    isLatestPlan(executionId: string): boolean {
-      return this.latestPlanId === executionId
-    },
-
-    /**
-     * Checks if an execution can be set as latest plan
-     * Only finished executions can be set as latest (state 1, 2, or -4)
-     */
-    canSetAsLatestPlan(state: number): boolean {
-      return state === 1 || state === 2 || state === -4
     },
 
     async fetchUser() {
       try {
         const userId = session.getUserId()
-        this.user = await this.userRepository.getUserById(userId)
+        const [user, allAssignments] = await Promise.all([
+          this.userRepository.getUserById(userId),
+          this.roleRepository.getAllUserRoleAssignments().catch(() => [] as import('@/repositories/RoleRepository').UserRoleAssignment[]),
+        ])
+        // Filter assignments that belong to the current user
+        const myAssignments = allAssignments.filter(
+          (a) => String(a.user_id) === String(userId),
+        )
+        user.roles = myAssignments.map((a) => ({ id: a.role_id, name: a.role }))
+        this.user = user
+
+        // Derive admin status and role names; persist both for route guards (available before store is ready)
+        const isAdmin = myAssignments.some((a: import('@/repositories/RoleRepository').UserRoleAssignment) => a.role === 'admin')
+        sessionStorage.setItem('isAdmin', isAdmin ? 'true' : 'false')
+        const roleNames = myAssignments.map((a: import('@/repositories/RoleRepository').UserRoleAssignment) => a.role)
+        sessionStorage.setItem('userRoles', JSON.stringify(roleNames))
       } catch (error) {
         console.error('Error getting user', error)
       }
@@ -264,7 +254,9 @@ export const useGeneralStore = defineStore('general', {
      * schema's config when available, so the UI uses the backend schema as source of truth.
      */
     applySchemaConfigToAppConfig() {
-      const derived = getExecutionConfigFromSchemaConfig(this.schemaConfig?.config)
+      const derived = getExecutionConfigFromSchemaConfig(
+        this.schemaConfig?.config,
+      )
       if (!derived) return
 
       this.appConfig.parameters.solverConfig = {
@@ -277,17 +269,23 @@ export const useGeneralStore = defineStore('general', {
 
     async setConfigurations() {
       try {
-        // Get master data and optional sections from frontend-automation
+        // Get master data, sections and groups from the frontend-automation
+        // premium module (via the extension registry). Without it, the core runs
+        // with no master-data (non-premium behaviour).
         let masterData: TableSchema = {}
         let masterDataSections: AutomationSectionDef[] | null = null
+        let masterDataGroups: AutomationGroupDef[] | null = null
         try {
-          const result =
-            await this.schemaRepository.getConfigurationTables(
-              this.getSchemaName,
-            )
-          masterData = result.config ?? {}
-          masterDataSections =
-            result.sections && result.sections.length > 0 ? result.sections : null
+          const result = await loadPremiumMasterDataConfig()
+          if (result) {
+            masterData = result.config ?? {}
+            masterDataSections =
+              result.sections && result.sections.length > 0
+                ? result.sections
+                : null
+            masterDataGroups =
+              result.groups && result.groups.length > 0 ? result.groups : null
+          }
         } catch (error) {
           console.warn('Frontend automation not available:', error)
           masterData = {}
@@ -322,6 +320,7 @@ export const useGeneralStore = defineStore('general', {
           resultsData: resultsData || {},
         }
         this.masterDataSections = masterDataSections
+        this.masterDataGroups = masterDataGroups
 
         // Create localized configurations
         this.updateLocalizedConfigurations()
@@ -334,6 +333,7 @@ export const useGeneralStore = defineStore('general', {
           resultsData: {} as TableSchema,
         }
         this.masterDataSections = null
+        this.masterDataGroups = null
         this.updateLocalizedConfigurations()
       }
     },
@@ -345,9 +345,10 @@ export const useGeneralStore = defineStore('general', {
       const currentLocale = locale.value
 
       // Get user schemas for filtering (undefined means full access)
-      const userSchemas = this.user && 'schemas' in this.user
-        ? (this.user as any).schemas
-        : undefined
+      const userSchemas =
+        this.user && 'schemas' in this.user
+          ? this.user.schemas
+          : undefined
 
       // Helper function to resolve default groups
       const resolveConfigWithDefaultGroups = (config: TableSchema) => {
@@ -360,11 +361,6 @@ export const useGeneralStore = defineStore('general', {
             table.group === 'input-tables' ||
             table.group === 'output-tables'
           ) {
-            // Get the translation key and resolve it
-            const translationKey = resolveDefaultGroupName(
-              table.group,
-              currentLocale,
-            )
             // For now, we'll use the original multilingual data if available
             if (
               table._originalGroup &&
@@ -500,13 +496,128 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
-    async useEtlBackend(files: File[]): Promise<any> {
+    /**
+     * Run the full historical KPI flow: create execution -> data-check-kpis -> poll until done.
+     * The resulting execution is stored in `historical.execution` and never added to
+     * loadedExecutions or set as selectedExecution/latestPlan.
+     */
+    async runHistoricalKpiFlow(startDate: string, endDate: string) {
+      clearHistoricalPollTimer()
+      this.historical = {
+        execution: null,
+        dateRange: { from: startDate, to: endDate },
+        bannerMode: 'creating',
+        executionId: null,
+        errorMessage: null,
+        checksData: null,
+        checksWarningKeys: null,
+      }
+
       try {
-        const merged = await this.instanceRepository.etlBackend(files)
-        return merged
-      } catch (error) {
-        console.error('Error uploading and merging instance files', error)
-        throw error
+        const execId =
+          await this.executionRepository.createHistoricalKpisExecution(
+            startDate,
+            endDate,
+          )
+        this.historical.executionId = execId
+
+        this.historical.bannerMode = 'data_check'
+        try {
+          await this.executionRepository.startDataCheckKpisForExecution(execId)
+        } catch (err: any) {
+          this.historical.errorMessage =
+            err?.message || 'Error starting data-check KPIs'
+          this.historical.bannerMode = 'error'
+          return
+        }
+
+        const poll = async () => {
+          clearHistoricalPollTimer()
+          this.historical.bannerMode = 'polling'
+          try {
+            const loaded = await this.executionRepository.loadExecution(execId)
+            const state = loaded.state
+
+            if (state === 0 || state === -7) {
+              historicalPollTimer = setTimeout(() => {
+                void poll()
+              }, HISTORICAL_POLL_MS)
+              return
+            }
+
+            if (state < 0) {
+              this.historical.errorMessage = i18n.global.t(
+                'historical.statusCalculationError',
+              )
+              this.historical.bannerMode = 'error'
+              return
+            }
+
+            const solution = loaded.experiment?.solution
+            const instance = loaded.experiment?.instance
+            const kpisEmpty =
+              !solution?.rawKpis ||
+              Object.keys(solution.rawKpis).length === 0 ||
+              Object.values(solution.rawKpis).every((v) => v == null)
+            const solutionChecksPresent = hasAnyChecksData(solution?.dataChecks)
+            const instanceChecksPresent = hasAnyChecksData(instance?.dataChecks)
+
+            if (solutionChecksPresent || instanceChecksPresent) {
+              const warningKeys = [
+                ...extractWarningKeysFromSchema(
+                  this.schemaConfig?.instanceChecksSchema,
+                ),
+                ...extractWarningKeysFromSchema(
+                this.schemaConfig?.solutionChecksSchema,
+                ),
+              ]
+              this.historical.checksData = {
+                ...buildNonEmptyChecksMap(instance?.dataChecks),
+                ...buildNonEmptyChecksMap(solution?.dataChecks),
+              }
+              this.historical.checksWarningKeys =
+                warningKeys.length > 0 ? warningKeys : null
+
+              if (kpisEmpty) {
+                this.historical.errorMessage = instanceChecksPresent
+                  ? 'Instance checks found errors. KPIs could not be calculated.'
+                  : 'Solution checks found errors. KPIs could not be calculated.'
+                this.historical.bannerMode = 'checks_error'
+                return
+              }
+
+              // KPIs are present but there are checks — treat as warnings
+              this.historical.execution = markRaw(loaded)
+              this.historical.bannerMode = 'checks_warning'
+              return
+            }
+
+            this.historical.execution = loaded
+            this.historical.bannerMode = 'done'
+          } catch (err: any) {
+            this.historical.errorMessage = err?.message || String(err)
+            this.historical.bannerMode = 'error'
+          }
+        }
+
+        void poll()
+      } catch (err: any) {
+        this.historical.errorMessage =
+          err?.message || 'Error creating historical execution'
+        this.historical.bannerMode = 'error'
+      }
+    },
+
+    clearHistoricalExecution() {
+      clearHistoricalPollTimer()
+      this.historical = {
+        execution: null,
+        dateRange: { from: '', to: '' },
+        bannerMode: 'idle',
+        executionId: null,
+        errorMessage: null,
+        checksData: null,
+        checksWarningKeys: null,
       }
     },
 
@@ -557,16 +668,23 @@ export const useGeneralStore = defineStore('general', {
     },
 
     addLoadedExecution(loadedExecution: LoadedExecution) {
+      // `markRaw` opts the execution (and its huge instance/solution.data
+      // trees) out of Pinia's deep reactive Proxy. Without this, every cell
+      // read in the input/output tables went through a Proxy trap, which is
+      // multi-ms per access at 500k rows. Row-level edits flow through
+      // `useTableChanges` (a separate reactive map), so we don't need
+      // cell-level reactivity here. The store still reacts to push/splice
+      // and to `selectedExecution` reassignment, which is what the UI
+      // actually consumes.
+      const rawExecution = markRaw(loadedExecution)
       const index = this.loadedExecutions.findIndex(
-        (execution) => execution.executionId === loadedExecution.executionId,
+        (execution) => execution.executionId === rawExecution.executionId,
       )
 
-      if (index !== -1) {
-        // Replace the existing loadedExecution
-        this.loadedExecutions.splice(index, 1, loadedExecution)
+      if (index === -1) {
+        this.loadedExecutions.push(rawExecution)
       } else {
-        // Add the new loadedExecution
-        this.loadedExecutions.push(loadedExecution)
+        this.loadedExecutions.splice(index, 1, rawExecution)
       }
 
       // Start auto-loading executions
@@ -579,32 +697,52 @@ export const useGeneralStore = defineStore('general', {
         clearInterval(this.autoLoadInterval)
       }
 
-      // Start a new interval
+      // Start a new interval. We poll only execution **state** (a few bytes)
+      // via the lightweight `getExecutionState` endpoint, and only re-fetch
+      // the full instance+solution payload when state actually transitions
+      // out of the running set ({0, -7}). Previously every tick re-pulled
+      // the full `/data/` + instance for each still-running execution,
+      // which for 500k-row instances meant several MB downloaded every 4s.
       this.autoLoadInterval = setInterval(async () => {
-        for (let execution of this.loadedExecutions) {
-          if (execution.state === 0 || execution.state === -7) {
-            try {
-              const updatedExecution =
-                await this.executionRepository.loadExecution(
-                  execution.executionId,
-                )
-              if (updatedExecution) {
-                this.addLoadedExecution(updatedExecution)
-
-                // If the updated execution is the selected execution, update it too
-                if (
-                  this.selectedExecution &&
-                  this.selectedExecution.executionId === execution.executionId
-                ) {
-                  this.selectedExecution = updatedExecution
-                }
-              }
-            } catch (error) {
-              console.error('Error auto-loading execution', error)
-            }
-          }
+        for (const execution of this.loadedExecutions) {
+          if (execution.state !== 0 && execution.state !== -7) continue
+          await this.refreshRunningExecution(execution)
         }
       }, 4000) // Check every 4 seconds
+    },
+
+    /**
+     * Polls a single running execution's lightweight state and, only when it
+     * transitions out of the running set, re-fetches and stores the full
+     * payload. Extracted from `autoLoadExecutions` to keep nesting/complexity
+     * low; errors are swallowed (logged) so one failure can't stop the loop.
+     */
+    async refreshRunningExecution(execution: LoadedExecution) {
+      try {
+        const meta = await this.executionRepository.getExecutionState(
+          execution.executionId,
+        )
+        if (!meta) return
+        // Still running → keep polling, nothing to update yet.
+        if (meta.state === 0 || meta.state === -7) return
+
+        // State transitioned: now (and only now) fetch the full payload.
+        const updatedExecution = await this.executionRepository.loadExecution(
+          execution.executionId,
+        )
+        if (!updatedExecution) return
+
+        this.addLoadedExecution(updatedExecution)
+
+        if (
+          this.selectedExecution &&
+          this.selectedExecution.executionId === execution.executionId
+        ) {
+          this.selectedExecution = updatedExecution
+        }
+      } catch (error) {
+        console.error('Error auto-loading execution', error)
+      }
     },
 
     removeLoadedExecution(index: number) {
@@ -663,11 +801,7 @@ export const useGeneralStore = defineStore('general', {
         instance = true
       }
 
-      try {
-        await this.executionRepository.getDataToDownload(id, solution, instance)
-      } catch (error) {
-        throw error
-      }
+      await this.executionRepository.getDataToDownload(id, solution, instance)
     },
 
     // Drawer pin actions
@@ -680,6 +814,10 @@ export const useGeneralStore = defineStore('general', {
     },
   },
   getters: {
+    getWarnings(): Warning[] {
+      return this.warnings
+    },
+
     getNotifications(): any {
       return this.notifications
     },
@@ -708,7 +846,11 @@ export const useGeneralStore = defineStore('general', {
      * Returns true if user has no schema restrictions.
      */
     userHasFullAccess(): boolean {
-      if (this.user && 'hasFullAccess' in this.user && typeof this.user.hasFullAccess === 'function') {
+      if (
+        this.user &&
+        'hasFullAccess' in this.user &&
+        typeof this.user.hasFullAccess === 'function'
+      ) {
         return this.user.hasFullAccess()
       }
       // Default to full access if user doesn't have the method
@@ -766,45 +908,16 @@ export const useGeneralStore = defineStore('general', {
       return this.configurations
     },
 
-    // Latest Plan getters
-    getLatestPlanId(): string | null {
-      return this.latestPlanId
-    },
-
-    getLatestPlanExists(): boolean {
-      return this.latestPlanExists
-    },
-
-    isLatestPlanFeatureAvailable(): boolean {
-      return this.latestPlanFeatureAvailable
-    },
-
-    isLatestPlanLoading(): boolean {
-      return this.latestPlanLoading
-    },
-
-    shouldShowLatestPlanBanner(): boolean {
-      return this.showLatestPlanBanner
+    historicalState: (state): HistoricalState => {
+      return state.historical
     },
 
     /**
-     * Returns the loaded execution if it's the latest plan
+     * Returns true if the currently logged-in user is an admin.
+     * Reads from sessionStorage (set during login).
      */
-    getLatestPlanExecution() {
-      if (!this.latestPlanId) return null
-      return (
-        this.loadedExecutions.find(
-          (exec) => exec.executionId === this.latestPlanId,
-        ) || null
-      )
-    },
-
-    /**
-     * Checks if the currently selected execution is the latest plan
-     */
-    isSelectedExecutionLatestPlan(): boolean {
-      if (!this.selectedExecution || !this.latestPlanId) return false
-      return this.selectedExecution.executionId === this.latestPlanId
+    isAdmin(): boolean {
+      return sessionStorage.getItem('isAdmin') === 'true'
     },
   },
 })

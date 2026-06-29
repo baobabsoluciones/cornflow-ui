@@ -43,6 +43,18 @@
 
         <div class="selection-actions">
           <v-btn
+            v-if="canBulkEdit"
+            variant="text"
+            size="small"
+            class="action-btn edit-btn"
+            @click="handleBulkEdit"
+          >
+            <v-icon icon="mdi-pencil" size="16" />
+            <span class="btn-text">{{ $t('table.bulkEdit') }}</span>
+          </v-btn>
+
+          <v-btn
+            v-if="canDelete"
             variant="text"
             size="small"
             class="action-btn delete-btn"
@@ -71,6 +83,8 @@ import CoreCheckbox from '@/components/core/CoreCheckbox.vue'
 // Props
 interface Props {
   selectedCount: number
+  canBulkEdit?: boolean
+  canDelete?: boolean
 }
 
 defineProps<Props>()
@@ -79,6 +93,7 @@ defineProps<Props>()
 const emit = defineEmits<{
   clear: []
   delete: []
+  'bulk-edit': []
 }>()
 
 // Methods
@@ -88,6 +103,10 @@ const handleClear = () => {
 
 const handleDelete = () => {
   emit('delete')
+}
+
+const handleBulkEdit = () => {
+  emit('bulk-edit')
 }
 </script>
 

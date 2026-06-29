@@ -164,7 +164,7 @@ export function useErrorDownload(options: ErrorDownloadOptions = {}) {
    * Download blob as file
    */
   const downloadBlob = (blob: Blob, filename: string) => {
-    const url = window.URL.createObjectURL(blob)
+    const url = globalThis.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
     link.download = filename
@@ -177,9 +177,9 @@ export function useErrorDownload(options: ErrorDownloadOptions = {}) {
     // Clean up
     setTimeout(() => {
       if (document.body.contains(link)) {
-        document.body.removeChild(link)
+        link.remove()
       }
-      window.URL.revokeObjectURL(url)
+      globalThis.URL.revokeObjectURL(url)
     }, 200)
   }
 

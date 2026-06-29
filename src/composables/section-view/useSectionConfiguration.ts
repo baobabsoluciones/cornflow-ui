@@ -1,11 +1,14 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useGeneralStore } from '@/stores/general'
 import {
   getSectionType,
   getConfigurationBySection,
   filterValidationTablesWithData,
+  enrichConfigWithChecksData,
 } from '@/services/FrontendAutomationService'
+import { applyKpiDisplayMode } from '@/utils/kpiTableUtils'
 
 // Types
 export interface TableConfig {
@@ -18,6 +21,7 @@ export interface TableConfig {
 export function useSectionConfiguration() {
   const route = useRoute()
   const generalStore = useGeneralStore()
+  const { locale } = useI18n()
 
   const sectionType = computed(() => {
     return getSectionType(route.path)
@@ -29,14 +33,12 @@ export function useSectionConfiguration() {
 
     let config = getConfigurationBySection(configurations, sectionType.value)
 
-    // Filter validation tables without data for input-data and results sections
     const shouldFilterValidationTables =
       sectionType.value === 'input-data' || sectionType.value === 'results'
 
     if (shouldFilterValidationTables && generalStore.selectedExecution) {
       const executionData = generalStore.selectedExecution
 
-      // Get the appropriate data source based on section type
       let dataSource
       if (sectionType.value === 'input-data') {
         dataSource =
@@ -46,9 +48,20 @@ export function useSectionConfiguration() {
           executionData.experiment?.solution || executionData.solution
       }
 
-      // Apply the filter if we have data source
       if (dataSource) {
+        config = enrichConfigWithChecksData(config, dataSource, locale.value)
         config = filterValidationTablesWithData(config, dataSource)
+      }
+
+      if (sectionType.value === 'results') {
+        const kpiMode =
+          generalStore.appConfig?.parameters?.kpiTablesDisplayMode ?? 'disabled'
+        if (kpiMode !== 'disabled') {
+          const solution =
+            executionData.experiment?.solution || executionData.solution
+          const rawKpis = solution?.rawKpis ?? null
+          config = applyKpiDisplayMode(config, rawKpis, kpiMode, locale.value)
+        }
       }
     }
 

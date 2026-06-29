@@ -14,11 +14,7 @@
     <ExecutionInfoCard :selectedExecution="selectedExecution">
     </ExecutionInfoCard>
     <DashboardMain
-      v-if="
-        selectedExecution &&
-        selectedExecution.state == 1 &&
-        (isInstanceDashboard ? true : selectedExecution.hasSolution())
-      "
+      v-if="selectedExecution"
       :execution="selectedExecution"
       :dashboard-type="dashboardType"
     >

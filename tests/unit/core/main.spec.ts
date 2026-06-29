@@ -9,26 +9,46 @@ const mockApp = {
 
 const mockPinia = {}
 
-// Mock Vue functions  
+// Mock Vue functions (partial mock: App.vue and plugins need real Vue exports such as defineComponent)
 const mockCreateApp = vi.fn()
-vi.mock('vue', () => ({
-  createApp: mockCreateApp
-}))
+vi.mock('vue', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('vue')>()
+  return {
+    ...actual,
+    createApp: mockCreateApp,
+  }
+})
 
-const mockCreatePinia = vi.fn()
-vi.mock('pinia', () => ({
-  createPinia: mockCreatePinia
-}))
+const mockCreatePinia = vi.hoisted(() => vi.fn())
+
+vi.mock('pinia', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('pinia')>()
+  return {
+    ...actual,
+    createPinia: mockCreatePinia,
+  }
+})
 
 // Mock App component
 vi.mock('@/App.vue', () => ({
   default: { name: 'App' }
 }))
 
-// Mock config
+// Mock config (include auth so AuthServiceFactory does not read undefined config.auth.type)
 const mockConfig = {
   initConfig: vi.fn().mockResolvedValue(undefined),
-  defaultLanguage: 'en'
+  defaultLanguage: 'en',
+  name: '',
+  auth: {
+    type: 'cornflow',
+    clientId: '',
+    authority: '',
+    redirectUri: '',
+    region: '',
+    userPoolId: '',
+    domain: '',
+    providers: [] as string[],
+  },
 }
 
 vi.mock('@/config', () => ({
@@ -42,7 +62,10 @@ const mockAppConfig = {
     parameters: {
       defaultLanguage: 'en'
     }
-  })
+  }),
+  getDashboardRoutes: vi.fn().mockReturnValue([]),
+  getInstanceDashboardRoutes: vi.fn().mockReturnValue([]),
+  getAppSectionRoutes: vi.fn().mockReturnValue([]),
 }
 
 vi.mock('@/app/config', () => ({
@@ -59,6 +82,15 @@ vi.mock('@/plugins', () => ({
 const mockSetDefaultLanguage = vi.fn()
 vi.mock('@/plugins/i18n', () => ({
   setDefaultLanguage: mockSetDefaultLanguage
+}))
+
+const mockGetAuthService = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({
+    isAuthenticated: () => false,
+  }),
+)
+vi.mock('@/services/AuthServiceFactory', () => ({
+  default: mockGetAuthService,
 }))
 
 // Mock Mango UI components
@@ -89,7 +121,11 @@ vi.mock('mango-vue/dist/style.css', () => ({}))
 describe('Main Module Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    
+
+    mockGetAuthService.mockResolvedValue({
+      isAuthenticated: () => false,
+    })
+
     // Reset mock implementations
     mockCreateApp.mockReturnValue(mockApp)
     mockCreatePinia.mockReturnValue(mockPinia)

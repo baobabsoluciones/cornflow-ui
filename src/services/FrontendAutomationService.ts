@@ -2,18 +2,21 @@ import { TableSchema } from '@/config/views'
 import {
   ConfigurationData,
   AutomationSectionDef,
+  AutomationGroupDef,
   type DateRangeFilterConfig,
 } from '@/types/frontendAutomation'
 import { TableOperation } from '@/types/table'
+import { formatTitle } from '@/utils/schemaUtils'
+import { resolveTitleWithLocale } from '@/utils/i18nUtils'
 
 // Helper function to convert text to URL-friendly format
 export function toUrlFriendly(text: string): string {
   return text
     .toLowerCase()
-    .replace(/\s+/g, '-') // Replace spaces with hyphens
-    .replace(/[^a-z0-9\-_]/g, '') // Remove special characters except hyphens and underscores
-    .replace(/-{2,}/g, '-') // Replace multiple hyphens with single hyphen (bounded quantifier)
-    .replace(/^-|-$/g, '') // Remove leading/trailing single hyphens
+    .replaceAll(/\s+/g, '-') // Replace spaces with hyphens
+    .replaceAll(/[^a-z0-9\-_]/g, '') // Remove special characters except hyphens and underscores
+    .replaceAll(/-{2,}/g, '-') // Replace multiple hyphens with single hyphen (bounded quantifier)
+    .replaceAll(/(?:^-)|(?:-$)/g, '') // Remove leading/trailing single hyphens
 }
 
 // Helper function to convert URL-friendly format back to original key
@@ -41,7 +44,8 @@ export function getGroupsFromConfig(config: TableSchema): {
 
   Object.entries(config).forEach(([key, value]) => {
     const group = value.group
-    const groupKey = group === null ? 'null' : group
+    // Use raw _groupKey when present so keys match schema group ids (for ordering)
+    const groupKey = value._groupKey ?? (group === null ? 'null' : group)
     if (!groups[groupKey]) {
       groups[groupKey] = []
     }
@@ -51,7 +55,7 @@ export function getGroupsFromConfig(config: TableSchema): {
     const route =
       group === null
         ? `/configuration/${toUrlFriendly(key)}`
-        : `/configuration/group/${toUrlFriendly(group)}`
+        : `/configuration/group/${toUrlFriendly(groupKey)}`
 
     groups[groupKey].push({
       key,
@@ -67,6 +71,7 @@ export function getGroupsFromConfig(config: TableSchema): {
 export function getNavigationItemsFromConfig(
   config: TableSchema,
   basePath: string = '/configuration',
+  groupOrder?: AutomationGroupDef[],
 ): Array<{
   title: string
   icon: string
@@ -74,45 +79,85 @@ export function getNavigationItemsFromConfig(
   subPages?: Array<{ key: string; title: string; to: string; icon: string }>
 }> {
   const groups = getGroupsFromConfig(config)
-  const navigationItems: Array<any> = []
+
+  const itemsWithOrder: Array<{ order: number; bucket: number; item: any }> = []
+
+  const navBucketForTableKeys = (tableKeys: string[]): number => {
+    if (basePath !== '/results') return 0
+    for (const key of tableKeys) {
+      const tc = config[key] as { group?: string | null }
+      if (tc && isValidationLikeGroup(tc.group)) return 3
+    }
+    for (const key of tableKeys) {
+      const tc = config[key] as { _isFromRawKpis?: boolean }
+      if (tc?._isFromRawKpis) return 2
+    }
+    return 1
+  }
 
   Object.entries(groups).forEach(([groupName, tables]) => {
+    if (!tables || tables.length === 0) return
+
     if (groupName === 'null') {
-      // Each table in null group becomes its own navigation item
       tables.forEach((table) => {
         const tableConfig = config[table.key]
-        navigationItems.push({
-          title: table.title,
-          icon: tableConfig?.icon || 'mdi-table', // Use icon from config or default
-          to: table.to.replace('/configuration', basePath),
+        const tableOrder = tableConfig?.order ?? 999
+        itemsWithOrder.push({
+          order: tableOrder,
+          bucket: navBucketForTableKeys([table.key]),
+          item: {
+            title: table.title,
+            icon: tableConfig?.icon || 'mdi-table',
+            to: table.to.replace('/configuration', basePath),
+          },
         })
       })
     } else {
-      // Tables with same group become tabs under one navigation item
-      // Get the icon from the first table in the group (they should all have the same icon)
-      const firstTableKey = tables[0]?.key
+      const groupOrderValue =
+        groupOrder?.find((g) => g.id === groupName)?.order ?? 999
+
+      const sortedTables = [...tables].sort((a, b) => {
+        const orderA = config[a.key]?.order ?? 999
+        const orderB = config[b.key]?.order ?? 999
+        return orderA - orderB
+      })
+
+      const firstTableKey = sortedTables[0]?.key
       const firstTableConfig = firstTableKey ? config[firstTableKey] : null
       const groupIcon = firstTableConfig?.icon || 'mdi-folder-table'
 
-      const groupItem = {
-        title: groupName.charAt(0).toUpperCase() + groupName.slice(1), // Capitalize group name
-        icon: groupIcon, // Use icon from first table in group
-        to: `${basePath}/group/${toUrlFriendly(groupName)}`,
-        subPages: tables.map((table) => {
-          const tableConfig = config[table.key]
-          return {
-            key: table.key,
-            title: table.title,
-            to: `${basePath}/group/${toUrlFriendly(groupName)}/${toUrlFriendly(table.key)}`,
-            icon: tableConfig?.icon || 'mdi-table', // Use icon from config or default
-          }
-        }),
-      }
-      navigationItems.push(groupItem)
+      const groupTitle =
+        firstTableConfig?.group ??
+        groupName.charAt(0).toUpperCase() + groupName.slice(1)
+      itemsWithOrder.push({
+        order: groupOrderValue,
+        bucket: navBucketForTableKeys(sortedTables.map((t) => t.key)),
+        item: {
+          title: groupTitle,
+          icon: groupIcon,
+          to: `${basePath}/group/${toUrlFriendly(groupName)}`,
+          subPages: sortedTables.map((table) => {
+            const tableConfig = config[table.key]
+            return {
+              key: table.key,
+              title: table.title,
+              to: `${basePath}/group/${toUrlFriendly(groupName)}/${toUrlFriendly(table.key)}`,
+              icon: tableConfig?.icon || 'mdi-table',
+            }
+          }),
+        },
+      })
     }
   })
 
-  return navigationItems
+  itemsWithOrder.sort((a, b) => {
+    if (basePath === '/results' && a.bucket !== b.bucket) {
+      return a.bucket - b.bucket
+    }
+    return a.order - b.order
+  })
+
+  return itemsWithOrder.map((entry) => entry.item)
 }
 
 export interface MasterDataSectionNav {
@@ -128,20 +173,149 @@ export interface MasterDataSectionNav {
   }>
 }
 
+export function normalizeTableKeyForHierarchyMatch(key: string): string {
+  return String(key || '')
+    .toLowerCase()
+    .replaceAll(/[-_]/g, '')
+}
+
+/**
+ * Builds a table rank map that follows the same hierarchy and ordering principles
+ * used by the drawer for master data: Section -> Group -> Table.
+ * The resulting rank can be reused to order matched instance tables consistently.
+ */
+export function getMasterDataTableRankByDrawerHierarchy(
+  config: TableSchema,
+  sections?: AutomationSectionDef[],
+  groupOrder?: AutomationGroupDef[],
+): Map<string, number> {
+  const rankMap = new Map<string, number>()
+  if (!config || Object.keys(config).length === 0) return rankMap
+
+  const groupOrderMap = new Map<string, number>()
+  ;(groupOrder || []).forEach((g) => {
+    if (typeof g?.order === 'number') {
+      groupOrderMap.set(g.id, g.order)
+    }
+  })
+
+  const sortedSectionIds =
+    Array.isArray(sections) && sections.length > 0
+      ? [...sections].map((s) => s.id)
+      : [null]
+
+  // Same drawer behavior: when schema sections exist, include a final no-section block.
+  if (Array.isArray(sections) && sections.length > 0) {
+    sortedSectionIds.push(null)
+  }
+
+  let nextRank = 0
+  sortedSectionIds.forEach((sectionId) => {
+    const scopedEntries = Object.entries(config).filter(([, tableCfg]: [string, any]) => {
+      const tableSection = tableCfg?.section
+      if (sectionId === null) {
+        return tableSection === undefined || tableSection === null
+      }
+      return tableSection === sectionId
+    })
+    if (scopedEntries.length === 0) return
+
+    const groups: Record<string, Array<[string, any]>> = {}
+    const groupFirstSeenIndex = new Map<string, number>()
+
+    scopedEntries.forEach(([tableKey, tableCfg], idx) => {
+      const group = tableCfg?.group
+      const groupKey =
+        tableCfg?._groupKey ?? (group === null ? 'null' : group)
+      if (!groups[groupKey]) groups[groupKey] = []
+      groups[groupKey].push([tableKey, tableCfg])
+      if (!groupFirstSeenIndex.has(groupKey)) groupFirstSeenIndex.set(groupKey, idx)
+    })
+
+    const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
+      const aOrder = groupOrderMap.get(a) ?? 999
+      const bOrder = groupOrderMap.get(b) ?? 999
+      if (aOrder !== bOrder) return aOrder - bOrder
+      return (groupFirstSeenIndex.get(a) ?? 0) - (groupFirstSeenIndex.get(b) ?? 0)
+    })
+
+    sortedGroupKeys.forEach((groupKey) => {
+      const sortedTables = [...groups[groupKey]].sort((a, b) => {
+        const aOrder = a[1]?.order ?? 999
+        const bOrder = b[1]?.order ?? 999
+        return aOrder - bOrder
+      })
+      sortedTables.forEach(([tableKey]) => {
+        rankMap.set(normalizeTableKeyForHierarchyMatch(tableKey), nextRank)
+        nextRank += 1
+      })
+    })
+  })
+
+  return rankMap
+}
+
+/**
+ * Order instance table keys by master drawer hierarchy when names match.
+ * Matched keys are sorted by master hierarchy rank and unmatched keys keep
+ * their original relative order after the matched block.
+ */
+export function getInstanceTableKeysOrderedByMasterHierarchy(
+  instanceTableKeys: string[],
+  masterDataConfig: TableSchema,
+  sections?: AutomationSectionDef[],
+  groupOrder?: AutomationGroupDef[],
+): string[] {
+  if (!Array.isArray(instanceTableKeys) || instanceTableKeys.length === 0) {
+    return []
+  }
+  if (!masterDataConfig || Object.keys(masterDataConfig).length === 0) {
+    return [...instanceTableKeys]
+  }
+
+  const rankByKey = getMasterDataTableRankByDrawerHierarchy(
+    masterDataConfig,
+    sections,
+    groupOrder,
+  )
+  if (rankByKey.size === 0) {
+    return [...instanceTableKeys]
+  }
+
+  const matched = instanceTableKeys
+    .map((key) => ({
+      key,
+      rank: rankByKey.get(normalizeTableKeyForHierarchyMatch(key)),
+    }))
+    .filter((entry) => entry.rank !== undefined)
+    .sort((a, b) => a.rank - b.rank)
+    .map((entry) => entry.key)
+
+  if (matched.length === 0) {
+    return [...instanceTableKeys]
+  }
+
+  const matchedSet = new Set(matched)
+  const unmatched = instanceTableKeys.filter((key) => !matchedSet.has(key))
+  return [...matched, ...unmatched]
+}
+
 /**
  * Build master data navigation when schema defines sections (available_automations.sections).
  * Schema sections are returned first (in order); tables with no section go in a final "Master data" block.
  * Use this so schema sections appear above the default Master data section in the drawer.
  *
  * @param config - Master data table configuration (with section on each table)
- * @param sections - Section definitions from the schema (order preserved)
+ * @param sections - Section definitions from the schema (already sorted by order)
  * @param basePath - Base path for configuration routes (e.g. '/configuration')
+ * @param groupOrder - Optional group definitions with order; groups within each section are sorted by this
  * @returns Array of section blocks: each has title, icon, subPages (groups/tables)
  */
 export function getMasterDataNavigationWithSections(
   config: TableSchema,
   sections: AutomationSectionDef[],
   basePath: string = '/configuration',
+  groupOrder?: AutomationGroupDef[],
 ): MasterDataSectionNav[] {
   if (!sections || sections.length === 0) {
     return []
@@ -162,7 +336,11 @@ export function getMasterDataNavigationWithSections(
       continue
     }
 
-    const subPages = getNavigationItemsFromConfig(filteredConfig, basePath)
+    const subPages = getNavigationItemsFromConfig(
+      filteredConfig,
+      basePath,
+      groupOrder,
+    )
     result.push({
       sectionId,
       title: section.title,
@@ -181,7 +359,11 @@ export function getMasterDataNavigationWithSections(
   })
 
   if (Object.keys(noSectionConfig).length > 0) {
-    const subPages = getNavigationItemsFromConfig(noSectionConfig, basePath)
+    const subPages = getNavigationItemsFromConfig(
+      noSectionConfig,
+      basePath,
+      groupOrder,
+    )
     result.push({
       sectionId: null,
       title: 'masterData', // i18n key for "Master data"; consumer resolves
@@ -193,15 +375,153 @@ export function getMasterDataNavigationWithSections(
   return result
 }
 
+type GetListParameterDefault = number | string | boolean
+
 /**
- * Extract date range filter configs from get_list query parameters.
- * Pairs datetime_gte + datetime_lte with symmetric are shown as a single "from / to" filter.
+ * Get GET list operation parameters (from path or table config).
+ * Only returns parameters with in: "query" (filters, limit, offset, etc.).
+ */
+export function getGetListQueryParameters(getListConfig: {
+  parameters?: Array<{
+    name: string
+    in?: string
+    type?: string
+    format?: string
+    default?: GetListParameterDefault
+    is_filter?: boolean
+    filter_info?: unknown
+  }>
+}): Array<{
+  name: string
+  in: string
+  type?: string
+  format?: string
+  default?: GetListParameterDefault
+  is_filter?: boolean
+  filter_info?: unknown
+}> {
+  const params = getListConfig?.parameters
+  if (!Array.isArray(params)) return []
+  return params.filter((p) => (p?.in || 'query') === 'query') as Array<{
+    name: string
+    in: string
+    type?: string
+    format?: string
+    default?: GetListParameterDefault
+    is_filter?: boolean
+    filter_info?: unknown
+  }>
+}
+
+/**
+ * Query parameter name for global text search when `filter_info.filters_on` is null or empty.
+ */
+export function getGlobalSearchQueryParameterName(getListConfig: {
+  parameters?: Array<{
+    name: string
+    in?: string
+    is_filter?: boolean
+    filter_info?: {
+      filters_on?: string | null
+      filter_type: string
+    }
+  }>
+}): string | null {
+  const params = getGetListQueryParameters(getListConfig)
+  for (const p of params) {
+    if (!p?.is_filter || !p.filter_info) continue
+    const fi = p.filter_info as {
+      filters_on?: string | null
+      filter_type?: string
+    }
+    const fo = fi.filters_on
+    if (fo != null && String(fo).trim() !== '') continue
+    const ft = String(fi.filter_type || '').toLowerCase()
+    if (
+      ft === 'string_contains' ||
+      ft === 'string_eq' ||
+      ft === 'string' ||
+      ft === 'search' ||
+      ft === 'any_column_contains'
+    ) {
+      return p.name
+    }
+  }
+  return null
+}
+
+/**
+ * When several query params map to the same column, pick the one that matches the UI operator.
+ */
+export function filterTypeMatchesUiOperator(
+  filterType: string,
+  operator: string,
+  paramRole: 'single' | 'range_gte' | 'range_lte',
+): boolean {
+  const ft = filterType.toLowerCase()
+
+  // value_is_none is never used by any current UI operator
+  if (ft === 'value_is_none') return false
+
+  switch (operator) {
+    case 'contains':
+      return ft === 'string_contains' || ft === 'string'
+    case 'is':
+      if (paramRole !== 'single') return false
+      return (
+        ft === 'string_eq' ||
+        ft === 'numeric_eq' ||
+        ft === 'boolean' ||
+        ft === 'datetime_eq' ||
+        ft === 'time_eq' ||
+        ft === 'string'
+      )
+    case 'is_not':
+      if (paramRole !== 'single') return false
+      return (
+        ft === 'string_not_eq' ||
+        ft === 'numeric_not_eq' ||
+        ft === 'string_ne' ||
+        ft === 'numeric_ne' ||
+        ft === 'string_neq' ||
+        ft === 'numeric_neq' ||
+        ft.endsWith('_not_eq')
+      )
+    case 'is_between':
+      if (paramRole === 'range_gte') {
+        return (
+          ft === 'numeric_gte' || ft === 'datetime_gte' || ft === 'time_gte'
+        )
+      }
+      if (paramRole === 'range_lte') {
+        return (
+          ft === 'numeric_lte' || ft === 'datetime_lte' || ft === 'time_lte'
+        )
+      }
+      return false
+    case 'has_any_value':
+      return ft === 'value_is_not_none'
+    default:
+      return paramRole === 'single'
+  }
+}
+
+/**
+ * Extract date range filter configs for the table toolbar (Desde/Hasta next to search).
+ * Only the column whose `filters_on` is `fecha` uses this strip; other datetime ranges
+ * (e.g. f_creacion, f_actualizacion) are filtered from the filters panel like other columns.
  */
 export function getDateRangeFilterConfigs(getListConfig: {
   parameters?: Array<{
     name: string
+    in?: string
+    format?: string
     is_filter?: boolean
-    filter_info?: { filters_on?: string | null; filter_type: string; symmetric?: string | null }
+    filter_info?: {
+      filters_on?: string | null
+      filter_type: string
+      symmetric?: string | null
+    }
   }>
 }): DateRangeFilterConfig[] {
   const params = getListConfig?.parameters
@@ -216,10 +536,16 @@ export function getDateRangeFilterConfigs(getListConfig: {
     const info = p.filter_info
     if (info.filter_type === 'datetime_gte' && info.symmetric) {
       const lteParam = byName.get(info.symmetric)
-      if (lteParam?.filter_info?.filter_type === 'datetime_lte' && !seen.has(p.name)) {
+      if (
+        lteParam?.filter_info?.filter_type === 'datetime_lte' &&
+        !seen.has(p.name)
+      ) {
         seen.add(p.name)
         seen.add(lteParam.name)
-        const filtersOn = info.filters_on ?? lteParam.filter_info?.filters_on ?? ''
+        const filtersOn =
+          info.filters_on ?? lteParam.filter_info?.filters_on ?? ''
+        const normalized = String(filtersOn).trim().toLowerCase()
+        if (normalized !== 'fecha') continue
         result.push({
           paramGte: p.name,
           paramLte: lteParam.name,
@@ -230,6 +556,107 @@ export function getDateRangeFilterConfigs(getListConfig: {
     }
   }
   return result
+}
+
+/**
+ * Build default query params from get_list.parameters (limit, offset, etc.).
+ * Only includes parameters that have a default value; used as base for GET list requests.
+ */
+export function getDefaultListQueryParams(getListConfig: {
+  parameters?: Array<{
+    name: string
+    in?: string
+    default?: GetListParameterDefault
+  }>
+}): Record<string, string | number | boolean> {
+  const params = getGetListQueryParameters(getListConfig)
+  const out: Record<string, string | number | boolean> = {}
+  for (const p of params) {
+    if (p.default !== undefined && p.default !== null) {
+      out[p.name] = p.default
+    }
+  }
+  return out
+}
+
+/**
+ * Returns the default limit value from get_list.parameters when present (param name "limit" or filter_type "limit").
+ * Used to show a row-limit message in the UI.
+ */
+export function getDefaultListLimit(getListConfig: {
+  parameters?: Array<{
+    name: string
+    in?: string
+    type?: string
+    default?: GetListParameterDefault
+    is_filter?: boolean
+    filter_info?: { filter_type?: string }
+  }>
+}): number | null {
+  const params = getGetListQueryParameters(getListConfig)
+  for (const p of params) {
+    const isLimitParam =
+      p.name === 'limit' ||
+      (p.is_filter &&
+        (p.filter_info as { filter_type?: string } | undefined)?.filter_type ===
+          'limit')
+    if (isLimitParam && p.default !== undefined && p.default !== null) {
+      const n = typeof p.default === 'number' ? p.default : Number(p.default)
+      if (Number.isInteger(n) && n > 0) return n
+      return null
+    }
+  }
+  return null
+}
+
+/**
+ * True when get_list.parameters includes a query param for list limit (name `limit`
+ * or filter_type `limit`). Used so the client does not send `limit` unless the API declares it.
+ */
+export function getListDeclaresLimitParam(getListConfig: {
+  parameters?: Array<{
+    name: string
+    in?: string
+    is_filter?: boolean
+    filter_info?: { filter_type?: string }
+  }>
+}): boolean {
+  for (const p of getGetListQueryParameters(getListConfig)) {
+    if (p.name === 'limit') return true
+    if (
+      p.is_filter &&
+      (p.filter_info as { filter_type?: string } | undefined)?.filter_type ===
+        'limit'
+    ) {
+      return true
+    }
+  }
+  return false
+}
+
+/**
+ * True when get_list.parameters includes a query param for offset (name `offset`
+ * or filter_type `offset`). Used so the client does not send `offset` unless the API declares it.
+ */
+export function getListDeclaresOffsetParam(getListConfig: {
+  parameters?: Array<{
+    name: string
+    in?: string
+    is_filter?: boolean
+    filter_info?: { filter_type?: string }
+  }>
+}): boolean {
+  for (const p of getGetListQueryParameters(getListConfig)) {
+    if (p.name === 'offset') return true
+    if (
+      p.is_filter &&
+      (p.filter_info as { filter_type?: string } | undefined)?.filter_type ===
+        'offset'
+    ) {
+      return true
+    }
+  }
+  return false
 }
 
 function formatFilterColumnLabel(key: string): string {
@@ -285,8 +712,20 @@ export function getSectionType(
  * Used to avoid prompting "unsaved changes" when navigating between these sections.
  */
 export function isFrontendAutomationRoute(path: string): boolean {
+  return path.startsWith('/configuration')
+}
+
+/**
+ * Execution-backed routes (Input data / Results) where the same execution is edited.
+ * When `enableSolutionRecalculation` is on, pending table changes are shared across
+ * these sections, so moving between them must not show the route-leave confirmation.
+ */
+export function isExecutionDataSectionRoute(path: string): boolean {
+  if (!path) return false
   return (
-    path.startsWith('/configuration')
+    path.startsWith('/input-data') ||
+    path.startsWith('/results') ||
+    path.startsWith('/output-data')
   )
 }
 
@@ -334,9 +773,156 @@ export function filterValidationTablesWithData(
 }
 
 /**
+ * Enrich configuration with validation tables from dataChecks that are not
+ * already present in the config. Covers the case where the backend provides
+ * checks data in the execution but the checks schema was missing / empty,
+ * so no table entries were generated during schema transformation.
+ */
+export function enrichConfigWithChecksData(
+  configuration: any,
+  executionData: any,
+  locale: string = 'en',
+): any {
+  if (!configuration || !executionData) return configuration
+
+  const dataChecks = executionData.dataChecks
+  if (!dataChecks || typeof dataChecks !== 'object') return configuration
+
+  const checksSchema = executionData.schemaChecks as Record<string, any> | null
+  const checksProperties = checksSchema?.properties ?? {}
+
+  const VALIDATION_GROUP: Record<string, string> = {
+    en: 'Validations',
+    es: 'Validaciones',
+    fr: 'Validations',
+  }
+  const resolvedGroup = resolveTitleWithLocale(
+    VALIDATION_GROUP,
+    locale,
+    'Validations',
+  )
+
+  let enriched: any = null
+
+  Object.entries(dataChecks).forEach(([checkKey, checkData]: [string, any]) => {
+    if (configuration[checkKey]) return
+    if (!Array.isArray(checkData) || checkData.length === 0) return
+
+    if (!enriched) enriched = { ...configuration }
+
+    const schemaEntry = checksProperties[checkKey]
+
+    if (schemaEntry?.items?.properties) {
+      const properties: any = {}
+      Object.entries(schemaEntry.items.properties).forEach(
+        ([key, prop]: [string, any]) => {
+          properties[key] = {
+            title: prop.title || formatTitle(key),
+            type: prop.type,
+            _originalTitle: prop.title || formatTitle(key),
+          }
+        },
+      )
+      enriched[checkKey] = {
+        group: resolvedGroup,
+        title: schemaEntry.title || formatTitle(checkKey),
+        icon: 'mdi-check-circle-outline',
+        _originalTitle: schemaEntry.title || formatTitle(checkKey),
+        _originalGroup: VALIDATION_GROUP,
+        get_list: {
+          url: '',
+          http_method: 'GET',
+          request_schema: null,
+          response_schema: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties,
+              required: schemaEntry.items.required || [],
+            },
+          },
+        },
+      }
+    } else {
+      enriched[checkKey] = buildValidationConfigFromData(
+        checkKey,
+        checkData,
+        resolvedGroup,
+        VALIDATION_GROUP,
+      )
+    }
+  })
+
+  return enriched ?? configuration
+}
+
+function buildValidationConfigFromData(
+  checkKey: string,
+  data: any[],
+  resolvedGroup: string,
+  originalGroup: Record<string, string>,
+): any {
+  const firstItem = data[0]
+
+  if (typeof firstItem === 'string') {
+    return {
+      group: resolvedGroup,
+      title: formatTitle(checkKey),
+      icon: 'mdi-check-circle-outline',
+      _originalTitle: formatTitle(checkKey),
+      _originalGroup: originalGroup,
+      isPrimitiveArray: true,
+      get_list: {
+        url: '',
+        http_method: 'GET',
+        request_schema: null,
+        response_schema: {
+          type: 'array',
+          items: { type: 'string', isPrimitiveArray: true },
+        },
+      },
+    }
+  }
+
+  const properties: any = {}
+  if (firstItem && typeof firstItem === 'object') {
+    Object.entries(firstItem).forEach(([key, value]) => {
+      let type = 'string'
+      if (typeof value === 'number') {
+        type = Number.isInteger(value) ? 'integer' : 'number'
+      } else if (typeof value === 'boolean') {
+        type = 'boolean'
+      }
+      properties[key] = {
+        type,
+        title: formatTitle(key),
+        _originalTitle: formatTitle(key),
+      }
+    })
+  }
+
+  return {
+    group: resolvedGroup,
+    title: formatTitle(checkKey),
+    icon: 'mdi-check-circle-outline',
+    _originalTitle: formatTitle(checkKey),
+    _originalGroup: originalGroup,
+    get_list: {
+      url: '',
+      http_method: 'GET',
+      request_schema: null,
+      response_schema: {
+        type: 'array',
+        items: { type: 'object', properties, required: [] },
+      },
+    },
+  }
+}
+
+/**
  * Check if a group is a validation group
  */
-function isValidationGroup(group: string | null): boolean {
+export function isValidationGroup(group: string | null): boolean {
   if (!group) return false
   const validationGroups = [
     'validations',
@@ -345,6 +931,14 @@ function isValidationGroup(group: string | null): boolean {
     'validaciones',
   ]
   return validationGroups.includes(group)
+}
+
+/** True for validation-style groups (exact names or substring, e.g. localized titles). */
+export function isValidationLikeGroup(group: string | null | undefined): boolean {
+  if (!group) return false
+  if (isValidationGroup(group)) return true
+  const g = group.toLowerCase()
+  return g.includes('validation') || g.includes('validacion')
 }
 
 // Helper function to get the appropriate configuration based on section
@@ -483,8 +1077,14 @@ export function filterConfigurationsByUserSchemas(
   if (!configurations) return configurations
 
   return {
-    masterData: filterTablesByUserSchemas(configurations.masterData, userSchemas),
+    masterData: filterTablesByUserSchemas(
+      configurations.masterData,
+      userSchemas,
+    ),
     inputData: filterTablesByUserSchemas(configurations.inputData, userSchemas),
-    resultsData: filterTablesByUserSchemas(configurations.resultsData, userSchemas),
+    resultsData: filterTablesByUserSchemas(
+      configurations.resultsData,
+      userSchemas,
+    ),
   }
 }

@@ -46,7 +46,7 @@ export function useFileProcessors() {
     schemas: any
   ) => {
     // Get the file processors configuration
-    const fileProcessors = store.appConfig.parameters?.fileProcessors || {}
+    const fileProcessors = store.appConfig?.parameters?.fileProcessors || {}
     
     // Check if we have any processor configured
     if (!fileProcessors || Object.keys(fileProcessors).length === 0) {
@@ -77,7 +77,7 @@ export function useFileProcessors() {
    * @returns True if the file needs special processing, false otherwise
    */
   const needsSpecialProcessing = (filename: string) => {
-    const fileProcessors = store.appConfig.parameters?.fileProcessors || {}
+    const fileProcessors = store.appConfig?.parameters?.fileProcessors || {}
     if (!fileProcessors || Object.keys(fileProcessors).length === 0) {
       return false
     }

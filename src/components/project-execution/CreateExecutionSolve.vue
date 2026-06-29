@@ -135,18 +135,13 @@
 </template>
 
 <script>
-import { inject, computed, ref } from 'vue'
+import { inject } from 'vue'
 import { useGeneralStore } from '@/stores/general'
 import {
   formatValidationErrors,
   formatSingleErrorWithTitle,
 } from '@/utils/errorFormatting'
-import { Solution } from '@/app/models/Solution'
-import {
-  FILE_EXTENSIONS,
-  SUPPORTED_DATA_EXTENSIONS,
-  getFileExtension,
-} from '@/utils/fileConstants'
+import { FILE_EXTENSIONS, getFileExtension } from '@/utils/fileConstants'
 
 export default {
   components: {},
@@ -305,7 +300,6 @@ export default {
 
         if (result) {
           if (this.solveMode === 'upload') {
-            // Upload solution data
             const uploadResult = await this.generalStore.uploadSolutionData(
               result.id,
               this.solutionData,
@@ -326,10 +320,12 @@ export default {
           if (loadedResult) {
             this.executionIsLoading = false
             this.executionLaunched = true
+            this.$emit('executionLaunched')
             this.showSnackbar(
               this.$t('projectExecution.snackbar.successCreate'),
             )
           } else {
+            this.executionIsLoading = false
             this.showSnackbar(
               this.$t('projectExecution.snackbar.errorCreate'),
               'error',

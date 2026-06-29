@@ -1,20 +1,41 @@
 <template>
   <v-app>
-    <!-- Latest plan banner -->
-    <LatestPlanBanner />
+    <!-- Full-screen loading overlay after login until drawer/configurations are ready -->
+    <div
+      v-if="showInitialLoading"
+      class="initial-loading-overlay"
+      data-testid="initial-loading-overlay"
+    >
+      <div class="initial-loading-content">
+        <v-progress-circular indeterminate color="white" size="48" width="4" />
+        <p class="initial-loading-text">{{ $t('general.loading') }}</p>
+      </div>
+    </div>
 
     <div class="marquee-container" v-if="showStagingWarning">
       <Vue3Marquee :pause-on-hover="true">
         🚧 {{ $t('projectExecution.stagingWarning') }} 🚧
       </Vue3Marquee>
     </div>
+
+    <!--
+      Premium modules (enterprise) inject global banners here. Empty when none
+      registered. Includes the latest-plan "no current plan" banner and the
+      recalculation strip (both self-gate via their own stores).
+    -->
+    <component
+      v-for="(banner, i) in premiumBanners"
+      :key="`premium-banner-${i}`"
+      :is="banner.component"
+      v-bind="banner.props"
+    />
+
     <core-app-drawer class="app-drawer" />
+
     <div
       class="main-content"
-      :class="{
-        'drawer-pinned': isDrawerPinned,
-        'has-banner': showLatestPlanBanner,
-      }"
+      :class="{ 'drawer-pinned': isDrawerPinned }"
+      :style="mainContentStyle"
     >
       <core-app-view />
       <div class="tab-container">
@@ -44,8 +65,17 @@
       </div>
     </div>
 
-    <!-- Floating button to set current execution as latest plan (only visible in execution-related views) -->
-    <SetCurrentPlanFab v-if="isExecutionRelatedView" />
+    <!--
+      Premium modules (enterprise) inject global FABs here. Empty when none
+      registered. Includes the latest-plan "set current plan" FAB (self-gates
+      via its own store and the current route).
+    -->
+    <component
+      v-for="(fab, i) in premiumFabs"
+      :key="`premium-fab-${i}`"
+      :is="fab.component"
+      v-bind="fab.props"
+    />
   </v-app>
 </template>
 
@@ -54,13 +84,17 @@ import { useGeneralStore } from '@/stores/general'
 import AuthService from '@/services/AuthService'
 import CoreAppDrawer from '@/components/AppDrawer.vue'
 import CoreAppView from '@/components/AppView.vue'
-import LatestPlanBanner from '@/components/LatestPlanBanner.vue'
-import SetCurrentPlanFab from '@/components/SetCurrentPlanFab.vue'
 import { useRouter, useRoute } from 'vue-router'
 import { computed } from 'vue'
 import { Vue3Marquee } from 'vue3-marquee'
 import config from '@/config'
+import appConfig from '@/app/config'
 import { baobabLogoSmall } from '@/utils/assets'
+import {
+  getPremiumGlobalComponents,
+  applyPremiumExecutionTabDecorators,
+} from '@/plugins/extensions'
+import { totalTopBannerOffset } from '@/plugins/layoutOffsets'
 
 const generalStore = useGeneralStore()
 const router = useRouter()
@@ -69,8 +103,20 @@ let tabsData = computed(() => generalStore.getLoadedExecutionTabs)
 let tabsKey = computed(() => generalStore.tabBarKey)
 let showStagingWarning = computed(() => config.isStagingEnvironment)
 let isDrawerPinned = computed(() => generalStore.isDrawerPinned)
-let showLatestPlanBanner = computed(
-  () => generalStore.shouldShowLatestPlanBanner,
+let showInitialLoading = computed(() => generalStore.initialDataLoading)
+
+// Premium modules (enterprise) global banners/FABs. Empty when none registered.
+const premiumBanners = computed(() => getPremiumGlobalComponents('app-banners'))
+const premiumFabs = computed(() => getPremiumGlobalComponents('app-fabs'))
+
+/**
+ * Padding-top reservado para los banners fijos que los módulos premium reportan en el canal
+ * de layout (`@/plugins/layoutOffsets`). El core no sabe qué banners hay: solo deja el hueco.
+ */
+const mainContentStyle = computed(() =>
+  totalTopBannerOffset.value
+    ? { paddingTop: `${totalTopBannerOffset.value}px` }
+    : undefined,
 )
 
 // Get the currently selected execution ID
@@ -78,41 +124,49 @@ const selectedExecutionId = computed(
   () => generalStore.selectedExecution?.executionId,
 )
 
-// Enhance tabs data to show star icon for latest plan and ensure correct selection
+// Enhance tabs: premium modules (latest-plan ⭐) decorate them via the registry; the core only
+// applies the selected state. Without premium modules the tabs pass through unchanged.
 const enhancedTabsData = computed(() => {
-  const featureAvailable = generalStore.isLatestPlanFeatureAvailable
-  const latestPlanId = featureAvailable ? generalStore.getLatestPlanId : null
-  const showStar =
-    featureAvailable &&
-    (generalStore.appConfig.parameters?.latestPlanConfig?.showStarInTabBar ??
-      true)
   const currentSelectedId = selectedExecutionId.value
-
-  return tabsData.value.map((tab) => ({
+  const decorated = applyPremiumExecutionTabDecorators(tabsData.value, {
+    routeName: route.name,
+  })
+  return decorated.map((tab) => ({
     ...tab,
-    // Add a star prefix to the text if this is the latest plan (only if feature is available)
-    text: showStar && tab.value === latestPlanId ? `⭐ ${tab.text}` : tab.text,
-    isLatestPlan: featureAvailable && tab.value === latestPlanId,
     // Ensure selected state is correctly set based on store
     selected: tab.value === currentSelectedId,
   }))
 })
 
-// Check if current route is an execution-related view (input data, results, or dashboard)
-const isExecutionRelatedView = computed(() => {
-  const currentPath = route.path
-  return (
-    currentPath.startsWith('/input-data') ||
-    currentPath.startsWith('/results') ||
-    currentPath.startsWith('/dashboard')
-  )
-})
+// Show FAB whenever there is a selected execution
+const hasSelectedExecution = computed(
+  () => generalStore.selectedExecution != null,
+)
+
+const CORE_INSTANCE_DEPENDENT_ROUTE_PREFIXES = [
+  '/input-data',
+  '/output-data',
+  '/results',
+  '/dashboard',
+]
+const isOnInstanceDependentRoute = (path) => {
+  if (
+    CORE_INSTANCE_DEPENDENT_ROUTE_PREFIXES.some((prefix) =>
+      path.startsWith(prefix),
+    )
+  ) {
+    return true
+  }
+  return appConfig
+    .getInstanceDependentAppRoutePrefixes()
+    .some((prefix) => path.startsWith(prefix))
+}
 
 defineExpose({
   tabsData,
   tabsKey,
   enhancedTabsData,
-  isExecutionRelatedView,
+  hasSelectedExecution,
 })
 const removeTab = (index) => {
   generalStore.removeLoadedExecution(index)
@@ -133,14 +187,8 @@ const selectTab = (executionTab) => {
     })
     generalStore.incrementTabBarKey()
 
-    // If deselecting and in input-data or results routes, redirect to history-execution
     const currentRoute = router.currentRoute.value.path
-    if (
-      currentRoute.startsWith('/input-data') ||
-      currentRoute.startsWith('/output-data') ||
-      currentRoute.startsWith('/results') ||
-      currentRoute.startsWith('/dashboard')
-    ) {
+    if (isOnInstanceDependentRoute(currentRoute)) {
       router.push('/history-execution')
     }
   } else {
@@ -193,7 +241,7 @@ if (AuthService.isAuthenticated()) {
   display: flex;
   flex-direction: column;
   height: 40px;
-  background: linear-gradient(to right, #fff5f5, #ffe6e6);
+  background-color: #ffe6e6;
   padding: 5px;
   color: #000;
   border-bottom: 2px solid #ffcccc;
@@ -240,8 +288,27 @@ body {
   }
 }
 
-/* Adjust for latest plan banner */
-.main-content.has-banner {
-  padding-top: 48px; /* Height of the banner */
+/* Full-screen loading overlay after login (above drawer) */
+.initial-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 950;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.initial-loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.initial-loading-text {
+  margin: 0;
+  font-size: 1rem;
+  color: #fff;
 }
 </style>

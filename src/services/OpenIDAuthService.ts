@@ -13,14 +13,14 @@ export class OpenIDAuthService implements AuthProvider {
   private loginAttempted: boolean = false
   private initializationPromise: Promise<void> | null = null
 
-  constructor(private provider: 'azure' | 'cognito') {}
+  constructor(private readonly provider: 'azure' | 'cognito') {}
 
   /**
    * Initializes the authentication service based on the provider.
    * This should be called immediately after creating an instance.
    */
   async initialize(): Promise<void> {
-    if (this.initializationPromise) {
+    if (this.initializationPromise !== null) {
       return this.initializationPromise;
     }
 
@@ -77,7 +77,7 @@ export class OpenIDAuthService implements AuthProvider {
     if (this.initialized) return
 
     try {
-      const redirectUrls = [window.location.origin];
+      const redirectUrls = [globalThis.location.origin];
       
       if (!config.auth.domain) {
         throw new Error('Cognito domain is not configured');
@@ -140,9 +140,9 @@ export class OpenIDAuthService implements AuthProvider {
         console.error('Invalid token format')
         return null
       }
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+      const base64 = base64Url.replaceAll('-', '+').replaceAll('_', '/')
       const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+        return '%' + ('00' + (c.codePointAt(0) ?? 0).toString(16)).slice(-2)
       }).join(''))
       return JSON.parse(jsonPayload)
     } catch (error) {
@@ -348,7 +348,7 @@ export class OpenIDAuthService implements AuthProvider {
       } catch (error) {
         console.error('Failed to retry authentication with Cognito:', error)
         // If that fails, force hard redirect to sign-in page
-        window.location.href = window.location.origin + '/sign-in?expired=true'
+        globalThis.location.href = globalThis.location.origin + '/sign-in?expired=true'
       }
     } else if (this.provider === 'azure' && this.msalInstance) {
       await this.msalInstance.loginRedirect({
@@ -384,7 +384,7 @@ export class OpenIDAuthService implements AuthProvider {
     
     if (this.provider === 'azure' && this.msalInstance) {
       this.msalInstance.logoutRedirect({
-        postLogoutRedirectUri: window.location.origin + '/sign-in?from=logout'
+        postLogoutRedirectUri: globalThis.location.origin + '/sign-in?from=logout'
       });
     } else if (this.provider === 'cognito') {
       // Sign out from Cognito with global option
@@ -466,8 +466,8 @@ export class OpenIDAuthService implements AuthProvider {
     const refreshTokenExpiration = sessionStorage.getItem('refreshTokenExpiration');
     const now = Date.now();
     
-    const tokenExp = tokenExpiration ? new Date(parseInt(tokenExpiration)) : null;
-    const refreshExp = refreshTokenExpiration ? new Date(parseInt(refreshTokenExpiration)) : null;
+    const tokenExp = tokenExpiration ? new Date(Number.parseInt(tokenExpiration)) : null;
+    const refreshExp = refreshTokenExpiration ? new Date(Number.parseInt(refreshTokenExpiration)) : null;
     
     const timeUntilExpiration = tokenExp ? tokenExp.getTime() - now : null;
     const timeUntilRefreshExpiration = refreshExp ? refreshExp.getTime() - now : null;
@@ -491,7 +491,7 @@ export class OpenIDAuthService implements AuthProvider {
     const refreshTokenExpiration = sessionStorage.getItem('refreshTokenExpiration');
     if (!refreshTokenExpiration) return false;
     
-    const expTime = parseInt(refreshTokenExpiration);
+    const expTime = Number.parseInt(refreshTokenExpiration);
     const now = Date.now();
     const twentyFourHours = 24 * 60 * 60 * 1000;
     
@@ -518,12 +518,12 @@ export class OpenIDAuthService implements AuthProvider {
 
   private async acquireAzureToken(request: any): Promise<{ token: string; expiresAt: number } | null> {
     try {
-      const response = await this.msalInstance!.acquireTokenSilent(request);
+      const response = await this.msalInstance.acquireTokenSilent(request);
       return this.processAzureTokenResponse(response);
     } catch (error) {
       console.warn('Silent token acquisition failed, trying force refresh:', error);
       const forceRefreshRequest = { ...request, forceRefresh: true };
-      const response = await this.msalInstance!.acquireTokenSilent(forceRefreshRequest);
+      const response = await this.msalInstance.acquireTokenSilent(forceRefreshRequest);
       return this.processAzureTokenResponse(response);
     }
   }

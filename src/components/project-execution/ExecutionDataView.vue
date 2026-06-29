@@ -83,42 +83,67 @@
       <!-- Multiple tables with tabs -->
       <div class="multiple-tables-view">
         <v-card class="table-card">
-          <CoreTabs v-model="selectedTabIndex" color="primary">
+          <CoreTabs v-model="selectedTableKey" color="primary">
             <CoreTab
-              v-for="(table, index) in instanceTables"
+              v-for="table in instanceTables"
               :key="table.key"
-              :value="index"
-              class="tab-with-indicator"
+              :value="table.key"
+              :title="resolveTitle(table.title as any, formatTitle(table.key))"
             >
-              <span class="tab-label">{{ table.title }}</span>
-              <!-- Master table match indicator -->
-              <v-tooltip v-if="getMatchForTable(table.key)" location="top">
-                <template #activator="{ props: tooltipProps }">
-                  <v-icon
-                    v-bind="tooltipProps"
-                    size="small"
-                    :color="
-                      getMatchForTable(table.key)?.hasDifferences
-                        ? 'warning'
-                        : 'success'
-                    "
-                    class="ml-1 match-indicator"
-                  >
-                    {{
-                      getMatchForTable(table.key)?.hasDifferences
-                        ? 'mdi-database-sync'
-                        : 'mdi-database-check'
-                    }}
-                  </v-icon>
-                </template>
-                <span>
-                  {{
-                    getMatchForTable(table.key)?.hasDifferences
-                      ? t('masterTableMatch.hasDifferencesWithMaster')
-                      : t('masterTableMatch.identicalToMaster')
-                  }}
+              <span class="tab-title-row">
+                <span class="tab-leading-indicators">
+                  <!-- Validation check: icon left of title (warning vs blocking error) -->
+                  <v-tooltip v-if="table.isValidationTable" location="top">
+                    <template #activator="{ props: tooltipProps }">
+                      <v-icon
+                        v-bind="tooltipProps"
+                        size="20"
+                        :class="
+                          table.isWarning
+                            ? 'check-data-tab-icon check-data-tab-icon--warning'
+                            : 'check-data-tab-icon check-data-tab-icon--error'
+                        "
+                      >
+                        {{ table.isWarning ? 'mdi-alert' : 'mdi-close-octagon' }}
+                      </v-icon>
+                    </template>
+                    <span>{{
+                      table.isWarning
+                        ? t('sectionView.validationWarningTab')
+                        : t('sectionView.validationErrorTab')
+                    }}</span>
+                  </v-tooltip>
+                  <!-- Master table match indicator -->
+                  <v-tooltip v-if="getMatchForTable(table.key)" location="top">
+                    <template #activator="{ props: tooltipProps }">
+                      <v-icon
+                        v-bind="tooltipProps"
+                        size="small"
+                        :color="
+                          getMatchForTable(table.key)?.hasDifferences
+                            ? 'warning'
+                            : 'success'
+                        "
+                        class="match-indicator"
+                      >
+                        {{
+                          getMatchForTable(table.key)?.hasDifferences
+                            ? 'mdi-database-sync'
+                            : 'mdi-database-check'
+                        }}
+                      </v-icon>
+                    </template>
+                    <span>
+                      {{
+                        getMatchForTable(table.key)?.hasDifferences
+                          ? t('masterTableMatch.hasDifferencesWithMaster')
+                          : t('masterTableMatch.identicalToMaster')
+                      }}
+                    </span>
+                  </v-tooltip>
                 </span>
-              </v-tooltip>
+                <span class="tab-label">{{ table.title }}</span>
+              </span>
             </CoreTab>
           </CoreTabs>
 
@@ -200,52 +225,119 @@
                 <v-icon start size="small">mdi-compare</v-icon>
                 {{ t('masterTableMatch.viewDifferences') }}
               </v-btn>
-              <v-divider vertical class="mx-2"></v-divider>
-              <!-- Action buttons with confirmation -->
-              <v-btn
-                size="small"
-                variant="outlined"
-                color="primary"
-                class="mr-2"
-                :class="{
-                  'v-btn--active':
-                    currentTableMatch.userChoice === 'use_master',
-                }"
-                @click="showUseMasterConfirmDialog = true"
-              >
-                <v-tooltip activator="parent" location="top">
-                  {{ t('masterTableMatch.option.useMaster.description') }}
+              <!-- Non-ETL mode: show Use Master and optionally Replace Master (overwrite DB with uploaded) -->
+              <template v-if="!externalEtlFlow">
+                <v-divider vertical class="mx-2"></v-divider>
+                <v-btn
+                  size="small"
+                  variant="outlined"
+                  color="primary"
+                  class="mr-2"
+                  :class="{
+                    'v-btn--active':
+                      currentTableMatch.userChoice === 'use_master',
+                  }"
+                  @click="showUseMasterConfirmDialog = true"
+                >
+                  <v-tooltip activator="parent" location="top">
+                    {{ t('masterTableMatch.option.useMaster.description') }}
+                  </v-tooltip>
+                  <v-icon start size="small">mdi-database</v-icon>
+                  {{ t('masterTableMatch.option.useMaster.short') }}
+                </v-btn>
+                <v-btn
+                  v-if="currentTableMatch.showReplaceMasterOption"
+                  size="small"
+                  variant="outlined"
+                  color="warning"
+                  class="mr-2"
+                  :class="{
+                    'v-btn--active':
+                      currentTableMatch.userChoice === 'replace_master',
+                  }"
+                  @click="showReplaceMasterConfirmDialog = true"
+                >
+                  <v-tooltip activator="parent" location="top">
+                    {{ t('masterTableMatch.option.replaceMaster.description') }}
+                  </v-tooltip>
+                  <v-icon start size="small">mdi-database-sync</v-icon>
+                  {{ t('masterTableMatch.option.replaceMaster.short') }}
+                </v-btn>
+              </template>
+            </div>
+          </div>
+
+          <!-- ETL metadata info bar (shown when ETL flow is active, for non-parameter tables) -->
+          <div
+            v-if="
+              externalEtlFlow &&
+              currentTableSwitchState &&
+              !isCurrentTableParameterTable
+            "
+            class="etl-metadata-bar"
+            :class="`etl-metadata-bar--${currentTableSwitchState.variant}`"
+          >
+            <div class="etl-metadata-bar__info">
+              <v-icon size="16" class="mr-2">{{ etlInfoIcon }}</v-icon>
+              <span class="etl-metadata-bar__text">{{ etlInfoText }}</span>
+            </div>
+            <div class="etl-metadata-bar__action">
+              <!-- from_db: Static mode / Track changes with tooltips -->
+              <template v-if="currentTableSwitchState.variant === 'from_db'">
+                <v-tooltip :text="$t('externalEtl.switch.staticModeTooltip')" location="top" max-width="260">
+                  <template #activator="{ props: tooltipProps }">
+                    <span
+                      v-bind="tooltipProps"
+                      class="etl-metadata-bar__switch-label etl-metadata-bar__switch-label--tooltipable"
+                      :class="{ 'etl-metadata-bar__switch-label--active': !etlSwitchModelValue }"
+                    >{{ $t('externalEtl.switch.staticMode') }}</span>
+                  </template>
                 </v-tooltip>
-                <v-icon start size="small">mdi-database</v-icon>
-                {{ t('masterTableMatch.option.useMaster.short') }}
-              </v-btn>
-              <v-btn
-                size="small"
-                variant="outlined"
-                color="accent"
-                :disabled="!currentTableMatch.canReplaceMaster"
-                :class="{
-                  'v-btn--active':
-                    currentTableMatch.userChoice === 'replace_master',
-                }"
-                @click="showReplaceMasterConfirmDialog = true"
-              >
-                <v-tooltip activator="parent" location="top">
-                  {{
-                    currentTableMatch.canReplaceMaster
-                      ? t('masterTableMatch.option.replaceMaster.description')
-                      : t('masterTableMatch.option.replaceMaster.notAvailable')
-                  }}
+                <v-switch
+                  :model-value="etlSwitchModelValue"
+                  @update:model-value="handleEtlSwitchChange(currentTable.key, $event)"
+                  density="compact"
+                  hide-details
+                  color="primary"
+                  class="etl-metadata-bar__switch"
+                />
+                <v-tooltip :text="$t('externalEtl.switch.trackChangesTooltip')" location="top" max-width="260">
+                  <template #activator="{ props: tooltipProps }">
+                    <span
+                      v-bind="tooltipProps"
+                      class="etl-metadata-bar__switch-label etl-metadata-bar__switch-label--tooltipable"
+                      :class="{ 'etl-metadata-bar__switch-label--active': etlSwitchModelValue }"
+                    >{{ $t('externalEtl.switch.trackChanges') }}</span>
+                  </template>
                 </v-tooltip>
-                <v-icon start size="small">mdi-database-sync</v-icon>
-                {{ t('masterTableMatch.option.replaceMaster.short') }}
-              </v-btn>
+              </template>
+              <!-- from_excel / edited_from_db / reuploaded: Use excel data / Use database data -->
+              <template v-else>
+                <span
+                  class="etl-metadata-bar__switch-label"
+                  :class="{ 'etl-metadata-bar__switch-label--active': !etlSwitchModelValue }"
+                >{{ $t('externalEtl.switch.useExcelData') }}</span>
+                <v-switch
+                  :model-value="etlSwitchModelValue"
+                  @update:model-value="handleEtlSwitchChange(currentTable.key, $event)"
+                  density="compact"
+                  hide-details
+                  color="primary"
+                  class="etl-metadata-bar__switch"
+                />
+                <span
+                  class="etl-metadata-bar__switch-label"
+                  :class="{ 'etl-metadata-bar__switch-label--active': etlSwitchModelValue }"
+                >{{ $t('externalEtl.switch.useDbData') }}</span>
+              </template>
             </div>
           </div>
 
           <v-card-text class="table-card-content">
             <CoreTable
-              :items="currentTable.items"
+              :items="windowedCurrentItems"
+              :has-more="windowedHasMore"
+              @load-more="loadMoreWindow"
               :headers="currentTable.headers"
               :table-title="currentTable.title"
               :table-key="currentTable.key"
@@ -398,7 +490,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGeneralStore } from '@/stores/general'
 import CoreTable from '@/components/core/table/CoreTable.vue'
@@ -417,9 +509,32 @@ import {
   generateSecureId,
   type FilterCondition,
 } from '@/utils/tableFilterUtils'
-import { transformJsonSchemaToAutomationFormat } from '@/utils/schemaUtils'
+import {
+  transformJsonSchemaToAutomationFormat,
+  stripInvisibleParameterPropertiesFromInstanceData,
+} from '@/utils/schemaUtils'
+import { resolveTitle } from '@/utils/i18nUtils'
+import {
+  resolveEtlParamKey,
+  applyEtlParameterSwitch,
+  normalizeTableNameForLookup,
+  turnOffEtlParameterFromDbSwitchAfterManualValueEdit,
+} from '@/utils/etlParameterSwitch'
+import {
+  OBJECT_TABLE_ROW_ID,
+  formatTitle,
+  createParameterTableVertical,
+  createObjectTableObject,
+  createValidationTables,
+  createTableObject,
+  injectParameterSwitchColumns,
+} from '@/utils/executionTableBuilders'
 import { useTableChanges } from '@/composables/useTableChanges'
 import { formatValidationErrorsWithTitle } from '@/utils/errorFormatting'
+import {
+  getMasterDataTableRankByDrawerHierarchy,
+  normalizeTableKeyForHierarchyMatch,
+} from '@/services/FrontendAutomationService'
 
 // Props
 interface Props {
@@ -427,18 +542,26 @@ interface Props {
   canCheckData?: boolean
   checksFinished?: boolean
   checksError?: boolean
+  /** Set by parent while create + data-check requests run; avoids stale prop timing vs checksLaunched */
+  checksInProgress?: boolean
   readOnly?: boolean
   masterTableMatches?: any[]
-  enableExcelMode?: boolean // Enable Excel-like editing mode
+  enableExcelMode?: boolean
+  externalEtlFlow?: any | null
+  /** Instance checks schema (instanceChecksSchema from SchemaConfig). Used to determine which check tables are warnings (is_warning: true). */
+  checksSchema?: any | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
   canCheckData: false,
   checksFinished: false,
   checksError: false,
+  checksInProgress: false,
   readOnly: false,
   masterTableMatches: () => [],
-  enableExcelMode: true, // Enable by default
+  enableExcelMode: true,
+  externalEtlFlow: null,
+  checksSchema: null,
 })
 
 // Emits
@@ -460,10 +583,21 @@ const tableChanges = useTableChanges()
 
 // State
 const checksLaunched = ref(false)
-const selectedTabIndex = ref(0)
-// Each table has its own search and filters
+/** Stable tab id (schema / table key); avoids CoreTabs registry corruption when instanceTables reorder */
+const selectedTableKey = ref<string | undefined>(undefined)
+// Each table has its own search and filters.
+// `searchValue` updates immediately for the input display; `debouncedSearchValue`
+// lags ~250ms and is what feeds `applyFiltersAndSearch`, so each keystroke on a
+// 500k-row table doesn't re-run the full filter pass.
 const tableStates = ref<
-  Record<string, { searchValue: string; activeFilters: FilterCondition[] }>
+  Record<
+    string,
+    {
+      searchValue: string
+      debouncedSearchValue: string
+      activeFilters: FilterCondition[]
+    }
+  >
 >({})
 
 // State for modals and CRUD operations
@@ -498,16 +632,12 @@ const pendingChangesCount = computed(() => tableChanges.totalChangesCount.value)
 // Use the utility function for generating headers
 const generateHeaders = generateHeadersFromData
 
-// Helper function to format table titles
-const formatTitle = (key: string): string => {
-  return key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ')
-}
-
 // Helper function to get or create table state
 const getTableState = (tableKey: string) => {
   if (!tableStates.value[tableKey]) {
     tableStates.value[tableKey] = {
       searchValue: '',
+      debouncedSearchValue: '',
       activeFilters: [],
     }
   }
@@ -519,7 +649,7 @@ const applyFiltersAndSearch = (items: any[], tableKey: string): any[] => {
   const state = getTableState(tableKey)
   return applyFiltersAndSearchUtil(
     items,
-    state.searchValue,
+    state.debouncedSearchValue,
     state.activeFilters,
   )
 }
@@ -542,8 +672,23 @@ const instanceSchema = computed(() => {
   return transformedSchema
 })
 
+/** Subscribe `instanceTables` to ETL param switch mutations (row `__etl_from_db__` is set at build time). */
+const etlParameterSwitchesSignature = computed(() => {
+  const sw = props.externalEtlFlow?.parameterSwitches
+  if (!sw || typeof sw !== 'object') return ''
+  return Object.keys(sw)
+    .sort((a, b) => a.localeCompare(b))
+    .map((k) => `${k}:${String(sw[k])}`)
+    .join('|')
+})
+
 // Computed
 const instanceTables = computed(() => {
+  // Read the signature so this recomputes when ETL parameter switches change.
+  // (The guard never triggers — the signature is always a string — it only
+  // registers the reactive dependency without a bare/void expression.)
+  if (etlParameterSwitchesSignature.value === undefined) return []
+
   const execution = props.execution || generalStore.selectedExecution
   if (!execution?.instance?.data) return []
 
@@ -552,7 +697,10 @@ const instanceTables = computed(() => {
   // If we're in check data mode, show validation tables if they exist
   if (props.canCheckData) {
     // Show validation tables if they exist (don't wait for checks to finish)
-    const validationTables = createValidationTables(execution)
+    const validationTables = createValidationTables(execution, {
+      applyFilters: applyFiltersAndSearch,
+      checksSchema: props.checksSchema,
+    })
     if (validationTables.length > 0) {
       tables.push(...validationTables)
     }
@@ -595,12 +743,14 @@ const instanceTables = computed(() => {
       : []
   const seen = new Set<string>()
   const orderedKeys: string[] = []
-  schemaOrder.filter((k) => dataKeys.includes(k)).forEach((k) => {
-    if (!seen.has(k)) {
-      orderedKeys.push(k)
-      seen.add(k)
-    }
-  })
+  schemaOrder
+    .filter((k) => dataKeys.includes(k))
+    .forEach((k) => {
+      if (!seen.has(k)) {
+        orderedKeys.push(k)
+        seen.add(k)
+      }
+    })
   schemaObjectKeys.forEach((k) => {
     if (!seen.has(k)) {
       orderedKeys.push(k)
@@ -624,15 +774,22 @@ const instanceTables = computed(() => {
       baseData != null &&
       typeof baseData === 'object' &&
       !Array.isArray(baseData)
-    // Object-type keys (parameters, requirements, penalties, etc.): show as single-row editable table
+    // Object-type keys (parameters, requirements, penalties, etc.)
     if (isSchemaObjectKey || (hasObjectSchema && isPlainObject)) {
       const objectData = isPlainObject ? { ...baseData } : {}
-      const objectTable = createObjectTableObject(
-        tableKey,
-        objectData,
-        instanceSchemaRoot,
-      )
-      tables.push(objectTable)
+      const isParameterTableWithEtl =
+        props.externalEtlFlow &&
+        props.externalEtlFlow.parameterTableNames?.has(tableKey)
+      const table = isParameterTableWithEtl
+        ? createParameterTableVertical(tableKey, objectData, instanceSchemaRoot, {
+            t,
+            instanceSchema: props.execution?.instance?.schema,
+            etlFlow: props.externalEtlFlow,
+          })
+        : createObjectTableObject(tableKey, objectData, instanceSchemaRoot, {
+            instanceSchema: props.execution?.instance?.schema,
+          })
+      tables.push(table)
       return
     }
     if (!Array.isArray(baseData)) return
@@ -654,344 +811,140 @@ const instanceTables = computed(() => {
       tableData,
       schema,
       effectiveConfig,
+      { applyFilters: applyFiltersAndSearch },
     )
     if (tableObject) {
+      if (
+        props.externalEtlFlow &&
+        props.externalEtlFlow.parameterTableNames?.has(tableKey)
+      ) {
+        injectParameterSwitchColumns(tableObject, tableKey, {
+          t,
+          etlFlow: props.externalEtlFlow,
+        })
+      }
       tables.push(tableObject)
     }
   })
 
+  // Tab order: master-matched tables first using the same hierarchy order as AppDrawer
+  // (Section -> Group -> Table), then others keep schema/data order.
+  if (
+    props.masterTableMatches &&
+    props.masterTableMatches.length > 0 &&
+    !props.canCheckData
+  ) {
+    const masterDataConfig = generalStore.getConfigurations?.masterData || {}
+    const masterRankByKey = getMasterDataTableRankByDrawerHierarchy(
+      masterDataConfig,
+      generalStore.masterDataSections ?? undefined,
+      generalStore.masterDataGroups ?? undefined,
+    )
+    const matches = props.masterTableMatches as Array<{
+      tableKey: string
+      masterTableConfig?: { order?: number }
+    }>
+    const hasMasterMatch = (tableKey: string) =>
+      matches.some((m) => m.tableKey === tableKey)
+    const getMasterOrderRank = (tableKey: string): number => {
+      const rankByHierarchy = masterRankByKey.get(
+        normalizeTableKeyForHierarchyMatch(tableKey),
+      )
+      if (typeof rankByHierarchy === 'number') return rankByHierarchy
+      const m = matches.find((x) => x.tableKey === tableKey)
+      const o = m?.masterTableConfig?.order
+      return typeof o === 'number' && !Number.isNaN(o)
+        ? o
+        : Number.MAX_SAFE_INTEGER
+    }
+    const indexed = tables.map((t, i) => ({ t, i }))
+    indexed.sort((a, b) => {
+      const ha = hasMasterMatch(a.t.key)
+      const hb = hasMasterMatch(b.t.key)
+      if (ha && !hb) return -1
+      if (!ha && hb) return 1
+      if (ha && hb) {
+        const ra = getMasterOrderRank(a.t.key)
+        const rb = getMasterOrderRank(b.t.key)
+        if (ra !== rb) return ra - rb
+      }
+      return a.i - b.i
+    })
+    return indexed.map(({ t }) => t)
+  }
+
   return tables
 })
 
-// Helper function to create table object (effectiveConfig = master table config when match, else instance schema)
-const createTableObject = (
-  tableKey: string,
-  tableData: any[],
-  schema: any,
-  effectiveConfig?: any,
-) => {
-  // Ensure all items have an ID (before generating headers)
-  tableData.forEach((item: any, index: number) => {
-    if (!item.id) {
-      item.id = generateSecureId(`${tableKey}_${index}`)
+// After table-building helpers (createTableObject, createValidationTables, …) so
+// immediate watch does not evaluate instanceTables while those consts are still in TDZ.
+watch(
+  () => instanceTables.value.map((t) => t.key),
+  (keys) => {
+    if (keys.length === 0) {
+      selectedTableKey.value = undefined
+      return
     }
-  })
-
-  const tableConfig = effectiveConfig ?? schema?.[tableKey]
-  let headers: any[]
-  let title = tableKey
-
-  if (tableConfig?.title) {
-    title = tableConfig.title
-  }
-
-  const selectionHeader = {
-    title: '',
-    value: 'selection',
-    key: 'selection',
-    sortable: false,
-    filterable: false,
-    type: 'selection',
-    required: false,
-    width: '48px',
-  }
-
-  const responseSchema = tableConfig?.get_list?.response_schema
-  if (responseSchema?.items?.properties) {
-    const properties = responseSchema.items.properties
-    const requiredFields = responseSchema.items.required || []
-
-    // SAFETY CHECK: Verify that schema property keys actually exist in the data.
-    // When a master table config is used (effectiveConfig), its column keys may differ
-    // from the instance data keys (e.g., different casing or different column set),
-    // which would cause empty cells since item[header.key] wouldn't find a match.
-    const schemaKeys = Object.keys(properties).filter((k) => k !== 'id')
-    const dataKeys =
-      tableData.length > 0
-        ? Object.keys(tableData[0]).filter((k) => k !== 'id' && k !== '_id')
-        : []
-
-    const keysMatchData =
-      dataKeys.length === 0 || schemaKeys.some((sk) => dataKeys.includes(sk))
-
-    if (keysMatchData) {
-      // Schema keys match data keys - use schema headers with full metadata
-      const schemaHeaders = Object.entries(properties)
-        .filter(([key]) => key !== 'id')
-        .map(([key, prop]: [string, any]) => ({
-          title: prop.title || key,
-          value: key,
-          key: key,
-          sortable: true,
-          filterable: true,
-          type: prop.type === 'integer' ? 'number' : prop.type,
-          required: requiredFields.includes(key),
-          minLength: prop.minLength,
-          maxLength: prop.maxLength,
-          min: prop.minimum,
-          max: prop.maximum,
-          pattern: prop.pattern,
-          readOnly: prop.readOnly || false,
-          isForeignKey: prop.isForeignKey || false,
-          isDependentField: prop.isDependentField || false,
-          isMainSelector: prop.isMainSelector || false,
-          joinFrom: prop.joinFrom || undefined,
-          columnsToJoin: prop.columnsToJoin || undefined,
-          foreignKeyField: prop.foreignKeyField || undefined,
-          hidden: prop.hidden || false,
-          // Use explicit choices from config, or schema enum (e.g. 'refineria' | 'factoria') so dropdowns show options without lookup
-          choices:
-            prop.choices ??
-            (Array.isArray(prop.enum) && prop.enum.length > 0
-              ? prop.enum
-              : undefined),
-        }))
-
-      headers = [selectionHeader, ...schemaHeaders]
-    } else {
-      // Schema keys DON'T match data keys (e.g., master table config has different
-      // column names than the instance data). Fall back to data-derived headers
-      // but enrich them with metadata from the master config via case-insensitive matching.
-      console.warn(
-        `ExecutionDataView: Schema property keys for "${tableKey}" don't match data keys (schema: [${schemaKeys.join(', ')}], data: [${dataKeys.join(', ')}]). Falling back to data-derived headers.`,
-      )
-
-      // Build a case-insensitive lookup from the config properties for enrichment
-      const configPropsLookup = new Map<string, any>()
-      Object.entries(properties).forEach(([key, prop]) => {
-        configPropsLookup.set(key.toLowerCase(), prop as any)
-      })
-
-      const dataHeaders = generateHeaders(tableData)
-      const enrichedHeaders = dataHeaders
-        .filter((h: any) => h.key !== 'id' && h.key !== 'selection')
-        .map((h: any) => {
-          const configProp = configPropsLookup.get(h.key.toLowerCase())
-          if (configProp) {
-            return {
-              ...h,
-              title: configProp.title || h.title,
-              type:
-                configProp.type === 'integer'
-                  ? 'number'
-                  : configProp.type || h.type,
-              required: requiredFields.includes(h.key),
-              readOnly: configProp.readOnly || false,
-              isForeignKey: configProp.isForeignKey || false,
-              isDependentField: configProp.isDependentField || false,
-              isMainSelector: configProp.isMainSelector || false,
-              joinFrom: configProp.joinFrom || undefined,
-              columnsToJoin: configProp.columnsToJoin || undefined,
-              foreignKeyField: configProp.foreignKeyField || undefined,
-              hidden: configProp.hidden || false,
-              choices:
-                configProp.choices ??
-                (Array.isArray(configProp.enum) && configProp.enum.length > 0
-                  ? configProp.enum
-                  : undefined),
-            }
-          }
-          return h
-        })
-
-      headers = [selectionHeader, ...enrichedHeaders]
+    const current = selectedTableKey.value
+    if (current === undefined || !keys.includes(current)) {
+      selectedTableKey.value = keys[0]
     }
-  } else {
-    console.warn(
-      `ExecutionDataView: No response schema items.properties for "${tableKey}", using fallback`,
-    )
-    const dataHeaders = generateHeaders(tableData)
-    headers = [
-      selectionHeader,
-      ...dataHeaders.filter(
-        (h: any) => h.key !== 'id' && h.key !== 'selection',
-      ),
-    ]
-  }
-
-  // Apply filters and ensure IDs are preserved and accessible
-  let filteredItems = applyFiltersAndSearch(tableData, tableKey)
-
-  // CRITICAL: Ensure ID is explicitly in each filtered item (not just in Proxy)
-  filteredItems = filteredItems.map((item: any) => ({
-    id: item.id, // Explicitly add ID first
-    ...item, // Then spread the rest
-  }))
-
-  return {
-    key: tableKey,
-    title: title,
-    headers: headers,
-    items: filteredItems,
-    originalItems: tableData,
-  }
-}
-
-/** Row id used for object-type keys (single logical "row" representing the whole object). */
-const OBJECT_TABLE_ROW_ID = '__object__'
-
-// Helper to build a table view for object-type instance data (parameters, requirements, penalties, etc.)
-const createObjectTableObject = (
-  tableKey: string,
-  objectData: Record<string, any>,
-  rawSchema: any,
-) => {
-  const objectSchema = rawSchema?.properties?.[tableKey]
-  const selectionHeader = {
-    title: '',
-    value: 'selection',
-    key: 'selection',
-    sortable: false,
-    filterable: false,
-    type: 'selection',
-    required: false,
-    width: '48px',
-  }
-
-  let headers: any[]
-  if (
-    objectSchema?.properties &&
-    typeof objectSchema.properties === 'object'
-  ) {
-    headers = Object.entries(objectSchema.properties).map(
-      ([key, prop]: [string, any]) => ({
-        title: (prop && prop.title) || key,
-        value: key,
-        key,
-        sortable: true,
-        filterable: true,
-        type:
-          prop && prop.type === 'integer'
-            ? 'number'
-            : (prop && prop.type) || 'string',
-        required: (objectSchema.required || []).includes(key),
-        readOnly: (prop && prop.readOnly) || false,
-      }),
-    )
-  } else {
-    const dataHeaders = generateHeaders([{ ...objectData }])
-    headers = dataHeaders.filter(
-      (h: any) => h.key !== 'id' && h.key !== 'selection',
-    )
-  }
-  headers = [selectionHeader, ...headers]
-
-  const title =
-    objectSchema?.title || formatTitle(tableKey.replace(/_/g, ' '))
-  const singleRow = { id: OBJECT_TABLE_ROW_ID, ...objectData }
-  const items = [singleRow]
-
-  return {
-    key: tableKey,
-    title,
-    headers,
-    items,
-    originalItems: items,
-    isObjectTable: true,
-  }
-}
-
-// Helper function to create validation tables
-const createValidationTables = (execution: any) => {
-  const validationTables: any[] = []
-  const instanceData = execution.instance.dataChecks || {}
-
-  Object.keys(instanceData).forEach((tableKey) => {
-    const tableData = instanceData[tableKey]
-    // Only create table if it's an array with data
-    if (Array.isArray(tableData) && tableData.length > 0) {
-      // Check if array contains primitives (strings, numbers, etc.) or objects
-      const isPrimitiveArray =
-        typeof tableData[0] !== 'object' ||
-        tableData[0] === null ||
-        Array.isArray(tableData[0])
-
-      let processedData: any[]
-      let headers: any[]
-
-      if (isPrimitiveArray) {
-        // Convert primitives to objects with a 'value' field
-        processedData = tableData.map((value: any, index: number) => ({
-          id: generateSecureId(`validation_${tableKey}_${index}`),
-          value: value,
-        }))
-        headers = [
-          {
-            title: 'ID',
-            value: 'id',
-            key: 'id',
-            sortable: false,
-            filterable: false,
-            type: 'string',
-            align: ' d-none',
-          },
-          {
-            title: formatTitle(tableKey),
-            value: 'value',
-            key: 'value',
-            sortable: true,
-            filterable: true,
-            type: typeof tableData[0],
-          },
-        ]
-      } else {
-        // Object array - ensure all items have an ID
-        processedData = tableData.map((item: any, index: number) => ({
-          id: item.id || generateSecureId(`validation_${tableKey}_${index}`),
-          ...item,
-        }))
-
-        // Generate headers from data for validation tables
-        const dataHeaders = generateHeaders(processedData)
-        headers = [
-          {
-            title: 'ID',
-            value: 'id',
-            key: 'id',
-            sortable: false,
-            filterable: false,
-            type: 'string',
-            align: ' d-none',
-          },
-          ...dataHeaders.filter((h) => h.key !== 'id' && h.key !== 'selection'),
-        ]
-      }
-
-      // Apply filters
-      let filteredItems = applyFiltersAndSearch(
-        processedData,
-        `validation_${tableKey}`,
-      )
-      filteredItems = filteredItems.map((item: any) => ({
-        id: item.id,
-        ...item,
-      }))
-
-      validationTables.push({
-        key: `validation_${tableKey}`,
-        title: `${formatTitle(tableKey)}`,
-        headers: headers,
-        items: filteredItems,
-        originalItems: tableData,
-        isValidationTable: true,
-      })
-    }
-  })
-
-  return validationTables
-}
+  },
+  { immediate: true },
+)
 
 const currentTable = computed(() => {
   if (instanceTables.value.length === 0)
     return { headers: [], items: [], key: '' }
-  const table =
-    instanceTables.value[selectedTabIndex.value] || instanceTables.value[0]
-  return table
+  const key = selectedTableKey.value
+  const byKey =
+    key === undefined
+      ? undefined
+      : instanceTables.value.find((t) => t.key === key)
+  return byKey ?? instanceTables.value[0]
 })
+
+/**
+ * Client-side windowing for the visible table. `currentTable.items` can be
+ * hundreds of thousands of rows on heavy ETL uploads; even though `CoreTable`
+ * virtualizes the DOM via `v-data-table-virtual`, Vuetify's internal
+ * sort/filter pipeline iterates the full array on mount and freezes the UI.
+ * We slice to a small initial window and grow it via `@load-more` (reusing
+ * the infinite-scroll wiring already in `CoreTable`). Same pattern as
+ * `useTableData` for SectionView instance/solution tables.
+ */
+const EXECUTION_WINDOW_PAGE_SIZE = 200
+const executionWindowSize = ref(EXECUTION_WINDOW_PAGE_SIZE)
+
+// Reset to the first page whenever the visible (filtered) items reference
+// changes — switching tab, applying a filter, editing a row that causes a
+// re-filter. Watching the reference (not deep) keeps this cheap.
+watch(
+  () => currentTable.value.items,
+  () => {
+    executionWindowSize.value = EXECUTION_WINDOW_PAGE_SIZE
+  },
+)
+
+const windowedCurrentItems = computed(() => {
+  const items = currentTable.value.items
+  if (!Array.isArray(items)) return items
+  return items.slice(0, executionWindowSize.value)
+})
+
+const windowedHasMore = computed(() => {
+  const items = currentTable.value.items
+  return Array.isArray(items) && executionWindowSize.value < items.length
+})
+
+const loadMoreWindow = () => {
+  executionWindowSize.value += EXECUTION_WINDOW_PAGE_SIZE
+}
 
 const currentTableState = computed(() => {
   const table = currentTable.value
-  if (!table.key) return { searchValue: '', activeFilters: [] }
+  if (!table.key)
+    return { searchValue: '', debouncedSearchValue: '', activeFilters: [] }
   return getTableState(table.key)
 })
 
@@ -1009,6 +962,114 @@ const currentTableMatch = computed(() => {
   if (!table.key) return null
   return getMatchForTable(table.key)
 })
+
+const currentTableSwitchState = computed(() => {
+  if (!props.externalEtlFlow) return null
+  const key = currentTable.value?.key
+  if (!key) return null
+  return props.externalEtlFlow.tableSwitches[key] ?? null
+})
+
+const isCurrentTableParameterTable = computed(() => {
+  if (!props.externalEtlFlow) return false
+  const key = currentTable.value?.key
+  if (!key) return false
+  return props.externalEtlFlow.parameterTableNames?.has(key) ?? false
+})
+
+const etlInfoIcon = computed(() => {
+  const variant = currentTableSwitchState.value?.variant
+  switch (variant) {
+    case 'from_db':
+      return 'mdi-database'
+    case 'from_excel':
+      return 'mdi-file-excel'
+    case 'edited_from_db':
+      return 'mdi-database-edit'
+    case 'reuploaded':
+      return 'mdi-file-replace'
+    default:
+      return 'mdi-table'
+  }
+})
+
+const etlInfoText = computed(() => {
+  const variant = currentTableSwitchState.value?.variant
+  switch (variant) {
+    case 'from_db':
+      return t('externalEtl.switch.fromDbLabel')
+    case 'from_excel':
+      return t('externalEtl.switch.fromExcelLabel')
+    case 'edited_from_db':
+      return t('externalEtl.switch.editedFromDbLabel')
+    case 'reuploaded':
+      return t('externalEtl.switch.reuploadedLabel')
+    default:
+      return ''
+  }
+})
+
+const etlSwitchLabel = computed(() => {
+  const variant = currentTableSwitchState.value?.variant
+  switch (variant) {
+    case 'from_db':
+      return t('externalEtl.switch.fixTable')
+    case 'from_excel':
+    case 'edited_from_db':
+    case 'reuploaded':
+      return t('externalEtl.switch.replaceWithDb')
+    default:
+      return ''
+  }
+})
+
+/** Unified: switch ON = track changes (fixed: false), switch OFF = static mode (fixed: true/null). */
+const etlSwitchModelValue = computed(() => {
+  const state = currentTableSwitchState.value
+  if (!state) return false
+  return state.fixed === false
+})
+
+function handleEtlSwitchChange(tableKey: string, value: boolean | null) {
+  if (!props.externalEtlFlow) return
+  const switchState = props.externalEtlFlow.tableSwitches[tableKey]
+  if (!switchState) return
+  // Unified: switch ON = track changes (fixed: false), switch OFF = static mode (fixed: true)
+  switchState.fixed = value !== true
+}
+
+function handleEtlParameterChange(paramKey: string, value: boolean | null) {
+  if (!props.externalEtlFlow) return
+  props.externalEtlFlow.parameterSwitches[paramKey] = value
+}
+
+/**
+ * Handle cell change for ETL parameter switch columns in the table.
+ * Vertical parameter table: rowId is the parameter key, paramKey = tableKey.rowId.
+ * Array-type: paramKey = tableKey.paramName (from row.name/ID/key).
+ */
+function handleEtlParameterCellChange(
+  tableKey: string,
+  rowId: string | number,
+  fieldKey: string,
+  newValue: any,
+) {
+  if (!props.externalEtlFlow) return
+
+  const table = instanceTables.value.find((t) => t.key === tableKey)
+  const row = table?.items.find(
+    (item: any) => String(item.id) === String(rowId),
+  )
+  if (!row) return
+
+  const paramKey = resolveEtlParamKey(table, row, tableKey, rowId, fieldKey)
+  if (paramKey == null) return
+
+  const switchState = props.externalEtlFlow.tableSwitches[tableKey]
+  const isReuploaded = switchState?.variant === 'reuploaded'
+
+  applyEtlParameterSwitch(props.externalEtlFlow, paramKey, fieldKey, newValue, isReuploaded)
+}
 
 const hasAnyMatches = computed(() => {
   return props.masterTableMatches && props.masterTableMatches.length > 0
@@ -1034,21 +1095,6 @@ const tableDataForCoreTable = computed(() => {
 })
 
 // Normalize table name to match instance.data keys (snake_case, spaces, camelCase, etc.)
-const normalizeTableNameForLookup = (name: string): string => {
-  if (!name) return ''
-  const withUnderscores = name.replace(/\s+/g, '_').replace(/-/g, '_')
-  if (withUnderscores.includes('_')) {
-    return withUnderscores.toLowerCase()
-  }
-  if (
-    withUnderscores !== withUnderscores.toLowerCase() &&
-    withUnderscores !== withUnderscores.toUpperCase()
-  ) {
-    return withUnderscores.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase()
-  }
-  return withUnderscores.toLowerCase()
-}
-
 // Return dropdown options from the matching table in the instance JSON (no API / no masterData)
 const loadTableDataForCoreTable = async (tableName: string): Promise<any[]> => {
   const instanceData = props.execution?.instance?.data
@@ -1095,24 +1141,42 @@ const formFields = computed(() => {
   const table = currentTable.value
   if (!table.headers || table.headers.length === 0) return []
 
+  const shouldHideFieldFromForm = (header: any): boolean => {
+    // Internal/non-data column
+    if (header.key === 'selection') return true
+    // Explicitly hidden from schema/config
+    if (header.hidden === true) return true
+    // Raw FK ids used with columnsToJoin should stay technical (user edits display fields instead)
+    if (
+      header.isForeignKey &&
+      Array.isArray(header.columnsToJoin) &&
+      header.columnsToJoin.length > 0
+    ) {
+      return true
+    }
+    return false
+  }
+
   // Convert headers to form fields format with validation rules and dropdown config (choices, joinFrom)
-  return table.headers.map((header: any) => ({
-    key: header.key,
-    title: header.title,
-    type: header.type,
-    required: header.required || false,
-    readOnly: header.key === 'id',
-    minLength: header.minLength,
-    maxLength: header.maxLength,
-    min: header.min,
-    max: header.max,
-    pattern: header.pattern,
-    choices: header.choices,
-    joinFrom: header.joinFrom,
-    isDependentField: header.isDependentField,
-    isMainSelector: header.isMainSelector,
-    foreignKeyField: header.foreignKeyField,
-  }))
+  return table.headers
+    .filter((header: any) => !shouldHideFieldFromForm(header))
+    .map((header: any) => ({
+      key: header.key,
+      title: header.title,
+      type: header.type,
+      required: header.required || false,
+      frontendReadOnly: header.key === 'id',
+      minLength: header.minLength,
+      maxLength: header.maxLength,
+      min: header.min,
+      max: header.max,
+      pattern: header.pattern,
+      choices: header.choices,
+      joinFrom: header.joinFrom,
+      isDependentField: header.isDependentField,
+      isMainSelector: header.isMainSelector,
+      foreignKeyField: header.foreignKeyField,
+    }))
 })
 
 const hasValidationErrors = computed(() => {
@@ -1133,9 +1197,19 @@ const hasValidationErrors = computed(() => {
 })
 
 const isLoadingChecks = computed(() => {
-  // Show spinner only when checks are launched and not finished
+  if (props.checksInProgress) return true
   return checksLaunched.value && !props.checksFinished && !props.checksError
 })
+
+watch(
+  () =>
+    [props.checksInProgress, props.checksFinished, props.checksError] as const,
+  ([inProgress, finished, error]) => {
+    if (!inProgress && (finished || error)) {
+      checksLaunched.value = false
+    }
+  },
+)
 
 // Wrapper for getOperatorText to provide t function
 const getOperatorText = (operator: string): string => {
@@ -1143,12 +1217,27 @@ const getOperatorText = (operator: string): string => {
 }
 
 // Event handlers for CoreTable
+//
+// Search input flow:
+//   - `state.searchValue` updates synchronously so the textbox stays
+//     responsive (controlled input).
+//   - `state.debouncedSearchValue` updates ~250ms after the user stops
+//     typing; that's the value that drives `applyFiltersAndSearch`.
+//     Without this, every keystroke re-ran the full filter pass over the
+//     entire table (catastrophic on 500k-row Excel uploads).
+const SEARCH_DEBOUNCE_MS = 250
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
 const handleSearch = (value: string) => {
   const table = currentTable.value
-  if (table.key) {
-    const state = getTableState(table.key)
-    state.searchValue = value
-  }
+  if (!table.key) return
+  const state = getTableState(table.key)
+  state.searchValue = value
+  const targetKey = table.key
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer)
+  searchDebounceTimer = setTimeout(() => {
+    searchDebounceTimer = null
+    getTableState(targetKey).debouncedSearchValue = value
+  }, SEARCH_DEBOUNCE_MS)
 }
 
 const handleAddFilter = (filter: any) => {
@@ -1324,10 +1413,10 @@ const handleConfirmBulkDelete = () => {
   }
 
   const tableData = props.execution.instance.data[table.key]
-  const idsToDelete = selectedItems.value.map((item) => item.id)
+  const idsToDelete = new Set(selectedItems.value.map((item) => item.id))
 
   for (let i = tableData.length - 1; i >= 0; i--) {
-    if (idsToDelete.includes(tableData[i].id)) {
+    if (idsToDelete.has(tableData[i].id)) {
       tableData.splice(i, 1)
     }
   }
@@ -1371,14 +1460,14 @@ const startInlineEdit = (item: any, field?: string) => {
 // Convert value to integer type
 const convertToInteger = (value: any): number => {
   const result =
-    typeof value === 'number' ? Math.floor(value) : parseInt(String(value), 10)
-  return isNaN(result) ? 0 : result
+    typeof value === 'number' ? Math.floor(value) : Number.parseInt(String(value), 10)
+  return Number.isNaN(result) ? 0 : result
 }
 
 // Convert value to number type
 const convertToNumber = (value: any): number => {
-  const result = typeof value === 'number' ? value : parseFloat(String(value))
-  return isNaN(result) ? 0 : result
+  const result = typeof value === 'number' ? value : Number.parseFloat(String(value))
+  return Number.isNaN(result) ? 0 : result
 }
 
 // Convert value to boolean type
@@ -1410,14 +1499,18 @@ const getItemSchemaForTypeConversion = (tableKey: string): any => {
   const match = props.masterTableMatches?.find(
     (m: any) => m.tableKey === tableKey,
   )
-  if (match?.masterTableConfig?.get_list?.response_schema?.items) {
-    return match.masterTableConfig.get_list.response_schema.items
+  const masterRs = match?.masterTableConfig?.get_list?.response_schema
+  if (masterRs?.items) {
+    return masterRs.items
+  }
+  if (masterRs?.type === 'object' && masterRs.properties) {
+    return masterRs
   }
   const execution = props.execution || generalStore.selectedExecution
   const schema = execution?.instance?.schema
   // Schema may be full format { name, instance, solution, config } — use instance.properties when present
   const instanceRoot =
-    schema?.instance?.properties != null ? schema.instance : schema
+    schema?.instance?.properties == null ? schema : schema.instance
   const propSchema = instanceRoot?.properties?.[tableKey]
   // For array tables use .items; for object-type keys use the property schema itself (so .properties are the field schemas)
   return propSchema?.items ?? propSchema ?? null
@@ -1441,6 +1534,32 @@ const convertDataTypesBasedOnSchema = (data: any, tableKey: string): any => {
   return convertedData
 }
 
+function applyInlineEditToObjectTable(
+  tableData: any,
+  table: any,
+  editingRowIdVal: any,
+) {
+  if (table.isParameterTableVertical) {
+    const paramKey = editingRowIdVal
+    const itemSchema = getItemSchemaForTypeConversion(table.key)
+    const fieldSchema = itemSchema?.properties?.[paramKey]
+    const typed = fieldSchema
+      ? convertFieldValue(
+          editingData.value.value,
+          fieldSchema.type || 'string',
+        )
+      : editingData.value.value
+    tableData[paramKey] = typed
+  } else {
+    const converted = convertDataTypesBasedOnSchema(
+      { ...editingData.value },
+      table.key,
+    )
+    delete converted.id
+    Object.assign(tableData, converted)
+  }
+}
+
 const saveInlineEdit = () => {
   const table = currentTable.value
   if (!table.key || !props.execution?.instance?.data || !editingRowId.value)
@@ -1449,18 +1568,26 @@ const saveInlineEdit = () => {
   // Excel mode: cell changes are already in tableChanges; apply to JSON only on Save all
   if (!props.enableExcelMode) {
     const tableData = props.execution.instance.data[table.key]
-    const index = tableData.findIndex(
-      (item: any) => item.id === editingRowId.value,
-    )
-
-    if (index !== -1) {
-      const convertedData = convertDataTypesBasedOnSchema(
-        editingData.value,
-        table.key,
+    if (
+      tableData != null &&
+      typeof tableData === 'object' &&
+      !Array.isArray(tableData)
+    ) {
+      applyInlineEditToObjectTable(tableData, table, editingRowId.value)
+      emit('save-changes', props.execution.instance.data)
+    } else {
+      const index = tableData.findIndex(
+        (item: any) => item.id === editingRowId.value,
       )
-      tableData[index] = convertedData
+      if (index !== -1) {
+        const convertedData = convertDataTypesBasedOnSchema(
+          editingData.value,
+          table.key,
+        )
+        tableData[index] = convertedData
+      }
+      emit('save-changes', props.execution.instance.data)
     }
-    emit('save-changes', props.execution.instance.data)
   }
 
   editingRowId.value = null
@@ -1480,25 +1607,35 @@ const updateInlineField = (field: string, value: any) => {
   editingData.value[field] = value
 }
 
-// Excel mode handlers
-const handleCellChange = (
+/**
+ * Records a cell change with the value coerced to its schema type, and (for ETL vertical
+ * parameter `value` edits) turns off the matching "from DB" switch. Shared by handleCellChange
+ * and handleModalUpdateChange. Returns the resolved `table` so callers can do extra work
+ * (e.g. mirroring editingData) without re-looking it up.
+ */
+const recordTypedCellChange = (
   tableKey: string,
   rowId: string | number,
   fieldKey: string,
   oldValue: any,
   newValue: any,
-) => {
-  if (!props.enableExcelMode) return
-
+): any => {
   const table = instanceTables.value.find((t) => t.key === tableKey)
-  const header = table?.headers.find((h: any) => h.key === fieldKey)
+  const header = table?.headers?.find((h: any) => h.key === fieldKey)
   const fieldTitle = header?.title || fieldKey
 
-  // Convert newValue to correct type (int, number, boolean) so it is stored and saved as such
   const itemSchema = getItemSchemaForTypeConversion(tableKey)
-  const fieldType = itemSchema?.properties?.[fieldKey]?.type ?? header?.type
+  let fieldType = itemSchema?.properties?.[fieldKey]?.type ?? header?.type
+  if (fieldKey === 'value' && table?.isParameterTableVertical) {
+    const row = table?.items.find(
+      (item: any) => String(item.id) === String(rowId),
+    )
+    if (row?.parameter) {
+      fieldType = itemSchema?.properties?.[row.parameter]?.type ?? fieldType
+    }
+  }
   const typedNewValue =
-    fieldType != null ? convertFieldValue(newValue, fieldType) : newValue
+    fieldType == null ? newValue : convertFieldValue(newValue, fieldType)
 
   tableChanges.recordChange(
     tableKey,
@@ -1509,6 +1646,64 @@ const handleCellChange = (
     fieldTitle,
     table?.title,
   )
+
+  if (
+    props.externalEtlFlow &&
+    table?.isParameterTableVertical &&
+    fieldKey === 'value'
+  ) {
+    turnOffEtlParameterFromDbSwitchAfterManualValueEdit(
+      props.externalEtlFlow,
+      tableKey,
+      rowId,
+    )
+  }
+
+  return table
+}
+
+// Excel mode handlers
+const handleCellChange = (
+  tableKey: string,
+  rowId: string | number,
+  fieldKey: string,
+  oldValue: any,
+  newValue: any,
+) => {
+  if (!props.enableExcelMode) return
+
+  // ETL parameter switch columns: update parameterSwitches instead of recording a table change
+  if (fieldKey.startsWith('__etl_') && props.externalEtlFlow) {
+    handleEtlParameterCellChange(tableKey, rowId, fieldKey, newValue)
+    return
+  }
+
+  const table = recordTypedCellChange(
+    tableKey,
+    rowId,
+    fieldKey,
+    oldValue,
+    newValue,
+  )
+
+  // ETL vertical parameters: "Desde base de datos" ON => parameterSwitches[key] === false.
+  // Manual value edit => fixed (true); `instanceTables` also depends on etlParameterSwitchesSignature so switches re-render.
+  if (
+    props.externalEtlFlow &&
+    table?.isParameterTableVertical &&
+    fieldKey === 'value'
+  ) {
+    // CoreTable keeps `editingData` for the row; `__etl_from_db__` must mirror `parameterSwitches` while editing.
+    if (
+      editingRowId.value != null &&
+      String(editingRowId.value) === String(rowId) &&
+      editingTableKey.value === tableKey
+    ) {
+      editingData.value = { ...editingData.value, __etl_from_db__: false }
+    }
+  }
+
+  // ETL: table-level "editado manualmente" text only after Save all (handleSaveAllChanges).
 
   // Emit event to parent
   emit(
@@ -1563,6 +1758,144 @@ const handleClosePendingChangesModal = () => {
   showPendingChangesModal.value = false
 }
 
+function applyArrayTableChanges(
+  updatedData: any,
+  tableKey: string,
+) {
+  const raw = updatedData[tableKey]
+  if (!Array.isArray(raw)) return
+
+  let tableRows = [...raw]
+
+  // 1. Remove pending deletes
+  const deletes = tableChanges.getPendingDeletes(tableKey)
+  if (deletes.length > 0) {
+    const deleteSet = new Set(deletes.map(String))
+    tableRows = tableRows.filter(
+      (row: any) => !deleteSet.has(String(row.id)),
+    )
+  }
+
+  // 2. Apply cell edits
+  const changes = tableChanges.getChangesForTable(tableKey)
+  if (changes) {
+    tableRows = tableRows.map((row: any) => {
+      const rowChanges = changes[String(row.id)]
+      if (!rowChanges) return row
+      const merged = { ...row }
+      Object.entries(rowChanges).forEach(
+        ([fieldKey, change]: [string, any]) => {
+          merged[fieldKey] = change.newValue
+        },
+      )
+      return merged
+    })
+  }
+
+  // 3. Add pending creates (with new id for JSON)
+  const creates = tableChanges.getPendingCreates(tableKey)
+  creates.forEach((c) => {
+    const newId = generateSecureId(tableKey)
+    const row = convertDataTypesBasedOnSchema(
+      { ...c.data, id: newId },
+      tableKey,
+    )
+    tableRows.push(row)
+  })
+
+  updatedData[tableKey] = tableRows
+}
+
+function applyObjectTableChanges(
+  updatedData: any,
+  tableKey: string,
+) {
+  const raw = updatedData[tableKey]
+  if (Array.isArray(raw)) return
+  if (raw != null && typeof raw !== 'object') return
+  const changes = tableChanges.getChangesForTable(tableKey)
+  if (!changes) return
+  const merged = raw != null && typeof raw === 'object' ? { ...raw } : {}
+
+  const rowChangesHorizontal = changes[OBJECT_TABLE_ROW_ID]
+  if (rowChangesHorizontal) {
+    Object.entries(rowChangesHorizontal).forEach(
+      ([fieldKey, change]: [string, any]) => {
+        merged[fieldKey] = change.newValue
+      },
+    )
+  } else {
+    // Vertical parameter table: each row id is the parameter key, field 'value'
+    for (const rowId of Object.keys(changes)) {
+      const rowChanges = changes[rowId]
+      if (rowChanges?.value) {
+        merged[rowId] = rowChanges.value.newValue
+      }
+    }
+  }
+  updatedData[tableKey] = merged
+}
+
+function applyEtlTableSwitchesAfterSave(
+  modifiedKeysForEtl: string[],
+) {
+  if (!props.externalEtlFlow) return
+  for (const tableKey of modifiedKeysForEtl) {
+    const current = props.externalEtlFlow.tableSwitches[tableKey]
+    if (current && current.variant === 'from_db') {
+      props.externalEtlFlow.tableSwitches[tableKey] = {
+        variant: 'edited_from_db',
+        fixed: true,
+      }
+    }
+  }
+}
+
+// Turn off the "From DB" parameter switch for every manually edited param key in a single table.
+function applyEtlParameterSwitchesForTableAfterSave(
+  etlFlow: NonNullable<typeof props.externalEtlFlow>,
+  tableKey: string,
+  changes: Record<string, any>,
+) {
+  const horizontal = changes[OBJECT_TABLE_ROW_ID]
+  if (horizontal) {
+    for (const fieldKey of Object.keys(horizontal)) {
+      turnOffEtlParameterFromDbSwitchAfterManualValueEdit(
+        etlFlow,
+        tableKey,
+        fieldKey,
+      )
+    }
+    return
+  }
+
+  for (const rowId of Object.keys(changes)) {
+    if (rowId === OBJECT_TABLE_ROW_ID) continue
+    if (!changes[rowId]?.value) continue
+    turnOffEtlParameterFromDbSwitchAfterManualValueEdit(
+      etlFlow,
+      tableKey,
+      rowId,
+    )
+  }
+}
+
+function applyEtlParameterSwitchesAfterSave(
+  modifiedKeysForEtl: string[],
+) {
+  const etlFlow = props.externalEtlFlow
+  if (!etlFlow) return
+  // Parameter "Desde base de datos": false = from DB (switch ON). After user saves a new value, fix it (true = switch OFF).
+  const paramTables = etlFlow.parameterTableNames
+  if (!paramTables?.size) return
+  for (const tableKey of modifiedKeysForEtl) {
+    if (!paramTables.has(tableKey)) continue
+    const changes = tableChanges.getChangesForTable(tableKey)
+    if (!changes) continue
+    applyEtlParameterSwitchesForTableAfterSave(etlFlow, tableKey, changes)
+  }
+}
+
 // Handle save all changes from modal (apply edits + creates + deletes to JSON only; no API)
 const handleSaveAllChanges = async () => {
   saveValidationError.value = null
@@ -1586,78 +1919,28 @@ const handleSaveAllChanges = async () => {
       ...tableChanges.modifiedTableKeys.value,
     ])
 
-    allTableKeys.forEach((tableKey) => {
-      const raw = updatedData[tableKey]
-      // Only process array tables; leave objects (e.g. parameters, requirements, penalties) unchanged
-      if (!Array.isArray(raw)) return
-
-      let tableRows = [...raw]
-
-      // 1. Remove pending deletes
-      const deletes = tableChanges.getPendingDeletes(tableKey)
-      if (deletes.length > 0) {
-        const deleteSet = new Set(deletes.map(String))
-        tableRows = tableRows.filter(
-          (row: any) => !deleteSet.has(String(row.id)),
-        )
-      }
-
-      // 2. Apply cell edits
-      const changes = tableChanges.getChangesForTable(tableKey)
-      if (changes) {
-        tableRows = tableRows.map((row: any) => {
-          const rowChanges = changes[String(row.id)]
-          if (!rowChanges) return row
-          const merged = { ...row }
-          Object.entries(rowChanges).forEach(
-            ([fieldKey, change]: [string, any]) => {
-              merged[fieldKey] = change.newValue
-            },
-          )
-          return merged
-        })
-      }
-
-      // 3. Add pending creates (with new id for JSON)
-      const creates = tableChanges.getPendingCreates(tableKey)
-      creates.forEach((c) => {
-        const newId = generateSecureId(tableKey)
-        const row = convertDataTypesBasedOnSchema(
-          { ...c.data, id: newId },
-          tableKey,
-        )
-        tableRows.push(row)
-      })
-
-      updatedData[tableKey] = tableRows
-    })
+    // Apply changes for array-type tables
+    allTableKeys.forEach((tableKey) => applyArrayTableChanges(updatedData, tableKey))
 
     // Apply edits for object-type keys (parameters, requirements, penalties, etc.)
-    allTableKeys.forEach((tableKey) => {
-      const raw = updatedData[tableKey]
-      if (Array.isArray(raw)) return
-      if (raw != null && typeof raw !== 'object') return
-      const changes = tableChanges.getChangesForTable(tableKey)
-      const rowChanges = changes?.[OBJECT_TABLE_ROW_ID]
-      if (!rowChanges) return
-      const merged = raw != null && typeof raw === 'object' ? { ...raw } : {}
-      Object.entries(rowChanges).forEach(([fieldKey, change]: [string, any]) => {
-        merged[fieldKey] = change.newValue
-      })
-      updatedData[tableKey] = merged
-    })
+    allTableKeys.forEach((tableKey) => applyObjectTableChanges(updatedData, tableKey))
 
-    // Write back to instance.data
-    Object.keys(updatedData).forEach((tableKey) => {
-      instance.data[tableKey] = updatedData[tableKey]
-    })
+    const instanceSchemaForStrip = generalStore.schemaConfig?.instanceSchema
+    const dataAfterSave = instanceSchemaForStrip
+      ? stripInvisibleParameterPropertiesFromInstanceData(
+          updatedData,
+          instanceSchemaForStrip,
+        )
+      : updatedData
+
+    // Replace instance.data so the object reference changes; shallow watch on instance.data
+    // (e.g. master table re-match) will run after save. In-place mutation would skip it.
+    instance.data = dataAfterSave
 
     const validationErrors = await instance.checkSchema()
 
     if (validationErrors && validationErrors.length > 0) {
-      Object.keys(previousData).forEach((tableKey) => {
-        instance.data[tableKey] = previousData[tableKey]
-      })
+      instance.data = previousData
       saveValidationError.value = formatValidationErrorsWithTitle(
         t('projectExecution.steps.step3.loadInstance.instanceSchemaError'),
         validationErrors,
@@ -1666,12 +1949,17 @@ const handleSaveAllChanges = async () => {
       return
     }
 
+    // ETL: only after accepted save — mark DB-sourced tables as manually edited (same rules as useExternalEtlFlow.markTableEdited).
+    const modifiedKeysForEtl = [...tableChanges.modifiedTableKeys.value]
+    applyEtlTableSwitchesAfterSave(modifiedKeysForEtl)
+    applyEtlParameterSwitchesAfterSave(modifiedKeysForEtl)
+
     emit('save-changes', instance.data)
     tableChanges.clearAllChanges()
     showPendingChangesModal.value = false
+    emit('pending-changes-update', false, 0)
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : String(err)
+    const message = err instanceof Error ? err.message : String(err)
     saveValidationError.value = message
   } finally {
     savingChanges.value = false
@@ -1686,6 +1974,13 @@ const getOriginalRowValue = (
 ): any => {
   const tableData = props.execution?.instance?.data?.[tableKey]
   if (!tableData) return undefined
+  if (
+    tableData != null &&
+    typeof tableData === 'object' &&
+    !Array.isArray(tableData)
+  ) {
+    return fieldKey === 'value' ? tableData[rowId] : undefined
+  }
   const row = tableData.find((item: any) => String(item.id) === String(rowId))
   return row?.[fieldKey]
 }
@@ -1702,22 +1997,7 @@ const handleModalUpdateChange = (
   const oldValue = existing
     ? existing.oldValue
     : getOriginalRowValue(tableKey, rowId, fieldKey)
-  const table = instanceTables.value.find((t) => t.key === tableKey)
-  const header = table?.headers?.find((h: any) => h.key === fieldKey)
-  const fieldTitle = header?.title || fieldKey
-  const itemSchema = getItemSchemaForTypeConversion(tableKey)
-  const fieldType = itemSchema?.properties?.[fieldKey]?.type ?? header?.type
-  const typedNewValue =
-    fieldType != null ? convertFieldValue(newValue, fieldType) : newValue
-  tableChanges.recordChange(
-    tableKey,
-    rowId,
-    fieldKey,
-    oldValue,
-    typedNewValue,
-    fieldTitle,
-    table?.title,
-  )
+  recordTypedCellChange(tableKey, rowId, fieldKey, oldValue, newValue)
   emit(
     'pending-changes-update',
     tableChanges.hasChanges.value,
@@ -1733,13 +2013,14 @@ const handleRevertChange = (
 ) => {
   const change = tableChanges.revertChange(tableKey, rowId, fieldKey)
   if (change && props.execution?.instance?.data?.[tableKey]) {
-    // Revert the value in the actual data
     const tableData = props.execution.instance.data[tableKey]
-    const rowIndex = tableData.findIndex(
-      (item: any) => String(item.id) === rowId,
-    )
-    if (rowIndex !== -1) {
-      tableData[rowIndex][fieldKey] = change.oldValue
+    if (Array.isArray(tableData)) {
+      const rowIndex = tableData.findIndex(
+        (item: any) => String(item.id) === rowId,
+      )
+      if (rowIndex !== -1) {
+        tableData[rowIndex][fieldKey] = change.oldValue
+      }
     }
   }
   emit(
@@ -1954,14 +2235,122 @@ defineExpose({
   margin-top: 2rem;
 }
 
-/* Master table match styles */
-.tab-with-indicator {
-  display: flex !important;
-  align-items: center !important;
+/* ETL metadata info bar */
+.etl-metadata-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.etl-metadata-bar--from_db {
+  background: linear-gradient(
+    90deg,
+    rgba(33, 150, 243, 0.08) 0%,
+    rgba(33, 150, 243, 0.02) 100%
+  );
+}
+
+.etl-metadata-bar--from_excel {
+  background: linear-gradient(
+    90deg,
+    rgba(76, 175, 80, 0.08) 0%,
+    rgba(76, 175, 80, 0.02) 100%
+  );
+}
+
+.etl-metadata-bar--edited_from_db {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 152, 0, 0.08) 0%,
+    rgba(255, 152, 0, 0.02) 100%
+  );
+}
+
+.etl-metadata-bar--reuploaded {
+  background: linear-gradient(
+    90deg,
+    rgba(156, 39, 176, 0.08) 0%,
+    rgba(156, 39, 176, 0.02) 100%
+  );
+}
+
+.etl-metadata-bar__info {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.etl-metadata-bar__text {
+  color: var(--subtitle);
+  line-height: 1.3;
+}
+
+.etl-metadata-bar__action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: 24px;
+}
+
+.etl-metadata-bar__switch-label {
+  font-size: 12px;
+  color: var(--subtitle);
+  white-space: nowrap;
+  transition: color 0.15s ease, font-weight 0.15s ease;
+}
+
+.etl-metadata-bar__switch-label--tooltipable {
+  cursor: help;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+
+.etl-metadata-bar__switch-label--active {
+  color: var(--title);
+  font-weight: 500;
+}
+
+.etl-metadata-bar__switch {
+  flex-shrink: 0;
+}
+
+/* Tab label row: validation / match icons on the left, title truncates after */
+.tab-title-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.tab-leading-indicators {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 4px;
 }
 
 .tab-label {
-  display: inline-block;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: start;
+}
+
+.check-data-tab-icon--warning {
+  color: #e65100 !important;
+}
+
+.check-data-tab-icon--error {
+  color: #b71c1c !important;
 }
 
 .match-indicator {

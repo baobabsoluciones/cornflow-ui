@@ -37,14 +37,36 @@
 -->
 
 <template>
+  <!-- Mount only while open so VOverlay does not run persisted transition with model false (Vue 3.5 slot warn). -->
   <v-snackbar
-    v-model="snackbar.show"
+    v-if="snackbar.show"
+    :model-value="true"
     :color="snackbar.color"
     :timeout="effectiveTimeout"
+    @update:model-value="onSnackbarModelUpdate"
   >
     <span>{{ snackbar.message }}</span>
     <template #actions>
-      <v-icon @click="handleClose">mdi-close</v-icon>
+      <v-btn
+        v-if="snackbar.fullMessage"
+        variant="tonal"
+        size="small"
+        color="white"
+        class="core-snackbar__download-btn"
+        :aria-label="$t('table.downloadFullMessage')"
+        @click="downloadFullMessage"
+      >
+        <v-icon size="small" class="me-1">mdi-download</v-icon>
+        {{ $t('table.downloadFullMessage') }}
+      </v-btn>
+      <v-btn
+        icon="mdi-close"
+        variant="text"
+        size="small"
+        color="white"
+        :aria-label="$t('common.close')"
+        @click="handleClose"
+      />
     </template>
   </v-snackbar>
 </template>
@@ -74,5 +96,30 @@ const effectiveTimeout = computed(() => {
 // Handle close
 const handleClose = (): void => {
   snackbar.show = false
+  snackbar.fullMessage = null
+}
+
+const onSnackbarModelUpdate = (open: boolean | null): void => {
+  if (open === false) handleClose()
+}
+
+// Download full message as .txt when truncated
+const downloadFullMessage = (): void => {
+  if (!snackbar.fullMessage) return
+  const blob = new Blob([snackbar.fullMessage], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `message-${new Date().toISOString().slice(0, 19).replaceAll(':', '-')}.txt`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 </script>
+
+<style scoped>
+.core-snackbar__download-btn {
+  margin-right: 4px;
+  text-transform: none;
+  font-weight: 500;
+}
+</style>

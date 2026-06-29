@@ -184,14 +184,8 @@ const buttonStyles = computed(() => {
       break
 
     case 'text':
-      // Text: transparent background
-      styles.backgroundColor = props.backgroundColor || 'transparent'
-      styles.color = props.textColor || selectedColor
-      styles.border = 'none'
-      break
-
     case 'icon':
-      // Icon: transparent background
+      // Text / Icon: transparent background
       styles.backgroundColor = props.backgroundColor || 'transparent'
       styles.color = props.textColor || selectedColor
       styles.border = 'none'

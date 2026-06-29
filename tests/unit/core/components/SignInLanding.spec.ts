@@ -506,9 +506,9 @@ describe('SignInLanding', () => {
       // Test the method directly (it will handle the error)
       await vm.initiateGoogleAuth()
 
-      // The error handling should show a snackbar message
+      // Login errors are surfaced as a generic server error snackbar
       expect(mockShowSnackbar).toHaveBeenCalledWith(
-        'logIn.google_not_configured',
+        'logIn.snackbar_message_error_server',
         'error',
       )
     })

@@ -1,4 +1,4 @@
-import { describe, test, vi, beforeEach, expect, afterEach } from 'vitest'
+import { describe, test, vi, beforeEach, expect } from 'vitest'
 import { OpenIDAuthService } from '@/services/OpenIDAuthService'
 import { PublicClientApplication } from '@azure/msal-browser'
 import { Amplify } from 'aws-amplify'
@@ -62,7 +62,9 @@ const mockMsalInstance = vi.hoisted(() => ({
 }))
 
 vi.mock('@azure/msal-browser', () => ({
-  PublicClientApplication: vi.fn(() => mockMsalInstance)
+  PublicClientApplication: vi.fn(function () {
+    return mockMsalInstance
+  }),
 }))
 
 vi.mock('aws-amplify', () => ({
@@ -140,10 +142,6 @@ describe('OpenIDAuthService - Enhanced Coverage', () => {
     
     azureService = new OpenIDAuthService('azure')
     cognitoService = new OpenIDAuthService('cognito')
-  })
-
-  afterEach(() => {
-    vi.restoreAllMocks()
   })
 
   describe('Constructor and Initialization', () => {

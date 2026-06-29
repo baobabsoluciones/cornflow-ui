@@ -1,4 +1,5 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
+import { flushPromises } from '@vue/test-utils'
 import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import CreateExecutionCheckData from '@/components/project-execution/CreateExecutionCheckData.vue'
@@ -398,6 +399,7 @@ describe('CreateExecutionCheckData', () => {
 
       const checkDataButton = wrapper.find('[data-testid="check-data-button"]')
       await checkDataButton.trigger('click')
+      await flushPromises()
 
       expect(mockGeneralStore.createInstance).toHaveBeenCalled()
       expect(wrapper.vm.checksFinished).toBe(true)

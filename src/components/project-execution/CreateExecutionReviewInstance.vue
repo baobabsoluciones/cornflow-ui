@@ -1,13 +1,12 @@
 <template>
   <div class="review-instance-wrapper">
     <!-- Loading overlay for master table matching -->
-    <div v-if="isMasterTableMatchingEnabled && isMasterTableLoading" class="master-table-loading-overlay">
+    <div
+      v-if="isMasterTableMatchingEnabled && isMasterTableLoading"
+      class="master-table-loading-overlay"
+    >
       <div class="loading-content">
-        <v-progress-circular
-          indeterminate
-          color="primary"
-          size="40"
-        />
+        <v-progress-circular indeterminate color="primary" size="40" />
         <span class="loading-text">{{ $t('masterTableMatch.loading') }}</span>
       </div>
     </div>
@@ -44,6 +43,7 @@
         :master-table-matches="masterTableMatchesWithCanReplace"
         :master-table-loading="isMasterTableLoading"
         :enable-excel-mode="true"
+        :external-etl-flow="externalEtlFlow"
         @save-changes="handleSaveChanges"
         @master-table-action="handleMasterTableChoice"
         @show-comparison="handleShowComparison"
@@ -60,6 +60,22 @@
       >
         <div v-html="instanceErrors"></div>
       </v-alert>
+      <!-- Force retry dialog when overwrite (replace master) returns offer_force_retry (teleported so it is always on top and clickable) -->
+      <Teleport to="body">
+        <ForceRetryConfirmDialog
+          v-if="hasValidForceRetryOffer"
+          :model-value="hasValidForceRetryOffer"
+          :message="forceRetryOfferValue?.message ?? ''"
+          :loading="forceRetryLoadingValue"
+          @confirm="handleForceRetryConfirm"
+          @cancel="masterTableMatch.rejectForceRetry"
+          @update:model-value="
+            (v) => {
+              if (!v) masterTableMatch.rejectForceRetry()
+            }
+          "
+        />
+      </Teleport>
     </div>
 
     <!-- Fullscreen overlay - Teleported to body to avoid stacking context issues -->
@@ -103,6 +119,7 @@
                 :checks-error="false"
                 :master-table-matches="masterTableMatchesWithCanReplace"
                 :enable-excel-mode="true"
+                :external-etl-flow="externalEtlFlow"
                 @save-changes="handleSaveChanges"
                 @master-table-action="handleMasterTableChoice"
                 @show-comparison="handleShowComparison"
@@ -120,15 +137,22 @@
       v-model="showComparisonModal"
       :table-name="selectedMatchForComparison.tableName"
       :master-table-title="selectedMatchForComparison.masterTableTitle"
-      :instance-data="selectedMatchForComparison.instanceData"
+      :instance-data="effectiveInstanceDataForComparison"
       :master-data="selectedMatchForComparison.masterData"
       :diff-summary="selectedMatchForComparison.diffSummary"
+      :master-table-config="selectedMatchForComparison.masterTableConfig"
+      :full-instance-data="selectedMatchForComparison.fullInstanceData"
+      :instance-schema-columns="selectedMatchForComparison.instanceSchemaColumns"
+      :allow-row-restore="true"
+      :allow-row-delete="true"
+      @restore-master-row="handleRestoreMasterRow"
+      @delete-instance-row="handleDeleteInstanceRow"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, inject, watch } from 'vue'
+import { computed, ref, inject, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ExecutionDataView from '@/components/project-execution/ExecutionDataView.vue'
 import CoreDropdownMenu from '@/components/core/CoreDropdownMenu.vue'
@@ -138,22 +162,34 @@ import {
   useExecutionExcel,
   type NewExecution,
 } from '@/composables/project-execution/useExecutionExcel'
-import { useMasterTableMatch } from '@/composables/project-execution/useMasterTableMatch'
+import {
+  useMasterTableMatch,
+  getMasterCompareRowContext,
+} from '@/composables/project-execution/useMasterTableMatch'
+import { isForceRetryOfferError } from '@/repositories/TableRepository'
+import ForceRetryConfirmDialog from '@/components/core/table/ForceRetryConfirmDialog.vue'
 import { Instance } from '@/app/models/Instance'
 import { formatValidationErrorsWithTitle } from '@/utils/errorFormatting'
 import { useGeneralStore } from '@/stores/general'
 import appConfig from '@/app/config'
 import { useTableChanges } from '@/composables/useTableChanges'
+import { parameterRowsToParameterObject, buildRowMatchKey } from '@/utils/schemaUtils'
+import type { ExternalEtlFlowState } from '@/types/etlFlow'
 
 interface Props {
   newExecution: NewExecution
   instanceErrors?: string | null
   isEditMode?: boolean
+  externalEtlFlow?: ExternalEtlFlowState | null
+  /** When true, we are on the review-instance step (used to clear stale force-retry dialog when entering the step). */
+  isStepActive?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   instanceErrors: null,
   isEditMode: false,
+  externalEtlFlow: null,
+  isStepActive: false,
 })
 
 const emit = defineEmits<{
@@ -182,9 +218,95 @@ const isMasterTableMatchingEnabled = computed(() => {
 // Master table match composable
 const masterTableMatch = useMasterTableMatch()
 
+// Clear any stale force-retry dialog when entering this step (e.g. from a previous replace_master that returned offer_force_retry)
+onMounted(() => {
+  masterTableMatch.rejectForceRetry()
+})
+
+// When step becomes active (e.g. user navigates to this step; component may already be mounted if step content uses v-show), clear dialog
+watch(
+  () => props.isStepActive,
+  (active) => {
+    if (active) masterTableMatch.rejectForceRetry()
+  },
+)
+
+// Unwrap refs for ForceRetryConfirmDialog (composable returns refs; template would see Ref object as truthy and offer.match would be undefined)
+const forceRetryOfferValue = computed(
+  () => masterTableMatch.forceRetryOffer?.value ?? null,
+)
+const forceRetryLoadingValue = computed(
+  () => !!masterTableMatch.forceRetryLoading?.value,
+)
+const hasValidForceRetryOffer = computed(
+  () => !!forceRetryOfferValue.value?.match,
+)
+
 // Comparison modal state
 const showComparisonModal = ref(false)
 const selectedMatchForComparison = ref<any>(null)
+
+/**
+ * Effective instance data for the open comparison modal: base rows with pending edits applied,
+ * pending deletes marked (shown with strikethrough), and pending creates appended.
+ * This lets the side-by-side view reflect queued changes before they are saved.
+ *
+ * Gated on `showComparisonModal`: re-merging the base array on every reactive
+ * tick is O(N) over the full table, so we only do it while the modal is open.
+ */
+// Apply queued edits to a single base row, returning a clone tagged as
+// __pendingEdit. Assumes there is at least one edit for the row.
+const applyPendingEditsToRow = (
+  row: any,
+  rowEdits: Record<string, any>,
+): any => {
+  const updated: any = { ...row, __pendingEdit: true }
+  for (const [fieldKey, change] of Object.entries(rowEdits)) {
+    updated[fieldKey] = (change as any).newValue
+  }
+  return updated
+}
+
+// Resolve how a single base row should appear in the comparison view:
+// marked as a pending delete, with pending edits applied, or unchanged.
+const buildComparisonRow = (
+  row: any,
+  pendingEditsForTable: Record<string, any>,
+  deletedIds: Set<string>,
+): any => {
+  const rowId = row.id == null ? null : String(row.id)
+  if (rowId && deletedIds.has(rowId)) {
+    return { ...row, __pendingDelete: true }
+  }
+  const rowEdits: Record<string, any> = rowId
+    ? pendingEditsForTable[rowId] ?? {}
+    : {}
+  if (Object.keys(rowEdits).length > 0) {
+    return applyPendingEditsToRow(row, rowEdits)
+  }
+  return row
+}
+
+const effectiveInstanceDataForComparison = computed<any[]>(() => {
+  if (!showComparisonModal.value) return []
+  if (!selectedMatchForComparison.value) return []
+  const tableKey: string = selectedMatchForComparison.value.tableKey
+  const baseData: any[] = selectedMatchForComparison.value.instanceData
+
+  const pendingEditsForTable = tableChanges.pendingChanges.value[tableKey] ?? {}
+  const pendingCreatesForTable = tableChanges.pendingCreates.value[tableKey] ?? []
+  const pendingDeletesForTable: Array<{ rowId: string }> =
+    tableChanges.pendingDeletes.value[tableKey] ?? []
+  const deletedIds = new Set(pendingDeletesForTable.map((d) => String(d.rowId)))
+
+  const result: any[] = baseData.map((row) =>
+    buildComparisonRow(row, pendingEditsForTable, deletedIds),
+  )
+  for (const create of pendingCreatesForTable) {
+    result.push({ ...create.data, id: create.tempId, __pendingCreate: true })
+  }
+  return result
+})
 
 // Computed property to add canReplaceMaster to each match
 // Returns empty array if feature is disabled
@@ -192,10 +314,18 @@ const masterTableMatchesWithCanReplace = computed(() => {
   if (!isMasterTableMatchingEnabled.value) {
     return []
   }
-  return masterTableMatch.matches.value.map((match) => ({
-    ...match,
-    canReplaceMaster: masterTableMatch.canReplaceMasterTable(match.tableKey),
-  }))
+  const enableReplace =
+    appConfig.getCore().parameters.enableReplaceMasterWithUploaded === true
+  return masterTableMatch.matches.value.map((match) => {
+    const canReplaceMaster = masterTableMatch.canReplaceMasterTable(
+      match.tableKey,
+    )
+    return {
+      ...match,
+      canReplaceMaster,
+      showReplaceMasterOption: canReplaceMaster && enableReplace,
+    }
+  })
 })
 
 // Computed property for master table loading state
@@ -215,23 +345,44 @@ watch(
   { immediate: true },
 )
 
-// Detect master table matches when instance data changes (only if feature is enabled)
-watch(
-  () => props.newExecution.instance?.data,
-  async (newData) => {
-    // Skip detection if feature is disabled
-    if (!isMasterTableMatchingEnabled.value) {
-      masterTableMatch.reset()
-      return
-    }
+// Detect master table matches when the instance is replaced, ETL metadata
+// changes, or the automation catalog (re)loads.
+//
+// Reactivity contract: this flow never mutates `instance.data` rows in place
+// — every edit goes through `useTableChanges` (a separate reactive map) and
+// only materialises as a new `Instance` on save via `handleSaveChanges`. So
+// watching the `instance?.data` *reference* (no `deep`) is enough; a deep
+// watcher used to traverse every nested cell of 500k-row tables on each
+// keystroke, which froze the UI.
+const runMasterTableMatchDetection = async () => {
+  if (!isMasterTableMatchingEnabled.value) {
+    masterTableMatch.reset()
+    return
+  }
 
-    if (newData && typeof newData === 'object') {
-      await masterTableMatch.detectMatches(newData as Record<string, any>)
-    } else {
-      masterTableMatch.reset()
-    }
-  },
-  { immediate: true, deep: false },
+  const newData = props.newExecution.instance?.data
+  if (newData && typeof newData === 'object') {
+    await masterTableMatch.detectMatches(newData as Record<string, any>, {
+      etlTablesFromDb: props.externalEtlFlow?.metadata?.tables_from_db,
+    })
+  } else {
+    masterTableMatch.reset()
+  }
+}
+
+watch(() => props.newExecution.instance?.data, runMasterTableMatchDetection, {
+  immediate: true,
+})
+watch(
+  () =>
+    generalStore.rawConfigurations?.masterData
+      ? Object.keys(generalStore.rawConfigurations.masterData).length
+      : 0,
+  runMasterTableMatchDetection,
+)
+watch(
+  () => props.externalEtlFlow?.metadata?.tables_from_db?.length ?? 0,
+  runMasterTableMatchDetection,
 )
 
 // Handle 'use_master' choice - update instance with master data
@@ -241,10 +392,18 @@ const handleUseMasterChoice = (tableKey: string) => {
   )
   if (!match || !props.newExecution.instance) return
 
-  const newTableData = [...match.masterData]
+  const newPayload =
+    match.storageShape === 'parameter_object'
+      ? parameterRowsToParameterObject(match.masterData)
+      : [...match.masterData]
+  const rowsForMatchState =
+    match.storageShape === 'parameter_object'
+      ? [...match.masterData]
+      : newPayload
+
   const updatedData = {
     ...props.newExecution.instance.data,
-    [tableKey]: newTableData,
+    [tableKey]: newPayload,
   }
 
   const schemas = generalStore.getSchemaConfig
@@ -257,7 +416,11 @@ const handleUseMasterChoice = (tableKey: string) => {
   )
 
   emit('update:instance', updatedInstance)
-  masterTableMatch.updateMatchAfterAction(tableKey, 'use_master', newTableData)
+  masterTableMatch.updateMatchAfterAction(
+    tableKey,
+    'use_master',
+    rowsForMatchState as any[],
+  )
 
   if (showSnackbar) {
     showSnackbar(
@@ -274,6 +437,7 @@ const handleReplaceMasterChoice = async (tableKey: string) => {
   try {
     const result = await masterTableMatch.applyChoices(
       props.newExecution.instance?.data as Record<string, any>,
+      { onlyTableKey: tableKey },
     )
 
     if (result.masterTablesUpdated.length > 0) {
@@ -290,11 +454,45 @@ const handleReplaceMasterChoice = async (tableKey: string) => {
       }
     }
   } catch (error) {
+    // ForceRetryOfferError: dialog is shown via forceRetryOffer, do not show snackbar
+    if (isForceRetryOfferError(error)) return
     if (showSnackbar) {
-      const errorMessage = error instanceof Error
-        ? error.message
-        : t('masterTableMatch.messages.updateError')
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : t('masterTableMatch.messages.updateError')
       showSnackbar(errorMessage, 'error')
+    }
+  }
+}
+
+// Handle force retry confirm (overwrite anyway when backend returned offer_force_retry)
+const handleForceRetryConfirm = async () => {
+  const offer = masterTableMatch.forceRetryOffer?.value ?? null
+  if (!offer?.match) {
+    masterTableMatch.rejectForceRetry()
+    return
+  }
+  const { tableKey, tableName } = offer.match
+  try {
+    const replaced = await masterTableMatch.acceptForceRetry()
+    if (replaced && showSnackbar) {
+      masterTableMatch.updateMatchAfterAction(tableKey, 'replace_master')
+      emit('master-tables-updated', [tableName])
+      showSnackbar(
+        t('masterTableMatch.messages.masterTableUpdated', {
+          tableName,
+        }),
+        'success',
+      )
+    }
+  } catch (err) {
+    if (showSnackbar) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : t('masterTableMatch.messages.updateError')
+      showSnackbar(msg, 'error')
     }
   }
 }
@@ -325,6 +523,93 @@ const handleShowComparison = (tableKey: string) => {
   }
 }
 
+// Handle per-row restore from master (git-diff style restore from right → left).
+// Changes enter the normal manual-edit pending flow (tableChanges) so the user can
+// review, accept, or discard them from the editable grid — not silently applied.
+const handleRestoreMasterRow = (originalMasterRow: any) => {
+  if (!props.newExecution.instance || !selectedMatchForComparison.value) return
+
+  const tableKey = selectedMatchForComparison.value.tableKey
+  const instanceData = props.newExecution.instance.data as Record<string, any>
+  const tableData = instanceData[tableKey]
+
+  if (!Array.isArray(tableData)) return
+
+  const match = masterTableMatchesWithCanReplace.value.find(
+    (m) => m.tableKey === tableKey,
+  )
+  if (!match) return
+
+  const { keyFields } = getMasterCompareRowContext(
+    match.instanceData,
+    match.masterData,
+    match.tableKey,
+    match.fullInstanceData,
+  )
+
+  const masterRowKey = buildRowMatchKey(originalMasterRow, keyFields)
+  const ignoredFields = new Set(['id', '_id', 'created_at', 'updated_at'])
+  const { id: _si, _id: _sui, created_at: _ca, updated_at: _ua, ...cleanMasterRow } = originalMasterRow
+
+  const tableTitle = match.masterTableTitle
+
+  const existingRow = tableData.find(
+    (r: any) => buildRowMatchKey(r, keyFields) === masterRowKey,
+  )
+
+  if (existingRow) {
+    // Row exists in instance but differs from master — queue field-level edits
+    const rowId = existingRow.id ?? existingRow._id
+    if (rowId != null) {
+      for (const [fieldKey, newValue] of Object.entries(cleanMasterRow)) {
+        if (ignoredFields.has(fieldKey)) continue
+        tableChanges.recordChange(
+          tableKey,
+          rowId,
+          fieldKey,
+          existingRow[fieldKey],
+          newValue,
+          fieldKey,
+          tableTitle,
+        )
+      }
+    }
+  } else {
+    // Row exists only in master — queue as a pending new row
+    tableChanges.recordCreate(tableKey, cleanMasterRow, tableTitle)
+  }
+
+  if (showSnackbar) {
+    showSnackbar(t('dataComparison.restoreRowQueued'), 'info')
+  }
+}
+
+// Handle per-row delete from instance panel — queues a pending delete in the normal edit flow
+const handleDeleteInstanceRow = (row: any) => {
+  if (!selectedMatchForComparison.value) return
+  const tableKey: string = selectedMatchForComparison.value.tableKey
+  const match = masterTableMatchesWithCanReplace.value.find(
+    (m) => m.tableKey === tableKey,
+  )
+  const tableTitle = match?.masterTableTitle ?? tableKey
+
+  const rowId = row.id ?? row._id
+  if (rowId == null) return
+
+  const idStr = String(rowId)
+  if (idStr.startsWith('create-')) {
+    // This is a pending-create row (restored from master but not yet saved) — cancel the restore
+    tableChanges.revertCreate(tableKey, idStr)
+  } else {
+    tableChanges.recordDelete(tableKey, rowId, row)
+    tableChanges.setTableTitle(tableKey, tableTitle)
+  }
+
+  if (showSnackbar) {
+    showSnackbar(t('dataComparison.deleteRowQueued'), 'info')
+  }
+}
+
 // Clear errors handler
 const clearErrors = () => {
   instanceErrors.value = null
@@ -340,8 +625,23 @@ const getActiveFileInput = () => {
   return isMaximized.value ? fileInputFullscreen.value : fileInput.value
 }
 
-// Handle instance update callback
+// Handle instance update callback (e.g. from Excel re-upload)
 const handleInstanceUpdate = (instance: Instance) => {
+  // When ETL flow is active and user re-uploads Excel, mark all tables as reuploaded
+  if (props.externalEtlFlow?.tableSwitches) {
+    for (const switchState of Object.values(
+      props.externalEtlFlow.tableSwitches,
+    )) {
+      ;(switchState as any).variant = 'reuploaded'
+      ;(switchState as any).fixed = true
+    }
+    // Reset all parameter switches to null (default behavior) for re-upload
+    if (props.externalEtlFlow.parameterSwitches) {
+      for (const key of Object.keys(props.externalEtlFlow.parameterSwitches)) {
+        props.externalEtlFlow.parameterSwitches[key] = null
+      }
+    }
+  }
   emit('update:instance', {
     ...props.newExecution.instance!,
     data: instance.data,
@@ -439,10 +739,15 @@ const handleSaveChanges = async (data: object) => {
 }
 
 // Reference to ExecutionDataView
-const executionDataViewRef = ref<InstanceType<typeof ExecutionDataView> | null>(null)
+const executionDataViewRef = ref<InstanceType<typeof ExecutionDataView> | null>(
+  null,
+)
 
 // Handle pending changes update from ExecutionDataView
-const handlePendingChangesUpdate = (hasChanges: boolean, changesCount: number) => {
+const handlePendingChangesUpdate = (
+  hasChanges: boolean,
+  changesCount: number,
+) => {
   emit('has-pending-changes', hasChanges)
 }
 

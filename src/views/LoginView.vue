@@ -3,7 +3,6 @@
 </template>
 
 <script>
-import { inject } from 'vue'
 import SignInLanding from '@/components/SignInLanding.vue'
 
 export default {
@@ -23,6 +22,3 @@ export default {
   },
 }
 </script>
-
-<style lang="scss">
-</style>

@@ -60,9 +60,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 // Emits
-interface Emits {
-  (e: 'dropdown-item-click', item: DropdownItem): void
-}
+type Emits = (e: 'dropdown-item-click', item: DropdownItem) => void
 
 const emit = defineEmits<Emits>()
 

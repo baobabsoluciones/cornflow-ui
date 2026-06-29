@@ -1,8 +1,9 @@
 <template>
   <div class="table-wrapper">
     <div
-      class="table-container"
+      class="table-container execution-scroll-sync"
       :class="{ 'fixed-width': useFixedWidth, 'no-headers': !showHeaders }"
+      @scroll="syncHorizontalScroll"
     >
       <MDataTable
         :headers="headerExecutions"
@@ -73,6 +74,16 @@
               <v-icon size="12" start>mdi-star</v-icon>
               {{ t('latestPlan.chip.current') }}
             </v-chip>
+            <v-chip
+              v-if="(item.config as any)?.replanning === true"
+              size="x-small"
+              color="secondary"
+              variant="tonal"
+              class="replanning-chip mr-2"
+            >
+              <v-icon size="12" start>mdi-refresh</v-icon>
+              {{ t('executionTable.replanning') }}
+            </v-chip>
             <span>{{ item.name }}</span>
             <v-tooltip
               activator="parent"
@@ -109,7 +120,10 @@
         </template>
         <template v-slot:timeLimit="{ item }" v-if="showTimeLimit">
           <div class="cell-content">
-            <span>{{ getTimeLimit(item) }} sec</span>
+            <span>
+              {{ getTimeLimit(item) }}
+              {{ t(getTimeLimitDisplayUnitI18nKey()) }}
+            </span>
           </div>
         </template>
         <template v-slot:state="{ item }">
@@ -264,9 +278,10 @@
     </template>
   </MBaseModal>
 
-  <!-- Set latest plan modal -->
-  <SetLatestPlanModal
-    v-if="selectedLatestPlanExecution"
+  <!-- Set latest plan modal (premium component injected via the latest-plan capability) -->
+  <component
+    :is="latestPlan.setLatestPlanModalComponent"
+    v-if="selectedLatestPlanExecution && latestPlan.setLatestPlanModalComponent"
     v-model="showLatestPlanModal"
     :execution-id="selectedLatestPlanExecution.id"
     :execution-name="selectedLatestPlanExecution.name"
@@ -280,13 +295,15 @@ import { inject, ref, computed } from 'vue'
 import { useProjectExecutionsTable } from '@/composables/project-execution-table/useProjectExecutionsTable'
 import { useI18n } from 'vue-i18n'
 import { useGeneralStore } from '@/stores/general'
-import SetLatestPlanModal from '@/components/SetLatestPlanModal.vue'
+import { useLatestPlanController } from '@/composables/project-execution/useLatestPlanController'
 
 // Setup i18n
 const { t } = useI18n()
 
 // Get general store
 const generalStore = useGeneralStore()
+// Controlador de latest-plan inyectado por el módulo premium (§3.7); inerte si no hay módulo.
+const latestPlan = useLatestPlanController()
 
 // Latest plan modal state
 const showLatestPlanModal = ref(false)
@@ -296,17 +313,15 @@ const selectedLatestPlanExecution = ref<{ id: string; name: string } | null>(
 
 // Check if set latest plan feature is available
 const isSetLatestPlanAvailable = computed(() =>
-  generalStore.isSetLatestPlanAvailable(),
+  latestPlan.isSetLatestPlanAvailable(),
 )
 
 // Check if an execution is the current latest plan (only if feature is available)
-const isLatestPlan = (executionId: string) =>
-  generalStore.isLatestPlanFeatureAvailable &&
-  generalStore.isLatestPlan(executionId)
+const isLatestPlan = (executionId: string) => latestPlan.isLatestPlan(executionId)
 
 // Check if an execution can be set as latest plan
 const canSetAsLatestPlan = (state: number) =>
-  generalStore.canSetAsLatestPlan(state)
+  latestPlan.canSetAsLatestPlan(state)
 
 // Define props
 const props = defineProps({
@@ -367,6 +382,7 @@ const {
   getSolutionInfo,
   getSolverName,
   getTimeLimit,
+  getTimeLimitDisplayUnitI18nKey,
 } = useProjectExecutionsTable(props as any)
 
 // Event handlers that use emits
@@ -416,6 +432,24 @@ function formatToHHmm(dateString: string): string {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
+  })
+}
+
+// Keep all execution tables horizontally aligned by syncing the scroll position
+// of every horizontal scrollbar that belongs to an executions table.
+const syncHorizontalScroll = (event: Event) => {
+  const source = event.target as HTMLElement | null
+  if (!source) return
+  const currentLeft = source.scrollLeft
+
+  const containers = document.querySelectorAll<HTMLElement>(
+    '.execution-scroll-sync',
+  )
+
+  containers.forEach((container) => {
+    if (container !== source && container.scrollLeft !== currentLeft) {
+      container.scrollLeft = currentLeft
+    }
   })
 }
 </script>

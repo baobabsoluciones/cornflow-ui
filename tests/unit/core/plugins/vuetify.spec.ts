@@ -40,6 +40,8 @@ describe('plugins/vuetify', () => {
     expect(createVuetify).toHaveBeenCalledTimes(1)
     expect(createVuetify).toHaveBeenCalledWith({
       components: expect.any(Object),
+      locale: expect.any(Object),
+      date: expect.any(Object),
       theme: {
         themes: {
           light: {

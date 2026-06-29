@@ -6,20 +6,26 @@ export function useTableDOMManipulation(getHeaders: () => HeaderItem[]) {
   const resizeObserver = ref<ResizeObserver | null>(null);
   const observedContainers = ref<Set<Element>>(new Set());
   
-  // Add or update column group to enforce column widths
+  // Add or update column group to enforce column widths.
+  //
+  // The widths are applied as PERCENTAGES (taken straight from the header
+  // definition). Combined with `table-layout: fixed; width: 100%` in the
+  // stylesheet this gives us, for free:
+  //   - identical column widths on every day's table (perfect alignment
+  //     across dates, including the header-less tables that have no <th>),
+  //   - fully responsive columns that follow the viewport without any
+  //     pixel recomputation, so no horizontal scroll appears.
   const addColgroup = () => {
     nextTick(() => {
       const tables = document.querySelectorAll('.execution-table table');
       const headers = getHeaders();
-      
+
       tables.forEach((table) => {
-        // Get the container width for this specific table
+        updateColgroupInTable(table, headers);
+
+        // Observe new containers for resize (kept so the table re-renders
+        // cleanly if the layout changes; widths themselves are pure CSS).
         const container = table.closest('.table-container');
-        const containerWidth = container?.clientWidth || 1000;
-        const pixelWidths = calculatePixelWidths(headers, containerWidth);
-        updateColgroupInTable(table, headers, pixelWidths);
-        
-        // Observe new containers for resize
         if (container && resizeObserver.value && !observedContainers.value.has(container)) {
           resizeObserver.value.observe(container);
           observedContainers.value.add(container);
@@ -28,14 +34,7 @@ export function useTableDOMManipulation(getHeaders: () => HeaderItem[]) {
     });
   };
 
-  const calculatePixelWidths = (headers: HeaderItem[], containerWidth: number): number[] => {
-    return headers.map(header => {
-      const percentage = parseFloat(header.width);
-      return Math.floor((percentage / 100) * containerWidth);
-    });
-  };
-
-  const updateColgroupInTable = (table: Element, headers: HeaderItem[], pixelWidths: number[]): void => {
+  const updateColgroupInTable = (table: Element, headers: HeaderItem[]): void => {
     // Remove existing colgroup to update with new widths
     const existingColgroup = table.querySelector('colgroup');
     if (existingColgroup) {
@@ -43,14 +42,15 @@ export function useTableDOMManipulation(getHeaders: () => HeaderItem[]) {
     }
 
     const colgroup = document.createElement('colgroup');
-    createColumnElements(colgroup, headers, pixelWidths);
+    createColumnElements(colgroup, headers);
     table.insertBefore(colgroup, table.firstChild);
   };
 
-  const createColumnElements = (colgroup: HTMLElement, headers: HeaderItem[], pixelWidths: number[]): void => {
-    headers.forEach((header, index) => {
+  const createColumnElements = (colgroup: HTMLElement, headers: HeaderItem[]): void => {
+    headers.forEach((header) => {
       const col = document.createElement('col');
-      col.style.width = `${pixelWidths[index]}px`;
+      // header.width is a percentage string (e.g. "13%"); fall back to auto.
+      col.style.width = header.width || 'auto';
       colgroup.appendChild(col);
     });
   };
@@ -59,9 +59,9 @@ export function useTableDOMManipulation(getHeaders: () => HeaderItem[]) {
   const handleResize = () => {
     // Debounce resize handler to avoid performance issues
     if (resizeTimeout.value !== null) {
-      window.clearTimeout(resizeTimeout.value);
+      globalThis.window.clearTimeout(resizeTimeout.value);
     }
-    resizeTimeout.value = window.setTimeout(() => {
+    resizeTimeout.value = globalThis.window.setTimeout(() => {
       addColgroup();
     }, 150);
   };
@@ -94,10 +94,10 @@ export function useTableDOMManipulation(getHeaders: () => HeaderItem[]) {
     observedContainers.value.clear();
     // Clear any pending timeout
     if (resizeTimeout.value !== null) {
-      window.clearTimeout(resizeTimeout.value);
+      globalThis.window.clearTimeout(resizeTimeout.value);
     }
   });
-  
+
   return {
     addColgroup,
     handleResize

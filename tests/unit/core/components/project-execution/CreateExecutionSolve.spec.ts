@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import { createI18n } from 'vue-i18n'
 import { nextTick } from 'vue'
@@ -12,7 +12,9 @@ const { mockSolutionInstance, MockSolution } = vi.hoisted(() => {
     data: { variables: {}, objective: 100 },
   }
 
-  const MockSolution = vi.fn().mockImplementation(() => mockSolutionInstance)
+  const MockSolution = vi.fn(function () {
+    return mockSolutionInstance
+  })
   MockSolution.fromExcel = vi.fn().mockResolvedValue(mockSolutionInstance)
   MockSolution.fromCsv = vi.fn().mockResolvedValue(mockSolutionInstance)
 
@@ -167,6 +169,36 @@ const MDragNDropFileStub = {
     'invalidFileText',
   ],
   emits: ['file-selected'],
+}
+
+function installFileReaderMock(
+  initial: { result?: string | ArrayBuffer } = {},
+) {
+  const mockFileReader = {
+    readAsText: vi.fn(function () {
+      queueMicrotask(() => {
+        if (typeof mockFileReader.onload === 'function') {
+          void mockFileReader.onload()
+        }
+      })
+    }),
+    readAsArrayBuffer: vi.fn(function () {
+      queueMicrotask(() => {
+        if (typeof mockFileReader.onload === 'function') {
+          void mockFileReader.onload()
+        }
+      })
+    }),
+    result: initial.result ?? '',
+    onload: null as (() => void | Promise<void>) | null,
+    onerror: null as (() => void) | null,
+  }
+
+  global.FileReader = vi.fn(function () {
+    return mockFileReader
+  }) as unknown as typeof FileReader
+
+  return mockFileReader
 }
 
 describe('CreateExecutionSolve', () => {
@@ -392,49 +424,40 @@ describe('CreateExecutionSolve', () => {
     })
 
     test('handles file selection correctly', async () => {
-      // Create a mock File object that can be read by FileReader
       const fileContent = '{"variables": {"x": 1}, "objective": 100}'
+      installFileReaderMock({ result: fileContent })
       const testFile = new File([fileContent], 'solution.json', {
         type: 'application/json',
       })
 
       await wrapper.vm.onSolutionFileSelected(testFile)
+      await flushPromises()
 
       expect(wrapper.vm.solutionFile).toEqual(testFile)
       expect(wrapper.vm.solutionData).toEqual({ variables: {}, objective: 100 })
     })
 
     test('processes JSON file correctly', async () => {
-      const mockFileReader = {
-        readAsText: vi.fn(),
+      const mockFileReader = installFileReaderMock({
         result: '{"variables": {"x": 1}, "objective": 100}',
-        onload: null,
-        onerror: null,
-      }
-
-      global.FileReader = vi.fn(() => mockFileReader)
+      })
 
       const testFile = new File(['{"test": "data"}'], 'solution.json', {
         type: 'application/json',
       })
       const parsePromise = wrapper.vm.parseSolutionFile(testFile, 'json')
 
-      // Simulate file reader onload
-      mockFileReader.onload()
+      await mockFileReader.onload?.()
+      await flushPromises()
 
       await expect(parsePromise).resolves.toBeDefined()
       expect(mockFileReader.readAsText).toHaveBeenCalledWith(testFile)
     })
 
     test('processes Excel file correctly', async () => {
-      const mockFileReader = {
-        readAsArrayBuffer: vi.fn(),
+      const mockFileReader = installFileReaderMock({
         result: new ArrayBuffer(8),
-        onload: null,
-        onerror: null,
-      }
-
-      global.FileReader = vi.fn(() => mockFileReader)
+      })
       MockSolution.fromExcel.mockResolvedValue(mockSolutionInstance)
 
       const testFile = new File([new ArrayBuffer(8)], 'solution.xlsx', {
@@ -442,22 +465,17 @@ describe('CreateExecutionSolve', () => {
       })
       const parsePromise = wrapper.vm.parseSolutionFile(testFile, 'xlsx')
 
-      // Simulate file reader onload
-      mockFileReader.onload()
+      await mockFileReader.onload?.()
+      await flushPromises()
 
       await expect(parsePromise).resolves.toBeDefined()
       expect(mockFileReader.readAsArrayBuffer).toHaveBeenCalledWith(testFile)
     })
 
     test('processes CSV file correctly', async () => {
-      const mockFileReader = {
-        readAsText: vi.fn(),
+      const mockFileReader = installFileReaderMock({
         result: 'variable,value\nx,1\ny,2',
-        onload: null,
-        onerror: null,
-      }
-
-      global.FileReader = vi.fn(() => mockFileReader)
+      })
       MockSolution.fromCsv.mockResolvedValue(mockSolutionInstance)
 
       const testFile = new File(['variable,value\nx,1'], 'solution.csv', {
@@ -465,8 +483,8 @@ describe('CreateExecutionSolve', () => {
       })
       const parsePromise = wrapper.vm.parseSolutionFile(testFile, 'csv')
 
-      // Simulate file reader onload
-      mockFileReader.onload()
+      await mockFileReader.onload?.()
+      await flushPromises()
 
       await expect(parsePromise).resolves.toBeDefined()
       expect(mockFileReader.readAsText).toHaveBeenCalledWith(testFile)
@@ -486,19 +504,12 @@ describe('CreateExecutionSolve', () => {
     })
 
     test('handles file reader error', async () => {
-      const mockFileReader = {
-        readAsText: vi.fn(),
-        onload: null,
-        onerror: null,
-      }
-
-      global.FileReader = vi.fn(() => mockFileReader)
+      const mockFileReader = installFileReaderMock()
 
       const testFile = { name: 'solution.json' }
       const parsePromise = wrapper.vm.parseSolutionFile(testFile, 'json')
 
-      // Simulate file reader error
-      mockFileReader.onerror()
+      await mockFileReader.onerror?.()
 
       await expect(parsePromise).rejects.toThrow()
     })
@@ -514,20 +525,12 @@ describe('CreateExecutionSolve', () => {
         type: 'application/json',
       })
 
-      // Mock FileReader to return our test data
-      const mockFileReader = {
-        readAsText: vi.fn(),
-        result: fileContent,
-        onload: null,
-        onerror: null,
-      }
-      global.FileReader = vi.fn(() => mockFileReader)
+      const mockFileReader = installFileReaderMock({ result: fileContent })
 
       const onFileSelectedPromise = wrapper.vm.onSolutionFileSelected(testFile)
 
-      // Trigger the file read
-      mockFileReader.onload()
-
+      await mockFileReader.onload?.()
+      await flushPromises()
       await onFileSelectedPromise
 
       expect(wrapper.vm.solutionErrors).toContain('Required property missing')
@@ -539,31 +542,26 @@ describe('CreateExecutionSolve', () => {
     })
 
     test('handles file processing errors', async () => {
-      const mockFileReader = {
-        readAsText: vi.fn(),
-        result: 'invalid json',
-        onload: null,
-        onerror: null,
-      }
-
-      global.FileReader = vi.fn(() => mockFileReader)
+      const mockFileReader = installFileReaderMock({ result: 'invalid json' })
 
       const testFile = { name: 'invalid.json' }
 
-      // Mock console.error to avoid console output during tests
       const consoleErrorSpy = vi
         .spyOn(console, 'error')
         .mockImplementation(() => {})
 
-      const parsePromise = wrapper.vm.parseSolutionFile(testFile, 'json')
+      const processPromise = wrapper.vm.onSolutionFileSelected(testFile)
 
-      // Simulate file reader onload with invalid JSON
-      try {
-        mockFileReader.onload()
-        await parsePromise
-      } catch (error) {
-        // Expected to throw
-      }
+      await mockFileReader.onload?.()
+      await flushPromises()
+      await processPromise
+
+      expect(wrapper.vm.solutionData).toBe(null)
+      expect(wrapper.vm.solutionErrors).toBeTruthy()
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Error processing solution file:',
+        expect.any(SyntaxError),
+      )
 
       consoleErrorSpy.mockRestore()
     })

@@ -25,14 +25,20 @@ vi.mock('@/app/models/Instance', () => ({
 // Mock useInstanceProcessing composable
 const mockInstanceProcessing = {
   processFiles: vi.fn(),
+  processInstanceData: vi.fn(),
+  processFromDb: vi.fn(),
   supportedExtensions: { value: ['json', 'xlsx', 'csv'] },
   state: { value: { isProcessing: false } },
   canProcessFiles: { value: true },
   resetState: vi.fn(),
 }
 
+const mockBuildInstanceDataFromAlternativeFields = vi.fn(() => ({ built: true }))
+
 vi.mock('@/composables/useInstanceProcessing', () => ({
   useInstanceProcessing: vi.fn(() => mockInstanceProcessing),
+  buildInstanceDataFromAlternativeFields: (...args: any[]) =>
+    mockBuildInstanceDataFromAlternativeFields(...args),
 }))
 
 // Mock useFileProcessors composable
@@ -51,7 +57,9 @@ const mockGeneralStore = {
     Instance: mockInstanceClass,
     parameters: {
       schema: 'test-schema',
+      loadInstanceStepOptional: undefined,
     },
+    getSchemaName: 'test-schema',
   },
   getSchemaConfig: {
     instanceSchema: 'instance-schema',
@@ -84,6 +92,12 @@ const mockT = vi.fn((key) => {
       'Failed to read file',
     'projectExecution.steps.step3.loadInstance.unsupportedFileFormat':
       'Unsupported file format',
+    'projectExecution.steps.step3.loadInstance.optionalOrDivider': 'or',
+    'projectExecution.steps.step3.loadInstance.alternativeParametersHint':
+      'Hint',
+    'projectExecution.steps.step3.loadInstance.loadParameters':
+      'Load parameters',
+    'projectExecution.steps.step3.loadInstance.warningTitle': 'Warning',
     'common.file': 'file',
     'common.files': 'files',
   }
@@ -152,8 +166,19 @@ describe('CreateExecutionLoadInstance', () => {
       success: true,
       instance: mockInstance,
     })
+    mockInstanceProcessing.processInstanceData.mockResolvedValue({
+      success: true,
+      instance: mockInstance,
+    })
+    mockInstanceProcessing.processFromDb.mockResolvedValue({
+      success: true,
+      instance: mockInstance,
+    })
     mockInstanceProcessing.state.value.isProcessing = false
     mockInstanceProcessing.canProcessFiles.value = true
+    // Reset etl config + raw configurations to a clean default each test
+    mockGeneralStore.appConfig.parameters.etl = undefined
+    mockGeneralStore.rawConfigurations = { masterData: null }
   })
 
   afterEach(() => {
@@ -193,6 +218,12 @@ describe('CreateExecutionLoadInstance', () => {
             template:
               '<div class="v-progress-circular" :data-indeterminate="indeterminate" :data-color="color" :data-size="size"></div>',
             props: ['indeterminate', 'color', 'size'],
+          },
+          VAlert: {
+            template:
+              '<div class="v-alert" :data-type="type" :data-closable="closable"><slot /></div>',
+            props: ['type', 'variant', 'density', 'closable'],
+            emits: ['click:close'],
           },
         },
       },
@@ -706,4 +737,328 @@ describe('CreateExecutionLoadInstance', () => {
       )
     })
   })
+
+  describe('ETL warning display', () => {
+    const file = () =>
+      new File(['x'], 'inst.xlsx', {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      })
+
+    test('does not render warning alert when result has no warning', async () => {
+      mockInstanceProcessing.processFiles.mockResolvedValueOnce({
+        success: true,
+        instance: mockInstance,
+      })
+      wrapper = createWrapper()
+      await wrapper.vm.onFileSelected([file()])
+      await wrapper.vm.processFiles()
+      await nextTick()
+
+      expect(wrapper.find('.load-instance-warning').exists()).toBe(false)
+      expect(wrapper.vm.warningMessage).toBeNull()
+    })
+
+    test('renders warning alert with backend message on success', async () => {
+      mockInstanceProcessing.processFiles.mockResolvedValueOnce({
+        success: true,
+        instance: mockInstance,
+        warning: 'Some non-blocking issue happened',
+      })
+      wrapper = createWrapper()
+      await wrapper.vm.onFileSelected([file()])
+      await wrapper.vm.processFiles()
+      await nextTick()
+
+      const alert = wrapper.find('.load-instance-warning')
+      expect(alert.exists()).toBe(true)
+      expect(alert.attributes('data-type')).toBe('warning')
+      expect(alert.text()).toContain('Warning') // title from i18n
+      expect(alert.text()).toContain('Some non-blocking issue happened')
+      // Instance is still emitted — warning is non-blocking.
+      expect(wrapper.emitted('instanceSelected')).toBeTruthy()
+    })
+
+    test('previous warning is cleared when user selects new files', async () => {
+      mockInstanceProcessing.processFiles.mockResolvedValueOnce({
+        success: true,
+        instance: mockInstance,
+        warning: 'old warning',
+      })
+      wrapper = createWrapper()
+      await wrapper.vm.onFileSelected([file()])
+      await wrapper.vm.processFiles()
+      await nextTick()
+      expect(wrapper.vm.warningMessage).toBe('old warning')
+
+      await wrapper.vm.onFileSelected([file()])
+      await nextTick()
+
+      expect(wrapper.vm.warningMessage).toBeNull()
+      expect(wrapper.find('.load-instance-warning').exists()).toBe(false)
+    })
+
+    test('warning is reset when a new processing succeeds without warning', async () => {
+      mockInstanceProcessing.processFiles
+        .mockResolvedValueOnce({
+          success: true,
+          instance: mockInstance,
+          warning: 'first',
+        })
+        .mockResolvedValueOnce({
+          success: true,
+          instance: mockInstance,
+        })
+      wrapper = createWrapper()
+      await wrapper.vm.onFileSelected([file()])
+      await wrapper.vm.processFiles()
+      await nextTick()
+      expect(wrapper.vm.warningMessage).toBe('first')
+
+      await wrapper.vm.processFiles()
+      await nextTick()
+      expect(wrapper.vm.warningMessage).toBeNull()
+    })
+
+    test('warning is cleared on processing failure', async () => {
+      mockInstanceProcessing.processFiles
+        .mockResolvedValueOnce({
+          success: true,
+          instance: mockInstance,
+          warning: 'previous warning',
+        })
+        .mockResolvedValueOnce({
+          success: false,
+          errors: 'Something broke',
+          rawErrors: null,
+        })
+      wrapper = createWrapper()
+      await wrapper.vm.onFileSelected([file()])
+      await wrapper.vm.processFiles()
+      await nextTick()
+      expect(wrapper.vm.warningMessage).toBe('previous warning')
+
+      await wrapper.vm.processFiles()
+      await nextTick()
+      expect(wrapper.vm.warningMessage).toBeNull()
+    })
+  })
+
+  describe('Load from DB button', () => {
+    test('hidden by default when etl config is absent', () => {
+      wrapper = createWrapper()
+      expect(wrapper.vm.showLoadFromDbButton).toBeFalsy()
+      expect(wrapper.find('.load-from-db-btn').exists()).toBe(false)
+    })
+
+    test('shown when useEtlBackend and enableLoadFromDb are true', async () => {
+      mockGeneralStore.appConfig.parameters.etl = {
+        useEtlBackend: true,
+        enableLoadFromDb: true,
+      }
+      wrapper = createWrapper()
+      await nextTick()
+      expect(wrapper.vm.showLoadFromDbButton).toBe(true)
+      expect(wrapper.find('.load-from-db-btn').exists()).toBe(true)
+    })
+
+    test('processFromDb success emits instanceSelected and externalEtlData', async () => {
+      mockInstanceProcessing.processFromDb.mockResolvedValueOnce({
+        success: true,
+        instance: mockInstance,
+        rawData: { tables: {} },
+      })
+      wrapper = createWrapper()
+      await wrapper.vm.processFromDb()
+      await nextTick()
+      expect(mockInstanceProcessing.processFromDb).toHaveBeenCalled()
+      expect(wrapper.emitted('instanceSelected')).toBeTruthy()
+      expect(wrapper.emitted('externalEtlData')).toBeTruthy()
+    })
+
+    test('processFromDb failure surfaces errors', async () => {
+      mockInstanceProcessing.processFromDb.mockResolvedValueOnce({
+        success: false,
+        errors: 'db error',
+        rawErrors: null,
+      })
+      wrapper = createWrapper()
+      await wrapper.vm.processFromDb()
+      await nextTick()
+      expect(wrapper.vm.instanceErrors).toContain('db error')
+    })
+
+    test('processFromDb handles thrown exceptions', async () => {
+      mockInstanceProcessing.processFromDb.mockRejectedValueOnce(
+        new Error('boom'),
+      )
+      wrapper = createWrapper()
+      await wrapper.vm.processFromDb()
+      await nextTick()
+      expect(wrapper.vm.instanceErrors).toContain('boom')
+    })
+  })
+
+  describe('Alternative parameter fields', () => {
+    const withFields = (fields: any[]) => {
+      mockGeneralStore.appConfig.parameters.etl = {
+        alternativeParameterFields: fields,
+      }
+    }
+
+    test('showAlternativeColumn is false with no fields', () => {
+      wrapper = createWrapper()
+      expect(wrapper.vm.showAlternativeColumn).toBe(false)
+      expect(wrapper.find('.load-parameters-btn').exists()).toBe(false)
+    })
+
+    test('renders the alternative column when fields are configured', async () => {
+      withFields([
+        { id: 'year', titleKey: 'fields.year', type: 'number' },
+        { id: 'name', titleKey: 'fields.name', type: 'text' },
+      ])
+      wrapper = createWrapper()
+      await nextTick()
+      expect(wrapper.vm.showAlternativeColumn).toBe(true)
+      expect(wrapper.find('.load-parameters-btn').exists()).toBe(true)
+    })
+
+    test('initializes paramValues from configured fields', async () => {
+      withFields([{ id: 'year', titleKey: 'fields.year' }])
+      wrapper = createWrapper()
+      await nextTick()
+      expect(wrapper.vm.paramValues).toHaveProperty('year')
+      expect(wrapper.vm.paramValues.year).toBeNull()
+    })
+
+    test('inputTypeForField maps field types', async () => {
+      withFields([{ id: 'a', titleKey: 'k' }])
+      wrapper = createWrapper()
+      await nextTick()
+      expect(wrapper.vm.inputTypeForField({ type: 'date' })).toBe('date')
+      expect(wrapper.vm.inputTypeForField({ type: 'number' })).toBe('number')
+      expect(wrapper.vm.inputTypeForField({ type: 'text' })).toBe('text')
+      expect(wrapper.vm.inputTypeForField({ type: undefined })).toBe('text')
+    })
+
+    test('canProcessParameters is false when a required field is empty', async () => {
+      withFields([{ id: 'year', titleKey: 'k', required: true }])
+      wrapper = createWrapper()
+      await nextTick()
+      expect(wrapper.vm.canProcessParameters).toBe(false)
+    })
+
+    test('canProcessParameters is true when required fields are filled', async () => {
+      withFields([
+        { id: 'year', titleKey: 'k', required: true },
+        { id: 'opt', titleKey: 'k2', required: false },
+      ])
+      wrapper = createWrapper()
+      await nextTick()
+      wrapper.vm.paramValues.year = '2024'
+      await nextTick()
+      expect(wrapper.vm.canProcessParameters).toBe(true)
+    })
+
+    test('processParameters returns early when not processable', async () => {
+      withFields([{ id: 'year', titleKey: 'k', required: true }])
+      wrapper = createWrapper()
+      await nextTick()
+      await wrapper.vm.processParameters()
+      expect(mockInstanceProcessing.processInstanceData).not.toHaveBeenCalled()
+    })
+
+    test('processParameters builds payload and processes when valid', async () => {
+      withFields([{ id: 'year', titleKey: 'k', required: true }])
+      mockInstanceProcessing.processInstanceData.mockResolvedValueOnce({
+        success: true,
+        instance: mockInstance,
+        rawData: { tables: {} },
+      })
+      wrapper = createWrapper()
+      await nextTick()
+      wrapper.vm.paramValues.year = '2024'
+      await nextTick()
+      await wrapper.vm.processParameters()
+      await nextTick()
+      expect(mockBuildInstanceDataFromAlternativeFields).toHaveBeenCalled()
+      expect(mockInstanceProcessing.processInstanceData).toHaveBeenCalled()
+      expect(wrapper.emitted('instanceSelected')).toBeTruthy()
+      expect(wrapper.emitted('externalEtlData')).toBeTruthy()
+    })
+
+    test('processParameters handles processing errors', async () => {
+      withFields([{ id: 'year', titleKey: 'k', required: true }])
+      mockInstanceProcessing.processInstanceData.mockResolvedValueOnce({
+        success: false,
+        errors: 'param error',
+        rawErrors: null,
+      })
+      wrapper = createWrapper()
+      await nextTick()
+      wrapper.vm.paramValues.year = '2024'
+      await nextTick()
+      await wrapper.vm.processParameters()
+      await nextTick()
+      expect(wrapper.vm.instanceErrors).toContain('param error')
+    })
+
+    test('processParameters handles thrown exceptions', async () => {
+      withFields([{ id: 'year', titleKey: 'k', required: true }])
+      mockInstanceProcessing.processInstanceData.mockRejectedValueOnce(
+        new Error('explode'),
+      )
+      wrapper = createWrapper()
+      await nextTick()
+      wrapper.vm.paramValues.year = '2024'
+      await nextTick()
+      await wrapper.vm.processParameters()
+      await nextTick()
+      expect(wrapper.vm.instanceErrors).toContain('explode')
+    })
+  })
+
+  describe('displayedErrors computed', () => {
+    const rawErr = (n: number) =>
+      Array.from({ length: n }, (_, i) => ({
+        instancePath: `/p${i}`,
+        message: 'bad',
+        keyword: 'type',
+        schemaPath: '#/x',
+        params: {},
+      }))
+
+    test('returns null when there are no errors', () => {
+      wrapper = createWrapper()
+      expect(wrapper.vm.displayedErrors).toBeNull()
+    })
+
+    test('returns errors as-is when there are no raw errors', async () => {
+      wrapper = createWrapper()
+      wrapper.vm.instanceErrors = '<p><strong>Errors</strong></p>'
+      await nextTick()
+      expect(wrapper.vm.displayedErrors).toBe('<p><strong>Errors</strong></p>')
+    })
+
+    test('adds total + download button when within display limit', async () => {
+      wrapper = createWrapper()
+      wrapper.vm.instanceErrors = '<p><strong>Errors</strong></p>'
+      wrapper.vm.rawErrors = rawErr(3)
+      await nextTick()
+      const html = wrapper.vm.displayedErrors
+      expect(html).toContain('totalErrors')
+      expect(html).toContain('download-errors-btn')
+    })
+
+    test('limits displayed errors when above the display limit', async () => {
+      wrapper = createWrapper()
+      wrapper.vm.instanceErrors =
+        '<p><strong>Instance errors</strong></p>'
+      wrapper.vm.rawErrors = rawErr(200) // > DISPLAY_ERROR_LIMIT (150)
+      await nextTick()
+      const html = wrapper.vm.displayedErrors
+      expect(html).toContain('andMoreErrors')
+      expect(html).toContain('download-errors-btn')
+    })
+  })
 })
+

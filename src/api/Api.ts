@@ -21,7 +21,7 @@ class ApiClient {
     // Load token expiration if available
     const tokenExpiration = sessionStorage.getItem('tokenExpiration')
     if (tokenExpiration) {
-      this.tokenExpiration = parseInt(tokenExpiration, 10)
+      this.tokenExpiration = Number.parseInt(tokenExpiration, 10)
       // Start proactive refresh timer if we have expiration info
       this.scheduleTokenRefresh()
     }
@@ -88,7 +88,7 @@ class ApiClient {
       // If no expiration info, check if we have it in sessionStorage
       const tokenExpiration = sessionStorage.getItem('tokenExpiration')
       if (tokenExpiration) {
-        this.tokenExpiration = parseInt(tokenExpiration, 10)
+        this.tokenExpiration = Number.parseInt(tokenExpiration, 10)
       } else {
         return false // Don't assume expiration if we don't have the info
       }
@@ -211,11 +211,8 @@ class ApiClient {
 
   private buildRequestUrl(url: string, options: RequestOptions): URL {
     const isExternal = options.isExternal || false
-    const basePath = isExternal
-      ? '/external'
-      : config.hasExternalApp
-        ? '/cornflow'
-        : ''
+    const internalBasePath = config.hasExternalApp ? '/cornflow' : ''
+    const basePath = isExternal ? '/external' : internalBasePath
     const completeUrl = new URL(this.baseUrl + basePath + url)
 
     if (options.params) {
@@ -242,6 +239,15 @@ class ApiClient {
     }
   }
 
+  /** So multipart requests get an automatic boundary from fetch (case-insensitive header keys). */
+  private stripContentTypeHeader(headers: Record<string, string>): void {
+    for (const key of Object.keys(headers)) {
+      if (key.toLowerCase() === 'content-type') {
+        delete headers[key]
+      }
+    }
+  }
+
   private async performFetch(
     completeUrl: URL,
     options: RequestOptions,
@@ -249,12 +255,11 @@ class ApiClient {
     // Merge headers and remove JSON content-type if sending FormData so the browser sets the boundary
     const mergedHeaders = {
       ...Object.fromEntries(Object.entries(this.getHeaders())),
-      ...(options.headers || {}),
+      ...options.headers,
     } as Record<string, string>
 
     if (options.body instanceof FormData) {
-      // Allow the browser to set the correct multipart/form-data boundary
-      delete (mergedHeaders as any)['Content-Type']
+      this.stripContentTypeHeader(mergedHeaders)
     }
 
     return await fetch(completeUrl.toString(), {
@@ -283,10 +288,10 @@ class ApiClient {
   private async parseResponseContent(response: Response): Promise<any> {
     const contentType = response.headers.get('Content-Type')
 
-    if (contentType && contentType.includes('application/json')) {
+    if (contentType?.includes('application/json')) {
       try {
         return await response.json()
-      } catch (e) {
+      } catch {
         return { message: 'Could not parse response' }
       }
     }
@@ -367,6 +372,49 @@ class ApiClient {
     })
   }
 
+  async getBlob(
+    url: string,
+    queryParams: Record<string, string | number | boolean | undefined> = {},
+    isExternal: boolean = false,
+  ): Promise<{ status: number; blob: Blob; filename: string | null }> {
+    await this.handleTokenRefreshIfNeeded(url)
+
+    const internalBasePath = config.hasExternalApp ? '/cornflow' : ''
+    const basePath = isExternal ? '/external' : internalBasePath
+    const completeUrl = new URL(this.baseUrl + basePath + url)
+    const definedParams = Object.entries(queryParams).filter(
+      ([, v]) => v !== undefined && v !== null,
+    )
+    if (definedParams.length > 0) {
+      completeUrl.search = new URLSearchParams(
+        definedParams.map(([k, v]) => [k, String(v)]),
+      ).toString()
+    }
+
+    const response = await fetch(completeUrl.toString(), {
+      method: 'GET',
+      headers: this.getHeaders(),
+      mode: 'cors',
+    })
+
+    this.handleUnauthorizedResponse(response, url)
+
+    const blob = await response.blob()
+
+    let filename: string | null = null
+    const disposition = response.headers.get('Content-Disposition')
+    if (disposition) {
+      const match =
+        /filename\*=UTF-8''([^;]+)/.exec(disposition) ||
+        /filename="?([^";]+)"?/.exec(disposition)
+      if (match) {
+        filename = decodeURIComponent(match[1])
+      }
+    }
+
+    return { status: response.status, blob, filename }
+  }
+
   get(
     url: string,
     queryParams = {},
@@ -393,6 +441,30 @@ class ApiClient {
       headers: postHeaders,
       isExternal,
     })
+  }
+
+  /**
+   * POST and return the raw Response (e.g. SSE). Same URL rules as `post()`:
+   * `isExternal === true` → prefix `/external`; otherwise Cornflow app prefix
+   * (`/cornflow` when `config.hasExternalApp`, else `''`) + `url`.
+   */
+  async postStream(
+    url: string,
+    body: object,
+    isExternal: boolean = false,
+  ): Promise<Response> {
+    await this.handleTokenRefreshIfNeeded(url)
+    const completeUrl = this.buildRequestUrl(url, { isExternal })
+    const response = await this.performFetch(completeUrl, {
+      method: 'POST',
+      body,
+      headers: {
+        Accept: 'text/event-stream, application/json',
+      },
+      isExternal,
+    })
+    this.handleUnauthorizedResponse(response, url)
+    return response
   }
 
   put(url: string, data: object, putHeaders = {}, isExternal: boolean = false) {

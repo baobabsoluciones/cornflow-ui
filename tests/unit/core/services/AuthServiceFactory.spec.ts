@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, test, expect, vi, beforeEach } from 'vitest'
 import { AuthServiceFactory } from '@/services/AuthServiceFactory'
 import getAuthService, { getAllAuthServices, getSpecificAuthService, isAuthServiceAvailable } from '@/services/AuthServiceFactory'
 
@@ -36,17 +36,23 @@ vi.mock('@/services/AuthService', () => ({
 }))
 
 // Mock OpenIDAuthService
-const mockOpenIDAuthService = vi.hoisted(() => {
-  const mockInstance = {
+const { mockOpenIDAuthService, createOpenIDAuthInstance } = vi.hoisted(() => {
+  const createOpenIDAuthInstance = (provider: string) => ({
+    provider,
     initialize: vi.fn().mockResolvedValue(undefined),
     login: vi.fn(),
     logout: vi.fn(),
     isAuthenticated: vi.fn(),
     getToken: vi.fn(),
     getUserId: vi.fn(),
-    refreshToken: vi.fn()
-  }
-  return vi.fn().mockImplementation(() => mockInstance)
+    refreshToken: vi.fn(),
+  })
+
+  const mockOpenIDAuthService = vi.fn(function (provider: string) {
+    return createOpenIDAuthInstance(provider)
+  })
+
+  return { mockOpenIDAuthService, createOpenIDAuthInstance }
 })
 
 vi.mock('@/services/OpenIDAuthService', () => ({
@@ -56,6 +62,10 @@ vi.mock('@/services/OpenIDAuthService', () => ({
 describe('AuthServiceFactory', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockOpenIDAuthService.mockReset()
+    mockOpenIDAuthService.mockImplementation(function (provider: string) {
+      return createOpenIDAuthInstance(provider)
+    })
     // Reset static properties
     AuthServiceFactory['instances'] = {}
     AuthServiceFactory['initialized'] = false
@@ -67,10 +77,6 @@ describe('AuthServiceFactory', () => {
     mockConfig.auth.userPoolId = 'us-east-1_test'
     mockConfig.auth.region = 'us-east-1'
     mockConfig.auth.domain = 'test-domain.auth.us-east-1.amazoncognito.com'
-  })
-
-  afterEach(() => {
-    vi.restoreAllMocks()
   })
 
   describe('getAllAuthServices', () => {
@@ -108,7 +114,9 @@ describe('AuthServiceFactory', () => {
         provider: 'azure',
         initialize: vi.fn().mockResolvedValue(undefined)
       }
-      mockOpenIDAuthService.mockReturnValue(mockAzureInstance)
+      mockOpenIDAuthService.mockImplementation(function () {
+        return mockAzureInstance
+      })
       
       const services = await AuthServiceFactory.getAllAuthServices()
       
@@ -128,7 +136,9 @@ describe('AuthServiceFactory', () => {
         provider: 'cognito',
         initialize: vi.fn().mockResolvedValue(undefined)
       }
-      mockOpenIDAuthService.mockReturnValue(mockCognitoInstance)
+      mockOpenIDAuthService.mockImplementation(function () {
+        return mockCognitoInstance
+      })
       
       const services = await AuthServiceFactory.getAllAuthServices()
       
@@ -149,8 +159,12 @@ describe('AuthServiceFactory', () => {
         initialize: vi.fn().mockResolvedValue(undefined)
       }
       mockOpenIDAuthService
-        .mockReturnValueOnce(mockAzureInstance)
-        .mockReturnValueOnce(mockCognitoInstance)
+        .mockImplementationOnce(function () {
+          return mockAzureInstance
+        })
+        .mockImplementationOnce(function () {
+          return mockCognitoInstance
+        })
       
       const services = await AuthServiceFactory.getAllAuthServices()
       
@@ -163,7 +177,7 @@ describe('AuthServiceFactory', () => {
 
     test('handles Azure initialization error gracefully', async () => {
       mockConfig.auth.type = 'azure'
-      mockOpenIDAuthService.mockImplementation((provider) => {
+      mockOpenIDAuthService.mockImplementation(function (provider) {
         if (provider === 'azure') {
           throw new Error('Azure initialization failed')
         }
@@ -183,7 +197,7 @@ describe('AuthServiceFactory', () => {
 
     test('handles Cognito initialization error gracefully', async () => {
       mockConfig.auth.type = 'cognito'
-      mockOpenIDAuthService.mockImplementation((provider) => {
+      mockOpenIDAuthService.mockImplementation(function (provider) {
         if (provider === 'cognito') {
           throw new Error('Cognito initialization failed')
         }
@@ -212,7 +226,9 @@ describe('AuthServiceFactory', () => {
         provider: 'azure',
         initialize: vi.fn().mockResolvedValue(undefined)
       }
-      mockOpenIDAuthService.mockReturnValue(mockAzureInstance)
+      mockOpenIDAuthService.mockImplementation(function () {
+        return mockAzureInstance
+      })
       
       const services1 = await AuthServiceFactory.getAllAuthServices()
       const services2 = await AuthServiceFactory.getAllAuthServices()
@@ -235,7 +251,9 @@ describe('AuthServiceFactory', () => {
         provider: 'azure',
         initialize: vi.fn().mockResolvedValue(undefined)
       }
-      mockOpenIDAuthService.mockReturnValue(mockAzureInstance)
+      mockOpenIDAuthService.mockImplementation(function () {
+        return mockAzureInstance
+      })
       
       const service = await AuthServiceFactory.getAuthService('azure')
       
@@ -248,7 +266,9 @@ describe('AuthServiceFactory', () => {
         provider: 'cognito',
         initialize: vi.fn().mockResolvedValue(undefined)
       }
-      mockOpenIDAuthService.mockReturnValue(mockCognitoInstance)
+      mockOpenIDAuthService.mockImplementation(function () {
+        return mockCognitoInstance
+      })
       
       const service = await AuthServiceFactory.getAuthService('cognito')
       
@@ -287,7 +307,9 @@ describe('AuthServiceFactory', () => {
         provider: 'azure',
         initialize: vi.fn().mockResolvedValue(undefined)
       }
-      mockOpenIDAuthService.mockReturnValue(mockAzureInstance)
+      mockOpenIDAuthService.mockImplementation(function () {
+        return mockAzureInstance
+      })
       
       const service = await AuthServiceFactory.getDefaultAuthService()
       
@@ -300,7 +322,9 @@ describe('AuthServiceFactory', () => {
         provider: 'cognito',
         initialize: vi.fn().mockResolvedValue(undefined)
       }
-      mockOpenIDAuthService.mockReturnValue(mockCognitoInstance)
+      mockOpenIDAuthService.mockImplementation(function () {
+        return mockCognitoInstance
+      })
       
       const service = await AuthServiceFactory.getDefaultAuthService()
       
@@ -502,7 +526,9 @@ describe('AuthServiceFactory', () => {
         provider: 'azure',
         initialize: vi.fn().mockResolvedValue(undefined)
       }
-      mockOpenIDAuthService.mockReturnValue(mockAzureInstance)
+      mockOpenIDAuthService.mockImplementation(function () {
+        return mockAzureInstance
+      })
       
       const services = await getAllAuthServices()
       
@@ -516,7 +542,9 @@ describe('AuthServiceFactory', () => {
         provider: 'azure',
         initialize: vi.fn().mockResolvedValue(undefined)
       }
-      mockOpenIDAuthService.mockReturnValue(mockAzureInstance)
+      mockOpenIDAuthService.mockImplementation(function () {
+        return mockAzureInstance
+      })
       
       const service = await getSpecificAuthService('azure')
       
@@ -544,7 +572,7 @@ describe('AuthServiceFactory', () => {
 
     test('continues initialization even if one service fails', async () => {
       mockConfig.auth.type = 'azure'
-      mockOpenIDAuthService.mockImplementation((provider) => {
+      mockOpenIDAuthService.mockImplementation(function (provider) {
         if (provider === 'azure') {
           throw new Error('Azure failed')
         }
@@ -575,7 +603,9 @@ describe('AuthServiceFactory', () => {
         provider: 'azure',
         initialize: vi.fn().mockResolvedValue(undefined)
       }
-      mockOpenIDAuthService.mockReturnValue(mockAzureInstance)
+      mockOpenIDAuthService.mockImplementation(function () {
+        return mockAzureInstance
+      })
       
       await AuthServiceFactory.getAllAuthServices()
       await AuthServiceFactory.getAllAuthServices()

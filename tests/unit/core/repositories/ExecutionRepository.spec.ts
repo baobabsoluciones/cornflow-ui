@@ -1,5 +1,7 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import ExecutionRepository from '@/repositories/ExecutionRepository'
+import { describe, test, expect, vi, beforeEach } from 'vitest'
+import ExecutionRepository, {
+  ExecutionFilesRegenerationError,
+} from '@/repositories/ExecutionRepository'
 
 // Mock the API client
 vi.mock('@/api/Api', () => ({
@@ -7,35 +9,43 @@ vi.mock('@/api/Api', () => ({
     get: vi.fn(),
     post: vi.fn(),
     put: vi.fn(),
-    remove: vi.fn()
-  }
+    remove: vi.fn(),
+    getBlob: vi.fn(),
+  },
 }))
 
-// Mock the general store
+// Shared store state so tests can flip flags between cases.
+const storeState = {
+  appConfig: {
+    Solution: vi.fn(),
+    Experiment: vi.fn(),
+    parameters: {
+      useBackendExecutionFilesDownload: false as boolean,
+    } as Record<string, any>,
+  },
+  schemaConfig: {
+    solutionSchema: {},
+    solutionChecksSchema: {},
+    instanceSchema: {},
+    instanceChecksSchema: {},
+  },
+  getSchemaName: 'test-schema',
+}
+
 vi.mock('@/stores/general', () => ({
-  useGeneralStore: () => ({
-    appConfig: {
-      Solution: vi.fn(),
-      Experiment: vi.fn()
-    },
-    schemaConfig: {
-      solutionSchema: {},
-      solutionChecksSchema: {},
-      instanceSchema: {},
-      instanceChecksSchema: {}
-    },
-    getSchemaName: 'test-schema'
-  })
+  useGeneralStore: () => storeState,
 }))
 
 // Mock InstanceRepository
-const mockInstanceRepo = {
+const mockInstanceRepo = vi.hoisted(() => ({
   getInstance: vi.fn(),
-  createInstance: vi.fn()
-}
+  createInstance: vi.fn(),
+}))
 
 vi.mock('@/repositories/InstanceRepository', () => ({
-  default: vi.fn(() => mockInstanceRepo)
+  default: vi.fn(function () {
+    return mockInstanceRepo
+  }),
 }))
 
 // Mock date utility
@@ -69,10 +79,6 @@ describe('ExecutionRepository', () => {
     vi.clearAllMocks()
     
     repository = new ExecutionRepository()
-  })
-
-  afterEach(() => {
-    vi.restoreAllMocks()
   })
 
   describe('getExecutions', () => {
@@ -288,15 +294,25 @@ describe('ExecutionRepository', () => {
       expect(result).toEqual(mockResponse.content)
     })
 
-    test('should handle upload errors', async () => {
+    test('should propagate errors when put rejects', async () => {
       const error = new Error('Upload failed')
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       mockClient.put.mockRejectedValue(error)
 
       await expect(repository.uploadSolutionData('test-id', mockSolutionData)).rejects.toThrow('Upload failed')
-      expect(consoleSpy).toHaveBeenCalledWith('Error uploading solution data:', error)
+    })
 
-      consoleSpy.mockRestore()
+    test('should throw when API returns non-success status', async () => {
+      mockClient.put.mockResolvedValue({
+        status: 500,
+        content: { error: 'Server error' },
+      })
+
+      await expect(
+        repository.uploadSolutionData('test-id', mockSolutionData),
+      ).rejects.toThrow()
+      expect(mockClient.put).toHaveBeenCalledWith('/execution/test-id/', {
+        data: mockSolutionData,
+      })
     })
   })
 
@@ -321,5 +337,184 @@ describe('ExecutionRepository', () => {
     })
   })
 
+  describe('getDataToDownload — backend execution files', () => {
+    // jsdom's Blob.text() is unreliable across versions — provide a stub that mimics
+    // the only surface the repository code touches.
+    const blobOf = (json: object): Blob =>
+      ({
+        type: 'application/json',
+        text: () => Promise.resolve(JSON.stringify(json)),
+      }) as unknown as Blob
 
+    let createObjectURL: any
+    let revokeObjectURL: any
+    let anchorClick: any
+
+    beforeEach(() => {
+      storeState.appConfig.parameters.useBackendExecutionFilesDownload = true
+
+      createObjectURL = vi.fn().mockReturnValue('blob:mock')
+      revokeObjectURL = vi.fn()
+      anchorClick = vi.fn()
+      // @ts-expect-error jsdom does not implement these on URL
+      global.URL.createObjectURL = createObjectURL
+      // @ts-expect-error jsdom does not implement these on URL
+      global.URL.revokeObjectURL = revokeObjectURL
+
+      const realCreateElement = Document.prototype.createElement
+      vi.spyOn(document, 'createElement').mockImplementation(function (tag: string) {
+        const el = realCreateElement.call(document, tag) as any
+        if (tag === 'a') el.click = anchorClick
+        return el
+      })
+    })
+
+    afterEach(() => {
+      storeState.appConfig.parameters.useBackendExecutionFilesDownload = false
+    })
+
+    test('HTTP 200 → downloads zip and skips /data/ fetch', async () => {
+      mockClient.getBlob.mockResolvedValueOnce({
+        status: 200,
+        blob: new Blob(['zip-bytes'], { type: 'application/zip' }),
+        filename: 'exec_42.zip',
+      })
+
+      const result = await repository.getDataToDownload('42', true, true)
+
+      expect(result).toBeNull()
+      expect(mockClient.getBlob).toHaveBeenCalledWith('/execution/files/42/')
+      expect(mockClient.get).not.toHaveBeenCalled()
+      expect(anchorClick).toHaveBeenCalledTimes(1)
+      expect(createObjectURL).toHaveBeenCalledTimes(1)
+      expect(revokeObjectURL).toHaveBeenCalledTimes(1)
+    })
+
+    test('HTTP 501 → falls back to local Excel build', async () => {
+      mockClient.getBlob.mockResolvedValueOnce({
+        status: 501,
+        blob: blobOf({ error: 'deactivated' }),
+        filename: null,
+      })
+      // local-flow path needs /data/ to fail so we don't go further
+      mockClient.get.mockResolvedValue({ status: 500, content: {} })
+
+      await expect(repository.getDataToDownload('42')).rejects.toThrow(
+        'Error loading execution',
+      )
+      expect(mockClient.get).toHaveBeenCalledWith('/execution/42/data/')
+    })
+
+    test.each([
+      ['status: 0', 0],
+      ['status: -1', -1],
+    ])('HTTP 400 with %s → falls back to local Excel build', async (_, s) => {
+      mockClient.getBlob.mockResolvedValueOnce({
+        status: 400,
+        blob: blobOf({ status: s, error: 'no files' }),
+        filename: null,
+      })
+      mockClient.get.mockResolvedValue({ status: 500, content: {} })
+
+      await expect(repository.getDataToDownload('42')).rejects.toThrow(
+        'Error loading execution',
+      )
+      expect(mockClient.get).toHaveBeenCalledWith('/execution/42/data/')
+    })
+
+    test('HTTP 400 status:-2 → triggers regeneration, polls, downloads on 200', async () => {
+      mockClient.getBlob
+        .mockResolvedValueOnce({
+          status: 400,
+          blob: blobOf({ status: -2, error: 'deleted' }),
+          filename: null,
+        })
+        .mockResolvedValueOnce({
+          status: 400,
+          blob: blobOf({ status: -3, error: 'still working' }),
+          filename: null,
+        })
+        .mockResolvedValueOnce({
+          status: 200,
+          blob: new Blob(['zip'], { type: 'application/zip' }),
+          filename: 'exec.zip',
+        })
+      mockClient.post.mockResolvedValue({ status: 201, content: {} })
+
+      vi.useFakeTimers()
+      try {
+        const promise = repository.getDataToDownload('42', true, true)
+        // Drain two poll intervals (5s default).
+        await vi.advanceTimersByTimeAsync(5_000)
+        await vi.advanceTimersByTimeAsync(5_000)
+        await expect(promise).resolves.toBeNull()
+      } finally {
+        vi.useRealTimers()
+      }
+
+      expect(mockClient.post).toHaveBeenCalledWith(
+        '/data-check-kpis/execution/42/',
+        {},
+        {},
+        false,
+      )
+      expect(mockClient.getBlob).toHaveBeenCalledTimes(3)
+      expect(anchorClick).toHaveBeenCalledTimes(1)
+      expect(mockClient.get).not.toHaveBeenCalled()
+    })
+
+    test('HTTP 400 status:-3 → throws ExecutionFilesRegenerationError on timeout', async () => {
+      mockClient.getBlob.mockResolvedValue({
+        status: 400,
+        blob: blobOf({ status: -3, error: 'stale' }),
+        filename: null,
+      })
+      mockClient.post.mockResolvedValue({ status: 201, content: {} })
+
+      vi.useFakeTimers()
+      try {
+        const promise = repository.getDataToDownload('42', true, true)
+        // Attach handler before advancing timers so the rejection is not "unhandled".
+        const expectation = expect(promise).rejects.toMatchObject({
+          name: 'ExecutionFilesRegenerationError',
+          i18nKey: 'executionTable.filesRegenerationTimeout',
+        })
+        await vi.advanceTimersByTimeAsync(130_000)
+        await expectation
+      } finally {
+        vi.useRealTimers()
+      }
+      expect(mockClient.post).toHaveBeenCalledTimes(1)
+    })
+
+    test('HTTP 404 → throws with backend error message', async () => {
+      mockClient.getBlob.mockResolvedValueOnce({
+        status: 404,
+        blob: blobOf({ error: 'not found' }),
+        filename: null,
+      })
+
+      await expect(repository.getDataToDownload('42')).rejects.toThrow(
+        'not found',
+      )
+      expect(mockClient.get).not.toHaveBeenCalled()
+    })
+
+    test('flag off → backend endpoint is not called', async () => {
+      storeState.appConfig.parameters.useBackendExecutionFilesDownload = false
+      mockClient.get.mockResolvedValue({ status: 500, content: {} })
+
+      await expect(repository.getDataToDownload('42')).rejects.toThrow(
+        'Error loading execution',
+      )
+      expect(mockClient.getBlob).not.toHaveBeenCalled()
+    })
+
+    test('exposes ExecutionFilesRegenerationError class', () => {
+      const err = new ExecutionFilesRegenerationError('some.key')
+      expect(err).toBeInstanceOf(Error)
+      expect(err.i18nKey).toBe('some.key')
+      expect(err.name).toBe('ExecutionFilesRegenerationError')
+    })
+  })
 })

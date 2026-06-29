@@ -63,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import CoreSearchInput from '@/components/core/table/CoreSearchInput.vue'
 import CoreDropdownMenu from '@/components/core/CoreDropdownMenu.vue'

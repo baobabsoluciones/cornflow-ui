@@ -139,13 +139,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, inject } from 'vue'
+import { ref, onMounted, inject } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGeneralStore } from '@/stores/general'
 import getAuthService, {
   getAllAuthServices,
   getSpecificAuthService,
-  isAuthServiceAvailable,
 } from '@/services/AuthServiceFactory'
 import { useRouter } from 'vue-router'
 import config from '@/config'

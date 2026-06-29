@@ -123,19 +123,37 @@ const showRightArrow = ref(false)
 const showRightEllipsis = ref(true)
 const registeredTabs = ref<Map<string | number, TabInfo>>(new Map())
 
+/** DOM `data-tab-value` is always a string; map keys may be string (e.g. table key) or legacy numeric index */
+const getTabInfoForElement = (
+  element: Element,
+  map: Map<string | number, TabInfo>,
+): TabInfo | undefined => {
+  const raw = (element as HTMLElement).dataset.tabValue
+  if (raw === undefined) return undefined
+  const asString = map.get(raw)
+  if (asString !== undefined) return asString
+  if (/^\d+$/.test(raw)) {
+    const asNum = map.get(Number(raw))
+    if (asNum !== undefined) return asNum
+  }
+  return undefined
+}
+
 // Get all tab elements
 const getTabElements = () => {
   if (!tabsWrapperRef.value) return []
   return Array.from(tabsWrapperRef.value.children) as HTMLElement[]
 }
 
-// Register tab info
+// Register tab info (replace Map so Vue tracks updates; in-place .set on Map is not reactive)
 const registerTab = (
   value: string | number,
   label: string,
   element: HTMLElement | null,
 ) => {
-  registeredTabs.value.set(value, { value, label, element })
+  const next = new Map(registeredTabs.value)
+  next.set(value, { value, label, element })
+  registeredTabs.value = next
   nextTick(() => {
     updateScrollState()
   })
@@ -143,7 +161,10 @@ const registerTab = (
 
 // Unregister tab
 const unregisterTab = (value: string | number) => {
-  registeredTabs.value.delete(value)
+  if (!registeredTabs.value.has(value)) return
+  const next = new Map(registeredTabs.value)
+  next.delete(value)
+  registeredTabs.value = next
 }
 
 // Computed
@@ -167,15 +188,8 @@ const hiddenLeftTabs = computed(() => {
   tabElements.forEach((element) => {
     const elementLeft = element.offsetLeft
     if (elementLeft < containerLeft) {
-      // Find the tab info for this element
-      const tabValue = element.getAttribute('data-tab-value')
-      if (tabValue !== null) {
-        const value = isNaN(Number(tabValue)) ? tabValue : Number(tabValue)
-        const tabInfo = registeredTabs.value.get(value)
-        if (tabInfo) {
-          hidden.push(tabInfo)
-        }
-      }
+      const tabInfo = getTabInfoForElement(element, registeredTabs.value)
+      if (tabInfo) hidden.push(tabInfo)
     }
   })
 
@@ -194,37 +208,40 @@ const hiddenRightTabs = computed(() => {
     const elementLeft = element.offsetLeft
     const elementWidth = element.offsetWidth
     if (elementLeft + elementWidth > containerLeft + containerWidth) {
-      // Find the tab info for this element
-      const tabValue = element.getAttribute('data-tab-value')
-      if (tabValue !== null) {
-        const value = isNaN(Number(tabValue)) ? tabValue : Number(tabValue)
-        const tabInfo = registeredTabs.value.get(value)
-        if (tabInfo) {
-          hidden.push(tabInfo)
-        }
-      }
+      const tabInfo = getTabInfoForElement(element, registeredTabs.value)
+      if (tabInfo) hidden.push(tabInfo)
     }
   })
 
   return hidden
 })
 
-// All tabs for dropdown (sorted by their order in the DOM)
+// All tabs for dropdown: same order as the tab strip (ExecutionDataView uses value = 0..n-1 = instanceTables index)
 const allTabs = computed(() => {
-  const tabElements = getTabElements()
-  const all: TabInfo[] = []
-
-  tabElements.forEach((element) => {
-    const tabValue = element.getAttribute('data-tab-value')
-    if (tabValue !== null) {
-      const value = isNaN(Number(tabValue)) ? tabValue : Number(tabValue)
-      const tabInfo = registeredTabs.value.get(value)
-      if (tabInfo) {
-        all.push(tabInfo)
-      }
-    }
+  const map = registeredTabs.value
+  const keys = Array.from(map.keys())
+  const allNumericIndices = keys.every((k) => {
+    if (typeof k === 'number') return Number.isInteger(k) && k >= 0
+    if (typeof k === 'string' && k !== '') return /^\d+$/.test(k)
+    return false
   })
 
+  if (allNumericIndices && keys.length > 0) {
+    const sorted = [...keys].sort(
+      (a, b) => Number(a) - Number(b),
+    ) as (string | number)[]
+    return sorted
+      .map((k) => map.get(k))
+      .filter((t): t is TabInfo => t != null)
+  }
+
+  // Custom tab values (non-sequential / string ids): preserve DOM order
+  const tabElements = getTabElements()
+  const all: TabInfo[] = []
+  tabElements.forEach((element) => {
+    const tabInfo = getTabInfoForElement(element, map)
+    if (tabInfo) all.push(tabInfo)
+  })
   return all
 })
 
@@ -371,7 +388,7 @@ onMounted(() => {
 })
 
 // Update scroll state on window resize
-if (typeof window !== 'undefined') {
+if (globalThis.window !== undefined) {
   window.addEventListener('resize', updateScrollState)
   onUnmounted(() => {
     window.removeEventListener('resize', updateScrollState)

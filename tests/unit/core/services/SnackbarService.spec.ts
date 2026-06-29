@@ -1,5 +1,10 @@
 import { describe, test, expect, beforeEach } from 'vitest'
-import { snackbar, showSnackbar, SNACKBAR_COLORS } from '@/services/SnackbarService'
+import {
+  snackbar,
+  showSnackbar,
+  SNACKBAR_COLORS,
+  MAX_SNACKBAR_MESSAGE_LENGTH,
+} from '@/services/SnackbarService'
 
 describe('SnackbarService', () => {
   beforeEach(() => {
@@ -144,8 +149,11 @@ describe('SnackbarService', () => {
       const longMessage = 'A'.repeat(1000)
       showSnackbar(longMessage, 'info')
 
+      const expectedTruncated =
+        longMessage.slice(0, MAX_SNACKBAR_MESSAGE_LENGTH) + '…'
       expect(snackbar.show).toBe(true)
-      expect(snackbar.message).toBe(longMessage)
+      expect(snackbar.message).toBe(expectedTruncated)
+      expect(snackbar.fullMessage).toBe(longMessage)
       expect(snackbar.color).toBe(SNACKBAR_COLORS.info)
     })
 

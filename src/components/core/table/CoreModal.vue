@@ -29,7 +29,7 @@
  *     type: 'string' | 'number' | 'integer' | 'boolean' | 'date' | 'email' | 'textarea',
  *     title: 'Field Label',
  *     required: true/false,
- *     readOnly: true/false,
+ *     frontendReadOnly: true/false,
  *     placeholder: 'Placeholder text',
  *     min: number (for number/date fields),
  *     max: number (for number/date fields),
@@ -303,7 +303,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import CoreButton from '@/components/core/CoreButton.vue'
 import { useFormFields } from '@/composables/core-table/useFormFields'
@@ -322,6 +322,11 @@ interface Props {
   // Foreign key data loading
   loadTableData?: (tableName: string) => Promise<any[]>
   tableData?: Record<string, any[]>
+  /**
+   * When true, joined display fields (columns_to_join / isDependentField) are kept in the
+   * emitted payload so master-table "Save all" can resolve them to FK ids via resolveDisplayValuesToFkIds.
+   */
+  keepDependentFieldsOnSubmit?: boolean
 }
 
 // Props
@@ -332,6 +337,7 @@ const props = withDefaults(defineProps<Props>(), {
   mode: 'add',
   loadTableData: () => Promise.resolve([]),
   tableData: () => ({}),
+  keepDependentFieldsOnSubmit: false,
 })
 
 // Emits
@@ -398,10 +404,10 @@ const hasChoicesOptions = (field: FieldConfig | undefined) =>
   )
 
 const isFieldDisabled = (field: FieldConfig | undefined, key: string) =>
-  Boolean(field?.readOnly || (props.mode === 'edit' && key === 'id'))
+  Boolean(field?.frontendReadOnly || (props.mode === 'edit' && key === 'id'))
 
 const fieldRequired = (field: FieldConfig | undefined) => Boolean(field?.required)
-const fieldReadOnly = (field: FieldConfig | undefined) => Boolean(field?.readOnly)
+const fieldReadOnly = (field: FieldConfig | undefined) => Boolean(field?.frontendReadOnly)
 
 // Methods
 const updateField = (key: string, value: any) => {
@@ -429,13 +435,13 @@ const normalizeDateTimeOrTimeForInput = (value: any, fieldType: string): string 
   if (fieldType === 'time') {
     if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(str)) return str
     const d = new Date(`1970-01-01T${str}`)
-    if (!isNaN(d.getTime())) return d.toTimeString().slice(0, 5)
+    if (!Number.isNaN(d.getTime())) return d.toTimeString().slice(0, 5)
     return str
   }
   // datetime
   try {
     const d = new Date(str)
-    if (isNaN(d.getTime())) return str
+    if (Number.isNaN(d.getTime())) return str
     const pad = (n: number) => String(n).padStart(2, '0')
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
   } catch {
@@ -478,6 +484,9 @@ const handleSubmit = async () => {
   const preparedFormData = formFieldsComposable.prepareFormDataForSubmit(
     props.formData,
     props.mode,
+    props.keepDependentFieldsOnSubmit
+      ? { keepDependentFields: true }
+      : undefined,
   )
 
   emit('update:formData', preparedFormData)

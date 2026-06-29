@@ -6,7 +6,9 @@
       </v-alert>
     </div>
     <Suspense v-else>
-      <component :is="resolvedComponent" />
+      <div class="configuration-subsection-root">
+        <component :is="resolvedComponent" :key="subsectionKey" />
+      </div>
       <template #fallback>
         <div class="d-flex align-center justify-center pa-8">
           <v-progress-circular indeterminate color="primary" size="48" />
@@ -54,7 +56,7 @@ export default defineComponent({
 
     watch([sectionId, subsectionKey], loadComponent, { immediate: true })
 
-    return { resolvedComponent, error }
+    return { resolvedComponent, error, subsectionKey }
   },
 })
 </script>

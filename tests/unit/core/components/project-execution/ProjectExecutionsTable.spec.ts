@@ -62,7 +62,8 @@ const mockUseProjectExecutionsTable = {
     message: state === 0 ? 'Optimal solution found' : 'No solution found'
   })),
   getSolverName: vi.fn((item) => item.solver || 'Unknown'),
-  getTimeLimit: vi.fn((item) => item.config?.timeLimit || 0)
+  getTimeLimit: vi.fn((item) => item.config?.timeLimit || 0),
+  getTimeLimitDisplayUnitI18nKey: vi.fn(() => 'configParams.secondsSuffix'),
 }
 
 vi.mock('@/composables/project-execution-table/useProjectExecutionsTable', () => ({
@@ -81,13 +82,24 @@ const mockGeneralStore = {
       }
     }
   },
-  isSetLatestPlanAvailable: vi.fn(() => false),
   selectedExecution: null,
   setLatestPlanExecution: vi.fn()
 }
 
+// ProjectExecutionsTable consumes latest-plan via the core controller (premium-or-inert).
+const mockLatestPlanController = {
+  isSetLatestPlanAvailable: vi.fn(() => false),
+  isLatestPlan: vi.fn(() => false),
+  canSetAsLatestPlan: vi.fn(() => false),
+  setLatestPlanModalComponent: null,
+}
+
 vi.mock('@/stores/general', () => ({
   useGeneralStore: vi.fn(() => mockGeneralStore)
+}))
+
+vi.mock('@/composables/project-execution/useLatestPlanController', () => ({
+  useLatestPlanController: vi.fn(() => mockLatestPlanController)
 }))
 
 import { createI18n } from 'vue-i18n'
@@ -108,6 +120,10 @@ const i18n = createI18n({
       },
       inputOutputData: {
         errorDownloadingExcel: 'Error downloading Excel file',
+      },
+      configParams: {
+        secondsSuffix: 'sec',
+        minutesSuffix: 'min',
       },
     },
   },
@@ -523,11 +539,15 @@ describe('ProjectExecutionsTable', () => {
       wrapper.vm.getSolutionInfo(0)
       wrapper.vm.getSolverName({ solver: 'test' })
       wrapper.vm.getTimeLimit({ config: { timeLimit: 300 } })
-      
+      wrapper.vm.getTimeLimitDisplayUnitI18nKey()
+
       expect(mockUseProjectExecutionsTable.getStateInfo).toHaveBeenCalledWith(1)
       expect(mockUseProjectExecutionsTable.getSolutionInfo).toHaveBeenCalledWith(0)
       expect(mockUseProjectExecutionsTable.getSolverName).toHaveBeenCalledWith({ solver: 'test' })
       expect(mockUseProjectExecutionsTable.getTimeLimit).toHaveBeenCalledWith({ config: { timeLimit: 300 } })
+      expect(
+        mockUseProjectExecutionsTable.getTimeLimitDisplayUnitI18nKey,
+      ).toHaveBeenCalled()
     })
 
     test('uses composable data for table rendering', () => {

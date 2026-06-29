@@ -95,6 +95,8 @@
 .inline-edit-input .v-field {
   font-size: 13px;
   background: transparent !important;
+  border: 1px solid var(--primary) !important;
+  border-radius: 4px !important;
 }
 
 .inline-edit-input .v-field__input {
@@ -112,11 +114,6 @@
 .inline-edit-input .v-field__outline__end,
 .inline-edit-input .v-field__outline__notch {
   border: none !important;
-}
-
-.inline-edit-input .v-field {
-  border: 1px solid var(--primary) !important;
-  border-radius: 4px !important;
 }
 
 .inline-edit-input .v-field--focused {

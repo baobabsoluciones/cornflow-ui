@@ -124,6 +124,104 @@ export function getLocalizedMessage(
   return fallback
 }
 
+const LOCALE_KEYS = ['en', 'es', 'fr', 'de', 'it', 'pt', 'ja']
+
+/**
+ * Returns true when the value looks like a translation object (e.g. { en: "...", es: "..." }).
+ */
+function isTranslationObject(value: unknown): value is Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const obj = value as Record<string, unknown>
+  return LOCALE_KEYS.some((key) => typeof obj[key] === 'string')
+}
+
+/**
+ * Resolves a single message item to a string (string as-is, or { en, es, fr... } via current locale).
+ */
+function resolveMessageItem(
+  item: unknown,
+  fallback: string,
+): string {
+  if (item == null) return fallback
+  if (typeof item === 'string') return item
+  if (isTranslationObject(item)) return getLocalizedMessage(item, fallback)
+  return fallback
+}
+
+/**
+ * Resolves the display message from API error response content.
+ * Handles three shapes:
+ * (1) content.message or content is a string → use as-is.
+ * (2) content.message or content is { en, es, fr... } → pick phrase for current i18n locale.
+ * (3) content.message is an array of strings or { en, es, fr... } → resolve each and join with newlines.
+ *
+ * @param content - Response body (e.g. response.content)
+ * @param fallback - Fallback when no message can be resolved
+ * @returns Localized message string for the current i18n locale
+ */
+export function getMessageFromResponseContent(
+  content: unknown,
+  fallback: string = 'An error occurred',
+): string {
+  if (content == null) return fallback
+  const raw = (content as Record<string, unknown>)?.message ?? content
+  if (raw == null) return fallback
+  if (typeof raw === 'string') return raw
+  if (isTranslationObject(raw)) return getLocalizedMessage(raw, fallback)
+  if (Array.isArray(raw) && raw.length > 0) {
+    const parts = raw.map((item) => resolveMessageItem(item, ''))
+    return parts.filter(Boolean).join('\n') || fallback
+  }
+  return fallback
+}
+
+/**
+ * Same as getMessageFromResponseContent but returns null when content has no message or translation object.
+ * Use when the API returns message: string | null and you want to preserve null.
+ */
+/**
+ * Builds a user-facing message from API error bodies that use `error`, `message`,
+ * and/or `jsonschema_errors` (common for validation failures).
+ */
+export function getApiErrorMessageFromContent(
+  content: unknown,
+  fallback: string = 'An error occurred',
+): string {
+  if (content == null) return fallback
+  if (typeof content === 'string') return content
+  if (typeof content !== 'object') return fallback
+  const c = content as Record<string, unknown>
+
+  if (Array.isArray(c.jsonschema_errors) && c.jsonschema_errors.length > 0) {
+    const joined = c.jsonschema_errors.map(String).join('\n')
+    const err = typeof c.error === 'string' ? c.error : ''
+    const msg = typeof c.message === 'string' ? c.message : ''
+    const head = err || msg
+    return head ? `${head}\n${joined}` : joined
+  }
+
+  if (typeof c.error === 'string' && c.error.trim()) {
+    return c.error
+  }
+
+  return getMessageFromResponseContent(content, fallback)
+}
+
+export function getMessageFromResponseContentOrNull(
+  content: unknown,
+): string | null {
+  if (content == null) return null
+  const raw = (content as Record<string, unknown>)?.message ?? content
+  if (raw == null) return null
+  if (typeof raw === 'string') return raw
+  if (isTranslationObject(raw)) return getLocalizedMessage(raw, '')
+  if (Array.isArray(raw) && raw.length > 0) {
+    const parts = raw.map((item) => resolveMessageItem(item, ''))
+    return parts.filter(Boolean).join('\n') || null
+  }
+  return null
+}
+
 /**
  * Type guard to check if a title is multilingual
  * @param title - The title to check

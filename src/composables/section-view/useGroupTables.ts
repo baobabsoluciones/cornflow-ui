@@ -1,10 +1,16 @@
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import type { TableConfig } from './useSectionConfiguration'
 import {
   fromUrlFriendly,
   toUrlFriendly,
+  getMasterDataTableRankByDrawerHierarchy,
+  normalizeTableKeyForHierarchyMatch,
 } from '@/services/FrontendAutomationService'
+import { useGeneralStore } from '@/stores/general'
+import { resolveTitle } from '@/utils/i18nUtils'
+import { formatTitle } from '@/utils/schemaUtils'
 
 // Types
 export interface TabData {
@@ -15,10 +21,30 @@ export interface TabData {
 export function useGroupTables(currentConfiguration: any, sectionType: any) {
   const route = useRoute()
   const router = useRouter()
+  const generalStore = useGeneralStore()
+  const { locale } = useI18n()
 
   // State - convert URL-friendly params back to original keys
   const tableKey = ref<string>('')
   const groupName = ref<string>('')
+
+  // Resolve URL group param to the display group title. URL uses schema group id
+  const resolveGroupNameFromUrl = (urlGroupName: string): string => {
+    if (!currentConfiguration.value) return ''
+    for (const [, config] of Object.entries(currentConfiguration.value)) {
+      const tableConfig = config as TableConfig
+      if (!tableConfig.group) continue
+      const urlMatchesTitle = toUrlFriendly(tableConfig.group) === urlGroupName
+      const urlMatchesGroupKey =
+        tableConfig._groupKey != null &&
+        (tableConfig._groupKey === urlGroupName ||
+          toUrlFriendly(tableConfig._groupKey) === urlGroupName)
+      if (urlMatchesTitle || urlMatchesGroupKey) {
+        return tableConfig.group
+      }
+    }
+    return ''
+  }
 
   // Initialize with URL-friendly conversion
   const initializeFromRoute = () => {
@@ -32,25 +58,9 @@ export function useGroupTables(currentConfiguration: any, sectionType: any) {
     }
 
     if (urlGroupName) {
-      // For group names, we need to find the original group name
-      // by looking through all tables and finding one with matching URL-friendly group
-      groupName.value = urlGroupName
-      if (currentConfiguration.value) {
-        for (const [key, config] of Object.entries(
-          currentConfiguration.value,
-        )) {
-          const tableConfig = config as TableConfig
-          if (
-            tableConfig.group &&
-            toUrlFriendly(tableConfig.group) === urlGroupName
-          ) {
-            groupName.value = tableConfig.group
-            break
-          }
-        }
-      }
+      groupName.value = resolveGroupNameFromUrl(urlGroupName) || urlGroupName
     } else {
-      groupName.value = urlGroupName || ''
+      groupName.value = ''
     }
   }
   const selectedTable = ref<string | null>(null)
@@ -61,18 +71,71 @@ export function useGroupTables(currentConfiguration: any, sectionType: any) {
     return !!groupName.value
   })
 
+  const masterRankByNormalizedTableKey = computed(() => {
+    const masterData = generalStore.getConfigurations?.masterData
+    if (!masterData || typeof masterData !== 'object') {
+      return new Map<string, number>()
+    }
+    return getMasterDataTableRankByDrawerHierarchy(
+      masterData,
+      generalStore.masterDataSections ?? undefined,
+      generalStore.masterDataGroups ?? undefined,
+    )
+  })
+
   const groupTables = computed(() => {
-    if (!isGroupView.value) return {}
-    const tablesInGroup: Record<string, TableConfig> = {}
+    if (!isGroupView.value || !currentConfiguration.value) return {}
+    const name = groupName.value
+    const matchingEntries: Array<[string, TableConfig]> = []
     Object.entries(currentConfiguration.value).forEach(([key, config]) => {
-      // Handle null group comparison properly
+      const tableConfig = config as TableConfig
       const configGroup =
-        (config as TableConfig).group === null
-          ? 'null'
-          : (config as TableConfig).group
-      if (configGroup === groupName.value) {
-        tablesInGroup[key] = config as TableConfig
+        tableConfig.group === null ? 'null' : tableConfig.group
+      const matchesByTitle = configGroup === name
+      const matchesByGroupKey =
+        tableConfig._groupKey != null &&
+        (tableConfig._groupKey === name ||
+          toUrlFriendly(tableConfig._groupKey) === name)
+      if (matchesByTitle || matchesByGroupKey) {
+        matchingEntries.push([key, tableConfig])
       }
+    })
+    matchingEntries.sort((a, b) => {
+      const aCfg = a[1] as any
+      const bCfg = b[1] as any
+      const aOwnOrder = aCfg?.order
+      const bOwnOrder = bCfg?.order
+
+      // For instance tables, if local order is missing, use the same master
+      // hierarchy rank as AppDrawer (section -> group -> table) when names match.
+      const aMasterRank =
+        sectionType.value === 'input-data'
+          ? masterRankByNormalizedTableKey.value.get(
+              normalizeTableKeyForHierarchyMatch(a[0]),
+            )
+          : undefined
+      const aEffectiveOrder =
+        typeof aOwnOrder === 'number' && Number.isFinite(aOwnOrder)
+          ? aOwnOrder
+          : aMasterRank
+      const bMasterRank =
+        sectionType.value === 'input-data'
+          ? masterRankByNormalizedTableKey.value.get(
+              normalizeTableKeyForHierarchyMatch(b[0]),
+            )
+          : undefined
+      const bEffectiveOrder =
+        typeof bOwnOrder === 'number' && Number.isFinite(bOwnOrder)
+          ? bOwnOrder
+          : bMasterRank
+
+      const aRank = aEffectiveOrder ?? Number.POSITIVE_INFINITY
+      const bRank = bEffectiveOrder ?? Number.POSITIVE_INFINITY
+      return aRank - bRank
+    })
+    const tablesInGroup: Record<string, TableConfig> = {}
+    matchingEntries.forEach(([key, config]) => {
+      tablesInGroup[key] = config
     })
     return tablesInGroup
   })
@@ -92,9 +155,9 @@ export function useGroupTables(currentConfiguration: any, sectionType: any) {
     if (resolvedKey && config[resolvedKey]) return resolvedKey
 
     // Try case-insensitive and underscore/hyphen variations
-    const normalizedSearchKey = searchKey.toLowerCase().replace(/-/g, '_')
+    const normalizedSearchKey = searchKey.toLowerCase().replaceAll('-', '_')
     for (const key of Object.keys(config)) {
-      const normalizedKey = key.toLowerCase().replace(/-/g, '_')
+      const normalizedKey = key.toLowerCase().replaceAll('-', '_')
       if (normalizedKey === normalizedSearchKey) {
         return key
       }
@@ -146,24 +209,70 @@ export function useGroupTables(currentConfiguration: any, sectionType: any) {
 
   const tabsData = computed((): TabData[] => {
     if (!isGroupView.value) return []
-    return Object.entries(groupTables.value).map(([key, config]) => ({
-      value: key,
-      text: config.title,
-    }))
+    // Read the locale so titles recompute when the language changes.
+    // (The guard never triggers — locale is always a string — it only
+    // registers the reactive dependency without a bare/void expression.)
+    if (locale.value === undefined) return []
+    return Object.entries(groupTables.value).map(([key, config]) => {
+      const cfg = config
+      const raw = cfg.title as string | Record<string, string> | undefined | null
+      const fallback = formatTitle(key.replaceAll('-', '_'))
+      const text =
+        raw == null
+          ? fallback
+          : resolveTitle(raw, fallback)
+      return {
+        value: key,
+        text,
+      }
+    })
   })
 
-  // Methods
+  /**
+   * True while a tab switch is in flight. Set synchronously on click and
+   * cleared two rAFs after the actual table change, so consumers (CoreTable /
+   * SectionView) can show a loading overlay that is *painted before* the
+   * heavy reactivity work runs. Without the deferral below, the spinner
+   * would only become visible after the freeze, defeating the purpose.
+   */
+  const tableSwitching = ref(false)
+  let tableSwitchingClearHandle: ReturnType<typeof requestAnimationFrame> | null =
+    null
+
+  // Two rAFs: first lets Vue commit + the browser paint the new table;
+  // second clears the overlay after that paint is on screen.
+  const clearTableSwitchingAfterPaint = () => {
+    tableSwitchingClearHandle = requestAnimationFrame(() => {
+      tableSwitchingClearHandle = requestAnimationFrame(() => {
+        tableSwitching.value = false
+        tableSwitchingClearHandle = null
+      })
+    })
+  }
+
   const handleTabChange = (tabIndex: number) => {
-    selectedTabIndex.value = tabIndex
     const tableKeyValue = tabsData.value[tabIndex]?.value
-    if (tableKeyValue && tableKeyValue !== selectedTable.value) {
+    selectedTabIndex.value = tabIndex
+    if (!tableKeyValue || tableKeyValue === selectedTable.value) return
+
+    tableSwitching.value = true
+    if (tableSwitchingClearHandle != null) {
+      cancelAnimationFrame(tableSwitchingClearHandle)
+      tableSwitchingClearHandle = null
+    }
+
+    // Yield to the browser so it paints the overlay before the synchronous
+    // reactivity cascade (heavy computeds, header rebuild, virtual scroll
+    // mount) blocks the main thread. setTimeout(..., 0) is enough — we just
+    // need a single task boundary between the click and the switch.
+    setTimeout(() => {
       selectedTable.value = tableKeyValue
-      // Update the URL to reflect the selected table
       if (isGroupView.value) {
         const basePath = `/${sectionType.value}/group/${toUrlFriendly(groupName.value)}`
         router.push(`${basePath}/${toUrlFriendly(tableKeyValue)}`)
       }
-    }
+      clearTableSwitchingAfterPaint()
+    }, 0)
   }
 
   const initializeSelectedTable = async () => {
@@ -181,7 +290,7 @@ export function useGroupTables(currentConfiguration: any, sectionType: any) {
         const tabIndex = tabsData.value.findIndex(
           (tab) => tab.value === targetTable,
         )
-        selectedTabIndex.value = tabIndex >= 0 ? tabIndex : 0
+        selectedTabIndex.value = Math.max(tabIndex, 0)
 
         // If no tableKey in route, navigate to the first table
         if (!tableKey.value && targetTable) {
@@ -213,7 +322,7 @@ export function useGroupTables(currentConfiguration: any, sectionType: any) {
         const tabIndex = tabsData.value.findIndex(
           (tab) => tab.value === tableKey.value,
         )
-        selectedTabIndex.value = tabIndex >= 0 ? tabIndex : 0
+        selectedTabIndex.value = Math.max(tabIndex, 0)
       }
     },
   )
@@ -223,15 +332,17 @@ export function useGroupTables(currentConfiguration: any, sectionType: any) {
     (newGroup) => {
       const urlGroupName = newGroup as string
       if (urlGroupName && currentConfiguration.value) {
-        // Find original group name
-        for (const [key, config] of Object.entries(
-          currentConfiguration.value,
-        )) {
+        groupName.value = urlGroupName
+        for (const config of Object.values(currentConfiguration.value)) {
           const tableConfig = config as TableConfig
-          if (
-            tableConfig.group &&
+          if (!tableConfig.group) continue
+          const urlMatchesTitle =
             toUrlFriendly(tableConfig.group) === urlGroupName
-          ) {
+          const urlMatchesGroupKey =
+            tableConfig._groupKey != null &&
+            (tableConfig._groupKey === urlGroupName ||
+              toUrlFriendly(tableConfig._groupKey) === urlGroupName)
+          if (urlMatchesTitle || urlMatchesGroupKey) {
             groupName.value = tableConfig.group
             break
           }
@@ -302,5 +413,8 @@ export function useGroupTables(currentConfiguration: any, sectionType: any) {
     handleTabChange,
     initializeSelectedTable,
     findTableKeyInConfig,
+
+    // Loading state for the UI overlay
+    tableSwitching,
   }
 }

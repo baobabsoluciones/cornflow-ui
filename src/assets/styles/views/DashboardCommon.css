@@ -1,0 +1,54 @@
+/* ==========================================================================
+   Shared layout for the 5 product dashboards (Seguimiento, Refinerías,
+   Stocks, Balance, KPIs).
+
+   The whole dashboard (`.view-container`) scrolls as one page. The title bar
+   (title on the left + a compact execution summary on the right) scrolls away
+   with the content; only the global filters row stays pinned at the top.
+
+   Height/overflow are pinned here (higher specificity than the global
+   `.view-container`) so the scroll behaviour is deterministic regardless of
+   which global `.view-container` rule (main.css vs SectionView.css) wins by
+   load order.
+   ========================================================================== */
+.dashboard-view.view-container {
+  /* Block flow (NOT flex): the dashboards were built for normal block layout,
+     where Vuetify v-row/v-col/v-card with `height:100%` children size to
+     content. A flex column collapses those cards. The container is still the
+     scroller, so sticky children below pin correctly. */
+  display: block;
+  height: calc(100vh - 40px);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Title bar: title (left) + execution summary (right), same row. Scrolls. */
+.dashboard-titlebar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px 28px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.dashboard-titlebar > .core-title-view {
+  flex: 1 1 360px;
+  min-width: 0;
+}
+.dashboard-titlebar > .exec-info {
+  flex: 0 1 auto;
+}
+
+/* Global filters stay pinned at the top while the page scrolls under them. */
+.dashboard-filters-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  background: var(--dash-page-bg);
+  padding: 6px 0;
+  margin-bottom: 12px;
+}
+.dashboard-filters-sticky > * {
+  margin-bottom: 0 !important;
+}

@@ -39,47 +39,7 @@
 
           <!-- Section items -->
           <template v-for="(item, itemIndex) in section.items" :key="itemIndex">
-            <v-list-item
-              :disabled="item.disabled"
-              :class="[
-                'core-dropdown-menu__item',
-                { 'core-dropdown-menu__item--disabled': item.disabled },
-              ]"
-              @click="handleItemClick(item)"
-            >
-              <!-- Left icon -->
-              <template v-if="item.icon" v-slot:prepend>
-                <v-icon
-                  :icon="item.icon"
-                  size="16"
-                  class="core-dropdown-menu__item-icon"
-                />
-              </template>
-
-              <!-- Item content -->
-              <v-list-item-title class="core-dropdown-menu__item-title">
-                {{ item.title }}
-              </v-list-item-title>
-
-              <!-- Right icon/content -->
-              <template
-                v-if="item.rightIcon || item.rightContent"
-                v-slot:append
-              >
-                <v-icon
-                  v-if="item.rightIcon"
-                  :icon="item.rightIcon"
-                  size="16"
-                  class="core-dropdown-menu__item-right-icon"
-                />
-                <span
-                  v-else-if="item.rightContent"
-                  class="core-dropdown-menu__item-right-content"
-                >
-                  {{ item.rightContent }}
-                </span>
-              </template>
-            </v-list-item>
+            <CoreDropdownMenuItem :item="item" @item-click="handleItemClick" />
           </template>
 
           <!-- Divider between sections (except last) -->
@@ -94,44 +54,7 @@
           v-for="(item, itemIndex) in itemsWithoutSections"
           :key="`item-${itemIndex}`"
         >
-          <v-list-item
-            :disabled="item.disabled"
-            :class="[
-              'core-dropdown-menu__item',
-              { 'core-dropdown-menu__item--disabled': item.disabled },
-            ]"
-            @click="handleItemClick(item)"
-          >
-            <!-- Left icon -->
-            <template v-if="item.icon" v-slot:prepend>
-              <v-icon
-                :icon="item.icon"
-                size="16"
-                class="core-dropdown-menu__item-icon"
-              />
-            </template>
-
-            <!-- Item content -->
-            <v-list-item-title class="core-dropdown-menu__item-title">
-              {{ item.title }}
-            </v-list-item-title>
-
-            <!-- Right icon/content -->
-            <template v-if="item.rightIcon || item.rightContent" v-slot:append>
-              <v-icon
-                v-if="item.rightIcon"
-                :icon="item.rightIcon"
-                size="16"
-                class="core-dropdown-menu__item-right-icon"
-              />
-              <span
-                v-else-if="item.rightContent"
-                class="core-dropdown-menu__item-right-content"
-              >
-                {{ item.rightContent }}
-              </span>
-            </template>
-          </v-list-item>
+          <CoreDropdownMenuItem :item="item" @item-click="handleItemClick" />
         </template>
 
         <!-- Custom content slot -->
@@ -143,6 +66,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import CoreDropdownMenuItem from '@/components/core/CoreDropdownMenuItem.vue'
 
 // Types
 interface DropdownItem {
@@ -244,47 +168,6 @@ const handleItemClick = (item: DropdownItem) => {
   padding: 8px 16px 4px 16px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-}
-
-.core-dropdown-menu__item {
-  padding: 8px 16px;
-  min-height: 36px;
-  transition: background-color 0.2s ease;
-}
-
-.core-dropdown-menu__item:hover {
-  background-color: var(--primary-light-variant);
-}
-
-.core-dropdown-menu__item--disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.core-dropdown-menu__item--disabled:hover {
-  background-color: transparent;
-}
-
-.core-dropdown-menu__item-title {
-  font-size: 14px;
-  color: var(--subtitle);
-  font-weight: 400;
-}
-
-.core-dropdown-menu__item-icon {
-  color: var(--subtitle);
-  margin-right: 12px;
-}
-
-.core-dropdown-menu__item-right-icon {
-  color: var(--subtitle);
-  margin-left: 8px;
-}
-
-.core-dropdown-menu__item-right-content {
-  color: var(--subtitle);
-  font-size: 12px;
-  margin-left: 8px;
 }
 
 .core-dropdown-menu__divider {
