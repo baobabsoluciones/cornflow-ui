@@ -1,4 +1,4 @@
-import { buildExcelBuffer, type ExcelBuildResult } from '@/utils/data_io'
+import { buildExcelBuffer, type ExcelBuildResult } from '@cornflow-ui/core/utils/data_io'
 import { InstanceCore } from './Instance'
 import { SolutionCore } from './Solution'
 

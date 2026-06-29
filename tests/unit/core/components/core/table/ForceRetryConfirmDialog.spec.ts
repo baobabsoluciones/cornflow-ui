@@ -4,7 +4,7 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { createI18n } from 'vue-i18n'
-import ForceRetryConfirmDialog from '@/components/core/table/ForceRetryConfirmDialog.vue'
+import ForceRetryConfirmDialog from '@cornflow-ui/core/components/core/table/ForceRetryConfirmDialog.vue'
 
 // Stub v-dialog so the card content renders inline (no jsdom overlay errors)
 const dialogStub = {

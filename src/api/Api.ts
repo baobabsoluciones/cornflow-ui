@@ -1,5 +1,5 @@
-import config from '@/config'
-import { RequestOptions } from '@/interfaces/RequestOptions'
+import config from '@cornflow-ui/core/config'
+import { RequestOptions } from '@cornflow-ui/core/interfaces/RequestOptions'
 
 class ApiClient {
   private baseUrl: string
@@ -128,7 +128,7 @@ class ApiClient {
   }
 
   private async getAuthService(): Promise<any> {
-    const getAuthService = await import('@/services/AuthServiceFactory')
+    const getAuthService = await import('@cornflow-ui/core/services/AuthServiceFactory')
     return await getAuthService.default()
   }
 
@@ -330,7 +330,7 @@ class ApiClient {
     // Use setTimeout to ensure this runs after the current execution context
     setTimeout(() => {
       // Import dynamically to avoid circular dependency
-      import('@/router').then(({ default: router }) => {
+      import('@cornflow-ui/core/router').then(({ default: router }) => {
         // Redirect to sign-in page with expired flag
         router.push({ path: '/sign-in', query: { expired: 'true' } })
       })

@@ -19,7 +19,7 @@ const mockAppConfig = {
 }
 
 // Mock the auth service factory
-vi.mock('@/services/AuthServiceFactory', () => ({
+vi.mock('@cornflow-ui/core/services/AuthServiceFactory', () => ({
   default: vi.fn().mockResolvedValue(mockAuthService),
 }))
 
@@ -36,48 +36,48 @@ const mockConfig = {
   useHashMode: false, // Add this property to prevent router initialization issues
 }
 
-vi.mock('@/config', () => ({
+vi.mock('@cornflow-ui/core/config', () => ({
   default: mockConfig,
 }))
 
 // Mock all Vue components
-vi.mock('@/views/IndexView.vue', () => ({
+vi.mock('@cornflow-ui/core/views/IndexView.vue', () => ({
   default: { name: 'IndexView', template: '<div>Index</div>' },
 }))
-vi.mock('@/views/LoginView.vue', () => ({
+vi.mock('@cornflow-ui/core/views/LoginView.vue', () => ({
   default: { name: 'LoginView', template: '<div>Login</div>' },
 }))
-vi.mock('@/views/ProjectExecutionView.vue', () => ({
+vi.mock('@cornflow-ui/core/views/ProjectExecutionView.vue', () => ({
   default: {
     name: 'ProjectExecutionView',
     template: '<div>ProjectExecution</div>',
   },
 }))
-vi.mock('@/views/HistoryExecutionView.vue', () => ({
+vi.mock('@cornflow-ui/core/views/HistoryExecutionView.vue', () => ({
   default: {
     name: 'HistoryExecutionView',
     template: '<div>HistoryExecution</div>',
   },
 }))
-vi.mock('@/views/DashboardView.vue', () => ({
+vi.mock('@cornflow-ui/core/views/DashboardView.vue', () => ({
   default: { name: 'DashboardView', template: '<div>Dashboard</div>' },
 }))
-vi.mock('@/views/InputDataView.vue', () => ({
+vi.mock('@cornflow-ui/core/views/InputDataView.vue', () => ({
   default: { name: 'InputDataView', template: '<div>InputData</div>' },
 }))
-vi.mock('@/views/OutputDataView.vue', () => ({
+vi.mock('@cornflow-ui/core/views/OutputDataView.vue', () => ({
   default: { name: 'OutputDataView', template: '<div>OutputData</div>' },
 }))
-vi.mock('@/views/UserSettingsView.vue', () => ({
+vi.mock('@cornflow-ui/core/views/UserSettingsView.vue', () => ({
   default: { name: 'UserSettingsView', template: '<div>UserSettings</div>' },
 }))
 
 // Mock SectionView component used in configuration routes
-vi.mock('@/views/SectionView.vue', () => ({
+vi.mock('@cornflow-ui/core/views/SectionView.vue', () => ({
   default: { name: 'SectionView', template: '<div>Section</div>' },
 }))
 
-vi.mock('@/views/ConfigurationSectionSubsectionView.vue', () => ({
+vi.mock('@cornflow-ui/core/views/ConfigurationSectionSubsectionView.vue', () => ({
   default: {
     name: 'ConfigurationSectionSubsectionView',
     template: '<div>ConfigurationSectionSubsection</div>',
@@ -85,7 +85,7 @@ vi.mock('@/views/ConfigurationSectionSubsectionView.vue', () => ({
 }))
 
 // Mock API service to prevent initialization delays
-vi.mock('@/api/Api', () => ({
+vi.mock('@cornflow-ui/core/api/Api', () => ({
   default: {
     getInstance: vi.fn().mockReturnValue({
       get: vi.fn(),
@@ -97,7 +97,7 @@ vi.mock('@/api/Api', () => ({
 }))
 
 // Mock ConfigService to prevent URL parsing errors
-vi.mock('@/services/ConfigService', () => ({
+vi.mock('@cornflow-ui/core/services/ConfigService', () => ({
   ConfigService: {
     getInstance: vi.fn().mockReturnValue({
       loadConfig: vi.fn().mockResolvedValue({}),
@@ -107,7 +107,7 @@ vi.mock('@/services/ConfigService', () => ({
 }))
 
 // Mock general store to prevent reactive initialization and async operations
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: vi.fn().mockReturnValue({
     getSchemaConfig: { name: 'test-schema' },
     getConfigurations: { config1: 'value1' },
@@ -150,7 +150,7 @@ describe('Router Navigation Guards', () => {
       // Set up authentication state
       mockAuthService.isAuthenticated.mockReturnValue(false)
 
-      const { default: router } = await import('@/router/index')
+      const { default: router } = await import('@cornflow-ui/core/router/index')
 
       const mockNext = vi.fn()
       const mockTo = { path: '/dashboard', name: 'Dashboard' }
@@ -183,7 +183,7 @@ describe('Router Navigation Guards', () => {
       // Set up authentication state
       mockAuthService.isAuthenticated.mockReturnValue(true)
 
-      const { default: router } = await import('@/router/index')
+      const { default: router } = await import('@cornflow-ui/core/router/index')
 
       const mockNext = vi.fn()
       const mockTo = { path: '/sign-in', name: 'Sign In' }
@@ -213,7 +213,7 @@ describe('Router Navigation Guards', () => {
       // Set up authentication state
       mockAuthService.isAuthenticated.mockReturnValue(true)
 
-      const { default: router } = await import('@/router/index')
+      const { default: router } = await import('@cornflow-ui/core/router/index')
 
       const mockNext = vi.fn()
       const mockTo = { path: '/', name: 'Home' }
@@ -242,7 +242,7 @@ describe('Router Navigation Guards', () => {
       // Set up authentication state
       mockAuthService.isAuthenticated.mockReturnValue(true)
 
-      const { default: router } = await import('@/router/index')
+      const { default: router } = await import('@cornflow-ui/core/router/index')
 
       const mockNext = vi.fn()
       const mockTo = { path: '/dashboard', name: 'Dashboard' }
@@ -274,7 +274,7 @@ describe('Router Navigation Guards', () => {
         throw new Error('Auth service error')
       })
 
-      const { default: router } = await import('@/router/index')
+      const { default: router } = await import('@cornflow-ui/core/router/index')
 
       const mockNext = vi.fn()
       const mockTo = { path: '/dashboard', name: 'Dashboard' }
@@ -308,7 +308,7 @@ describe('Router Navigation Guards', () => {
     test('should redirect unauthenticated user to sign-in', async () => {
       mockAuthService.isAuthenticated.mockReturnValue(false)
 
-      const { default: router } = await import('@/router/index')
+      const { default: router } = await import('@cornflow-ui/core/router/index')
 
       const mockNext = vi.fn()
       const mockTo = { path: '/', name: 'Home' }
@@ -340,7 +340,7 @@ describe('Router Navigation Guards', () => {
     test('should allow authenticated user to proceed', async () => {
       mockAuthService.isAuthenticated.mockReturnValue(true)
 
-      const { default: router } = await import('@/router/index')
+      const { default: router } = await import('@cornflow-ui/core/router/index')
 
       const mockNext = vi.fn()
       const mockTo = { path: '/', name: 'Home' }
@@ -369,12 +369,12 @@ describe('Router Navigation Guards', () => {
 
     test('should handle beforeEnter guard errors', async () => {
       // Mock auth service factory to throw error
-      const mockGetAuthService = await import('@/services/AuthServiceFactory')
+      const mockGetAuthService = await import('@cornflow-ui/core/services/AuthServiceFactory')
       vi.mocked(mockGetAuthService.default).mockRejectedValue(
         new Error('Service initialization error'),
       )
 
-      const { default: router } = await import('@/router/index')
+      const { default: router } = await import('@cornflow-ui/core/router/index')
 
       const mockNext = vi.fn()
       const mockTo = { path: '/', name: 'Home' }
@@ -415,7 +415,7 @@ describe('Router Navigation Guards', () => {
         },
       })
 
-      const { default: router } = await import('@/router/index')
+      const { default: router } = await import('@cornflow-ui/core/router/index')
 
       expect(router).toBeDefined()
       expect(router.options.history).toBeDefined()
@@ -433,7 +433,7 @@ describe('Router Navigation Guards', () => {
         },
       })
 
-      const { default: router } = await import('@/router/index')
+      const { default: router } = await import('@cornflow-ui/core/router/index')
 
       expect(router).toBeDefined()
       expect(router.options.history).toBeDefined()
@@ -453,7 +453,7 @@ describe('Router Navigation Guards', () => {
 
       mockAppConfig.getDashboardRoutes.mockReturnValue(customDashboardRoutes)
 
-      const { default: router } = await import('@/router/index')
+      const { default: router } = await import('@cornflow-ui/core/router/index')
 
       const routes = router.getRoutes()
       const rootRoute = routes.find((route) => route.path === '/')
@@ -485,7 +485,7 @@ describe('Router Navigation Guards', () => {
         customInstanceDashboardRoutes,
       )
 
-      const { default: router } = await import('@/router/index')
+      const { default: router } = await import('@cornflow-ui/core/router/index')
 
       const routes = router.getRoutes()
       const rootRoute = routes.find((route) => route.path === '/')
@@ -503,7 +503,7 @@ describe('Router Navigation Guards', () => {
     test('should handle empty dashboard routes array', async () => {
       mockAppConfig.getDashboardRoutes.mockReturnValue([])
 
-      const { default: router } = await import('@/router/index')
+      const { default: router } = await import('@cornflow-ui/core/router/index')
 
       const routes = router.getRoutes()
       const rootRoute = routes.find((route) => route.path === '/')
@@ -518,7 +518,7 @@ describe('Router Navigation Guards', () => {
 
       // Re-import to get fresh instance with new config
       vi.resetModules()
-      const { default: router } = await import('@/router/index')
+      const { default: router } = await import('@cornflow-ui/core/router/index')
 
       const routes = router.getRoutes()
       const rootRoute = routes.find((route) => route.path === '/')
@@ -533,7 +533,7 @@ describe('Router Navigation Guards', () => {
 
       // Re-import to get fresh instance with new config
       vi.resetModules()
-      const { default: router } = await import('@/router/index')
+      const { default: router } = await import('@cornflow-ui/core/router/index')
 
       const routes = router.getRoutes()
       const rootRoute = routes.find((route) => route.path === '/')
@@ -547,14 +547,14 @@ describe('Router Navigation Guards', () => {
 
   describe('Auth service initialization', () => {
     test('should initialize auth service only once', async () => {
-      const mockGetAuthService = await import('@/services/AuthServiceFactory')
+      const mockGetAuthService = await import('@cornflow-ui/core/services/AuthServiceFactory')
 
       // Reset the module to ensure clean state
       vi.resetModules()
 
       // Import router multiple times
-      await import('@/router/index')
-      await import('@/router/index')
+      await import('@cornflow-ui/core/router/index')
+      await import('@cornflow-ui/core/router/index')
 
       // Auth service factory should be called when guards are executed
       const mockNext = vi.fn()
@@ -567,13 +567,13 @@ describe('Router Navigation Guards', () => {
     })
 
     test('should handle auth service initialization failure', async () => {
-      const mockGetAuthService = await import('@/services/AuthServiceFactory')
+      const mockGetAuthService = await import('@cornflow-ui/core/services/AuthServiceFactory')
       vi.mocked(mockGetAuthService.default).mockRejectedValue(
         new Error('Initialization failed'),
       )
 
       vi.resetModules()
-      const { default: router } = await import('@/router/index')
+      const { default: router } = await import('@cornflow-ui/core/router/index')
 
       const mockNext = vi.fn()
       const mockTo = { path: '/dashboard', name: 'Dashboard' }

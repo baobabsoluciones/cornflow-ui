@@ -35,7 +35,7 @@ describe('plugins/vuetify', () => {
 
   test('should create vuetify instance with correct configuration', async () => {
     const { createVuetify } = await import('vuetify')
-    const vuetifyInstance = await import('@/plugins/vuetify')
+    const vuetifyInstance = await import('@cornflow-ui/core/plugins/vuetify')
 
     expect(createVuetify).toHaveBeenCalledTimes(1)
     expect(createVuetify).toHaveBeenCalledWith({
@@ -58,7 +58,7 @@ describe('plugins/vuetify', () => {
   })
 
   test('should include lab components', async () => {
-    const vuetifyInstance = await import('@/plugins/vuetify')
+    const vuetifyInstance = await import('@cornflow-ui/core/plugins/vuetify')
 
     // Verify that the vuetify instance exists and has expected structure
     expect(vuetifyInstance.default).toBeDefined()
@@ -66,7 +66,7 @@ describe('plugins/vuetify', () => {
   })
 
   test('should have correct theme configuration', async () => {
-    const vuetifyInstance = await import('@/plugins/vuetify')
+    const vuetifyInstance = await import('@cornflow-ui/core/plugins/vuetify')
 
     // Verify that the vuetify instance exists
     expect(vuetifyInstance.default).toBeDefined()
@@ -74,7 +74,7 @@ describe('plugins/vuetify', () => {
   })
 
   test('should export a vuetify instance', async () => {
-    const vuetifyInstance = await import('@/plugins/vuetify')
+    const vuetifyInstance = await import('@cornflow-ui/core/plugins/vuetify')
     
     expect(vuetifyInstance.default).toBeDefined()
     expect(typeof vuetifyInstance.default).toBe('object')
@@ -89,7 +89,7 @@ describe('plugins/vuetify', () => {
     await expect(async () => {
       // Clear the module cache to trigger re-creation
       vi.resetModules()
-      await import('@/plugins/vuetify')
+      await import('@cornflow-ui/core/plugins/vuetify')
     }).rejects.toThrow('Vuetify creation failed')
   })
 })

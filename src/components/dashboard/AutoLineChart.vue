@@ -37,8 +37,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import VueApexCharts from 'vue3-apexcharts'
-import { useAutoChart } from '@/composables/useAutoChart'
-import '@/assets/styles/dashboard.css'
+import { useAutoChart } from '@cornflow-ui/core/composables/useAutoChart'
+import '@cornflow-ui/core/assets/styles/dashboard.css'
 
 const ApexChart = VueApexCharts
 

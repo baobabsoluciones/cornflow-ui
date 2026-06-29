@@ -166,22 +166,22 @@
 <script lang="ts">
 import { defineComponent, inject } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useGeneralStore } from '@/stores/general'
-import getAuthService from '@/services/AuthServiceFactory'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import getAuthService from '@cornflow-ui/core/services/AuthServiceFactory'
 import appConfig from '@/app/config'
-import config from '@/config'
-import { mainLogo, fullLogo } from '@/utils/assets'
+import config from '@cornflow-ui/core/config'
+import { mainLogo, fullLogo } from '@cornflow-ui/core/utils/assets'
 import {
   getNavigationItemsFromConfig,
   getMasterDataNavigationWithSections,
   filterValidationTablesWithData,
   enrichConfigWithChecksData,
-} from '@/services/FrontendAutomationService'
-import { applyKpiDisplayMode } from '@/utils/kpiTableUtils'
-import { resolveTitleWithLocale } from '@/utils/i18nUtils'
-import { useSectionTitles } from '@/composables/useSectionTitles'
+} from '@cornflow-ui/core/services/FrontendAutomationService'
+import { applyKpiDisplayMode } from '@cornflow-ui/core/utils/kpiTableUtils'
+import { resolveTitleWithLocale } from '@cornflow-ui/core/utils/i18nUtils'
+import { useSectionTitles } from '@cornflow-ui/core/composables/useSectionTitles'
 import { isViewAllowed } from '@/app/rolesConfig'
-import { getPremiumDrawerSections } from '@/plugins/extensions'
+import { getPremiumDrawerSections } from '@cornflow-ui/core/plugins/extensions'
 
 export default defineComponent({
   name: 'CoreAppDrawer',

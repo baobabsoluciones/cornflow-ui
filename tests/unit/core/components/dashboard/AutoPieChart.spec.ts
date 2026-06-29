@@ -8,7 +8,7 @@ vi.mock('vue3-apexcharts', () => ({
   },
 }))
 
-import AutoPieChart from '@/components/dashboard/AutoPieChart.vue'
+import AutoPieChart from '@cornflow-ui/core/components/dashboard/AutoPieChart.vue'
 import { mountDashboard } from './dashboardTestUtils'
 
 let wrapper: any

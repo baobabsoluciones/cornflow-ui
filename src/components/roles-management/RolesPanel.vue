@@ -134,8 +134,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRoleMeta } from '@/composables/roles-management/useRoleMeta'
-import type { Role } from '@/composables/roles-management/types'
+import { useRoleMeta } from '@cornflow-ui/core/composables/roles-management/useRoleMeta'
+import type { Role } from '@cornflow-ui/core/composables/roles-management/types'
 
 interface Props {
   roles: Role[]
@@ -343,4 +343,4 @@ const selectedRolePermissions = computed<string[]>(() =>
   border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 </style>
-<style scoped src="@/assets/styles/roles-management/panel-shared.css"></style>
+<style scoped src="@cornflow-ui/core/assets/styles/roles-management/panel-shared.css"></style>

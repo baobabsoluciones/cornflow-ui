@@ -6,7 +6,7 @@ import {
   normalizeTableNameForLookup,
   resolveEtlParameterSwitchKey,
   turnOffEtlParameterFromDbSwitchAfterManualValueEdit,
-} from '@/utils/etlParameterSwitch'
+} from '@cornflow-ui/core/utils/etlParameterSwitch'
 
 describe('resolveEtlParamKey', () => {
   test('vertical parameter tables key by tableKey.rowId', () => {

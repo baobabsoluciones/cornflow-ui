@@ -1,4 +1,4 @@
-import client from '@/api/Api'
+import client from '@cornflow-ui/core/api/Api'
 
 export interface Role {
   id: number

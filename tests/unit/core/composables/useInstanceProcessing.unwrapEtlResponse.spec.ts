@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { unwrapEtlResponse } from '@/composables/useInstanceProcessing'
+import { unwrapEtlResponse } from '@cornflow-ui/core/composables/useInstanceProcessing'
 
 describe('unwrapEtlResponse', () => {
   test('unwraps { data, warning: string } envelope', () => {

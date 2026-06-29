@@ -7,7 +7,7 @@
 
 import { ref, computed, inject } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useGeneralStore } from '@/stores/general'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import type { Role, UserRow } from './types'
 
 export function useRolesManagement() {

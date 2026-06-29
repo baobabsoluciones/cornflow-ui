@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import getUserFullName from '@/utils/user'
+import getUserFullName from '@cornflow-ui/core/utils/user'
 
 describe('getUserFullName', () => {
   test('returns empty string when both firstName and lastName are null', () => {

@@ -2,7 +2,7 @@ import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
 import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
-import CreateExecutionCheckData from '@/components/project-execution/CreateExecutionCheckData.vue'
+import CreateExecutionCheckData from '@cornflow-ui/core/components/project-execution/CreateExecutionCheckData.vue'
 
 // Mock Pinia store
 const mockGeneralStore = {
@@ -10,7 +10,7 @@ const mockGeneralStore = {
   getInstanceDataChecksById: vi.fn(),
 }
 
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: vi.fn(() => mockGeneralStore),
 }))
 

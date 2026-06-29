@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
-import { useTableConfig } from '@/composables/project-execution-table/useTableConfig'
+import { useTableConfig } from '@cornflow-ui/core/composables/project-execution-table/useTableConfig'
 
 // Mock vue-i18n
 const mockT = vi.fn((key: string) => {
@@ -43,7 +43,7 @@ const mockGeneralStore = {
   }
 }
 
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: () => mockGeneralStore
 }))
 

@@ -12,7 +12,7 @@ vi.mock('vue-i18n', () => ({
 }))
 
 let storeState: any
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: () => storeState,
 }))
 
@@ -29,7 +29,7 @@ const mockFilterValidationTables = vi.fn((config: any) => ({
   __filtered: true,
 }))
 const mockEnrichConfig = vi.fn((config: any) => ({ ...config, __enriched: true }))
-vi.mock('@/services/FrontendAutomationService', () => ({
+vi.mock('@cornflow-ui/core/services/FrontendAutomationService', () => ({
   getSectionType: (p: string) => mockGetSectionType(p),
   getConfigurationBySection: (c: any, s: string) =>
     mockGetConfigurationBySection(c, s),
@@ -40,11 +40,11 @@ vi.mock('@/services/FrontendAutomationService', () => ({
 }))
 
 const mockApplyKpi = vi.fn((config: any) => ({ ...config, __kpi: true }))
-vi.mock('@/utils/kpiTableUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/kpiTableUtils', () => ({
   applyKpiDisplayMode: (...args: any[]) => mockApplyKpi(...args),
 }))
 
-import { useSectionConfiguration } from '@/composables/section-view/useSectionConfiguration'
+import { useSectionConfiguration } from '@cornflow-ui/core/composables/section-view/useSectionConfiguration'
 
 beforeEach(() => {
   vi.clearAllMocks()

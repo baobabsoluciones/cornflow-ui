@@ -1,11 +1,11 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
-import RoleRepository from '@/repositories/RoleRepository'
+import RoleRepository from '@cornflow-ui/core/repositories/RoleRepository'
 
-vi.mock('@/api/Api', () => ({
+vi.mock('@cornflow-ui/core/api/Api', () => ({
   default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), remove: vi.fn() },
 }))
 
-import client from '@/api/Api'
+import client from '@cornflow-ui/core/api/Api'
 
 const mockClient = client as unknown as {
   get: ReturnType<typeof vi.fn>

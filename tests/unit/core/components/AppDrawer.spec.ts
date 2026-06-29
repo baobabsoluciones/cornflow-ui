@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
-import AppDrawer from '@/components/AppDrawer.vue'
+import AppDrawer from '@cornflow-ui/core/components/AppDrawer.vue'
 
 // Properly hoist mock definitions
 const {
@@ -127,11 +127,11 @@ const i18n = createI18n({
   },
 })
 
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: vi.fn(() => mockStore),
 }))
 
-vi.mock('@/services/AuthServiceFactory', () => ({
+vi.mock('@cornflow-ui/core/services/AuthServiceFactory', () => ({
   default: vi.fn().mockResolvedValue(mockAuth),
 }))
 
@@ -605,7 +605,7 @@ describe('AppDrawer.vue', () => {
 
   describe('Auth Service Integration', () => {
     test('should initialize auth service on created', async () => {
-      const getAuthService = await import('@/services/AuthServiceFactory')
+      const getAuthService = await import('@cornflow-ui/core/services/AuthServiceFactory')
 
       wrapper = await createWrapper()
       await wrapper.vm.$nextTick()

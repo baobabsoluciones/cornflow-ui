@@ -33,10 +33,10 @@ import {
   isViewAllowed as coreIsViewAllowed,
   getRoleDefaultView as coreGetRoleDefaultView,
   isEndpointAllowed as coreIsEndpointAllowed,
-} from '@/services/rolePermissions'
-import type { RolePermissions } from '@/services/rolePermissions'
+} from '@cornflow-ui/core/services/rolePermissions'
+import type { RolePermissions } from '@cornflow-ui/core/services/rolePermissions'
 
-export type { RolePermissions } from '@/services/rolePermissions'
+export type { RolePermissions } from '@cornflow-ui/core/services/rolePermissions'
 
 /** Map of role name → forbidden views & endpoints. */
 const rolesConfig: Record<string, RolePermissions> = {}

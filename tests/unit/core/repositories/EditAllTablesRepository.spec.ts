@@ -5,9 +5,9 @@ const { postMock, offersMock } = vi.hoisted(() => ({
   offersMock: vi.fn(),
 }))
 
-vi.mock('@/api/Api', () => ({ default: { post: postMock } }))
-vi.mock('@/stores/general', () => ({ useGeneralStore: () => ({}) }))
-vi.mock('@/repositories/TableRepository', () => {
+vi.mock('@cornflow-ui/core/api/Api', () => ({ default: { post: postMock } }))
+vi.mock('@cornflow-ui/core/stores/general', () => ({ useGeneralStore: () => ({}) }))
+vi.mock('@cornflow-ui/core/repositories/TableRepository', () => {
   class ForceRetryOfferError extends Error {
     constructor(
       public displayMessage: string,
@@ -28,8 +28,8 @@ import {
   buildEditAllTablesErrorMessage,
   postEditAllTables,
   mapBulkUiOperationToEditAllApi,
-} from '@/repositories/EditAllTablesRepository'
-import { ForceRetryOfferError } from '@/repositories/TableRepository'
+} from '@cornflow-ui/core/repositories/EditAllTablesRepository'
+import { ForceRetryOfferError } from '@cornflow-ui/core/repositories/TableRepository'
 
 beforeEach(() => {
   postMock.mockReset()

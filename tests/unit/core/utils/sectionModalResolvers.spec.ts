@@ -4,7 +4,7 @@ import {
   resolveCurrentModalKey,
   resolveRowsDataForKey,
   resolveTableHeadersForKey,
-} from '@/utils/sectionModalResolvers'
+} from '@cornflow-ui/core/utils/sectionModalResolvers'
 
 describe('normalizeTableKey', () => {
   test('lowercases and converts hyphens to underscores', () => {

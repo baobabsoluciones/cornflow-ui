@@ -1,14 +1,14 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useGeneralStore } from '@/stores/general'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import {
   getSectionType,
   getConfigurationBySection,
   filterValidationTablesWithData,
   enrichConfigWithChecksData,
-} from '@/services/FrontendAutomationService'
-import { applyKpiDisplayMode } from '@/utils/kpiTableUtils'
+} from '@cornflow-ui/core/services/FrontendAutomationService'
+import { applyKpiDisplayMode } from '@cornflow-ui/core/utils/kpiTableUtils'
 
 // Types
 export interface TableConfig {

@@ -2,7 +2,7 @@ import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import { createI18n } from 'vue-i18n'
-import MasterTableMatchCard from '@/components/project-execution/MasterTableMatchCard.vue'
+import MasterTableMatchCard from '@cornflow-ui/core/components/project-execution/MasterTableMatchCard.vue'
 
 const passthrough = (name: string) => ({
   name,
@@ -26,7 +26,7 @@ const VBtnStub = {
 }
 
 // Stub the comparison modal (it pulls in heavy table machinery / overlays).
-vi.mock('@/components/project-execution/DataComparisonModal.vue', () => ({
+vi.mock('@cornflow-ui/core/components/project-execution/DataComparisonModal.vue', () => ({
   default: {
     name: 'DataComparisonModal',
     template: '<div data-testid="data-comparison-modal" />',

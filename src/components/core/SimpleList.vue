@@ -65,9 +65,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import CoreSearchInput from '@/components/core/table/CoreSearchInput.vue'
-import CoreDropdownMenu from '@/components/core/CoreDropdownMenu.vue'
-import useFilters from '@/utils/useFilters'
+import CoreSearchInput from '@cornflow-ui/core/components/core/table/CoreSearchInput.vue'
+import CoreDropdownMenu from '@cornflow-ui/core/components/core/CoreDropdownMenu.vue'
+import useFilters from '@cornflow-ui/core/utils/useFilters'
 
 interface Props {
   items: string[]
@@ -146,4 +146,4 @@ const handleTableActionClick = (item: any) => {
 }
 </script>
 
-<style src="@/assets/styles/components/core/SimpleList.css"></style>
+<style src="@cornflow-ui/core/assets/styles/components/core/SimpleList.css"></style>

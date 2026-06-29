@@ -2,7 +2,7 @@ import { describe, test, expect, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import { createI18n } from 'vue-i18n'
-import MetadataTableSwitch from '@/components/project-execution/MetadataTableSwitch.vue'
+import MetadataTableSwitch from '@cornflow-ui/core/components/project-execution/MetadataTableSwitch.vue'
 
 const VSwitchStub = {
   name: 'VSwitch',

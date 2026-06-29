@@ -1,7 +1,7 @@
 import { describe, test, expect, vi } from 'vitest'
 
 const { localeState } = vi.hoisted(() => ({ localeState: { value: 'en' } }))
-vi.mock('@/plugins/i18n', () => ({ currentLocale: localeState }))
+vi.mock('@cornflow-ui/core/plugins/i18n', () => ({ currentLocale: localeState }))
 
 import {
   resolveTitle,
@@ -11,7 +11,7 @@ import {
   getApiErrorMessageFromContent,
   getMessageFromResponseContentOrNull,
   isMultilingualTitle,
-} from '@/utils/i18nUtils'
+} from '@cornflow-ui/core/utils/i18nUtils'
 
 describe('i18nUtils - resolveTitle (no Vue instance -> defaults to en)', () => {
   test('returns plain strings as-is', () => {

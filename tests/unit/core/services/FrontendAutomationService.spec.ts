@@ -33,8 +33,8 @@ import {
   canUserAccessTable,
   filterTablesByUserSchemas,
   filterConfigurationsByUserSchemas,
-} from '@/services/FrontendAutomationService'
-import { TableOperation } from '@/types/table'
+} from '@cornflow-ui/core/services/FrontendAutomationService'
+import { TableOperation } from '@cornflow-ui/core/types/table'
 
 // ---------------------------------------------------------------------------
 // toUrlFriendly

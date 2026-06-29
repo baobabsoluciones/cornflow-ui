@@ -305,9 +305,9 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import CoreButton from '@/components/core/CoreButton.vue'
-import { useFormFields } from '@/composables/core-table/useFormFields'
-import type { FieldConfig } from '@/composables/core-table/useFormFields'
+import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
+import { useFormFields } from '@cornflow-ui/core/composables/core-table/useFormFields'
+import type { FieldConfig } from '@cornflow-ui/core/composables/core-table/useFormFields'
 
 // Composables
 const { t } = useI18n()
@@ -523,6 +523,6 @@ watch(
 </script>
 
 <style>
-@import '@/assets/styles/components/core/CoreModalBase.css';
-@import '@/assets/styles/components/core/CoreModal.css';
+@import '@cornflow-ui/core/assets/styles/components/core/CoreModalBase.css';
+@import '@cornflow-ui/core/assets/styles/components/core/CoreModal.css';
 </style>

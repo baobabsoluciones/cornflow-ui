@@ -6,7 +6,7 @@
  * either true (valid) or a translated error message string.
  *
  * Usage:
- * import { createValidationRules } from '@/utils/validationRules'
+ * import { createValidationRules } from '@cornflow-ui/core/utils/validationRules'
  *
  * const rules = createValidationRules(t) // t is the i18n translate function
  * const emailRules = [rules.required(), rules.email()]

@@ -1,6 +1,6 @@
 import { describe, test, expect, vi } from 'vitest'
 
-vi.mock('@/utils/schemaUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/schemaUtils', () => ({
   buildLowercasedKeyMap: (row: any) =>
     new Map(Object.entries(row || {}).map(([k, v]) => [k.toLowerCase(), v])),
   resolveComparableLowercasedKeys: ({ row1, row2, excludedKeys }: any) => {
@@ -17,7 +17,7 @@ import {
   normalizeNumberValue,
   normalizeValue,
   areRowsDifferent,
-} from '@/utils/rowComparison'
+} from '@cornflow-ui/core/utils/rowComparison'
 
 describe('normalizeStringValue', () => {
   test('blank -> null', () => {

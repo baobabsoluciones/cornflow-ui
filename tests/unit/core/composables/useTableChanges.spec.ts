@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach } from 'vitest'
-import { useTableChanges } from '@/composables/useTableChanges'
+import { useTableChanges } from '@cornflow-ui/core/composables/useTableChanges'
 
 describe('useTableChanges', () => {
   let tableChanges: ReturnType<typeof useTableChanges>

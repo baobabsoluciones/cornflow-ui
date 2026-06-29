@@ -1,6 +1,6 @@
 import { describe, test, expect, vi } from 'vitest'
 
-vi.mock('@/utils/schemaUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/schemaUtils', () => ({
   normalizeTableNameForEtlLookup: (s: string) => String(s).toLowerCase().replace(/[\s-]/g, '_'),
 }))
 
@@ -9,7 +9,7 @@ import {
   resolveInstanceDataKeyForChangeKey,
   collectEtlParameterKeysForTable,
   collectEditedEtlParameterKeysFromPendingChanges,
-} from '@/utils/etlParameterCollection'
+} from '@cornflow-ui/core/utils/etlParameterCollection'
 
 describe('resolveInstanceDataKeyForChangeKey', () => {
   test('matches a key by normalized name, skipping meta keys', () => {

@@ -107,4 +107,4 @@ const handleClick = () => {
 }
 </script>
 
-<style src="@/assets/styles/components/core/CoreCheckbox.css"></style>
+<style src="@cornflow-ui/core/assets/styles/components/core/CoreCheckbox.css"></style>

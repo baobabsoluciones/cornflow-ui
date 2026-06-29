@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
-import { AuthServiceFactory } from '@/services/AuthServiceFactory'
-import getAuthService, { getAllAuthServices, getSpecificAuthService, isAuthServiceAvailable } from '@/services/AuthServiceFactory'
+import { AuthServiceFactory } from '@cornflow-ui/core/services/AuthServiceFactory'
+import getAuthService, { getAllAuthServices, getSpecificAuthService, isAuthServiceAvailable } from '@cornflow-ui/core/services/AuthServiceFactory'
 
 // Mock dependencies
 const mockConfig = vi.hoisted(() => ({
@@ -16,7 +16,7 @@ const mockConfig = vi.hoisted(() => ({
   initConfig: vi.fn().mockResolvedValue(undefined)
 }))
 
-vi.mock('@/config', () => ({
+vi.mock('@cornflow-ui/core/config', () => ({
   default: mockConfig
 }))
 
@@ -31,7 +31,7 @@ const mockCornflowAuthService = vi.hoisted(() => ({
   refreshToken: vi.fn()
 }))
 
-vi.mock('@/services/AuthService', () => ({
+vi.mock('@cornflow-ui/core/services/AuthService', () => ({
   default: mockCornflowAuthService
 }))
 
@@ -55,7 +55,7 @@ const { mockOpenIDAuthService, createOpenIDAuthInstance } = vi.hoisted(() => {
   return { mockOpenIDAuthService, createOpenIDAuthInstance }
 })
 
-vi.mock('@/services/OpenIDAuthService', () => ({
+vi.mock('@cornflow-ui/core/services/OpenIDAuthService', () => ({
   OpenIDAuthService: mockOpenIDAuthService
 }))
 

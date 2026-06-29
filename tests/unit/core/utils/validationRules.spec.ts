@@ -5,7 +5,7 @@ import {
   validateField,
   validateForm,
   isFormValid,
-} from '@/utils/validationRules'
+} from '@cornflow-ui/core/utils/validationRules'
 
 // Simple i18n stub: echoes the key plus serialized params so we can assert branches.
 const t = (key: string, params?: any): string =>

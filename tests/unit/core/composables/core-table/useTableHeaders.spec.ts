@@ -3,11 +3,11 @@ import { ref } from 'vue'
 
 // Control what getListResponseRowProperties returns per test.
 const ctrl = vi.hoisted(() => ({ rowSchema: null as any }))
-vi.mock('@/utils/schemaUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/schemaUtils', () => ({
   getListResponseRowProperties: () => ctrl.rowSchema,
 }))
 
-import { useTableHeaders } from '@/composables/core-table/useTableHeaders'
+import { useTableHeaders } from '@cornflow-ui/core/composables/core-table/useTableHeaders'
 
 const $t = (key: string) => key
 const getColumnAlignment = (type: string) => (type === 'boolean' ? 'center' : 'start')

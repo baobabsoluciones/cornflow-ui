@@ -4,7 +4,7 @@ import { ref, nextTick } from 'vue'
 import { createVuetify } from 'vuetify'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
-import CoreTable from '@/components/core/table/CoreTable.vue'
+import CoreTable from '@cornflow-ui/core/components/core/table/CoreTable.vue'
 
 // --- useFormFields mock -----------------------------------------------------
 // The component delegates field-type resolution, formatting and selector
@@ -26,7 +26,7 @@ const updateDependentFieldsMock = vi.fn(
   (_field: string, _value: any, data: any) => data,
 )
 
-vi.mock('@/composables/core-table/useFormFields', () => ({
+vi.mock('@cornflow-ui/core/composables/core-table/useFormFields', () => ({
   useFormFields: () => ({
     prepareFormDataForSubmit: vi.fn((data: any) => data),
     getChoicesOptions: vi.fn(() => formFieldsState.choicesOptions),
@@ -45,7 +45,7 @@ vi.mock('@/composables/core-table/useFormFields', () => ({
 // Avoid ResizeObserver / window listeners noise in jsdom; expose a settable
 // tableContainer ref so DOM-driven helpers can be exercised.
 const tableContainerRef = ref<HTMLElement | null>(null)
-vi.mock('@/composables/core-table/useTableHeight', () => ({
+vi.mock('@cornflow-ui/core/composables/core-table/useTableHeight', () => ({
   useTableHeight: () => ({
     tableHeight: ref(400),
     tableContainer: tableContainerRef,

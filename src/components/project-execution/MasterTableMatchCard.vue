@@ -168,7 +168,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import type { TableMatch } from '@/composables/project-execution/useMasterTableMatch'
+import type { TableMatch } from '@cornflow-ui/core/composables/project-execution/useMasterTableMatch'
 import DataComparisonModal from './DataComparisonModal.vue'
 
 interface Props {

@@ -3,7 +3,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import { createI18n } from 'vue-i18n'
 import { nextTick } from 'vue'
-import CreateExecutionSolve from '@/components/project-execution/CreateExecutionSolve.vue'
+import CreateExecutionSolve from '@cornflow-ui/core/components/project-execution/CreateExecutionSolve.vue'
 
 // Mock Solution model using vi.hoisted to avoid hoisting issues
 const { mockSolutionInstance, MockSolution } = vi.hoisted(() => {
@@ -71,16 +71,16 @@ const mockConfig = {
   isDeveloperMode: true,
 }
 
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: vi.fn(() => mockGeneralStore),
 }))
 
-vi.mock('@/config', () => ({
+vi.mock('@cornflow-ui/core/config', () => ({
   default: mockConfig,
 }))
 
 // Mock file constants
-vi.mock('@/utils/fileConstants', () => ({
+vi.mock('@cornflow-ui/core/utils/fileConstants', () => ({
   FILE_EXTENSIONS: {
     XLSX: 'xlsx',
     JSON: 'json',
@@ -94,7 +94,7 @@ vi.mock('@/utils/fileConstants', () => ({
 }))
 
 // Mock error formatting utilities
-vi.mock('@/utils/errorFormatting', () => ({
+vi.mock('@cornflow-ui/core/utils/errorFormatting', () => ({
   formatValidationErrors: vi.fn((errors) =>
     errors.map((e) => e.message).join(', '),
   ),

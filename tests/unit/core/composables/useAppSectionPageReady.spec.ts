@@ -5,7 +5,7 @@ import { mount } from '@vue/test-utils'
 import {
   APP_SECTION_PAGE_READY_KEY,
   useAppSectionPageReady,
-} from '@/composables/useAppSectionPageReady'
+} from '@cornflow-ui/core/composables/useAppSectionPageReady'
 
 vi.mock('@/app/config', () => ({
   default: {

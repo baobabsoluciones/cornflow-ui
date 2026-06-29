@@ -50,9 +50,9 @@ const FakeRepo = vi.hoisted(() => {
 })
 ;(globalThis as any).__repoCtrl = repoCtrl
 
-vi.mock('@/repositories/TableRepository', () => ({ default: FakeRepo }))
+vi.mock('@cornflow-ui/core/repositories/TableRepository', () => ({ default: FakeRepo }))
 
-vi.mock('@/types/table', () => ({
+vi.mock('@cornflow-ui/core/types/table', () => ({
   TableOperation: {
     GET_LIST: 'get_list',
     POST_ITEM: 'post_item',
@@ -65,28 +65,28 @@ vi.mock('@/types/table', () => ({
 }))
 
 const ctrl = vi.hoisted(() => ({ rowSchema: null as any }))
-vi.mock('@/utils/schemaUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/schemaUtils', () => ({
   resolveTableConfigTitles: (cfg: any) => cfg,
   getListResponseRowProperties: () => ctrl.rowSchema,
   normalizeGetListResponseToRows: (raw: any) => raw,
 }))
 
 const mockExportExcel = vi.fn(async () => {})
-vi.mock('@/utils/data_io', () => ({
+vi.mock('@cornflow-ui/core/utils/data_io', () => ({
   exportTableToExcel: (...a: any[]) => mockExportExcel(...a),
 }))
 
 const mockReadXlsx = vi.fn()
 vi.mock('read-excel-file', () => ({ default: (...a: any[]) => mockReadXlsx(...a) }))
 
-vi.mock('@/utils/csvUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/csvUtils', () => ({
   detectDelimiter: () => ',',
   parseCsvContent: (content: string) => ({
     tableData: content.includes('empty') ? [] : [{ a: '1' }],
   }),
 }))
 
-import { useTableOperations } from '@/composables/core-table/useTableOperations'
+import { useTableOperations } from '@cornflow-ui/core/composables/core-table/useTableOperations'
 
 const $t = (key: string, params?: any) => (params ? `${key}:${JSON.stringify(params)}` : key)
 

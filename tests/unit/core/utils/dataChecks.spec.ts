@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { hasAnyChecksData } from '@/utils/dataChecks'
+import { hasAnyChecksData } from '@cornflow-ui/core/utils/dataChecks'
 
 describe('hasAnyChecksData', () => {
   test('false for null/non-object', () => {

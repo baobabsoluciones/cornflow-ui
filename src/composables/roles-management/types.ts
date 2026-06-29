@@ -13,4 +13,4 @@ export interface RoleFormValue {
   name: string
 }
 
-export type { Role } from '@/repositories/RoleRepository'
+export type { Role } from '@cornflow-ui/core/repositories/RoleRepository'

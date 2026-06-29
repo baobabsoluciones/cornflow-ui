@@ -16,9 +16,9 @@
 import { ref, computed } from 'vue'
 import type { Ref, ComputedRef } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { getFieldValidationRules } from '@/utils/validationRules'
-import { parseJoinFrom } from '@/utils/schemaUtils'
-import { resolveTitleWithLocale } from '@/utils/i18nUtils'
+import { getFieldValidationRules } from '@cornflow-ui/core/utils/validationRules'
+import { parseJoinFrom } from '@cornflow-ui/core/utils/schemaUtils'
+import { resolveTitleWithLocale } from '@cornflow-ui/core/utils/i18nUtils'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

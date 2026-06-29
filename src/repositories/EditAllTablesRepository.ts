@@ -1,13 +1,13 @@
-import client from '@/api/Api'
-import type { EditAllTablesApiOperation } from '@/types/frontendAutomation'
+import client from '@cornflow-ui/core/api/Api'
+import type { EditAllTablesApiOperation } from '@cornflow-ui/core/types/frontendAutomation'
 import {
   ForceRetryOfferError,
   responseBodyOffersForceRetry,
-} from '@/repositories/TableRepository'
+} from '@cornflow-ui/core/repositories/TableRepository'
 import {
   getLocalizedMessage,
   getMessageFromResponseContent,
-} from '@/utils/i18nUtils'
+} from '@cornflow-ui/core/utils/i18nUtils'
 
 const LOCALE_KEYS = ['en', 'es', 'fr', 'de', 'it', 'pt', 'ja']
 

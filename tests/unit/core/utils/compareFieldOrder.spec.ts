@@ -4,7 +4,7 @@ import {
   restrictLabelsToSchema,
   orderLabelsByPriority,
   buildOrderedFieldKeys,
-} from '@/utils/compareFieldOrder'
+} from '@cornflow-ui/core/utils/compareFieldOrder'
 
 describe('shouldSkipCompareDisplayKey', () => {
   test('skips ignored meta fields (case-insensitive)', () => {

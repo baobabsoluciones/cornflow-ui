@@ -3,11 +3,11 @@ import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
-import DashboardView from '@/views/DashboardView.vue'
-import { useGeneralStore } from '@/stores/general'
+import DashboardView from '@cornflow-ui/core/views/DashboardView.vue'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 
 // Mock components
-vi.mock('@/components/project-execution/ExecutionInfoCard.vue', () => ({
+vi.mock('@cornflow-ui/core/components/project-execution/ExecutionInfoCard.vue', () => ({
   default: {
     name: 'ExecutionInfoCard',
     template: '<div data-testid="execution-info-card">ExecutionInfoCard</div>',
@@ -15,7 +15,7 @@ vi.mock('@/components/project-execution/ExecutionInfoCard.vue', () => ({
   },
 }))
 
-vi.mock('@/components/project-execution/ExecutionInfoMenu.vue', () => ({
+vi.mock('@cornflow-ui/core/components/project-execution/ExecutionInfoMenu.vue', () => ({
   default: {
     name: 'ExecutionInfoMenu',
     template: '<div data-testid="execution-info-menu">ExecutionInfoMenu</div>',
@@ -41,7 +41,7 @@ vi.mock('mango-ui', () => ({
 }))
 
 // Mock FrontendAutomationService
-vi.mock('@/services/FrontendAutomationService', () => ({
+vi.mock('@cornflow-ui/core/services/FrontendAutomationService', () => ({
   getSectionType: vi.fn((path) => {
     if (path.includes('input-data')) return 'input-data'
     if (path.includes('solution')) return 'solution'

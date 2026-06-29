@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { useGeneralStore } from '@/stores/general'
-import { LoadedExecution } from '@/models/LoadedExecution'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import { LoadedExecution } from '@cornflow-ui/core/models/LoadedExecution'
 
 // Mock environment variables for consistent testing
 Object.defineProperty(import.meta, 'env', {
@@ -21,7 +21,7 @@ Object.defineProperty(import.meta, 'env', {
 })
 
 // Mock config with proper structure
-vi.mock('@/config', () => ({
+vi.mock('@cornflow-ui/core/config', () => ({
   default: {
     backend: 'https://test-backend.com',
     schema: 'test_dag',
@@ -51,7 +51,7 @@ vi.mock('@/config', () => ({
 }))
 
 // Mock dependencies
-vi.mock('@/services/AuthService', () => ({
+vi.mock('@cornflow-ui/core/services/AuthService', () => ({
   default: {
     getUserId: vi.fn(),
   },
@@ -75,7 +75,7 @@ vi.mock('@/app/config', () => ({
   },
 }))
 
-vi.mock('@/utils/assets', () => ({
+vi.mock('@cornflow-ui/core/utils/assets', () => ({
   mainLogo: 'logo.png',
   fullLogo: 'full_logo.png',
   baobabLogo: 'baobab_full_logo.png',
@@ -86,7 +86,7 @@ vi.mock('@/utils/assets', () => ({
   loginBackground: 'login_background.png',
 }))
 
-vi.mock('@/plugins/i18n', () => ({
+vi.mock('@cornflow-ui/core/plugins/i18n', () => ({
   default: {
     global: {
       locale: { value: 'en' },
@@ -95,14 +95,14 @@ vi.mock('@/plugins/i18n', () => ({
   locale: { value: 'en' },
 }))
 
-vi.mock('@/utils/data_io', () => ({
+vi.mock('@cornflow-ui/core/utils/data_io', () => ({
   toISOStringLocal: vi.fn((date, isEnd) =>
     isEnd ? '2023-01-01T23:59:59.999Z' : '2023-01-01T00:00:00.000Z',
   ),
 }))
 
 // Mock API client
-vi.mock('@/api/Api', () => ({
+vi.mock('@cornflow-ui/core/api/Api', () => ({
   default: {
     initializeToken: vi.fn(),
   },
@@ -111,7 +111,7 @@ vi.mock('@/api/Api', () => ({
 // Master-data config now comes from the frontend-automation premium module via the
 // extension registry. Override that hook; keep the rest of the registry real.
 const mockLoadPremiumMasterDataConfig = vi.hoisted(() => vi.fn())
-vi.mock('@/plugins/extensions', async (orig) => ({
+vi.mock('@cornflow-ui/core/plugins/extensions', async (orig) => ({
   ...((await orig()) as object),
   loadPremiumMasterDataConfig: mockLoadPremiumMasterDataConfig,
 }))
@@ -150,37 +150,37 @@ const mockVersionRepository = vi.hoisted(() => ({
   getCornflowVersion: vi.fn(),
 }))
 
-vi.mock('@/repositories/SchemaRepository', () => ({
+vi.mock('@cornflow-ui/core/repositories/SchemaRepository', () => ({
   default: vi.fn(function () {
     return mockSchemaRepository
   }),
 }))
 
-vi.mock('@/repositories/ExecutionRepository', () => ({
+vi.mock('@cornflow-ui/core/repositories/ExecutionRepository', () => ({
   default: vi.fn(function () {
     return mockExecutionRepository
   }),
 }))
 
-vi.mock('@/repositories/InstanceRepository', () => ({
+vi.mock('@cornflow-ui/core/repositories/InstanceRepository', () => ({
   default: vi.fn(function () {
     return mockInstanceRepository
   }),
 }))
 
-vi.mock('@/repositories/UserRepository', () => ({
+vi.mock('@cornflow-ui/core/repositories/UserRepository', () => ({
   default: vi.fn(function () {
     return mockUserRepository
   }),
 }))
 
-vi.mock('@/repositories/LicenceRepository', () => ({
+vi.mock('@cornflow-ui/core/repositories/LicenceRepository', () => ({
   default: vi.fn(function () {
     return mockLicenceRepository
   }),
 }))
 
-vi.mock('@/repositories/VersionRepository', () => ({
+vi.mock('@cornflow-ui/core/repositories/VersionRepository', () => ({
   default: vi.fn(function () {
     return mockVersionRepository
   }),
@@ -225,7 +225,7 @@ describe('General Store', () => {
       const version = '1.0.0'
       const user = { id: userId, name: 'Test User' }
 
-      const session = await import('@/services/AuthService')
+      const session = await import('@cornflow-ui/core/services/AuthService')
       vi.mocked(session.default.getUserId).mockReturnValue(userId)
       mockUserRepository.getUserById.mockResolvedValue(user)
       mockVersionRepository.getCornflowVersion.mockResolvedValue(version)
@@ -248,7 +248,7 @@ describe('General Store', () => {
       const userId = 'test-user-id'
       const user = { id: userId, name: 'Test User' }
 
-      const session = await import('@/services/AuthService')
+      const session = await import('@cornflow-ui/core/services/AuthService')
       vi.mocked(session.default.getUserId).mockReturnValue(userId)
       mockUserRepository.getUserById.mockResolvedValue(user)
 
@@ -862,7 +862,7 @@ describe('General Store', () => {
         .spyOn(console, 'error')
         .mockImplementation(() => {})
 
-      const session = await import('@/services/AuthService')
+      const session = await import('@cornflow-ui/core/services/AuthService')
       vi.mocked(session.default.getUserId).mockReturnValue('test-user-id')
       mockUserRepository.getUserById.mockRejectedValue(
         new Error('Failed to get user'),
@@ -1227,7 +1227,7 @@ describe('General Store', () => {
   describe('fetchUser with role assignments', () => {
     test('derives roles and admin status', async () => {
       const store = useGeneralStore()
-      const session = await import('@/services/AuthService')
+      const session = await import('@cornflow-ui/core/services/AuthService')
       vi.mocked(session.default.getUserId).mockReturnValue('7' as any)
       mockUserRepository.getUserById.mockResolvedValue({ id: '7', roles: [] })
       const roleRepo = {

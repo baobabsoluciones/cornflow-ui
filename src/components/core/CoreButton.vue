@@ -196,4 +196,4 @@ const buttonStyles = computed(() => {
 })
 </script>
 
-<style src="@/assets/styles/components/core/CoreButton.css"></style>
+<style src="@cornflow-ui/core/assets/styles/components/core/CoreButton.css"></style>

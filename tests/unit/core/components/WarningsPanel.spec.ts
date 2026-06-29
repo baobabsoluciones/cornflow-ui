@@ -13,17 +13,17 @@ const repoMock = vi.hoisted(() => ({
   downloadWarnings: vi.fn().mockResolvedValue(undefined),
 }))
 
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: () => store,
 }))
 
-vi.mock('@/repositories/WarningsRepository', () => ({
+vi.mock('@cornflow-ui/core/repositories/WarningsRepository', () => ({
   default: class {
     downloadWarnings = repoMock.downloadWarnings
   },
 }))
 
-import WarningsPanel from '@/components/WarningsPanel.vue'
+import WarningsPanel from '@cornflow-ui/core/components/WarningsPanel.vue'
 
 const vuetify = createVuetify({ components, directives })
 

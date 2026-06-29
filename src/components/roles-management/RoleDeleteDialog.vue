@@ -40,8 +40,8 @@
 </template>
 
 <script setup lang="ts">
-import CoreButton from '@/components/core/CoreButton.vue'
-import type { Role } from '@/composables/roles-management/types'
+import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
+import type { Role } from '@cornflow-ui/core/composables/roles-management/types'
 
 interface Props {
   modelValue: boolean

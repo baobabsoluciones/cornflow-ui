@@ -7,7 +7,8 @@
     "baseUrl": ".",
     "allowJs": true,
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@cornflow-ui/core/*": ["src/*"]
     },
     "moduleResolution": "node",
     "resolveJsonModule": true,

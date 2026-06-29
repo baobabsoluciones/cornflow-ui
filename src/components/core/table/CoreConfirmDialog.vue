@@ -113,7 +113,7 @@
 </template>
 
 <script setup lang="ts">
-import CoreButton from '@/components/core/CoreButton.vue'
+import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
 
 // Props
 interface Props {
@@ -157,6 +157,6 @@ const handleCancel = () => {
 </script>
 
 <style>
-@import '@/assets/styles/components/core/CoreModalBase.css';
-@import '@/assets/styles/components/core/CoreConfirmDialog.css';
+@import '@cornflow-ui/core/assets/styles/components/core/CoreModalBase.css';
+@import '@cornflow-ui/core/assets/styles/components/core/CoreConfirmDialog.css';
 </style>

@@ -8,8 +8,8 @@
 import {
   getMessageFromResponseContent,
   getLocalizedMessage,
-} from '@/utils/i18nUtils'
-import { normalizeTableKey } from '@/utils/sectionModalResolvers'
+} from '@cornflow-ui/core/utils/i18nUtils'
+import { normalizeTableKey } from '@cornflow-ui/core/utils/sectionModalResolvers'
 
 /**
  * Derives a user-facing message from an error: prefers `err.message`, then a

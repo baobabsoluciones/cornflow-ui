@@ -292,10 +292,10 @@
 
 <script setup lang="ts">
 import { inject, ref, computed } from 'vue'
-import { useProjectExecutionsTable } from '@/composables/project-execution-table/useProjectExecutionsTable'
+import { useProjectExecutionsTable } from '@cornflow-ui/core/composables/project-execution-table/useProjectExecutionsTable'
 import { useI18n } from 'vue-i18n'
-import { useGeneralStore } from '@/stores/general'
-import { useLatestPlanController } from '@/composables/project-execution/useLatestPlanController'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import { useLatestPlanController } from '@cornflow-ui/core/composables/project-execution/useLatestPlanController'
 
 // Setup i18n
 const { t } = useI18n()
@@ -455,5 +455,5 @@ const syncHorizontalScroll = (event: Event) => {
 </script>
 
 <style scoped>
-@import '@/assets/styles/components/project-execution/ProjectExecutionsTable.css';
+@import '@cornflow-ui/core/assets/styles/components/project-execution/ProjectExecutionsTable.css';
 </style>

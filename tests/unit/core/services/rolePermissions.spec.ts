@@ -4,7 +4,7 @@ import {
   getRoleDefaultView,
   isEndpointAllowed,
   type RolesConfig,
-} from '@/services/rolePermissions'
+} from '@cornflow-ui/core/services/rolePermissions'
 
 const config: RolesConfig = {
   viewer: {

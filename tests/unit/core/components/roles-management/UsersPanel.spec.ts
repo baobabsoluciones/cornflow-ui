@@ -3,10 +3,10 @@ import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import { createI18n } from 'vue-i18n'
 import { h } from 'vue'
-import UsersPanel from '@/components/roles-management/UsersPanel.vue'
+import UsersPanel from '@cornflow-ui/core/components/roles-management/UsersPanel.vue'
 
 // CoreSearchInput pulls extra deps; stub it as a simple input wrapper.
-vi.mock('@/components/core/table/CoreSearchInput.vue', () => ({
+vi.mock('@cornflow-ui/core/components/core/table/CoreSearchInput.vue', () => ({
   default: {
     name: 'CoreSearchInput',
     template:

@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { nextTick } from 'vue'
-import { useTableDOMManipulation } from '@/composables/project-execution-table/useTableDOMManipulation'
-import type { HeaderItem } from '@/composables/project-execution-table/types'
+import { useTableDOMManipulation } from '@cornflow-ui/core/composables/project-execution-table/useTableDOMManipulation'
+import type { HeaderItem } from '@cornflow-ui/core/composables/project-execution-table/types'
 
 // Mock DOM methods
 const mockQuerySelector = vi.fn()

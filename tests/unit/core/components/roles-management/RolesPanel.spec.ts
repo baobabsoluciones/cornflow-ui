@@ -2,7 +2,7 @@ import { describe, test, expect, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import { createI18n } from 'vue-i18n'
-import RolesPanel from '@/components/roles-management/RolesPanel.vue'
+import RolesPanel from '@cornflow-ui/core/components/roles-management/RolesPanel.vue'
 
 const role = (id: number, name: string) => ({ id, name })
 

@@ -175,11 +175,11 @@ import { useI18n } from 'vue-i18n'
 import {
   useInstanceProcessing,
   buildInstanceDataFromAlternativeFields,
-} from '@/composables/useInstanceProcessing'
-import { useErrorDownload } from '@/composables/useErrorDownload'
-import { formatValidationErrors } from '@/utils/errorFormatting'
+} from '@cornflow-ui/core/composables/useInstanceProcessing'
+import { useErrorDownload } from '@cornflow-ui/core/composables/useErrorDownload'
+import { formatValidationErrors } from '@cornflow-ui/core/utils/errorFormatting'
 import type { ErrorObject } from 'ajv'
-import { useGeneralStore } from '@/stores/general'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import type { LoadInstanceAlternativeParamField } from '@/app/config'
 
 // Composables

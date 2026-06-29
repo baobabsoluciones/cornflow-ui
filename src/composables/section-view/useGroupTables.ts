@@ -7,10 +7,10 @@ import {
   toUrlFriendly,
   getMasterDataTableRankByDrawerHierarchy,
   normalizeTableKeyForHierarchyMatch,
-} from '@/services/FrontendAutomationService'
-import { useGeneralStore } from '@/stores/general'
-import { resolveTitle } from '@/utils/i18nUtils'
-import { formatTitle } from '@/utils/schemaUtils'
+} from '@cornflow-ui/core/services/FrontendAutomationService'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import { resolveTitle } from '@cornflow-ui/core/utils/i18nUtils'
+import { formatTitle } from '@cornflow-ui/core/utils/schemaUtils'
 
 // Types
 export interface TabData {

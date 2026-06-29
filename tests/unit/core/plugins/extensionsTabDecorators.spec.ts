@@ -2,8 +2,8 @@ import { describe, test, expect, afterEach } from 'vitest'
 import {
   registerPremiumModules,
   applyPremiumExecutionTabDecorators,
-} from '@/plugins/extensions'
-import type { PremiumModule, ExecutionTab } from '@/types/extension'
+} from '@cornflow-ui/core/plugins/extensions'
+import type { PremiumModule, ExecutionTab } from '@cornflow-ui/core/types/extension'
 
 const tabs: ExecutionTab[] = [
   { value: 1, text: 'A' },

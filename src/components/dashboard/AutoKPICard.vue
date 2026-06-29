@@ -39,7 +39,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import '@/assets/styles/dashboard.css'
+import '@cornflow-ui/core/assets/styles/dashboard.css'
 
 interface Props {
   config: {

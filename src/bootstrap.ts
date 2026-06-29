@@ -14,7 +14,7 @@
 import { createApp, type App as VueApp, type Component } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 
-import { registerPlugins } from '@/plugins'
+import { registerPlugins } from '@cornflow-ui/core/plugins'
 
 import {
   MAppDrawer,
@@ -34,13 +34,13 @@ import {
   MTabTable,
 } from 'mango-vue'
 
-import config from '@/config'
+import config from '@cornflow-ui/core/config'
 import appConfig from '@/app/config'
-import { setDefaultLanguage } from '@/plugins/i18n'
-import { useGeneralStore } from '@/stores/general'
-import getAuthService from '@/services/AuthServiceFactory'
-import { registerPremiumModules } from '@/plugins/extensions'
-import type { PremiumModule } from '@/types/extension'
+import { setDefaultLanguage } from '@cornflow-ui/core/plugins/i18n'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import getAuthService from '@cornflow-ui/core/services/AuthServiceFactory'
+import { registerPremiumModules } from '@cornflow-ui/core/plugins/extensions'
+import type { PremiumModule } from '@cornflow-ui/core/types/extension'
 
 export interface CreateCornflowAppOptions {
   /** Componente raíz (normalmente App.vue del shell). */

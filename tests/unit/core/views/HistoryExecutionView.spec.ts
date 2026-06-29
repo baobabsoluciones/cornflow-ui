@@ -3,11 +3,11 @@ import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
-import HistoryExecutionView from '@/views/HistoryExecutionView.vue'
-import { useGeneralStore } from '@/stores/general'
+import HistoryExecutionView from '@cornflow-ui/core/views/HistoryExecutionView.vue'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 
 // Mock components
-vi.mock('@/components/project-execution/ProjectExecutionsTable.vue', () => ({
+vi.mock('@cornflow-ui/core/components/project-execution/ProjectExecutionsTable.vue', () => ({
   default: {
     name: 'ProjectExecutionsTable',
     template: '<div data-testid="project-executions-table">ProjectExecutionsTable</div>',
@@ -17,7 +17,7 @@ vi.mock('@/components/project-execution/ProjectExecutionsTable.vue', () => ({
 }))
 
 // Mock CoreTitleView component
-vi.mock('@/components/core/CoreTitleView.vue', () => ({
+vi.mock('@cornflow-ui/core/components/core/CoreTitleView.vue', () => ({
   default: {
     name: 'CoreTitleView',
     template: '<div data-testid="core-title-view"><slot /></div>',
@@ -26,7 +26,7 @@ vi.mock('@/components/core/CoreTitleView.vue', () => ({
 }))
 
 // HistoryExecutionView uses CorePanelData 
-vi.mock('@/components/core/CorePanelData.vue', () => ({
+vi.mock('@cornflow-ui/core/components/core/CorePanelData.vue', () => ({
   default: {
     name: 'CorePanelData',
     template:

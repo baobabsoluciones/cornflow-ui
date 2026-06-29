@@ -2,7 +2,7 @@ import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import { nextTick } from 'vue'
-import CreateExecutionLoadInstance from '@/components/project-execution/CreateExecutionLoadInstance.vue'
+import CreateExecutionLoadInstance from '@cornflow-ui/core/components/project-execution/CreateExecutionLoadInstance.vue'
 
 // Mock Instance model using vi.hoisted
 const { mockInstanceClass, mockInstance } = vi.hoisted(() => {
@@ -35,7 +35,7 @@ const mockInstanceProcessing = {
 
 const mockBuildInstanceDataFromAlternativeFields = vi.fn(() => ({ built: true }))
 
-vi.mock('@/composables/useInstanceProcessing', () => ({
+vi.mock('@cornflow-ui/core/composables/useInstanceProcessing', () => ({
   useInstanceProcessing: vi.fn(() => mockInstanceProcessing),
   buildInstanceDataFromAlternativeFields: (...args: any[]) =>
     mockBuildInstanceDataFromAlternativeFields(...args),
@@ -67,7 +67,7 @@ const mockGeneralStore = {
   },
 }
 
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: vi.fn(() => mockGeneralStore),
 }))
 

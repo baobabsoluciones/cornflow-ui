@@ -1,6 +1,6 @@
 import { describe, test, expect, vi } from 'vitest'
 
-vi.mock('@/plugins/i18n', () => ({
+vi.mock('@cornflow-ui/core/plugins/i18n', () => ({
   default: { global: { t: (key: string) => key } },
 }))
 
@@ -16,7 +16,7 @@ import {
   getFilterMinDate,
   getFilterMaxDate,
   getFilterNames,
-} from '@/utils/filterUtils'
+} from '@cornflow-ui/core/utils/filterUtils'
 
 // Builds a fake selectedExecution with the shape the helpers traverse.
 const makeExecution = (data: any, filtersPreference: any = undefined) => ({

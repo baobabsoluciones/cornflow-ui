@@ -6,8 +6,8 @@ import * as directives from 'vuetify/directives'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
 import { nextTick } from 'vue'
-import DataComparisonModal from '@/components/project-execution/DataComparisonModal.vue'
-import type { DiffSummary } from '@/composables/project-execution/useMasterTableMatch'
+import DataComparisonModal from '@cornflow-ui/core/components/project-execution/DataComparisonModal.vue'
+import type { DiffSummary } from '@cornflow-ui/core/composables/project-execution/useMasterTableMatch'
 
 const baseSummary = (over: Partial<DiffSummary> = {}): DiffSummary => ({
   onlyInInstance: 0,

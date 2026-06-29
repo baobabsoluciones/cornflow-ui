@@ -2,19 +2,19 @@ import { describe, test, expect, vi, beforeEach } from 'vitest'
 import { ref, computed } from 'vue'
 
 let idCounter = 0
-vi.mock('@/utils/tableFilterUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/tableFilterUtils', () => ({
   generateSecureId: (prefix: string) => `${prefix}-${++idCounter}`,
 }))
 
 const ctrl = vi.hoisted(() => ({ rowSchema: null as any }))
-vi.mock('@/utils/schemaUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/schemaUtils', () => ({
   getListResponseRowProperties: () => ctrl.rowSchema,
 }))
 
 import {
   useTableFilters,
   type FilterCondition,
-} from '@/composables/core-table/useTableFilters'
+} from '@cornflow-ui/core/composables/core-table/useTableFilters'
 
 const $t = (key: string) => `t:${key}`
 

@@ -1,11 +1,16 @@
 {
   "name": "@cornflow-ui/core",
   "private": true,
-  "version": "3.0.0",
-  "cornflow": {
-    "ui-enterprise-version": "2.1.5"
-  },
+  "version": "3.0.1",
   "type": "module",
+  "files": [
+    "src"
+  ],
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles.css": "./src/assets/styles/main.css",
+    "./*": "./src/*"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",

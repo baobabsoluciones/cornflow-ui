@@ -22,7 +22,7 @@ const lastSent = (w: FakeWorker) => w.postMessage.mock.calls[w.postMessage.mock.
 
 async function freshModule() {
   vi.resetModules()
-  return await import('@/utils/excelWorkerClient')
+  return await import('@cornflow-ui/core/utils/excelWorkerClient')
 }
 
 afterEach(() => {

@@ -4,7 +4,7 @@ import {
   parseCsvContent,
   parseCsvToData,
   extractTableName,
-} from '@/utils/csvUtils'
+} from '@cornflow-ui/core/utils/csvUtils'
 
 describe('csvUtils - RFC 4180 branches', () => {
   describe('parseCsvContent quoted fields', () => {

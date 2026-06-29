@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
-import HelpMenu from '@/components/core/HelpMenu.vue'
+import HelpMenu from '@cornflow-ui/core/components/core/HelpMenu.vue'
 import appConfig from '@/app/config'
 
 function fileBaseName(publicPath: string) {
@@ -18,7 +18,7 @@ function expectedHref(file: { publicPath: string }, locale: string) {
 }
 
 // Mock package.json version
-vi.mock('@/../package.json', () => ({
+vi.mock('@cornflow-ui/core/../package.json', () => ({
   version: '1.2.3'
 }))
 
@@ -43,7 +43,7 @@ const mockGeneralStore = {
   cornflowVersion: '2.4.1'
 }
 
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: vi.fn(() => mockGeneralStore)
 }))
 

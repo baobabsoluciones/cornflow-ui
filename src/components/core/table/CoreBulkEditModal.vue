@@ -172,4 +172,4 @@ const handleApply = () => {
 }
 </script>
 
-<style src="@/assets/styles/components/core/CoreBulkEditModal.css"></style>
+<style src="@cornflow-ui/core/assets/styles/components/core/CoreBulkEditModal.css"></style>

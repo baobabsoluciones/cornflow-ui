@@ -52,7 +52,7 @@
 
 <script>
 import { computed, onMounted } from 'vue'
-import { useGeneralStore } from '@/stores/general'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 
 export default {
   name: 'CreateExecutionTimeLimit',

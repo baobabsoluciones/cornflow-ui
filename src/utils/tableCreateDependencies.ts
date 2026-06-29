@@ -4,7 +4,7 @@
  * be unit-tested without mounting the view.
  */
 
-import { parseJoinFrom, getListResponseRowProperties } from '@/utils/schemaUtils'
+import { parseJoinFrom, getListResponseRowProperties } from '@cornflow-ui/core/utils/schemaUtils'
 
 /** Extracts the table key embedded in a `create-<tableKey>-<...>` temp id. */
 export function getTableKeyFromTempId(tempId: string): string | null {

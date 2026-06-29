@@ -1,5 +1,5 @@
 import { computed } from 'vue'
-import { getListResponseRowProperties } from '@/utils/schemaUtils'
+import { getListResponseRowProperties } from '@cornflow-ui/core/utils/schemaUtils'
 
 export function useTableHeaders(
   localizedTableConfig: any,

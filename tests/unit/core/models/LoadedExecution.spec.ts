@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
-import { LoadedExecution } from '@/models/LoadedExecution'
-import { ExperimentCore } from '@/models/Experiment'
+import { LoadedExecution } from '@cornflow-ui/core/models/LoadedExecution'
+import { ExperimentCore } from '@cornflow-ui/core/models/Experiment'
 
 // Mock the ExperimentCore
 const mockExperiment = {

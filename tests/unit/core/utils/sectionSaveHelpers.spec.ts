@@ -1,12 +1,12 @@
 import { describe, test, expect, vi } from 'vitest'
 
-vi.mock('@/utils/i18nUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/i18nUtils', () => ({
   getMessageFromResponseContent: (content: any, fb: string) =>
     typeof content?.message === 'string' ? content.message : fb,
   getLocalizedMessage: (obj: any) => obj?.en ?? 'localized',
 }))
 
-import { getErrorMessage, getConfigByStorageKey } from '@/utils/sectionSaveHelpers'
+import { getErrorMessage, getConfigByStorageKey } from '@cornflow-ui/core/utils/sectionSaveHelpers'
 
 describe('getErrorMessage', () => {
   test('prefers a plain error message', () => {

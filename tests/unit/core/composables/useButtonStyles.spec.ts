@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { useButtonStyles } from '@/composables/core-button/useButtonStyles'
+import { useButtonStyles } from '@cornflow-ui/core/composables/core-button/useButtonStyles'
 
 describe('useButtonStyles', () => {
   test('filled variant maps a known color to a CSS var and defaults text to white', () => {

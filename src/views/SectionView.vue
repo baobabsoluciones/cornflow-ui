@@ -566,37 +566,37 @@
 import { computed, watch, ref, inject, onDeactivated } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { formatDateForFilename } from '@/utils/date'
-import SimpleList from '@/components/core/SimpleList.vue'
-import CoreTab from '@/components/core/CoreTab.vue'
-import CoreTabs from '@/components/core/CoreTabs.vue'
-import CoreTitleView from '@/components/core/CoreTitleView.vue'
-import PendingChangesReviewModal from '@/components/core/PendingChangesReviewModal.vue'
-import ForceRetryConfirmDialog from '@/components/core/table/ForceRetryConfirmDialog.vue'
-import SectionSingleTable from '@/components/section-view/SectionSingleTable.vue'
-import SectionGroupTable from '@/components/section-view/SectionGroupTable.vue'
-import { isForceRetryOfferError } from '@/repositories/TableRepository'
-import { useSectionConfiguration } from '@/composables/section-view/useSectionConfiguration'
-import { useGroupTables } from '@/composables/section-view/useGroupTables'
-import { useSectionDisplay } from '@/composables/section-view/useSectionDisplay'
+import { formatDateForFilename } from '@cornflow-ui/core/utils/date'
+import SimpleList from '@cornflow-ui/core/components/core/SimpleList.vue'
+import CoreTab from '@cornflow-ui/core/components/core/CoreTab.vue'
+import CoreTabs from '@cornflow-ui/core/components/core/CoreTabs.vue'
+import CoreTitleView from '@cornflow-ui/core/components/core/CoreTitleView.vue'
+import PendingChangesReviewModal from '@cornflow-ui/core/components/core/PendingChangesReviewModal.vue'
+import ForceRetryConfirmDialog from '@cornflow-ui/core/components/core/table/ForceRetryConfirmDialog.vue'
+import SectionSingleTable from '@cornflow-ui/core/components/section-view/SectionSingleTable.vue'
+import SectionGroupTable from '@cornflow-ui/core/components/section-view/SectionGroupTable.vue'
+import { isForceRetryOfferError } from '@cornflow-ui/core/repositories/TableRepository'
+import { useSectionConfiguration } from '@cornflow-ui/core/composables/section-view/useSectionConfiguration'
+import { useGroupTables } from '@cornflow-ui/core/composables/section-view/useGroupTables'
+import { useSectionDisplay } from '@cornflow-ui/core/composables/section-view/useSectionDisplay'
 import {
   useTableData,
   invalidateTableDataCache,
   invalidateAllTableDataCaches,
-} from '@/composables/section-view/useTableData'
-import { ensureItemIds } from '@/composables/section-view/useExecutionTableData'
-import CoreBulkUploadModal from '@/components/core/table/CoreBulkUploadModal.vue'
-import CoreBulkEditModal from '@/components/core/table/CoreBulkEditModal.vue'
+} from '@cornflow-ui/core/composables/section-view/useTableData'
+import { ensureItemIds } from '@cornflow-ui/core/composables/section-view/useExecutionTableData'
+import CoreBulkUploadModal from '@cornflow-ui/core/components/core/table/CoreBulkUploadModal.vue'
+import CoreBulkEditModal from '@cornflow-ui/core/components/core/table/CoreBulkEditModal.vue'
 import {
   postEditAllTables,
   mapBulkUiOperationToEditAllApi,
-} from '@/repositories/EditAllTablesRepository'
-import type { EditAllTablesApiOperation } from '@/types/frontendAutomation'
-import { useTableChanges } from '@/composables/useTableChanges'
-import { useGeneralStore } from '@/stores/general'
-import { useRecalculationController } from '@/composables/section-view/useRecalculationController'
-import { generateAutoDashboard } from '@/services/AutoDashboardService'
-import type { DashboardWidget } from '@/services/AutoDashboardService'
+} from '@cornflow-ui/core/repositories/EditAllTablesRepository'
+import type { EditAllTablesApiOperation } from '@cornflow-ui/core/types/frontendAutomation'
+import { useTableChanges } from '@cornflow-ui/core/composables/useTableChanges'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import { useRecalculationController } from '@cornflow-ui/core/composables/section-view/useRecalculationController'
+import { generateAutoDashboard } from '@cornflow-ui/core/services/AutoDashboardService'
+import type { DashboardWidget } from '@cornflow-ui/core/services/AutoDashboardService'
 import {
   isFrontendAutomationRoute,
   isExecutionDataSectionRoute,
@@ -604,36 +604,36 @@ import {
   isValidationLikeGroup,
   getInstanceTableKeysOrderedByMasterHierarchy,
   normalizeTableKeyForHierarchyMatch,
-} from '@/services/FrontendAutomationService'
-import AutoKPICard from '@/components/dashboard/AutoKPICard.vue'
-import AutoLineChart from '@/components/dashboard/AutoLineChart.vue'
-import AutoBarChart from '@/components/dashboard/AutoBarChart.vue'
-import AutoPieChart from '@/components/dashboard/AutoPieChart.vue'
-import AutoAreaChart from '@/components/dashboard/AutoAreaChart.vue'
-import AutoMapChart from '@/components/dashboard/AutoMapChart.vue'
+} from '@cornflow-ui/core/services/FrontendAutomationService'
+import AutoKPICard from '@cornflow-ui/core/components/dashboard/AutoKPICard.vue'
+import AutoLineChart from '@cornflow-ui/core/components/dashboard/AutoLineChart.vue'
+import AutoBarChart from '@cornflow-ui/core/components/dashboard/AutoBarChart.vue'
+import AutoPieChart from '@cornflow-ui/core/components/dashboard/AutoPieChart.vue'
+import AutoAreaChart from '@cornflow-ui/core/components/dashboard/AutoAreaChart.vue'
+import AutoMapChart from '@cornflow-ui/core/components/dashboard/AutoMapChart.vue'
 import appConfig from '@/app/config'
 import {
   resolveDisplayValuesToFkIds,
   normalizeGetListResponseToRows,
-} from '@/utils/schemaUtils'
+} from '@cornflow-ui/core/utils/schemaUtils'
 import {
   sortKeysByCreateDependency,
   resolveTempIdsInPayload,
-} from '@/utils/tableCreateDependencies'
+} from '@cornflow-ui/core/utils/tableCreateDependencies'
 import {
   resolveInstanceDataKeyForChangeKey,
   collectEditedEtlParameterKeysFromPendingChanges,
-} from '@/utils/etlParameterCollection'
+} from '@cornflow-ui/core/utils/etlParameterCollection'
 import {
   normalizeTableKey,
   resolveCurrentModalKey,
   resolveRowsDataForKey,
   resolveTableHeadersForKey,
-} from '@/utils/sectionModalResolvers'
+} from '@cornflow-ui/core/utils/sectionModalResolvers'
 import {
   getErrorMessage,
   getConfigByStorageKey,
-} from '@/utils/sectionSaveHelpers'
+} from '@cornflow-ui/core/utils/sectionSaveHelpers'
 
 // Composables
 const { sectionType, currentConfiguration } = useSectionConfiguration()
@@ -1225,7 +1225,7 @@ const handleForceRetryConfirmFromSaveAll = async () => {
     const config = getConfigByStorageKey(currentConfiguration.value, offer.storageKey)
     if (!config) throw new Error('Table config not found')
     const { default: TableRepository } = await import(
-      '@/repositories/TableRepository'
+      '@cornflow-ui/core/repositories/TableRepository'
     )
     const repository = new TableRepository(config, t)
     await repository.deleteBulk(offer.ids, { force: true })
@@ -1343,7 +1343,7 @@ const saveAllGroupMasterTableChanges = async () => {
   if (keys.length === 0 || !groupTables.value) return
 
   const { default: TableRepository } = await import(
-    '@/repositories/TableRepository'
+    '@cornflow-ui/core/repositories/TableRepository'
   )
 
   /** Load referenced table data by table name for resolving display values to FK ids. */
@@ -1521,7 +1521,7 @@ const saveAllMasterTableChanges = async () => {
   if (keys.length === 0) return
 
   const { default: TableRepository } = await import(
-    '@/repositories/TableRepository'
+    '@cornflow-ui/core/repositories/TableRepository'
   )
 
   const getCreates = (storageKey: string) =>
@@ -2467,5 +2467,5 @@ onDeactivated(() => {
 // Component setup complete
 </script>
 
-<style src="@/assets/styles/components/core/PendingChangesBar.css"></style>
-<style src="@/assets/styles/views/SectionView.css"></style>
+<style src="@cornflow-ui/core/assets/styles/components/core/PendingChangesBar.css"></style>
+<style src="@cornflow-ui/core/assets/styles/views/SectionView.css"></style>

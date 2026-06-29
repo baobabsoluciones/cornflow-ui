@@ -1,16 +1,16 @@
-import client from '@/api/Api'
-import { TableOperation } from '@/types/table'
-import { buildApiUrl } from '@/utils/urlUtils'
+import client from '@cornflow-ui/core/api/Api'
+import { TableOperation } from '@cornflow-ui/core/types/table'
+import { buildApiUrl } from '@cornflow-ui/core/utils/urlUtils'
 import {
   getOperationConfig,
   isOperationSupported,
-} from '@/services/FrontendAutomationService'
-import { getMessageFromResponseContent } from '@/utils/i18nUtils'
+} from '@cornflow-ui/core/services/FrontendAutomationService'
+import { getMessageFromResponseContent } from '@cornflow-ui/core/utils/i18nUtils'
 import {
   isAsyncUploadTerminal,
   type AsyncUploadInitResponse,
   type AsyncUploadStatusResponse,
-} from '@/types/frontendAutomation'
+} from '@cornflow-ui/core/types/frontendAutomation'
 
 /**
  * Error thrown when the backend responds with offer_force_retry: true (e.g. overwrite

@@ -5,8 +5,8 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { reactive } from 'vue'
 import { createI18n } from 'vue-i18n'
-import CoreSnackbar from '@/components/core/CoreSnackbar.vue'
-import type { SnackbarState } from '@/services/SnackbarService'
+import CoreSnackbar from '@cornflow-ui/core/components/core/CoreSnackbar.vue'
+import type { SnackbarState } from '@cornflow-ui/core/services/SnackbarService'
 
 // Stub v-snackbar (a VOverlay) so it renders inline without jsdom visualViewport errors
 const snackbarStub = {

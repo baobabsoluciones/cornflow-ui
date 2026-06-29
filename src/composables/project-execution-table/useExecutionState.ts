@@ -1,6 +1,6 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useGeneralStore } from '@/stores/general'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { StateInfo } from './types'
 
 export function useExecutionState() {

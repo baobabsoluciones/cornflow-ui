@@ -14,11 +14,11 @@
  */
 
 // Arranque del core.
-export { createCornflowApp } from '@/bootstrap'
-export type { CreateCornflowAppOptions } from '@/bootstrap'
+export { createCornflowApp } from '@cornflow-ui/core/bootstrap'
+export type { CreateCornflowAppOptions } from '@cornflow-ui/core/bootstrap'
 
 // Registro de módulos premium (lo invoca el shell/enterprise; el core nunca importa un módulo).
-export { registerPremiumModules } from '@/plugins/extensions'
+export { registerPremiumModules } from '@cornflow-ui/core/plugins/extensions'
 
 // Contrato de puntos de extensión (tipos que rellena el premium y, en parte, src/app).
 export type {
@@ -38,4 +38,4 @@ export type {
   EtlBackendOperations,
   PremiumCapabilities,
   PremiumModule,
-} from '@/types/extension'
+} from '@cornflow-ui/core/types/extension'

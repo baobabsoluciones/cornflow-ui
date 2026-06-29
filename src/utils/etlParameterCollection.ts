@@ -4,7 +4,7 @@
  * SectionView.vue; the pending-changes source is injected via `deps`.
  */
 
-import { normalizeTableNameForEtlLookup } from '@/utils/schemaUtils'
+import { normalizeTableNameForEtlLookup } from '@cornflow-ui/core/utils/schemaUtils'
 
 /** Synthetic row id for single-row (horizontal/object) tables. */
 export const ETL_OBJECT_ROW_ID = '__object__'

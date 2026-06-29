@@ -5,15 +5,15 @@ import { createVuetify } from 'vuetify'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
 import { createRouter, createWebHistory } from 'vue-router'
-import IndexView from '@/views/IndexView.vue'
-import { useGeneralStore } from '@/stores/general'
+import IndexView from '@cornflow-ui/core/views/IndexView.vue'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 
 // Mock AuthService
 const mockAuthService = vi.hoisted(() => ({
   isAuthenticated: vi.fn()
 }))
 
-vi.mock('@/services/AuthService', () => ({
+vi.mock('@cornflow-ui/core/services/AuthService', () => ({
   default: mockAuthService
 }))
 
@@ -23,7 +23,7 @@ const mockConfig = vi.hoisted(() => ({
   initConfig: vi.fn().mockResolvedValue(undefined)
 }))
 
-vi.mock('@/config', () => ({
+vi.mock('@cornflow-ui/core/config', () => ({
   default: mockConfig
 }))
 
@@ -36,14 +36,14 @@ vi.mock('vue3-marquee', () => ({
 }))
 
 // Mock components
-vi.mock('@/components/AppDrawer.vue', () => ({
+vi.mock('@cornflow-ui/core/components/AppDrawer.vue', () => ({
   default: {
     name: 'CoreAppDrawer',
     setup: () => () => h('div', { 'data-testid': 'app-drawer' }, 'AppDrawer')
   }
 }))
 
-vi.mock('@/components/AppView.vue', () => ({
+vi.mock('@cornflow-ui/core/components/AppView.vue', () => ({
   default: {
     name: 'CoreAppView',
     setup: () => () => h('div', { 'data-testid': 'app-view' }, 'AppView')

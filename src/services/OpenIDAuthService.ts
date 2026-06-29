@@ -1,10 +1,10 @@
-import { AuthProvider } from '@/interfaces/AuthProvider'
+import { AuthProvider } from '@cornflow-ui/core/interfaces/AuthProvider'
 import { PublicClientApplication, Configuration } from '@azure/msal-browser'
 import { Amplify } from 'aws-amplify'
 import { signInWithRedirect, signOut, fetchAuthSession } from 'aws-amplify/auth'
-import client from '@/api/Api'
-import config from '@/config'
-import router from '@/router'
+import client from '@cornflow-ui/core/api/Api'
+import config from '@cornflow-ui/core/config'
+import router from '@cornflow-ui/core/router'
 
 export class OpenIDAuthService implements AuthProvider {
   private msalInstance: PublicClientApplication | null = null

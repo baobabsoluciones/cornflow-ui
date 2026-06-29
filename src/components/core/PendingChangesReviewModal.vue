@@ -483,11 +483,11 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useTableChanges } from '@/composables/useTableChanges'
-import { parseJoinFrom } from '@/utils/schemaUtils'
-import { resolveTitle } from '@/utils/i18nUtils'
-import CoreConfirmDialog from '@/components/core/table/CoreConfirmDialog.vue'
-import PendingChangeFieldInput from '@/components/core/PendingChangeFieldInput.vue'
+import { useTableChanges } from '@cornflow-ui/core/composables/useTableChanges'
+import { parseJoinFrom } from '@cornflow-ui/core/utils/schemaUtils'
+import { resolveTitle } from '@cornflow-ui/core/utils/i18nUtils'
+import CoreConfirmDialog from '@cornflow-ui/core/components/core/table/CoreConfirmDialog.vue'
+import PendingChangeFieldInput from '@cornflow-ui/core/components/core/PendingChangeFieldInput.vue'
 
 const { t } = useI18n()
 
@@ -773,7 +773,7 @@ watch(
 </script>
 
 <style>
-@import '@/assets/styles/components/core/CoreModalBase.css';
+@import '@cornflow-ui/core/assets/styles/components/core/CoreModalBase.css';
 </style>
 
 <style scoped>

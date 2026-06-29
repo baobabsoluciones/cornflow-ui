@@ -3,8 +3,8 @@
  * data is injected so this can be unit-tested without the component's props.
  */
 
-import { parseJoinFrom } from '@/utils/schemaUtils'
-import { resolveTitle } from '@/utils/i18nUtils'
+import { parseJoinFrom } from '@cornflow-ui/core/utils/schemaUtils'
+import { resolveTitle } from '@cornflow-ui/core/utils/i18nUtils'
 
 /**
  * Resolves the display value for a `joinFrom` cell: when the row's FK is empty

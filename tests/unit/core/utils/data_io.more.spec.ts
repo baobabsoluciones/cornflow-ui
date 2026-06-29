@@ -3,11 +3,11 @@ import {
   buildExcelBuffer,
   schemaDataToTable,
   exportTableToExcel,
-} from '@/utils/data_io'
+} from '@cornflow-ui/core/utils/data_io'
 
 // i18n is imported by data_io for formatDateForHeaders; provide a minimal stub
 // so importing the module under test does not pull in the real plugin.
-vi.mock('@/plugins/i18n', () => ({
+vi.mock('@cornflow-ui/core/plugins/i18n', () => ({
   default: {
     global: {
       locale: { value: 'en' },
@@ -20,7 +20,7 @@ vi.mock('@/plugins/i18n', () => ({
 // module that does not resolve under jsdom; force the "no worker" fallback so
 // buildExcelBuffer takes its deterministic main-thread paths (ExcelJS / CSV-zip)
 // instead of hanging on a worker that never answers.
-vi.mock('@/utils/excelWorkerClient', () => ({
+vi.mock('@cornflow-ui/core/utils/excelWorkerClient', () => ({
   parseExcelInWorker: vi.fn().mockResolvedValue(null),
   buildExcelBufferInWorker: vi.fn().mockResolvedValue(null),
 }))

@@ -1,5 +1,5 @@
 import { computed } from 'vue'
-import { useSectionTitles } from '@/composables/useSectionTitles'
+import { useSectionTitles } from '@cornflow-ui/core/composables/useSectionTitles'
 
 export function useSectionDisplay(
   sectionType: any,

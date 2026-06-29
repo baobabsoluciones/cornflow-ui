@@ -1,7 +1,7 @@
-import { AuthProvider } from '@/interfaces/AuthProvider';
+import { AuthProvider } from '@cornflow-ui/core/interfaces/AuthProvider';
 import { OpenIDAuthService } from './OpenIDAuthService';
 import CornflowAuthService from './AuthService';
-import config from '@/config';
+import config from '@cornflow-ui/core/config';
 
 export interface AuthServices {
   cornflow: AuthProvider;

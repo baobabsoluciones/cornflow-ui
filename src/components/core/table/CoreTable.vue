@@ -607,18 +607,18 @@ import {
   nextTick,
 } from 'vue'
 import { useI18n } from 'vue-i18n'
-import CoreButton from '@/components/core/CoreButton.vue'
-import CoreModal from '@/components/core/table/CoreModal.vue'
-import CoreConfirmDialog from '@/components/core/table/CoreConfirmDialog.vue'
-import CoreSearchInput from '@/components/core/table/CoreSearchInput.vue'
-import CoreBulkUploadModal from '@/components/core/table/CoreBulkUploadModal.vue'
-import FloatingSelectionBar from '@/components/core/table/FloatingSelectionBar.vue'
-import CoreCheckbox from '@/components/core/CoreCheckbox.vue'
-import CoreFiltersPanel from '@/components/core/table/CoreFiltersPanel.vue'
-import CoreDropdownMenu from '@/components/core/CoreDropdownMenu.vue'
-import { useTableHeight } from '@/composables/core-table/useTableHeight'
-import { useFormFields } from '@/composables/core-table/useFormFields'
-import { resolveJoinFromValue } from '@/utils/tableCellValue'
+import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
+import CoreModal from '@cornflow-ui/core/components/core/table/CoreModal.vue'
+import CoreConfirmDialog from '@cornflow-ui/core/components/core/table/CoreConfirmDialog.vue'
+import CoreSearchInput from '@cornflow-ui/core/components/core/table/CoreSearchInput.vue'
+import CoreBulkUploadModal from '@cornflow-ui/core/components/core/table/CoreBulkUploadModal.vue'
+import FloatingSelectionBar from '@cornflow-ui/core/components/core/table/FloatingSelectionBar.vue'
+import CoreCheckbox from '@cornflow-ui/core/components/core/CoreCheckbox.vue'
+import CoreFiltersPanel from '@cornflow-ui/core/components/core/table/CoreFiltersPanel.vue'
+import CoreDropdownMenu from '@cornflow-ui/core/components/core/CoreDropdownMenu.vue'
+import { useTableHeight } from '@cornflow-ui/core/composables/core-table/useTableHeight'
+import { useFormFields } from '@cornflow-ui/core/composables/core-table/useFormFields'
+import { resolveJoinFromValue } from '@cornflow-ui/core/utils/tableCellValue'
 
 // Props - Presentational Component Interface
 interface Props {
@@ -2046,8 +2046,8 @@ const getColumnAlignment = (columnKey: string): string => {
 defineExpose({ getRowProps })
 </script>
 
-<style src="@/assets/styles/components/core/CoreTable.css"></style>
-<style src="@/assets/styles/components/core/CoreTableInlineEdit.css"></style>
+<style src="@cornflow-ui/core/assets/styles/components/core/CoreTable.css"></style>
+<style src="@cornflow-ui/core/assets/styles/components/core/CoreTableInlineEdit.css"></style>
 <style scoped>
 /* Modo lista de alertas: mismo estilo que SimpleList (alertas naranjas) */
 .core-table-alert-list.simple-list-content {

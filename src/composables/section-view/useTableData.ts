@@ -1,7 +1,7 @@
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { showSnackbar } from '@/services/SnackbarService'
+import { showSnackbar } from '@cornflow-ui/core/services/SnackbarService'
 import { useExecutionTableData } from './useExecutionTableData'
 import {
   getSectionType,
@@ -15,11 +15,11 @@ import {
   filterTypeMatchesUiOperator,
   isOperationSupported,
   isValidationLikeGroup,
-} from '@/services/FrontendAutomationService'
-import { TableOperation } from '@/types/table'
-import { useGeneralStore } from '@/stores/general'
-import { useRecalculationController } from '@/composables/section-view/useRecalculationController'
-import { useTableChanges } from '@/composables/useTableChanges'
+} from '@cornflow-ui/core/services/FrontendAutomationService'
+import { TableOperation } from '@cornflow-ui/core/types/table'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import { useRecalculationController } from '@cornflow-ui/core/composables/section-view/useRecalculationController'
+import { useTableChanges } from '@cornflow-ui/core/composables/useTableChanges'
 import type { Ref, ComputedRef } from 'vue'
 import {
   getOperatorsForFieldType,
@@ -29,9 +29,9 @@ import {
   generateFilterId,
   applyFiltersAndSearch as applyFiltersAndSearchUtil,
   type FilterCondition,
-} from '@/utils/tableFilterUtils'
-import { useFormFields } from '@/composables/core-table/useFormFields'
-import { exportTableToExcel } from '@/utils/data_io'
+} from '@cornflow-ui/core/utils/tableFilterUtils'
+import { useFormFields } from '@cornflow-ui/core/composables/core-table/useFormFields'
+import { exportTableToExcel } from '@cornflow-ui/core/utils/data_io'
 import * as ExcelJS from 'exceljs'
 import {
   parseJoinFrom,
@@ -41,13 +41,13 @@ import {
   isMasterDataParameterObjectTable,
   isParameterPropertySchemaVisible,
   normalizeJsonSchemaPropertyTypeForUi,
-} from '@/utils/schemaUtils'
-import { isForceRetryOfferError } from '@/repositories/TableRepository'
-import type { AsyncUploadStatusResponse } from '@/types/frontendAutomation'
+} from '@cornflow-ui/core/utils/schemaUtils'
+import { isForceRetryOfferError } from '@cornflow-ui/core/repositories/TableRepository'
+import type { AsyncUploadStatusResponse } from '@cornflow-ui/core/types/frontendAutomation'
 import {
   detectDelimiter,
   parseCsvContent as parseCsvWithDelimiter,
-} from '@/utils/csvUtils'
+} from '@cornflow-ui/core/utils/csvUtils'
 import appConfig from '@/app/config'
 
 /** Plain (non-object) cell value produced when flattening spreadsheet cells. */
@@ -320,7 +320,7 @@ export function useTableData(
 
     try {
       const { default: TableRepository } = await import(
-        '@/repositories/TableRepository'
+        '@cornflow-ui/core/repositories/TableRepository'
       )
 
       // Get configurations from the general store
@@ -1218,7 +1218,7 @@ export function useTableData(
     const queryParams = buildGetListQueryParams(0)
 
     try {
-      const TableRepository = (await import('@/repositories/TableRepository'))
+      const TableRepository = (await import('@cornflow-ui/core/repositories/TableRepository'))
         .default
       const repository = new TableRepository(tableConfig.value, t)
       const enriched = await fetchListEnriched(
@@ -1251,7 +1251,7 @@ export function useTableData(
     loadingMore.value = true
 
     try {
-      const TableRepository = (await import('@/repositories/TableRepository'))
+      const TableRepository = (await import('@cornflow-ui/core/repositories/TableRepository'))
         .default
       const repository = new TableRepository(tableConfig.value, t)
       const queryParams = buildGetListQueryParams(offset)
@@ -1319,7 +1319,7 @@ export function useTableData(
     file: File,
   ): Promise<boolean> => {
     const { default: TableRepository } = await import(
-      '@/repositories/TableRepository'
+      '@cornflow-ui/core/repositories/TableRepository'
     )
     const repository = new TableRepository(tableConfig.value, t)
     if (!repository.supportsAsyncBulkOperation(uiOperation)) return false
@@ -1762,7 +1762,7 @@ export function useTableData(
       downloading.value = true
       try {
         const { default: TableRepository } = await import(
-          '@/repositories/TableRepository'
+          '@cornflow-ui/core/repositories/TableRepository'
         )
         const repository = new TableRepository(tableConfig.value, t)
         const queryParams = buildGetListQueryParams(undefined, {
@@ -1979,7 +1979,7 @@ export function useTableData(
 
   const performApiSave = async (wasEditing: boolean, preparedData: any) => {
     const { default: TableRepository } = await import(
-      '@/repositories/TableRepository'
+      '@cornflow-ui/core/repositories/TableRepository'
     )
     const repository = new TableRepository(tableConfig.value, t)
     if (wasEditing) {
@@ -2684,7 +2684,7 @@ export function useTableData(
 
         // Get repository
         const { default: TableRepository } = await import(
-          '@/repositories/TableRepository'
+          '@cornflow-ui/core/repositories/TableRepository'
         )
         const repository = new TableRepository(tableConfig.value, t)
 
@@ -2728,7 +2728,7 @@ export function useTableData(
       forceRetryLoading.value = true
       try {
         const { default: TableRepository } = await import(
-          '@/repositories/TableRepository'
+          '@cornflow-ui/core/repositories/TableRepository'
         )
         const repository = new TableRepository(tableConfig.value, t)
 
@@ -2805,7 +2805,7 @@ export function useTableData(
       deleting.value = true
       try {
         const { default: TableRepository } = await import(
-          '@/repositories/TableRepository'
+          '@cornflow-ui/core/repositories/TableRepository'
         )
         const repository = new TableRepository(tableConfig.value, t)
 
@@ -2856,7 +2856,7 @@ export function useTableData(
       bulkDeleting.value = true
       try {
         const { default: TableRepository } = await import(
-          '@/repositories/TableRepository'
+          '@cornflow-ui/core/repositories/TableRepository'
         )
         const repository = new TableRepository(tableConfig.value, t)
 
@@ -2910,7 +2910,7 @@ export function useTableData(
       saving.value = true
       try {
         const { default: TableRepository } = await import(
-          '@/repositories/TableRepository'
+          '@cornflow-ui/core/repositories/TableRepository'
         )
         const repository = new TableRepository(tableConfig.value, t)
 
@@ -2961,7 +2961,7 @@ export function useTableData(
       saving.value = true
       try {
         const { default: TableRepository } = await import(
-          '@/repositories/TableRepository'
+          '@cornflow-ui/core/repositories/TableRepository'
         )
         const repository = new TableRepository(config, t)
 
@@ -3021,7 +3021,7 @@ export function useTableData(
       uploading.value = true
       try {
         const { default: TableRepository } = await import(
-          '@/repositories/TableRepository'
+          '@cornflow-ui/core/repositories/TableRepository'
         )
         const repository = new TableRepository(tableConfig.value, t)
 

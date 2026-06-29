@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { defineComponent, h } from 'vue'
 import { mount } from '@vue/test-utils'
-import { useTableHeight } from '@/composables/core-table/useTableHeight'
+import { useTableHeight } from '@cornflow-ui/core/composables/core-table/useTableHeight'
 
 /**
  * Mounts the composable inside a real component so onMounted/onUnmounted fire,

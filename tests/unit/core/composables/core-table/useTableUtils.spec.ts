@@ -3,11 +3,11 @@ import { ref } from 'vue'
 
 // useFilters is invoked when searchText is set; return a recognizable filtered subset.
 const mockUseFilters = vi.fn((items: any[]) => items.slice(0, 1))
-vi.mock('@/utils/useFilters', () => ({
+vi.mock('@cornflow-ui/core/utils/useFilters', () => ({
   default: (...args: any[]) => mockUseFilters(...args),
 }))
 
-import { useTableUtils } from '@/composables/core-table/useTableUtils'
+import { useTableUtils } from '@cornflow-ui/core/composables/core-table/useTableUtils'
 
 const $t = (key: string) => key
 

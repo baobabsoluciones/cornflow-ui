@@ -15,7 +15,10 @@ export default defineConfig({
   define: { 'process.env': {} },
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // Self-reference: el core resuelve sus propios imports `@cornflow-ui/core/*` a ./src
+      // (en standalone). Los consumidores aliasan esto a node_modules/@cornflow-ui/core/src.
+      '@cornflow-ui/core': fileURLToPath(new URL('./src', import.meta.url))
     },
     extensions: ['.js', '.json', '.jsx', '.mjs', '.ts', '.tsx', '.vue']
   },

@@ -22,8 +22,8 @@
 
 <script>
 import { inject, nextTick } from 'vue'
-import { useGeneralStore } from '@/stores/general'
-import ExecutionDataView from '@/components/project-execution/ExecutionDataView.vue'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import ExecutionDataView from '@cornflow-ui/core/components/project-execution/ExecutionDataView.vue'
 import appConfig from '@/app/config.ts'
 
 export default {

@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
-import CoreSearchInput from '@/components/core/table/CoreSearchInput.vue'
+import CoreSearchInput from '@cornflow-ui/core/components/core/table/CoreSearchInput.vue'
 
 describe('CoreSearchInput', () => {
   let vuetify: any

@@ -54,7 +54,7 @@ function record(method: string, url: string, data: any) {
   return Promise.resolve({ status: 200, content })
 }
 
-vi.mock('@/api/Api', () => ({
+vi.mock('@cornflow-ui/core/api/Api', () => ({
   default: {
     get: (url: string) => record('get', url, null),
     post: (url: string, data: any) => record('post', url, data),
@@ -78,10 +78,10 @@ vi.mock('vue-i18n', () => ({
 }))
 
 const showSnackbar = vi.hoisted(() => vi.fn())
-vi.mock('@/services/SnackbarService', () => ({ showSnackbar }))
+vi.mock('@cornflow-ui/core/services/SnackbarService', () => ({ showSnackbar }))
 
 // useExecutionTableData fake — controllable execution data via computedRefHolder.
-vi.mock('@/composables/section-view/useExecutionTableData', () => ({
+vi.mock('@cornflow-ui/core/composables/section-view/useExecutionTableData', () => ({
   useExecutionTableData: () => ({
     items: computedRefHolder.items,
     headers: computedRefHolder.headers,
@@ -97,7 +97,7 @@ vi.mock('@/composables/section-view/useExecutionTableData', () => ({
   }),
 }))
 
-vi.mock('@/services/FrontendAutomationService', () => ({
+vi.mock('@cornflow-ui/core/services/FrontendAutomationService', () => ({
   getSectionType: (p: string) => {
     if (p.includes('input-data')) return 'input-data'
     if (p.includes('results')) return 'results'
@@ -120,15 +120,15 @@ vi.mock('@/services/FrontendAutomationService', () => ({
 }))
 
 let storeState: any
-vi.mock('@/stores/general', () => ({ useGeneralStore: () => storeState }))
+vi.mock('@cornflow-ui/core/stores/general', () => ({ useGeneralStore: () => storeState }))
 // useTableData consumes recalculation via the core controller (premium-or-inert), not the store.
-vi.mock('@/composables/section-view/useRecalculationController', () => ({
+vi.mock('@cornflow-ui/core/composables/section-view/useRecalculationController', () => ({
   useRecalculationController: () => storeState,
 }))
 
 // useTableChanges fake — in-memory stores keyed by table.
 const changesStore = vi.hoisted(() => ({ map: {} as Record<string, any> }))
-vi.mock('@/composables/useTableChanges', () => ({
+vi.mock('@cornflow-ui/core/composables/useTableChanges', () => ({
   useTableChanges: () => {
     const s = (globalThis as any).__changesStoreMore
     const ensure = (k: string) =>
@@ -180,14 +180,14 @@ vi.mock('@/composables/useTableChanges', () => ({
 ;(globalThis as any).__changesStoreMore = changesStore
 
 // useFormFields fake
-vi.mock('@/composables/core-table/useFormFields', () => ({
+vi.mock('@cornflow-ui/core/composables/core-table/useFormFields', () => ({
   useFormFields: () => ({
     prepareFormDataForSubmit: (data: any) => ({ ...data }),
     updateDependentFields: (_f: string, _v: any, data: any) => data,
   }),
 }))
 
-vi.mock('@/utils/data_io', () => ({
+vi.mock('@cornflow-ui/core/utils/data_io', () => ({
   exportTableToExcel: vi.fn(async () => undefined),
 }))
 
@@ -202,7 +202,7 @@ const schemaCtrl = vi.hoisted(() => ({
   valueNoneImpl: (_v: any, _prop: any) => false,
 }))
 ;(globalThis as any).__schemaCtrlMore = schemaCtrl
-vi.mock('@/utils/schemaUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/schemaUtils', () => ({
   parseJoinFrom: vi.fn((jf: any) =>
     (globalThis as any).__schemaCtrlMore.parseJoinFromImpl(jf),
   ),
@@ -228,7 +228,7 @@ vi.mock('@/utils/schemaUtils', () => ({
 }))
 
 // applyFiltersAndSearch real-ish: passthrough so windowing slices the full set.
-vi.mock('@/utils/tableFilterUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/tableFilterUtils', () => ({
   getOperatorsForFieldType: vi.fn(() => ['equals']),
   getOperatorText: vi.fn((op: string) => `OP:${op}`),
   operatorNeedsValue: vi.fn(() => true),
@@ -245,7 +245,7 @@ const csvCtrl = vi.hoisted(() => ({
   }),
 }))
 ;(globalThis as any).__csvCtrlMore = csvCtrl
-vi.mock('@/utils/csvUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/csvUtils', () => ({
   detectDelimiter: vi.fn(() => ','),
   parseCsvContent: vi.fn((content: string, d: string) =>
     (globalThis as any).__csvCtrlMore.parseImpl(content, d),
@@ -316,7 +316,7 @@ computedRefHolder.hasData = vref(false)
 import {
   useTableData,
   invalidateAllTableDataCaches,
-} from '@/composables/section-view/useTableData'
+} from '@cornflow-ui/core/composables/section-view/useTableData'
 
 // ─── Mount helper ────────────────────────────────────────────────────────────
 

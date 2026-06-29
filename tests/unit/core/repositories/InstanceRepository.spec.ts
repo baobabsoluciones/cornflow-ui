@@ -1,8 +1,8 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import InstanceRepository from '@/repositories/InstanceRepository'
+import InstanceRepository from '@cornflow-ui/core/repositories/InstanceRepository'
 
 // Mock the API client
-vi.mock('@/api/Api', () => ({
+vi.mock('@cornflow-ui/core/api/Api', () => ({
   default: {
     get: vi.fn(),
     post: vi.fn(),
@@ -10,7 +10,7 @@ vi.mock('@/api/Api', () => ({
 }))
 
 // Mock the general store
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: () => ({
     appConfig: {
       Instance: vi.fn(),
@@ -24,7 +24,7 @@ vi.mock('@/stores/general', () => ({
 }))
 
 // Mock Instance model
-vi.mock('@/models/Instance', () => ({
+vi.mock('@cornflow-ui/core/models/Instance', () => ({
   InstanceCore: vi.fn(),
 }))
 
@@ -35,8 +35,8 @@ describe('InstanceRepository', () => {
 
   beforeEach(async () => {
     // Get mocked modules
-    const Api = await import('@/api/Api')
-    const { useGeneralStore } = await import('@/stores/general')
+    const Api = await import('@cornflow-ui/core/api/Api')
+    const { useGeneralStore } = await import('@cornflow-ui/core/stores/general')
 
     mockClient = Api.default
     mockGeneralStore = useGeneralStore()

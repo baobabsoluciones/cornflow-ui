@@ -58,7 +58,7 @@
 </template>
 
 <script>
-import { formatDateForHeaders } from '@/utils/data_io'
+import { formatDateForHeaders } from '@cornflow-ui/core/utils/data_io'
 
 export default {
   name: 'CorePanelData',

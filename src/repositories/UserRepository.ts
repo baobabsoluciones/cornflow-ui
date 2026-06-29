@@ -1,5 +1,5 @@
-import client from '@/api/Api'
-import { User } from '@/models/User'
+import client from '@cornflow-ui/core/api/Api'
+import { User } from '@cornflow-ui/core/models/User'
 
 interface RawUser {
   id: number

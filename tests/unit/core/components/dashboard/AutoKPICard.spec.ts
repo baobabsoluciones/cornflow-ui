@@ -1,5 +1,5 @@
 import { describe, test, expect, afterEach } from 'vitest'
-import AutoKPICard from '@/components/dashboard/AutoKPICard.vue'
+import AutoKPICard from '@cornflow-ui/core/components/dashboard/AutoKPICard.vue'
 import { mountDashboard } from './dashboardTestUtils'
 
 let wrapper: any

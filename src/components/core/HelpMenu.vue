@@ -101,8 +101,8 @@
 </template>
 
 <script>
-import { version } from '@/../package.json'
-import { useGeneralStore } from '@/stores/general'
+import { version } from '@cornflow-ui/core/../package.json'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import appConfig from '@/app/config'
 
 export default {

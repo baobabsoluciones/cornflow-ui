@@ -1,13 +1,13 @@
-import client from '@/api/Api'
-import { Execution } from '@/models/Execution'
-import { LoadedExecution } from '@/models/LoadedExecution'
-import { useGeneralStore } from '@/stores/general'
+import client from '@cornflow-ui/core/api/Api'
+import { Execution } from '@cornflow-ui/core/models/Execution'
+import { LoadedExecution } from '@cornflow-ui/core/models/LoadedExecution'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import InstanceRepository from './InstanceRepository'
-import { formatDateForFilename } from '@/utils/date'
+import { formatDateForFilename } from '@cornflow-ui/core/utils/date'
 import {
   getApiErrorMessageFromContent,
   getMessageFromResponseContentOrNull,
-} from '@/utils/i18nUtils'
+} from '@cornflow-ui/core/utils/i18nUtils'
 
 function pickDownloadReturnValue(
   experiment: any,

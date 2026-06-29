@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import { createRouter, createWebHistory } from 'vue-router'
 import { createI18n } from 'vue-i18n'
-import AppView from '@/components/AppView.vue'
+import AppView from '@cornflow-ui/core/components/AppView.vue'
 
 const mockGeneralStore = {
   uploadComponentKey: 'test-key-123',
@@ -11,7 +11,7 @@ const mockGeneralStore = {
   getWarnings: [] as unknown[],
 }
 
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: vi.fn(() => mockGeneralStore),
 }))
 

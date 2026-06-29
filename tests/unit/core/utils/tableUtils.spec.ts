@@ -1,6 +1,6 @@
 import { describe, test, expect, vi } from 'vitest'
 
-vi.mock('@/plugins/i18n', () => ({
+vi.mock('@cornflow-ui/core/plugins/i18n', () => ({
   default: { global: { t: (key: string) => key } },
 }))
 
@@ -32,7 +32,7 @@ import {
   getConfigTableData,
   getConfigDisplayName,
   getConfigType,
-} from '@/utils/tableUtils'
+} from '@cornflow-ui/core/utils/tableUtils'
 
 // Shared schema fixture: collection "instance" with a table "orders".
 const schemaConfig: any = {

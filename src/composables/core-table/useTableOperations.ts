@@ -1,17 +1,17 @@
 import { ref, computed } from 'vue'
-import TableRepository from '@/repositories/TableRepository'
-import { TableOperation } from '@/types/table'
+import TableRepository from '@cornflow-ui/core/repositories/TableRepository'
+import { TableOperation } from '@cornflow-ui/core/types/table'
 import {
   resolveTableConfigTitles,
   getListResponseRowProperties,
   normalizeGetListResponseToRows,
-} from '@/utils/schemaUtils'
-import { exportTableToExcel } from '@/utils/data_io'
+} from '@cornflow-ui/core/utils/schemaUtils'
+import { exportTableToExcel } from '@cornflow-ui/core/utils/data_io'
 import readXlsxFile from 'read-excel-file'
 import {
   detectDelimiter,
   parseCsvContent as parseCsvWithDelimiter,
-} from '@/utils/csvUtils'
+} from '@cornflow-ui/core/utils/csvUtils'
 
 export function useTableOperations(
   tableConfig: any,

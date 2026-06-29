@@ -1,6 +1,6 @@
 import { watch } from 'vue'
-import { locale } from '@/plugins/i18n'
-import { useGeneralStore } from '@/stores/general'
+import { locale } from '@cornflow-ui/core/plugins/i18n'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 
 /**
  * Composable that makes configurations reactive to locale changes

@@ -1,4 +1,4 @@
-import { TableSchema } from '@/config/views'
+import { TableSchema } from '@cornflow-ui/core/config/views'
 
 export interface ConfigurationData {
   masterData: TableSchema

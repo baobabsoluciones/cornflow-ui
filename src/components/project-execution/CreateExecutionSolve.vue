@@ -136,12 +136,12 @@
 
 <script>
 import { inject } from 'vue'
-import { useGeneralStore } from '@/stores/general'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import {
   formatValidationErrors,
   formatSingleErrorWithTitle,
-} from '@/utils/errorFormatting'
-import { FILE_EXTENSIONS, getFileExtension } from '@/utils/fileConstants'
+} from '@cornflow-ui/core/utils/errorFormatting'
+import { FILE_EXTENSIONS, getFileExtension } from '@cornflow-ui/core/utils/fileConstants'
 
 export default {
   components: {},

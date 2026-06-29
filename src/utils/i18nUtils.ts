@@ -1,5 +1,5 @@
 import { getCurrentInstance } from 'vue'
-import { currentLocale } from '@/plugins/i18n'
+import { currentLocale } from '@cornflow-ui/core/plugins/i18n'
 
 /**
  * Resolves a title that can be either a string or a multilingual object

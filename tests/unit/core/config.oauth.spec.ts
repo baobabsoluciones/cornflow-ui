@@ -4,10 +4,10 @@ const { getConfigMock, getCoreMock } = vi.hoisted(() => ({
   getConfigMock: vi.fn(),
   getCoreMock: vi.fn(() => ({ parameters: { valuesJsonPath: '/v.json' } })),
 }))
-vi.mock('@/services/ConfigService', () => ({ default: { getConfig: getConfigMock } }))
+vi.mock('@cornflow-ui/core/services/ConfigService', () => ({ default: { getConfig: getConfigMock } }))
 vi.mock('@/app/config', () => ({ default: { getCore: getCoreMock } }))
 
-import config from '@/config'
+import config from '@cornflow-ui/core/config'
 
 beforeEach(() => {
   vi.clearAllMocks()

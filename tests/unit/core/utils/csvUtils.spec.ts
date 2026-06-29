@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { detectDelimiter, parseCsvContent, extractTableName, parseCsvToData } from '@/utils/csvUtils'
+import { detectDelimiter, parseCsvContent, extractTableName, parseCsvToData } from '@cornflow-ui/core/utils/csvUtils'
 
 describe('csvUtils', () => {
   describe('detectDelimiter', () => {

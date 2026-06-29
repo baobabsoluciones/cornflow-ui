@@ -9,12 +9,12 @@ vi.mock('vue-i18n', () => ({
 
 // validation rules — return identifiable rule list reflecting input config
 const mockGetRules = vi.fn((cfg: any) => [`rules:${cfg.type}:${cfg.required ?? false}`])
-vi.mock('@/utils/validationRules', () => ({
+vi.mock('@cornflow-ui/core/utils/validationRules', () => ({
   getFieldValidationRules: (...a: any[]) => mockGetRules(...a),
 }))
 
 // parseJoinFrom: "table.field" -> { table, field }; "" or bad -> null
-vi.mock('@/utils/schemaUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/schemaUtils', () => ({
   parseJoinFrom: (s: string) => {
     if (!s || !s.includes('.')) return null
     const [table, field] = s.split('.')
@@ -22,12 +22,12 @@ vi.mock('@/utils/schemaUtils', () => ({
   },
 }))
 
-vi.mock('@/utils/i18nUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/i18nUtils', () => ({
   resolveTitleWithLocale: (title: any, locale: string, fallback: string) =>
     (title && title[locale]) || fallback,
 }))
 
-import { useFormFields } from '@/composables/core-table/useFormFields'
+import { useFormFields } from '@cornflow-ui/core/composables/core-table/useFormFields'
 
 beforeEach(() => {
   vi.clearAllMocks()

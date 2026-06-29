@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
-import ProjectExecutionsTable from '@/components/project-execution/ProjectExecutionsTable.vue'
+import ProjectExecutionsTable from '@cornflow-ui/core/components/project-execution/ProjectExecutionsTable.vue'
 
 // Mock the custom composable
 const mockUseProjectExecutionsTable = {
@@ -66,7 +66,7 @@ const mockUseProjectExecutionsTable = {
   getTimeLimitDisplayUnitI18nKey: vi.fn(() => 'configParams.secondsSuffix'),
 }
 
-vi.mock('@/composables/project-execution-table/useProjectExecutionsTable', () => ({
+vi.mock('@cornflow-ui/core/composables/project-execution-table/useProjectExecutionsTable', () => ({
   useProjectExecutionsTable: vi.fn(() => mockUseProjectExecutionsTable)
 }))
 
@@ -94,11 +94,11 @@ const mockLatestPlanController = {
   setLatestPlanModalComponent: null,
 }
 
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: vi.fn(() => mockGeneralStore)
 }))
 
-vi.mock('@/composables/project-execution/useLatestPlanController', () => ({
+vi.mock('@cornflow-ui/core/composables/project-execution/useLatestPlanController', () => ({
   useLatestPlanController: vi.fn(() => mockLatestPlanController)
 }))
 

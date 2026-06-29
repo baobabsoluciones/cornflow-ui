@@ -78,7 +78,7 @@
 </template>
 
 <script setup lang="ts">
-import CoreCheckbox from '@/components/core/CoreCheckbox.vue'
+import CoreCheckbox from '@cornflow-ui/core/components/core/CoreCheckbox.vue'
 
 // Props
 interface Props {
@@ -110,4 +110,4 @@ const handleBulkEdit = () => {
 }
 </script>
 
-<style src="@/assets/styles/components/core/FloatingSelectionBar.css"></style>
+<style src="@cornflow-ui/core/assets/styles/components/core/FloatingSelectionBar.css"></style>

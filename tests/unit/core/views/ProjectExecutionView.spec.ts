@@ -4,12 +4,12 @@ import { createVuetify } from 'vuetify'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
 import { createRouter, createMemoryHistory } from 'vue-router'
-import ProjectExecutionView from '@/views/ProjectExecutionView.vue'
-import { useGeneralStore } from '@/stores/general'
+import ProjectExecutionView from '@cornflow-ui/core/views/ProjectExecutionView.vue'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 
 // Mock components
 vi.mock(
-  '@/components/project-execution/CreateExecutionCreateOrSearch.vue',
+  '@cornflow-ui/core/components/project-execution/CreateExecutionCreateOrSearch.vue',
   () => ({
     default: {
       name: 'CreateExecutionCreateOrSearch',
@@ -22,7 +22,7 @@ vi.mock(
 )
 
 vi.mock(
-  '@/components/project-execution/CreateExecutionNameDescription.vue',
+  '@cornflow-ui/core/components/project-execution/CreateExecutionNameDescription.vue',
   () => ({
     default: {
       name: 'CreateExecutionNameDescription',
@@ -35,7 +35,7 @@ vi.mock(
 )
 
 vi.mock(
-  '@/components/project-execution/CreateExecutionLoadInstance.vue',
+  '@cornflow-ui/core/components/project-execution/CreateExecutionLoadInstance.vue',
   () => ({
     default: {
       name: 'CreateExecutionLoadInstance',
@@ -52,7 +52,7 @@ vi.mock(
 )
 
 vi.mock(
-  '@/components/project-execution/CreateExecutionReviewInstance.vue',
+  '@cornflow-ui/core/components/project-execution/CreateExecutionReviewInstance.vue',
   () => ({
     default: {
       name: 'CreateExecutionReviewInstance',
@@ -64,7 +64,7 @@ vi.mock(
   }),
 )
 
-vi.mock('@/components/project-execution/CreateExecutionCheckData.vue', () => ({
+vi.mock('@cornflow-ui/core/components/project-execution/CreateExecutionCheckData.vue', () => ({
   default: {
     name: 'CreateExecutionCheckData',
     template:
@@ -75,7 +75,7 @@ vi.mock('@/components/project-execution/CreateExecutionCheckData.vue', () => ({
 }))
 
 vi.mock(
-  '@/components/project-execution/CreateExecutionConfigParams.vue',
+  '@cornflow-ui/core/components/project-execution/CreateExecutionConfigParams.vue',
   () => ({
     default: {
       name: 'CreateExecutionConfigParams',
@@ -87,7 +87,7 @@ vi.mock(
   }),
 )
 
-vi.mock('@/components/project-execution/CreateExecutionSolve.vue', () => ({
+vi.mock('@cornflow-ui/core/components/project-execution/CreateExecutionSolve.vue', () => ({
   default: {
     name: 'CreateExecutionSolve',
     template:
@@ -97,7 +97,7 @@ vi.mock('@/components/project-execution/CreateExecutionSolve.vue', () => ({
   },
 }))
 
-vi.mock('@/components/core/DateRangePicker.vue', () => ({
+vi.mock('@cornflow-ui/core/components/core/DateRangePicker.vue', () => ({
   default: {
     name: 'DateRangePicker',
     template: '<div data-testid="date-range-picker">DateRangePicker</div>',
@@ -106,7 +106,7 @@ vi.mock('@/components/core/DateRangePicker.vue', () => ({
   },
 }))
 
-vi.mock('@/components/project-execution/ProjectExecutionsTable.vue', () => ({
+vi.mock('@cornflow-ui/core/components/project-execution/ProjectExecutionsTable.vue', () => ({
   default: {
     name: 'ProjectExecutionsTable',
     template:

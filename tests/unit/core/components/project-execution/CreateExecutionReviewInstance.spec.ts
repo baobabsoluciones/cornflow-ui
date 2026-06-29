@@ -3,8 +3,8 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
-import CreateExecutionReviewInstance from '@/components/project-execution/CreateExecutionReviewInstance.vue'
-import { useGeneralStore } from '@/stores/general'
+import CreateExecutionReviewInstance from '@cornflow-ui/core/components/project-execution/CreateExecutionReviewInstance.vue'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 
 // Mock ExecutionDataView component
 const ExecutionDataViewStub = {
@@ -93,7 +93,7 @@ const { mtm, tableChangesMock, appConfigMock } = vi.hoisted(() => {
   return { mtm, tableChangesMock, appConfigMock }
 })
 
-vi.mock('@/composables/project-execution/useMasterTableMatch', () => ({
+vi.mock('@cornflow-ui/core/composables/project-execution/useMasterTableMatch', () => ({
   useMasterTableMatch: () => mtm,
   getMasterCompareRowContext: () => ({
     keyFields: ['id'],
@@ -102,7 +102,7 @@ vi.mock('@/composables/project-execution/useMasterTableMatch', () => ({
   }),
 }))
 
-vi.mock('@/composables/useTableChanges', () => ({
+vi.mock('@cornflow-ui/core/composables/useTableChanges', () => ({
   useTableChanges: () => tableChangesMock,
 }))
 
@@ -114,17 +114,17 @@ vi.mock('@/app/config', async (orig) => {
   return actual
 })
 
-vi.mock('@/repositories/TableRepository', () => ({
+vi.mock('@cornflow-ui/core/repositories/TableRepository', () => ({
   isForceRetryOfferError: (e: any) => !!e?.__forceRetry,
 }))
 
-vi.mock('@/utils/schemaUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/schemaUtils', () => ({
   parameterRowsToParameterObject: (rows: any) => ({ params: rows }),
   buildRowMatchKey: (row: any) => String(row?.id ?? ''),
 }))
 
 // Mock CoreDropdownMenu component
-vi.mock('@/components/core/CoreDropdownMenu.vue', () => ({
+vi.mock('@cornflow-ui/core/components/core/CoreDropdownMenu.vue', () => ({
   default: {
     name: 'CoreDropdownMenu',
     template: '<div data-testid="core-dropdown-menu"></div>',
@@ -132,7 +132,7 @@ vi.mock('@/components/core/CoreDropdownMenu.vue', () => ({
   },
 }))
 
-vi.mock('@/components/project-execution/DataComparisonModal.vue', () => ({
+vi.mock('@cornflow-ui/core/components/project-execution/DataComparisonModal.vue', () => ({
   default: {
     name: 'DataComparisonModal',
     template: '<div data-testid="data-comparison-modal"></div>',
@@ -151,7 +151,7 @@ vi.mock('@/components/project-execution/DataComparisonModal.vue', () => ({
   },
 }))
 
-vi.mock('@/components/core/table/ForceRetryConfirmDialog.vue', () => ({
+vi.mock('@cornflow-ui/core/components/core/table/ForceRetryConfirmDialog.vue', () => ({
   default: {
     name: 'ForceRetryConfirmDialog',
     template: '<div data-testid="force-retry-dialog"></div>',
@@ -161,7 +161,7 @@ vi.mock('@/components/core/table/ForceRetryConfirmDialog.vue', () => ({
 }))
 
 // Mock useFullscreen composable
-vi.mock('@/composables/useFullscreen', () => ({
+vi.mock('@cornflow-ui/core/composables/useFullscreen', () => ({
   useFullscreen: () => ({
     isMaximized: { value: false },
     toggleMaximize: vi.fn(),
@@ -169,7 +169,7 @@ vi.mock('@/composables/useFullscreen', () => ({
 }))
 
 // Mock useExecutionExcel composable
-vi.mock('@/composables/project-execution/useExecutionExcel', () => ({
+vi.mock('@cornflow-ui/core/composables/project-execution/useExecutionExcel', () => ({
   useExecutionExcel: () => ({
     downloadExcel: vi.fn(),
     handleFileUpload: vi.fn(),
@@ -201,7 +201,7 @@ vi.mock('@/app/models/Instance', () => ({
 }))
 
 // Mock config module
-vi.mock('@/config', () => ({
+vi.mock('@cornflow-ui/core/config', () => ({
   default: {
     schema: 'test-schema',
     initConfig: vi.fn().mockResolvedValue(undefined),

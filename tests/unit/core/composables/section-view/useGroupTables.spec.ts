@@ -25,12 +25,12 @@ vi.mock('vue-i18n', () => ({
 }))
 
 let storeState: any
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: () => storeState,
 }))
 
 // FrontendAutomationService helpers — predictable transforms
-vi.mock('@/services/FrontendAutomationService', () => ({
+vi.mock('@cornflow-ui/core/services/FrontendAutomationService', () => ({
   fromUrlFriendly: vi.fn((key: string) => key.replace(/-/g, '_')),
   toUrlFriendly: vi.fn((key: string) => String(key).replace(/_/g, '-')),
   getMasterDataTableRankByDrawerHierarchy: vi.fn(
@@ -41,17 +41,17 @@ vi.mock('@/services/FrontendAutomationService', () => ({
   ),
 }))
 
-vi.mock('@/utils/i18nUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/i18nUtils', () => ({
   resolveTitle: vi.fn((raw: any, fallback: string) =>
     typeof raw === 'string' ? raw : fallback,
   ),
 }))
 
-vi.mock('@/utils/schemaUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/schemaUtils', () => ({
   formatTitle: vi.fn((k: string) => `FMT:${k}`),
 }))
 
-import { useGroupTables } from '@/composables/section-view/useGroupTables'
+import { useGroupTables } from '@cornflow-ui/core/composables/section-view/useGroupTables'
 
 // Mount helper so onMounted lifecycle runs. Returns the composable result.
 function mountComposable(config: any, sectionType = 'configuration') {

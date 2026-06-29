@@ -13,7 +13,7 @@ import {
   applyFiltersAndSearch,
   generateHeadersFromData,
   type FilterCondition,
-} from '@/utils/tableFilterUtils'
+} from '@cornflow-ui/core/utils/tableFilterUtils'
 
 const filter = (overrides: Partial<FilterCondition> = {}): FilterCondition => ({
   id: 'f1',

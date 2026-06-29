@@ -82,7 +82,7 @@ const FakeInstance = vi.hoisted(
 )
 vi.mock('@/app/models/Instance', () => ({ Instance: FakeInstance }))
 
-vi.mock('@/utils/errorFormatting', () => ({
+vi.mock('@cornflow-ui/core/utils/errorFormatting', () => ({
   formatErrorDetails: (title: string, _d: any, message: string) =>
     `DETAILS:${title}:${message}`,
 }))
@@ -96,11 +96,11 @@ const storeState = {
   getSchemaName: 'demo',
   appConfig: { Instance: FakeInstance },
 }
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: () => storeState,
 }))
 
-import { useExecutionExcel } from '@/composables/project-execution/useExecutionExcel'
+import { useExecutionExcel } from '@cornflow-ui/core/composables/project-execution/useExecutionExcel'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 

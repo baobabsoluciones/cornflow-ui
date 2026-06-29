@@ -120,7 +120,7 @@ let mockTableDataCallIndex = 0
 const mockInvalidateTableDataCache = vi.fn()
 const mockInvalidateAllTableDataCaches = vi.fn()
 
-vi.mock('@/composables/section-view/useTableData', () => ({
+vi.mock('@cornflow-ui/core/composables/section-view/useTableData', () => ({
   useTableData: () => {
     const inst = mockTableDataInstances[mockTableDataCallIndex] ?? mockMakeTableDataInstance()
     mockTableDataCallIndex++
@@ -131,7 +131,7 @@ vi.mock('@/composables/section-view/useTableData', () => ({
     mockInvalidateAllTableDataCaches(...a),
 }))
 
-vi.mock('@/composables/section-view/useExecutionTableData', () => ({
+vi.mock('@cornflow-ui/core/composables/section-view/useExecutionTableData', () => ({
   ensureItemIds: (rows: any[]) =>
     rows.map((r, i) => (r.id != null ? r : { ...r, id: `__row_${i}` })),
 }))
@@ -141,7 +141,7 @@ const mockSectionConfig = {
   sectionType: ref('configuration'),
   currentConfiguration: ref<any>({ table_1: { title: 'Table 1', get_list: {} } }),
 }
-vi.mock('@/composables/section-view/useSectionConfiguration', () => ({
+vi.mock('@cornflow-ui/core/composables/section-view/useSectionConfiguration', () => ({
   useSectionConfiguration: () => mockSectionConfig,
 }))
 
@@ -160,12 +160,12 @@ const mockGroupTablesState = {
   resolvedTableKey: ref('table_1'),
   tableSwitching: ref(false),
 }
-vi.mock('@/composables/section-view/useGroupTables', () => ({
+vi.mock('@cornflow-ui/core/composables/section-view/useGroupTables', () => ({
   useGroupTables: () => mockGroupTablesState,
 }))
 
 // ---- useSectionDisplay -----------------------------------------------------
-vi.mock('@/composables/section-view/useSectionDisplay', () => ({
+vi.mock('@cornflow-ui/core/composables/section-view/useSectionDisplay', () => ({
   useSectionDisplay: () => ({
     title: ref('Section'),
     description: ref('Description'),
@@ -186,7 +186,7 @@ const mockTableChangesState = {
   clearCreatesForTable: vi.fn(),
   revertTableChanges: vi.fn(),
 }
-vi.mock('@/composables/useTableChanges', () => ({
+vi.mock('@cornflow-ui/core/composables/useTableChanges', () => ({
   useTableChanges: () => mockTableChangesState,
 }))
 
@@ -198,7 +198,7 @@ const mockRecalculationController = {
     (name?: string | null) => String(name ?? '') || 'Recalculated',
   ),
 }
-vi.mock('@/composables/section-view/useRecalculationController', () => ({
+vi.mock('@cornflow-ui/core/composables/section-view/useRecalculationController', () => ({
   useRecalculationController: () => mockRecalculationController,
 }))
 
@@ -211,7 +211,7 @@ const mockGeneralStoreState: any = reactive({
   getDataToDownload: vi.fn(async () => undefined),
   incrementUploadComponentKey: vi.fn(),
 })
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: () => mockGeneralStoreState,
 }))
 
@@ -226,7 +226,7 @@ const mockRepoInstance = {
 }
 const mockTableRepositoryCtor = vi.fn(() => mockRepoInstance)
 let mockForceRetryPredicate = (_e: any) => false
-vi.mock('@/repositories/TableRepository', () => ({
+vi.mock('@cornflow-ui/core/repositories/TableRepository', () => ({
   default: function (this: any, ...a: any[]) {
     return mockTableRepositoryCtor(...a)
   },
@@ -235,7 +235,7 @@ vi.mock('@/repositories/TableRepository', () => ({
 
 // ---- EditAllTablesRepository ----------------------------------------------
 const mockPostEditAllTables = vi.fn(async () => undefined)
-vi.mock('@/repositories/EditAllTablesRepository', () => ({
+vi.mock('@cornflow-ui/core/repositories/EditAllTablesRepository', () => ({
   postEditAllTables: (...a: any[]) => mockPostEditAllTables(...a),
   mapBulkUiOperationToEditAllApi: (op: string) =>
     op === 'overwrite' ? 'overwrite_all' : 'post_bulk',
@@ -243,7 +243,7 @@ vi.mock('@/repositories/EditAllTablesRepository', () => ({
 
 // ---- AutoDashboardService --------------------------------------------------
 const mockGenerateAutoDashboard = vi.fn(() => [] as any[])
-vi.mock('@/services/AutoDashboardService', () => ({
+vi.mock('@cornflow-ui/core/services/AutoDashboardService', () => ({
   generateAutoDashboard: (...a: any[]) => mockGenerateAutoDashboard(...a),
 }))
 
@@ -264,7 +264,7 @@ vi.mock('@/app/config', () => ({
 }))
 
 // SectionView must be imported AFTER mocks are declared.
-import SectionView from '@/views/SectionView.vue'
+import SectionView from '@cornflow-ui/core/views/SectionView.vue'
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -1,7 +1,7 @@
 import { describe, test, expect, vi } from 'vitest'
 
 // Deterministic stand-ins for the schema helpers used by FK resolution.
-vi.mock('@/utils/schemaUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/schemaUtils', () => ({
   getListResponseRowProperties: (cfg: any) => (cfg ? { properties: cfg.properties } : null),
   parseJoinFrom: (jf: string) => ({ table: String(jf).split('.')[0] }),
 }))
@@ -11,7 +11,7 @@ import {
   sortKeysByCreateDependency,
   getFkFieldNameForReferencedTable,
   resolveTempIdsInPayload,
-} from '@/utils/tableCreateDependencies'
+} from '@cornflow-ui/core/utils/tableCreateDependencies'
 
 describe('getTableKeyFromTempId', () => {
   test('extracts the table key from a create temp id', () => {

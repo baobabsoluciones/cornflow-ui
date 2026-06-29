@@ -76,13 +76,13 @@ vi.mock('@/app/models/Instance', () => ({
 
 // data_io.buildExcelBuffer
 const mockBuildExcelBuffer = vi.fn(async () => ({ bytes: new Uint8Array([1, 2, 3]) }))
-vi.mock('@/utils/data_io', () => ({
+vi.mock('@cornflow-ui/core/utils/data_io', () => ({
   buildExcelBuffer: (...args: any[]) => mockBuildExcelBuffer(...args),
 }))
 
 // schemaUtils
 const mockBuildAlternative = vi.fn(() => ({ built: true }))
-vi.mock('@/utils/schemaUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/schemaUtils', () => ({
   buildAlternativeParameterInstanceData: (...args: any[]) =>
     mockBuildAlternative(...args),
   convertParameterNameValueArraysToObjectsForInstance: vi.fn((data: any) => data),
@@ -91,7 +91,7 @@ vi.mock('@/utils/schemaUtils', () => ({
 }))
 
 // errorFormatting — keep simple, identifiable strings
-vi.mock('@/utils/errorFormatting', () => ({
+vi.mock('@cornflow-ui/core/utils/errorFormatting', () => ({
   formatValidationErrorsWithTitle: (title: string) => `VALIDATION:${title}`,
   formatErrorDetails: (title: string, _details: any, message: string) =>
     `DETAILS:${title}:${message}`,
@@ -102,13 +102,13 @@ vi.mock('@/utils/errorFormatting', () => ({
 const mockUseEtlBackend = vi.fn()
 const mockUseEtlBackendFromDb = vi.fn()
 let storeState: any
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: () => storeState,
 }))
 
 // The composable now consumes the ETL backend via the premium-capability registry
 // (getPremiumEtlBackend) instead of importing useEtlStore directly.
-vi.mock('@/plugins/extensions', async (orig) => ({
+vi.mock('@cornflow-ui/core/plugins/extensions', async (orig) => ({
   ...(await (orig() as Promise<Record<string, unknown>>)),
   getPremiumEtlBackend: () => ({
     useEtlBackend: mockUseEtlBackend,
@@ -119,7 +119,7 @@ vi.mock('@/plugins/extensions', async (orig) => ({
 import {
   useInstanceProcessing,
   buildInstanceDataFromAlternativeFields,
-} from '@/composables/useInstanceProcessing'
+} from '@cornflow-ui/core/composables/useInstanceProcessing'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 

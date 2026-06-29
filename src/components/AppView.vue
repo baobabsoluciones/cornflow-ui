@@ -24,13 +24,13 @@
 import { computed, provide, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useGeneralStore } from '@/stores/general'
-import HelpMenu from '@/components/core/HelpMenu.vue'
-import WarningsPanel from '@/components/WarningsPanel.vue'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import HelpMenu from '@cornflow-ui/core/components/core/HelpMenu.vue'
+import WarningsPanel from '@cornflow-ui/core/components/WarningsPanel.vue'
 import appConfig from '@/app/config'
 import {
   APP_SECTION_PAGE_READY_KEY,
-} from '@/composables/useAppSectionPageReady'
+} from '@cornflow-ui/core/composables/useAppSectionPageReady'
 
 defineOptions({ name: 'CoreAppView' })
 

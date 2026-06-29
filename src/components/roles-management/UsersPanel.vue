@@ -122,10 +122,10 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import CoreSearchInput from '@/components/core/table/CoreSearchInput.vue'
-import { useRoleMeta } from '@/composables/roles-management/useRoleMeta'
-import { useUserAvatar } from '@/composables/roles-management/useUserAvatar'
-import type { Role, UserRow } from '@/composables/roles-management/types'
+import CoreSearchInput from '@cornflow-ui/core/components/core/table/CoreSearchInput.vue'
+import { useRoleMeta } from '@cornflow-ui/core/composables/roles-management/useRoleMeta'
+import { useUserAvatar } from '@cornflow-ui/core/composables/roles-management/useUserAvatar'
+import type { Role, UserRow } from '@cornflow-ui/core/composables/roles-management/types'
 
 interface Props {
   users: UserRow[]
@@ -331,4 +331,4 @@ const filteredUsers = computed(() => {
   padding-bottom: 12px;
 }
 </style>
-<style scoped src="@/assets/styles/roles-management/panel-shared.css"></style>
+<style scoped src="@cornflow-ui/core/assets/styles/roles-management/panel-shared.css"></style>

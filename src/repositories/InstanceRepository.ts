@@ -1,8 +1,8 @@
-import client from '@/api/Api'
-import { useGeneralStore } from '@/stores/general'
-import { InstanceCore } from '@/models/Instance'
-import { getMessageFromResponseContent } from '@/utils/i18nUtils'
-import { stripInvisibleParameterPropertiesFromInstanceData } from '@/utils/schemaUtils'
+import client from '@cornflow-ui/core/api/Api'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import { InstanceCore } from '@cornflow-ui/core/models/Instance'
+import { getMessageFromResponseContent } from '@cornflow-ui/core/utils/i18nUtils'
+import { stripInvisibleParameterPropertiesFromInstanceData } from '@cornflow-ui/core/utils/schemaUtils'
 
 export default class InstanceRepository {
   // Get instance by id

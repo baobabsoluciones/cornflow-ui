@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
-import CoreDropdownMenu from '@/components/core/CoreDropdownMenu.vue'
+import CoreDropdownMenu from '@cornflow-ui/core/components/core/CoreDropdownMenu.vue'
 
 // Stub the v-menu so the dropdown content renders inline (avoids jsdom overlay errors)
 const menuStub = {

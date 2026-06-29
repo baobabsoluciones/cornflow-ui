@@ -12,8 +12,8 @@
 import { ref, onMounted, onBeforeUnmount, watch, nextTick, computed } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import '@/assets/styles/dashboard.css'
-import MapChartFrame from '@/components/dashboard/MapChartFrame.vue'
+import '@cornflow-ui/core/assets/styles/dashboard.css'
+import MapChartFrame from '@cornflow-ui/core/components/dashboard/MapChartFrame.vue'
 
 // Fix for default marker icons in Leaflet with Vite
 import icon from 'leaflet/dist/images/marker-icon.png'

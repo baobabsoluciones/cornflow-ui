@@ -5,7 +5,7 @@ import {
   getChartColor,
   getChartColors,
   getColorWithOpacity,
-} from '@/utils/chartColors'
+} from '@cornflow-ui/core/utils/chartColors'
 
 describe('chartColors', () => {
   afterEach(() => {

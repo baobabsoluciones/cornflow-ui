@@ -6,7 +6,7 @@ import {
   generateAutoDashboard,
   type TableAnalysis,
   type DashboardWidget,
-} from '@/services/AutoDashboardService'
+} from '@cornflow-ui/core/services/AutoDashboardService'
 
 // ---------------------------------------------------------------------------
 // Fixtures

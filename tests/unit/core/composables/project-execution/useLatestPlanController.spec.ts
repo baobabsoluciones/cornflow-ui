@@ -1,14 +1,14 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
-import type { LatestPlanController } from '@/types/latestPlan'
+import type { LatestPlanController } from '@cornflow-ui/core/types/latestPlan'
 
 const { mockGetPremiumLatestPlan } = vi.hoisted(() => ({
   mockGetPremiumLatestPlan: vi.fn(),
 }))
-vi.mock('@/plugins/extensions', () => ({
+vi.mock('@cornflow-ui/core/plugins/extensions', () => ({
   getPremiumLatestPlan: mockGetPremiumLatestPlan,
 }))
 
-import { useLatestPlanController } from '@/composables/project-execution/useLatestPlanController'
+import { useLatestPlanController } from '@cornflow-ui/core/composables/project-execution/useLatestPlanController'
 
 beforeEach(() => {
   vi.clearAllMocks()

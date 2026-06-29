@@ -128,8 +128,8 @@
 </template>
 
 <script setup lang="ts">
-import CoreTable from '@/components/core/table/CoreTable.vue'
-import SimpleList from '@/components/core/SimpleList.vue'
+import CoreTable from '@cornflow-ui/core/components/core/table/CoreTable.vue'
+import SimpleList from '@cornflow-ui/core/components/core/SimpleList.vue'
 
 /**
  * Presentational wrapper for the group-view (tabbed) table.

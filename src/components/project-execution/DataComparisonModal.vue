@@ -484,14 +484,14 @@ import {
   getMasterCompareRowContext,
   type DiffSummary,
   type RowDiff,
-} from '@/composables/project-execution/useMasterTableMatch'
+} from '@cornflow-ui/core/composables/project-execution/useMasterTableMatch'
 import {
   getExcludedKeysForMasterTableCompare,
   buildRowMatchKey,
   resolveComparableLowercasedKeys,
-} from '@/utils/schemaUtils'
-import { normalizeValue, areRowsDifferent } from '@/utils/rowComparison'
-import { buildOrderedFieldKeys } from '@/utils/compareFieldOrder'
+} from '@cornflow-ui/core/utils/schemaUtils'
+import { normalizeValue, areRowsDifferent } from '@cornflow-ui/core/utils/rowComparison'
+import { buildOrderedFieldKeys } from '@cornflow-ui/core/utils/compareFieldOrder'
 
 interface Props {
   modelValue: boolean
@@ -968,7 +968,7 @@ const deleteInstanceRow = (index: number) => {
 </script>
 
 <style>
-@import '@/assets/styles/components/core/CoreModalBase.css';
+@import '@cornflow-ui/core/assets/styles/components/core/CoreModalBase.css';
 </style>
 
 <style scoped>

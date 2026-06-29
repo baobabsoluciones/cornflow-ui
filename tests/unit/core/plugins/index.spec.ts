@@ -1,21 +1,21 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
-import { registerPlugins } from '@/plugins/index'
+import { registerPlugins } from '@cornflow-ui/core/plugins/index'
 import type { App } from 'vue'
 
 // Mock the plugins
-vi.mock('@/plugins/webfontloader', () => ({
+vi.mock('@cornflow-ui/core/plugins/webfontloader', () => ({
   loadFonts: vi.fn()
 }))
 
-vi.mock('@/plugins/vuetify', () => ({
+vi.mock('@cornflow-ui/core/plugins/vuetify', () => ({
   default: { install: vi.fn() }
 }))
 
-vi.mock('@/router', () => ({
+vi.mock('@cornflow-ui/core/router', () => ({
   default: { install: vi.fn() }
 }))
 
-vi.mock('@/plugins/i18n', () => ({
+vi.mock('@cornflow-ui/core/plugins/i18n', () => ({
   default: { install: vi.fn() }
 }))
 
@@ -35,10 +35,10 @@ describe('plugins/index', () => {
     } as unknown as App
 
     // Get the mocked modules
-    const webfontloader = await import('@/plugins/webfontloader')
-    const vuetify = await import('@/plugins/vuetify')
-    const router = await import('@/router')
-    const i18n = await import('@/plugins/i18n')
+    const webfontloader = await import('@cornflow-ui/core/plugins/webfontloader')
+    const vuetify = await import('@cornflow-ui/core/plugins/vuetify')
+    const router = await import('@cornflow-ui/core/router')
+    const i18n = await import('@cornflow-ui/core/plugins/i18n')
 
     mockLoadFonts = webfontloader.loadFonts
     mockVuetify = vuetify.default

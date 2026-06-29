@@ -37,10 +37,10 @@
 <script setup lang="ts">
 import { computed, provide, ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { snackbar, showSnackbar } from '@/services/SnackbarService'
-import { useLocaleReactiveConfigurations } from '@/composables/useLocaleReactiveConfigurations'
-import CoreSnackbar from '@/components/core/CoreSnackbar.vue'
-import { getPremiumGlobalComponents } from '@/plugins/extensions'
+import { snackbar, showSnackbar } from '@cornflow-ui/core/services/SnackbarService'
+import { useLocaleReactiveConfigurations } from '@cornflow-ui/core/composables/useLocaleReactiveConfigurations'
+import CoreSnackbar from '@cornflow-ui/core/components/core/CoreSnackbar.vue'
+import { getPremiumGlobalComponents } from '@cornflow-ui/core/plugins/extensions'
 
 // Provide snackbar state and function globally
 provide('snackbar', snackbar)

@@ -1,17 +1,17 @@
 import { describe, test, expect, vi } from 'vitest'
 
 // Isolate the builder logic: leaf helpers become deterministic identities.
-vi.mock('@/utils/schemaUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/schemaUtils', () => ({
   filterParameterObjectByVisibleProperties: (data: any) => data,
   isParameterPropertySchemaVisible: () => true,
   isAllowLoadFromDbDisabled: () => false,
   normalizeJsonSchemaPropertyTypeForUi: (prop: any) => prop?.type || 'string',
 }))
-vi.mock('@/utils/i18nUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/i18nUtils', () => ({
   resolveTitle: (title: any, fallback: string) =>
     typeof title === 'string' ? title : fallback,
 }))
-vi.mock('@/utils/tableFilterUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/tableFilterUtils', () => ({
   generateHeadersFromData: (rows: any[]) =>
     Object.keys(rows[0] || {}).map((k) => ({ key: k, value: k })),
   generateSecureId: (seed: string) => `id_${seed}`,
@@ -25,7 +25,7 @@ import {
   createValidationTables,
   createTableObject,
   injectParameterSwitchColumns,
-} from '@/utils/executionTableBuilders'
+} from '@cornflow-ui/core/utils/executionTableBuilders'
 
 const t = (key: string) => key
 

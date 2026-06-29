@@ -1,6 +1,6 @@
-import client from '@/api/Api'
-import { SchemaConfig } from '@/models/SchemaConfig'
-import { transformJsonSchemaToAutomationFormat } from '@/utils/schemaUtils'
+import client from '@cornflow-ui/core/api/Api'
+import { SchemaConfig } from '@cornflow-ui/core/models/SchemaConfig'
+import { transformJsonSchemaToAutomationFormat } from '@cornflow-ui/core/utils/schemaUtils'
 
 export default class SchemaRepository {
   // Get schema for the app

@@ -141,15 +141,15 @@
 <script setup lang="ts">
 import { ref, onMounted, inject } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useGeneralStore } from '@/stores/general'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import getAuthService, {
   getAllAuthServices,
   getSpecificAuthService,
-} from '@/services/AuthServiceFactory'
+} from '@cornflow-ui/core/services/AuthServiceFactory'
 import { useRouter } from 'vue-router'
-import config from '@/config'
-import type { AuthServices } from '@/services/AuthServiceFactory'
-import type { AnimatedCard } from '@/interfaces/AnimatedCard'
+import config from '@cornflow-ui/core/config'
+import type { AuthServices } from '@cornflow-ui/core/services/AuthServiceFactory'
+import type { AnimatedCard } from '@cornflow-ui/core/interfaces/AnimatedCard'
 import type { CSSProperties } from 'vue'
 import {
   baobabLogo,
@@ -157,7 +157,7 @@ import {
   googleLogo,
   microsoftLogo,
   loginBackground,
-} from '@/utils/assets'
+} from '@cornflow-ui/core/utils/assets'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -446,5 +446,5 @@ if (appName.includes(' ')) {
 <style
   scoped
   lang="scss"
-  src="@/assets/styles/components/log-in/SignInLanding.scss"
+  src="@cornflow-ui/core/assets/styles/components/log-in/SignInLanding.scss"
 ></style>

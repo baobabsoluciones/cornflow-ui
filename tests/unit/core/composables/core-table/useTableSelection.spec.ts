@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach } from 'vitest'
 import { ref } from 'vue'
-import { useTableSelection } from '@/composables/core-table/useTableSelection'
+import { useTableSelection } from '@cornflow-ui/core/composables/core-table/useTableSelection'
 
 interface Item {
   id: number

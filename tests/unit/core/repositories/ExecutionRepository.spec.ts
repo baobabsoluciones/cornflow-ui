@@ -1,10 +1,10 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
 import ExecutionRepository, {
   ExecutionFilesRegenerationError,
-} from '@/repositories/ExecutionRepository'
+} from '@cornflow-ui/core/repositories/ExecutionRepository'
 
 // Mock the API client
-vi.mock('@/api/Api', () => ({
+vi.mock('@cornflow-ui/core/api/Api', () => ({
   default: {
     get: vi.fn(),
     post: vi.fn(),
@@ -32,7 +32,7 @@ const storeState = {
   getSchemaName: 'test-schema',
 }
 
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: () => storeState,
 }))
 
@@ -42,23 +42,23 @@ const mockInstanceRepo = vi.hoisted(() => ({
   createInstance: vi.fn(),
 }))
 
-vi.mock('@/repositories/InstanceRepository', () => ({
+vi.mock('@cornflow-ui/core/repositories/InstanceRepository', () => ({
   default: vi.fn(function () {
     return mockInstanceRepo
   }),
 }))
 
 // Mock date utility
-vi.mock('@/utils/date', () => ({
+vi.mock('@cornflow-ui/core/utils/date', () => ({
   formatDateForFilename: vi.fn().mockReturnValue('2023-01-01-120000')
 }))
 
 // Mock models
-vi.mock('@/models/Execution', () => ({
+vi.mock('@cornflow-ui/core/models/Execution', () => ({
   Execution: vi.fn()
 }))
 
-vi.mock('@/models/LoadedExecution', () => ({
+vi.mock('@cornflow-ui/core/models/LoadedExecution', () => ({
   LoadedExecution: vi.fn()
 }))
 
@@ -69,8 +69,8 @@ describe('ExecutionRepository', () => {
 
   beforeEach(async () => {
     // Get mocked modules
-    const Api = await import('@/api/Api')
-    const { useGeneralStore } = await import('@/stores/general')
+    const Api = await import('@cornflow-ui/core/api/Api')
+    const { useGeneralStore } = await import('@cornflow-ui/core/stores/general')
     
     mockClient = Api.default
     mockGeneralStore = useGeneralStore()

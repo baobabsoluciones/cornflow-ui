@@ -45,8 +45,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import VueApexCharts from 'vue3-apexcharts'
-import { getChartColors } from '@/utils/chartColors'
-import '@/assets/styles/dashboard.css'
+import { getChartColors } from '@cornflow-ui/core/utils/chartColors'
+import '@cornflow-ui/core/assets/styles/dashboard.css'
 
 const ApexChart = VueApexCharts
 

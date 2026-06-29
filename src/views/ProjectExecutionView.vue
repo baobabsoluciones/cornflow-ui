@@ -136,18 +136,18 @@
 </template>
 
 <script>
-import CreateExecutionNameDescription from '@/components/project-execution/CreateExecutionNameDescription.vue'
-import CreateExecutionLoadInstance from '@/components/project-execution/CreateExecutionLoadInstance.vue'
-import CreateExecutionReviewInstance from '@/components/project-execution/CreateExecutionReviewInstance.vue'
-import CreateExecutionCheckData from '@/components/project-execution/CreateExecutionCheckData.vue'
-import CreateExecutionSolve from '@/components/project-execution/CreateExecutionSolve.vue'
-import CreateExecutionConfigParams from '@/components/project-execution/CreateExecutionConfigParams.vue'
-import UnsavedChangesWarningModal from '@/components/core/UnsavedChangesWarningModal.vue'
-import { useGeneralStore } from '@/stores/general'
+import CreateExecutionNameDescription from '@cornflow-ui/core/components/project-execution/CreateExecutionNameDescription.vue'
+import CreateExecutionLoadInstance from '@cornflow-ui/core/components/project-execution/CreateExecutionLoadInstance.vue'
+import CreateExecutionReviewInstance from '@cornflow-ui/core/components/project-execution/CreateExecutionReviewInstance.vue'
+import CreateExecutionCheckData from '@cornflow-ui/core/components/project-execution/CreateExecutionCheckData.vue'
+import CreateExecutionSolve from '@cornflow-ui/core/components/project-execution/CreateExecutionSolve.vue'
+import CreateExecutionConfigParams from '@cornflow-ui/core/components/project-execution/CreateExecutionConfigParams.vue'
+import UnsavedChangesWarningModal from '@cornflow-ui/core/components/core/UnsavedChangesWarningModal.vue'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { inject } from 'vue'
 import { useRoute } from 'vue-router'
-import { useTableChanges } from '@/composables/useTableChanges'
-import { useEtlFlowController } from '@/composables/project-execution/useEtlFlowController'
+import { useTableChanges } from '@cornflow-ui/core/composables/useTableChanges'
+import { useEtlFlowController } from '@cornflow-ui/core/composables/project-execution/useEtlFlowController'
 
 export default {
   components: {
@@ -406,7 +406,7 @@ export default {
         if (validationErrors && validationErrors.length > 0) {
           // Import formatValidationErrorsWithTitle dynamically to avoid circular dependencies
           const { formatValidationErrorsWithTitle } = await import(
-            '@/utils/errorFormatting'
+            '@cornflow-ui/core/utils/errorFormatting'
           )
 
           // Format validation errors with full Ajv error details and translations

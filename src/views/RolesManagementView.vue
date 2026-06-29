@@ -60,18 +60,18 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import CoreTitleView from '@/components/core/CoreTitleView.vue'
-import RolesPanel from '@/components/roles-management/RolesPanel.vue'
-import UsersPanel from '@/components/roles-management/UsersPanel.vue'
-import RoleFormDialog from '@/components/roles-management/RoleFormDialog.vue'
-import RoleDeleteDialog from '@/components/roles-management/RoleDeleteDialog.vue'
-import UserRolesDialog from '@/components/roles-management/UserRolesDialog.vue'
-import { useRolesManagement } from '@/composables/roles-management/useRolesManagement'
+import CoreTitleView from '@cornflow-ui/core/components/core/CoreTitleView.vue'
+import RolesPanel from '@cornflow-ui/core/components/roles-management/RolesPanel.vue'
+import UsersPanel from '@cornflow-ui/core/components/roles-management/UsersPanel.vue'
+import RoleFormDialog from '@cornflow-ui/core/components/roles-management/RoleFormDialog.vue'
+import RoleDeleteDialog from '@cornflow-ui/core/components/roles-management/RoleDeleteDialog.vue'
+import UserRolesDialog from '@cornflow-ui/core/components/roles-management/UserRolesDialog.vue'
+import { useRolesManagement } from '@cornflow-ui/core/composables/roles-management/useRolesManagement'
 import type {
   Role,
   RoleFormValue,
   UserRow,
-} from '@/composables/roles-management/types'
+} from '@cornflow-ui/core/composables/roles-management/types'
 import appConfig from '@/app/config'
 
 const {

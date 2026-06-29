@@ -80,21 +80,21 @@
 </template>
 
 <script setup>
-import { useGeneralStore } from '@/stores/general'
-import AuthService from '@/services/AuthService'
-import CoreAppDrawer from '@/components/AppDrawer.vue'
-import CoreAppView from '@/components/AppView.vue'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import AuthService from '@cornflow-ui/core/services/AuthService'
+import CoreAppDrawer from '@cornflow-ui/core/components/AppDrawer.vue'
+import CoreAppView from '@cornflow-ui/core/components/AppView.vue'
 import { useRouter, useRoute } from 'vue-router'
 import { computed } from 'vue'
 import { Vue3Marquee } from 'vue3-marquee'
-import config from '@/config'
+import config from '@cornflow-ui/core/config'
 import appConfig from '@/app/config'
-import { baobabLogoSmall } from '@/utils/assets'
+import { baobabLogoSmall } from '@cornflow-ui/core/utils/assets'
 import {
   getPremiumGlobalComponents,
   applyPremiumExecutionTabDecorators,
-} from '@/plugins/extensions'
-import { totalTopBannerOffset } from '@/plugins/layoutOffsets'
+} from '@cornflow-ui/core/plugins/extensions'
+import { totalTopBannerOffset } from '@cornflow-ui/core/plugins/layoutOffsets'
 
 const generalStore = useGeneralStore()
 const router = useRouter()

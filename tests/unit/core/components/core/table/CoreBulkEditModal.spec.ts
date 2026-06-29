@@ -4,7 +4,7 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { createI18n } from 'vue-i18n'
-import CoreBulkEditModal from '@/components/core/table/CoreBulkEditModal.vue'
+import CoreBulkEditModal from '@cornflow-ui/core/components/core/table/CoreBulkEditModal.vue'
 
 const dialogStub = {
   name: 'v-dialog',

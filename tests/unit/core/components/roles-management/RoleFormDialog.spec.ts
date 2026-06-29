@@ -3,9 +3,9 @@ import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import { createI18n } from 'vue-i18n'
 import { nextTick } from 'vue'
-import RoleFormDialog from '@/components/roles-management/RoleFormDialog.vue'
+import RoleFormDialog from '@cornflow-ui/core/components/roles-management/RoleFormDialog.vue'
 
-vi.mock('@/components/core/CoreButton.vue', () => ({
+vi.mock('@cornflow-ui/core/components/core/CoreButton.vue', () => ({
   default: {
     name: 'CoreButton',
     template:

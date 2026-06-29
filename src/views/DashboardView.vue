@@ -23,12 +23,12 @@
 </template>
 
 <script>
-import ExecutionInfoCard from '@/components/project-execution/ExecutionInfoCard.vue'
-import ExecutionInfoMenu from '@/components/project-execution/ExecutionInfoMenu.vue'
+import ExecutionInfoCard from '@cornflow-ui/core/components/project-execution/ExecutionInfoCard.vue'
+import ExecutionInfoMenu from '@cornflow-ui/core/components/project-execution/ExecutionInfoMenu.vue'
 import DashboardMain from '@/app/components/DashboardMain.vue'
-import { useGeneralStore } from '@/stores/general'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { inject } from 'vue'
-import { getSectionType } from '@/services/FrontendAutomationService'
+import { getSectionType } from '@cornflow-ui/core/services/FrontendAutomationService'
 
 export default {
   components: {

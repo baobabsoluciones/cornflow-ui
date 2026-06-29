@@ -3,8 +3,8 @@ import {
   generateKpiTableConfigs,
   applyKpiDisplayMode,
   KPI_DUPLICATE_TABLE_KEY_SUFFIX,
-} from '@/utils/kpiTableUtils'
-import { formatTitle } from '@/utils/schemaUtils'
+} from '@cornflow-ui/core/utils/kpiTableUtils'
+import { formatTitle } from '@cornflow-ui/core/utils/schemaUtils'
 
 describe('kpiTableUtils - generateKpiTableConfigs', () => {
   test('returns {} for nullish or non-object input', () => {

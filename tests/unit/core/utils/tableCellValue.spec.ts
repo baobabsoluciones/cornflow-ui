@@ -1,16 +1,16 @@
 import { describe, test, expect, vi } from 'vitest'
 
-vi.mock('@/utils/schemaUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/schemaUtils', () => ({
   parseJoinFrom: (jf: string) => {
     const [table, field] = String(jf).split('.')
     return table && field ? { table, field } : null
   },
 }))
-vi.mock('@/utils/i18nUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/i18nUtils', () => ({
   resolveTitle: (title: any, fb: string) => (typeof title === 'string' ? title : fb),
 }))
 
-import { resolveJoinFromValue } from '@/utils/tableCellValue'
+import { resolveJoinFromValue } from '@cornflow-ui/core/utils/tableCellValue'
 
 const header = { foreignKeyField: 'orderId', joinFrom: 'orders.name' }
 

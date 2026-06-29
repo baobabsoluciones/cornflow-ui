@@ -5,29 +5,29 @@
 
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useGeneralStore } from '@/stores/general'
-import { getPremiumEtlBackend } from '@/plugins/extensions'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import { getPremiumEtlBackend } from '@cornflow-ui/core/plugins/extensions'
 import { useFileProcessors } from '@/app/composables/useFileProcessors'
 import { Instance } from '@/app/models/Instance'
 import {
   formatValidationErrorsWithTitle,
   formatErrorDetails,
-} from '@/utils/errorFormatting'
+} from '@cornflow-ui/core/utils/errorFormatting'
 import type { ErrorObject } from 'ajv'
 import {
   FILE_EXTENSIONS,
   SUPPORTED_DATA_EXTENSIONS,
   isExcelExtension,
   getFileExtension,
-} from '@/utils/fileConstants'
-import { buildExcelBuffer } from '@/utils/data_io'
+} from '@cornflow-ui/core/utils/fileConstants'
+import { buildExcelBuffer } from '@cornflow-ui/core/utils/data_io'
 import {
   buildAlternativeParameterInstanceData,
   convertParameterNameValueArraysToObjectsForInstance,
   getInstanceSchemaRootForTables,
   patchInstanceSchemaRootForParameterTableEtlExport,
-} from '@/utils/schemaUtils'
-import { unwrapEtlResponse } from '@/utils/etlResponse'
+} from '@cornflow-ui/core/utils/schemaUtils'
+import { unwrapEtlResponse } from '@cornflow-ui/core/utils/etlResponse'
 import type { LoadInstanceAlternativeParamField } from '@/app/config'
 
 export interface ProcessingResult {
@@ -41,7 +41,7 @@ export interface ProcessingResult {
 }
 
 // Re-exported from `@/utils/etlResponse` so existing imports keep working.
-export { unwrapEtlResponse } from '@/utils/etlResponse'
+export { unwrapEtlResponse } from '@cornflow-ui/core/utils/etlResponse'
 
 export interface ProcessingState {
   isProcessing: boolean

@@ -6,8 +6,8 @@
  * (build sin latest-plan), devuelve una implementación INERTE (acción no disponible, sin modal).
  * El contrato vive en `@/types/latestPlan`.
  */
-import { getPremiumLatestPlan } from '@/plugins/extensions'
-import type { LatestPlanController } from '@/types/latestPlan'
+import { getPremiumLatestPlan } from '@cornflow-ui/core/plugins/extensions'
+import type { LatestPlanController } from '@cornflow-ui/core/types/latestPlan'
 
 /** Controlador inerte: la acción "fijar como plan actual" no está disponible y no hay modal. */
 function createInertLatestPlanController(): LatestPlanController {

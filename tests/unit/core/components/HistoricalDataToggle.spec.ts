@@ -29,11 +29,11 @@ const store = vi.hoisted(() => ({
   clearHistoricalExecution: vi.fn(),
 }))
 
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: () => store,
 }))
 
-import HistoricalDataToggle from '@/components/HistoricalDataToggle.vue'
+import HistoricalDataToggle from '@cornflow-ui/core/components/HistoricalDataToggle.vue'
 
 const vuetify = createVuetify({ components, directives })
 

@@ -1,10 +1,10 @@
 import { inject, ref, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useGeneralStore } from '@/stores/general'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { Instance } from '@/app/models/Instance'
 import { Solution } from '@/app/models/Solution'
 import { Experiment } from '@/app/models/Experiment'
-import { formatErrorDetails } from '@/utils/errorFormatting'
+import { formatErrorDetails } from '@cornflow-ui/core/utils/errorFormatting'
 
 /**
  * Interface for new execution object (used during creation)

@@ -176,13 +176,13 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import CoreButton from '@/components/core/CoreButton.vue'
+import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
 import type {
   FilterCondition,
   FilterField,
   FilterOperator,
-} from '@/composables/core-table/useTableFilters'
-import { isDateLikeFieldType } from '@/utils/tableFilterUtils'
+} from '@cornflow-ui/core/composables/core-table/useTableFilters'
+import { isDateLikeFieldType } from '@cornflow-ui/core/utils/tableFilterUtils'
 
 // Props
 interface Props {
@@ -448,4 +448,4 @@ watch(
 )
 </script>
 
-<style src="@/assets/styles/components/core/CoreFiltersPanel.css"></style>
+<style src="@cornflow-ui/core/assets/styles/components/core/CoreFiltersPanel.css"></style>

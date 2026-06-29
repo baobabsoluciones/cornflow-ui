@@ -1,4 +1,4 @@
-import getUserFullName from "@/utils/user"
+import getUserFullName from "@cornflow-ui/core/utils/user"
 
 export class Execution {
   message: string

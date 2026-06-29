@@ -1,13 +1,13 @@
-import { TableSchema } from '@/config/views'
+import { TableSchema } from '@cornflow-ui/core/config/views'
 import {
   ConfigurationData,
   AutomationSectionDef,
   AutomationGroupDef,
   type DateRangeFilterConfig,
-} from '@/types/frontendAutomation'
-import { TableOperation } from '@/types/table'
-import { formatTitle } from '@/utils/schemaUtils'
-import { resolveTitleWithLocale } from '@/utils/i18nUtils'
+} from '@cornflow-ui/core/types/frontendAutomation'
+import { TableOperation } from '@cornflow-ui/core/types/table'
+import { formatTitle } from '@cornflow-ui/core/utils/schemaUtils'
+import { resolveTitleWithLocale } from '@cornflow-ui/core/utils/i18nUtils'
 
 // Helper function to convert text to URL-friendly format
 export function toUrlFriendly(text: string): string {

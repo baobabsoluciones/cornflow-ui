@@ -1,6 +1,6 @@
-import configService from '@/services/ConfigService';
+import configService from '@cornflow-ui/core/services/ConfigService';
 import appConfig from '@/app/config';
-import { parseBoolean } from '@/utils/common';
+import { parseBoolean } from '@cornflow-ui/core/utils/common';
 
 // Builds the auth object from VITE_APP_AUTH_* environment variables.
 // Shared by the env-vars branch and the error fallback in initConfig().

@@ -10,7 +10,7 @@ const mockConfig = vi.hoisted(() => ({
   initConfig: vi.fn().mockResolvedValue(undefined)
 }))
 
-vi.mock('@/config', () => ({
+vi.mock('@cornflow-ui/core/config', () => ({
   default: mockConfig
 }))
 
@@ -21,7 +21,7 @@ const mockAuthService = vi.hoisted(() => ({
 
 const mockGetAuthService = vi.hoisted(() => vi.fn())
 
-vi.mock('@/services/AuthServiceFactory', () => ({
+vi.mock('@cornflow-ui/core/services/AuthServiceFactory', () => ({
   default: mockGetAuthService
 }))
 
@@ -30,7 +30,7 @@ const mockRouter = vi.hoisted(() => ({
   push: vi.fn()
 }))
 
-vi.mock('@/router', () => ({
+vi.mock('@cornflow-ui/core/router', () => ({
   default: mockRouter
 }))
 
@@ -71,7 +71,7 @@ describe('ApiClient', () => {
     mockGetAuthService.mockResolvedValue(mockAuthService)
     
     // Import the ApiClient instance
-    const module = await import('@/api/Api')
+    const module = await import('@cornflow-ui/core/api/Api')
     apiClient = module.default
     
     // Reset the client state for each test

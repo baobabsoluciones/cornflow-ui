@@ -7,7 +7,7 @@
 import {
   resolveComparableLowercasedKeys,
   buildLowercasedKeyMap,
-} from '@/utils/schemaUtils'
+} from '@cornflow-ui/core/utils/schemaUtils'
 
 /** Normalize a string for comparison: numeric strings -> numbers, true/false -> booleans, '' -> null. */
 export function normalizeStringValue(value: string): any {

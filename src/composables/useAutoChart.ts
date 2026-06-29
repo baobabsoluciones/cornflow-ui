@@ -1,5 +1,5 @@
 import { computed, type ComputedRef, type Ref } from 'vue'
-import { getChartColors, getCSSVariable } from '@/utils/chartColors'
+import { getChartColors, getCSSVariable } from '@cornflow-ui/core/utils/chartColors'
 
 /**
  * Shared chart config consumed by the Auto*Chart dashboard components.

@@ -1,5 +1,5 @@
 import { computed } from 'vue'
-import useFilters from '@/utils/useFilters'
+import useFilters from '@cornflow-ui/core/utils/useFilters'
 
 const COLUMN_ALIGNMENT: Record<string, string> = {
   boolean: 'center',

@@ -4,7 +4,7 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { createI18n } from 'vue-i18n'
-import CoreFiltersPanel from '@/components/core/table/CoreFiltersPanel.vue'
+import CoreFiltersPanel from '@cornflow-ui/core/components/core/table/CoreFiltersPanel.vue'
 
 const menuStub = {
   name: 'v-menu',

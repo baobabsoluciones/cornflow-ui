@@ -14,7 +14,7 @@
  */
 
 import { ref } from 'vue'
-import { useGeneralStore } from '@/stores/general'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { Instance } from '@/app/models/Instance'
 
 type ProcessorFunction = (

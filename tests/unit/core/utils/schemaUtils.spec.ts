@@ -47,7 +47,7 @@ import {
   getExecutionConfigFromSchemaConfig,
   coerceValueToJsonSchemaField,
   coerceSolutionDataBySchema,
-} from '@/utils/schemaUtils'
+} from '@cornflow-ui/core/utils/schemaUtils'
 
 // ─── formatTitle / resolveDefaultGroupName / parseJoinFrom ───────────────────
 

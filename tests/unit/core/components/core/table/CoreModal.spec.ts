@@ -11,13 +11,13 @@ const formFieldsMock = vi.hoisted(() => {
   return { instance: null as any }
 })
 
-vi.mock('@/composables/core-table/useFormFields', () => {
+vi.mock('@cornflow-ui/core/composables/core-table/useFormFields', () => {
   return {
     useFormFields: () => formFieldsMock.instance,
   }
 })
 
-import CoreModal from '@/components/core/table/CoreModal.vue'
+import CoreModal from '@cornflow-ui/core/components/core/table/CoreModal.vue'
 
 const dialogStub = {
   name: 'v-dialog',

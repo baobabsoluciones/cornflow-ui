@@ -154,27 +154,27 @@
 <script setup lang="ts">
 import { computed, ref, inject, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import ExecutionDataView from '@/components/project-execution/ExecutionDataView.vue'
-import CoreDropdownMenu from '@/components/core/CoreDropdownMenu.vue'
-import DataComparisonModal from '@/components/project-execution/DataComparisonModal.vue'
-import { useFullscreen } from '@/composables/useFullscreen'
+import ExecutionDataView from '@cornflow-ui/core/components/project-execution/ExecutionDataView.vue'
+import CoreDropdownMenu from '@cornflow-ui/core/components/core/CoreDropdownMenu.vue'
+import DataComparisonModal from '@cornflow-ui/core/components/project-execution/DataComparisonModal.vue'
+import { useFullscreen } from '@cornflow-ui/core/composables/useFullscreen'
 import {
   useExecutionExcel,
   type NewExecution,
-} from '@/composables/project-execution/useExecutionExcel'
+} from '@cornflow-ui/core/composables/project-execution/useExecutionExcel'
 import {
   useMasterTableMatch,
   getMasterCompareRowContext,
-} from '@/composables/project-execution/useMasterTableMatch'
-import { isForceRetryOfferError } from '@/repositories/TableRepository'
-import ForceRetryConfirmDialog from '@/components/core/table/ForceRetryConfirmDialog.vue'
+} from '@cornflow-ui/core/composables/project-execution/useMasterTableMatch'
+import { isForceRetryOfferError } from '@cornflow-ui/core/repositories/TableRepository'
+import ForceRetryConfirmDialog from '@cornflow-ui/core/components/core/table/ForceRetryConfirmDialog.vue'
 import { Instance } from '@/app/models/Instance'
-import { formatValidationErrorsWithTitle } from '@/utils/errorFormatting'
-import { useGeneralStore } from '@/stores/general'
+import { formatValidationErrorsWithTitle } from '@cornflow-ui/core/utils/errorFormatting'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import appConfig from '@/app/config'
-import { useTableChanges } from '@/composables/useTableChanges'
-import { parameterRowsToParameterObject, buildRowMatchKey } from '@/utils/schemaUtils'
-import type { ExternalEtlFlowState } from '@/types/etlFlow'
+import { useTableChanges } from '@cornflow-ui/core/composables/useTableChanges'
+import { parameterRowsToParameterObject, buildRowMatchKey } from '@cornflow-ui/core/utils/schemaUtils'
+import type { ExternalEtlFlowState } from '@cornflow-ui/core/types/etlFlow'
 
 interface Props {
   newExecution: NewExecution

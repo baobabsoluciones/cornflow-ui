@@ -11,7 +11,7 @@ vi.mock('@/app/config', () => ({
 
 async function freshService() {
   vi.resetModules()
-  const mod = await import('@/services/ConfigService')
+  const mod = await import('@cornflow-ui/core/services/ConfigService')
   return mod.default
 }
 
@@ -94,7 +94,7 @@ describe('ConfigService (real) — singleton', () => {
   test('getInstance returns the same instance', async () => {
     vi.stubEnv('VITE_APP_SCHEMA', 's')
     vi.resetModules()
-    const mod = await import('@/services/ConfigService')
+    const mod = await import('@cornflow-ui/core/services/ConfigService')
     const a = mod.default
     const b = (a.constructor as any).getInstance()
     expect(a).toBe(b)

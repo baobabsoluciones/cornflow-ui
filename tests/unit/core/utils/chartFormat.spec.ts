@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { fmtK, formatDate, formatDateLong, dayKey } from '@/utils/chartFormat'
+import { fmtK, formatDate, formatDateLong, dayKey } from '@cornflow-ui/core/utils/chartFormat'
 
 describe('fmtK', () => {
   test('formats millions, thousands and small numbers', () => {

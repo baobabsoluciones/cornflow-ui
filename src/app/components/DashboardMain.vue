@@ -28,7 +28,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue'
-import { useGeneralStore } from '@/stores/general'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 
 export default defineComponent({
   name: 'DashboardMain',

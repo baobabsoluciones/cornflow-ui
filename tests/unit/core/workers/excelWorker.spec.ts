@@ -108,7 +108,7 @@ let posted: any[] = []
 
 async function loadWorker() {
   vi.resetModules()
-  await import('@/workers/excelWorker')
+  await import('@cornflow-ui/core/workers/excelWorker')
 }
 
 function dispatch(data: any, origin = '') {

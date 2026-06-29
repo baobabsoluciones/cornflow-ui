@@ -234,9 +234,9 @@
 </template>
 <script>
 import { inject } from 'vue'
-import { useGeneralStore } from '@/stores/general'
-import getAuthService from '@/services/AuthServiceFactory'
-import config from '@/config'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import getAuthService from '@cornflow-ui/core/services/AuthServiceFactory'
+import config from '@cornflow-ui/core/config'
 import { useRoute } from 'vue-router'
 
 export default {

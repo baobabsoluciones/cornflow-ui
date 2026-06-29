@@ -4,7 +4,7 @@ import { createVuetify } from 'vuetify'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
 import { nextTick } from 'vue'
-import ExecutionDataView from '@/components/project-execution/ExecutionDataView.vue'
+import ExecutionDataView from '@cornflow-ui/core/components/project-execution/ExecutionDataView.vue'
 
 // Controllable mock holder for the useTableChanges composable so individual
 // tests can override return values while keeping a stable object across the
@@ -34,7 +34,7 @@ const resetTableChangesMock = () => {
   })
 }
 
-vi.mock('@/composables/useTableChanges', () => ({
+vi.mock('@cornflow-ui/core/composables/useTableChanges', () => ({
   useTableChanges: () => tableChangesMock,
 }))
 

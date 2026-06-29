@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import { useGeneralStore } from '@/stores/general';
+import { useGeneralStore } from '@cornflow-ui/core/stores/general';
 import { Execution } from './types';
 
 /** Matches CreateExecutionConfigParams / schemaUtils: `timeLimit` field with `minutes: true`. */

@@ -1,5 +1,5 @@
-import type { TableSchema } from '@/config/views'
-import { formatTitle } from '@/utils/schemaUtils'
+import type { TableSchema } from '@cornflow-ui/core/config/views'
+import { formatTitle } from '@cornflow-ui/core/utils/schemaUtils'
 
 /** When `rawKpis` reuses a table key already defined in resultsData, we keep the base table and add a KPI copy under this suffix so both groups appear in the drawer. */
 export const KPI_DUPLICATE_TABLE_KEY_SUFFIX = '__kpi'

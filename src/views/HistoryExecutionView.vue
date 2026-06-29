@@ -86,11 +86,11 @@
 </template>
 
 <script>
-import ProjectExecutionsTable from '@/components/project-execution/ProjectExecutionsTable.vue'
-import CoreButton from '@/components/core/CoreButton.vue'
-import CoreTitleView from '@/components/core/CoreTitleView.vue'
-import CorePanelData from '@/components/core/CorePanelData.vue'
-import { useGeneralStore } from '@/stores/general'
+import ProjectExecutionsTable from '@cornflow-ui/core/components/project-execution/ProjectExecutionsTable.vue'
+import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
+import CoreTitleView from '@cornflow-ui/core/components/core/CoreTitleView.vue'
+import CorePanelData from '@cornflow-ui/core/components/core/CorePanelData.vue'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { inject } from 'vue'
 import appConfig from '@/app/config'
 

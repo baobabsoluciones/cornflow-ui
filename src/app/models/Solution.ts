@@ -1,4 +1,4 @@
-import { SolutionCore } from '@/models/Solution'
+import { SolutionCore } from '@cornflow-ui/core/models/Solution'
 
 export class Solution extends SolutionCore {
   constructor(

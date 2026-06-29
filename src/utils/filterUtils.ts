@@ -1,4 +1,4 @@
-import i18n from '@/plugins/i18n'
+import i18n from '@cornflow-ui/core/plugins/i18n'
 import { isTablePropertyFilterable, getTableHeaders, getTableJsonSchema, getTableJsonSchemaProperty, getTablePropertyTitle } from './tableUtils'
 
 /**

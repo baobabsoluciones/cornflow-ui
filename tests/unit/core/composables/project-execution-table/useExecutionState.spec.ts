@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
-import { useExecutionState } from '@/composables/project-execution-table/useExecutionState'
+import { useExecutionState } from '@cornflow-ui/core/composables/project-execution-table/useExecutionState'
 
 // Mock vue-i18n
 const mockT = vi.fn((key: string) => {
@@ -80,7 +80,7 @@ const mockGeneralStore = {
   },
 }
 
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: () => mockGeneralStore,
 }))
 

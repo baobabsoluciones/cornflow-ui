@@ -16,10 +16,10 @@ import type { RouteRecordRaw } from 'vue-router'
 import type {
   AutomationSectionDef,
   AutomationGroupDef,
-} from '@/types/frontendAutomation'
-import type { ExternalEtlFlowController } from '@/types/etlFlow'
-import type { RecalculationController } from '@/types/recalculation'
-import type { LatestPlanController } from '@/types/latestPlan'
+} from '@cornflow-ui/core/types/frontendAutomation'
+import type { ExternalEtlFlowController } from '@cornflow-ui/core/types/etlFlow'
+import type { RecalculationController } from '@cornflow-ui/core/types/recalculation'
+import type { LatestPlanController } from '@cornflow-ui/core/types/latestPlan'
 
 /**
  * Acceso de solo-lectura a la configuración resuelta (core + app) que el core ofrece a los

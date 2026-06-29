@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
-import { SolutionCore } from '@/models/Solution'
+import { SolutionCore } from '@cornflow-ui/core/models/Solution'
 
 // Mock dependencies
 const { mockValidate, mockAjv, MockAjv } = vi.hoisted(() => {
@@ -15,7 +15,7 @@ const { mockValidate, mockAjv, MockAjv } = vi.hoisted(() => {
   return { mockValidate, mockAjv, MockAjv }
 })
 
-vi.mock('@/utils/data_io', () => ({
+vi.mock('@cornflow-ui/core/utils/data_io', () => ({
   loadExcel: vi.fn()
 }))
 
@@ -33,7 +33,7 @@ describe('SolutionCore', () => {
       return mockValidate
     })
 
-    const dataIo = await import('@/utils/data_io')
+    const dataIo = await import('@cornflow-ui/core/utils/data_io')
     mockLoadExcel = dataIo.loadExcel
   })
 

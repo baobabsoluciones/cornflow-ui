@@ -8,16 +8,16 @@ vi.mock('vue-i18n', () => ({
 }))
 
 let storeState: any
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: () => storeState,
 }))
 
-vi.mock('@/utils/tableFilterUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/tableFilterUtils', () => ({
   getFilterFieldTypeFromSchemaProperty: vi.fn(() => 'string'),
 }))
 
 // schemaUtils — light fakes returning controllable data.
-vi.mock('@/utils/schemaUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/schemaUtils', () => ({
   getListResponseRowProperties: vi.fn((config: any) => config?.__rowSchema ?? null),
   normalizeGetListResponseToRows: vi.fn((data: any) =>
     Array.isArray(data) ? data : [],
@@ -29,7 +29,7 @@ vi.mock('@/utils/schemaUtils', () => ({
 import {
   useExecutionTableData,
   ensureItemIds,
-} from '@/composables/section-view/useExecutionTableData'
+} from '@cornflow-ui/core/composables/section-view/useExecutionTableData'
 
 beforeEach(() => {
   vi.clearAllMocks()

@@ -1,14 +1,14 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
-import type { ExternalEtlFlowController } from '@/types/etlFlow'
+import type { ExternalEtlFlowController } from '@cornflow-ui/core/types/etlFlow'
 
 const { mockGetPremiumExternalEtlFlow } = vi.hoisted(() => ({
   mockGetPremiumExternalEtlFlow: vi.fn(),
 }))
-vi.mock('@/plugins/extensions', () => ({
+vi.mock('@cornflow-ui/core/plugins/extensions', () => ({
   getPremiumExternalEtlFlow: mockGetPremiumExternalEtlFlow,
 }))
 
-import { useEtlFlowController } from '@/composables/project-execution/useEtlFlowController'
+import { useEtlFlowController } from '@cornflow-ui/core/composables/project-execution/useEtlFlowController'
 
 beforeEach(() => {
   vi.clearAllMocks()

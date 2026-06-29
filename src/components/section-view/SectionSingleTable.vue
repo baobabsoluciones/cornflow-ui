@@ -114,7 +114,7 @@
 </template>
 
 <script setup lang="ts">
-import CoreTable from '@/components/core/table/CoreTable.vue'
+import CoreTable from '@cornflow-ui/core/components/core/table/CoreTable.vue'
 
 /**
  * Presentational wrapper for the single-table (non-group) view.

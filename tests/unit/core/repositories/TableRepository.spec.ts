@@ -3,8 +3,8 @@ import TableRepository, {
   ForceRetryOfferError,
   isForceRetryOfferError,
   responseBodyOffersForceRetry,
-} from '@/repositories/TableRepository'
-import { TableOperation } from '@/types/table'
+} from '@cornflow-ui/core/repositories/TableRepository'
+import { TableOperation } from '@cornflow-ui/core/types/table'
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -17,13 +17,13 @@ const mockClient = vi.hoisted(() => ({
   getBlob: vi.fn(),
 }))
 
-vi.mock('@/api/Api', () => ({
+vi.mock('@cornflow-ui/core/api/Api', () => ({
   default: mockClient,
 }))
 
 // i18nUtils.getMessageFromResponseContent is pure but imports the i18n plugin
 // transitively; mock it to deterministic, identifiable strings.
-vi.mock('@/utils/i18nUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/i18nUtils', () => ({
   getMessageFromResponseContent: (content: any, fallback: string) => {
     if (content && typeof content.message === 'string') return content.message
     return fallback
@@ -31,7 +31,7 @@ vi.mock('@/utils/i18nUtils', () => ({
 }))
 
 // buildApiUrl: substitute {key} placeholders so we can assert on URLs.
-vi.mock('@/utils/urlUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/urlUtils', () => ({
   buildApiUrl: (baseUrl: string, params: Record<string, any> = {}) => {
     let url = baseUrl
     for (const [k, v] of Object.entries(params)) {
@@ -42,7 +42,7 @@ vi.mock('@/utils/urlUtils', () => ({
 }))
 
 // FrontendAutomationService helpers mirror the real (trivial) implementations.
-vi.mock('@/services/FrontendAutomationService', () => ({
+vi.mock('@cornflow-ui/core/services/FrontendAutomationService', () => ({
   getOperationConfig: (tableConfig: any, operation: string) =>
     tableConfig?.[operation] || null,
   isOperationSupported: (tableConfig: any, operation: string) =>

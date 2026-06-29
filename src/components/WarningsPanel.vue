@@ -97,8 +97,8 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue'
-import { useGeneralStore } from '@/stores/general'
-import WarningsRepository from '@/repositories/WarningsRepository'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import WarningsRepository from '@cornflow-ui/core/repositories/WarningsRepository'
 
 const repo = new WarningsRepository()
 

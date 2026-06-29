@@ -3,8 +3,8 @@ import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
-import PendingChangesReviewModal from '@/components/core/PendingChangesReviewModal.vue'
-import { useTableChanges } from '@/composables/useTableChanges'
+import PendingChangesReviewModal from '@cornflow-ui/core/components/core/PendingChangesReviewModal.vue'
+import { useTableChanges } from '@cornflow-ui/core/composables/useTableChanges'
 
 const createWrapper = (props: Record<string, unknown> = {}) => {
   const vuetify = createVuetify()

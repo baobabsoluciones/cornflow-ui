@@ -1,5 +1,5 @@
 import { computed, watch, nextTick, ref, onMounted } from 'vue';
-import { useGeneralStore } from '@/stores/general';
+import { useGeneralStore } from '@cornflow-ui/core/stores/general';
 import { useTableConfig } from './useTableConfig';
 import { useTableDOMManipulation } from './useTableDOMManipulation';
 import { useExecutionState } from './useExecutionState';

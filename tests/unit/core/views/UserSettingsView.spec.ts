@@ -3,12 +3,12 @@ import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
-import UserSettingsView from '@/views/UserSettingsView.vue'
-import { useGeneralStore } from '@/stores/general'
+import UserSettingsView from '@cornflow-ui/core/views/UserSettingsView.vue'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 
 const mockChangeLanguage = vi.hoisted(() => vi.fn())
 
-vi.mock('@/plugins/i18n', () => ({
+vi.mock('@cornflow-ui/core/plugins/i18n', () => ({
   default: {
     global: {
       locale: { value: 'en' },
@@ -26,7 +26,7 @@ const mockConfig = vi.hoisted(() => ({
   initConfig: vi.fn().mockResolvedValue(undefined)
 }))
 
-vi.mock('@/config', () => ({
+vi.mock('@cornflow-ui/core/config', () => ({
   default: mockConfig
 }))
 

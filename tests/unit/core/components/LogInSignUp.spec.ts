@@ -19,13 +19,13 @@ const auth = vi.hoisted(() => ({
 
 const routeQuery = vi.hoisted(() => ({ value: {} as Record<string, string> }))
 
-vi.mock('@/config', () => ({ default: mockConfig }))
+vi.mock('@cornflow-ui/core/config', () => ({ default: mockConfig }))
 
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: () => store,
 }))
 
-vi.mock('@/services/AuthServiceFactory', () => ({
+vi.mock('@cornflow-ui/core/services/AuthServiceFactory', () => ({
   default: vi.fn().mockResolvedValue(auth),
 }))
 
@@ -33,7 +33,7 @@ vi.mock('vue-router', () => ({
   useRoute: () => ({ query: routeQuery.value }),
 }))
 
-import LogInSignUp from '@/components/LogInSignUp.vue'
+import LogInSignUp from '@cornflow-ui/core/components/LogInSignUp.vue'
 
 const vuetify = createVuetify({ components, directives })
 

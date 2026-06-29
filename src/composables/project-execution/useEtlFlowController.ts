@@ -7,11 +7,11 @@
  * igual (flujo no activo). El contrato vive en `@/types/etlFlow`.
  */
 import { computed, reactive } from 'vue'
-import { getPremiumExternalEtlFlow } from '@/plugins/extensions'
+import { getPremiumExternalEtlFlow } from '@cornflow-ui/core/plugins/extensions'
 import type {
   ExternalEtlFlowController,
   ExternalEtlFlowState,
-} from '@/types/etlFlow'
+} from '@cornflow-ui/core/types/etlFlow'
 
 /** Controlador inerte: flujo siempre inactivo, mutadores no-op, submitUpdate rechaza. */
 function createInertEtlFlowController(): ExternalEtlFlowController {

@@ -7,7 +7,7 @@
  */
 
 import * as ExcelJS from 'exceljs'
-import { formatDateForExcel } from '@/utils/date'
+import { formatDateForExcel } from '@cornflow-ui/core/utils/date'
 import {
   applyCellBorder,
   getAlternatingFill,
@@ -15,7 +15,7 @@ import {
   prepareSheetData,
   estimateSheetCellCount,
   processObjectTypeWorksheet,
-} from '@/utils/excelStyling'
+} from '@cornflow-ui/core/utils/excelStyling'
 
 // SheetJS is lazy-loaded only when ExcelJS chokes on a file. Keeps the
 // hot-path worker bundle small for the 99% case where ExcelJS succeeds.

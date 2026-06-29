@@ -1,7 +1,7 @@
 import { ref, computed } from 'vue'
 import type { ComputedRef } from 'vue'
-import { generateSecureId } from '@/utils/tableFilterUtils'
-import { getListResponseRowProperties } from '@/utils/schemaUtils'
+import { generateSecureId } from '@cornflow-ui/core/utils/tableFilterUtils'
+import { getListResponseRowProperties } from '@cornflow-ui/core/utils/schemaUtils'
 
 // Filter types based on field types
 export type FilterOperator =

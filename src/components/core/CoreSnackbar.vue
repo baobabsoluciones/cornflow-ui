@@ -23,7 +23,7 @@
  * <CoreSnackbar :timeout="5000" />
  * 
  * To show snackbar from any component:
- * import { showSnackbar } from '@/services/SnackbarService'
+ * import { showSnackbar } from '@cornflow-ui/core/services/SnackbarService'
  * showSnackbar('Operation successful!', 'success')      // 3000ms timeout
  * showSnackbar('Error occurred', 'error')               // 6000ms timeout (auto)
  * showSnackbar('Custom timeout', 'warning', 10000)      // 10000ms timeout
@@ -73,8 +73,8 @@
 
 <script setup lang="ts">
 import { computed, inject } from 'vue'
-import type { SnackbarState } from '@/services/SnackbarService'
-import { DEFAULT_TIMEOUT } from '@/services/SnackbarService'
+import type { SnackbarState } from '@cornflow-ui/core/services/SnackbarService'
+import { DEFAULT_TIMEOUT } from '@cornflow-ui/core/services/SnackbarService'
 
 // Props
 interface Props {

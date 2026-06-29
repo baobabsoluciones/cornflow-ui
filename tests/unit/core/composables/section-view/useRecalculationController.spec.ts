@@ -1,14 +1,14 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
-import type { RecalculationController } from '@/types/recalculation'
+import type { RecalculationController } from '@cornflow-ui/core/types/recalculation'
 
 const { mockGetPremiumRecalculation } = vi.hoisted(() => ({
   mockGetPremiumRecalculation: vi.fn(),
 }))
-vi.mock('@/plugins/extensions', () => ({
+vi.mock('@cornflow-ui/core/plugins/extensions', () => ({
   getPremiumRecalculation: mockGetPremiumRecalculation,
 }))
 
-import { useRecalculationController } from '@/composables/section-view/useRecalculationController'
+import { useRecalculationController } from '@cornflow-ui/core/composables/section-view/useRecalculationController'
 
 beforeEach(() => {
   vi.clearAllMocks()

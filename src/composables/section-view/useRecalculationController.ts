@@ -6,8 +6,8 @@
  * aporta (build sin recalculación), devuelve una implementación INERTE para que el core funcione
  * igual. El contrato vive en `@/types/recalculation`.
  */
-import { getPremiumRecalculation } from '@/plugins/extensions'
-import type { RecalculationController } from '@/types/recalculation'
+import { getPremiumRecalculation } from '@cornflow-ui/core/plugins/extensions'
+import type { RecalculationController } from '@cornflow-ui/core/types/recalculation'
 
 /** Controlador inerte: notificaciones no-op, recalculación de solución rechaza, nombre = baseName. */
 function createInertRecalculationController(): RecalculationController {

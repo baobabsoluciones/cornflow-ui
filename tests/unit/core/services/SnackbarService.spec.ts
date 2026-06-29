@@ -4,7 +4,7 @@ import {
   showSnackbar,
   SNACKBAR_COLORS,
   MAX_SNACKBAR_MESSAGE_LENGTH,
-} from '@/services/SnackbarService'
+} from '@cornflow-ui/core/services/SnackbarService'
 
 describe('SnackbarService', () => {
   beforeEach(() => {

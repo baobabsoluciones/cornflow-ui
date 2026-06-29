@@ -30,7 +30,7 @@ vi.mock('pinia', async (importOriginal) => {
 })
 
 // Mock App component
-vi.mock('@/App.vue', () => ({
+vi.mock('@cornflow-ui/core/App.vue', () => ({
   default: { name: 'App' }
 }))
 
@@ -51,7 +51,7 @@ const mockConfig = {
   },
 }
 
-vi.mock('@/config', () => ({
+vi.mock('@cornflow-ui/core/config', () => ({
   default: mockConfig
 }))
 
@@ -74,13 +74,13 @@ vi.mock('@/app/config', () => ({
 
 // Mock plugins
 const mockRegisterPlugins = vi.fn()
-vi.mock('@/plugins', () => ({
+vi.mock('@cornflow-ui/core/plugins', () => ({
   registerPlugins: mockRegisterPlugins
 }))
 
 // Mock i18n
 const mockSetDefaultLanguage = vi.fn()
-vi.mock('@/plugins/i18n', () => ({
+vi.mock('@cornflow-ui/core/plugins/i18n', () => ({
   setDefaultLanguage: mockSetDefaultLanguage
 }))
 
@@ -89,7 +89,7 @@ const mockGetAuthService = vi.hoisted(() =>
     isAuthenticated: () => false,
   }),
 )
-vi.mock('@/services/AuthServiceFactory', () => ({
+vi.mock('@cornflow-ui/core/services/AuthServiceFactory', () => ({
   default: mockGetAuthService,
 }))
 
@@ -143,7 +143,7 @@ describe('Main Module Integration', () => {
   })
 
   test('should execute initApp function successfully', async () => {
-    const { initApp } = await import('@/main')
+    const { initApp } = await import('@cornflow-ui/core/main')
     
     await initApp()
 
@@ -154,7 +154,7 @@ describe('Main Module Integration', () => {
   })
 
   test('should create and configure Vue app', async () => {
-    const { initApp } = await import('@/main')
+    const { initApp } = await import('@cornflow-ui/core/main')
     
     await initApp()
 
@@ -166,7 +166,7 @@ describe('Main Module Integration', () => {
   })
 
   test('should register all Mango UI components', async () => {
-    const { initApp } = await import('@/main')
+    const { initApp } = await import('@cornflow-ui/core/main')
     
     await initApp()
 
@@ -184,7 +184,7 @@ describe('Main Module Integration', () => {
   test('should set default language for Spanish', async () => {
     mockConfig.defaultLanguage = 'es'
 
-    const { initApp } = await import('@/main')
+    const { initApp } = await import('@cornflow-ui/core/main')
     
     await initApp()
 
@@ -194,7 +194,7 @@ describe('Main Module Integration', () => {
   test('should set default language for French', async () => {
     mockConfig.defaultLanguage = 'fr'
 
-    const { initApp } = await import('@/main')
+    const { initApp } = await import('@cornflow-ui/core/main')
     
     await initApp()
 
@@ -204,7 +204,7 @@ describe('Main Module Integration', () => {
   test('should not set language for invalid language', async () => {
     mockConfig.defaultLanguage = 'invalid'
 
-    const { initApp } = await import('@/main')
+    const { initApp } = await import('@cornflow-ui/core/main')
     
     await initApp()
 
@@ -214,7 +214,7 @@ describe('Main Module Integration', () => {
   test('should not set language when undefined', async () => {
     mockConfig.defaultLanguage = undefined
 
-    const { initApp } = await import('@/main')
+    const { initApp } = await import('@cornflow-ui/core/main')
     
     await initApp()
 
@@ -225,7 +225,7 @@ describe('Main Module Integration', () => {
     const initError = new Error('Config initialization failed')
     mockConfig.initConfig.mockRejectedValue(initError)
 
-    const { initApp } = await import('@/main')
+    const { initApp } = await import('@cornflow-ui/core/main')
     
     await expect(initApp()).rejects.toThrow('Config initialization failed')
   })
@@ -277,7 +277,7 @@ describe('Main Module Integration', () => {
       return mockApp
     })
 
-    const { initApp } = await import('@/main')
+    const { initApp } = await import('@cornflow-ui/core/main')
     await initApp()
 
     expect(callOrder).toEqual([
@@ -294,7 +294,7 @@ describe('Main Module Integration', () => {
   })
 
   test('should register exactly 15 components', async () => {
-    const { initApp } = await import('@/main')
+    const { initApp } = await import('@cornflow-ui/core/main')
     
     await initApp()
 
@@ -304,8 +304,8 @@ describe('Main Module Integration', () => {
   })
 
   test('should handle app creation with correct App component', async () => {
-    const { initApp } = await import('@/main')
-    const { default: App } = await import('@/App.vue')
+    const { initApp } = await import('@cornflow-ui/core/main')
+    const { default: App } = await import('@cornflow-ui/core/App.vue')
     
     await initApp()
 
@@ -313,7 +313,7 @@ describe('Main Module Integration', () => {
   })
 
   test('should integrate Pinia correctly', async () => {
-    const { initApp } = await import('@/main')
+    const { initApp } = await import('@cornflow-ui/core/main')
     
     await initApp()
 
@@ -336,18 +336,18 @@ describe('Main Module - Dependency Tests', () => {
     expect(async () => {
       await import('vue')
       await import('pinia')
-      await import('@/App.vue')
-      await import('@/config')
+      await import('@cornflow-ui/core/App.vue')
+      await import('@cornflow-ui/core/config')
       await import('@/app/config')
-      await import('@/plugins/i18n')
+      await import('@cornflow-ui/core/plugins/i18n')
     }).not.toThrow()
   })
 
   test('should have access to all required dependencies', async () => {
-    const { default: App } = await import('@/App.vue')
-    const { default: config } = await import('@/config')
+    const { default: App } = await import('@cornflow-ui/core/App.vue')
+    const { default: config } = await import('@cornflow-ui/core/config')
     const { default: appConfig } = await import('@/app/config')
-    const { setDefaultLanguage } = await import('@/plugins/i18n')
+    const { setDefaultLanguage } = await import('@cornflow-ui/core/plugins/i18n')
 
     expect(mockCreateApp).toBeDefined()
     expect(mockCreatePinia).toBeDefined()

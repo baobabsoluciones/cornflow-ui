@@ -19,11 +19,11 @@ vi.mock('vue', async (orig) => ({
   ...(await (orig as () => Promise<any>)()),
   inject: () => snackbar,
 }))
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: () => ({ roleRepository: repo, userRepository: userRepo }),
 }))
 
-import { useRolesManagement } from '@/composables/roles-management/useRolesManagement'
+import { useRolesManagement } from '@cornflow-ui/core/composables/roles-management/useRolesManagement'
 
 beforeEach(() => {
   vi.clearAllMocks()

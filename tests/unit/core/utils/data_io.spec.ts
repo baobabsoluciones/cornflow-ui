@@ -7,7 +7,7 @@ import {
   formatDate,
   getLetterFromNumber,
   getNumberFromLetter,
-} from '@/utils/data_io'
+} from '@cornflow-ui/core/utils/data_io'
 
 // Mock dependencies
 // Create a more specific mock that handles the exact call pattern
@@ -83,7 +83,7 @@ vi.mock('read-excel-file', () => {
   }
 })
 
-vi.mock('@/plugins/i18n', () => ({
+vi.mock('@cornflow-ui/core/plugins/i18n', () => ({
   default: {
     global: {
       locale: { value: 'en' },
@@ -91,7 +91,7 @@ vi.mock('@/plugins/i18n', () => ({
     },
   },
 }))
-vi.mock('@/utils/tableUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/tableUtils', () => ({
   getTableVisible: vi.fn().mockReturnValue(true),
   getTablePropertyVisible: vi.fn().mockReturnValue(true),
 }))

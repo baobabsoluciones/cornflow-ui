@@ -2,13 +2,13 @@ import { describe, test, expect, vi } from 'vitest'
 import { ref } from 'vue'
 
 // Mock useSectionTitles: getSectionTitle returns a recognizable string per key.
-vi.mock('@/composables/useSectionTitles', () => ({
+vi.mock('@cornflow-ui/core/composables/useSectionTitles', () => ({
   useSectionTitles: () => ({
     getSectionTitle: (key: string) => `TITLE:${key}`,
   }),
 }))
 
-import { useSectionDisplay } from '@/composables/section-view/useSectionDisplay'
+import { useSectionDisplay } from '@cornflow-ui/core/composables/section-view/useSectionDisplay'
 
 function setup(opts: {
   sectionType?: string

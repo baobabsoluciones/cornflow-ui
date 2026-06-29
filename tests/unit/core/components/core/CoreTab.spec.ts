@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import { createI18n } from 'vue-i18n'
 import { ref, computed } from 'vue'
-import CoreTab from '@/components/core/CoreTab.vue'
+import CoreTab from '@cornflow-ui/core/components/core/CoreTab.vue'
 
 describe('CoreTab', () => {
   let vuetify: any

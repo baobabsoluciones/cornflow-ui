@@ -1,12 +1,12 @@
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useGeneralStore } from '@/stores/general'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import {
   getListResponseRowProperties,
   normalizeGetListResponseToRows,
   isParameterPropertySchemaVisible,
   normalizeJsonSchemaPropertyTypeForUi,
-} from '@/utils/schemaUtils'
+} from '@cornflow-ui/core/utils/schemaUtils'
 
 /** Key for the single column when validation data is array of strings (shown as alert list) */
 const VALIDATION_MESSAGE_FIELD = 'message'

@@ -4,7 +4,7 @@ import {
   formatValidationErrorsWithTitle,
   formatSingleErrorWithTitle,
   formatErrorDetails,
-} from '@/utils/errorFormatting'
+} from '@cornflow-ui/core/utils/errorFormatting'
 
 // Translation stub: returns a recognizable string for known keys, otherwise echoes
 // the key (so the "translation === key -> fallback" branches are exercised).

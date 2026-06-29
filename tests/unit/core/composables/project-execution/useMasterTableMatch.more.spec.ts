@@ -58,7 +58,7 @@ class FakeForceRetryError extends Error {
   __forceRetry = true
 }
 
-vi.mock('@/repositories/TableRepository', () => {
+vi.mock('@cornflow-ui/core/repositories/TableRepository', () => {
   return {
     isForceRetryOfferError: (e: any) => e instanceof FakeForceRetryError,
     default: class FakeTableRepository {
@@ -86,7 +86,7 @@ vi.mock('@/repositories/TableRepository', () => {
 })
 
 // ── schemaUtils: light implementations preserving the real diff semantics ──
-vi.mock('@/utils/schemaUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/schemaUtils', () => ({
   parseJoinFrom: () => null,
   getForeignKeyFieldName: () => undefined,
   getExcludedKeysForMasterTableCompare: () => new Set(['id', '_id']),
@@ -138,7 +138,7 @@ const store = vi.hoisted(() => ({
   rawConfigurations: { masterData: {} as Record<string, any> },
   schemaConfig: { instanceSchema: { properties: {} } },
 }))
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: () => store,
 }))
 
@@ -146,7 +146,7 @@ import {
   useMasterTableMatch,
   getMasterCompareRowContext,
   type TableMatch,
-} from '@/composables/project-execution/useMasterTableMatch'
+} from '@cornflow-ui/core/composables/project-execution/useMasterTableMatch'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 

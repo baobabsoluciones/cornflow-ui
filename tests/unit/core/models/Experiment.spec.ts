@@ -1,8 +1,8 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
-import { ExperimentCore } from '@/models/Experiment'
+import { ExperimentCore } from '@cornflow-ui/core/models/Experiment'
 
 // Mock dependencies
-vi.mock('@/utils/data_io', () => ({
+vi.mock('@cornflow-ui/core/utils/data_io', () => ({
   schemaDataToTable: vi.fn(),
   buildExcelBuffer: vi
     .fn()
@@ -68,7 +68,7 @@ describe('ExperimentCore', () => {
     vi.clearAllMocks()
 
     // Setup mocks
-    const dataIo = await import('@/utils/data_io')
+    const dataIo = await import('@cornflow-ui/core/utils/data_io')
     mockSchemaDataToTable = dataIo.schemaDataToTable
     mockBuildExcelBuffer = dataIo.buildExcelBuffer
     ;(mockBuildExcelBuffer as any).mockResolvedValue({

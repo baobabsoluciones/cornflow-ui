@@ -1,4 +1,4 @@
-import { InstanceCore } from '@/models/Instance'
+import { InstanceCore } from '@cornflow-ui/core/models/Instance'
 
 export class Instance extends InstanceCore {
   constructor(

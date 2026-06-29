@@ -4,8 +4,8 @@ import {
   useExecutionActions,
   isConfigTimeLimitInMinutes,
   getTimeLimitUnitI18nKey,
-} from '@/composables/project-execution-table/useExecutionActions'
-import type { Execution } from '@/composables/project-execution-table/types'
+} from '@cornflow-ui/core/composables/project-execution-table/useExecutionActions'
+import type { Execution } from '@cornflow-ui/core/composables/project-execution-table/types'
 
 // Mock Pinia store
 const mockGeneralStore = {
@@ -17,7 +17,7 @@ const mockGeneralStore = {
   },
 }
 
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: () => mockGeneralStore
 }))
 

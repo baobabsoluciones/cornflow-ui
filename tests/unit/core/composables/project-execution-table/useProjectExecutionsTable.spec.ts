@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
 import { nextTick, ref } from 'vue'
-import { useProjectExecutionsTable } from '@/composables/project-execution-table/useProjectExecutionsTable'
-import type { ExecutionTableProps, Execution } from '@/composables/project-execution-table/types'
+import { useProjectExecutionsTable } from '@cornflow-ui/core/composables/project-execution-table/useProjectExecutionsTable'
+import type { ExecutionTableProps, Execution } from '@cornflow-ui/core/composables/project-execution-table/types'
 
 // Mock all the sub-composables
 const mockUseTableConfig = {
@@ -62,24 +62,24 @@ const mockGeneralStore = {
   }
 }
 
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: () => mockGeneralStore
 }))
 
 // Mock the individual composables
-vi.mock('@/composables/project-execution-table/useTableConfig', () => ({
+vi.mock('@cornflow-ui/core/composables/project-execution-table/useTableConfig', () => ({
   useTableConfig: vi.fn(() => mockUseTableConfig)
 }))
 
-vi.mock('@/composables/project-execution-table/useTableDOMManipulation', () => ({
+vi.mock('@cornflow-ui/core/composables/project-execution-table/useTableDOMManipulation', () => ({
   useTableDOMManipulation: vi.fn(() => mockUseTableDOMManipulation)
 }))
 
-vi.mock('@/composables/project-execution-table/useExecutionState', () => ({
+vi.mock('@cornflow-ui/core/composables/project-execution-table/useExecutionState', () => ({
   useExecutionState: vi.fn(() => mockUseExecutionState)
 }))
 
-vi.mock('@/composables/project-execution-table/useExecutionActions', () => ({
+vi.mock('@cornflow-ui/core/composables/project-execution-table/useExecutionActions', () => ({
   useExecutionActions: vi.fn(() => mockUseExecutionActions)
 }))
 

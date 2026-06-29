@@ -66,7 +66,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import CoreDropdownMenuItem from '@/components/core/CoreDropdownMenuItem.vue'
+import CoreDropdownMenuItem from '@cornflow-ui/core/components/core/CoreDropdownMenuItem.vue'
 
 // Types
 interface DropdownItem {

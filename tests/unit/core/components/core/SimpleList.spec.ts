@@ -4,7 +4,7 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { createI18n } from 'vue-i18n'
-import SimpleList from '@/components/core/SimpleList.vue'
+import SimpleList from '@cornflow-ui/core/components/core/SimpleList.vue'
 
 describe('SimpleList', () => {
   let vuetify: any

@@ -492,12 +492,12 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useGeneralStore } from '@/stores/general'
-import CoreTable from '@/components/core/table/CoreTable.vue'
-import CoreTab from '@/components/core/CoreTab.vue'
-import CoreTabs from '@/components/core/CoreTabs.vue'
-import CoreConfirmDialog from '@/components/core/table/CoreConfirmDialog.vue'
-import PendingChangesReviewModal from '@/components/core/PendingChangesReviewModal.vue'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import CoreTable from '@cornflow-ui/core/components/core/table/CoreTable.vue'
+import CoreTab from '@cornflow-ui/core/components/core/CoreTab.vue'
+import CoreTabs from '@cornflow-ui/core/components/core/CoreTabs.vue'
+import CoreConfirmDialog from '@cornflow-ui/core/components/core/table/CoreConfirmDialog.vue'
+import PendingChangesReviewModal from '@cornflow-ui/core/components/core/PendingChangesReviewModal.vue'
 import {
   getOperatorsForFieldType,
   getOperatorText as getOperatorTextUtil,
@@ -508,18 +508,18 @@ import {
   generateHeadersFromData,
   generateSecureId,
   type FilterCondition,
-} from '@/utils/tableFilterUtils'
+} from '@cornflow-ui/core/utils/tableFilterUtils'
 import {
   transformJsonSchemaToAutomationFormat,
   stripInvisibleParameterPropertiesFromInstanceData,
-} from '@/utils/schemaUtils'
-import { resolveTitle } from '@/utils/i18nUtils'
+} from '@cornflow-ui/core/utils/schemaUtils'
+import { resolveTitle } from '@cornflow-ui/core/utils/i18nUtils'
 import {
   resolveEtlParamKey,
   applyEtlParameterSwitch,
   normalizeTableNameForLookup,
   turnOffEtlParameterFromDbSwitchAfterManualValueEdit,
-} from '@/utils/etlParameterSwitch'
+} from '@cornflow-ui/core/utils/etlParameterSwitch'
 import {
   OBJECT_TABLE_ROW_ID,
   formatTitle,
@@ -528,13 +528,13 @@ import {
   createValidationTables,
   createTableObject,
   injectParameterSwitchColumns,
-} from '@/utils/executionTableBuilders'
-import { useTableChanges } from '@/composables/useTableChanges'
-import { formatValidationErrorsWithTitle } from '@/utils/errorFormatting'
+} from '@cornflow-ui/core/utils/executionTableBuilders'
+import { useTableChanges } from '@cornflow-ui/core/composables/useTableChanges'
+import { formatValidationErrorsWithTitle } from '@cornflow-ui/core/utils/errorFormatting'
 import {
   getMasterDataTableRankByDrawerHierarchy,
   normalizeTableKeyForHierarchyMatch,
-} from '@/services/FrontendAutomationService'
+} from '@cornflow-ui/core/services/FrontendAutomationService'
 
 // Props
 interface Props {
@@ -2431,4 +2431,4 @@ defineExpose({
   }
 }
 </style>
-<style src="@/assets/styles/components/core/PendingChangesBar.css"></style>
+<style src="@cornflow-ui/core/assets/styles/components/core/PendingChangesBar.css"></style>

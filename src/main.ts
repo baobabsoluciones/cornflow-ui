@@ -12,7 +12,7 @@ import './app/assets/styles/main.css'
 import './app/assets/styles/variables.css'
 import 'mango-vue/dist/style.css'
 
-import { createCornflowApp } from '@/bootstrap'
+import { createCornflowApp } from '@cornflow-ui/core/bootstrap'
 
 export async function initApp() {
   await createCornflowApp({ rootComponent: App })

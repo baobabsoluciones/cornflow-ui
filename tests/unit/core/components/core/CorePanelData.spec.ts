@@ -3,10 +3,10 @@ import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
-import CorePanelData from '@/components/core/CorePanelData.vue'
+import CorePanelData from '@cornflow-ui/core/components/core/CorePanelData.vue'
 
 // data_io imports the app i18n singleton; formatDateForHeaders only needs a date + locale
-vi.mock('@/utils/data_io', () => ({
+vi.mock('@cornflow-ui/core/utils/data_io', () => ({
   formatDateForHeaders: (date: string) => `header:${date}`,
 }))
 

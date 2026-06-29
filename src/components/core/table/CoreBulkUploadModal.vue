@@ -330,7 +330,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import CoreButton from '@/components/core/CoreButton.vue'
+import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
 
 // Types
 interface BulkUploadData {
@@ -613,6 +613,6 @@ onMounted(() => {
 </script>
 
 <style>
-@import '@/assets/styles/components/core/CoreModalBase.css';
-@import '@/assets/styles/components/core/CoreBulkUploadModal.css';
+@import '@cornflow-ui/core/assets/styles/components/core/CoreModalBase.css';
+@import '@cornflow-ui/core/assets/styles/components/core/CoreBulkUploadModal.css';
 </style>

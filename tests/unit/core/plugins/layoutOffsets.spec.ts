@@ -3,7 +3,7 @@ import {
   setTopBannerOffset,
   totalTopBannerOffset,
   resetTopBannerOffsets,
-} from '@/plugins/layoutOffsets'
+} from '@cornflow-ui/core/plugins/layoutOffsets'
 
 describe('layoutOffsets (core layout channel)', () => {
   beforeEach(() => {

@@ -119,8 +119,8 @@
 </template>
 
 <script lang="ts">
-import { useGeneralStore } from '@/stores/general'
-import HistoricalChecksAlert from '@/components/HistoricalChecksAlert.vue'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import HistoricalChecksAlert from '@cornflow-ui/core/components/HistoricalChecksAlert.vue'
 
 export default {
   name: 'HistoricalDataToggle',

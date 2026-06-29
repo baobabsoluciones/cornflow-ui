@@ -115,11 +115,11 @@
 </template>
 
 <script>
-import { useGeneralStore } from '@/stores/general'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { useI18n } from 'vue-i18n'
 import { inject } from 'vue'
-import config from '@/config'
-import { changeLanguage } from '@/plugins/i18n'
+import config from '@cornflow-ui/core/config'
+import { changeLanguage } from '@cornflow-ui/core/plugins/i18n'
 
 export default {
   components: {},

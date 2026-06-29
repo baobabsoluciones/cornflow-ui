@@ -29,7 +29,7 @@ vi.mock('exceljs', () => {
   return { Workbook: FakeWorkbook, default: { Workbook: FakeWorkbook } }
 })
 
-import { useErrorDownload } from '@/composables/useErrorDownload'
+import { useErrorDownload } from '@cornflow-ui/core/composables/useErrorDownload'
 
 const mkError = (i: number): any => ({
   instancePath: `/row/${i}`,

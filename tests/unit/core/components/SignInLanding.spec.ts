@@ -2,7 +2,7 @@ import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import { createRouter, createWebHistory } from 'vue-router'
-import SignInLanding from '@/components/SignInLanding.vue'
+import SignInLanding from '@cornflow-ui/core/components/SignInLanding.vue'
 
 // Mock auth services
 const mockAuthServices = vi.hoisted(() => {
@@ -30,7 +30,7 @@ const mockAuthServices = vi.hoisted(() => {
   }
 })
 
-vi.mock('@/services/AuthServiceFactory', () => ({
+vi.mock('@cornflow-ui/core/services/AuthServiceFactory', () => ({
   default: vi.fn().mockResolvedValue(mockAuthServices.authService),
   getAllAuthServices: vi.fn().mockResolvedValue(mockAuthServices.services),
   getSpecificAuthService: vi.fn().mockImplementation((type) => {
@@ -53,7 +53,7 @@ const mockConfig = vi.hoisted(() => ({
   isMicrosoftConfigured: vi.fn().mockReturnValue(true),
 }))
 
-vi.mock('@/config', () => ({
+vi.mock('@cornflow-ui/core/config', () => ({
   default: mockConfig,
 }))
 
@@ -67,7 +67,7 @@ const mockGeneralStore = {
   },
 }
 
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: vi.fn(() => mockGeneralStore),
 }))
 
@@ -177,7 +177,7 @@ describe('SignInLanding', () => {
     mockAuthServices.cognitoAuthService.login.mockResolvedValue(true)
 
     // Re-mock the AuthServiceFactory to ensure fresh mocks
-    const authServiceFactory = await import('@/services/AuthServiceFactory')
+    const authServiceFactory = await import('@cornflow-ui/core/services/AuthServiceFactory')
     vi.mocked(authServiceFactory.getSpecificAuthService).mockImplementation(
       (type) => {
         if (type === 'cornflow')

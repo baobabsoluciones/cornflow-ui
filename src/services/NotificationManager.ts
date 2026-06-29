@@ -1,4 +1,4 @@
-import { useGeneralStore } from '@/stores/general'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 
 class NotificationManager {
   private get store() {

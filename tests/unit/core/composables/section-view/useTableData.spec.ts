@@ -30,7 +30,7 @@ function record(method: string, url: string, data: any) {
   return Promise.resolve({ status, content })
 }
 
-vi.mock('@/api/Api', () => ({
+vi.mock('@cornflow-ui/core/api/Api', () => ({
   default: {
     get: (url: string) => record('get', url, null),
     post: (url: string, data: any) => record('post', url, data),
@@ -52,10 +52,10 @@ vi.mock('vue-i18n', () => ({
 }))
 
 const showSnackbar = vi.hoisted(() => vi.fn())
-vi.mock('@/services/SnackbarService', () => ({ showSnackbar }))
+vi.mock('@cornflow-ui/core/services/SnackbarService', () => ({ showSnackbar }))
 
 // useExecutionTableData fake — controllable execution data via computedRefHolder.
-vi.mock('@/composables/section-view/useExecutionTableData', () => ({
+vi.mock('@cornflow-ui/core/composables/section-view/useExecutionTableData', () => ({
   useExecutionTableData: () => ({
     items: computedRefHolder.items,
     headers: computedRefHolder.headers,
@@ -71,7 +71,7 @@ vi.mock('@/composables/section-view/useExecutionTableData', () => ({
   }),
 }))
 
-vi.mock('@/services/FrontendAutomationService', () => ({
+vi.mock('@cornflow-ui/core/services/FrontendAutomationService', () => ({
   getSectionType: (p: string) => {
     if (p.includes('input-data')) return 'input-data'
     if (p.includes('results')) return 'results'
@@ -94,15 +94,15 @@ vi.mock('@/services/FrontendAutomationService', () => ({
 }))
 
 let storeState: any
-vi.mock('@/stores/general', () => ({ useGeneralStore: () => storeState }))
+vi.mock('@cornflow-ui/core/stores/general', () => ({ useGeneralStore: () => storeState }))
 // useTableData consumes recalculation via the core controller (premium-or-inert), not the store.
-vi.mock('@/composables/section-view/useRecalculationController', () => ({
+vi.mock('@cornflow-ui/core/composables/section-view/useRecalculationController', () => ({
   useRecalculationController: () => storeState,
 }))
 
 // useTableChanges fake — in-memory stores keyed by table.
 const changesStore = vi.hoisted(() => ({ map: {} as Record<string, any> }))
-vi.mock('@/composables/useTableChanges', () => ({
+vi.mock('@cornflow-ui/core/composables/useTableChanges', () => ({
   useTableChanges: () => {
     const s = (globalThis as any).__changesStore
     const ensure = (k: string) =>
@@ -151,18 +151,18 @@ vi.mock('@/composables/useTableChanges', () => ({
 ;(globalThis as any).__changesStore = changesStore
 
 // useFormFields fake
-vi.mock('@/composables/core-table/useFormFields', () => ({
+vi.mock('@cornflow-ui/core/composables/core-table/useFormFields', () => ({
   useFormFields: () => ({
     prepareFormDataForSubmit: (data: any) => ({ ...data }),
     updateDependentFields: (_f: string, _v: any, data: any) => data,
   }),
 }))
 
-vi.mock('@/utils/data_io', () => ({
+vi.mock('@cornflow-ui/core/utils/data_io', () => ({
   exportTableToExcel: vi.fn(async () => undefined),
 }))
 
-vi.mock('@/utils/schemaUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/schemaUtils', () => ({
   parseJoinFrom: vi.fn(() => null),
   getForeignKeyFieldName: vi.fn(() => null),
   displayValueMatchesValueNone: vi.fn(() => false),
@@ -177,7 +177,7 @@ vi.mock('@/utils/schemaUtils', () => ({
   normalizeJsonSchemaPropertyTypeForUi: vi.fn((prop: any) => prop?.type ?? 'string'),
 }))
 
-vi.mock('@/utils/tableFilterUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/tableFilterUtils', () => ({
   getOperatorsForFieldType: vi.fn(() => ['equals']),
   getOperatorText: vi.fn((op: string) => `OP:${op}`),
   operatorNeedsValue: vi.fn(() => true),
@@ -187,7 +187,7 @@ vi.mock('@/utils/tableFilterUtils', () => ({
   getFilterFieldTypeFromSchemaProperty: vi.fn(() => 'string'),
 }))
 
-vi.mock('@/utils/csvUtils', () => ({
+vi.mock('@cornflow-ui/core/utils/csvUtils', () => ({
   detectDelimiter: vi.fn(() => ','),
   parseCsvContent: vi.fn(() => [{ id: 1 }]),
 }))
@@ -225,7 +225,7 @@ import {
   useTableData,
   invalidateTableDataCache,
   invalidateAllTableDataCaches,
-} from '@/composables/section-view/useTableData'
+} from '@cornflow-ui/core/composables/section-view/useTableData'
 
 // ─── Mount helper ────────────────────────────────────────────────────────────
 
@@ -630,7 +630,7 @@ describe('useTableData — loadData', () => {
 
 describe('useTableData — Excel download', () => {
   test('handleDownloadExcel for master table calls exporter', async () => {
-    const dataIo = await import('@/utils/data_io')
+    const dataIo = await import('@cornflow-ui/core/utils/data_io')
     repoCtrl.getListResult = [{ id: 1, name: 'a' }]
     const { api } = mountTableData(masterConfig)
     await api.handleDownloadExcel()

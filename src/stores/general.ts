@@ -1,47 +1,47 @@
 import { defineStore } from 'pinia'
 import { markRaw } from 'vue'
-import session from '@/services/AuthService'
+import session from '@cornflow-ui/core/services/AuthService'
 import appConfig from '@/app/config'
-import config from '@/config'
-import { mainLogo as logo, fullLogo } from '@/utils/assets'
+import config from '@cornflow-ui/core/config'
+import { mainLogo as logo, fullLogo } from '@cornflow-ui/core/utils/assets'
 
-import { SchemaConfig } from '@/models/SchemaConfig'
-import { Execution } from '@/models/Execution'
-import { LoadedExecution } from '@/models/LoadedExecution'
+import { SchemaConfig } from '@cornflow-ui/core/models/SchemaConfig'
+import { Execution } from '@cornflow-ui/core/models/Execution'
+import { LoadedExecution } from '@cornflow-ui/core/models/LoadedExecution'
 
-import SchemaRepository from '@/repositories/SchemaRepository'
-import UserRepository from '@/repositories/UserRepository'
-import ExecutionRepository from '@/repositories/ExecutionRepository'
-import InstanceRepository from '@/repositories/InstanceRepository'
-import LicenceRepository from '@/repositories/LicenceRepository'
-import VersionRepository from '@/repositories/VersionRepository'
+import SchemaRepository from '@cornflow-ui/core/repositories/SchemaRepository'
+import UserRepository from '@cornflow-ui/core/repositories/UserRepository'
+import ExecutionRepository from '@cornflow-ui/core/repositories/ExecutionRepository'
+import InstanceRepository from '@cornflow-ui/core/repositories/InstanceRepository'
+import LicenceRepository from '@cornflow-ui/core/repositories/LicenceRepository'
+import VersionRepository from '@cornflow-ui/core/repositories/VersionRepository'
 import {
   runPremiumInitialDataHooks,
   loadPremiumMasterDataConfig,
-} from '@/plugins/extensions'
-import RoleRepository from '@/repositories/RoleRepository'
-import WarningsRepository from '@/repositories/WarningsRepository'
-import type { Warning } from '@/repositories/WarningsRepository'
+} from '@cornflow-ui/core/plugins/extensions'
+import RoleRepository from '@cornflow-ui/core/repositories/RoleRepository'
+import WarningsRepository from '@cornflow-ui/core/repositories/WarningsRepository'
+import type { Warning } from '@cornflow-ui/core/repositories/WarningsRepository'
 
-import { toISOStringLocal } from '@/utils/data_io'
+import { toISOStringLocal } from '@cornflow-ui/core/utils/data_io'
 
 // Import utility functions
 import {
   ConfigurationData,
   AutomationSectionDef,
   AutomationGroupDef,
-} from '@/types/frontendAutomation'
-import { TableSchema } from '@/config/views'
-import { i18n, locale } from '@/plugins/i18n'
+} from '@cornflow-ui/core/types/frontendAutomation'
+import { TableSchema } from '@cornflow-ui/core/config/views'
+import { i18n, locale } from '@cornflow-ui/core/plugins/i18n'
 import {
   resolveTableConfigTitles,
   getExecutionConfigFromSchemaConfig,
-} from '@/utils/schemaUtils'
+} from '@cornflow-ui/core/utils/schemaUtils'
 import {
   filterTablesByUserSchemas,
   filterTablesByCurrentSchema,
-} from '@/services/FrontendAutomationService'
-import { hasAnyChecksData } from '@/utils/dataChecks'
+} from '@cornflow-ui/core/services/FrontendAutomationService'
+import { hasAnyChecksData } from '@cornflow-ui/core/utils/dataChecks'
 
 export type HistoricalBannerMode =
   | 'idle'
@@ -158,7 +158,7 @@ export const useGeneralStore = defineStore('general', {
       this.initialDataLoading = true
       try {
         // Ensure the API client has the token loaded
-        const apiClient = await import('@/api/Api')
+        const apiClient = await import('@cornflow-ui/core/api/Api')
         apiClient.default.initializeToken?.()
 
         await this.fetchUser()
@@ -190,7 +190,7 @@ export const useGeneralStore = defineStore('general', {
         const userId = session.getUserId()
         const [user, allAssignments] = await Promise.all([
           this.userRepository.getUserById(userId),
-          this.roleRepository.getAllUserRoleAssignments().catch(() => [] as import('@/repositories/RoleRepository').UserRoleAssignment[]),
+          this.roleRepository.getAllUserRoleAssignments().catch(() => [] as import('@cornflow-ui/core/repositories/RoleRepository').UserRoleAssignment[]),
         ])
         // Filter assignments that belong to the current user
         const myAssignments = allAssignments.filter(
@@ -200,9 +200,9 @@ export const useGeneralStore = defineStore('general', {
         this.user = user
 
         // Derive admin status and role names; persist both for route guards (available before store is ready)
-        const isAdmin = myAssignments.some((a: import('@/repositories/RoleRepository').UserRoleAssignment) => a.role === 'admin')
+        const isAdmin = myAssignments.some((a: import('@cornflow-ui/core/repositories/RoleRepository').UserRoleAssignment) => a.role === 'admin')
         sessionStorage.setItem('isAdmin', isAdmin ? 'true' : 'false')
-        const roleNames = myAssignments.map((a: import('@/repositories/RoleRepository').UserRoleAssignment) => a.role)
+        const roleNames = myAssignments.map((a: import('@cornflow-ui/core/repositories/RoleRepository').UserRoleAssignment) => a.role)
         sessionStorage.setItem('userRoles', JSON.stringify(roleNames))
       } catch (error) {
         console.error('Error getting user', error)

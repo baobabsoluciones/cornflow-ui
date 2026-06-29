@@ -26,10 +26,10 @@ import type {
   MasterDataConfigContribution,
   ExecutionTab,
   EtlBackendOperations,
-} from '@/types/extension'
-import type { ExternalEtlFlowController } from '@/types/etlFlow'
-import type { RecalculationController } from '@/types/recalculation'
-import type { LatestPlanController } from '@/types/latestPlan'
+} from '@cornflow-ui/core/types/extension'
+import type { ExternalEtlFlowController } from '@cornflow-ui/core/types/etlFlow'
+import type { RecalculationController } from '@cornflow-ui/core/types/recalculation'
+import type { LatestPlanController } from '@cornflow-ui/core/types/latestPlan'
 
 let registeredModules: PremiumModule[] = []
 

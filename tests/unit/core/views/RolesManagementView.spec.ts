@@ -25,7 +25,7 @@ const { rm, coreParams } = vi.hoisted(() => ({
   coreParams: { value: { parameters: { allowEditRoles: true } } },
 }))
 
-vi.mock('@/composables/roles-management/useRolesManagement', () => ({
+vi.mock('@cornflow-ui/core/composables/roles-management/useRolesManagement', () => ({
   useRolesManagement: () => rm,
 }))
 
@@ -62,24 +62,24 @@ const { stubChild } = vi.hoisted(() => ({
   }),
 }))
 
-vi.mock('@/components/core/CoreTitleView.vue', () => ({ default: stubChild('CoreTitleView') }))
-vi.mock('@/components/roles-management/RolesPanel.vue', () => ({
+vi.mock('@cornflow-ui/core/components/core/CoreTitleView.vue', () => ({ default: stubChild('CoreTitleView') }))
+vi.mock('@cornflow-ui/core/components/roles-management/RolesPanel.vue', () => ({
   default: stubChild('RolesPanel', ['select', 'create', 'edit', 'delete']),
 }))
-vi.mock('@/components/roles-management/UsersPanel.vue', () => ({
+vi.mock('@cornflow-ui/core/components/roles-management/UsersPanel.vue', () => ({
   default: stubChild('UsersPanel', ['update:search', 'clear-filter', 'edit']),
 }))
-vi.mock('@/components/roles-management/RoleFormDialog.vue', () => ({
+vi.mock('@cornflow-ui/core/components/roles-management/RoleFormDialog.vue', () => ({
   default: stubChild('RoleFormDialog', ['save', 'update:modelValue']),
 }))
-vi.mock('@/components/roles-management/RoleDeleteDialog.vue', () => ({
+vi.mock('@cornflow-ui/core/components/roles-management/RoleDeleteDialog.vue', () => ({
   default: stubChild('RoleDeleteDialog', ['confirm', 'update:modelValue']),
 }))
-vi.mock('@/components/roles-management/UserRolesDialog.vue', () => ({
+vi.mock('@cornflow-ui/core/components/roles-management/UserRolesDialog.vue', () => ({
   default: stubChild('UserRolesDialog', ['save', 'update:modelValue']),
 }))
 
-import RolesManagementView from '@/views/RolesManagementView.vue'
+import RolesManagementView from '@cornflow-ui/core/views/RolesManagementView.vue'
 
 describe('RolesManagementView', () => {
   let vuetify: any

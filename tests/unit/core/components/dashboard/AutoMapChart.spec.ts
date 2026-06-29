@@ -35,9 +35,9 @@ vi.mock('leaflet/dist/images/marker-shadow.png', () => ({
 vi.mock('leaflet/dist/images/marker-icon-2x.png', () => ({
   default: 'icon2x.png',
 }))
-vi.mock('@/assets/styles/dashboard.css', () => ({}))
+vi.mock('@cornflow-ui/core/assets/styles/dashboard.css', () => ({}))
 
-import AutoMapChart from '@/components/dashboard/AutoMapChart.vue'
+import AutoMapChart from '@cornflow-ui/core/components/dashboard/AutoMapChart.vue'
 import { mountDashboard } from './dashboardTestUtils'
 
 let wrapper: any

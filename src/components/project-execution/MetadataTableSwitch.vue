@@ -38,7 +38,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { TableSwitchVariant } from '@/types/etlFlow'
+import type { TableSwitchVariant } from '@cornflow-ui/core/types/etlFlow'
 
 const { t } = useI18n()
 

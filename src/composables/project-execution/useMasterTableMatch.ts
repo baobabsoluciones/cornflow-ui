@@ -5,10 +5,10 @@
  */
 
 import { ref, computed } from 'vue'
-import { useGeneralStore } from '@/stores/general'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import TableRepository, {
   isForceRetryOfferError,
-} from '@/repositories/TableRepository'
+} from '@cornflow-ui/core/repositories/TableRepository'
 import { useI18n } from 'vue-i18n'
 import appConfig from '@/app/config'
 import {
@@ -30,7 +30,7 @@ import {
   buildLowercasedKeyMap,
   resolveComparableLowercasedKeys,
   getMasterJoinedDisplayColumns,
-} from '@/utils/schemaUtils'
+} from '@cornflow-ui/core/utils/schemaUtils'
 
 export interface TableMatch {
   tableKey: string

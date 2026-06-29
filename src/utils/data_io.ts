@@ -1,12 +1,12 @@
 import readXlsxFile, { readSheetNames } from 'read-excel-file'
-import i18n from '@/plugins/i18n'
-import { formatDateForExcel } from '@/utils/date'
-import { getListResponseRowProperties } from '@/utils/schemaUtils'
+import i18n from '@cornflow-ui/core/plugins/i18n'
+import { formatDateForExcel } from '@cornflow-ui/core/utils/date'
+import { getListResponseRowProperties } from '@cornflow-ui/core/utils/schemaUtils'
 import * as ExcelJS from 'exceljs'
 import {
   parseExcelInWorker,
   buildExcelBufferInWorker,
-} from '@/utils/excelWorkerClient'
+} from '@cornflow-ui/core/utils/excelWorkerClient'
 import {
   applyCellBorder,
   getAlternatingFill,
@@ -14,7 +14,7 @@ import {
   prepareSheetData,
   estimateSheetCellCount,
   processObjectTypeWorksheet,
-} from '@/utils/excelStyling'
+} from '@cornflow-ui/core/utils/excelStyling'
 
 // read-excel-file fails on xlsx files above ~8MB; use ExcelJS for those
 const LARGE_FILE_THRESHOLD_BYTES = 8 * 1024 * 1024

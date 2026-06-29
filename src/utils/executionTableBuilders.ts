@@ -5,14 +5,14 @@
  * unit-tested without mounting the component.
  */
 
-import { generateHeadersFromData, generateSecureId } from '@/utils/tableFilterUtils'
+import { generateHeadersFromData, generateSecureId } from '@cornflow-ui/core/utils/tableFilterUtils'
 import {
   isAllowLoadFromDbDisabled,
   isParameterPropertySchemaVisible,
   filterParameterObjectByVisibleProperties,
   normalizeJsonSchemaPropertyTypeForUi,
-} from '@/utils/schemaUtils'
-import { resolveTitle } from '@/utils/i18nUtils'
+} from '@cornflow-ui/core/utils/schemaUtils'
+import { resolveTitle } from '@cornflow-ui/core/utils/i18nUtils'
 
 /** Synthetic row id for single-row (horizontal) object tables. */
 export const OBJECT_TABLE_ROW_ID = '__object__'
