@@ -132,7 +132,7 @@ const emit = defineEmits<{
 
 // State
 const isFocused = ref(false)
-const debounceTimer = ref<number | null>(null)
+const debounceTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 const inputRef = ref<HTMLInputElement>()
 
 // Computed

@@ -546,7 +546,7 @@ export const useGeneralStore = defineStore('general', {
             }
 
             if (state < 0) {
-              this.historical.errorMessage = i18n.global.t(
+              ;(this.historical as any).errorMessage = (i18n.global as any).t(
                 'historical.statusCalculationError',
               )
               this.historical.bannerMode = 'error'
@@ -909,7 +909,7 @@ export const useGeneralStore = defineStore('general', {
     },
 
     historicalState: (state): HistoricalState => {
-      return state.historical
+      return state.historical as unknown as HistoricalState
     },
 
     /**

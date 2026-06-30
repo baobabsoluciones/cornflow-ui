@@ -296,7 +296,7 @@ const effectiveInstanceDataForComparison = computed<any[]>(() => {
   const pendingEditsForTable = tableChanges.pendingChanges.value[tableKey] ?? {}
   const pendingCreatesForTable = tableChanges.pendingCreates.value[tableKey] ?? []
   const pendingDeletesForTable: Array<{ rowId: string }> =
-    tableChanges.pendingDeletes.value[tableKey] ?? []
+    (tableChanges.pendingDeletes.value[tableKey] ?? []) as Array<{ rowId: string }>
   const deletedIds = new Set(pendingDeletesForTable.map((d) => String(d.rowId)))
 
   const result: any[] = baseData.map((row) =>
@@ -648,7 +648,7 @@ const handleInstanceUpdate = (instance: Instance) => {
   } as Instance)
 }
 
-const { downloadExcel, handleFileUpload, triggerFileUpload } =
+const { downloadExcel, handleFileUpload } =
   useExecutionExcel(
     computed(() => props.newExecution),
     handleInstanceUpdate,

@@ -35,18 +35,18 @@ export class OpenIDAuthService implements AuthProvider {
     if (this.initialized) return
 
     try {
-      const msalConfig: Configuration = {
+      const msalConfig = {
         auth: {
           clientId: config.auth.clientId,
           authority: config.auth.authority,
           redirectUri: config.auth.redirectUri,
           navigateToLoginRequestUrl: false,
         },
-        cache: { 
+        cache: {
           cacheLocation: 'sessionStorage',
           storeAuthStateInCookie: false
         }
-      }
+      } as Configuration
       
       this.msalInstance = new PublicClientApplication(msalConfig)
       await this.msalInstance.initialize()

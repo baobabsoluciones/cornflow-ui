@@ -62,12 +62,14 @@ export const i18n = createI18n({
   locale: defaultLanguage, // set locale (will be updated later)
   fallbackLocale: 'en', // set fallback locale
   legacy: false,
+  // Cast a `any` para NO inferir el schema de mensajes (enorme): así `t` acepta claves string y
+  // se evita TS2589 ("type instantiation excessively deep") en contextos pesados (stores, arrays).
   messages: {
     // set locale messages
     en: deepMerge(en, enApp),
     fr: deepMerge(fr, frApp),
     es: deepMerge(es, esApp),
-  },
+  } as any,
 })
 
 export default i18n

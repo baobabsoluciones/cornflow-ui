@@ -247,14 +247,14 @@ export function getTableHeadersData(schemaConfig, collection, table, lang = 'en'
 export function getConfigTableHeadersData(): any[] {
   return [
     {
-      title: i18n.global.t('inputOutputData.parameter'),
+      title: (i18n.global as any).t('inputOutputData.parameter'),
       value: 'displayName',
       sortable: true,
       disabled: true,
       config: true,
     },
     {
-      title: i18n.global.t('inputOutputData.value'),
+      title: (i18n.global as any).t('inputOutputData.value'),
       value: 'value',
       sortable: true,
       config: true,

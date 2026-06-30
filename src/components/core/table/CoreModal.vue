@@ -94,7 +94,7 @@
               <template v-for="(field, key) in visibleFields" :key="key">
                 <v-col
                   v-if="isRenderableField(field)"
-                  :cols="getFieldCols(field)"
+                  :cols="getFieldCols()"
                   :md="getFieldMd(field)"
                   class="pb-0"
                 >
@@ -511,7 +511,7 @@ watch(
           )
         : props.fields
 
-      Object.entries(fields).forEach(([key, field]) => {
+      Object.entries(fields).forEach(([key, field]: [string, any]) => {
         if (formFieldsComposable.isSelectorType(field)) {
           loadSelectorOptions(key, field)
         }

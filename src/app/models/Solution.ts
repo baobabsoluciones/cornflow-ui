@@ -8,7 +8,8 @@ export class Solution extends SolutionCore {
     schemaChecks: object,
     schemaName: string,
     dataChecks: object = {},
+    kpis: Record<string, any> | null = null,
   ) {
-    super(id, data, schema, schemaChecks, schemaName, dataChecks)
+    super(id, data, schema, schemaChecks, schemaName, dataChecks, kpis)
   }
 }

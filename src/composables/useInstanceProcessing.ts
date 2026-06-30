@@ -614,7 +614,7 @@ export function useInstanceProcessing() {
   ): Promise<Instance> => {
     const { Instance } = store.appConfig
     const schemas = store.getSchemaConfig
-    const schemaName = store.appConfig.parameters.schema
+    const schemaName = (store.appConfig.parameters as any).schema
 
     if (isExcelExtension(extension)) {
       return await Instance.fromExcel(
@@ -666,7 +666,7 @@ export function useInstanceProcessing() {
       mergedData,
       schemas.instanceSchema,
       schemas.instanceChecksSchema,
-      store.appConfig.parameters.schema as string,
+      (store.appConfig.parameters as any).schema as string,
     )
   }
 

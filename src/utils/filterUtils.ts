@@ -96,7 +96,7 @@ export function getFilterOptions(selectedExecution, collection, table, header) {
  */
 export function getFilterMinValue(selectedExecution, collection, table, header) {
   const columnData = getColumnData(selectedExecution, collection, table, header)
-  return Math.min(...columnData)
+  return Math.min(...(columnData as number[]))
 }
 
 /**
@@ -104,7 +104,7 @@ export function getFilterMinValue(selectedExecution, collection, table, header) 
  */
 export function getFilterMaxValue(selectedExecution, collection, table, header) {
   const columnData = getColumnData(selectedExecution, collection, table, header)
-  return Math.max(...columnData)
+  return Math.max(...(columnData as number[]))
 }
 
 /**

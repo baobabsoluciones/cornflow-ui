@@ -36,7 +36,7 @@ export function useTableSelection<T extends { id: string | number }>(
     if (index > -1) {
       selectedItems.value.splice(index, 1)
     } else {
-      selectedItems.value.push(item)
+      selectedItems.value.push(item as (typeof selectedItems.value)[number])
     }
   }
 

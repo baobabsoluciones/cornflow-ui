@@ -125,7 +125,7 @@ const readTable = function (
  */
 function processRowValue(value: any, fieldFormat: string | undefined): any {
   if (value instanceof Date) {
-    return formatDateForExcel(value, fieldFormat, true)
+    return formatDateForExcel(value, fieldFormat as 'date' | 'date-time' | 'hour', true)
   }
   if (Number.isNaN(value)) {
     return null

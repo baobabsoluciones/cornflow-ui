@@ -813,7 +813,7 @@ interface Emits {
   // Selection Events
   (e: 'update:selectedItems', items: any[]): void
   (e: 'select-item', item: any): void
-  (e: 'select-all', items: any[]): void
+  (e: 'select-all', value: boolean): void
   (e: 'clear-selection'): void
 
   // CRUD Events

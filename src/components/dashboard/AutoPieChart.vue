@@ -99,7 +99,7 @@ const percentages = computed(() => {
 
 const chartOptions = computed(() => ({
   chart: {
-    type: 'donut',
+    type: 'donut' as const,
     height: 220,
     toolbar: {
       show: false,

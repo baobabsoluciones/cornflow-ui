@@ -151,12 +151,12 @@
                   class="chart-item"
                 >
                   <component
-                    v-if="tableKey.value && executionType.value"
+                    v-if="tableKey && executionType"
                     :is="getWidgetComponent(widget.component)"
-                    :table-data="getTableData(tableKey.value)"
-                    :table-key="tableKey.value"
+                    :table-data="getTableData(tableKey)"
+                    :table-key="tableKey"
                     :execution-data="getExecutionData()"
-                    :execution-type="executionType.value"
+                    :execution-type="executionType"
                     v-bind="widget.props || {}"
                   />
                 </div>
@@ -188,12 +188,12 @@
               class="bottom-chart-item"
             >
               <component
-                v-if="tableKey.value && executionType.value"
+                v-if="tableKey && executionType"
                 :is="getWidgetComponent(widget.component)"
-                :table-data="getTableData(tableKey.value)"
-                :table-key="tableKey.value"
+                :table-data="getTableData(tableKey)"
+                :table-key="tableKey"
                 :execution-data="getExecutionData()"
-                :execution-type="executionType.value"
+                :execution-type="executionType"
                 v-bind="widget.props || {}"
               />
             </div>
@@ -356,10 +356,10 @@
                     <component
                       v-if="canRenderCustomWidgets"
                       :is="getWidgetComponent(widget.component)"
-                      :table-data="getTableData(selectedTable.value)"
-                      :table-key="selectedTable.value || ''"
+                      :table-data="getTableData(selectedTable)"
+                      :table-key="selectedTable || ''"
                       :execution-data="getExecutionData()"
-                      :execution-type="executionType.value || null"
+                      :execution-type="executionType || null"
                       v-bind="widget.props || {}"
                     />
                   </div>
@@ -423,12 +423,12 @@
               class="bottom-chart-item"
             >
               <component
-                v-if="selectedTable.value && executionType.value"
+                v-if="selectedTable && executionType"
                 :is="getWidgetComponent(widget.component)"
-                :table-data="getTableData(selectedTable.value)"
-                :table-key="selectedTable.value"
+                :table-data="getTableData(selectedTable)"
+                :table-key="selectedTable"
                 :execution-data="getExecutionData()"
-                :execution-type="executionType.value"
+                :execution-type="executionType"
                 v-bind="widget.props || {}"
               />
             </div>

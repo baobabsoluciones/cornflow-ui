@@ -132,7 +132,7 @@ interface Props {
   icon?: string | null
   iconPosition?: 'before' | 'after'
   variant?: 'filled' | 'outlined' | 'text' | 'icon'
-  color?: 'primary' | 'warning' | 'danger' | 'success'
+  color?: 'primary' | 'warning' | 'danger' | 'success' | 'error' | 'grey'
   backgroundColor?: string | null
   textColor?: string | null
   size?: 'xs' | 'small' | 'default' | 'large' | 'xl'

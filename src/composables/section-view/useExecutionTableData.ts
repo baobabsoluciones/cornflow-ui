@@ -166,7 +166,7 @@ export function useExecutionTableData(
   const availableFilterFields = computed(() => {
     return headers.value
       .filter(
-        (header) =>
+        (header: any) =>
           header.value !== 'selection' &&
           header.filterable &&
           !header.hidden &&

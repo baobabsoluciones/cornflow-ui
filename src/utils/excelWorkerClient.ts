@@ -40,7 +40,7 @@ function getWorker(): Worker | null {
       if (!slot) return
       pending.delete(id)
       if (event.data.ok) slot.resolve(event.data.result)
-      else slot.reject(new Error(event.data.error))
+      else slot.reject(new Error((event.data as any).error))
     })
     workerInstance.addEventListener('error', (e) => {
       // Reject all pending requests; the next call will try to respawn.
