@@ -10,7 +10,7 @@
         <v-icon color="var(--primary)" class="mr-2" size="20">
           mdi-account-edit-outline
         </v-icon>
-        {{ $t('rolesManagement.editRole') }}
+        {{ $t('rolesManagement.editUser') }}
       </v-card-title>
 
       <v-card-text class="px-6 pt-3 pb-2">
@@ -21,10 +21,30 @@
           <span class="text-body-2 font-weight-medium ml-1">
             {{ user?.username }}
           </span>
-          <span v-if="user?.email" class="text-body-2 text-disabled ml-2">
-            {{ user.email }}
-          </span>
         </div>
+
+        <div class="d-flex ga-3">
+          <v-text-field
+            v-model="firstName"
+            :label="$t('rolesManagement.firstName')"
+            variant="outlined"
+            density="comfortable"
+          />
+          <v-text-field
+            v-model="lastName"
+            :label="$t('rolesManagement.lastName')"
+            variant="outlined"
+            density="comfortable"
+          />
+        </div>
+        <v-text-field
+          v-model="email"
+          :label="$t('rolesManagement.colEmail')"
+          type="email"
+          variant="outlined"
+          density="comfortable"
+          :rules="emailRules"
+        />
 
         <v-select
           v-model="selectedNames"
@@ -55,7 +75,7 @@
           variant="filled"
           color="primary"
           size="small"
-          :disabled="saving"
+          :disabled="saving || !isEmailValid"
           @click="onSave"
         />
       </v-card-actions>
@@ -65,8 +85,13 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
-import type { Role, UserRow } from '@cornflow-ui/core/composables/roles-management/types'
+import type {
+  Role,
+  UserRow,
+  UserProfileValue,
+} from '@cornflow-ui/core/composables/roles-management/types'
 
 interface Props {
   modelValue: boolean
@@ -79,10 +104,30 @@ const props = withDefaults(defineProps<Props>(), { saving: false })
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
-  (e: 'save', payload: { user: UserRow; roleNames: string[] }): void
+  (
+    e: 'save',
+    payload: {
+      user: UserRow
+      profile: UserProfileValue
+      roleNames: string[]
+    },
+  ): void
 }>()
 
+const { t } = useI18n()
 const selectedNames = ref<string[]>([])
+const firstName = ref('')
+const lastName = ref('')
+const email = ref('')
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const isEmailValid = computed(
+  () => email.value.trim() === '' || EMAIL_RE.test(email.value.trim()),
+)
+const emailRules = computed(() => [
+  (v: string) =>
+    !v || EMAIL_RE.test(v) || t('rolesManagement.invalidEmail'),
+])
 
 // Seed the v-select each time the dialog opens for a (possibly different) user.
 watch(
@@ -90,6 +135,9 @@ watch(
   ([open]) => {
     if (open && props.user) {
       selectedNames.value = [...props.user.role_names]
+      firstName.value = props.user.first_name
+      lastName.value = props.user.last_name
+      email.value = props.user.email
     }
   },
   { immediate: true },
@@ -100,8 +148,16 @@ const roleItems = computed(() =>
 )
 
 function onSave() {
-  if (!props.user) return
-  emit('save', { user: props.user, roleNames: selectedNames.value })
+  if (!props.user || !isEmailValid.value) return
+  emit('save', {
+    user: props.user,
+    profile: {
+      first_name: firstName.value.trim(),
+      last_name: lastName.value.trim(),
+      email: email.value.trim(),
+    },
+    roleNames: selectedNames.value,
+  })
 }
 </script>
 
@@ -127,13 +183,5 @@ function onSave() {
 .user-info-pill .font-weight-medium {
   white-space: nowrap;
   flex-shrink: 0;
-}
-
-.user-info-pill .text-disabled {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-  flex-shrink: 1;
 }
 </style>

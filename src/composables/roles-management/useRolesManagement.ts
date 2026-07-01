@@ -8,7 +8,7 @@
 import { ref, computed, inject } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
-import type { Role, UserRow } from './types'
+import type { Role, UserRow, UserProfileValue } from './types'
 
 export function useRolesManagement() {
   const { t } = useI18n()
@@ -85,6 +85,8 @@ export function useRolesManagement() {
           username: u.username,
           full_name:
             [u.first_name, u.last_name].filter(Boolean).join(' ') || u.username,
+          first_name: u.first_name ?? '',
+          last_name: u.last_name ?? '',
           email: u.email,
           _role_ids: userRoles.map((r) => r.id),
           role_names: userRoles.map((r) => r.name),
@@ -129,6 +131,35 @@ export function useRolesManagement() {
       return true
     } catch {
       showSnackbar?.(t('rolesManagement.errorDeleteRole'), 'error')
+      return false
+    }
+  }
+
+  /**
+   * Persists the editable profile fields (name + email) for a user and
+   * mutates the user row in place on success so the table reflects the new
+   * state without a full refetch.
+   */
+  async function updateUserProfile(
+    user: UserRow,
+    profile: UserProfileValue,
+  ): Promise<boolean> {
+    try {
+      await store.userRepository.updateUser(user.id, {
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        email: profile.email,
+      })
+      user.first_name = profile.first_name
+      user.last_name = profile.last_name
+      user.email = profile.email
+      user.full_name =
+        [profile.first_name, profile.last_name].filter(Boolean).join(' ') ||
+        user.username
+      showSnackbar?.(t('rolesManagement.userUpdated'), 'success')
+      return true
+    } catch {
+      showSnackbar?.(t('rolesManagement.errorSaveUser'), 'error')
       return false
     }
   }
@@ -190,6 +221,7 @@ export function useRolesManagement() {
     createRole,
     updateRole,
     deleteRole,
+    updateUserProfile,
     saveUserRoleAssignments,
   }
 }

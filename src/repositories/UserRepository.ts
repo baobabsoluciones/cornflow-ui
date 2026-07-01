@@ -49,6 +49,27 @@ export default class UserRepository {
     })
   }
 
+  updateUser(
+    userId: string | number,
+    data: { email?: string; first_name?: string; last_name?: string },
+  ): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      client
+        .put(`/user/${userId}/`, data)
+        .then((response) => {
+          if (response.status === 200) {
+            resolve(true)
+          } else {
+            const message =
+              (response.content as { error?: string })?.error ||
+              'Error updating user'
+            reject(new Error(message))
+          }
+        })
+        .catch(reject)
+    })
+  }
+
   changePassword(userId: string | number, password: string): Promise<boolean> {
     return new Promise((resolve, reject) => {
       client

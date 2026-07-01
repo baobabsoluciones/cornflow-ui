@@ -20,6 +20,7 @@ const { rm, coreParams } = vi.hoisted(() => ({
     createRole: vi.fn().mockResolvedValue(true),
     updateRole: vi.fn().mockResolvedValue(true),
     deleteRole: vi.fn().mockResolvedValue(true),
+    updateUserProfile: vi.fn().mockResolvedValue(true),
     saveUserRoleAssignments: vi.fn().mockResolvedValue(true),
   },
   coreParams: { value: { parameters: { allowEditRoles: true } } },
@@ -228,16 +229,40 @@ describe('RolesManagementView', () => {
       wrapper = createWrapper()
       wrapper.vm.userDialog = true
       const user = { id: 9, username: 'k' }
-      await wrapper.vm.onUserRolesSave({ user, roleNames: ['admin'] })
+      const profile = {
+        first_name: 'Kate',
+        last_name: 'Smith',
+        email: 'k@example.com',
+      }
+      await wrapper.vm.onUserRolesSave({ user, profile, roleNames: ['admin'] })
+      expect(rm.updateUserProfile).toHaveBeenCalledWith(user, profile)
       expect(rm.saveUserRoleAssignments).toHaveBeenCalledWith(user, ['admin'])
       expect(wrapper.vm.userDialog).toBe(false)
     })
 
-    test('onUserRolesSave keeps dialog open on failure', async () => {
+    test('onUserRolesSave keeps dialog open when profile save fails', async () => {
+      rm.updateUserProfile.mockResolvedValueOnce(false)
+      wrapper = createWrapper()
+      wrapper.vm.userDialog = true
+      await wrapper.vm.onUserRolesSave({
+        user: { id: 1 },
+        profile: { first_name: '', last_name: '', email: '' },
+        roleNames: [],
+      })
+      expect(rm.saveUserRoleAssignments).not.toHaveBeenCalled()
+      expect(wrapper.vm.userDialog).toBe(true)
+    })
+
+    test('onUserRolesSave keeps dialog open when role save fails', async () => {
       rm.saveUserRoleAssignments.mockResolvedValueOnce(false)
       wrapper = createWrapper()
       wrapper.vm.userDialog = true
-      await wrapper.vm.onUserRolesSave({ user: { id: 1 }, roleNames: [] })
+      await wrapper.vm.onUserRolesSave({
+        user: { id: 1 },
+        profile: { first_name: '', last_name: '', email: '' },
+        roleNames: [],
+      })
+      expect(rm.updateUserProfile).toHaveBeenCalled()
       expect(wrapper.vm.userDialog).toBe(true)
     })
   })

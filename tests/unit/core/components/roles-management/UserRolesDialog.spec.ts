@@ -19,6 +19,8 @@ const user = (overrides: any = {}) => ({
   id: 1,
   username: 'jdoe',
   full_name: 'John Doe',
+  first_name: 'John',
+  last_name: 'Doe',
   email: 'john@example.com',
   role_names: ['admin'],
   _role_ids: [1],
@@ -64,6 +66,12 @@ describe('UserRolesDialog', () => {
           'v-card-text': { template: '<div><slot /></div>' },
           'v-card-actions': { template: '<div><slot /></div>' },
           'v-icon': { template: '<i><slot /></i>' },
+          'v-text-field': {
+            template:
+              '<input class="v-text-field" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+            props: ['modelValue', 'label', 'type', 'rules'],
+            emits: ['update:modelValue'],
+          },
           'v-select': {
             template: '<div class="v-select" :data-items="JSON.stringify(items)"></div>',
             props: ['modelValue', 'items', 'label', 'placeholder'],
@@ -74,16 +82,23 @@ describe('UserRolesDialog', () => {
     })
 
   describe('rendering', () => {
-    test('renders the user info pill with username and email', () => {
+    test('renders the user info pill with username', () => {
       wrapper = createWrapper()
       expect(wrapper.find('.user-info-pill').text()).toContain('jdoe')
-      expect(wrapper.find('.user-info-pill').text()).toContain('john@example.com')
     })
 
-    test('omits the email span when user has no email', () => {
+    test('seeds profile fields from the user', async () => {
+      wrapper = createWrapper()
+      await nextTick()
+      expect(wrapper.vm.firstName).toBe('John')
+      expect(wrapper.vm.lastName).toBe('Doe')
+      expect(wrapper.vm.email).toBe('john@example.com')
+    })
+
+    test('seeds empty email when user has no email', async () => {
       wrapper = createWrapper({ user: user({ email: '' }) })
-      expect(wrapper.find('.user-info-pill').text()).toContain('jdoe')
-      expect(wrapper.find('.user-info-pill').text()).not.toContain('@example.com')
+      await nextTick()
+      expect(wrapper.vm.email).toBe('')
     })
 
     test('handles a null user gracefully', () => {
@@ -121,7 +136,7 @@ describe('UserRolesDialog', () => {
   })
 
   describe('save behaviour', () => {
-    test('emits save with the user and selected role names', async () => {
+    test('emits save with the user, profile and selected role names', async () => {
       wrapper = createWrapper()
       await nextTick()
       wrapper.vm.selectedNames = ['admin', 'viewer']
@@ -129,6 +144,11 @@ describe('UserRolesDialog', () => {
       expect(wrapper.emitted('save')).toBeTruthy()
       const payload = wrapper.emitted('save')![0][0] as any
       expect(payload.user.id).toBe(1)
+      expect(payload.profile).toEqual({
+        first_name: 'John',
+        last_name: 'Doe',
+        email: 'john@example.com',
+      })
       expect(payload.roleNames).toEqual(['admin', 'viewer'])
     })
 

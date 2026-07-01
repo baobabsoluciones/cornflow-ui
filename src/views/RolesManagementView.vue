@@ -71,6 +71,7 @@ import type {
   Role,
   RoleFormValue,
   UserRow,
+  UserProfileValue,
 } from '@cornflow-ui/core/composables/roles-management/types'
 import appConfig from '@/app/config'
 
@@ -88,6 +89,7 @@ const {
   createRole,
   updateRole,
   deleteRole,
+  updateUserProfile,
   saveUserRoleAssignments,
 } = useRolesManagement()
 
@@ -155,12 +157,21 @@ function openUserEdit(user: UserRow) {
 
 async function onUserRolesSave(payload: {
   user: UserRow
+  profile: UserProfileValue
   roleNames: string[]
 }) {
   savingUser.value = true
-  const ok = await saveUserRoleAssignments(payload.user, payload.roleNames)
+  const profileOk = await updateUserProfile(payload.user, payload.profile)
+  if (!profileOk) {
+    savingUser.value = false
+    return
+  }
+  const rolesOk = await saveUserRoleAssignments(
+    payload.user,
+    payload.roleNames,
+  )
   savingUser.value = false
-  if (ok) userDialog.value = false
+  if (rolesOk) userDialog.value = false
 }
 
 onMounted(async () => {
