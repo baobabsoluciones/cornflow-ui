@@ -232,14 +232,34 @@ async function parseWorkbook(
  */
 const STYLING_ROW_LIMIT = 50_000
 
+function getArrayTypeExportHeaders(
+  sheetName: string,
+  schema: Record<string, any> | null,
+  firstRow: Record<string, any>,
+): string[] {
+  const itemProperties = schema?.properties?.[sheetName]?.items?.properties
+  if (itemProperties && typeof itemProperties === 'object') {
+    const fromSchema = Object.keys(itemProperties).filter((key) =>
+      isFieldVisible(key, schema, sheetName, false),
+    )
+    if (fromSchema.length > 0) return fromSchema
+  }
+  return Object.keys(firstRow).filter((key) =>
+    isFieldVisible(key, schema, sheetName, false),
+  )
+}
+
 function processArrayTypeWorksheet(
   worksheet: any,
   sheetData: any[],
   schema: Record<string, any> | null,
   sheetName: string,
 ): void {
-  const allHeaders = Object.keys(sheetData[0])
-  const headers = allHeaders.filter((h) => isFieldVisible(h, schema, sheetName, false))
+  const headers = getArrayTypeExportHeaders(
+    sheetName,
+    schema,
+    sheetData[0] as Record<string, any>,
+  )
 
   // Single pass: header + body via addRows
   worksheet.addRow(headers)
@@ -331,8 +351,11 @@ function buildArraySheetAOA(
   schema: Record<string, any> | null,
   sheetName: string,
 ): any[][] {
-  const allHeaders = Object.keys(sheetData[0])
-  const headers = allHeaders.filter((h) => isFieldVisible(h, schema, sheetName, false))
+  const headers = getArrayTypeExportHeaders(
+    sheetName,
+    schema,
+    sheetData[0] as Record<string, any>,
+  )
   const aoa: any[][] = new Array(sheetData.length + 1)
   aoa[0] = headers
   for (let i = 0; i < sheetData.length; i++) {

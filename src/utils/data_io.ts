@@ -236,6 +236,24 @@ const loadExcel = async function (
   return Object.fromEntries(results)
 }
 
+/** Column order for array-type sheets: schema property order when defined, else row keys. */
+function getArrayTypeExportHeaders(
+  sheetName: string,
+  schema: Record<string, any> | null,
+  firstRow: Record<string, any>,
+): string[] {
+  const itemProperties = schema?.properties?.[sheetName]?.items?.properties
+  if (itemProperties && typeof itemProperties === 'object') {
+    const fromSchema = Object.keys(itemProperties).filter((key) =>
+      isFieldVisible(key, schema, sheetName, false),
+    )
+    if (fromSchema.length > 0) return fromSchema
+  }
+  return Object.keys(firstRow).filter((key) =>
+    isFieldVisible(key, schema, sheetName, false),
+  )
+}
+
 /**
  * Processes array type worksheet (tabular data)
  */
@@ -245,9 +263,10 @@ function processArrayTypeWorksheet(
   schema: Record<string, any> | null,
   sheetName: string,
 ): void {
-  const allHeaders = Object.keys(sheetData[0])
-  const headers = allHeaders.filter((header) =>
-    isFieldVisible(header, schema, sheetName, false),
+  const headers = getArrayTypeExportHeaders(
+    sheetName,
+    schema,
+    sheetData[0] as Record<string, any>,
   )
 
   const tableData = [
@@ -343,6 +362,15 @@ export interface ExcelBuildResult {
  */
 const HUGE_BUILD_CELL_THRESHOLD = 2_000_000
 
+/**
+ * Below this cell count, single-table export keeps the original styled ExcelJS
+ * path (headers, borders, column formats, Yes/No booleans). Above it, export
+ * uses `buildExcelBuffer` so large result tables do not freeze the tab.
+ */
+const TABLE_EXPORT_STYLED_CELL_THRESHOLD = 25_000
+
+const EXPORT_FORMAT_ROW_CHUNK = 5_000
+
 function csvEscape(v: any): string {
   if (v === null || v === undefined) return ''
   const s = typeof v === 'string' ? v : String(v)
@@ -403,19 +431,6 @@ function objectSheetToCsv(sheet: Record<string, any>): string {
     lines.push(`${csvEscape(k)},${csvEscape(v)}`)
   }
   return lines.join('\n')
-}
-
-/** Pick the visible headers (excluding `id`) for an array-type sheet. */
-function visibleCsvHeaders(
-  firstRow: Record<string, any>,
-  sheetName: string,
-  schema: Record<string, any> | null,
-): string[] {
-  return Object.keys(firstRow).filter((h) => {
-    if (h === 'id') return false
-    const propSchema = schema?.properties?.[sheetName]?.items?.properties?.[h]
-    return propSchema?.visible !== false
-  })
 }
 
 /**
@@ -489,8 +504,12 @@ async function buildAsCsvZip(
       continue
     }
 
-    // Honour schema visibility for array-type sheets.
-    const headers = visibleCsvHeaders(normalizedData[0], sheetName, schema)
+    // Honour schema visibility and column order for array-type sheets.
+    const headers = getArrayTypeExportHeaders(
+      sheetName,
+      schema,
+      normalizedData[0] as Record<string, any>,
+    )
     if (headers.length === 0) {
       zip.file(filename, '')
       continue
@@ -772,6 +791,59 @@ function applyExportBorders(
   }
 }
 
+const XLSX_MIME =
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+const ZIP_MIME = 'application/zip'
+
+/**
+ * Single-table export routing:
+ * - Small (≤ `TABLE_EXPORT_STYLED_CELL_THRESHOLD` cells): styled ExcelJS on main thread.
+ * - Medium/large: `buildExcelBuffer` (worker / compressed xlsx, or CSV-zip).
+ * - Empty (headers only): styled ExcelJS template workbook.
+ */
+function buildTableExportSchema(
+  sheetName: string,
+  schemaFields: Array<{ key: string; type: string }>,
+  items?: any[],
+): Record<string, any> {
+  const properties: Record<string, any> = {}
+  for (const field of schemaFields) {
+    properties[field.key] = { type: field.type || 'string' }
+  }
+
+  const firstRow = items?.[0]
+  if (firstRow && typeof firstRow === 'object') {
+    for (const key of Object.keys(firstRow)) {
+      if (key === 'id' || key in properties) continue
+      properties[key] = { type: 'string', visible: false }
+    }
+  }
+
+  return {
+    properties: {
+      [sheetName]: {
+        type: 'array',
+        items: { properties },
+      },
+    },
+  }
+}
+
+function triggerTableBuiltDownload(
+  result: ExcelBuildResult,
+  tableName: string,
+): void {
+  const mime = result.format === 'zip' ? ZIP_MIME : XLSX_MIME
+  const filename = `${tableName}_${new Date().toISOString().split('T')[0]}.${result.format}`
+  const blob = new Blob([result.bytes as BlobPart], { type: mime })
+  const url = globalThis.window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  globalThis.window.URL.revokeObjectURL(url)
+}
+
 /**
  * Downloads workbook as Excel file
  */
@@ -780,9 +852,7 @@ async function downloadExcelFile(
   tableName: string,
 ): Promise<void> {
   const excelBuffer = await workbook.xlsx.writeBuffer()
-  const blob = new Blob([excelBuffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  })
+  const blob = new Blob([excelBuffer], { type: XLSX_MIME })
   const link = document.createElement('a')
   link.href = globalThis.window.URL.createObjectURL(blob)
   link.download = `${tableName}_${new Date().toISOString().split('T')[0]}.xlsx`
@@ -797,68 +867,6 @@ export interface ExportDisplayHeader {
   key: string
   title?: string
   type?: string
-}
-
-/**
- * Exports table data to Excel file with proper formatting based on backend schema.
- * When displayHeaders is provided (e.g. from the table's visible headers), exports
- * exactly those columns in that order. Both the sheet name and the header row use
- * backend keys (not translated titles) so the file can be re-uploaded and matched
- * back to its table (master tables, instance/solution) without name errors.
- * `tableTitle` is kept for signature compatibility but no longer names the sheet.
- */
-async function exportTableToExcel(
-  items,
-  tableConfig,
-  tableName,
-  tableTitle,
-  t,
-  displayHeaders?: ExportDisplayHeader[],
-) {
-  const workbook = new ExcelJS.Workbook()
-  // Use the saved table key (not the translated title) as the sheet name so the
-  // master-table matcher recognises the table on re-upload (see loadExcel /
-  // useMasterTableMatch.detectMatches, which match by Object.keys(data)).
-  const worksheet = workbook.addWorksheet(tableName || tableTitle)
-
-  let schemaFields: Array<{ key: string; type: string; required?: boolean }>
-  let headerRowLabels: string[]
-
-  if (displayHeaders && displayHeaders.length > 0) {
-    const properties = getListResponseRowProperties(tableConfig)?.properties
-    schemaFields = displayHeaders.map((h) => ({
-      key: h.key,
-      type:
-        h.type ||
-        properties?.[h.key]?.type ||
-        'string',
-      required: false,
-    }))
-    headerRowLabels = displayHeaders.map((h) => h.key)
-  } else {
-    const extracted = extractSchemaFields(tableConfig, items)
-    schemaFields = extracted.schemaFields
-    headerRowLabels = extracted.backendKeys
-  }
-
-  if (headerRowLabels.length === 0) {
-    await downloadExcelFile(workbook, tableName)
-    return
-  }
-
-  worksheet.addRow(headerRowLabels)
-  styleExportHeaderRow(worksheet)
-
-  if (items && items.length > 0) {
-    addExportDataRows(worksheet, items, schemaFields, t)
-  }
-
-  setColumnFormats(worksheet, schemaFields)
-
-  const lastRow = items && items.length > 0 ? items.length + 1 : 1
-  applyExportBorders(worksheet, lastRow, headerRowLabels.length)
-
-  await downloadExcelFile(workbook, tableName)
 }
 
 /** Coerce an arbitrary value into a boolean using the same truthy rules as the table. */
@@ -901,6 +909,115 @@ function formatValueByType(value, type, t?: any) {
     default:
       return String(value)
   }
+}
+
+/** Apply per-column export formatting in chunks so the UI can breathe. */
+async function formatItemsForExport(
+  items: any[],
+  schemaFields: Array<{ key: string; type: string }>,
+  t?: any,
+): Promise<any[]> {
+  const result = new Array(items.length)
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]
+    const row: Record<string, any> = {}
+    for (const field of schemaFields) {
+      row[field.key] = formatValueByType(item[field.key], field.type, t)
+    }
+    result[i] = row
+    if ((i + 1) % EXPORT_FORMAT_ROW_CHUNK === 0) {
+      await yieldToEventLoop()
+    }
+  }
+  return result
+}
+
+/**
+ * Exports table data to Excel file with proper formatting based on backend schema.
+ * When displayHeaders is provided (e.g. from the table's visible headers), exports
+ * exactly those columns in that order. Both the sheet name and the header row use
+ * backend keys (not translated titles) so the file can be re-uploaded and matched
+ * back to its table (master tables, instance/solution) without name errors.
+ * `tableTitle` is kept for signature compatibility but no longer names the sheet.
+ */
+async function exportTableToExcel(
+  items,
+  tableConfig,
+  tableName,
+  tableTitle,
+  t,
+  displayHeaders?: ExportDisplayHeader[],
+) {
+  let schemaFields: Array<{ key: string; type: string; required?: boolean }>
+  let headerRowLabels: string[]
+
+  if (displayHeaders && displayHeaders.length > 0) {
+    const properties = getListResponseRowProperties(tableConfig)?.properties
+    schemaFields = displayHeaders.map((h) => ({
+      key: h.key,
+      type:
+        h.type ||
+        properties?.[h.key]?.type ||
+        'string',
+      required: false,
+    }))
+    headerRowLabels = displayHeaders.map((h) => h.key)
+  } else {
+    const extracted = extractSchemaFields(tableConfig, items)
+    schemaFields = extracted.schemaFields
+    headerRowLabels = extracted.backendKeys
+  }
+
+  if (headerRowLabels.length === 0) {
+    const workbook = new ExcelJS.Workbook()
+    workbook.addWorksheet(tableName || tableTitle)
+    await downloadExcelFile(workbook, tableName)
+    return
+  }
+
+  // Use the saved table key (not the translated title) as the sheet name so the
+  // master-table matcher recognises the table on re-upload.
+  const sheetKey = tableName || tableTitle
+  const cellCount = (items?.length ?? 0) * headerRowLabels.length
+
+  if (items && items.length > 0) {
+    if (cellCount <= TABLE_EXPORT_STYLED_CELL_THRESHOLD) {
+      const workbook = new ExcelJS.Workbook()
+      const worksheet = workbook.addWorksheet(sheetKey)
+
+      worksheet.addRow(headerRowLabels)
+      styleExportHeaderRow(worksheet)
+      addExportDataRows(worksheet, items, schemaFields, t)
+      setColumnFormats(worksheet, schemaFields)
+      applyExportBorders(worksheet, items.length + 1, headerRowLabels.length)
+
+      await downloadExcelFile(workbook, tableName)
+      return
+    }
+
+    // Large tables: worker / zip path. Apply typed formatting when the worker
+    // path is used; skip the extra copy for HUGE csv-zip to avoid doubling GB payloads.
+    const exportItems =
+      cellCount <= HUGE_BUILD_CELL_THRESHOLD
+        ? await formatItemsForExport(items, schemaFields, t)
+        : items
+    const result = await buildExcelBuffer(
+      { [sheetKey]: exportItems },
+      buildTableExportSchema(sheetKey, schemaFields, exportItems),
+    )
+    triggerTableBuiltDownload(result, tableName)
+    return
+  }
+
+  const workbook = new ExcelJS.Workbook()
+  const worksheet = workbook.addWorksheet(sheetKey)
+
+  worksheet.addRow(headerRowLabels)
+  styleExportHeaderRow(worksheet)
+  setColumnFormats(worksheet, schemaFields)
+  applyExportBorders(worksheet, 1, headerRowLabels.length)
+
+  await downloadExcelFile(workbook, tableName)
 }
 
 export {

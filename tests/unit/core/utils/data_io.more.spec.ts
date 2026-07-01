@@ -1,4 +1,5 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
+import { buildExcelBufferInWorker } from '@cornflow-ui/core/utils/excelWorkerClient'
 import {
   buildExcelBuffer,
   schemaDataToTable,
@@ -525,6 +526,27 @@ describe('data_io extra coverage', () => {
       await expect(
         exportTableToExcel([], {}, 'Empty', 'Title', t),
       ).resolves.toBeUndefined()
+      expect(clickSpy).toHaveBeenCalled()
+    })
+
+    test('routes large tables through buildExcelBuffer (worker/zip path)', async () => {
+      const t = vi.fn((key: string) => key)
+      // 4 visible schema columns × 6300 rows = 25_200 cells > TABLE_EXPORT_STYLED_CELL_THRESHOLD
+      const items = Array.from({ length: 6300 }, (_, i) => ({
+        name: `Row${i}`,
+        active: true,
+        count: i,
+        ratio: 1.5,
+      }))
+      const workerBuild = vi
+        .mocked(buildExcelBufferInWorker)
+        .mockResolvedValueOnce(new Uint8Array([9, 8, 7]))
+
+      await expect(
+        exportTableToExcel(items, tableConfig, 'BigTable', 'Title', t),
+      ).resolves.toBeUndefined()
+
+      expect(workerBuild).toHaveBeenCalledTimes(1)
       expect(clickSpy).toHaveBeenCalled()
     })
   })
