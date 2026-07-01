@@ -1,7 +1,7 @@
 {
   "name": "@cornflow-ui/core",
   "private": true,
-  "version": "3.0.1",
+  "version": "3.0.3",
   "type": "module",
   "files": [
     "src"
@@ -25,13 +25,13 @@
   },
   "dependencies": {
     "@aws-amplify/auth": "6.20.0",
-    "@aws-amplify/core": "6.16.3",
+    "@aws-amplify/core": "6.16.4",
     "@azure/msal-browser": "5.11.0",
     "@mdi/font": "7.4.47",
     "@types/webfontloader": "1.6.38",
     "ajv": "8.20.0",
     "aws-amplify": "6.17.0",
-    "dompurify": "3.4.10",
+    "dompurify": "3.4.11",
     "exceljs": "4.4.0",
     "jsonschema": "1.5.0",
     "jszip": "^3.10.1",
@@ -39,11 +39,11 @@
     "mango-vue": "0.2.7",
     "markdown-it": "14.2.0",
     "pinia": "3.0.4",
-    "prettier": "3.8.3",
+    "prettier": "3.8.5",
     "read-excel-file": "5.8.8",
     "vite-plugin-vuetify": "2.1.3",
-    "vue": "3.5.35",
-    "vue-i18n": "11.4.4",
+    "vue": "3.5.39",
+    "vue-i18n": "11.4.6",
     "vue-router": "5.1.0",
     "vue3-marquee": "4.2.2",
     "vuetify": "3.9.7",
@@ -62,7 +62,7 @@
   },
   "devDependencies": {
     "@playwright/test": "1.60.0",
-    "@types/node": "25.9.3",
+    "@types/node": "25.9.4",
     "@vitejs/plugin-vue": "6.0.7",
     "@vitest/coverage-v8": "4.1.9",
     "@vue/test-utils": "2.4.11",
