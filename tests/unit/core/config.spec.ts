@@ -9,7 +9,7 @@ const mockAppConfig = {
   getCore: vi.fn()
 }
 
-vi.mock('@/services/ConfigService', () => ({
+vi.mock('@cornflow-ui/core/services/ConfigService', () => ({
   default: mockConfigService
 }))
 
@@ -62,7 +62,7 @@ describe('Config Module Integration', () => {
     })
     
     // Import config fresh
-    const configModule = await import('@/config')
+    const configModule = await import('@cornflow-ui/core/config')
     config = configModule.default
     
     // Reset config to initial state

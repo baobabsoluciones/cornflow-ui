@@ -1,0 +1,14 @@
+.filters-row {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+.f-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--dash-text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}

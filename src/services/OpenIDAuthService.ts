@@ -1,10 +1,10 @@
-import { AuthProvider } from '@/interfaces/AuthProvider'
+import { AuthProvider } from '@cornflow-ui/core/interfaces/AuthProvider'
 import { PublicClientApplication, Configuration } from '@azure/msal-browser'
 import { Amplify } from 'aws-amplify'
 import { signInWithRedirect, signOut, fetchAuthSession } from 'aws-amplify/auth'
-import client from '@/api/Api'
-import config from '@/config'
-import router from '@/router'
+import client from '@cornflow-ui/core/api/Api'
+import config from '@cornflow-ui/core/config'
+import router from '@cornflow-ui/core/router'
 
 export class OpenIDAuthService implements AuthProvider {
   private msalInstance: PublicClientApplication | null = null
@@ -13,14 +13,14 @@ export class OpenIDAuthService implements AuthProvider {
   private loginAttempted: boolean = false
   private initializationPromise: Promise<void> | null = null
 
-  constructor(private provider: 'azure' | 'cognito') {}
+  constructor(private readonly provider: 'azure' | 'cognito') {}
 
   /**
    * Initializes the authentication service based on the provider.
    * This should be called immediately after creating an instance.
    */
   async initialize(): Promise<void> {
-    if (this.initializationPromise) {
+    if (this.initializationPromise !== null) {
       return this.initializationPromise;
     }
 
@@ -35,18 +35,18 @@ export class OpenIDAuthService implements AuthProvider {
     if (this.initialized) return
 
     try {
-      const msalConfig: Configuration = {
+      const msalConfig = {
         auth: {
           clientId: config.auth.clientId,
           authority: config.auth.authority,
           redirectUri: config.auth.redirectUri,
           navigateToLoginRequestUrl: false,
         },
-        cache: { 
+        cache: {
           cacheLocation: 'sessionStorage',
           storeAuthStateInCookie: false
         }
-      }
+      } as Configuration
       
       this.msalInstance = new PublicClientApplication(msalConfig)
       await this.msalInstance.initialize()
@@ -77,7 +77,7 @@ export class OpenIDAuthService implements AuthProvider {
     if (this.initialized) return
 
     try {
-      const redirectUrls = [window.location.origin];
+      const redirectUrls = [globalThis.location.origin];
       
       if (!config.auth.domain) {
         throw new Error('Cognito domain is not configured');
@@ -140,9 +140,9 @@ export class OpenIDAuthService implements AuthProvider {
         console.error('Invalid token format')
         return null
       }
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+      const base64 = base64Url.replaceAll('-', '+').replaceAll('_', '/')
       const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+        return '%' + ('00' + (c.codePointAt(0) ?? 0).toString(16)).slice(-2)
       }).join(''))
       return JSON.parse(jsonPayload)
     } catch (error) {
@@ -198,89 +198,122 @@ export class OpenIDAuthService implements AuthProvider {
     }
   }
 
+  /**
+   * Stores authentication session data including tokens and user claims
+   */
+  private storeAuthSessionData(
+    backendToken: string,
+    userId: string,
+    tokenClaims: any,
+    originalToken: string,
+    response: any,
+  ): void {
+    sessionStorage.setItem('isAuthenticated', 'true')
+    sessionStorage.setItem('token', backendToken)
+    sessionStorage.setItem('userId', userId)
+
+    // Store token expiration
+    if (tokenClaims?.exp) {
+      const expirationTime = tokenClaims.exp * 1000
+      sessionStorage.setItem('tokenExpiration', expirationTime.toString())
+      sessionStorage.setItem('originalToken', originalToken)
+    }
+
+    // Store Azure-specific token metadata
+    if (this.provider === 'azure' && response.expiresOn) {
+      sessionStorage.setItem('azureTokenExpiration', response.expiresOn.getTime().toString())
+    }
+
+    // Store refresh token expiration if available
+    if (response.refreshTokenExpiresIn) {
+      const refreshExpiration = Date.now() + response.refreshTokenExpiresIn * 1000
+      sessionStorage.setItem('refreshTokenExpiration', refreshExpiration.toString())
+    }
+  }
+
+  /**
+   * Stores user claims from the token
+   */
+  private storeUserClaims(tokenClaims: any): void {
+    if (!tokenClaims) return
+
+    sessionStorage.setItem(
+      'username',
+      tokenClaims['cognito:username'] || tokenClaims.preferred_username || tokenClaims.email || '',
+    )
+    sessionStorage.setItem(
+      'email',
+      tokenClaims.email || tokenClaims.preferred_username || '',
+    )
+    sessionStorage.setItem('name', tokenClaims.name || '')
+    sessionStorage.setItem('given_name', tokenClaims.given_name || '')
+    sessionStorage.setItem('family_name', tokenClaims.family_name || '')
+  }
+
+  /**
+   * Authenticates with the backend using the OpenID token
+   */
+  private async authenticateWithBackend(token: string): Promise<any> {
+    return client.post(
+      '/login/',
+      {},
+      {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    )
+  }
+
+  /**
+   * Handles successful backend authentication
+   */
+  private handleSuccessfulAuth(
+    backendResponse: any,
+    token: string,
+    tokenClaims: any,
+    response: any,
+  ): void {
+    this.storeAuthSessionData(
+      backendResponse.content.token,
+      backendResponse.content.id,
+      tokenClaims,
+      token,
+      response,
+    )
+    this.storeUserClaims(tokenClaims)
+    client.initializeToken()
+    router.push('/project-execution')
+  }
+
   private async handleAuthResponse(response: any) {
-    if (response) {
-      try {
-        const token = response.idToken || response.accessToken;
-        const tokenClaims = this.decodeToken(token);
-        
-        if (!tokenClaims) {
-          this.loginAttempted = false;
-          await this.retryAuthentication();
-          return;
-        }
-        
-        try {
-          const backendResponse = await client.post(
-            '/login/',
-            {},
-            { 
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              'Authorization': `Bearer ${token}`
-            }
-          );
+    if (!response) return
 
-          if (backendResponse.status === 200) {
-            const backendToken = backendResponse.content.token;
-            
-            sessionStorage.setItem('isAuthenticated', 'true');
-            sessionStorage.setItem('token', backendToken);
-            sessionStorage.setItem('userId', backendResponse.content.id);
-            
-            // Store comprehensive token information for better refresh management
-            if (tokenClaims && tokenClaims.exp) {
-              const expirationTime = tokenClaims.exp * 1000; // Convert to milliseconds
-              sessionStorage.setItem('tokenExpiration', expirationTime.toString());
-              sessionStorage.setItem('originalToken', token); // Keep original token for refresh
-            }
-            
-            // Store Azure/Cognito specific token metadata for debugging and monitoring
-            if (this.provider === 'azure' && response.expiresOn) {
-              // MSAL provides expiresOn for access tokens
-              sessionStorage.setItem('azureTokenExpiration', response.expiresOn.getTime().toString());
-            }
-            
-            // Store refresh token expiration if available (mainly for Azure direct flows)
-            if (response.refreshTokenExpiresIn) {
-              const refreshExpiration = Date.now() + (response.refreshTokenExpiresIn * 1000);
-              sessionStorage.setItem('refreshTokenExpiration', refreshExpiration.toString());
-            }
-            
-            if (tokenClaims) {
-              sessionStorage.setItem('username', 
-                tokenClaims['cognito:username'] || 
-                tokenClaims.preferred_username || 
-                tokenClaims.email || 
-                '');
-              sessionStorage.setItem('email', 
-                tokenClaims.email || 
-                tokenClaims.preferred_username || 
-                '');
-              sessionStorage.setItem('name', tokenClaims.name || '');
-              sessionStorage.setItem('given_name', tokenClaims.given_name || '');
-              sessionStorage.setItem('family_name', tokenClaims.family_name || '');
-            }
-            
-            // Reinitialize the API client with the new token
-            client.initializeToken();
+    try {
+      const token = response.idToken || response.accessToken
+      const tokenClaims = this.decodeToken(token)
 
-            router.push('/project-execution');
-          } else {
-            console.error('Backend Response:', backendResponse);
-            await this.retryAuthentication();
-          }
-        } catch (error) {
-          console.error('Backend authentication failed:', error);
-          if (error.response?.status === 400) {
-            await this.retryAuthentication();
-          } else {
-            throw error;
-          }
-        }
-      } catch (error) {
-        console.error('Authentication error:', error);
-        await this.retryAuthentication();
+      if (!tokenClaims) {
+        this.loginAttempted = false
+        await this.retryAuthentication()
+        return
+      }
+
+      const backendResponse = await this.authenticateWithBackend(token)
+
+      if (backendResponse.status === 200) {
+        this.handleSuccessfulAuth(backendResponse, token, tokenClaims, response)
+      } else {
+        console.error('Backend Response:', backendResponse)
+        await this.retryAuthentication()
+      }
+    } catch (error) {
+      console.error('Authentication error:', error)
+      const shouldRetry = !error.response || error.response?.status === 400
+      if (shouldRetry) {
+        await this.retryAuthentication()
+      } else {
+        throw error
       }
     }
   }
@@ -315,7 +348,7 @@ export class OpenIDAuthService implements AuthProvider {
       } catch (error) {
         console.error('Failed to retry authentication with Cognito:', error)
         // If that fails, force hard redirect to sign-in page
-        window.location.href = window.location.origin + '/sign-in?expired=true'
+        globalThis.location.href = globalThis.location.origin + '/sign-in?expired=true'
       }
     } else if (this.provider === 'azure' && this.msalInstance) {
       await this.msalInstance.loginRedirect({
@@ -351,7 +384,7 @@ export class OpenIDAuthService implements AuthProvider {
     
     if (this.provider === 'azure' && this.msalInstance) {
       this.msalInstance.logoutRedirect({
-        postLogoutRedirectUri: window.location.origin + '/sign-in?from=logout'
+        postLogoutRedirectUri: globalThis.location.origin + '/sign-in?from=logout'
       });
     } else if (this.provider === 'cognito') {
       // Sign out from Cognito with global option
@@ -433,8 +466,8 @@ export class OpenIDAuthService implements AuthProvider {
     const refreshTokenExpiration = sessionStorage.getItem('refreshTokenExpiration');
     const now = Date.now();
     
-    const tokenExp = tokenExpiration ? new Date(parseInt(tokenExpiration)) : null;
-    const refreshExp = refreshTokenExpiration ? new Date(parseInt(refreshTokenExpiration)) : null;
+    const tokenExp = tokenExpiration ? new Date(Number.parseInt(tokenExpiration)) : null;
+    const refreshExp = refreshTokenExpiration ? new Date(Number.parseInt(refreshTokenExpiration)) : null;
     
     const timeUntilExpiration = tokenExp ? tokenExp.getTime() - now : null;
     const timeUntilRefreshExpiration = refreshExp ? refreshExp.getTime() - now : null;
@@ -458,7 +491,7 @@ export class OpenIDAuthService implements AuthProvider {
     const refreshTokenExpiration = sessionStorage.getItem('refreshTokenExpiration');
     if (!refreshTokenExpiration) return false;
     
-    const expTime = parseInt(refreshTokenExpiration);
+    const expTime = Number.parseInt(refreshTokenExpiration);
     const now = Date.now();
     const twentyFourHours = 24 * 60 * 60 * 1000;
     
@@ -485,12 +518,12 @@ export class OpenIDAuthService implements AuthProvider {
 
   private async acquireAzureToken(request: any): Promise<{ token: string; expiresAt: number } | null> {
     try {
-      const response = await this.msalInstance!.acquireTokenSilent(request);
+      const response = await this.msalInstance.acquireTokenSilent(request);
       return this.processAzureTokenResponse(response);
     } catch (error) {
       console.warn('Silent token acquisition failed, trying force refresh:', error);
       const forceRefreshRequest = { ...request, forceRefresh: true };
-      const response = await this.msalInstance!.acquireTokenSilent(forceRefreshRequest);
+      const response = await this.msalInstance.acquireTokenSilent(forceRefreshRequest);
       return this.processAzureTokenResponse(response);
     }
   }

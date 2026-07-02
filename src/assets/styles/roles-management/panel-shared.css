@@ -1,0 +1,31 @@
+/* Shared panel rules for roles-management panels (RolesPanel, UsersPanel).
+   Byte-identical blocks extracted from each component's scoped <style>. The
+   column root selector (.roles-col / .users-col) differs between components
+   and stays inline. */
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.panel-header__left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-subtitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--title);
+  letter-spacing: 0.01em;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 0;
+}

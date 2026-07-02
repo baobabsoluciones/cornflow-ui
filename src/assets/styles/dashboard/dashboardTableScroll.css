@@ -1,0 +1,7 @@
+/* Shared dashboard table styles — extracted to remove duplicated CSS.
+ * Imported via <style scoped src> so each component keeps its own scope id.
+ * Members: Detalle, Flujos, PlanEnt, Desglose */
+
+.table-scroll {
+  overflow: auto;
+}

@@ -10,7 +10,7 @@ const mockConfig = vi.hoisted(() => ({
   initConfig: vi.fn().mockResolvedValue(undefined)
 }))
 
-vi.mock('@/config', () => ({
+vi.mock('@cornflow-ui/core/config', () => ({
   default: mockConfig
 }))
 
@@ -21,7 +21,7 @@ const mockAuthService = vi.hoisted(() => ({
 
 const mockGetAuthService = vi.hoisted(() => vi.fn())
 
-vi.mock('@/services/AuthServiceFactory', () => ({
+vi.mock('@cornflow-ui/core/services/AuthServiceFactory', () => ({
   default: mockGetAuthService
 }))
 
@@ -30,7 +30,7 @@ const mockRouter = vi.hoisted(() => ({
   push: vi.fn()
 }))
 
-vi.mock('@/router', () => ({
+vi.mock('@cornflow-ui/core/router', () => ({
   default: mockRouter
 }))
 
@@ -71,7 +71,7 @@ describe('ApiClient', () => {
     mockGetAuthService.mockResolvedValue(mockAuthService)
     
     // Import the ApiClient instance
-    const module = await import('@/api/Api')
+    const module = await import('@cornflow-ui/core/api/Api')
     apiClient = module.default
     
     // Reset the client state for each test
@@ -604,6 +604,54 @@ describe('ApiClient', () => {
         headers: { 'Custom-Header': 'test' },
         isExternal: true
       })
+    })
+
+    test('postStream calls fetch with Cornflow prefix when isExternal is false and hasExternalApp', async () => {
+      mockConfig.hasExternalApp = true
+      vi.mocked(fetch).mockResolvedValue({
+        status: 200,
+        ok: true,
+        headers: new Headers({ 'Content-Type': 'text/event-stream' }),
+        body: null,
+      } as Response)
+
+      sessionStorageMock.getItem.mockImplementation((key: string) =>
+        key === 'token' ? 'tok' : null,
+      )
+      apiClient.initializeToken()
+
+      await apiClient.postStream('/agent/', { message: 'x' }, false)
+
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:8000/cornflow/agent/',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Accept: 'text/event-stream, application/json',
+          }),
+        }),
+      )
+    })
+
+    test('postStream calls fetch with /external when isExternal is true', async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        status: 200,
+        ok: true,
+        headers: new Headers(),
+        body: null,
+      } as Response)
+
+      sessionStorageMock.getItem.mockImplementation((key: string) =>
+        key === 'token' ? 'tok' : null,
+      )
+      apiClient.initializeToken()
+
+      await apiClient.postStream('/agent/', { message: 'x' }, true)
+
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:8000/external/agent/',
+        expect.objectContaining({ method: 'POST' }),
+      )
     })
   })
 

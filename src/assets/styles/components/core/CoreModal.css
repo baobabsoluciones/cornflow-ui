@@ -1,0 +1,80 @@
+/* CoreModal Component Styles - Specific styles only */
+
+/* Content specific for form modal */
+.core-modal__content {
+  max-height: 60vh;
+  min-height: 250px;
+  overflow-y: auto;
+}
+
+/* Form Field Styles */
+.core-modal__field-wrapper {
+  margin-bottom: 4px;
+}
+
+.core-modal__field-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 450;
+  color: var(--label-text);
+  margin-bottom: 4px;
+}
+
+.core-modal__field {
+  margin-bottom: 0;
+}
+
+.core-modal :deep(.v-text-field .v-input__details) {
+  min-height: 20px;
+  padding-top: 2px;
+}
+
+.core-modal :deep(.v-textarea .v-input__details) {
+  min-height: 20px;
+  padding-top: 2px;
+}
+
+.core-modal__boolean-field {
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+}
+
+.core-modal__switch {
+  margin: 0;
+}
+
+.core-modal__date-field {
+  position: relative;
+}
+
+.core-modal__date-picker {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Date picker specific styling */
+.core-modal :deep(.v-date-picker) {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.core-modal :deep(.v-date-picker__header) {
+  background-color: var(--primary);
+  color: white;
+  border-radius: 0;
+}
+
+.core-modal :deep(.v-date-picker-month__day--selected) {
+  background-color: var(--primary);
+  color: white;
+}
+
+.core-modal :deep(.v-date-picker-month__day--today) {
+  border: 2px solid var(--primary);
+}
+
+/* Switch specific styling */
+.core-modal :deep(.v-switch .v-selection-control__input) {
+  color: var(--primary);
+}

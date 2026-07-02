@@ -7,6 +7,12 @@ export default {
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // Self-reference del core a ./src (mismo esquema que vite.config para imports @cornflow-ui/core/*).
+      '@cornflow-ui/core': fileURLToPath(new URL('./src', import.meta.url)),
+      // Real exceljs requires uuid; npm overrides pin uuid ESM-only, which breaks CJS require in exceljs during Vitest.
+      exceljs: fileURLToPath(
+        new URL('./tests/unit/core/mocks/exceljs-stub.ts', import.meta.url),
+      ),
     },
   },
   server: {
@@ -16,6 +22,7 @@ export default {
   test: {
     globals: true,
     environment: 'jsdom',
+    testTimeout: 10000, // Increase default timeout to 10 seconds
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],

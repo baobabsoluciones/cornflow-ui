@@ -1,5 +1,5 @@
-import config from '@/config'
-import { RequestOptions } from '@/interfaces/RequestOptions'
+import config from '@cornflow-ui/core/config'
+import { RequestOptions } from '@cornflow-ui/core/interfaces/RequestOptions'
 
 class ApiClient {
   private baseUrl: string
@@ -17,11 +17,11 @@ class ApiClient {
   public initializeToken() {
     // Load token from sessionStorage during initialization
     this.authToken = sessionStorage.getItem('token')
-    
+
     // Load token expiration if available
     const tokenExpiration = sessionStorage.getItem('tokenExpiration')
     if (tokenExpiration) {
-      this.tokenExpiration = parseInt(tokenExpiration, 10)
+      this.tokenExpiration = Number.parseInt(tokenExpiration, 10)
       // Start proactive refresh timer if we have expiration info
       this.scheduleTokenRefresh()
     }
@@ -38,12 +38,15 @@ class ApiClient {
       this.refreshTimer = null
     }
 
-    if (!this.tokenExpiration || (config.auth.type !== 'cognito' && config.auth.type !== 'azure')) {
+    if (
+      !this.tokenExpiration ||
+      (config.auth.type !== 'cognito' && config.auth.type !== 'azure')
+    ) {
       return // Don't schedule if no expiration or not external auth
     }
 
     const now = Date.now()
-    const timeUntilRefresh = this.tokenExpiration - now - (15 * 60 * 1000) // Refresh 15 minutes before expiry
+    const timeUntilRefresh = this.tokenExpiration - now - 15 * 60 * 1000 // Refresh 15 minutes before expiry
 
     if (timeUntilRefresh > 0) {
       this.refreshTimer = setTimeout(async () => {
@@ -64,20 +67,20 @@ class ApiClient {
   private getHeaders(): HeadersInit {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
-    };
+    }
 
     // Load token from sessionStorage if not already set
     if (!this.authToken) {
-      this.authToken = sessionStorage.getItem('token');
+      this.authToken = sessionStorage.getItem('token')
     }
 
     if (this.authToken) {
-      headers['Authorization'] = `Bearer ${this.authToken}`;
+      headers['Authorization'] = `Bearer ${this.authToken}`
     } else {
-      console.warn('No Authorization header added - no token available');
+      console.warn('No Authorization header added - no token available')
     }
 
-    return headers;
+    return headers
   }
 
   private isTokenExpired(): boolean {
@@ -85,14 +88,14 @@ class ApiClient {
       // If no expiration info, check if we have it in sessionStorage
       const tokenExpiration = sessionStorage.getItem('tokenExpiration')
       if (tokenExpiration) {
-        this.tokenExpiration = parseInt(tokenExpiration, 10)
+        this.tokenExpiration = Number.parseInt(tokenExpiration, 10)
       } else {
         return false // Don't assume expiration if we don't have the info
       }
     }
-    
+
     // Add a 10-minute margin to refresh proactively before expiration
-    return Date.now() >= (this.tokenExpiration - 10 * 60 * 1000)
+    return Date.now() >= this.tokenExpiration - 10 * 60 * 1000
   }
 
   private async refreshToken(): Promise<void> {
@@ -125,7 +128,7 @@ class ApiClient {
   }
 
   private async getAuthService(): Promise<any> {
-    const getAuthService = await import('@/services/AuthServiceFactory')
+    const getAuthService = await import('@cornflow-ui/core/services/AuthServiceFactory')
     return await getAuthService.default()
   }
 
@@ -150,8 +153,10 @@ class ApiClient {
 
   private async exchangeTokenWithBackend(refreshResult: any): Promise<void> {
     try {
-      const backendResponse = await this.makeBackendTokenRequest(refreshResult.token)
-      
+      const backendResponse = await this.makeBackendTokenRequest(
+        refreshResult.token,
+      )
+
       if (!backendResponse.ok) {
         throw new Error('Backend token exchange failed')
       }
@@ -170,15 +175,18 @@ class ApiClient {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${token}`
+        Accept: 'application/json',
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({}),
-      mode: 'cors'
+      mode: 'cors',
     })
   }
 
-  private updateBackendToken(backendToken: string, originalToken: string): void {
+  private updateBackendToken(
+    backendToken: string,
+    originalToken: string,
+  ): void {
     sessionStorage.setItem('token', backendToken)
     this.authToken = backendToken
     sessionStorage.setItem('originalToken', originalToken)
@@ -188,12 +196,12 @@ class ApiClient {
   private async request(url = '', options: RequestOptions = {}) {
     const completeUrl = this.buildRequestUrl(url, options)
     await this.handleTokenRefreshIfNeeded(url)
-    
+
     try {
       const response = await this.performFetch(completeUrl, options)
       this.handleUnauthorizedResponse(response, url)
       const content = await this.parseResponseContent(response)
-      
+
       return { status: response.status, content }
     } catch (error) {
       this.handleRequestError(error, url)
@@ -203,20 +211,22 @@ class ApiClient {
 
   private buildRequestUrl(url: string, options: RequestOptions): URL {
     const isExternal = options.isExternal || false
-    const basePath = isExternal ? '/external' : config.hasExternalApp ? '/cornflow' : ''
+    const internalBasePath = config.hasExternalApp ? '/cornflow' : ''
+    const basePath = isExternal ? '/external' : internalBasePath
     const completeUrl = new URL(this.baseUrl + basePath + url)
-    
+
     if (options.params) {
       completeUrl.search = new URLSearchParams(options.params).toString()
     }
-    
+
     return completeUrl
   }
 
   private async handleTokenRefreshIfNeeded(url: string): Promise<void> {
-    const needsRefresh = (config.auth.type === 'cognito' || config.auth.type === 'azure') && 
-                        !url.includes('/login/') && 
-                        this.isTokenExpired()
+    const needsRefresh =
+      (config.auth.type === 'cognito' || config.auth.type === 'azure') &&
+      !url.includes('/login/') &&
+      this.isTokenExpired()
 
     if (needsRefresh) {
       try {
@@ -229,13 +239,32 @@ class ApiClient {
     }
   }
 
-  private async performFetch(completeUrl: URL, options: RequestOptions): Promise<Response> {
+  /** So multipart requests get an automatic boundary from fetch (case-insensitive header keys). */
+  private stripContentTypeHeader(headers: Record<string, string>): void {
+    for (const key of Object.keys(headers)) {
+      if (key.toLowerCase() === 'content-type') {
+        delete headers[key]
+      }
+    }
+  }
+
+  private async performFetch(
+    completeUrl: URL,
+    options: RequestOptions,
+  ): Promise<Response> {
+    // Merge headers and remove JSON content-type if sending FormData so the browser sets the boundary
+    const mergedHeaders = {
+      ...Object.fromEntries(Object.entries(this.getHeaders())),
+      ...options.headers,
+    } as Record<string, string>
+
+    if (options.body instanceof FormData) {
+      this.stripContentTypeHeader(mergedHeaders)
+    }
+
     return await fetch(completeUrl.toString(), {
       ...options,
-      headers: {
-        ...this.getHeaders(),
-        ...options.headers,
-      },
+      headers: mergedHeaders,
       body: this.prepareRequestBody(options.body),
       mode: 'cors',
     })
@@ -248,7 +277,9 @@ class ApiClient {
 
   private handleUnauthorizedResponse(response: Response, url: string): void {
     if (response.status === 401 && !url.includes('/login/')) {
-      console.warn('Received 401 Unauthorized response, session may have expired')
+      console.warn(
+        'Received 401 Unauthorized response, session may have expired',
+      )
       this.handleAuthFailure()
       throw new Error('Unauthorized: Session expired')
     }
@@ -256,15 +287,15 @@ class ApiClient {
 
   private async parseResponseContent(response: Response): Promise<any> {
     const contentType = response.headers.get('Content-Type')
-    
-    if (contentType && contentType.includes('application/json')) {
+
+    if (contentType?.includes('application/json')) {
       try {
         return await response.json()
-      } catch (e) {
+      } catch {
         return { message: 'Could not parse response' }
       }
     }
-    
+
     return await response.blob()
   }
 
@@ -299,7 +330,7 @@ class ApiClient {
     // Use setTimeout to ensure this runs after the current execution context
     setTimeout(() => {
       // Import dynamically to avoid circular dependency
-      import('@/router').then(({ default: router }) => {
+      import('@cornflow-ui/core/router').then(({ default: router }) => {
         // Redirect to sign-in page with expired flag
         router.push({ path: '/sign-in', query: { expired: 'true' } })
       })
@@ -312,13 +343,13 @@ class ApiClient {
    */
   private clearLocalStorageAuthData(): void {
     // Get all localStorage keys
-    const keys = Object.keys(localStorage);
-    
+    const keys = Object.keys(localStorage)
+
     // Patterns to match auth-related items in localStorage
     const authPatterns = [
       'CognitoIdentityServiceProvider',
       'amplify-signin-with-hostedUI',
-      'amplify', 
+      'amplify',
       'MSAL',
       'msal.',
       'microsoft.',
@@ -326,31 +357,137 @@ class ApiClient {
       'auth.',
       'refresh_token',
       'id_token',
-      'access_token'
-    ];
-    
+      'access_token',
+    ]
+
     // Remove all matching items
-    keys.forEach(key => {
-      if (authPatterns.some(pattern => key.toLowerCase().includes(pattern.toLowerCase()))) {
-        localStorage.removeItem(key);
+    keys.forEach((key) => {
+      if (
+        authPatterns.some((pattern) =>
+          key.toLowerCase().includes(pattern.toLowerCase()),
+        )
+      ) {
+        localStorage.removeItem(key)
       }
-    });
+    })
   }
 
-  get(url: string, queryParams = {}, getHeaders = {}, isExternal: boolean = false) {
-    return this.request(url, { method: 'GET', params: queryParams, headers: getHeaders, isExternal })
+  async getBlob(
+    url: string,
+    queryParams: Record<string, string | number | boolean | undefined> = {},
+    isExternal: boolean = false,
+  ): Promise<{ status: number; blob: Blob; filename: string | null }> {
+    await this.handleTokenRefreshIfNeeded(url)
+
+    const internalBasePath = config.hasExternalApp ? '/cornflow' : ''
+    const basePath = isExternal ? '/external' : internalBasePath
+    const completeUrl = new URL(this.baseUrl + basePath + url)
+    const definedParams = Object.entries(queryParams).filter(
+      ([, v]) => v !== undefined && v !== null,
+    )
+    if (definedParams.length > 0) {
+      completeUrl.search = new URLSearchParams(
+        definedParams.map(([k, v]) => [k, String(v)]),
+      ).toString()
+    }
+
+    const response = await fetch(completeUrl.toString(), {
+      method: 'GET',
+      headers: this.getHeaders(),
+      mode: 'cors',
+    })
+
+    this.handleUnauthorizedResponse(response, url)
+
+    const blob = await response.blob()
+
+    let filename: string | null = null
+    const disposition = response.headers.get('Content-Disposition')
+    if (disposition) {
+      const match =
+        /filename\*=UTF-8''([^;]+)/.exec(disposition) ||
+        /filename="?([^";]+)"?/.exec(disposition)
+      if (match) {
+        filename = decodeURIComponent(match[1])
+      }
+    }
+
+    return { status: response.status, blob, filename }
   }
 
-  post(url: string, data: object, postHeaders = {}, isExternal: boolean = false) {
-    return this.request(url, { method: 'POST', body: data, headers: postHeaders, isExternal })
+  get(
+    url: string,
+    queryParams = {},
+    getHeaders = {},
+    isExternal: boolean = false,
+  ) {
+    return this.request(url, {
+      method: 'GET',
+      params: queryParams,
+      headers: getHeaders,
+      isExternal,
+    })
+  }
+
+  post(
+    url: string,
+    data: object,
+    postHeaders = {},
+    isExternal: boolean = false,
+  ) {
+    return this.request(url, {
+      method: 'POST',
+      body: data,
+      headers: postHeaders,
+      isExternal,
+    })
+  }
+
+  /**
+   * POST and return the raw Response (e.g. SSE). Same URL rules as `post()`:
+   * `isExternal === true` → prefix `/external`; otherwise Cornflow app prefix
+   * (`/cornflow` when `config.hasExternalApp`, else `''`) + `url`.
+   */
+  async postStream(
+    url: string,
+    body: object,
+    isExternal: boolean = false,
+  ): Promise<Response> {
+    await this.handleTokenRefreshIfNeeded(url)
+    const completeUrl = this.buildRequestUrl(url, { isExternal })
+    const response = await this.performFetch(completeUrl, {
+      method: 'POST',
+      body,
+      headers: {
+        Accept: 'text/event-stream, application/json',
+      },
+      isExternal,
+    })
+    this.handleUnauthorizedResponse(response, url)
+    return response
   }
 
   put(url: string, data: object, putHeaders = {}, isExternal: boolean = false) {
-    return this.request(url, { method: 'PUT', body: data, headers: putHeaders, isExternal })
+    return this.request(url, {
+      method: 'PUT',
+      body: data,
+      headers: putHeaders,
+      isExternal,
+    })
   }
 
-  remove(url: string, deleteHeaders = {}, isExternal: boolean = false) {
-    return this.request(url, { method: 'DELETE', headers: deleteHeaders, isExternal })
+  remove(
+    url: string,
+    deleteHeaders = {},
+    isExternal: boolean = false,
+    data?: object,
+  ) {
+    return this.request(url, {
+      method: 'DELETE',
+      body: data,
+      headers: deleteHeaders,
+      isExternal,
+    })
   }
 }
 

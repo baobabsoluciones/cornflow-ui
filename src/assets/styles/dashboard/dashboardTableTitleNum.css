@@ -1,0 +1,16 @@
+/* Shared dashboard table styles — extracted to remove duplicated CSS.
+ * Imported via <style scoped src> so each component keeps its own scope id.
+ * Members: Detalle, Flujos, PlanEnt, Desglose, Stock, Interc, Pending */
+
+.title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--dash-text-strong);
+  text-transform: uppercase;
+}
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

@@ -1,47 +1,83 @@
-import client from '@/api/Api'
-import { User } from '@/models/User'
+import client from '@cornflow-ui/core/api/Api'
+import { User } from '@cornflow-ui/core/models/User'
+
+interface RawUser {
+  id: number
+  username: string
+  email: string
+  first_name?: string
+  last_name?: string
+}
 
 export default class UserRepository {
-  getUserById(id: string): Promise<User> {
+  getAllUsers(): Promise<RawUser[]> {
+    return new Promise((resolve, reject) => {
+      client
+        .get('/user/')
+        .then((response) => {
+          if (response.status === 200) {
+            resolve(response.content as RawUser[])
+          } else {
+            reject(new Error('Error getting users'))
+          }
+        })
+        .catch(reject)
+    })
+  }
+
+  getUserById(id: string | number): Promise<User> {
     return new Promise((resolve, reject) => {
       client
         .get(`/user/${id}/`)
         .then((response) => {
           if (response.status === 200) {
-            const user = response.content
+            const raw = response.content as RawUser
             resolve(
               new User(
-                user.id,
-                user.username,
-                user.email,
-                user.first_name,
-                user.last_name,
+                String(raw.id),
+                raw.username,
+                raw.email,
+                raw.first_name || '',
+                raw.last_name || '',
               ),
             )
           } else {
             reject(new Error('Error getting user'))
           }
         })
-        .catch((error) => {
-          reject(error)
-        })
+        .catch(reject)
     })
   }
 
-  changePassword(user_id: string, password: string): Promise<boolean> {
+  updateUser(
+    userId: string | number,
+    data: { email?: string; first_name?: string; last_name?: string },
+  ): Promise<boolean> {
     return new Promise((resolve, reject) => {
       client
-        .put(`/user/${user_id}/`, { password })
+        .put(`/user/${userId}/`, data)
         .then((response) => {
           if (response.status === 200) {
             resolve(true)
           } else {
-            resolve(false)
+            const message =
+              (response.content as { error?: string })?.error ||
+              'Error updating user'
+            reject(new Error(message))
           }
         })
-        .catch((error) => {
-          reject(error)
+        .catch(reject)
+    })
+  }
+
+  changePassword(userId: string | number, password: string): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      client
+        .put(`/user/${userId}/`, { password })
+        .then((response) => {
+          resolve(response.status === 200)
         })
+        .catch(reject)
     })
   }
 }

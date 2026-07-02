@@ -1,8 +1,8 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { Execution } from '@/models/Execution'
+import { Execution } from '@cornflow-ui/core/models/Execution'
 
 // Mock the getUserFullName utility
-vi.mock('@/utils/user', () => ({
+vi.mock('@cornflow-ui/core/utils/user', () => ({
   default: vi.fn()
 }))
 
@@ -11,7 +11,7 @@ describe('Execution', () => {
 
   beforeEach(async () => {
     // Get the mocked function
-    const userUtils = await import('@/utils/user')
+    const userUtils = await import('@cornflow-ui/core/utils/user')
     mockGetUserFullName = userUtils.default
     
     // Reset mocks
@@ -26,21 +26,21 @@ describe('Execution', () => {
     test('should create an execution with all required parameters', () => {
       mockGetUserFullName.mockReturnValue('John Doe')
 
-      const execution = new Execution(
-        'Success',                    // message
-        '2023-01-01T00:00:00Z',      // createdAt
-        { solver: 'CBC' },           // config
-        1,                           // state
-        200,                         // solution_state
-        'Test Execution',            // name
-        'Test Description',          // description
-        '{"kpi1": 100}',            // indicators
-        'hash123',                   // dataHash
-        'test-schema',               // schema
-        'instance-123',              // instanceId
-        'exec-456',                  // id
-        789                          // userId
-      )
+      const execution = new Execution({
+        message: 'Success',
+        createdAt: '2023-01-01T00:00:00Z',
+        config: { solver: 'CBC' },
+        state: 1,
+        solution_state: 200,
+        name: 'Test Execution',
+        description: 'Test Description',
+        indicators: '{"kpi1": 100}',
+        dataHash: 'hash123',
+        schema: 'test-schema',
+        instanceId: 'instance-123',
+        id: 'exec-456',
+        userId: 789,
+      })
 
       expect(execution.message).toBe('Success')
       expect(execution.createdAt).toBe('2023-01-01T00:00:00Z')
@@ -64,25 +64,25 @@ describe('Execution', () => {
     test('should create an execution with all optional parameters', () => {
       mockGetUserFullName.mockReturnValue('Jane Smith')
 
-      const execution = new Execution(
-        'Completed',                 // message
-        '2023-01-01T00:00:00Z',     // createdAt
-        { solver: 'GUROBI' },       // config
-        2,                          // state
-        201,                        // solution_state
-        'Full Execution',           // name
-        'Full Description',         // description
-        '{"kpi2": 200}',           // indicators
-        'hash456',                  // dataHash
-        'full-schema',              // schema
-        'instance-456',             // instanceId
-        'exec-789',                 // id
-        123,                        // userId
-        'jsmith',                   // userName
-        'Jane',                     // userFirstName
-        'Smith',                    // userLastName
-        '2023-01-01T01:00:00Z'     // finishedAt
-      )
+      const execution = new Execution({
+        message: 'Completed',
+        createdAt: '2023-01-01T00:00:00Z',
+        config: { solver: 'GUROBI' },
+        state: 2,
+        solution_state: 201,
+        name: 'Full Execution',
+        description: 'Full Description',
+        indicators: '{"kpi2": 200}',
+        dataHash: 'hash456',
+        schema: 'full-schema',
+        instanceId: 'instance-456',
+        id: 'exec-789',
+        userId: 123,
+        userName: 'jsmith',
+        userFirstName: 'Jane',
+        userLastName: 'Smith',
+        finishedAt: '2023-01-01T01:00:00Z',
+      })
 
       expect(execution.userName).toBe('jsmith')
       expect(execution.finishedAt).toBe('2023-01-01T01:00:00Z')
@@ -93,25 +93,25 @@ describe('Execution', () => {
     test('should handle null optional parameters', () => {
       mockGetUserFullName.mockReturnValue('Unknown User')
 
-      const execution = new Execution(
-        'Error',
-        '2023-01-01T00:00:00Z',
-        {},
-        0,
-        500,
-        'Error Execution',
-        'Error Description',
-        '{}',
-        'hash-error',
-        'error-schema',
-        'instance-error',
-        'exec-error',
-        999,
-        null,    // userName
-        null,    // userFirstName
-        null,    // userLastName
-        null     // finishedAt
-      )
+      const execution = new Execution({
+        message: 'Error',
+        createdAt: '2023-01-01T00:00:00Z',
+        config: {},
+        state: 0,
+        solution_state: 500,
+        name: 'Error Execution',
+        description: 'Error Description',
+        indicators: '{}',
+        dataHash: 'hash-error',
+        schema: 'error-schema',
+        instanceId: 'instance-error',
+        id: 'exec-error',
+        userId: 999,
+        userName: null,
+        userFirstName: null,
+        userLastName: null,
+        finishedAt: null,
+      })
 
       expect(execution.userName).toBeNull()
       expect(execution.finishedAt).toBeNull()
@@ -122,25 +122,25 @@ describe('Execution', () => {
     test('should handle empty strings for optional parameters', () => {
       mockGetUserFullName.mockReturnValue('')
 
-      const execution = new Execution(
-        'Empty',
-        '2023-01-01T00:00:00Z',
-        {},
-        1,
-        200,
-        'Empty Execution',
-        'Empty Description',
-        '',
-        '',
-        '',
-        '',
-        '',
-        0,
-        '',      // userName
-        '',      // userFirstName
-        '',      // userLastName
-        ''       // finishedAt
-      )
+      const execution = new Execution({
+        message: 'Empty',
+        createdAt: '2023-01-01T00:00:00Z',
+        config: {},
+        state: 1,
+        solution_state: 200,
+        name: 'Empty Execution',
+        description: 'Empty Description',
+        indicators: '',
+        dataHash: '',
+        schema: '',
+        instanceId: '',
+        id: '',
+        userId: 0,
+        userName: '',
+        userFirstName: '',
+        userLastName: '',
+        finishedAt: '',
+      })
 
       expect(execution.userName).toBe('')
       expect(execution.finishedAt).toBe('')
@@ -176,21 +176,21 @@ describe('Execution', () => {
         }
       }
 
-      const execution = new Execution(
-        'Complex Config',
-        '2023-01-01T00:00:00Z',
-        complexConfig,
-        1,
-        200,
-        'Complex Execution',
-        'Complex Description',
-        '{"complex": true}',
-        'complex-hash',
-        'complex-schema',
-        'complex-instance',
-        'complex-exec',
-        111
-      )
+      const execution = new Execution({
+        message: 'Complex Config',
+        createdAt: '2023-01-01T00:00:00Z',
+        config: complexConfig,
+        state: 1,
+        solution_state: 200,
+        name: 'Complex Execution',
+        description: 'Complex Description',
+        indicators: '{"complex": true}',
+        dataHash: 'complex-hash',
+        schema: 'complex-schema',
+        instanceId: 'complex-instance',
+        id: 'complex-exec',
+        userId: 111,
+      })
 
       expect(execution.config).toBe(complexConfig)
       expect(execution.config.solver).toBe('CPLEX')
@@ -211,25 +211,25 @@ describe('Execution', () => {
       ]
 
       dateFormats.forEach(dateFormat => {
-        const execution = new Execution(
-          'Date Test',
-          dateFormat,
-          {},
-          1,
-          200,
-          'Date Execution',
-          'Date Description',
-          '{}',
-          'date-hash',
-          'date-schema',
-          'date-instance',
-          'date-exec',
-          222,
-          null,
-          null,
-          null,
-          dateFormat
-        )
+        const execution = new Execution({
+          message: 'Date Test',
+          createdAt: dateFormat,
+          config: {},
+          state: 1,
+          solution_state: 200,
+          name: 'Date Execution',
+          description: 'Date Description',
+          indicators: '{}',
+          dataHash: 'date-hash',
+          schema: 'date-schema',
+          instanceId: 'date-instance',
+          id: 'date-exec',
+          userId: 222,
+          userName: null,
+          userFirstName: null,
+          userLastName: null,
+          finishedAt: dateFormat,
+        })
 
         expect(execution.createdAt).toBe(dateFormat)
         expect(execution.finishedAt).toBe(dateFormat)
@@ -248,21 +248,21 @@ describe('Execution', () => {
       ]
 
       stateValues.forEach(({ state, solution_state }) => {
-        const execution = new Execution(
-          'State Test',
-          '2023-01-01T00:00:00Z',
-          {},
-          state,
-          solution_state,
-          'State Execution',
-          'State Description',
-          '{}',
-          'state-hash',
-          'state-schema',
-          'state-instance',
-          'state-exec',
-          333
-        )
+        const execution = new Execution({
+          message: 'State Test',
+          createdAt: '2023-01-01T00:00:00Z',
+          config: {},
+          state: state,
+          solution_state: solution_state,
+          name: 'State Execution',
+          description: 'State Description',
+          indicators: '{}',
+          dataHash: 'state-hash',
+          schema: 'state-schema',
+          instanceId: 'state-instance',
+          id: 'state-exec',
+          userId: 333,
+        })
 
         expect(execution.state).toBe(state)
         expect(execution.solution_state).toBe(solution_state)
@@ -285,21 +285,21 @@ describe('Execution', () => {
       ]
 
       indicatorTypes.forEach(indicators => {
-        const execution = new Execution(
-          'JSON Test',
-          '2023-01-01T00:00:00Z',
-          {},
-          1,
-          200,
-          'JSON Execution',
-          'JSON Description',
-          indicators,
-          'json-hash',
-          'json-schema',
-          'json-instance',
-          'json-exec',
-          444
-        )
+        const execution = new Execution({
+          message: 'JSON Test',
+          createdAt: '2023-01-01T00:00:00Z',
+          config: {},
+          state: 1,
+          solution_state: 200,
+          name: 'JSON Execution',
+          description: 'JSON Description',
+          indicators: indicators,
+          dataHash: 'json-hash',
+          schema: 'json-schema',
+          instanceId: 'json-instance',
+          id: 'json-exec',
+          userId: 444,
+        })
 
         expect(execution.indicators).toBe(indicators)
       })
@@ -308,25 +308,25 @@ describe('Execution', () => {
     test('should handle special characters in string fields', () => {
       mockGetUserFullName.mockReturnValue('Special Çharacters 中文 العربية')
 
-      const execution = new Execution(
-        'Success with émojis 🚀 and newlines\n\ttabs',
-        '2023-01-01T00:00:00Z',
-        { "special": "çharacters中文العربية" },
-        1,
-        200,
-        'Execution with special çharacters 中文 العربية',
-        'Description with\nnewlines\tand\rcarriage returns',
-        '{"unicode": "🌟🚀💻"}',
-        'hash-with-special-chars-çñü',
-        'schema-çñü-中文',
-        'instance-العربية',
-        'exec-🚀',
-        555,
-        'user-çñü',
-        'José María',
-        "O'Connor-Smith",
-        '2023-01-01T00:00:00Z'
-      )
+      const execution = new Execution({
+        message: 'Success with émojis 🚀 and newlines\n\ttabs',
+        createdAt: '2023-01-01T00:00:00Z',
+        config: { "special": "çharacters中文العربية" },
+        state: 1,
+        solution_state: 200,
+        name: 'Execution with special çharacters 中文 العربية',
+        description: 'Description with\nnewlines\tand\rcarriage returns',
+        indicators: '{"unicode": "🌟🚀💻"}',
+        dataHash: 'hash-with-special-chars-çñü',
+        schema: 'schema-çñü-中文',
+        instanceId: 'instance-العربية',
+        id: 'exec-🚀',
+        userId: 555,
+        userName: 'user-çñü',
+        userFirstName: 'José María',
+        userLastName: "O'Connor-Smith",
+        finishedAt: '2023-01-01T00:00:00Z',
+      })
 
       expect(execution.name).toContain('çharacters')
       expect(execution.name).toContain('中文')
@@ -344,21 +344,21 @@ describe('Execution', () => {
 
     beforeEach(() => {
       mockGetUserFullName.mockReturnValue('Test User')
-      execution = new Execution(
-        'Test Message',
-        '2023-01-01T00:00:00Z',
-        { solver: 'TEST' },
-        1,
-        200,
-        'Test Name',
-        'Test Description',
-        '{"test": true}',
-        'test-hash',
-        'test-schema',
-        'test-instance',
-        'test-exec',
-        123
-      )
+      execution = new Execution({
+        message: 'Test Message',
+        createdAt: '2023-01-01T00:00:00Z',
+        config: { solver: 'TEST' },
+        state: 1,
+        solution_state: 200,
+        name: 'Test Name',
+        description: 'Test Description',
+        indicators: '{"test": true}',
+        dataHash: 'test-hash',
+        schema: 'test-schema',
+        instanceId: 'test-instance',
+        id: 'test-exec',
+        userId: 123,
+      })
     })
 
     test('should allow property access', () => {
@@ -432,24 +432,24 @@ describe('Execution', () => {
     test('should call getUserFullName with firstName and lastName', () => {
       mockGetUserFullName.mockReturnValue('Full Name Result')
 
-      const execution = new Execution(
-        'Test',
-        '2023-01-01T00:00:00Z',
-        {},
-        1,
-        200,
-        'Test',
-        'Test',
-        '{}',
-        'hash',
-        'schema',
-        'instance',
-        'exec',
-        123,
-        'username',
-        'First',
-        'Last'
-      )
+      const execution = new Execution({
+        message: 'Test',
+        createdAt: '2023-01-01T00:00:00Z',
+        config: {},
+        state: 1,
+        solution_state: 200,
+        name: 'Test',
+        description: 'Test',
+        indicators: '{}',
+        dataHash: 'hash',
+        schema: 'schema',
+        instanceId: 'instance',
+        id: 'exec',
+        userId: 123,
+        userName: 'username',
+        userFirstName: 'First',
+        userLastName: 'Last',
+      })
 
       expect(mockGetUserFullName).toHaveBeenCalledTimes(1)
       expect(mockGetUserFullName).toHaveBeenCalledWith('First', 'Last')
@@ -459,22 +459,22 @@ describe('Execution', () => {
     test('should handle getUserFullName with undefined parameters', () => {
       mockGetUserFullName.mockReturnValue('Undefined Result')
 
-      const execution = new Execution(
-        'Test',
-        '2023-01-01T00:00:00Z',
-        {},
-        1,
-        200,
-        'Test',
-        'Test',
-        '{}',
-        'hash',
-        'schema',
-        'instance',
-        'exec',
-        123
+      const execution = new Execution({
+        message: 'Test',
+        createdAt: '2023-01-01T00:00:00Z',
+        config: {},
+        state: 1,
+        solution_state: 200,
+        name: 'Test',
+        description: 'Test',
+        indicators: '{}',
+        dataHash: 'hash',
+        schema: 'schema',
+        instanceId: 'instance',
+        id: 'exec',
+        userId: 123,
         // No optional parameters
-      )
+      })
 
       expect(mockGetUserFullName).toHaveBeenCalledWith(null, null)
       expect(execution.userFullName).toBe('Undefined Result')
@@ -494,21 +494,21 @@ describe('Execution', () => {
 
       testCases.forEach(returnValue => {
         mockGetUserFullName.mockReturnValue(returnValue)
-        const execution = new Execution(
-          'Test',
-          '2023-01-01T00:00:00Z',
-          {},
-          1,
-          200,
-          'Test',
-          'Test',
-          '{}',
-          'hash',
-          'schema',
-          'instance',
-          'exec',
-          123
-        )
+        const execution = new Execution({
+          message: 'Test',
+          createdAt: '2023-01-01T00:00:00Z',
+          config: {},
+          state: 1,
+          solution_state: 200,
+          name: 'Test',
+          description: 'Test',
+          indicators: '{}',
+          dataHash: 'hash',
+          schema: 'schema',
+          instanceId: 'instance',
+          id: 'exec',
+          userId: 123,
+        })
         // getUserFullName might have fallback logic, so check actual value
         if (returnValue === null || returnValue === undefined || returnValue === '') {
           expect(execution.userFullName).toBeNull()
@@ -524,21 +524,21 @@ describe('Execution', () => {
       })
 
       expect(() => {
-        new Execution(
-          'Test',
-          '2023-01-01T00:00:00Z',
-          {},
-          1,
-          200,
-          'Test',
-          'Test',
-          '{}',
-          'hash',
-          'schema',
-          'instance',
-          'exec',
-          123
-        )
+        new Execution({
+          message: 'Test',
+          createdAt: '2023-01-01T00:00:00Z',
+          config: {},
+          state: 1,
+          solution_state: 200,
+          name: 'Test',
+          description: 'Test',
+          indicators: '{}',
+          dataHash: 'hash',
+          schema: 'schema',
+          instanceId: 'instance',
+          id: 'exec',
+          userId: 123,
+        })
       }).toThrow('getUserFullName failed')
     })
   })
@@ -547,21 +547,21 @@ describe('Execution', () => {
     test('should handle very large numbers', () => {
       mockGetUserFullName.mockReturnValue('Large Numbers')
 
-      const execution = new Execution(
-        'Large Numbers',
-        '2023-01-01T00:00:00Z',
-        {},
-        Number.MAX_SAFE_INTEGER,
-        Number.MAX_VALUE,
-        'Large',
-        'Large',
-        '{}',
-        'hash',
-        'schema',
-        'instance',
-        'exec',
-        Number.MAX_SAFE_INTEGER
-      )
+      const execution = new Execution({
+        message: 'Large Numbers',
+        createdAt: '2023-01-01T00:00:00Z',
+        config: {},
+        state: Number.MAX_SAFE_INTEGER,
+        solution_state: Number.MAX_VALUE,
+        name: 'Large',
+        description: 'Large',
+        indicators: '{}',
+        dataHash: 'hash',
+        schema: 'schema',
+        instanceId: 'instance',
+        id: 'exec',
+        userId: Number.MAX_SAFE_INTEGER,
+      })
 
       expect(execution.state).toBe(Number.MAX_SAFE_INTEGER)
       expect(execution.solution_state).toBe(Number.MAX_VALUE)
@@ -571,21 +571,21 @@ describe('Execution', () => {
     test('should handle negative numbers', () => {
       mockGetUserFullName.mockReturnValue('Negative Numbers')
 
-      const execution = new Execution(
-        'Negative',
-        '2023-01-01T00:00:00Z',
-        {},
-        -1,
-        -500,
-        'Negative',
-        'Negative',
-        '{}',
-        'hash',
-        'schema',
-        'instance',
-        'exec',
-        -999
-      )
+      const execution = new Execution({
+        message: 'Negative',
+        createdAt: '2023-01-01T00:00:00Z',
+        config: {},
+        state: -1,
+        solution_state: -500,
+        name: 'Negative',
+        description: 'Negative',
+        indicators: '{}',
+        dataHash: 'hash',
+        schema: 'schema',
+        instanceId: 'instance',
+        id: 'exec',
+        userId: -999,
+      })
 
       expect(execution.state).toBe(-1)
       expect(execution.solution_state).toBe(-500)
@@ -595,21 +595,21 @@ describe('Execution', () => {
     test('should handle zero values', () => {
       mockGetUserFullName.mockReturnValue('Zero Values')
 
-      const execution = new Execution(
-        '',
-        '',
-        {},
-        0,
-        0,
-        '',
-        '',
-        '',
-        '',
-        '',
-        '',
-        '',
-        0
-      )
+      const execution = new Execution({
+        message: '',
+        createdAt: '',
+        config: {},
+        state: 0,
+        solution_state: 0,
+        name: '',
+        description: '',
+        indicators: '',
+        dataHash: '',
+        schema: '',
+        instanceId: '',
+        id: '',
+        userId: 0,
+      })
 
       expect(execution.state).toBe(0)
       expect(execution.solution_state).toBe(0)

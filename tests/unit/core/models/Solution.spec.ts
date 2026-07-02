@@ -1,39 +1,40 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { SolutionCore } from '@/models/Solution'
+import { describe, test, expect, vi, beforeEach } from 'vitest'
+import { SolutionCore } from '@cornflow-ui/core/models/Solution'
 
 // Mock dependencies
-vi.mock('@/utils/data_io', () => ({
+const { mockValidate, mockAjv, MockAjv } = vi.hoisted(() => {
+  const mockValidate = vi.fn()
+  const mockAjv = {
+    compile: vi.fn(function () {
+      return mockValidate
+    })
+  }
+  const MockAjv = vi.fn(function () {
+    return mockAjv
+  })
+  return { mockValidate, mockAjv, MockAjv }
+})
+
+vi.mock('@cornflow-ui/core/utils/data_io', () => ({
   loadExcel: vi.fn()
 }))
 
 vi.mock('ajv', () => ({
-  default: vi.fn(() => ({
-    compile: vi.fn(() => vi.fn())
-  }))
+  default: MockAjv
 }))
 
 describe('SolutionCore', () => {
   let mockLoadExcel: any
-  let mockAjv: any
-  let mockValidate: any
 
   beforeEach(async () => {
     vi.clearAllMocks()
+    mockValidate.mockReset()
+    mockAjv.compile.mockImplementation(function () {
+      return mockValidate
+    })
 
-    // Setup mocks
-    const dataIo = await import('@/utils/data_io')
+    const dataIo = await import('@cornflow-ui/core/utils/data_io')
     mockLoadExcel = dataIo.loadExcel
-
-    const Ajv = await import('ajv')
-    mockValidate = vi.fn()
-    mockAjv = {
-      compile: vi.fn(() => mockValidate)
-    }
-    Ajv.default = vi.fn(() => mockAjv)
-  })
-
-  afterEach(() => {
-    vi.restoreAllMocks()
   })
 
   describe('constructor', () => {
@@ -308,8 +309,7 @@ describe('SolutionCore', () => {
 
       await solution.checkSchema()
 
-      const AjvConstructor = (await import('ajv')).default
-      expect(AjvConstructor).toHaveBeenCalledWith({ strict: false, allErrors: true })
+      expect(MockAjv).toHaveBeenCalledWith({ strict: false, allErrors: true })
     })
 
     test('should handle schema compilation errors', async () => {
@@ -503,8 +503,8 @@ describe('SolutionCore', () => {
       expect(result.id).toBeNull()
       expect(result.schemaName).toBe('csv-schema')
       expect(result.data.test).toHaveLength(2)
-      expect(result.data.test[0]).toEqual({ assignment: 'r1-d1', cost: 100, feasible: 'true' })
-      expect(result.data.test[1]).toEqual({ assignment: 'r2-d2', cost: 150, feasible: 'false' })
+      expect(result.data.test[0]).toEqual({ assignment: 'r1-d1', cost: '100', feasible: 'true' })
+      expect(result.data.test[1]).toEqual({ assignment: 'r2-d2', cost: '150', feasible: 'false' })
     })
 
     test('should create solution from CSV with semicolon delimiter', async () => {
@@ -514,7 +514,7 @@ describe('SolutionCore', () => {
       const result = await SolutionCore.fromCsv(csvText, 'test.csv', mockSchema, {}, 'csv-schema')
 
       expect(result.data.test).toHaveLength(2)
-      expect(result.data.test[0]).toEqual({ resource: 'r1', demand: 'd1', cost: 100 })
+      expect(result.data.test[0]).toEqual({ resource: 'r1', demand: 'd1', cost: '100' })
     })
 
     test('should create solution from CSV with tab delimiter', async () => {
@@ -524,7 +524,7 @@ describe('SolutionCore', () => {
       const result = await SolutionCore.fromCsv(csvText, 'test.csv', mockSchema, {}, 'csv-schema')
 
       expect(result.data.test).toHaveLength(2)
-      expect(result.data.test[0]).toEqual({ resource: 'r1', demand: 'd1', cost: 100 })
+      expect(result.data.test[0]).toEqual({ resource: 'r1', demand: 'd1', cost: '100' })
     })
 
     test('should handle quoted CSV values', async () => {
@@ -533,10 +533,10 @@ describe('SolutionCore', () => {
 
       const result = await SolutionCore.fromCsv(csvText, 'quoted.csv', mockSchema, {}, 'csv-schema')
 
-      // The CSV parser stops at the quote, so we get partial string
-      expect(result.data.quoted[0].description).toBe('"Assignment with')
-      // This malformed CSV has a quote in the middle that terminates the string
-      expect(result.data.quoted[1].description).toBe('Assignment with\' quotes')
+      // RFC 4180 parser correctly preserves the embedded comma inside quotes
+      expect(result.data.quoted[0].description).toBe('Assignment with, comma')
+      // Single quotes are not special; treated as literal characters
+      expect(result.data.quoted[1].description).toBe("'Assignment with' quotes'")
     })
 
     test('should handle empty lines in CSV', async () => {
@@ -546,8 +546,8 @@ describe('SolutionCore', () => {
       const result = await SolutionCore.fromCsv(csvText, 'empty-lines.csv', mockSchema, {}, 'csv-schema')
 
       expect(result.data['empty-lines']).toHaveLength(2)
-      expect(result.data['empty-lines'][0]).toEqual({ assignment: 'r1-d1', cost: 100 })
-      expect(result.data['empty-lines'][1]).toEqual({ assignment: 'r2-d2', cost: 150 })
+      expect(result.data['empty-lines'][0]).toEqual({ assignment: 'r1-d1', cost: '100' })
+      expect(result.data['empty-lines'][1]).toEqual({ assignment: 'r2-d2', cost: '150' })
     })
 
     test('should handle CSV with different value types', async () => {
@@ -557,10 +557,10 @@ describe('SolutionCore', () => {
       const result = await SolutionCore.fromCsv(csvText, 'types.csv', mockSchema, {}, 'csv-schema')
 
       expect(result.data.types[0]).toEqual({
-        id: 1,
+        id: '1',
         assignment: 'r1-d1',
         feasible: 'true',
-        cost: 95.5,
+        cost: '95.5',
         notes: 'Optimal'
       })
     })
@@ -598,8 +598,8 @@ describe('SolutionCore', () => {
 
       const result = await SolutionCore.fromCsv(csvText, 'mismatched.csv', mockSchema, {}, 'csv-schema')
 
-      expect(result.data.mismatched[0]).toEqual({ assignment: 'r1-d1', cost: 100 })
-      expect(result.data.mismatched[1]).toEqual({ assignment: 'r2-d2', cost: 150, feasible: 'true' })
+      expect(result.data.mismatched[0]).toEqual({ assignment: 'r1-d1', cost: '100' })
+      expect(result.data.mismatched[1]).toEqual({ assignment: 'r2-d2', cost: '150', feasible: 'true' })
     })
   })
 

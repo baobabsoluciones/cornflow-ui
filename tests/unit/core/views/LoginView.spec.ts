@@ -3,10 +3,10 @@ import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
-import LoginView from '@/views/LoginView.vue'
+import LoginView from '@cornflow-ui/core/views/LoginView.vue'
 
 // Mock components
-vi.mock('@/components/SignInLanding.vue', () => ({
+vi.mock('@cornflow-ui/core/components/SignInLanding.vue', () => ({
   default: {
     name: 'SignInLanding',
     template: '<div data-testid="sign-in-landing">SignInLanding</div>'

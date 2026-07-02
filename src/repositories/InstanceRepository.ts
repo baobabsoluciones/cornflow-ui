@@ -1,6 +1,8 @@
-import client from '@/api/Api'
-import { useGeneralStore } from '@/stores/general'
-import { InstanceCore } from '@/models/Instance'
+import client from '@cornflow-ui/core/api/Api'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import { InstanceCore } from '@cornflow-ui/core/models/Instance'
+import { getMessageFromResponseContent } from '@cornflow-ui/core/utils/i18nUtils'
+import { stripInvisibleParameterPropertiesFromInstanceData } from '@cornflow-ui/core/utils/schemaUtils'
 
 export default class InstanceRepository {
   // Get instance by id
@@ -36,15 +38,27 @@ export default class InstanceRepository {
     if (response.status === 201) {
       return response.content
     } else {
-      throw new Error(`Error launching instance data checks: Status ${response.status} - ${response?.content?.message || 'Unknown error'}`)
+      const msg = getMessageFromResponseContent(
+        response?.content,
+        `Error launching instance data checks: Status ${response.status}`,
+      )
+      throw new Error(msg)
     }
   }
 
   async createInstance(data) {
+    const store = useGeneralStore()
+    const instanceSchema = store.schemaConfig?.instanceSchema
+    const cleanedData = instanceSchema
+      ? stripInvisibleParameterPropertiesFromInstanceData(
+          data.instance.data,
+          instanceSchema,
+        )
+      : data.instance.data
     const json = {
-      data: data.instance.data,
+      data: cleanedData,
       name: data.name,
-      schema: useGeneralStore().getSchemaName,
+      schema: store.getSchemaName,
     }
     const response = await client.post('/instance/', json, {
       'Content-Type': 'application/json',

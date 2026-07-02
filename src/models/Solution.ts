@@ -1,7 +1,5 @@
-import { loadExcel } from '../utils/data_io'
-import { parseCsvToData } from '../utils/csvUtils'
-import Ajv from 'ajv'
-import { ErrorObject } from 'ajv'
+import { hasData, buildModelFromExcel, buildModelFromCsv } from './modelHelpers'
+import Ajv, { ErrorObject } from 'ajv'
 
 export class SolutionCore {
   id: string
@@ -10,6 +8,7 @@ export class SolutionCore {
   schemaChecks: object
   schemaName: string
   dataChecks: object
+  rawKpis: Record<string, any> | null
 
   constructor(
     id: string,
@@ -18,8 +17,10 @@ export class SolutionCore {
     schemaChecks: object,
     schemaName: string,
     dataChecks: object = {},
+    kpis: Record<string, any> | null = null,
   ) {
-    this.data = data
+    this.rawKpis = kpis
+    this.data = kpis && Object.keys(kpis).length > 0 ? { ...data, ...kpis } : data
     this.schemaChecks = schemaChecks
     this.schema = schema
     this.schemaName = schemaName
@@ -37,27 +38,14 @@ export class SolutionCore {
   }
 
   hasSolution() {
-    return (
-      this.data !== undefined &&
-      this.data !== null &&
-      Object.keys(this.data).length > 0
-    )
+    return hasData(this.data)
   }
 
   static fromExcel(file, schema, schemaName) {
-    return loadExcel(file, schema).then(
-      (data) => new this(null, data, schema, {}, schemaName),
-    )
+    return buildModelFromExcel(this, file, schema, schemaName)
   }
-  
+
   static fromCsv(csvText, fileName, schema, schemaChecks, schemaName) {
-    return new Promise((resolve, reject) => {
-      try {
-        const { data } = parseCsvToData(csvText, fileName)
-        resolve(new this(null, data, schema, schemaChecks, schemaName))
-      } catch (error) {
-        reject(error)
-      }
-    })
+    return buildModelFromCsv(this, csvText, fileName, schema, schemaChecks, schemaName)
   }
 }

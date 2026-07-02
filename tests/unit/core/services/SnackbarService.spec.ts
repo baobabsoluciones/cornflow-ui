@@ -1,29 +1,34 @@
 import { describe, test, expect, beforeEach } from 'vitest'
-import { snackbar, showSnackbar } from '@/services/SnackbarService'
+import {
+  snackbar,
+  showSnackbar,
+  SNACKBAR_COLORS,
+  MAX_SNACKBAR_MESSAGE_LENGTH,
+} from '@cornflow-ui/core/services/SnackbarService'
 
 describe('SnackbarService', () => {
   beforeEach(() => {
     // Reset snackbar state before each test
     snackbar.show = false
     snackbar.message = ''
-    snackbar.color = 'success'
+    snackbar.color = SNACKBAR_COLORS.success
   })
 
   describe('snackbar reactive object', () => {
     test('has correct initial state', () => {
       expect(snackbar.show).toBe(false)
       expect(snackbar.message).toBe('')
-      expect(snackbar.color).toBe('success')
+      expect(snackbar.color).toBe(SNACKBAR_COLORS.success)
     })
 
     test('is reactive and can be modified', () => {
       snackbar.show = true
       snackbar.message = 'Test message'
-      snackbar.color = 'error'
+      snackbar.color = SNACKBAR_COLORS.error
 
       expect(snackbar.show).toBe(true)
       expect(snackbar.message).toBe('Test message')
-      expect(snackbar.color).toBe('error')
+      expect(snackbar.color).toBe(SNACKBAR_COLORS.error)
     })
   })
 
@@ -33,15 +38,15 @@ describe('SnackbarService', () => {
 
       expect(snackbar.show).toBe(true)
       expect(snackbar.message).toBe('Success message')
-      expect(snackbar.color).toBe('success')
+      expect(snackbar.color).toBe(SNACKBAR_COLORS.success)
     })
 
-    test('shows snackbar with custom color', () => {
+    test('shows snackbar with error color', () => {
       showSnackbar('Error message', 'error')
 
       expect(snackbar.show).toBe(true)
       expect(snackbar.message).toBe('Error message')
-      expect(snackbar.color).toBe('error')
+      expect(snackbar.color).toBe(SNACKBAR_COLORS.error)
     })
 
     test('shows snackbar with warning color', () => {
@@ -49,7 +54,7 @@ describe('SnackbarService', () => {
 
       expect(snackbar.show).toBe(true)
       expect(snackbar.message).toBe('Warning message')
-      expect(snackbar.color).toBe('warning')
+      expect(snackbar.color).toBe(SNACKBAR_COLORS.warning)
     })
 
     test('shows snackbar with info color', () => {
@@ -57,19 +62,19 @@ describe('SnackbarService', () => {
 
       expect(snackbar.show).toBe(true)
       expect(snackbar.message).toBe('Info message')
-      expect(snackbar.color).toBe('info')
+      expect(snackbar.color).toBe(SNACKBAR_COLORS.info)
     })
 
     test('overwrites previous snackbar state', () => {
       // Set initial state
       showSnackbar('First message', 'success')
       expect(snackbar.message).toBe('First message')
-      expect(snackbar.color).toBe('success')
+      expect(snackbar.color).toBe(SNACKBAR_COLORS.success)
 
       // Overwrite with new state
       showSnackbar('Second message', 'error')
       expect(snackbar.message).toBe('Second message')
-      expect(snackbar.color).toBe('error')
+      expect(snackbar.color).toBe(SNACKBAR_COLORS.error)
       expect(snackbar.show).toBe(true)
     })
 
@@ -78,7 +83,7 @@ describe('SnackbarService', () => {
 
       expect(snackbar.show).toBe(true)
       expect(snackbar.message).toBe('')
-      expect(snackbar.color).toBe('success')
+      expect(snackbar.color).toBe(SNACKBAR_COLORS.success)
     })
 
     test('handles undefined color parameter', () => {
@@ -86,23 +91,31 @@ describe('SnackbarService', () => {
 
       expect(snackbar.show).toBe(true)
       expect(snackbar.message).toBe('Test message')
-      expect(snackbar.color).toBe('success') // Should default to success
+      expect(snackbar.color).toBe(SNACKBAR_COLORS.success) // Should default to success
     })
 
-    test('handles null color parameter', () => {
-      showSnackbar('Test message', null)
+    test('handles default color when no color provided', () => {
+      showSnackbar('Test message')
 
       expect(snackbar.show).toBe(true)
       expect(snackbar.message).toBe('Test message')
-      expect(snackbar.color).toBeNull()
+      // When no color is provided, default is 'success' which maps to CSS variable
+      expect(snackbar.color).toBe(SNACKBAR_COLORS.success)
     })
 
-    test('accepts any string as color', () => {
-      showSnackbar('Test message', 'custom-color')
+    test('maps color keys to CSS variables correctly', () => {
+      // Test that each color key maps to the correct CSS variable
+      showSnackbar('Test', 'success')
+      expect(snackbar.color).toBe('var(--success)')
 
-      expect(snackbar.show).toBe(true)
-      expect(snackbar.message).toBe('Test message')
-      expect(snackbar.color).toBe('custom-color')
+      showSnackbar('Test', 'error')
+      expect(snackbar.color).toBe('var(--danger-variant)')
+
+      showSnackbar('Test', 'warning')
+      expect(snackbar.color).toBe('var(--warning)')
+
+      showSnackbar('Test', 'info')
+      expect(snackbar.color).toBe('var(--primary)')
     })
   })
 
@@ -116,7 +129,7 @@ describe('SnackbarService', () => {
 
       expect(firstCall).toBe(secondCall) // Same object reference
       expect(snackbar.message).toBe('Message 2')
-      expect(snackbar.color).toBe('warning')
+      expect(snackbar.color).toBe(SNACKBAR_COLORS.warning)
     })
 
     test('show property remains true across multiple calls', () => {
@@ -136,9 +149,12 @@ describe('SnackbarService', () => {
       const longMessage = 'A'.repeat(1000)
       showSnackbar(longMessage, 'info')
 
+      const expectedTruncated =
+        longMessage.slice(0, MAX_SNACKBAR_MESSAGE_LENGTH) + '…'
       expect(snackbar.show).toBe(true)
-      expect(snackbar.message).toBe(longMessage)
-      expect(snackbar.color).toBe('info')
+      expect(snackbar.message).toBe(expectedTruncated)
+      expect(snackbar.fullMessage).toBe(longMessage)
+      expect(snackbar.color).toBe(SNACKBAR_COLORS.info)
     })
 
     test('handles special characters in message', () => {
@@ -147,7 +163,7 @@ describe('SnackbarService', () => {
 
       expect(snackbar.show).toBe(true)
       expect(snackbar.message).toBe(specialMessage)
-      expect(snackbar.color).toBe('success')
+      expect(snackbar.color).toBe(SNACKBAR_COLORS.success)
     })
 
     test('handles HTML in message', () => {
@@ -156,7 +172,7 @@ describe('SnackbarService', () => {
 
       expect(snackbar.show).toBe(true)
       expect(snackbar.message).toBe(htmlMessage)
-      expect(snackbar.color).toBe('warning')
+      expect(snackbar.color).toBe(SNACKBAR_COLORS.warning)
     })
   })
 })

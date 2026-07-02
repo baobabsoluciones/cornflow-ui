@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
-import { LoadedExecution } from '@/models/LoadedExecution'
-import { ExperimentCore } from '@/models/Experiment'
+import { LoadedExecution } from '@cornflow-ui/core/models/LoadedExecution'
+import { ExperimentCore } from '@cornflow-ui/core/models/Experiment'
 
 // Mock the ExperimentCore
 const mockExperiment = {
@@ -24,16 +24,16 @@ describe('LoadedExecution', () => {
     mockExperiment.hasSolution.mockReturnValue(true)
     mockExperiment.hasInstance.mockReturnValue(true)
 
-    loadedExecution = new LoadedExecution(
-      mockExperiment as any,
-      'exec-123',
-      'Test Execution',
-      'Test Description',
-      '2023-01-01T00:00:00Z',
-      1,
-      'Success',
-      { solver: 'CBC' }
-    )
+    loadedExecution = new LoadedExecution({
+      experiment: mockExperiment as any,
+      executionId: 'exec-123',
+      name: 'Test Execution',
+      description: 'Test Description',
+      createdAt: '2023-01-01T00:00:00Z',
+      state: 1,
+      message: 'Success',
+      config: { solver: 'CBC' },
+    })
   })
 
   describe('constructor', () => {
@@ -57,16 +57,16 @@ describe('LoadedExecution', () => {
     })
 
     test('should handle empty string values', () => {
-      const emptyExecution = new LoadedExecution(
-        mockExperiment as any,
-        '',
-        '',
-        '',
-        '',
-        0,
-        '',
-        {}
-      )
+      const emptyExecution = new LoadedExecution({
+        experiment: mockExperiment as any,
+        executionId: '',
+        name: '',
+        description: '',
+        createdAt: '',
+        state: 0,
+        message: '',
+        config: {},
+      })
 
       expect(emptyExecution.executionId).toBe('')
       expect(emptyExecution.name).toBe('')
@@ -76,16 +76,16 @@ describe('LoadedExecution', () => {
     })
 
     test('should handle null and undefined values', () => {
-      const nullExecution = new LoadedExecution(
-        mockExperiment as any,
-        'exec-null',
-        'Null Test',
-        null as any,
-        '2023-01-01T00:00:00Z',
-        -1,
-        null as any,
-        null
-      )
+      const nullExecution = new LoadedExecution({
+        experiment: mockExperiment as any,
+        executionId: 'exec-null',
+        name: 'Null Test',
+        description: null as any,
+        createdAt: '2023-01-01T00:00:00Z',
+        state: -1,
+        message: null as any,
+        config: null,
+      })
 
       expect(nullExecution.description).toBeNull()
       expect(nullExecution.messageState).toBeNull()
@@ -108,16 +108,16 @@ describe('LoadedExecution', () => {
         }
       }
 
-      const complexExecution = new LoadedExecution(
-        mockExperiment as any,
-        'exec-complex',
-        'Complex Execution',
-        'Complex Description',
-        '2023-01-01T00:00:00Z',
-        2,
-        'Completed',
-        complexConfig
-      )
+      const complexExecution = new LoadedExecution({
+        experiment: mockExperiment as any,
+        executionId: 'exec-complex',
+        name: 'Complex Execution',
+        description: 'Complex Description',
+        createdAt: '2023-01-01T00:00:00Z',
+        state: 2,
+        message: 'Completed',
+        config: complexConfig,
+      })
 
       expect(complexExecution.config).toBe(complexConfig)
       expect(complexExecution.config.parameters.timeLimit).toBe(3600)

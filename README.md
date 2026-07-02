@@ -2,16 +2,648 @@
 
 Cornflow-UI is a Vue.js application that serves as the user interface for Cornflow. This is the base project, and it provides the general structure and functionalities for creating new applications.
 
+# Application structure
+
+Cornflow-UI follows a modular architecture organized into distinct functional areas. The application structure is designed to be flexible and adaptable to different optimization problems while maintaining consistency across implementations.
+
+## Execution management section
+
+The execution management section handles the complete lifecycle of optimization executions, from creation to historical tracking.
+
+### Execution history
+
+- **Purpose**: Provides a comprehensive view of all past executions
+- **Features**:
+  - Historical execution tracking with status monitoring
+  - Execution loading and restoration capabilities
+  - Filtering and search functionality
+  - Execution metadata display (creation date, solver used, status, etc.)
+- **Location**: `HistoryExecutionView.vue`
+
+### Project execution
+
+- **Purpose**: Step-by-step execution creation workflow
+- **Features**:
+  - Multi-step execution creation process
+  - Instance file upload and validation
+  - Solver configuration (when enabled)
+  - Parameter configuration (when enabled)
+  - Execution review and confirmation
+- **Location**: `ProjectExecutionView.vue`
+- **Configuration**: Controlled by `executionSolvers`, `solverConfig`, and `configFieldsConfig` in `src/app/config.ts`
+
+### Master table matching (instance synchronization)
+
+The application can automatically detect when uploaded instance tables match existing master (configuration) tables. This feature enables users to synchronize data between uploaded instances and master tables.
+
+#### How it works
+
+1. **Automatic detection**: When an instance is uploaded, the system compares table names with existing master tables using intelligent name normalization
+2. **Difference calculation**: For matched tables, the system calculates detailed differences (added, removed, modified, identical rows)
+3. **User choice**: Users can choose how to handle each matched table:
+   - **Keep uploaded**: Use uploaded data for this execution without modifying the master table
+   - **Use master**: Replace uploaded data with current master table data
+   - **Update master**: Overwrite the master table with the uploaded data (requires `overwrite_all` permission)
+
+#### Table name matching
+
+The system uses intelligent name normalization to match tables with different naming conventions. The following formats are automatically recognized and matched:
+
+- **snake_case**: `e_tabla_maestra` matches `e_tabla_maestra`
+- **camelCase**: `eTablaMaestra` matches `e_tabla_maestra`
+- **kebab-case**: `e-tabla-maestra` matches `e_tabla_maestra`
+- **lowercase**: `etablamaestra` matches `etablamaestra` (if both use the same format)
+
+The normalization process:
+
+1. Converts all names to lowercase
+2. Normalizes separators (hyphens and underscores are treated equivalently)
+3. Detects camelCase patterns and converts them to snake_case for comparison
+
+Examples of matched table names:
+
+- `e_tabla_maestra` ↔ `eTablaMaestra` ↔ `e-tabla-maestra` ↔ `ETablaMaestra`
+- `productos` ↔ `Productos` ↔ `PRODUCTOS`
+- `config_avanzada` ↔ `configAvanzada` ↔ `config-avanzada`
+
+#### Visual indicators
+
+- Tables with master table matches display a badge in the tab header
+- Different colors indicate synchronization status (green = identical, orange = has differences)
+- Difference summary shows counts of added, removed, and modified rows
+
+#### Data comparison modal
+
+Users can open a detailed comparison view showing:
+
+- **Summary tab**: Overview of data counts and differences
+- **Side by side tab**: Both datasets displayed in parallel
+- **Changes tab**: Detailed list of all differences with field-level comparison
+
+#### Configuration
+
+Enable or disable the feature in `src/app/config.ts`:
+
+```typescript
+parameters: {
+  enableMasterTableMatching: true, // Enable/disable the entire master table matching feature
+}
+```
+
+When `enableMasterTableMatching` is set to `true` (default), the feature is active and users will see:
+
+- Match indicators on table tabs showing synchronization status
+- Action bar with options to compare, use master data, or update master tables
+- Data comparison modal for detailed side-by-side comparison
+
+When set to `false`, the feature is completely disabled:
+
+- No match detection is performed
+- No indicators or action buttons are shown
+- The instance review step works as a simple data viewer/editor
+
+#### Foreign key handling
+
+When overwriting master tables, the system automatically handles foreign key relationships defined in the frontend-automation schema:
+
+- **`columns_to_join`**: Foreign key fields that reference other tables
+- **`join_from`**: Display fields that show human-readable values
+
+The system:
+
+1. Detects dependent fields (`isDependentField: true`) in the uploaded data
+2. Resolves display values to their corresponding foreign key IDs
+3. Sends only the foreign key IDs to the backend (not the display fields)
+
+Example schema with foreign keys:
+
+```json
+{
+  "factoria_id": {
+    "type": "integer",
+    "columns_to_join": ["factoria_nombre", "factoria_codigo"]
+  },
+  "factoria_nombre": {
+    "type": "string",
+    "join_from": "factorias.nombre"
+  }
+}
+```
+
+When uploading data with `factoria_nombre = "Factory A"`, the system:
+
+1. Looks up "Factory A" in the `factorias` table
+2. Gets the corresponding `id`
+3. Sends `factoria_id = 123` to the backend
+4. Removes `factoria_nombre` from the payload
+
+#### Implementation details
+
+- **Composable**: `useMasterTableMatch.ts` manages detection, comparison, and synchronization
+- **Components**: `DataComparisonModal.vue` displays the comparison interface
+- **Integration**: `ExecutionDataView.vue` renders match indicators and action buttons
+
+## Configuration tables section (optional)
+
+The configuration tables section is dynamically generated based on backend schema definitions. This section only appears when the backend provides frontend-automation schema data.
+
+### Frontend-automation system
+
+The frontend-automation system is a powerful schema-driven approach that automatically generates CRUD interfaces for master data tables. This system eliminates the need for manual table interface development and ensures consistency across different projects.
+
+#### How it works
+
+1. **Schema definition**: The backend provides an OpenAPI-compatible schema through the `/frontend-automation/` endpoint
+2. **Dynamic generation**: The frontend automatically transforms this schema into interactive table interfaces
+3. **CRUD operations**: Full Create, Read, Update, Delete functionality is generated based on schema definitions
+4. **Three-level hierarchy**: Tables are organized as **Section → Group → Table** for navigation (sections and groups are optional)
+
+#### Schema structure
+
+The frontend-automation schema includes `available_automations` (tables, groups, and optional sections), plus OpenAPI `paths` and `definitions`:
+
+```json
+{
+  "available_automations": {
+    "sections": {
+      "master-tables": {
+        "title": { "en": "Master tables", "es": "Tablas maestras" },
+        "icon": "mdi-database"
+      },
+      "historical-tables": {
+        "title": { "en": "Historical data", "es": "Histórico" },
+        "icon": "mdi-history"
+      }
+    },
+    "groups": {
+      "group_name": {
+        "title": "Group Display Name",
+        "icon": "mdi-icon-name",
+        "section": "master-tables"
+      }
+    },
+    "tables": {
+      "table_name": {
+        "title": "Table display name",
+        "group": "group_name",
+        "section": "master-tables",
+        "icon": "mdi-icon-name",
+        "get_list": { "url": "/api/endpoint", "http_method": "GET" },
+        "post_item": { "url": "/api/endpoint", "http_method": "POST" },
+        "put_item": { "url": "/api/endpoint", "http_method": "PUT" },
+        "delete_item": { "url": "/api/endpoint", "http_method": "DELETE" },
+        "post_bulk": { "url": "/api/endpoint", "http_method": "POST" }
+      }
+    }
+  },
+  "definitions": {
+    "TableName": {
+      "properties": {
+        "field_name": {
+          "type": "string",
+          "title": "Field display name"
+        }
+      }
+    }
+  }
+}
+```
+
+##### Required fields
+
+The `required` array in each table definition lists property names that must be filled:
+
+- **Create modal**: Required fields are shown and cannot be left empty; the form does not submit until all required fields are valid.
+- **Validation**: Submitting (Add/Save) is blocked when any required field is missing; an error message is shown.
+
+```json
+{
+  "definitions": {
+    "MyTable": {
+      "properties": {
+        "id": { "type": "integer", "readOnly": true },
+        "programa": {
+          "type": "string",
+          "title": { "en": "Program", "es": "Programa" }
+        },
+        "periodo": {
+          "type": "string",
+          "title": { "en": "Period", "es": "Periodo" }
+        }
+      },
+      "required": ["programa", "periodo"]
+    }
+  }
+}
+```
+
+##### Date and time formats (string + format)
+
+For `type: "string"`, the optional `format` property controls the input and display:
+
+| `format`    | Input in modal / table                   | Description            |
+| ----------- | ---------------------------------------- | ---------------------- |
+| `date`      | Date picker / `type="date"`              | Date only (YYYY-MM-DD) |
+| `date-time` | Datetime input / `type="datetime-local"` | Date and time          |
+| `time`      | Time input / `type="time"`               | Time (HH:mm)           |
+
+These apply in the **add/edit modal** and in **inline table editing** (including the pending-changes review modal).
+
+Example:
+
+```json
+{
+  "fecha_inicio": {
+    "type": "string",
+    "format": "date",
+    "title": { "en": "Start Date", "es": "Fecha Inicio" }
+  },
+  "fecha_fin": {
+    "type": "string",
+    "format": "date",
+    "title": { "en": "End Date", "es": "Fecha Fin" }
+  }
+}
+```
+
+##### Parameters (paths)
+
+Endpoints in the schema are described in the **`paths`** block (OpenAPI style). Each path can define **parameters** for the request:
+
+- **Path parameters**: e.g. `id` or `idx` for operations on a single item (`in: "path"`).
+- **Query parameters**: e.g. filters, `limit`, `offset` for list operations (`in: "query"`).
+- **Body parameters**: request body for POST/PUT/PATCH (`in: "body"` with `schema` / `$ref`).
+
+For **GET list** (e.g. `paths["/my-entities/"].get.parameters`), query parameters can include metadata so the frontend builds filter UI automatically:
+
+- **`is_filter`**: `true` for parameters that act as list filters.
+- **`filter_info`**: object with:
+  - **`filters_on`**: column name the filter applies to (or `null` for global/limit/offset).
+  - **`filter_type`**: e.g. `string_contains`, `numeric_eq`, **`datetime_gte`**, **`datetime_lte`**, etc.
+  - **`symmetric`**: name of the “pair” parameter for range filters (see below).
+
+If a table’s `get_list` in `available_automations.tables` does **not** include a `parameters` array, the frontend **merges** the GET method’s `parameters` from the matching path (by URL) into that table’s `get_list`. So you can define parameters only in `paths` and the UI will still use them.
+
+###### Date range filters (Desde / Hasta)
+
+When the GET list has two query parameters with:
+
+- `is_filter: true`
+- `filter_info.filter_type`: **`datetime_gte`** and **`datetime_lte`**
+- `filter_info.symmetric`: each parameter’s name pointing to the other (e.g. `fecha_gte` ↔ `fecha_lte`)
+
+the frontend shows a **date range** filter to the **left of the Search** bar: two date inputs (“Desde” / “Hasta”) and an optional clear button. This block is only rendered when the table has such parameters. The list request is sent **when both dates are set** (with a short debounce); clearing either date resets the filter and reloads without those query params.
+
+Example in `paths`:
+
+```json
+"/e-planificaciones-atenea/": {
+  "get": {
+    "parameters": [
+      {
+        "name": "fecha_gte",
+        "in": "query",
+        "required": false,
+        "type": "string",
+        "format": "date",
+        "is_filter": true,
+        "filter_info": {
+          "filters_on": "fecha",
+          "filter_type": "datetime_gte",
+          "symmetric": "fecha_lte"
+        }
+      },
+      {
+        "name": "fecha_lte",
+        "in": "query",
+        "required": false,
+        "type": "string",
+        "format": "date",
+        "is_filter": true,
+        "filter_info": {
+          "filters_on": "fecha",
+          "filter_type": "datetime_lte",
+          "symmetric": "fecha_gte"
+        }
+      }
+    ],
+    "responses": { "default": { "schema": { ... } } }
+  }
+}
+```
+
+- **Sections** (optional): Top-level blocks in the navigation (e.g. "Master tables", "Historical data"). Defined in `available_automations.sections`. When present, they always appear **above** the default "Master data" section in the app drawer.
+- **Groups**: Mid-level grouping; each group can specify a `section` so its tables appear under that section.
+- **Tables**: Each table has `group` and optionally `section`. Table `section` overrides the group’s section when set; if neither table nor group has a section, the table is listed under the default "Master data" block.
+
+#### Features
+
+- **Automatic interface generation**: Tables, forms, and validation are generated from schema
+- **Multi-language support**: Titles and descriptions support multiple languages
+- **Foreign key relationships**: Automatic handling of foreign key dependencies
+- **Bulk operations**: Support for bulk upload, update, and delete operations
+- **Advanced filtering**: Dynamic filter generation based on field types; list query parameters (section 3.1) support date range filters (“Desde” / “Hasta”) when the path defines `datetime_gte` / `datetime_lte` with `symmetric`
+- **Inline editing**: Direct table cell editing capabilities
+- **Export functionality**: Excel export for all table data
+
+#### Navigation hierarchy (sections and groups)
+
+Navigation is built as **Section → Group → Table**:
+
+1. **Sections** (optional): If `available_automations.sections` is defined, each section becomes a top-level block in the drawer (with title and icon). Schema-defined sections are always shown **above** the single default "Master data" section. Tables without a section (and tables whose section is not in the schema) are listed under "Master data".
+2. **Groups**: Tables with the same `group` appear together (e.g. as tabs). A group can have a `section` so all its tables appear under that section.
+3. **Tables**: Each table has `group` and optionally `section`. Table-level `section` overrides the group’s section. Tables with no section (and no group section) go under "Master data".
+
+So you can have: (a) only groups and tables (one "Master data" block), or (b) sections from the schema first, then the "Master data" block for any tables that have no section.
+
+#### Sub-sections within frontend-automation sections
+
+You can add **custom sub-sections** (e.g. dashboards or custom views) inside any section that comes from the schema (`available_automations.sections`). Those sub-sections are configured in `src/app/config.ts` and appear in the drawer under that section, alongside the section’s tables.
+
+- **Configuration**: In `createAppConfig()`, set `frontendAutomationSectionSubsections`: a map from **section id** (same as in the schema, e.g. `planificaciones-atenea`) to an array of sub-section definitions.
+- **Each sub-section** has: `path` (URL segment, e.g. `dashboard`), `name`, `titleKey` (i18n), `icon`, and `component` (lazy-loaded Vue component).
+- **Route**: Sub-sections are served under `/configuration/section/{sectionId}/{path}` (e.g. `/configuration/section/planificaciones-atenea/dashboard`).
+- **Drawer**: The app merges these entries into the master data navigation: for each schema section, the drawer shows the section’s tables plus the configured sub-sections. All configuration for this feature lives under `src/app/` (config, views, locales).
+
+Example: add a dashboard view inside the "Planificaciones Atenea" section:
+
+```typescript
+// src/app/config.ts
+frontendAutomationSectionSubsections: {
+  'planificaciones-atenea': [
+    {
+      path: 'dashboard',
+      name: 'Atenea Planning Dashboard',
+      titleKey: 'ateneaPlanning.dashboardTitle',
+      icon: 'mdi-view-dashboard',
+      component: () => import('@/app/views/AteneaPlanningDashboardView.vue'),
+    },
+  ],
+},
+```
+
+Add the corresponding keys (e.g. `ateneaPlanning.dashboardTitle`) in `src/app/plugins/locales/` (en, es, fr) and create the view component in `src/app/views/`.
+
+#### Multi-schema access control
+
+Tables can be restricted to users who have access to specific schemas (DAGs). This is controlled by the optional `schemas` property in the table configuration.
+
+##### Configuration
+
+```json
+{
+  "available_automations": {
+    "tables": {
+      "productos": {
+        "group": "logistics",
+        "title": { "en": "Products", "es": "Productos" },
+        "get_list": { "url": "/table/productos/", "http_method": "GET" }
+        // No "schemas" → visible to ALL users
+      },
+      "tarifas_especiales": {
+        "group": "logistics",
+        "title": { "en": "Special Rates", "es": "Tarifas Especiales" },
+        "schemas": ["schema_cliente_a"],
+        "get_list": {
+          "url": "/table/tarifas-especiales/",
+          "http_method": "GET"
+        }
+        // Only visible to users with access to "schema_cliente_a"
+      },
+      "configuracion_avanzada": {
+        "group": "settings",
+        "title": { "en": "Advanced Config", "es": "Config. Avanzada" },
+        "schemas": ["schema_cliente_a", "schema_cliente_b"],
+        "get_list": { "url": "/table/config-avanzada/", "http_method": "GET" }
+        // Visible to users with access to "schema_cliente_a" OR "schema_cliente_b"
+      }
+    }
+  }
+}
+```
+
+##### Behavior
+
+| `schemas` Property         | Who Can See the Table                             |
+| -------------------------- | ------------------------------------------------- |
+| Not defined                | **All users** (default behavior)                  |
+| `["schema_a"]`             | Only users with access to `schema_a`              |
+| `["schema_a", "schema_b"]` | Users with access to `schema_a` **OR** `schema_b` |
+| `[]` (empty array)         | **No one** (table hidden)                         |
+
+##### How user schemas are determined
+
+When a user logs in, the backend returns user information through the `/user/{id}/` endpoint. The response may include an optional `schemas` property:
+
+```json
+{
+  "id": 1,
+  "first_name": "John",
+  "last_name": "Doe",
+  "username": "johndoe",
+  "email": "john@example.com",
+  "schemas": ["schema_cliente_a", "schema_cliente_b"]
+}
+```
+
+- If `schemas` is **not present** or is **empty**: User has access to ALL frontend automation tables
+- If `schemas` **contains values**: User only sees tables that match their allowed schemas
+
+##### Use cases
+
+| Scenario                     | Configuration                         |
+| ---------------------------- | ------------------------------------- |
+| Table for all users          | Don't add `schemas` property          |
+| Table for specific client    | `"schemas": ["client_dag_name"]`      |
+| Table for multiple clients   | `"schemas": ["client_a", "client_b"]` |
+| Shared table across projects | Don't add `schemas` property          |
+| Project-specific table       | `"schemas": ["project_dag"]`          |
+
+##### Important notes
+
+- The `schemas` values must match the DAG names the user has access to
+- If a user has access to **any** of the listed schemas, the table is visible
+- Groups are still shown even if some tables within them are hidden (only visible tables appear as tabs)
+- This filtering happens in the frontend based on the user's permissions returned by the backend
+
+#### Implementation details
+
+- **Repository**: `SchemaRepository.ts` fetches the schema and returns both table config and `available_automations.sections`; the store keeps sections in `masterDataSections`.
+- **Utils**: `schemaUtils.ts` transforms the schema (including sections and per-table `section` from table/group) into the internal config format.
+- **Service**: `FrontendAutomationService.ts` provides `getMasterDataNavigationWithSections()` to build section → group → table navigation; schema-defined sections are ordered above the default "Master data" block.
+- **Drawer**: `AppDrawer.vue` uses schema sections when present (`masterDataSectionsForDrawer`) and falls back to a single "Master data" section when no schema sections exist. It merges in config-driven sub-sections from `frontendAutomationSectionSubsections` (see [Sub-sections within frontend-automation sections](#sub-sections-within-frontend-automation-sections)).
+- **Component**: `CoreTable.vue` renders the dynamic table interface.
+- **View**: `SectionView.vue` manages table display and navigation.
+- **Section sub-sections**: Routes for config-defined sub-sections use `configuration/section/:sectionId/:subsectionKey`; `ConfigurationSectionSubsectionView.vue` (in `src/app/views/`) loads and renders the component from config.
+
+## Input data section
+
+The input data section appears only when an execution is loaded and displays instance data tables.
+
+### Instance tables
+
+- **Purpose**: Display and manage input data for optimization problems
+- **Data Source**: Instance schema from the backend
+- **Features**:
+  - Dynamic table generation from instance schema
+  - Read-only data display (instances cannot be modified after creation)
+  - Export capabilities for data analysis
+
+### Table organization
+
+Instance tables are organized based on schema definitions:
+
+1. **Default grouping**: If no specific groups are defined, all tables are grouped under "Input tables"
+2. **Custom grouping**: Tables can be organized into logical groups as defined in the schema
+3. **Individual tables**: Each table can have its own dedicated view
+
+### Validation tables
+
+When instance checks are available in the schema, validation tables are automatically included:
+
+- **Purpose**: Display data validation results and constraints
+- **Group**: All validation tables are grouped under "Validations"
+- **Features**:
+  - Automatic filtering to show only tables with data
+  - Read-only display of validation results
+  - Integration with execution data checks
+
+### Custom dashboards
+
+Applications can define custom dashboards for input data visualization:
+
+- **Configuration**: Defined in `src/app/config.ts` under `instanceDashboardPages`
+- **Purpose**: Provide visual insights into input data
+
+### Automatic dashboards
+
+The application includes an automatic dashboard system that intelligently generates visualizations based on table data patterns:
+
+- **Automatic widget generation**: Creates KPIs, line charts, bar charts, pie charts, area charts, and maps based on detected data patterns
+- **Pattern detection**: Automatically analyzes numeric, categorical, date, and coordinate columns
+- **Integration**: Widgets display alongside tables in a responsive 70/30 layout
+- **Custom widgets**: Supports adding custom components per table alongside auto-generated widgets
+- **Configuration**: Controlled via `enableAutoInstanceDashboard` and `tableDashboards` in `src/app/config.ts`
+
+For detailed documentation on automatic dashboards, including configuration options, widget types, and customization, see [Automatic Dashboards Documentation](docs/AUTO_DASHBOARDS_README.md).
+
+## Results section
+
+The results section appears only when an execution is loaded and displays solution data tables.
+
+### Solution tables
+
+- **Purpose**: Display optimization results and solution data
+- **Data source**: Solution schema from the backend
+- **Features**:
+  - Dynamic table generation from solution schema
+  - Read-only data display
+  - Export capabilities for result analysis
+
+### Table organization
+
+Solution tables follow the same organization principles as input data:
+
+1. **Default grouping**: If no specific groups are defined, all tables are grouped under "Output tables"
+2. **Custom grouping**: Tables can be organized into logical groups as defined in the schema
+3. **Individual tables**: Each table can have its own dedicated view
+
+### Validation tables
+
+When solution checks are available in the schema, validation tables are automatically included:
+
+- **Purpose**: Display solution validation results and quality metrics
+- **Group**: All validation tables are grouped under "Validations"
+- **Features**:
+  - Automatic filtering to show only tables with data
+  - Read-only display of validation results
+  - Integration with execution data checks
+
+### Custom dashboards
+
+Applications can define custom dashboards for results visualization:
+
+- **Configuration**: Defined in `src/app/config.ts` under `dashboardPages`
+- **Purpose**: Provide visual insights into optimization results
+
+### Automatic dashboards
+
+The application includes an automatic dashboard system that intelligently generates visualizations based on table data patterns:
+
+- **Automatic widget generation**: Creates KPIs, line charts, bar charts, pie charts, area charts, and maps based on detected data patterns
+- **Pattern detection**: Automatically analyzes numeric, categorical, date, and coordinate columns
+- **Integration**: Widgets display alongside tables in a responsive 70/30 layout
+- **Custom widgets**: Supports adding custom components per table alongside auto-generated widgets
+- **Configuration**: Controlled via `enableAutoSolutionDashboard` and `tableDashboards` in `src/app/config.ts`
+
+For detailed documentation on automatic dashboards, including configuration options, widget types, and customization, see [Automatic Dashboards Documentation](docs/AUTO_DASHBOARDS_README.md).
+
+## Technical implementation
+
+### Schema processing
+
+The application processes schemas through several layers:
+
+1. **API Layer**: `SchemaRepository.ts` fetches schema data from backend
+2. **Transformation**: `schemaUtils.ts` converts schemas to internal format
+3. **Service Layer**: `FrontendAutomationService.ts` provides utility functions
+4. **Component Layer**: `CoreTable.vue` renders dynamic interfaces
+5. **View Layer**: `SectionView.vue` manages navigation and display
+
+### Dynamic route generation
+
+Routes are automatically generated based on schema definitions:
+
+- **Individual tables**: `/configuration/{table-key}`
+- **Grouped tables**: `/configuration/group/{group-name}`
+- **Configuration section sub-sections**: `/configuration/section/{section-id}/{subsection-path}` (for custom views added via `frontendAutomationSectionSubsections` in `src/app/config.ts`)
+- **Input data**: `/input-data/{table-key}` or `/input-data/group/{group-name}`
+- **Results**: `/results/{table-key}` or `/results/group/{group-name}`
+
+### App-specific sections (appSections)
+
+Unlike `dashboardPages` / `instanceDashboardPages` (which add subsections inside Results and Input data), **app sections** define standalone top-level sections and optional subsections in the main navigation and router. They are built dynamically from `src/app/config.ts`:
+
+- **Configuration**: In `createAppConfig()`, set the `appSections` array. Each entry has `path`, `name`, `titleKey`, `icon`, `component` (lazy import), and optional `subPages` with the same shape.
+- **Router**: Routes are registered via `getAppSectionRoutes()` (used in `src/router/index.ts`).
+- **Drawer**: Menu items are built from `getAppSections()` in `AppDrawer.vue` (title resolved with i18n from `titleKey`).
+
+Example: one section with one view (e.g. Agent), or multiple sections with subsections, without touching the router or drawer code.
+
+### Frontend-automation section subsections (frontendAutomationSectionSubsections)
+
+Custom sub-sections (e.g. dashboards) can be added **inside** a frontend-automation section (from `available_automations.sections`). Configure them in `src/app/config.ts` under `frontendAutomationSectionSubsections`: key = section id from the schema, value = array of sub-section definitions.
+
+| Property    | Type     | Description                                                                            |
+| ----------- | -------- | -------------------------------------------------------------------------------------- |
+| `path`      | `string` | URL segment (e.g. `dashboard`). Full path: `/configuration/section/{sectionId}/{path}` |
+| `name`      | `string` | Route/component name                                                                   |
+| `titleKey`  | `string` | i18n key for the drawer label                                                          |
+| `icon`      | `string` | Material Design icon (e.g. `mdi-view-dashboard`)                                       |
+| `component` | function | Lazy-loaded Vue component: `() => import('@/app/views/...')`                           |
+
+See [Sub-sections within frontend-automation sections](#sub-sections-within-frontend-automation-sections) for a full example.
+
+### State management
+
+The application uses Pinia stores for state management:
+
+- **General store**: Handles application-wide state
+- **Table stores**: Manage individual table data and operations
+- **Configuration stores**: Handle schema and configuration data
+
 # Creating a new project
 
 To create a new project based on this base project, follow these steps:
 
 ## 1. Copy the base project
+
 Copy and paste all the code from this repository into your new repository.
 
 ## 2. Configuration guide
 
 ### Quick start
+
 1. **Choose your setup method**: Environment variables (recommended for production) or JSON file (good for development)
 2. **Set core values**: Backend URL, schema name, and authentication type
 3. **Customize app settings**: Modify `src/app/config.ts` for UI preferences and features
@@ -22,12 +654,14 @@ Copy and paste all the code from this repository into your new repository.
 The application uses a **two-layer configuration system** with clear separation of concerns:
 
 #### External configuration (`src/config.ts`)
+
 - **Purpose**: Values that must be configured externally without changing code
 - **Source**: Environment variables or `values.json` (automatically detected)
 - **Use for**: Backend URLs, authentication credentials, deployment settings
 - **Contains**: Core application values, authentication settings, behavior flags
 
 #### Internal configuration (`src/app/config.ts`)
+
 - **Purpose**: Application-specific settings that are part of the codebase
 - **Source**: Always defined in source code
 - **Use for**: UI preferences, feature flags, dashboard layout, custom logic
@@ -38,6 +672,7 @@ The application uses a **two-layer configuration system** with clear separation 
 ### Setup methods
 
 #### Method 1: Environment variables (recommended)
+
 Create a `.env` file (for local development only) or set environment variables on your server. The application automatically uses this method when `VITE_APP_SCHEMA` or `VITE_APP_BACKEND_URL` are detected.
 
 ```env
@@ -66,37 +701,40 @@ VITE_APP_AUTH_PROVIDERS=google,microsoft   # For Cognito: comma-separated list
 ```
 
 #### Method 2: JSON configuration
+
 Copy `public/values.template.json` to `public/values.json` and configure your values (for local development only). For production, configure this json in an accesible path. Defined path by default is `/values.json` but this can be overwritten in `app/config.ts` with `valuesJsonPath`. Used automatically when no environment variables are detected.
 
 ```json
 {
-    "backend_url": "https://your-backend-url",
-    "schema": "rostering",
-    "name": "Rostering",
-    "hasExternalApp": false,
-    "isStagingEnvironment": false,
-    "useHashMode": false,
-    "defaultLanguage": "en",
-    "isDeveloperMode": false,
-    "enableSignup": false,
-    "auth_type": "cornflow",
-    "cognito": {
-      "region": "your-region",
-      "user_pool_id": "your-user-pool-id",
-      "client_id": "your-client-id",
-      "domain": "your-domain",
-      "providers": ["google", "microsoft"]
-    },
-    "azure": {
-      "client_id": "your-client-id",
-      "authority": "your-authority",
-      "redirect_uri": "your-redirect-uri"
-    }
+  "backend_url": "https://your-backend-url",
+  "schema": "rostering",
+  "name": "Rostering",
+  "hasExternalApp": false,
+  "isStagingEnvironment": false,
+  "useHashMode": false,
+  "defaultLanguage": "en",
+  "isDeveloperMode": false,
+  "enableSignup": false,
+  "auth_type": "cornflow",
+  "cognito": {
+    "region": "your-region",
+    "user_pool_id": "your-user-pool-id",
+    "client_id": "your-client-id",
+    "domain": "your-domain",
+    "providers": ["google", "microsoft"]
+  },
+  "azure": {
+    "client_id": "your-client-id",
+    "authority": "your-authority",
+    "redirect_uri": "your-redirect-uri"
+  }
 }
 ```
 
 #### Auto-detection logic
+
 The application automatically chooses the configuration method:
+
 1. **Environment variables detected** → Uses environment variables, ignores `values.json`
 2. **No environment variables** → Loads from `values.json` or defined path
 
@@ -104,91 +742,157 @@ The application automatically chooses the configuration method:
 **For development**: Hardcode values in your .env or values.json file. This can't be uploaded
 
 ### Configuration access in code
+
 ```typescript
 // External configuration (from env/json)
 import config from '@/config'
-config.schema          // ✅ Schema name
-config.backend         // ✅ Backend URL
+config.schema // ✅ Schema name
+config.backend // ✅ Backend URL
 config.isDeveloperMode // ✅ Developer mode flag
-config.auth.type       // ✅ Authentication type
+config.auth.type // ✅ Authentication type
 
 // Internal configuration (from source code)
 import internalConfig from '@/app/config'
-internalConfig.getCore().parameters.showUserFullname  // ✅ UI preferences
-internalConfig.getCore().parameters.solverConfig     // ✅ App logic
+internalConfig.getCore().parameters.showOpenIdUsername // ✅ UI preferences
+internalConfig.getCore().parameters.solverConfig // ✅ App logic
 ```
 
 ### Internal app configuration (`src/app/config.ts`)
+
 This file contains **internal application-specific configuration** that is part of the codebase and not configurable externally:
 
 ```typescript
 {
   core: {
-    // Core application components
     Experiment: ExperimentRostering,
     Instance: InstanceRostering,
     Solution: SolutionRostering,
-    
     parameters: {
-      // Json path
       valuesJsonPath: '/values.json',
-      
-      // Project execution table configuration
-      showUserFullname: true,
-      showTablesWithoutSchema: true,
-      showExtraProjectExecutionColumns: {
-        showUserName: false,     
-        showEndCreationDate: false,
-        showTimeLimit: true,
-        showUserFullName: false,
-      },
-      
-      // Dashboard configuration
-      showDashboardMainView: false,
-      dashboardLayout: [...],
-      dashboardPages: [...],
-      dashboardRoutes: [...],
-      
-      // Create execution steps configuration
-      executionSolvers: ['mip-gurobi'],
-      solverConfig: {
-        showSolverStep: false,
-        defaultSolver: 'mip.gurobi',
-      },
-      configFieldsConfig: {
-        showConfigFieldsStep: false,
-        autoLoadValues: true,
-      },
-      configFields: [...],
-      
-      // Instance file processing
-      fileProcessors: {
-        'mtrx': 'processMatrix',
-        'config': ['processConfig', 'processCleanData'],
-        'all': ['processCleanData', 'processBooleansFromStrings']
-      },
 
-      // States for execution and solution
-      executionStates: {
-        '1': { color: 'green', message: 'Success execution', code: 'Success' }
-      },
-      solutionStates: {
-         '1': { color: 'green', message: 'Success solution', code: 'Success' }
-      },
+      showOpenIdUsername: false,
+      showTablesWithoutSchema: true,
+      showExtraProjectExecutionColumns: { ... },
+      allowEditInstance: true,
+      latestPlanConfig: { ... },
+      sectionTitles: { ... },
+      solverConfig: { ... },
+      configFieldsConfig: { ... },
+      executionSolvers: ['mip-gurobi'],
+      configFields: [...],
+      fileProcessors: { ... },
+      enableAutoInstanceDashboard: false,
+      enableAutoSolutionDashboard: false,
+      tableDashboards: { ... },
+      executionStates: { ... },
+      solutionStates: { ... },
     }
-  }
+  },
+  dashboardPages: [],
+  dashboardRoutes: [],
+  dashboardLayout: [],
+  instanceDashboardPages: [],
+  instanceDashboardRoutes: [],
+  instanceDashboardLayout: [],
+  frontendAutomationSectionSubsections: {}, // Sub-sections inside schema-defined master data sections (e.g. dashboards). Key = section id from schema.
+  appSections: [], // App-specific top-level sections and subsections (router + drawer built dynamically)
 }
 ```
 
+#### Internal configuration parameters reference
+
+| Parameter                     | Type       | Description                                           |
+| ----------------------------- | ---------- | ----------------------------------------------------- |
+| `valuesJsonPath`              | `string`   | Path to the external JSON configuration file          |
+| `useEtlBackend`               | `boolean`  | Enable ETL backend integration                        |
+| `showOpenIdUsername`          | `boolean`  | Display user full name and email from openId login    |
+| `showTablesWithoutSchema`     | `boolean`  | Display tables that don't have a defined schema       |
+| `allowEditInstance`           | `boolean`  | Allow users to edit instances from input data section |
+| `enableAutoInstanceDashboard` | `boolean`  | Auto-generate dashboards for instance tables          |
+| `enableAutoSolutionDashboard` | `boolean`  | Auto-generate dashboards for solution tables          |
+| `enableMasterTableMatching`   | `boolean`  | Enable master table matching during instance review   |
+| `executionSolvers`            | `string[]` | List of available solvers for execution               |
+
+#### showExtraProjectExecutionColumns
+
+Controls which columns are displayed in the execution history table.
+
+| Property              | Type      | Description                       |
+| --------------------- | --------- | --------------------------------- |
+| `showUserName`        | `boolean` | Show the username column          |
+| `showEndCreationDate` | `boolean` | Show the end creation date column |
+| `showTimeLimit`       | `boolean` | Show the time limit column        |
+| `showUserFullName`    | `boolean` | Show the user's full name column  |
+
+#### latestPlanConfig
+
+Configuration for the "Latest plan" feature. See [Latest plan documentation](#latest-plan-actual-plan) for details.
+
+| Property           | Type      | Description                                                                                                                    |
+| ------------------ | --------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `enableLatestPlan` | `boolean` | Master switch to enable/disable the feature (default: `true`). If `false`, disables the feature regardless of other conditions |
+| `defaultView`      | `string`  | Route to redirect after login (`'history-execution'`, `'dashboard'`, `'input-data'`, `'results'`)                              |
+| `showStarInTabBar` | `boolean` | Show star icon in tab bar for the latest plan                                                                                  |
+
+#### sectionTitles
+
+Customize navigation section titles using i18n keys. See [Custom section titles](#custom-section-titles) for details.
+
+| Property     | Type             | Description                                                                |
+| ------------ | ---------------- | -------------------------------------------------------------------------- |
+| `executions` | `string \| null` | Custom i18n key for executions section (default: `navigation.executions`)  |
+| `masterData` | `string \| null` | Custom i18n key for master data section (default: `navigation.masterData`) |
+| `inputData`  | `string \| null` | Custom i18n key for input data section (default: `navigation.inputData`)   |
+| `results`    | `string \| null` | Custom i18n key for results section (default: `navigation.results`)        |
+
+#### solverConfig
+
+Controls the solver selection step. See [Solver step documentation](#solver-step-solverconfig) for details.
+
+| Property         | Type      | Description                                      |
+| ---------------- | --------- | ------------------------------------------------ |
+| `showSolverStep` | `boolean` | Show solver selection step in execution creation |
+| `defaultSolver`  | `string`  | Default solver when step is skipped              |
+
+#### configFieldsConfig
+
+Controls the configuration fields step. See [Config fields documentation](#configuration-parameters-step-configfieldsconfig) for details.
+
+| Property               | Type      | Description                                         |
+| ---------------------- | --------- | --------------------------------------------------- |
+| `showConfigFieldsStep` | `boolean` | Show config fields step in execution creation       |
+| `autoLoadValues`       | `boolean` | Auto-load values from instance when step is skipped |
+
+#### tableDashboards
+
+Per-table dashboard configuration. See [Automatic Dashboards Documentation](docs/AUTO_DASHBOARDS_README.md) for details.
+
+| Property   | Type     | Description                                 |
+| ---------- | -------- | ------------------------------------------- |
+| `instance` | `object` | Dashboard configuration for instance tables |
+| `solution` | `object` | Dashboard configuration for solution tables |
+
+#### executionStates / solutionStates
+
+Maps status codes to display properties. Each state entry contains:
+
+| Property     | Type     | Description                          |
+| ------------ | -------- | ------------------------------------ |
+| `color`      | `string` | Color identifier for the status chip |
+| `messageKey` | `string` | i18n key for the tooltip message     |
+| `codeKey`    | `string` | i18n key for the status label        |
+
 ## 2.2. App folder configuration
+
 Inside the app folder, there are several changes that can be done to configurate your client project. This folder is meant to be for all customizations done for the client.
-   - `assets/logo`: This directory should contain the logo images for the application. The name should be the same as the default ones (logo.png and full_logo.png)
-   - `app/assets/style/variables.css`: This file should define the main colors of the application. Mantain the variable names and only change the colors.
-   - `models`: This directory should define the instance, solution, experiment, and execution models for the application. It always extends the main classes but methods can be overwritten.
-   - `views`: This directory should contain all the custom views needed for the application.
-   - `components`: This directory should contain any additional components that are not in the core components.
-   - `store/app.ts`: This file should define any additional store-specific configurations for the application.
-   - `plugins/locales`: This folder contains three files (`en.ts`, `es.ts`, `fr.ts`) to add any text needed in the app views and components. Be careful not to duplicate the names with the original locales files (`src/plugins/locales`).
+
+- `assets/logo`: This directory should contain the logo images for the application. The name should be the same as the default ones (logo.png and full_logo.png)
+- `app/assets/style/variables.css`: This file should define the main colors of the application. Mantain the variable names and only change the colors.
+- `models`: This directory should define the instance, solution, experiment, and execution models for the application. It always extends the main classes but methods can be overwritten.
+- `views`: This directory should contain all the custom views needed for the application.
+- `components`: This directory should contain any additional components that are not in the core components.
+- `store/app.ts`: This file should define any additional store-specific configurations for the application.
+- `plugins/locales`: This folder contains three files (`en.ts`, `es.ts`, `fr.ts`) to add any text needed in the app views and components. Be careful not to duplicate the names with the original locales files (`src/plugins/locales`).
 
 * Additionally, favicon can be replaced by a new one in public/favicon.png
 
@@ -198,42 +902,44 @@ Inside the app folder, there are several changes that can be done to configurate
    - `user_manual_fr.pdf` for French
 
 ## 3. Important disclaimer
-It's important not to edit any other file or folders. Only the folders, files and images just mentioned can be edited.
 
+It's important not to edit any other file or folders. Only the folders, files and images just mentioned can be edited.
 
 ## Configuration reference
 
 ### Core parameters
 
-| Parameter | Description | Environment Variable | JSON Key | Values |
-|-----------|-------------|---------------------|----------|---------|
-| **Backend URL** | API server endpoint | `VITE_APP_BACKEND_URL` | `backend_url` | URL string |
-| **Schema** | Application schema name | `VITE_APP_SCHEMA` | `schema` | String identifier |
-| **App Name** | Application display name | `VITE_APP_NAME` | `name` | String |
-| **Hash Mode** | Router mode (hash vs history) | `VITE_APP_USE_HASH_MODE` | `useHashMode` | `true`/`false` (accepts `1`/`0`) |
-| **Default Language** | UI language | `VITE_APP_DEFAULT_LANGUAGE` | `defaultLanguage` | `en`, `es`, `fr` |
-| **Developer Mode** | Enable dev features | `VITE_APP_IS_DEVELOPER_MODE` | `isDeveloperMode` | `true`/`false` (accepts `1`/`0`) |
-| **Enable Signup** | Show registration option | `VITE_APP_ENABLE_SIGNUP` | `enableSignup` | `true`/`false` (accepts `1`/`0`) |
-| **External App** | API URL prefix mode | `VITE_APP_EXTERNAL_APP` | `hasExternalApp` | `true`/`false` (accepts `1`/`0`) |
-| **Staging Environment** | Show staging banner | `VITE_APP_IS_STAGING_ENVIRONMENT` | `isStagingEnvironment` | `true`/`false` (accepts `1`/`0`) |
+| Parameter               | Description                   | Environment Variable              | JSON Key               | Values                           |
+| ----------------------- | ----------------------------- | --------------------------------- | ---------------------- | -------------------------------- |
+| **Backend URL**         | API server endpoint           | `VITE_APP_BACKEND_URL`            | `backend_url`          | URL string                       |
+| **Schema**              | Application schema name       | `VITE_APP_SCHEMA`                 | `schema`               | String identifier                |
+| **App Name**            | Application display name      | `VITE_APP_NAME`                   | `name`                 | String                           |
+| **Hash Mode**           | Router mode (hash vs history) | `VITE_APP_USE_HASH_MODE`          | `useHashMode`          | `true`/`false` (accepts `1`/`0`) |
+| **Default Language**    | UI language                   | `VITE_APP_DEFAULT_LANGUAGE`       | `defaultLanguage`      | `en`, `es`, `fr`                 |
+| **Developer Mode**      | Enable dev features           | `VITE_APP_IS_DEVELOPER_MODE`      | `isDeveloperMode`      | `true`/`false` (accepts `1`/`0`) |
+| **Enable Signup**       | Show registration option      | `VITE_APP_ENABLE_SIGNUP`          | `enableSignup`         | `true`/`false` (accepts `1`/`0`) |
+| **External App**        | API URL prefix mode           | `VITE_APP_EXTERNAL_APP`           | `hasExternalApp`       | `true`/`false` (accepts `1`/`0`) |
+| **Staging Environment** | Show staging banner           | `VITE_APP_IS_STAGING_ENVIRONMENT` | `isStagingEnvironment` | `true`/`false` (accepts `1`/`0`) |
 
 ### Authentication parameters
 
-| Parameter | Description | Environment Variable | JSON Key | Values |
-|-----------|-------------|---------------------|----------|---------|
-| **Auth Type** | Authentication method | `VITE_APP_AUTH_TYPE` | `auth_type` | `cornflow`, `azure`, `cognito` |
-| **Client ID** | OAuth client identifier | `VITE_APP_AUTH_CLIENT_ID` | `client_id` | String |
-| **Authority** | Azure authority URL | `VITE_APP_AUTH_AUTHORITY` | `authority` | URL string |
-| **Redirect URI** | OAuth redirect URL | `VITE_APP_AUTH_REDIRECT_URI` | `redirect_uri` | URL string |
-| **Region** | AWS Cognito region | `VITE_APP_AUTH_REGION` | `region` | AWS region code |
-| **User Pool ID** | Cognito user pool | `VITE_APP_AUTH_USER_POOL_ID` | `user_pool_id` | Pool identifier |
-| **Domain** | Cognito domain | `VITE_APP_AUTH_DOMAIN` | `domain` | Domain string |
-| **OAuth Providers** | Enabled OAuth providers | `VITE_APP_AUTH_PROVIDERS` | `providers` | Comma-separated / Array |
+| Parameter           | Description             | Environment Variable         | JSON Key       | Values                         |
+| ------------------- | ----------------------- | ---------------------------- | -------------- | ------------------------------ |
+| **Auth Type**       | Authentication method   | `VITE_APP_AUTH_TYPE`         | `auth_type`    | `cornflow`, `azure`, `cognito` |
+| **Client ID**       | OAuth client identifier | `VITE_APP_AUTH_CLIENT_ID`    | `client_id`    | String                         |
+| **Authority**       | Azure authority URL     | `VITE_APP_AUTH_AUTHORITY`    | `authority`    | URL string                     |
+| **Redirect URI**    | OAuth redirect URL      | `VITE_APP_AUTH_REDIRECT_URI` | `redirect_uri` | URL string                     |
+| **Region**          | AWS Cognito region      | `VITE_APP_AUTH_REGION`       | `region`       | AWS region code                |
+| **User Pool ID**    | Cognito user pool       | `VITE_APP_AUTH_USER_POOL_ID` | `user_pool_id` | Pool identifier                |
+| **Domain**          | Cognito domain          | `VITE_APP_AUTH_DOMAIN`       | `domain`       | Domain string                  |
+| **OAuth Providers** | Enabled OAuth providers | `VITE_APP_AUTH_PROVIDERS`    | `providers`    | Comma-separated / Array        |
 
 ### Parameter details
 
 #### Boolean values
+
 All boolean parameters accept multiple formats for flexibility:
+
 - **Recommended**: `true` or `false` (case-insensitive)
 - **Legacy support**: `1` (true) or `0` (false)
 - **Environment variables**: String values like `"true"`, `"false"`, `"1"`, `"0"`
@@ -242,22 +948,26 @@ All boolean parameters accept multiple formats for flexibility:
 The application automatically converts these formats to proper boolean values.
 
 #### useHashMode
+
 - **Purpose**: Controls routing mode
 - **`true`**: Hash mode routing (URLs include `#`)
 - **`false`**: HTML5 history mode (clean URLs)
 - **Note**: Use hash mode if you can't configure server routing
 
-#### isDeveloperMode  
+#### isDeveloperMode
+
 - **Purpose**: Enables developer features
 - **`true`**: Shows solution upload in execution creation
 - **`false`**: Standard user experience
 
 #### hasExternalApp
+
 - **Purpose**: Controls API request URLs
 - **`true`**: Prefixes requests with `/cornflow`
 - **`false`**: Direct API requests
 
 #### OAuth providers (Cognito only)
+
 - **Supported**: `google`, `microsoft`, `facebook`
 - **Format**: Comma-separated string or array
 - **Behavior**: Only configured providers will work; others show error messages
@@ -269,11 +979,13 @@ The application automatically converts these formats to proper boolean values.
 The application supports three authentication methods. The server must be properly configured for the chosen method.
 
 #### Cornflow authentication (default)
+
 ```env
 VITE_APP_AUTH_TYPE=cornflow
 ```
 
 #### Azure OpenID authentication
+
 ```env
 VITE_APP_AUTH_TYPE=azure
 VITE_APP_AUTH_CLIENT_ID=your_azure_client_id
@@ -282,6 +994,7 @@ VITE_APP_AUTH_REDIRECT_URI=your-redirect-uri
 ```
 
 #### AWS Cognito authentication
+
 ```env
 VITE_APP_AUTH_TYPE=cognito
 VITE_APP_AUTH_CLIENT_ID=your_cognito_client_id
@@ -292,13 +1005,151 @@ VITE_APP_AUTH_PROVIDERS=google,microsoft
 ```
 
 ### Dashboard preferences
+
 To save dashboard preferences for a single execution, including filters, checks, and date ranges, utilize the `setDashboardPreference` method from the `LoadedExecution.ts` class. Subsequently, retrieve these preferences using the `getDashboardPreference` method. The data type is custom, allowing for flexible usage as needed.
 
+### Latest plan (Actual plan)
+
+The `latest plan` feature provides context persistence, allowing users to automatically load a previously selected execution when accessing the application. This feature enables quick access to the most relevant plan without navigating through the execution history.
+
+#### When the feature is available
+
+The `latest plan` feature is **only available** when all conditions are met:
+
+1. **`enableLatestPlan` is `true`** (or not set): The master switch in `src/app/config.ts` must not be explicitly set to `false`
+2. **`hasExternalApp` is `true`**: The application must be configured with `VITE_APP_EXTERNAL_APP=true` (or `hasExternalApp: true` in `values.json`)
+3. **Backend supports the endpoints**: The backend must implement the `/plan-latest/` and `/set-plan-latest/` endpoints
+
+If any condition is not met, the feature is completely disabled:
+
+- No banner notification is shown
+- No floating action button appears
+- No "Set as Current Plan" action in the execution table
+- No automatic plan loading on login
+
+#### Backend endpoints
+
+The feature requires two backend endpoints:
+
+1. **GET `/plan-latest/`**: Returns the current latest plan
+   - Response: `{ execution_id: "string" }` or empty/404 if no plan is set
+2. **POST `/set-plan-latest/`**: Sets an execution as the latest plan
+   - Request body: `{ id_execution: "string" }`
+   - Response: 200 OK on success
+
+#### How it works
+
+When the feature is available:
+
+1. **On login**: After authentication, the system queries the `/plan-latest/` endpoint
+2. **Automatic loading**: If a latest plan exists, all data (instance, solution, dashboards) is automatically loaded
+3. **No plan notification**: If no latest plan is set, a persistent banner appears at the top of the page prompting the user to set one
+4. **Manual management**: Users can set any finished execution as the latest plan from:
+   - The execution history table (using the star icon action)
+   - A floating action button when viewing an execution
+
+#### Visual indicators
+
+- **Execution history table**: The current latest plan is marked with a "Current" chip
+- **Tab bar**: When configured, a star icon (★) appears next to the latest plan tab name
+- **Floating action button**: Shows a star icon indicating the current plan status
+
+#### Configuration options
+
+In `src/app/config.ts`, you can customize the feature behavior:
+
+```typescript
+latestPlanConfig: {
+  enableLatestPlan: true,           // Master switch: if false, disables the entire feature
+  defaultView: 'history-execution', // Route to redirect after login with latest plan
+  showStarInTabBar: true,           // Show star icon in MAppBarTab for latest plan
+  showSetCurrentPlanFab: true,      // Show floating action button to set current plan
+}
+```
+
+#### Behavior summary
+
+| Configuration                                                  | Feature Status                              |
+| -------------------------------------------------------------- | ------------------------------------------- |
+| `enableLatestPlan: false`                                      | **Disabled** - Master switch overrides all  |
+| `enableLatestPlan: true` + `hasExternalApp: false`             | **Disabled** - No latest plan functionality |
+| `enableLatestPlan: true` + `hasExternalApp: true` + No backend | **Disabled** - Feature unavailable          |
+| `enableLatestPlan: true` + `hasExternalApp: true` + Backend    | **Enabled** - Full functionality            |
+
+### Custom section titles
+
+The application allows customization of navigation section titles through i18n keys. This feature enables each application to define its own terminology for the main navigation sections.
+
+#### Default section titles
+
+The application has four main navigation sections with default titles:
+
+| Section Key  | English Default      | Spanish Default         | French Default           |
+| ------------ | -------------------- | ----------------------- | ------------------------ |
+| `executions` | Executions           | Ejecuciones             | Exécutions               |
+| `masterData` | Configuration tables | Tablas de configuración | Données de configuration |
+| `inputData`  | Input data           | Datos de entrada        | Données d'entrée         |
+| `results`    | Results              | Resultados              | Résultats                |
+
+#### Customizing section titles
+
+**Option 1: Using app-specific translations (recommended)**
+
+Add custom translations in your app's locale files (`src/app/plugins/locales/*.ts`):
+
+```typescript
+// src/app/plugins/locales/en.ts
+export default {
+  sectionTitles: {
+    executions: 'Plans', // Custom title for executions
+    masterData: 'Master Data', // Custom title for configuration
+    inputData: 'Inputs', // Custom title for input data
+    results: 'Outputs', // Custom title for results
+  },
+}
+
+// src/app/plugins/locales/es.ts
+export default {
+  sectionTitles: {
+    executions: 'Planes',
+    masterData: 'Datos Maestros',
+    inputData: 'Entradas',
+    results: 'Salidas',
+  },
+}
+```
+
+**Option 2: Using explicit configuration keys**
+
+You can also point to specific translation keys in `src/app/config.ts`:
+
+```typescript
+parameters: {
+  sectionTitles: {
+    executions: 'myApp.nav.plans',      // Use custom i18n key
+    masterData: null,                    // Use default (navigation.masterData)
+    inputData: 'myApp.nav.inputs',      // Use custom i18n key
+    results: null,                       // Use default (navigation.results)
+  },
+}
+```
+
+#### Resolution order
+
+The section title resolution follows this priority:
+
+1. **Custom i18n key from config**: If `sectionTitles.<section>` in config points to a valid i18n key
+2. **App-specific sectionTitles**: If `sectionTitles.<section>` exists in app translations (`src/app/plugins/locales/*.ts`)
+3. **Default navigation key**: Falls back to `navigation.<section>` (base translations)
+
+This allows for flexible customization while maintaining sensible defaults.
 
 ### Custom file processors
+
 The application supports custom file processing for instances based on filename prefixes. This feature is useful when you need to handle files with special formats or structures before merging them with other files to create an instance.
 
 #### Configuration
+
 Custom file processing is entirely optional. By default, the system will merge all uploaded files without any special processing. If you don't need custom file processing, you can leave the `fileProcessors` object empty or omit it entirely.
 
 If you do need custom processing for specific file types, add a `fileProcessors` object to the core parameters in `src/app/config.ts`:
@@ -309,10 +1160,10 @@ parameters: {
   fileProcessors: {
     // Single processor for a prefix
     'mtrx': 'processMatrix',
-    
+
     // Multiple processors for a prefix (applied in sequence)
     'config': ['processConfig', 'processCleanData'],
-    
+
     // Special 'all' prefix to process all files regardless of their names
     'all': ['processCleanData', 'processBooleansFromStrings']
   },
@@ -321,15 +1172,18 @@ parameters: {
 ```
 
 Each key in the `fileProcessors` object is a filename prefix that triggers special processing, and each value is either:
+
 - A string with the name of a single processor method to use
 - An array of processor method names to apply in sequence
 
 The special prefix `'all'` can be used to apply processors to all files regardless of their names.
 
 #### Implementation
-The actual processing logic must be implemented in the `src/app/composables/useFileProcessors.ts` file. You need to add your processor methods to the `processors` object in this file. 
+
+The actual processing logic must be implemented in the `src/app/composables/useFileProcessors.ts` file. You need to add your processor methods to the `processors` object in this file.
 
 Each processor method should:
+
 1. Accept parameters: file, fileContent, extension, and schemas
 2. Parse the file content based on its format (JSON, XLSX, or CSV)
 3. Transform the data into a format that represents a part of the complete instance data
@@ -344,8 +1198,11 @@ For example, in a scheduling application, one file might contain employee data, 
 The system automatically detects files that match the configured prefixes and processes them using the corresponding methods before merging all the processed parts into the final instance. Files that don't match any configured prefix are processed using the standard method.
 
 ### Create project execution steps customization
+
 #### Solver step: solverConfig
+
 Controls the solver selection step and default solver for executions.
+
 - `showSolverStep` (boolean):
   - If true, shows the solver selection step to the user.
   - If false, skips the step and uses the value in `defaultSolver` automatically.
@@ -354,7 +1211,9 @@ Controls the solver selection step and default solver for executions.
   - Used in the execution config as `newExecution.config.solver`.
 
 #### Configuration parameters step: configFieldsConfig
+
 Controls the config fields step and value loading for execution parameters.
+
 - `showConfigFieldsStep` (boolean):
   - If true, shows the config fields step to the user.
   - If false, skips the step and loads values automatically from the instance or defaults.
@@ -363,7 +1222,9 @@ Controls the config fields step and value loading for execution parameters.
   - Used in ProjectExecutionView.vue to call value loading after the instance is loaded or before steps that need config values.
 
 #### Configuration parameters step: configFields
+
 Defines the configuration fields for execution parameters. Each field can have:
+
 - `key` (string): Unique identifier for the field (used as config property).
 - `title` (string): Translation key for the field label.
 - `placeholder` (string): Translation key for the field placeholder.
@@ -380,18 +1241,32 @@ Defines the configuration fields for execution parameters. Each field can have:
 - `default` (any, optional): Default value if not found in the instance.
 - `options` (Array<{label: string, value: any}>, for select type): Options for select fields.
 
+#### Instance editing: allowEditInstance
+
+Controls whether users can edit existing instances from the input data section.
+
+- `allowEditInstance` (boolean):
+  - If true, adds an "Edit input data" option in the dropdown menu when viewing input data tables.
+  - When clicked, redirects to the project execution view in edit mode, skipping the instance loading step and starting directly at the "Review instance" step with the currently selected execution's instance.
+  - If false, the edit option is not available.
+
 #### Implementation in ProjectExecutionView.vue:
+
 - `solverConfig` is used to determine if the solver step is shown and to set the default solver.
 - `configFieldsConfig` is used to determine if the config fields step is shown and to auto-load values.
 - `configFields` is used to render the config fields step, auto-load values from the instance, and display the config summary in the confirmation step.
+- `allowEditInstance` enables instance editing functionality in SectionView.vue for input data sections.
 
 ## Router configuration
+
 The application supports two routing modes controlled by the `useHashMode` configuration parameter:
 
 ### HTML5 history mode (default)
+
 This is the default routing mode that creates clean URLs without the hash (#). It requires proper server configuration to handle the URLs correctly.
 
 ### Hash mode
+
 If you're deploying in an environment where you don't have control over the server configuration or are experiencing issues with route handling, you can enable hash mode:
 
 **Environment variable**: `VITE_APP_USE_HASH_MODE=1`
@@ -400,27 +1275,30 @@ If you're deploying in an environment where you don't have control over the serv
 When hash mode is enabled, all routes will include a hash (#) in the URL (e.g., `http://example.com/#/project-execution` instead of `http://example.com/project-execution`).
 
 ## Internationalization configuration
+
 The application supports multiple languages (English, Spanish, and French). You can configure the default language:
 
 **Environment variable**: `VITE_APP_DEFAULT_LANGUAGE=es`
 **JSON**: `"defaultLanguage": "es"`
 
 Available language codes:
+
 - `'en'` - English
 - `'es'` - Spanish
 - `'fr'` - French
 
 ## Values.json path configuration
+
 When using JSON configuration (when no environment variables are detected), you can customize the path where the application looks for the `values.json` file:
 
 **Environment variable**: `VITE_APP_VALUES_JSON_PATH=/config/values.json`
 
 The default value is `/values.json`. The application will:
+
 - For localhost: Use the path as-is (e.g., `/config/values.json`)
 - For production: Prepend the hostname (e.g., `https://example.com/config/values.json`)
 
 This is useful when you need to place the configuration file in a different location than the root of your domain.
-
 
 # Unit testing
 
@@ -445,6 +1323,7 @@ tests/unit/
 ```
 
 ### Core tests (`tests/unit/core/`)
+
 - **DO NOT MODIFY** these tests as they are part of the core framework
 - Contains tests for all core functionality including:
   - Components (authentication, navigation, etc.)
@@ -454,6 +1333,7 @@ tests/unit/
   - Views (core application views)
 
 ### App tests (`tests/unit/app/`)
+
 - This is where you should add **your application-specific tests**
 - Tests for custom components, services, and functionality specific to your client application
 - Follow the same structure as core tests for consistency
@@ -479,12 +1359,14 @@ npm run test -- --watch
 ## Coverage reports
 
 The test coverage is configured with the following thresholds:
+
 - **Branches**: 80%
 - **Functions**: 80%
 - **Lines**: 80%
 - **Statements**: 80%
 
 Coverage reports are generated in multiple formats:
+
 - **Text**: Console output
 - **JSON**: Machine-readable format
 - **HTML**: Visual report in `coverage/` directory
@@ -508,6 +1390,7 @@ When writing new tests for your application:
    - Common mocks and utilities are available
 
 4. **Example test structure**:
+
 ```typescript
 import { describe, test, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
@@ -522,10 +1405,10 @@ describe('YourComponent', () => {
   test('renders correctly', () => {
     const wrapper = mount(YourComponent, {
       global: {
-        plugins: [vuetify]
-      }
+        plugins: [vuetify],
+      },
     })
-    
+
     expect(wrapper.exists()).toBe(true)
   })
 })
@@ -540,7 +1423,9 @@ describe('YourComponent', () => {
 - **Maintenance**: Keep tests up to date with code changes
 
 # Run the application in local
+
 ## Installing
+
 - Install or update npm
 - Install Nodejs
 - Open your terminal
@@ -548,6 +1433,7 @@ describe('YourComponent', () => {
 - Run `npm install`
 
 ## Running
+
 - Edit the `.env` file or `values.json` to add necessary configuration
 - Run `npm run dev` to start a local development server
 - A new tab will be opened in your browser

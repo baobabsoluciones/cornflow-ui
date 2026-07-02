@@ -5,12 +5,12 @@ const mockStore = vi.hoisted(() => ({
   addNotification: vi.fn()
 }))
 
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: vi.fn(() => mockStore)
 }))
 
 // Import after mocking
-import NotificationManager from '@/services/NotificationManager'
+import NotificationManager from '@cornflow-ui/core/services/NotificationManager'
 
 describe('NotificationManager', () => {
   beforeEach(() => {
@@ -227,7 +227,7 @@ describe('NotificationManager', () => {
   describe('singleton behavior', () => {
     test('NotificationManager is a singleton instance', async () => {
       // Import the service again using dynamic import
-      const { default: NotificationManager2 } = await import('@/services/NotificationManager')
+      const { default: NotificationManager2 } = await import('@cornflow-ui/core/services/NotificationManager')
       
       expect(NotificationManager).toBe(NotificationManager2)
     })

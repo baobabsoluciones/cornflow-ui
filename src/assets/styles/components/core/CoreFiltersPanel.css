@@ -1,0 +1,57 @@
+/* Filters Panel */
+.core-filters-panel {
+  background: rgba(var(--v-theme-primary), 0.04);
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid rgba(var(--v-theme-primary), 0.12);
+}
+
+.core-filters-panel__filter-chip {
+  font-size: 12px;
+  height: 28px;
+}
+
+.core-filters-panel__filter-chip :deep(.v-chip__content) {
+  font-weight: 500;
+}
+
+/* Add Filter Button */
+.core-filters-panel__add-filter-btn {
+  border-style: dashed !important;
+  border-width: 1px !important;
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
+  background: transparent !important;
+  min-width: 32px !important;
+  width: 32px !important;
+  height: 28px !important;
+}
+
+.core-filters-panel__add-filter-btn:hover {
+  background: rgba(var(--v-theme-primary), 0.08) !important;
+}
+
+/* Add Filter Dropdown */
+.core-filters-panel__add-filter-card {
+  border-radius: 8px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+}
+
+.core-filters-panel__add-filter-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Responsive design */
+@media (max-width: 600px) {
+  .core-filters-panel {
+    margin: 8px !important;
+    margin-top: 0 !important;
+    padding: 12px;
+  }
+
+  .core-filters-panel__add-filter-card {
+    min-width: 280px !important;
+  }
+}

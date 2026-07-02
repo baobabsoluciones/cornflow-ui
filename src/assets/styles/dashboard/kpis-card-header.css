@@ -1,0 +1,21 @@
+/* Shared header rules for dashboard KPI cards (KpisCostesCard, KpisRapelCard).
+   Byte-identical blocks extracted from each component's scoped <style>. The
+   card root selector (.costes-card / .rapel-card) and the chip selectors
+   (.chip-eur / .chip-principal) differ between components and stay inline. */
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.head-left { display: flex; align-items: baseline; gap: 10px; }
+.title {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--dash-text-strong);
+}
+.subtitle {
+  font-size: 11px;
+  color: var(--dash-text-muted);
+}

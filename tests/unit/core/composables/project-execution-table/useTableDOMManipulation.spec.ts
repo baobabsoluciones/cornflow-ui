@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { nextTick } from 'vue'
-import { useTableDOMManipulation } from '@/composables/project-execution-table/useTableDOMManipulation'
-import type { HeaderItem } from '@/composables/project-execution-table/types'
+import { useTableDOMManipulation } from '@cornflow-ui/core/composables/project-execution-table/useTableDOMManipulation'
+import type { HeaderItem } from '@cornflow-ui/core/composables/project-execution-table/types'
 
 // Mock DOM methods
 const mockQuerySelector = vi.fn()
@@ -14,6 +14,19 @@ const mockRemoveEventListener = vi.fn()
 const mockClearTimeout = vi.fn()
 const mockSetTimeout = vi.fn()
 
+// Mock ResizeObserver
+const mockObserve = vi.fn()
+const mockDisconnect = vi.fn()
+class MockResizeObserver {
+  callback: ResizeObserverCallback
+  constructor(callback: ResizeObserverCallback) {
+    this.callback = callback
+  }
+  observe = mockObserve
+  disconnect = mockDisconnect
+  unobserve = vi.fn()
+}
+
 // Mock table and container elements
 const createMockElement = (tagName: string, overrides = {}) => ({
   tagName: tagName.toUpperCase(),
@@ -23,6 +36,8 @@ const createMockElement = (tagName: string, overrides = {}) => ({
   firstChild: null,
   style: {},
   clientWidth: 1000,
+  closest: vi.fn(),
+  remove: vi.fn(),
   ...overrides
 })
 
@@ -36,6 +51,10 @@ describe('useTableDOMManipulation', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    
+    // Reset ResizeObserver mocks
+    mockObserve.mockClear()
+    mockDisconnect.mockClear()
     
     mockHeaders = [
       { title: 'Date', value: 'date', width: '10%', sortable: true, fixedWidth: true },
@@ -51,7 +70,8 @@ describe('useTableDOMManipulation', () => {
     })
     
     mockTable = createMockElement('table', {
-      querySelector: vi.fn(() => null) // No existing colgroup
+      querySelector: vi.fn(() => null), // No existing colgroup
+      closest: vi.fn(() => mockContainer) // Return container when looking for parent
     })
     
     mockColgroup = createMockElement('colgroup')
@@ -70,6 +90,9 @@ describe('useTableDOMManipulation', () => {
       clearTimeout: mockClearTimeout,
       setTimeout: mockSetTimeout
     } as any
+    
+    // Mock ResizeObserver globally
+    global.ResizeObserver = MockResizeObserver as any
     
     // Default mock implementations
     mockQuerySelector.mockImplementation((selector) => {
@@ -132,16 +155,19 @@ describe('useTableDOMManipulation', () => {
       expect(mockTable.insertBefore).toHaveBeenCalled()
     })
 
-    test('should not add colgroup if one already exists', async () => {
-      mockTable.querySelector.mockReturnValue(mockColgroup) // Existing colgroup
+    test('should replace existing colgroup when one exists', async () => {
+      const existingColgroup = { ...mockColgroup, remove: vi.fn() }
+      mockTable.querySelector.mockReturnValue(existingColgroup) // Existing colgroup
       
       const { addColgroup } = useTableDOMManipulation(getHeadersMock)
       
       addColgroup()
       await nextTick()
       
-      expect(mockCreateElement).not.toHaveBeenCalledWith('colgroup')
-      expect(mockTable.insertBefore).not.toHaveBeenCalled()
+      // Should remove existing colgroup and create new one
+      expect(existingColgroup.remove).toHaveBeenCalled()
+      expect(mockCreateElement).toHaveBeenCalledWith('colgroup')
+      expect(mockTable.insertBefore).toHaveBeenCalled()
     })
 
     test('should create correct number of col elements', async () => {
@@ -155,7 +181,7 @@ describe('useTableDOMManipulation', () => {
       expect(mockCreateElement).toHaveBeenCalledWith('col')
     })
 
-    test('should calculate pixel widths correctly', async () => {
+    test('should apply percentage widths from headers', async () => {
       const mockCols: any[] = []
       mockCreateElement.mockImplementation((tagName) => {
         if (tagName === 'col') {
@@ -166,21 +192,27 @@ describe('useTableDOMManipulation', () => {
         if (tagName === 'colgroup') return { ...mockColgroup }
         return createMockElement(tagName)
       })
-      
+
       const { addColgroup } = useTableDOMManipulation(getHeadersMock)
-      
+
       addColgroup()
       await nextTick()
-      
-      // Expected widths: 10% of 1000px = 100px, 20% = 200px, 15% = 150px
-      expect(mockCols[0].style.width).toBe('100px')
-      expect(mockCols[1].style.width).toBe('200px')
-      expect(mockCols[2].style.width).toBe('150px')
+
+      // Widths are applied as the raw percentage strings so that, combined
+      // with table-layout: fixed, every day's table gets identical columns.
+      expect(mockCols[0].style.width).toBe('10%')
+      expect(mockCols[1].style.width).toBe('20%')
+      expect(mockCols[2].style.width).toBe('15%')
     })
 
     test('should handle multiple tables', async () => {
+      const mockContainer2 = createMockElement('div', { 
+        clientWidth: 1000,
+        className: 'table-container'
+      })
       const mockTable2 = createMockElement('table', {
-        querySelector: vi.fn(() => null)
+        querySelector: vi.fn(() => null),
+        closest: vi.fn(() => mockContainer2)
       })
       
       mockQuerySelectorAll.mockReturnValue([mockTable, mockTable2])
@@ -204,9 +236,10 @@ describe('useTableDOMManipulation', () => {
       await nextTick()
     })
 
-    test('should use default width when container not found', async () => {
-      mockQuerySelector.mockReturnValue(null)
-      
+    test('should apply percentage widths regardless of container', async () => {
+      // Make table.closest return null (no container found)
+      mockTable.closest.mockReturnValue(null)
+
       const mockCols: any[] = []
       mockCreateElement.mockImplementation((tagName) => {
         if (tagName === 'col') {
@@ -217,14 +250,14 @@ describe('useTableDOMManipulation', () => {
         if (tagName === 'colgroup') return { ...mockColgroup }
         return createMockElement(tagName)
       })
-      
+
       const { addColgroup } = useTableDOMManipulation(getHeadersMock)
-      
+
       addColgroup()
       await nextTick()
-      
-      // Should use default 1000px container width
-      expect(mockCols[0].style.width).toBe('100px') // 10% of 1000px
+
+      // Widths are pure CSS percentages, independent of the container width.
+      expect(mockCols[0].style.width).toBe('10%')
     })
 
     test('should handle empty headers array', async () => {
@@ -283,6 +316,10 @@ describe('useTableDOMManipulation', () => {
     })
   })
 
+  // Note: ResizeObserver tests are omitted because onMounted lifecycle hooks
+  // don't execute properly without a Vue component context. The ResizeObserver
+  // functionality is tested implicitly through integration tests and manual testing.
+
   describe('edge cases and error handling', () => {
     test('should handle DOM query methods returning null', async () => {
       mockQuerySelectorAll.mockReturnValue([])
@@ -294,16 +331,14 @@ describe('useTableDOMManipulation', () => {
       await nextTick()
     })
 
-    test('should handle different container widths', async () => {
-      const containers = [
-        { clientWidth: 500 },
-        { clientWidth: 1500 },
-        { clientWidth: 800 }
-      ]
-      
-      for (const container of containers) {
-        mockQuerySelector.mockReturnValue(container)
-        
+    test('should apply the same widths regardless of container size', async () => {
+      const containerWidths = [500, 1500, 800]
+
+      for (const width of containerWidths) {
+        // Update container width and mock closest to return it
+        const testContainer = { clientWidth: width }
+        mockTable.closest.mockReturnValue(testContainer)
+
         const mockCols: any[] = []
         mockCreateElement.mockImplementation((tagName) => {
           if (tagName === 'col') {
@@ -314,17 +349,18 @@ describe('useTableDOMManipulation', () => {
           if (tagName === 'colgroup') return { ...mockColgroup }
           return createMockElement(tagName)
         })
-        
+
         const { addColgroup } = useTableDOMManipulation(getHeadersMock)
-        
+
         addColgroup()
         await nextTick()
-        
-        // 10% of container width
-        const expectedWidth = Math.floor(0.1 * container.clientWidth)
-        expect(mockCols[0].style.width).toBe(`${expectedWidth}px`)
-        
+
+        // Percentage widths are independent of the container's pixel width.
+        expect(mockCols[0].style.width).toBe('10%')
+
         vi.clearAllMocks()
+        mockObserve.mockClear()
+        mockDisconnect.mockClear()
       }
     })
 
@@ -333,7 +369,7 @@ describe('useTableDOMManipulation', () => {
         { title: 'Col1', value: 'col1', width: '12.5%', sortable: true, fixedWidth: true },
         { title: 'Col2', value: 'col2', width: '33.33%', sortable: true, fixedWidth: true }
       ])
-      
+
       const mockCols: any[] = []
       mockCreateElement.mockImplementation((tagName) => {
         if (tagName === 'col') {
@@ -344,14 +380,14 @@ describe('useTableDOMManipulation', () => {
         if (tagName === 'colgroup') return { ...mockColgroup }
         return createMockElement(tagName)
       })
-      
+
       const { addColgroup } = useTableDOMManipulation(getHeadersMock)
-      
+
       addColgroup()
       await nextTick()
-      
-      expect(mockCols[0].style.width).toBe('125px') // Math.floor(12.5% of 1000px)
-      expect(mockCols[1].style.width).toBe('333px') // Math.floor(33.33% of 1000px)
+
+      expect(mockCols[0].style.width).toBe('12.5%')
+      expect(mockCols[1].style.width).toBe('33.33%')
     })
 
     test('should handle timeout clearing when timeout is null', () => {

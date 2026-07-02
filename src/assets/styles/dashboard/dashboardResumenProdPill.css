@@ -1,0 +1,47 @@
+/* Shared dashboard table styles — extracted to remove duplicated CSS.
+ * Imported via <style scoped src> so each component keeps its own scope id.
+ * Members: Stock, Interc, Pending */
+
+.code-pill {
+  background: var(--dash-track);
+  font-weight: 600;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: var(--dash-text);
+}
+
+.prod-pill {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--dash-track);
+  color: var(--dash-text);
+}
+
+.prod-pill.prod-gna95 {
+  background: var(--prod-gna95-bg);
+  color: var(--prod-gna95-fg);
+}
+
+.prod-pill.prod-gna98 {
+  background: var(--prod-gna98-bg);
+  color: var(--prod-gna98-fg);
+}
+
+.prod-pill.prod-goa {
+  background: var(--prod-goa-bg);
+  color: var(--prod-goa-fg);
+}
+
+.prod-pill.prod-gob {
+  background: var(--prod-gob-bg);
+  color: var(--prod-gob-fg);
+}
+
+.prod-pill.prod-jet {
+  background: var(--prod-jet-bg);
+  color: var(--prod-jet-fg);
+}

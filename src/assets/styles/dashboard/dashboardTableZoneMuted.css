@@ -1,0 +1,12 @@
+/* Shared dashboard table styles — extracted to remove duplicated CSS.
+ * Imported via <style scoped src> so each component keeps its own scope id.
+ * Members: Stock, Interc */
+
+.zone-text {
+  color: var(--dash-text-strong);
+}
+
+.muted {
+  color: var(--dash-text-muted);
+  font-size: 12px;
+}
