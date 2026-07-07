@@ -33,6 +33,7 @@ import {
 } from '@cornflow-ui/core/types/frontendAutomation'
 import { TableSchema } from '@cornflow-ui/core/config/views'
 import { i18n, locale } from '@cornflow-ui/core/plugins/i18n'
+import { showSnackbar } from '@cornflow-ui/core/services/SnackbarService'
 import {
   resolveTableConfigTitles,
   getExecutionConfigFromSchemaConfig,
@@ -125,6 +126,8 @@ export const useGeneralStore = defineStore('general', {
     loadedExecutions: [] as LoadedExecution[],
     selectedExecution: null,
     autoLoadInterval: null,
+    /** Guards against overlapping auto-load ticks when a poll is still in flight. */
+    autoLoadTickInFlight: false,
     isDrawerPinned: false, // New state for drawer pin status
     uploadComponentKey: 0,
     tabBarKey: 0,
@@ -693,9 +696,7 @@ export const useGeneralStore = defineStore('general', {
 
     async autoLoadExecutions() {
       // Clear any existing interval
-      if (this.autoLoadInterval) {
-        clearInterval(this.autoLoadInterval)
-      }
+      this.stopAutoLoadExecutions()
 
       // Start a new interval. We poll only execution **state** (a few bytes)
       // via the lightweight `getExecutionState` endpoint, and only re-fetch
@@ -704,9 +705,23 @@ export const useGeneralStore = defineStore('general', {
       // the full `/data/` + instance for each still-running execution,
       // which for 500k-row instances meant several MB downloaded every 4s.
       this.autoLoadInterval = setInterval(async () => {
-        for (const execution of this.loadedExecutions) {
-          if (execution.state !== 0 && execution.state !== -7) continue
-          await this.refreshRunningExecution(execution)
+        // Prevent overlapping ticks. The callback is async, so if the previous
+        // tick is still awaiting slow or failing requests (e.g. a CORS/network
+        // failure that takes a while to reject), setInterval would fire another
+        // tick anyway and they would stack up into a flood of parallel calls.
+        // Skip while one is already running.
+        if (this.autoLoadTickInFlight) return
+        this.autoLoadTickInFlight = true
+        try {
+          for (const execution of this.loadedExecutions) {
+            if (execution.state !== 0 && execution.state !== -7) continue
+            // A hard failure of the poll itself (backend down/unavailable)
+            // stops the loop instead of hammering a failing endpoint every 4s.
+            const keepPolling = await this.refreshRunningExecution(execution)
+            if (!keepPolling) return
+          }
+        } finally {
+          this.autoLoadTickInFlight = false
         }
       }, 4000) // Check every 4 seconds
     },
@@ -715,22 +730,25 @@ export const useGeneralStore = defineStore('general', {
      * Polls a single running execution's lightweight state and, only when it
      * transitions out of the running set, re-fetches and stores the full
      * payload. Extracted from `autoLoadExecutions` to keep nesting/complexity
-     * low; errors are swallowed (logged) so one failure can't stop the loop.
+     * low. Returns `true` to keep polling, or `false` on a hard failure of the
+     * poll itself (backend down/unavailable) so the caller stops the interval.
      */
-    async refreshRunningExecution(execution: LoadedExecution) {
+    async refreshRunningExecution(
+      execution: LoadedExecution,
+    ): Promise<boolean> {
       try {
         const meta = await this.executionRepository.getExecutionState(
           execution.executionId,
         )
-        if (!meta) return
+        if (!meta) return true
         // Still running → keep polling, nothing to update yet.
-        if (meta.state === 0 || meta.state === -7) return
+        if (meta.state === 0 || meta.state === -7) return true
 
         // State transitioned: now (and only now) fetch the full payload.
         const updatedExecution = await this.executionRepository.loadExecution(
           execution.executionId,
         )
-        if (!updatedExecution) return
+        if (!updatedExecution) return true
 
         this.addLoadedExecution(updatedExecution)
 
@@ -740,8 +758,32 @@ export const useGeneralStore = defineStore('general', {
         ) {
           this.selectedExecution = updatedExecution
         }
+        return true
       } catch (error) {
+        // A hard failure of the poll itself (timeout, 502/503, network, invalid
+        // token) means the backend is down/unavailable — stop polling instead
+        // of hammering it (which also feeds the invalid-token cascade after a
+        // restart) and let the user know. (401 is already handled by the API
+        // client, which clears the session and redirects, so we skip it here.)
         console.error('Error auto-loading execution', error)
+        this.stopAutoLoadExecutions()
+        const message = error instanceof Error ? error.message : String(error)
+        if (!message.includes('Unauthorized')) {
+          showSnackbar(
+            i18n.global.t('projectExecution.snackbar.autoLoadError'),
+            'error',
+          )
+        }
+        return false
+      }
+    },
+
+    /** Stops the background execution-state polling interval, if running. */
+    stopAutoLoadExecutions() {
+      this.autoLoadTickInFlight = false
+      if (this.autoLoadInterval) {
+        clearInterval(this.autoLoadInterval)
+        this.autoLoadInterval = null
       }
     },
 

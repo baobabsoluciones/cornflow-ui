@@ -92,6 +92,12 @@ vi.mock('@cornflow-ui/core/plugins/i18n', () => ({
       locale: { value: 'en' },
     },
   },
+  i18n: {
+    global: {
+      locale: { value: 'en' },
+      t: (key: string) => key,
+    },
+  },
   locale: { value: 'en' },
 }))
 
@@ -1448,20 +1454,27 @@ describe('General Store', () => {
       expect(store.selectedExecution).toEqual(updated)
     })
 
-    test('swallows errors', async () => {
+    test('stops polling and notifies on a hard poll failure', async () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       const store = useGeneralStore()
       const execRepo = {
         getExecutionState: vi.fn().mockRejectedValue(new Error('state-fail')),
       }
       store.executionRepository = execRepo as any
+      const stopSpy = vi
+        .spyOn(store, 'stopAutoLoadExecutions')
+        .mockImplementation(() => {})
 
-      await store.refreshRunningExecution({
+      const result = await store.refreshRunningExecution({
         executionId: 'r1',
         state: 0,
       } as LoadedExecution)
 
+      // New contract: a failed poll returns false so the caller stops the
+      // interval, logs the error, and stops the background poller.
+      expect(result).toBe(false)
       expect(consoleSpy).toHaveBeenCalled()
+      expect(stopSpy).toHaveBeenCalled()
       consoleSpy.mockRestore()
     })
   })

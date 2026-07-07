@@ -63,6 +63,8 @@ export default {
       errorDelete: 'An error occurred while deleting the execution',
       successLoad: 'Execution loaded successfully',
       errorLoad: 'An error occurred while loading the execution',
+      autoLoadError:
+        'An unexpected error occurred while retrieving the execution information',
     },
     exitConfirmation: {
       title: 'Exit creation process',

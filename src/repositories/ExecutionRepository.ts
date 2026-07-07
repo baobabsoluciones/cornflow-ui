@@ -191,7 +191,11 @@ export default class ExecutionRepository {
       const exec = response.content
       return { state: exec.state, id: exec.id }
     }
-    return null
+    // The API client only throws on 401 (see Api.ts); for 403/503/5xx it
+    // resolves with a non-200 status. Throw here so the polling loop in
+    // `autoLoadExecutions` can stop retrying instead of hammering a failing
+    // endpoint every few seconds.
+    throw new Error(`Error getting execution state (HTTP ${response.status})`)
   }
 
   // Get full execution data by id
@@ -200,6 +204,12 @@ export default class ExecutionRepository {
 
     if (response.status === 200) {
       const execution = response.content
+      // Guard against a partial/corrupted response (seen with HTTP2 stream
+      // errors): without instance_id we would otherwise fire a doomed request
+      // to `/instance/undefined/data/`.
+      if (!execution.instance_id) {
+        throw new Error('Execution response is missing instance_id')
+      }
       const instanceRepository = new InstanceRepository()
       const instance = await instanceRepository.getInstance(
         execution.instance_id,
