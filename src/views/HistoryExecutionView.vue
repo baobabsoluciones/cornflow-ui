@@ -54,6 +54,7 @@
             :formatDateByTime="true"
             :useFixedWidth="true"
             :loadingExecutions="loadingExecutions"
+            :deletingExecutions="deletingExecutions"
             @loadExecution="loadExecution"
             @deleteExecution="deleteExecution"
           ></ProjectExecutionsTable>
@@ -116,6 +117,13 @@ export default {
       },
       showSnackbar: null,
       loadingExecutions: new Set(),
+      deletingExecutions: new Set(),
+      // Coalesce overlapping list fetches (see `fetchData`).
+      fetchInFlight: false,
+      fetchQueued: false,
+      // Pending id of the fetchData retry timer, cleared on unmount/deactivate so a
+      // late retry can't run on a torn-down component (would call `$t` on nothing).
+      fetchRetryTimer: null,
       hideReplanned: false,
       // Start `true` so the spinner is visible from the very first paint,
       // before `activated()` fires `fetchData`. Avoids the flash where
@@ -131,6 +139,17 @@ export default {
   },
   activated() {
     this.fetchData()
+    // Make sure the background poller is running so rows that are still loading
+    // flip to their final state while the user watches the history — even if
+    // the list request itself is failing. `loadedExecutionsSignature` then
+    // syncs those state changes into the table.
+    this.generalStore.autoLoadExecutions()
+  },
+  deactivated() {
+    this.clearFetchRetryTimer()
+  },
+  beforeUnmount() {
+    this.clearFetchRetryTimer()
   },
   computed: {
     title() {
@@ -198,8 +217,26 @@ export default {
         },
       ]
     },
+    /**
+     * Signature of the store's tracked executions (id + state). Changes only
+     * when an execution transitions state (the background poller updates
+     * `loadedExecutions` on transition), which is exactly when the history
+     * table needs to refresh its status chips.
+     */
+    loadedExecutionsSignature() {
+      return this.generalStore.loadedExecutions
+        .map((execution) => `${execution.executionId}:${execution.state}`)
+        .join('|')
+    },
   },
   watch: {
+    // Keep the history rows in sync with the live execution state held in the
+    // store. Without this, a row launched while the user is on this view stays
+    // stuck on "Loading" forever: the table is a one-shot snapshot from
+    // `fetchData`, while the actual completion is detected by the store poller.
+    loadedExecutionsSignature() {
+      this.syncExecutionStatesFromStore()
+    },
     dateOptionSelected(newVal, oldVal) {
       const today = new Date()
       const yesterday = new Date(today)
@@ -277,7 +314,29 @@ export default {
         item.action()
       }
     },
+    clearFetchRetryTimer() {
+      if (this.fetchRetryTimer) {
+        clearTimeout(this.fetchRetryTimer)
+        this.fetchRetryTimer = null
+      }
+    },
     async fetchData(attempt = 0) {
+      // Coalesce overlapping fetches. A single user action (picking a date
+      // option, typing custom dates) can fire several watchers, and each list
+      // query can be slow/heavy on the backend. Keep at most one request in
+      // flight plus one trailing refetch (with the latest dates) so we don't
+      // pile duplicate queries onto a backend that is already struggling while
+      // an execution is running.
+      if (attempt === 0) {
+        if (this.fetchInFlight) {
+          this.fetchQueued = true
+          return
+        }
+        this.fetchInFlight = true
+        // Show the "loading" state (not the previous rows) until the new data
+        // actually arrives.
+        this.data = []
+      }
       this.loadingData = true
       try {
         const result = await this.generalStore.fetchExecutionsByDateRange(
@@ -288,6 +347,10 @@ export default {
         if (result) {
           this.showSnackbar(this.$t('projectExecution.snackbar.succesSearch'))
           this.data = this.formatData(result)
+          // Overlay the freshest known state from the store so rows reflect any
+          // execution that has already finished/transitioned since the list was
+          // built on the backend.
+          this.syncExecutionStatesFromStore()
           return
         }
 
@@ -299,8 +362,11 @@ export default {
         // Retry once after a short delay before surfacing "no data" — by then
         // the token should be in place and the call succeeds transparently.
         if (attempt === 0) {
-          await new Promise((resolve) => setTimeout(resolve, 600))
-          return this.fetchData(1)
+          await new Promise((resolve) => {
+            this.fetchRetryTimer = setTimeout(resolve, 600)
+          })
+          this.fetchRetryTimer = null
+          return await this.fetchData(1)
         }
 
         this.data = this.formatData([])
@@ -313,6 +379,52 @@ export default {
         )
       } finally {
         this.loadingData = false
+        if (attempt === 0) {
+          this.fetchInFlight = false
+          // If a fetch was requested while this one ran, run it once now with
+          // whatever the current dates are.
+          if (this.fetchQueued) {
+            this.fetchQueued = false
+            this.fetchData()
+          }
+        }
+      }
+    },
+    /**
+     * Updates the state of the displayed rows from the store's tracked
+     * executions. The background poller keeps `loadedExecutions` current, so a
+     * row that was "Loading" when fetched flips to its final state here without
+     * needing another (possibly queued/stalled) list request.
+     */
+    syncExecutionStatesFromStore() {
+      const stateById = new Map(
+        this.generalStore.loadedExecutions.map((execution) => [
+          execution.executionId,
+          execution.state,
+        ]),
+      )
+      this.applyExecutionStates(stateById)
+    },
+    /**
+     * Applies a map of executionId -> state onto the displayed rows. Reassigns
+     * `this.data` with fresh references only when something actually changed,
+     * so the table re-renders the status chips (and we avoid needless churn).
+     */
+    applyExecutionStates(stateById) {
+      let changed = false
+      const next = this.data.map((group) => ({
+        ...group,
+        data: group.data.map((item) => {
+          const nextState = stateById.get(item.id)
+          if (nextState !== undefined && nextState !== item.state) {
+            changed = true
+            return { ...item, state: nextState }
+          }
+          return item
+        }),
+      }))
+      if (changed) {
+        this.data = next
       }
     },
     formatData(rawData) {
@@ -386,6 +498,9 @@ export default {
       }
     },
     async deleteExecution(execution) {
+      // Mark the row as deleting so its action shows a spinner instead of the
+      // trash icon while the (sometimes slow) DELETE + refetch is in flight.
+      this.deletingExecutions.add(execution.id)
       try {
         const result = await this.generalStore.deleteExecution(execution.id)
 
@@ -403,6 +518,8 @@ export default {
           this.$t('projectExecution.snackbar.errorDelete'),
           'error',
         )
+      } finally {
+        this.deletingExecutions.delete(execution.id)
       }
     },
   },

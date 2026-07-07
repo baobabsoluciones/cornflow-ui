@@ -237,14 +237,23 @@
 
             <!-- Delete execution -->
             <span>
-              <v-icon size="small" @click="deleteExecution(item)">
-                mdi-delete
-              </v-icon>
-              <v-tooltip activator="parent" location="bottom">
-                <span>
-                  {{ t('executionTable.deleteExecution') }}
-                </span>
-              </v-tooltip>
+              <template v-if="!deletingExecutions.has(item.id)">
+                <v-icon size="small" @click="deleteExecution(item)">
+                  mdi-delete
+                </v-icon>
+                <v-tooltip activator="parent" location="bottom">
+                  <span>
+                    {{ t('executionTable.deleteExecution') }}
+                  </span>
+                </v-tooltip>
+              </template>
+              <v-progress-circular
+                v-else
+                indeterminate
+                size="20"
+                width="2"
+                color="primary"
+              ></v-progress-circular>
             </span>
           </span>
         </template>
@@ -346,6 +355,10 @@ const props = defineProps({
     default: true,
   },
   loadingExecutions: {
+    type: Set,
+    default: () => new Set(),
+  },
+  deletingExecutions: {
     type: Set,
     default: () => new Set(),
   },

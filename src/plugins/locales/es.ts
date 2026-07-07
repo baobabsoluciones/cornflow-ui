@@ -65,6 +65,8 @@ export default {
       errorDelete: 'Ocurrió un error al eliminar la ejecución',
       successLoad: 'Ejecución cargada con éxito',
       errorLoad: 'Ocurrió un error al cargar la ejecución',
+      autoLoadError:
+        'Ocurrió un error inesperado al recuperar la información de la ejecución',
     },
     exitConfirmation: {
       title: 'Salir del proceso de creación',

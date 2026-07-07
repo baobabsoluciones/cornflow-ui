@@ -59,6 +59,8 @@ export default {
         "Une erreur est survenue lors de la suppression de l'exécution",
       successLoad: 'Exécution chargée avec succès',
       errorLoad: "Une erreur est survenue lors du chargement de l'exécution",
+      autoLoadError:
+        "Une erreur inattendue est survenue lors de la récupération des informations de l'exécution",
     },
     steps: {
       step1: {
