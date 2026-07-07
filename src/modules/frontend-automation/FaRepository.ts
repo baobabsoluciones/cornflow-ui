@@ -6,11 +6,11 @@ import type {
 import { transformOpenApiToTableConfig } from '@cornflow-ui/core/modules/frontend-automation/openApiTransform'
 
 /**
- * Repositorio de la feature premium FRONTEND-AUTOMATION.
+ * Repository for the FRONTEND-AUTOMATION feature.
  *
- * Carve de `repositories/SchemaRepository.ts`: aquí vive la carga de master-data desde el
- * endpoint `/frontend-automation/` (tablas configurables + secciones/grupos del drawer).
- * El core la consume vía el punto de extensión `loadMasterDataConfig` (no conoce este repo).
+ * Carve of `repositories/SchemaRepository.ts`: this owns loading master-data from the
+ * `/frontend-automation/` endpoint (configurable tables + drawer sections/groups).
+ * The core consumes it via the `loadMasterDataConfig` extension point (it does not know this repo).
  */
 export default class FaRepository {
   /**

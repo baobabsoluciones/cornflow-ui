@@ -1,12 +1,12 @@
 /**
- * Módulo premium: FRONTEND-AUTOMATION (master-data dinámico).
+ * Core module: FRONTEND-AUTOMATION (dynamic master-data).
  *
- * Aporta al core la config de master-data (tablas configurables + secciones/grupos del drawer)
- * cargada desde el endpoint `/frontend-automation/`, vía el punto de extensión `loadMasterDataConfig`.
- * El resto de la maquinaria de tablas/secciones (FrontendAutomationService, SectionView, AppDrawer)
- * permanece en el core; este módulo solo es la FUENTE de datos premium.
+ * Provides the core with the master-data config (configurable tables + drawer sections/groups)
+ * loaded from the `/frontend-automation/` endpoint, via the `loadMasterDataConfig` extension point.
+ * The rest of the table/section machinery (FrontendAutomationService, SectionView, AppDrawer)
+ * lives in the core; this module is only the data SOURCE.
  *
- * Contrato: src/types/extension.ts (§3.9) · Diseño: docs/CONTRATO_PUNTOS_EXTENSION.md
+ * Contract: src/types/extension.ts (§3.9).
  */
 import type {
   PremiumModule,

@@ -1,14 +1,14 @@
 /**
- * openApiTransform.ts — Transformación OpenAPI → config de tablas (PREMIUM frontend-automation).
+ * openApiTransform.ts — OpenAPI → table config transform (frontend-automation).
  *
- * Antes vivía en `@/utils/schemaUtils` (core), pero solo lo consume la feature premium
- * frontend-automation (vía `FaRepository`): toma el esquema OpenAPI del endpoint
- * `/frontend-automation/` y lo convierte al formato interno de tablas/secciones/grupos.
- * Movido aquí para que el core no exporte lógica específica de premium.
+ * Used only by the frontend-automation feature (via `FaRepository`): it takes the OpenAPI
+ * schema from the `/frontend-automation/` endpoint and converts it to the internal
+ * tables/sections/groups format. Kept in this module (not in `utils/schemaUtils`) so the
+ * core's generic schema utilities don't carry feature-specific logic.
  *
- * Reutiliza helpers genéricos que SÍ se quedan en el core (`@/utils/schemaUtils`):
- * `formatTitle`, `hasValidChoices`, `findFieldWithColumnsRef` (compartidos con la lógica de
- * comparación/diff de master-data del core) y `resolveTitleWithLocale` (`@/utils/i18nUtils`).
+ * Reuses generic helpers that stay in the core (`@cornflow-ui/core/utils/schemaUtils`):
+ * `formatTitle`, `hasValidChoices`, `findFieldWithColumnsRef` (shared with the core's
+ * master-data comparison/diff logic) and `resolveTitleWithLocale` (`@cornflow-ui/core/utils/i18nUtils`).
  */
 import { resolveTitleWithLocale } from '@cornflow-ui/core/utils/i18nUtils'
 import {
