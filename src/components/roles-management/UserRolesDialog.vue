@@ -120,7 +120,9 @@ const firstName = ref('')
 const lastName = ref('')
 const email = ref('')
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+// Bounded quantifiers (local part max 64, domain parts max 63) to avoid ReDoS
+// super-linear backtracking (SonarQube S5852).
+const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,63}\.[^\s@]{1,63}$/
 const isEmailValid = computed(
   () => email.value.trim() === '' || EMAIL_RE.test(email.value.trim()),
 )
