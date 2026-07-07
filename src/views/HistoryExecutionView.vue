@@ -121,6 +121,9 @@ export default {
       // Coalesce overlapping list fetches (see `fetchData`).
       fetchInFlight: false,
       fetchQueued: false,
+      // Pending id of the fetchData retry timer, cleared on unmount/deactivate so a
+      // late retry can't run on a torn-down component (would call `$t` on nothing).
+      fetchRetryTimer: null,
       hideReplanned: false,
       // Start `true` so the spinner is visible from the very first paint,
       // before `activated()` fires `fetchData`. Avoids the flash where
@@ -141,6 +144,12 @@ export default {
     // the list request itself is failing. `loadedExecutionsSignature` then
     // syncs those state changes into the table.
     this.generalStore.autoLoadExecutions()
+  },
+  deactivated() {
+    this.clearFetchRetryTimer()
+  },
+  beforeUnmount() {
+    this.clearFetchRetryTimer()
   },
   computed: {
     title() {
@@ -305,6 +314,12 @@ export default {
         item.action()
       }
     },
+    clearFetchRetryTimer() {
+      if (this.fetchRetryTimer) {
+        clearTimeout(this.fetchRetryTimer)
+        this.fetchRetryTimer = null
+      }
+    },
     async fetchData(attempt = 0) {
       // Coalesce overlapping fetches. A single user action (picking a date
       // option, typing custom dates) can fire several watchers, and each list
@@ -347,7 +362,10 @@ export default {
         // Retry once after a short delay before surfacing "no data" — by then
         // the token should be in place and the call succeeds transparently.
         if (attempt === 0) {
-          await new Promise((resolve) => setTimeout(resolve, 600))
+          await new Promise((resolve) => {
+            this.fetchRetryTimer = setTimeout(resolve, 600)
+          })
+          this.fetchRetryTimer = null
           return await this.fetchData(1)
         }
 
