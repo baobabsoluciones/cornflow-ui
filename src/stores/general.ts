@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+import { defineStore, acceptHMRUpdate } from 'pinia'
 import { markRaw } from 'vue'
 import session from '@cornflow-ui/core/services/AuthService'
 import appConfig from '@/app/config'
@@ -86,6 +86,12 @@ function buildNonEmptyChecksMap(dataChecks: any): Record<string, any[]> {
 
 const HISTORICAL_POLL_MS = 4000
 let historicalPollTimer: ReturnType<typeof setTimeout> | null = null
+
+// Module-scoped mirror of the store's auto-load interval so it can be cleared
+// on hot-module replacement (see the `import.meta.hot` block at the bottom).
+// Without this, Vite HMR leaves the previous module's `setInterval` running
+// during development, stacking up zombie pollers that flood the backend.
+let autoLoadPollTimer: ReturnType<typeof setInterval> | null = null
 
 function clearHistoricalPollTimer() {
   if (historicalPollTimer) {
@@ -724,6 +730,7 @@ export const useGeneralStore = defineStore('general', {
           this.autoLoadTickInFlight = false
         }
       }, 4000) // Check every 4 seconds
+      autoLoadPollTimer = this.autoLoadInterval
     },
 
     /**
@@ -785,6 +792,7 @@ export const useGeneralStore = defineStore('general', {
         clearInterval(this.autoLoadInterval)
         this.autoLoadInterval = null
       }
+      autoLoadPollTimer = null
     },
 
     removeLoadedExecution(index: number) {
@@ -963,3 +971,17 @@ export const useGeneralStore = defineStore('general', {
     },
   },
 })
+
+// During development, Vite hot-reloads this module on every edit but does not
+// stop timers started by the previous instance. Clear all background pollers on
+// dispose so they don't pile up into zombie intervals hammering the backend.
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    clearHistoricalPollTimer()
+    if (autoLoadPollTimer) {
+      clearInterval(autoLoadPollTimer)
+      autoLoadPollTimer = null
+    }
+  })
+  import.meta.hot.accept(acceptHMRUpdate(useGeneralStore, import.meta.hot))
+}
