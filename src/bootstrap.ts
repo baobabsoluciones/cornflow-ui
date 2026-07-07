@@ -41,6 +41,7 @@ import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import getAuthService from '@cornflow-ui/core/services/AuthServiceFactory'
 import { registerPremiumModules } from '@cornflow-ui/core/plugins/extensions'
 import type { PremiumModule } from '@cornflow-ui/core/types/extension'
+import { frontendAutomationModule } from '@cornflow-ui/core/modules/frontend-automation'
 
 export interface CreateCornflowAppOptions {
   /** Componente raíz (normalmente App.vue del shell). */
@@ -54,8 +55,13 @@ export interface CreateCornflowAppOptions {
 export async function createCornflowApp(
   options: CreateCornflowAppOptions,
 ): Promise<VueApp> {
-  // Register premium modules first so registerPlugins() can inject their routes/locales.
-  registerPremiumModules(options.premiumModules ?? [])
+  // Register modules first so registerPlugins() can inject their routes/locales.
+  // `frontend-automation` ships in core (master-data config source, always on);
+  // enterprise/consumer premium modules are appended after it.
+  registerPremiumModules([
+    frontendAutomationModule,
+    ...(options.premiumModules ?? []),
+  ])
 
   // Initialize external config first
   await config.initConfig()
