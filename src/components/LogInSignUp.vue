@@ -262,7 +262,9 @@ export default {
       emailRules: {
         required: (value) => value !== undefined || this.$t('rules.required'),
         format: (value) =>
-          /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ||
+          // Bounded quantifiers (local part max 64, domain parts max 63) to avoid
+          // ReDoS super-linear backtracking (SonarQube S5852).
+          /^[^\s@]{1,64}@[^\s@]{1,63}\.[^\s@]{1,63}$/.test(value) ||
           this.$t('rules.valid_email'),
       },
       passwordRules: {
