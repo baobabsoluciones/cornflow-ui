@@ -13,6 +13,7 @@ export function useTableHeight() {
   const mutationObserver = ref<MutationObserver | null>(null)
   const containerMutationObserver = ref<MutationObserver | null>(null)
   const resizeTimeout = ref<number | null>(null)
+  const initTimeout = ref<number | null>(null)
 
   /**
    * Check if we're in a maximized/fullscreen view
@@ -69,6 +70,12 @@ export function useTableHeight() {
    * Calculate the optimal table height based on available space
    */
   const calculateTableHeight = () => {
+    // Guard against the DOM being unavailable. Deferred timers/observers can
+    // fire after the host environment is torn down (e.g. after a test unmounts
+    // its component), at which point `document`/`window` no longer exist and
+    // the callback would throw an unhandled ReferenceError.
+    if (typeof document === 'undefined' || typeof globalThis.window === 'undefined')
+      return
     if (!tableContainer.value) return
 
     const { isMaximized, fullscreenBody } = isInFullscreenMode()
@@ -321,8 +328,11 @@ export function useTableHeight() {
       calculateTableHeight()
       setupResizeObserver()
 
-      // Recalculate after a short delay to ensure DOM is fully rendered
-      setTimeout(() => {
+      // Recalculate after a short delay to ensure DOM is fully rendered.
+      // Track the handle so cleanup() can cancel it and it never fires after
+      // the component (or test host) is torn down.
+      initTimeout.value = globalThis.window.setTimeout(() => {
+        initTimeout.value = null
         calculateTableHeight()
       }, 100)
     })
@@ -356,6 +366,12 @@ export function useTableHeight() {
 
     if (resizeTimeout.value) {
       clearTimeout(resizeTimeout.value)
+      resizeTimeout.value = null
+    }
+
+    if (initTimeout.value) {
+      clearTimeout(initTimeout.value)
+      initTimeout.value = null
     }
   }
 
