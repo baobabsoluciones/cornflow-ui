@@ -1,14 +1,14 @@
 /**
- * rolePermissions.ts — Mecanismo (CORE) de permisos por rol (denylist).
+ * rolePermissions.ts — CORE mechanism for role-based permissions (denylist).
  *
- * El CORE provee la LÓGICA de gating por rol; el PROYECTO (`@/app/rolesConfig`) provee solo los
- * DATOS (mapa rol → vistas/endpoints prohibidos). Antes la lógica vivía en `@/app/rolesConfig`,
- * lo que obligaba a core y a los módulos premium a depender de la capa de proyecto para el
- * mecanismo. Ahora las funciones reciben el `config` de datos como parámetro, de modo que tanto el
- * core (router, AppDrawer) como los módulos premium (vía `ExtensionContext.isViewAllowed`) usan
- * el mismo mecanismo sin acoplarse a un proyecto concreto.
+ * The CORE provides the role-based gating LOGIC; the PROJECT (`@/app/rolesConfig`) provides only the
+ * DATA (map of role → forbidden views/endpoints). The logic used to live in `@/app/rolesConfig`,
+ * which forced core and the premium modules to depend on the project layer for the
+ * mechanism. Now the functions receive the data `config` as a parameter, so that both the
+ * core (router, AppDrawer) and the premium modules (via `ExtensionContext.isViewAllowed`) use
+ * the same mechanism without coupling to a specific project.
  *
- * Semántica: ver `@/app/rolesConfig` (denylist; multi-rol permisivo: un rol sin restricción concede).
+ * Semantics: see `@/app/rolesConfig` (denylist; permissive multi-role: a role with no restriction grants access).
  */
 
 export interface RolePermissions {

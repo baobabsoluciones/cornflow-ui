@@ -1,8 +1,8 @@
 /**
- * dataChecks.ts — Predicados genéricos sobre el payload de `dataChecks` de una ejecución.
+ * dataChecks.ts — Generic predicates over an execution's `dataChecks` payload.
  *
- * Util de CORE (no premium): la usa el flujo histórico-KPI de `general.ts` y también el módulo
- * premium de recalculación. Vive en core para que `general.ts` no importe de un módulo premium.
+ * CORE util (not premium): used by the historic-KPI flow in `general.ts` and also by the
+ * premium recalculation module. It lives in core so `general.ts` does not import from a premium module.
  */
 
 /**

@@ -67,7 +67,7 @@
                   @update:model-value="handleNewFilterOperatorChange"
                 />
 
-                <!-- Boolean: direct Sí/No selector, no operator needed -->
+                <!-- Boolean: direct Yes/No selector, no operator needed -->
                 <template v-if="isBooleanFilterField">
                   <v-select
                     v-model="newFilter.value"
@@ -81,7 +81,7 @@
                   />
                 </template>
 
-                <!-- Date / datetime: only Desde + Hasta (operator is_between, hidden) -->
+                <!-- Date / datetime: only From + To (operator is_between, hidden) -->
                 <template v-else-if="isDateOnlyFilterField">
                   <div class="mb-2">
                     <v-text-field

@@ -74,8 +74,8 @@ export function buildInstanceDataFromAlternativeFields(
 export function useInstanceProcessing() {
   const { t, locale: i18nLocale } = useI18n()
   const store = useGeneralStore()
-  // Backend ETL inyectado por el módulo premium `etl` (§3.7); null si ETL no está habilitado.
-  // El core ya no importa `useEtlStore` — consume el backend por interfaz.
+  // ETL backend injected by the premium `etl` module (§3.7); null if ETL is not enabled.
+  // The core no longer imports `useEtlStore` — it consumes the backend through the interface.
   const etlBackend = getPremiumEtlBackend()
   const { processFileByPrefix, needsSpecialProcessing } = useFileProcessors()
 

@@ -1,15 +1,15 @@
 /**
- * useLatestPlanController.ts — Punto de consumo (CORE) del controlador de "plan actual".
+ * useLatestPlanController.ts — CORE consumption point for the "current plan" controller.
  *
- * `ProjectExecutionsTable` obtiene AQUÍ el controlador de latest-plan sin conocer el módulo
- * premium: lo pide al registro (§3.7 `capabilities.latestPlan`). Si ningún módulo lo aporta
- * (build sin latest-plan), devuelve una implementación INERTE (acción no disponible, sin modal).
- * El contrato vive en `@/types/latestPlan`.
+ * `ProjectExecutionsTable` obtains the latest-plan controller HERE without knowing about the
+ * premium module: it requests it from the registry (§3.7 `capabilities.latestPlan`). If no module
+ * provides it (build without latest-plan), it returns an INERT implementation (action unavailable, no modal).
+ * The contract lives in `@/types/latestPlan`.
  */
 import { getPremiumLatestPlan } from '@cornflow-ui/core/plugins/extensions'
 import type { LatestPlanController } from '@cornflow-ui/core/types/latestPlan'
 
-/** Controlador inerte: la acción "fijar como plan actual" no está disponible y no hay modal. */
+/** Inert controller: the "set as current plan" action is unavailable and there is no modal. */
 function createInertLatestPlanController(): LatestPlanController {
   return {
     isSetLatestPlanAvailable: () => false,
@@ -20,8 +20,8 @@ function createInertLatestPlanController(): LatestPlanController {
 }
 
 /**
- * Devuelve el controlador de latest-plan: la implementación premium si el módulo `latest-plan`
- * está registrado, o una inerte en caso contrario. Llamar en contexto de setup / Pinia activo.
+ * Returns the latest-plan controller: the premium implementation if the `latest-plan` module
+ * is registered, or an inert one otherwise. Call within a setup context / active Pinia.
  */
 export function useLatestPlanController(): LatestPlanController {
   return getPremiumLatestPlan() ?? createInertLatestPlanController()

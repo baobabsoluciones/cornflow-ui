@@ -1,33 +1,33 @@
 /**
- * layoutOffsets.ts — Canal reactivo de offsets de layout (core ← premium).
+ * layoutOffsets.ts — Reactive layout-offset channel (core ← premium).
  *
- * El CORE define este canal; los componentes globales premium (p. ej. banners fixed en la parte
- * superior) reportan aquí el alto que ocupan cuando son visibles. El layout del core
- * (`IndexView` → `.main-content`) lee el total y deja ese hueco, SIN conocer ningún módulo premium.
+ * The CORE defines this channel; premium global components (e.g. fixed banners at the top)
+ * report here the height they occupy when visible. The core layout
+ * (`IndexView` → `.main-content`) reads the total and leaves that gap, WITHOUT knowing any premium module.
  *
- * Invariante: el core no importa banners concretos ni sus stores para calcular el padding; solo
- * suma las contribuciones registradas por clave. Sin módulos premium → total 0 (sin offset).
+ * Invariant: the core imports no concrete banners nor their stores to compute the padding; it only
+ * sums the contributions registered by key. No premium modules → total 0 (no offset).
  */
 import { reactive, computed, type ComputedRef } from 'vue'
 
-/** Alturas (px) de banners fixed en el top, contribuidas por componentes premium, por clave. */
+/** Heights (px) of fixed top banners, contributed by premium components, keyed by name. */
 const topBannerOffsets = reactive<Record<string, number>>({})
 
 /**
- * Un componente premium reporta el alto (px) que su banner fixed ocupa en el top.
- * `px <= 0` (o banner oculto/desmontado) elimina la contribución.
+ * A premium component reports the height (px) its fixed banner occupies at the top.
+ * `px <= 0` (or a hidden/unmounted banner) removes the contribution.
  */
 export function setTopBannerOffset(key: string, px: number): void {
   if (px && px > 0) topBannerOffsets[key] = px
   else delete topBannerOffsets[key]
 }
 
-/** Padding-top total (px) que el `main-content` del core necesita para librar los banners fixed. */
+/** Total padding-top (px) the core's `main-content` needs to clear the fixed banners. */
 export const totalTopBannerOffset: ComputedRef<number> = computed(() =>
   Object.values(topBannerOffsets).reduce((sum, px) => sum + px, 0),
 )
 
-/** Limpia todas las contribuciones (uso en tests para aislar estado entre casos). */
+/** Clears all contributions (used in tests to isolate state between cases). */
 export function resetTopBannerOffsets(): void {
   for (const key of Object.keys(topBannerOffsets)) delete topBannerOffsets[key]
 }

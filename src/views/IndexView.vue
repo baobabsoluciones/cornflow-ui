@@ -110,8 +110,8 @@ const premiumBanners = computed(() => getPremiumGlobalComponents('app-banners'))
 const premiumFabs = computed(() => getPremiumGlobalComponents('app-fabs'))
 
 /**
- * Padding-top reservado para los banners fijos que los módulos premium reportan en el canal
- * de layout (`@/plugins/layoutOffsets`). El core no sabe qué banners hay: solo deja el hueco.
+ * Padding-top reserved for the fixed banners that premium modules report on the layout channel
+ * (`@/plugins/layoutOffsets`). The core doesn't know which banners exist: it just leaves the gap.
  */
 const mainContentStyle = computed(() =>
   totalTopBannerOffset.value

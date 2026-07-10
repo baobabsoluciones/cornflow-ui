@@ -1,26 +1,24 @@
 /**
- * index.ts — Punto de entrada público de `@cornflow-ui/core`.
+ * index.ts — Public entry point of `@cornflow-ui/core`.
  *
- * Superficie mínima del paquete core: el arranque (`createCornflowApp`) y el CONTRATO de puntos
- * de extensión (tipos + registro). El grueso de los símbolos del core (stores, composables,
- * componentes, repos, utils, types…) se consume por SUBPATH (`@cornflow-ui/core/<ruta>`) vía el
- * `exports` del package.json — no por este barrel — para no acoplar la superficie pública a un
- * único fichero ni romper tree-shaking (modelo Opción A: se shippean fuentes, el Vite del
- * proyecto compila).
+ * Minimal surface of the core package: the bootstrap (`createCornflowApp`) and the extension-point
+ * CONTRACT (types + registry). The bulk of the core symbols (stores, composables, components,
+ * repos, utils, types…) are consumed by SUBPATH (`@cornflow-ui/core/<path>`) via the package.json
+ * `exports` — not through this barrel — so the public surface is not coupled to a single file and
+ * tree-shaking is preserved (the package ships sources; the project's Vite compiles them).
  *
- * En el carve a dos repos, este fichero queda como el barrel de `@cornflow-ui/core`; el barrel de
- * `@cornflow-ui/enterprise` (src/enterprise.ts) reexporta core y añade los módulos premium.
- * Ver docs/PLAN_MIGRACION_NPM_PACKAGES.md (§2) y docs/CONTRATO_PUNTOS_EXTENSION.md.
+ * In the carve into two repos, this file remains the `@cornflow-ui/core` barrel; the
+ * `@cornflow-ui/enterprise` barrel (src/enterprise.ts) re-exports core and adds the premium modules.
  */
 
-// Arranque del core.
+// Core bootstrap.
 export { createCornflowApp } from '@cornflow-ui/core/bootstrap'
 export type { CreateCornflowAppOptions } from '@cornflow-ui/core/bootstrap'
 
-// Registro de módulos premium (lo invoca el shell/enterprise; el core nunca importa un módulo).
+// Premium module registration (invoked by the shell/enterprise; the core never imports a module).
 export { registerPremiumModules } from '@cornflow-ui/core/plugins/extensions'
 
-// Contrato de puntos de extensión (tipos que rellena el premium y, en parte, src/app).
+// Extension-point contract (types filled in by premium and, in part, by src/app).
 export type {
   ConfigAccessor,
   ExtensionContext,

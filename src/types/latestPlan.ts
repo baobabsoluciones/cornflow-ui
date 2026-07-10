@@ -1,21 +1,21 @@
 /**
- * latestPlan.ts — Contrato (CORE) del controlador de "plan actual" (latest-plan).
+ * latestPlan.ts — CORE contract for the "latest plan" (latest-plan) controller.
  *
- * El CORE define lo que necesita de la feature premium latest-plan en la tabla de ejecuciones:
- * unas queries (¿es el plan actual?, ¿se puede fijar?) y el componente de modal para confirmar
- * "fijar como plan actual". La IMPLEMENTACIÓN vive en `@/modules/latest-plan` y se inyecta por el
- * registro (§3.7 capability). Mantener el contrato en core evita que `ProjectExecutionsTable`
- * importe del módulo premium (ni el store ni el componente del modal).
+ * The CORE defines what it needs from the premium latest-plan feature in the executions table:
+ * a few queries (is it the latest plan?, can it be pinned?) and the modal component to confirm
+ * "pin as latest plan". The IMPLEMENTATION lives in `@/modules/latest-plan` and is injected by the
+ * registry (§3.7 capability). Keeping the contract in core prevents `ProjectExecutionsTable`
+ * from importing the premium module (neither the store nor the modal component).
  */
 import type { Component } from 'vue'
 
 export interface LatestPlanController {
-  /** ¿Está disponible la acción "fijar como plan actual" (feature + permisos)? */
+  /** Is the "pin as latest plan" action available (feature + permissions)? */
   isSetLatestPlanAvailable: () => boolean
-  /** ¿Es la ejecución dada el plan actual? (false si la feature no está disponible). */
+  /** Is the given execution the latest plan? (false if the feature is not available). */
   isLatestPlan: (executionId: string) => boolean
-  /** ¿Una ejecución en este estado puede fijarse como plan actual? */
+  /** Can an execution in this state be pinned as the latest plan? */
   canSetAsLatestPlan: (state: number) => boolean
-  /** Componente premium del modal para confirmar "fijar como plan actual" (null sin módulo). */
+  /** Premium modal component to confirm "pin as latest plan" (null without a module). */
   setLatestPlanModalComponent: Component | null
 }
