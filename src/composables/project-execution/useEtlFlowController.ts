@@ -1,10 +1,10 @@
 /**
- * useEtlFlowController.ts — Punto de consumo (CORE) del controlador del flujo ETL externo.
+ * useEtlFlowController.ts — CORE consumption point for the external ETL flow controller.
  *
- * El wizard de creación de ejecución (ProjectExecutionView) instancia AQUÍ el controlador, sin
- * conocer el módulo premium: lo pide al registro (§3.7 `capabilities.externalEtlFlow`). Si ningún
- * módulo lo aporta (build sin ETL), devuelve una implementación INERTE para que el core funcione
- * igual (flujo no activo). El contrato vive en `@/types/etlFlow`.
+ * The execution-creation wizard (ProjectExecutionView) instantiates the controller HERE, without
+ * knowing about the premium module: it requests it from the registry (§3.7 `capabilities.externalEtlFlow`).
+ * If no module provides it (build without ETL), it returns an INERT implementation so the core keeps
+ * working the same (flow not active). The contract lives in `@/types/etlFlow`.
  */
 import { computed, reactive } from 'vue'
 import { getPremiumExternalEtlFlow } from '@cornflow-ui/core/plugins/extensions'
@@ -13,7 +13,7 @@ import type {
   ExternalEtlFlowState,
 } from '@cornflow-ui/core/types/etlFlow'
 
-/** Controlador inerte: flujo siempre inactivo, mutadores no-op, submitUpdate rechaza. */
+/** Inert controller: flow always inactive, no-op mutators, submitUpdate rejects. */
 function createInertEtlFlowController(): ExternalEtlFlowController {
   const state = reactive<ExternalEtlFlowState>({
     initialData: null,
@@ -39,8 +39,8 @@ function createInertEtlFlowController(): ExternalEtlFlowController {
 }
 
 /**
- * Devuelve el controlador del flujo ETL: la implementación premium si el módulo `etl` está
- * registrado, o una inerte en caso contrario. Llamar en contexto de setup / Pinia activo.
+ * Returns the ETL flow controller: the premium implementation if the `etl` module is
+ * registered, or an inert one otherwise. Call within a setup context / active Pinia.
  */
 export function useEtlFlowController(): ExternalEtlFlowController {
   return getPremiumExternalEtlFlow() ?? createInertEtlFlowController()

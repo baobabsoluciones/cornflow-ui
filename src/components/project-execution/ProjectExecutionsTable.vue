@@ -311,7 +311,7 @@ const { t } = useI18n()
 
 // Get general store
 const generalStore = useGeneralStore()
-// Controlador de latest-plan inyectado por el módulo premium (§3.7); inerte si no hay módulo.
+// latest-plan controller injected by the premium module (§3.7); inert when the module is absent.
 const latestPlan = useLatestPlanController()
 
 // Latest plan modal state

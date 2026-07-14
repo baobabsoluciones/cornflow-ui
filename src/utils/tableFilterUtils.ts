@@ -36,7 +36,7 @@ export function getFilterFieldTypeFromSchemaProperty(prop: {
   return prop.type || 'string'
 }
 
-/** Date columns use only a Desde/Hasta range in the filter panel (no is/contains operators). */
+/** Date columns use only a from/to range in the filter panel (no is/contains operators). */
 export function isDateLikeFieldType(fieldType: string): boolean {
   return (
     fieldType === 'date' ||

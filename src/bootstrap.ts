@@ -1,15 +1,15 @@
 /**
- * bootstrap.ts — Punto de arranque del core: `createCornflowApp`.
+ * bootstrap.ts — Core entry point: `createCornflowApp`.
  *
- * Encapsula el arranque de la aplicación (config externa, i18n, Pinia, Vuetify, componentes
- * mango-vue, prefetch de usuario, mount) y acepta una lista de `PremiumModule` (enterprise).
- * Registra los módulos ANTES de `registerPlugins`, de modo que `applyPremiumRoutes` /
- * `applyPremiumLocales` (dentro de registerPlugins) inyecten sus contribuciones en el router/i18n
- * ya construidos.
+ * Encapsulates application startup (external config, i18n, Pinia, Vuetify, mango-vue
+ * components, user prefetch, mount) and accepts a list of `PremiumModule` (enterprise).
+ * Registers the modules BEFORE `registerPlugins`, so that `applyPremiumRoutes` /
+ * `applyPremiumLocales` (inside registerPlugins) inject their contributions into the already-built
+ * router/i18n.
  *
- * En el modelo objetivo (npm) esta función vive en `@cornflow-ui/core`; cada proyecto es un shell
- * delgado que la invoca (o usa `createEnterpriseApp` de `@cornflow-ui/enterprise`). Ver
- * docs/PLAN_MIGRACION_NPM_PACKAGES.md y docs/CONTRATO_PUNTOS_EXTENSION.md.
+ * In the target model (npm) this function lives in `@cornflow-ui/core`; each project is a thin
+ * shell that invokes it (or uses `createEnterpriseApp` from `@cornflow-ui/enterprise`). See
+ * docs/PLAN_MIGRACION_NPM_PACKAGES.md and docs/CONTRATO_PUNTOS_EXTENSION.md.
  */
 import { createApp, type App as VueApp, type Component } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
@@ -44,11 +44,11 @@ import type { PremiumModule } from '@cornflow-ui/core/types/extension'
 import { frontendAutomationModule } from '@cornflow-ui/core/modules/frontend-automation'
 
 export interface CreateCornflowAppOptions {
-  /** Componente raíz (normalmente App.vue del shell). */
+  /** Root component (normally the shell's App.vue). */
   rootComponent: Component
-  /** Módulos premium (enterprise). Vacío en proyectos core-only. */
+  /** Premium modules (enterprise). Empty in core-only projects. */
   premiumModules?: PremiumModule[]
-  /** Selector de montaje, o `false` para no montar (devuelve la app sin montar). Default '#app'. */
+  /** Mount selector, or `false` to skip mounting (returns the app unmounted). Default '#app'. */
   mount?: string | false
 }
 

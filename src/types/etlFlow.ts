@@ -1,19 +1,19 @@
 /**
- * etlFlow.ts — Contrato (CORE) del flujo de revisión ETL externo.
+ * etlFlow.ts — CORE contract for the external ETL review flow.
  *
- * El CORE define aquí la FORMA del controlador del flujo ETL que los componentes del wizard
- * consumen (vía la prop nullable `externalEtlFlow`). La IMPLEMENTACIÓN es premium
- * (`@/modules/etl/useExternalEtlFlow`) y se inyecta por el registro (§3.7 capability).
- * Mantener estos tipos en core evita que los componentes del wizard importen del módulo premium.
+ * The CORE defines here the SHAPE of the ETL flow controller that the wizard components
+ * consume (via the nullable `externalEtlFlow` prop). The IMPLEMENTATION is premium
+ * (`@/modules/etl/useExternalEtlFlow`) and is injected by the registry (§3.7 capability).
+ * Keeping these types in core prevents the wizard components from importing the premium module.
  */
 import type { ComputedRef } from 'vue'
 
 /**
- * Origen/estado de un switch de tabla en el flujo ETL externo.
- * - from_db: tabla cargada desde BD (switch por defecto = off / "siempre refrescar")
- * - from_excel: tabla subida como Excel (switch por defecto = on / "fija")
- * - edited_from_db: tabla venía de BD pero el usuario la editó en la UI
- * - reuploaded: el usuario re-subió un Excel reemplazando todos los datos
+ * Origin/state of a table switch in the external ETL flow.
+ * - from_db: table loaded from DB (switch default = off / "always refresh")
+ * - from_excel: table uploaded as Excel (switch default = on / "fixed")
+ * - edited_from_db: table came from DB but the user edited it in the UI
+ * - reuploaded: the user re-uploaded an Excel replacing all the data
  */
 export type TableSwitchVariant =
   | 'from_db'
@@ -47,8 +47,8 @@ export interface EtlUpdateResult {
 }
 
 /**
- * Controlador del flujo ETL: lo devuelve el composable premium `useExternalEtlFlow` y lo consume
- * el wizard (a través de `useEtlFlowController`, que cae a una implementación inerte sin ETL).
+ * ETL flow controller: returned by the premium composable `useExternalEtlFlow` and consumed by
+ * the wizard (through `useEtlFlowController`, which falls back to an inert implementation without ETL).
  */
 export interface ExternalEtlFlowController {
   state: ExternalEtlFlowState

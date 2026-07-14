@@ -33,8 +33,8 @@ export interface ObjectTableDeps {
 }
 
 /**
- * Builds a vertical parameter table for ETL review: columns "Parámetro",
- * "Valor", "Desde base de datos". One row per parameter so the switch is
+ * Builds a vertical parameter table for ETL review: columns "Parameter",
+ * "Value", "From database". One row per parameter so the switch is
  * clearly associated with each value.
  */
 export function createParameterTableVertical(

@@ -147,7 +147,7 @@
             </span>
           </div>
         </transition>
-        <!-- Lista de alertas: mismo estilo que SimpleList (v-alert warning tonal) -->
+        <!-- Alert list: same style as SimpleList (v-alert warning tonal) -->
         <template v-if="displayAsAlertList">
           <div v-if="localLoading" class="pa-4">
             <v-skeleton-loader type="text@5"></v-skeleton-loader>
@@ -2049,7 +2049,7 @@ defineExpose({ getRowProps })
 <style src="@cornflow-ui/core/assets/styles/components/core/CoreTable.css"></style>
 <style src="@cornflow-ui/core/assets/styles/components/core/CoreTableInlineEdit.css"></style>
 <style scoped>
-/* Modo lista de alertas: mismo estilo que SimpleList (alertas naranjas) */
+/* Alert list mode: same style as SimpleList (orange alerts) */
 .core-table-alert-list.simple-list-content {
   max-height: calc(100vh - 320px);
   overflow-y: auto;

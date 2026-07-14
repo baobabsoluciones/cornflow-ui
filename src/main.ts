@@ -1,8 +1,8 @@
 /**
- * main.ts — Shell de arranque del core standalone (@cornflow-ui/core).
+ * main.ts — Startup shell for the standalone core (@cornflow-ui/core).
  *
- * Sin módulos premium: arranca solo el core vía createCornflowApp. Un proyecto enterprise usa en su
- * lugar createEnterpriseApp (de @cornflow-ui/enterprise), que pre-registra los módulos premium.
+ * No premium modules: boots the core alone via createCornflowApp. An enterprise project uses
+ * createEnterpriseApp instead (from @cornflow-ui/enterprise), which pre-registers the premium modules.
  */
 import App from './App.vue'
 

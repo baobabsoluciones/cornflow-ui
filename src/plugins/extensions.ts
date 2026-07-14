@@ -1,15 +1,15 @@
 /**
- * extensions.ts — Registro y cableado de los módulos premium (core ← premium).
+ * extensions.ts — Premium module registration and wiring (core ← premium).
  *
- * El core registra aquí la lista de `PremiumModule` (vía `registerPremiumModules`) y expone
- * helpers de consulta (`getPremiumRoutes`, `getPremiumDrawerSections`, …) que los plugins del core
- * (router, i18n, drawer, layout) consumen. El core NUNCA importa un módulo concreto.
+ * The core registers the list of `PremiumModule` here (via `registerPremiumModules`) and exposes
+ * query helpers (`getPremiumRoutes`, `getPremiumDrawerSections`, …) consumed by the core plugins
+ * (router, i18n, drawer, layout). The core NEVER imports a concrete module.
  *
- * Contrato: src/types/extension.ts · Diseño: docs/CONTRATO_PUNTOS_EXTENSION.md
+ * Contract: src/types/extension.ts · Design: docs/CONTRATO_PUNTOS_EXTENSION.md
  *
- * NOTA (Fase 0): mientras no se registre ningún módulo, todos los helpers devuelven vacío y el
- * comportamiento del core es idéntico al actual. El orden "registrar antes de construir router/i18n"
- * lo garantizará el refactor de bootstrap (createCornflowApp) en un paso posterior.
+ * NOTE (Phase 0): while no module is registered, all helpers return empty and the core's
+ * behavior is identical to the current one. The "register before building router/i18n" ordering
+ * will be guaranteed by the bootstrap refactor (createCornflowApp) in a later step.
  */
 import type { RouteRecordRaw, Router } from 'vue-router'
 import appConfig from '@/app/config'
@@ -33,12 +33,12 @@ import type { LatestPlanController } from '@cornflow-ui/core/types/latestPlan'
 
 let registeredModules: PremiumModule[] = []
 
-/** Registra la lista de módulos premium. Idempotente (reemplaza la lista). */
+/** Registers the list of premium modules. Idempotent (replaces the list). */
 export function registerPremiumModules(modules: PremiumModule[]): void {
   registeredModules = [...modules]
 }
 
-/** Lista cruda de módulos registrados (sin filtrar por habilitado). */
+/** Raw list of registered modules (not filtered by enabled state). */
 export function getRegisteredPremiumModules(): PremiumModule[] {
   return registeredModules
 }
@@ -85,7 +85,7 @@ function getRoleNames(): string[] {
   return []
 }
 
-/** Construye el contexto que se pasa a los módulos para gating/capacidades. */
+/** Builds the context passed to the modules for gating/capabilities. */
 export function getExtensionContext(): ExtensionContext {
   const config = buildConfigAccessor()
   return {
@@ -118,7 +118,7 @@ function toRouteRecord(route: PremiumRoute): RouteRecordRaw {
   } as RouteRecordRaw
 }
 
-/** §3.1 Rutas premium (hijas de '/'), de los módulos habilitados. */
+/** §3.1 Premium routes (children of '/'), from the enabled modules. */
 export function getPremiumRoutes(): RouteRecordRaw[] {
   const ctx = getExtensionContext()
   return enabledModules(ctx).flatMap((m) => {
@@ -127,7 +127,7 @@ export function getPremiumRoutes(): RouteRecordRaw[] {
   })
 }
 
-/** §3.2 Entradas de drawer premium, filtradas por visibilidad y ordenadas. */
+/** §3.2 Premium drawer entries, filtered by visibility and sorted. */
 export function getPremiumDrawerSections(): PremiumDrawerSection[] {
   const ctx = getExtensionContext()
   return enabledModules(ctx)
@@ -136,7 +136,7 @@ export function getPremiumDrawerSections(): PremiumDrawerSection[] {
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 }
 
-/** §3.3 Componentes globales premium para una zona (banners/fabs/modales), filtrados y ordenados. */
+/** §3.3 Premium global components for a slot (banners/fabs/modals), filtered and sorted. */
 export function getPremiumGlobalComponents(
   slot: PremiumGlobalComponentSlot,
 ): PremiumGlobalComponent[] {
@@ -149,9 +149,9 @@ export function getPremiumGlobalComponents(
 }
 
 /**
- * §3.10 Aplica en cadena los decoradores de tabs de ejecución de los módulos habilitados.
- * El core (IndexView) pasa sus tabs y, opcionalmente, el nombre de la ruta activa; cada módulo
- * los anota/transforma (p. ej. latest-plan añade el ⭐). Sin módulos → devuelve los tabs intactos.
+ * §3.10 Applies the execution-tab decorators of the enabled modules in a chain.
+ * The core (IndexView) passes its tabs and, optionally, the active route name; each module
+ * annotates/transforms them (e.g. latest-plan adds the ⭐). No modules → returns the tabs untouched.
  */
 export function applyPremiumExecutionTabDecorators(
   tabs: ExecutionTab[],
@@ -164,7 +164,7 @@ export function applyPremiumExecutionTabDecorators(
   )
 }
 
-/** §3.4 Mensajes i18n premium mergeados por idioma (entre módulos). */
+/** §3.4 Premium i18n messages merged per language (across modules). */
 export function getMergedPremiumLocales(): PremiumLocaleMessages {
   const ctx = getExtensionContext()
   const merged: PremiumLocaleMessages = {}
@@ -178,9 +178,9 @@ export function getMergedPremiumLocales(): PremiumLocaleMessages {
 }
 
 /**
- * Ejecuta los hooks `onInitialDataLoaded` de los módulos habilitados y espera a todos.
- * El core lo llama desde `initializeData` tras cargar los datos base, de modo que no
- * necesita conocer ningún módulo premium (p. ej. la precarga de latest-plan).
+ * Runs the `onInitialDataLoaded` hooks of the enabled modules and awaits them all.
+ * The core calls it from `initializeData` after loading the base data, so it does not
+ * need to know any premium module (e.g. the latest-plan preload).
  */
 export async function runPremiumInitialDataHooks(): Promise<void> {
   const ctx = getExtensionContext()
@@ -192,9 +192,9 @@ export async function runPremiumInitialDataHooks(): Promise<void> {
 }
 
 /**
- * §3.7 Operaciones del backend ETL del primer módulo premium que las aporte (módulo `etl`).
- * Devuelve `null` si ningún módulo las aporta, de modo que el core (useInstanceProcessing) usa
- * el camino frontend. Invoca la factory del módulo, por lo que debe llamarse en contexto de setup.
+ * §3.7 ETL backend operations from the first premium module that provides them (`etl` module).
+ * Returns `null` if no module provides them, so the core (useInstanceProcessing) uses
+ * the frontend path. Invokes the module's factory, so it must be called in a setup context.
  */
 export function getPremiumEtlBackend(): EtlBackendOperations | null {
   const ctx = getExtensionContext()
@@ -203,9 +203,9 @@ export function getPremiumEtlBackend(): EtlBackendOperations | null {
 }
 
 /**
- * §3.7 Controlador del flujo de revisión ETL del primer módulo premium que lo aporte (`etl`).
- * Devuelve `null` si ninguno lo aporta; el core (useEtlFlowController) cae a una implementación
- * inerte. Invoca la factory del módulo, por lo que debe llamarse en contexto de setup/Pinia activo.
+ * §3.7 ETL review flow controller from the first premium module that provides it (`etl`).
+ * Returns `null` if none provides it; the core (useEtlFlowController) falls back to an inert
+ * implementation. Invokes the module's factory, so it must be called in a setup context / with Pinia active.
  */
 export function getPremiumExternalEtlFlow(): ExternalEtlFlowController | null {
   const ctx = getExtensionContext()
@@ -214,9 +214,9 @@ export function getPremiumExternalEtlFlow(): ExternalEtlFlowController | null {
 }
 
 /**
- * §3.7 Controlador de recalculación del primer módulo premium que lo aporte (`recalculation`).
- * Devuelve `null` si ninguno lo aporta; el core (useRecalculationController) cae a una
- * implementación inerte. Invoca la factory del módulo (llamar en contexto de setup/Pinia activo).
+ * §3.7 Recalculation controller from the first premium module that provides it (`recalculation`).
+ * Returns `null` if none provides it; the core (useRecalculationController) falls back to an
+ * inert implementation. Invokes the module's factory (call in a setup context / with Pinia active).
  */
 export function getPremiumRecalculation(): RecalculationController | null {
   const ctx = getExtensionContext()
@@ -225,9 +225,9 @@ export function getPremiumRecalculation(): RecalculationController | null {
 }
 
 /**
- * §3.7 Controlador de "plan actual" (latest-plan) del primer módulo premium que lo aporte.
- * Devuelve `null` si ninguno lo aporta; el core (useLatestPlanController) cae a una implementación
- * inerte. Invoca la factory del módulo (llamar en contexto de setup/Pinia activo).
+ * §3.7 "Latest plan" controller (latest-plan) from the first premium module that provides it.
+ * Returns `null` if none provides it; the core (useLatestPlanController) falls back to an inert
+ * implementation. Invokes the module's factory (call in a setup context / with Pinia active).
  */
 export function getPremiumLatestPlan(): LatestPlanController | null {
   const ctx = getExtensionContext()
@@ -236,9 +236,9 @@ export function getPremiumLatestPlan(): LatestPlanController | null {
 }
 
 /**
- * §3.9 Carga la config de master-data del primer módulo premium que la aporte
- * (frontend-automation). Devuelve `null` si ningún módulo la aporta, de modo que el core
- * funciona sin master-data (no-premium). El core lo llama desde `setConfigurations`.
+ * §3.9 Loads the master-data config from the first premium module that provides it
+ * (frontend-automation). Returns `null` if no module provides it, so the core
+ * works without master-data (non-premium). The core calls it from `setConfigurations`.
  */
 export async function loadPremiumMasterDataConfig(): Promise<MasterDataConfigContribution | null> {
   const ctx = getExtensionContext()
@@ -247,7 +247,7 @@ export async function loadPremiumMasterDataConfig(): Promise<MasterDataConfigCon
   return mod.loadMasterDataConfig!(ctx)
 }
 
-/** Interfaz mínima del i18n que necesitamos para inyectar locales (evita acoplarse a la versión). */
+/** Minimal i18n interface we need to inject locales (avoids coupling to the version). */
 interface I18nMessageTarget {
   global: {
     getLocaleMessage: (locale: string) => Record<string, unknown>
@@ -256,9 +256,9 @@ interface I18nMessageTarget {
 }
 
 /**
- * Inyecta las rutas premium en el router YA construido (no en tiempo de import).
- * Se llama tras `registerPremiumModules`, de modo que no depende del orden de import.
- * Las rutas premium se añaden como hijas de la ruta raíz (por defecto 'Home').
+ * Injects the premium routes into the already-built router (not at import time).
+ * Called after `registerPremiumModules`, so it does not depend on import order.
+ * Premium routes are added as children of the root route (default 'Home').
  */
 export function applyPremiumRoutes(router: Router, parentName = 'Home'): void {
   for (const record of getPremiumRoutes()) {
@@ -267,12 +267,12 @@ export function applyPremiumRoutes(router: Router, parentName = 'Home'): void {
 }
 
 /**
- * Inyecta los locales premium en la instancia i18n YA construida.
- * Precedencia: los mensajes existentes (core + app) ganan sobre los premium
- * (`deepMerge(premium, current)`), de modo que un proyecto nunca ve sus textos pisados por premium.
- * Como los módulos premium usan namespaces propios (agent.*, recalculation.*, …), en la práctica
- * solo añaden claves nuevas. (Nota: precedencia exacta app > premium > core requeriría capas
- * separadas; ver docs/CONTRATO_PUNTOS_EXTENSION.md.)
+ * Injects the premium locales into the already-built i18n instance.
+ * Precedence: the existing messages (core + app) win over the premium ones
+ * (`deepMerge(premium, current)`), so a project never sees its texts overridden by premium.
+ * Since premium modules use their own namespaces (agent.*, recalculation.*, …), in practice
+ * they only add new keys. (Note: exact app > premium > core precedence would require separate
+ * layers; see docs/CONTRATO_PUNTOS_EXTENSION.md.)
  */
 export function applyPremiumLocales(i18n: I18nMessageTarget): void {
   const premium = getMergedPremiumLocales()

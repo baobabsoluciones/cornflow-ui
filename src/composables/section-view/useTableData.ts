@@ -158,7 +158,7 @@ export function useTableData(
 
   // Check if we actually have execution data available
   const generalStore = useGeneralStore()
-  // Controlador de recalculación inyectado por el módulo premium (§3.7); inerte si no hay módulo.
+  // Recalculation controller injected by the premium module (§3.7); inert if no module is present.
   const recalculation = useRecalculationController()
 
   /** After master-data bulk/overwrite: POST `/update-plan-data/` then pending replan only if plan is outdated. */
