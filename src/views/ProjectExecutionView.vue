@@ -792,3 +792,14 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+/* The global `.view-container` rule in SectionView.css pins `overflow: hidden`
+   for all views, which clips this wizard so the Previous/Continue button row at
+   the bottom of the step can't be reached. This view scrolls as one page
+   instead. Scoped so SectionView (which relies on its own inner scroll) is
+   unaffected. */
+.view-container {
+  overflow-y: auto;
+}
+</style>
