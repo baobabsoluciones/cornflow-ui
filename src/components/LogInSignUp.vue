@@ -237,6 +237,7 @@ import { inject } from 'vue'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import getAuthService from '@cornflow-ui/core/services/AuthServiceFactory'
 import config from '@cornflow-ui/core/config'
+import { isPasswordStrongEnough } from '@cornflow-ui/core/utils/passwordStrength'
 import { useRoute } from 'vue-router'
 
 export default {
@@ -269,9 +270,10 @@ export default {
       },
       passwordRules: {
         required: (value) => value !== undefined || this.$t('rules.required'),
+        // Mirrors the backend CCN-STIC-807 password policy
         length: (value) =>
-          value.length >= 8 ||
-          this.$t('rules.password_length', { length: '8' }),
+          value.length >= 12 ||
+          this.$t('rules.password_length', { length: '12' }),
         capitalLetters: (value) =>
           value.split('').some((letter) => /[A-Z]/.test(letter)) ||
           this.$t('rules.password_capital_letters'),
@@ -290,6 +292,13 @@ export default {
         noSpace: (value) =>
           value.split('').filter((letter) => letter === ' ').length === 0 ||
           this.$t('rules.password_no_space'),
+        noDigitSequence: (value) =>
+          !/\d{6,}/.test(value || '') ||
+          this.$t('settings.passwordRuleDigitSequence'),
+        strength: (value) =>
+          !value ||
+          isPasswordStrongEnough(value) ||
+          this.$t('settings.passwordRuleStrength'),
       },
       passwordConfirmationRules: {
         required: (value) => value !== undefined || this.$t('rules.required'),
@@ -348,17 +357,24 @@ export default {
   methods: {
     async submitLogIn() {
       try {
-        let isAuthenticated
-        
+        let result
+
         if (this.isCornflowAuth) {
-          isAuthenticated = await this.auth.login(this.username, this.password)
+          result = await this.auth.login(this.username, this.password)
         } else {
-          isAuthenticated = await this.auth.login()
+          result = await this.auth.login()
         }
+        // Cornflow auth returns a LoginResult object, external providers a boolean
+        const isAuthenticated =
+          typeof result === 'boolean' ? result : result?.success
 
         if (isAuthenticated) {
           this.$router.push('/')
           this.showSnackbar(this.$t('logIn.snackbar_message_success'), 'success')
+        } else if (result?.mfaRequired || result?.mfaSetupRequired) {
+          // This legacy form does not implement the two-factor step: the
+          // SignInLanding login screen handles it
+          this.$router.push('/sign-in')
         } else {
           this.showSnackbar(this.$t('logIn.snackbar_message_error'), 'error')
         }

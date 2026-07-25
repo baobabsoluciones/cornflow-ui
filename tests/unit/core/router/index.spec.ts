@@ -239,9 +239,10 @@ describe('Router Configuration', () => {
     const mockTo = { path: '/dashboard', name: 'Dashboard' }
     const mockFrom = { path: '/project-execution' }
 
-    // Access the beforeEach guard
-    const guards = router.options.routes?.[1]?.beforeEnter
-    expect(guards).toBeDefined()
+    // Access the beforeEnter guard on the Home route (looked up by path so
+    // the test does not depend on the route order)
+    const homeRoute = router.options.routes?.find((route) => route.path === '/')
+    expect(homeRoute?.beforeEnter).toBeDefined()
   })
 
   test('should have all required routes present', async () => {
@@ -252,6 +253,7 @@ describe('Router Configuration', () => {
 
     expect(routePaths).toContain('/')
     expect(routePaths).toContain('/sign-in')
+    expect(routePaths).toContain('/reset-password')
 
     // Check that the router has the expected structure
     expect(routes.length).toBeGreaterThanOrEqual(2)

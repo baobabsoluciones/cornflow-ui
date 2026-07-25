@@ -11,7 +11,11 @@ const { snackbar, repo, userRepo } = vi.hoisted(() => ({
     assignRoleToUser: vi.fn(),
     removeRoleFromUser: vi.fn(),
   },
-  userRepo: { getAllUsers: vi.fn() },
+  userRepo: {
+    getAllUsers: vi.fn(),
+    updateUser: vi.fn(),
+    unlockUser: vi.fn(),
+  },
 }))
 
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (k: string) => k }) }))
@@ -174,5 +178,44 @@ describe('useRolesManagement - saveUserRoleAssignments', () => {
     const user: any = { id: 7, _role_ids: [], role_names: [] }
     expect(await rm.saveUserRoleAssignments(user, ['viewer'])).toBe(false)
     expect(snackbar).toHaveBeenCalledWith('rolesManagement.errorAssignRole', 'error')
+  })
+})
+
+describe('useRolesManagement - unlockUser', () => {
+  test('unlocks the user and mutates the row in place', async () => {
+    userRepo.unlockUser.mockResolvedValueOnce(true)
+    const rm = useRolesManagement()
+    const user: any = { id: 7, username: 'locked', locked: true }
+    expect(await rm.unlockUser(user)).toBe(true)
+    expect(userRepo.unlockUser).toHaveBeenCalledWith(7)
+    expect(user.locked).toBe(false)
+    expect(snackbar).toHaveBeenCalledWith(
+      'rolesManagement.userUnlocked',
+      'success',
+    )
+  })
+
+  test('reports an error when the endpoint rejects', async () => {
+    userRepo.unlockUser.mockRejectedValueOnce(new Error('x'))
+    const rm = useRolesManagement()
+    const user: any = { id: 7, username: 'locked', locked: true }
+    expect(await rm.unlockUser(user)).toBe(false)
+    expect(user.locked).toBe(true)
+    expect(snackbar).toHaveBeenCalledWith(
+      'rolesManagement.errorUnlockUser',
+      'error',
+    )
+  })
+
+  test('reports an error when the endpoint returns false', async () => {
+    userRepo.unlockUser.mockResolvedValueOnce(false)
+    const rm = useRolesManagement()
+    const user: any = { id: 7, username: 'locked', locked: true }
+    expect(await rm.unlockUser(user)).toBe(false)
+    expect(user.locked).toBe(true)
+    expect(snackbar).toHaveBeenCalledWith(
+      'rolesManagement.errorUnlockUser',
+      'error',
+    )
   })
 })

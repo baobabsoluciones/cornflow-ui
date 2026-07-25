@@ -60,7 +60,20 @@
               {{ avatar.initialsFor(item) }}
             </div>
             <div class="user-info">
-              <div class="user-name">{{ item.full_name }}</div>
+              <div class="user-name">
+                {{ item.full_name }}
+                <v-chip
+                  v-if="item.locked"
+                  size="x-small"
+                  color="error"
+                  variant="tonal"
+                  class="ml-1"
+                  data-test="locked-chip"
+                >
+                  <v-icon size="12" class="mr-1">mdi-lock</v-icon>
+                  {{ $t('rolesManagement.lockedBadge') }}
+                </v-chip>
+              </div>
               <div class="user-handle">@{{ item.username }}</div>
             </div>
           </div>
@@ -88,6 +101,17 @@
         </template>
 
         <template #item.actions="{ item }">
+          <v-btn
+            v-if="item.locked && canUnlock"
+            icon
+            size="x-small"
+            variant="text"
+            :title="$t('rolesManagement.unlockUser')"
+            data-test="unlock-button"
+            @click="$emit('unlock', item)"
+          >
+            <v-icon size="16" color="error">mdi-lock-open-variant</v-icon>
+          </v-btn>
           <v-btn
             icon
             size="x-small"
@@ -132,16 +156,20 @@ interface Props {
   selectedRole: Role | null
   search: string
   loading?: boolean
+  /** Whether the current user can unlock locked accounts (platform admin). */
+  canUnlock?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   loading: false,
+  canUnlock: false,
 })
 
 defineEmits<{
   (e: 'update:search', value: string): void
   (e: 'clear-filter'): void
   (e: 'edit', user: UserRow): void
+  (e: 'unlock', user: UserRow): void
 }>()
 
 const { t } = useI18n()
@@ -192,7 +220,7 @@ const headers = computed(() => [
     key: 'actions',
     sortable: false,
     align: 'end' as const,
-    width: 52,
+    width: 88,
   },
 ])
 

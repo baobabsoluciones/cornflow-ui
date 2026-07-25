@@ -4,7 +4,8 @@ import AuthService from '@cornflow-ui/core/services/AuthService'
 // Mock API client
 vi.mock('@cornflow-ui/core/api/Api', () => ({
   default: {
-    post: vi.fn()
+    post: vi.fn(),
+    put: vi.fn()
   }
 }))
 
@@ -44,16 +45,60 @@ describe('AuthService', () => {
         { username: 'testuser', password: 'password123' },
         { 'Content-Type': 'application/json' }
       )
-      expect(result).toBe(true)
+      expect(result).toEqual({ success: true, changePassword: false })
       expect(sessionStorageMock.setItem).toHaveBeenCalledWith('isAuthenticated', 'true')
       expect(sessionStorageMock.setItem).toHaveBeenCalledWith('token', 'mock-token')
       expect(sessionStorageMock.setItem).toHaveBeenCalledWith('userId', 'user-123')
+      expect(sessionStorageMock.removeItem).toHaveBeenCalledWith('isAdmin')
+      expect(sessionStorageMock.removeItem).toHaveBeenCalledWith('userRoles')
+      expect(sessionStorageMock.removeItem).toHaveBeenCalledWith('pwdChangeRequired')
     })
 
-    test('failed login sets authentication to false', async () => {
+    test('successful login includes the TOTP code in the request body when given', async () => {
+      const mockResponse = {
+        status: 200,
+        content: {
+          token: 'mock-token',
+          id: 'user-123'
+        }
+      }
+
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.post).mockResolvedValue(mockResponse)
+
+      const result = await AuthService.login('testuser', 'password123', '123456')
+
+      expect(client.post).toHaveBeenCalledWith(
+        '/login/',
+        { username: 'testuser', password: 'password123', totp_code: '123456' },
+        { 'Content-Type': 'application/json' }
+      )
+      expect(result).toEqual({ success: true, changePassword: false })
+    })
+
+    test('successful login with change_password flags the forced rotation', async () => {
+      const mockResponse = {
+        status: 200,
+        content: {
+          token: 'mock-token',
+          id: 'user-123',
+          change_password: true
+        }
+      }
+
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.post).mockResolvedValue(mockResponse)
+
+      const result = await AuthService.login('testuser', 'password123')
+
+      expect(result).toEqual({ success: true, changePassword: true })
+      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('pwdChangeRequired', 'true')
+    })
+
+    test('failed login sets authentication to false and returns the error message', async () => {
       const mockResponse = {
         status: 401,
-        content: {}
+        content: { error: 'Invalid credentials' }
       }
 
       const { default: client } = await import('@cornflow-ui/core/api/Api')
@@ -61,8 +106,40 @@ describe('AuthService', () => {
 
       const result = await AuthService.login('testuser', 'wrongpassword')
 
-      expect(result).toBe(false)
+      expect(result).toEqual({ success: false, errorMessage: 'Invalid credentials' })
       expect(sessionStorageMock.setItem).toHaveBeenCalledWith('isAuthenticated', 'false')
+    })
+
+    test('mfa_required response asks for the code without storing tokens', async () => {
+      const mockResponse = {
+        status: 200,
+        content: { mfa_required: true }
+      }
+
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.post).mockResolvedValue(mockResponse)
+
+      const result = await AuthService.login('testuser', 'password123')
+
+      expect(result).toEqual({ success: false, mfaRequired: true })
+      expect(sessionStorageMock.setItem).not.toHaveBeenCalledWith('token', expect.anything())
+      expect(sessionStorageMock.setItem).not.toHaveBeenCalledWith('isAuthenticated', 'true')
+    })
+
+    test('mfa_setup_required response stores the temporary token without a session', async () => {
+      const mockResponse = {
+        status: 200,
+        content: { mfa_setup_required: true, temp_token: 'temp-token-123' }
+      }
+
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.post).mockResolvedValue(mockResponse)
+
+      const result = await AuthService.login('testuser', 'password123')
+
+      expect(result).toEqual({ success: false, mfaSetupRequired: true })
+      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('isAuthenticated', 'false')
+      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('token', 'temp-token-123')
     })
 
     test('handles API errors gracefully', async () => {
@@ -70,6 +147,215 @@ describe('AuthService', () => {
       vi.mocked(client.post).mockRejectedValue(new Error('Network error'))
 
       await expect(AuthService.login('testuser', 'password123')).rejects.toThrow('Network error')
+    })
+  })
+
+  describe('mfaSetup', () => {
+    test('returns the secret and provisioning URI on success', async () => {
+      const mockResponse = {
+        status: 200,
+        content: {
+          secret: 'BASE32SECRET',
+          provisioning_uri: 'otpauth://totp/app:user?secret=BASE32SECRET'
+        }
+      }
+
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.post).mockResolvedValue(mockResponse)
+
+      const result = await AuthService.mfaSetup()
+
+      expect(client.post).toHaveBeenCalledWith(
+        '/mfa/setup/',
+        {},
+        { 'Content-Type': 'application/json' }
+      )
+      expect(result).toEqual({
+        secret: 'BASE32SECRET',
+        provisioningUri: 'otpauth://totp/app:user?secret=BASE32SECRET'
+      })
+    })
+
+    test('returns null on non-200 status', async () => {
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.post).mockResolvedValue({ status: 400, content: {} })
+
+      const result = await AuthService.mfaSetup()
+
+      expect(result).toBeNull()
+    })
+  })
+
+  describe('mfaVerify', () => {
+    test('stores the full session and returns the backup codes on success', async () => {
+      const mockResponse = {
+        status: 200,
+        content: {
+          token: 'full-token',
+          id: 'user-123',
+          backup_codes: ['aaaa-bbbb', 'cccc-dddd']
+        }
+      }
+
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.post).mockResolvedValue(mockResponse)
+
+      const result = await AuthService.mfaVerify('123456')
+
+      expect(client.post).toHaveBeenCalledWith(
+        '/mfa/verify/',
+        { totp_code: '123456' },
+        { 'Content-Type': 'application/json' }
+      )
+      expect(result).toEqual({ backupCodes: ['aaaa-bbbb', 'cccc-dddd'] })
+      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('isAuthenticated', 'true')
+      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('token', 'full-token')
+      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('userId', 'user-123')
+      expect(sessionStorageMock.removeItem).toHaveBeenCalledWith('isAdmin')
+      expect(sessionStorageMock.removeItem).toHaveBeenCalledWith('userRoles')
+    })
+
+    test('returns empty backup codes when the response omits them', async () => {
+      const mockResponse = {
+        status: 200,
+        content: { token: 'full-token', id: 'user-123' }
+      }
+
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.post).mockResolvedValue(mockResponse)
+
+      const result = await AuthService.mfaVerify('123456')
+
+      expect(result).toEqual({ backupCodes: [] })
+    })
+
+    test('returns null on invalid code', async () => {
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.post).mockResolvedValue({ status: 400, content: {} })
+
+      const result = await AuthService.mfaVerify('000000')
+
+      expect(result).toBeNull()
+      expect(sessionStorageMock.setItem).not.toHaveBeenCalledWith('isAuthenticated', 'true')
+    })
+  })
+
+  describe('requestPasswordReset', () => {
+    test('sends the email to the recover-password endpoint and returns true on 200', async () => {
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.put).mockResolvedValue({ status: 200, content: {} })
+
+      const result = await AuthService.requestPasswordReset('user@example.com')
+
+      expect(client.put).toHaveBeenCalledWith(
+        '/user/recover-password/',
+        { email: 'user@example.com' },
+        { 'Content-Type': 'application/json' }
+      )
+      expect(result).toBe(true)
+    })
+
+    test('returns false on a non-200 status', async () => {
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.put).mockResolvedValue({ status: 400, content: {} })
+
+      const result = await AuthService.requestPasswordReset('user@example.com')
+
+      expect(result).toBe(false)
+    })
+
+    test('handles API errors gracefully', async () => {
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.put).mockRejectedValue(new Error('Network error'))
+
+      await expect(AuthService.requestPasswordReset('user@example.com')).rejects.toThrow('Network error')
+    })
+  })
+
+  describe('resetPassword', () => {
+    test('sends the new password with the reset token as Bearer authorization', async () => {
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.put).mockResolvedValue({ status: 200, content: {} })
+
+      const result = await AuthService.resetPassword('reset-token-123', 'NewPassword1!')
+
+      expect(client.put).toHaveBeenCalledWith(
+        '/user/reset-password/',
+        { password: 'NewPassword1!' },
+        {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer reset-token-123'
+        }
+      )
+      expect(result).toEqual({ success: true })
+    })
+
+    test('marks the link invalid on a 401 response', async () => {
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.put).mockResolvedValue({
+        status: 401,
+        content: { error: 'Invalid token' }
+      })
+
+      const result = await AuthService.resetPassword('used-token', 'NewPassword1!')
+
+      expect(result).toEqual({
+        success: false,
+        message: 'Invalid token',
+        linkInvalid: true
+      })
+    })
+
+    test('marks the link invalid on a 403 response', async () => {
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.put).mockResolvedValue({
+        status: 403,
+        content: { error: 'Forbidden' }
+      })
+
+      const result = await AuthService.resetPassword('forged-token', 'NewPassword1!')
+
+      expect(result).toEqual({
+        success: false,
+        message: 'Forbidden',
+        linkInvalid: true
+      })
+    })
+
+    test('returns the backend message without flagging the link on other failures', async () => {
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.put).mockResolvedValue({
+        status: 400,
+        content: { error: 'Password too weak' }
+      })
+
+      const result = await AuthService.resetPassword('reset-token-123', 'weak')
+
+      expect(result).toEqual({
+        success: false,
+        message: 'Password too weak',
+        linkInvalid: false
+      })
+    })
+
+    test('handles a failure response without content', async () => {
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.put).mockResolvedValue({ status: 500, content: undefined })
+
+      const result = await AuthService.resetPassword('reset-token-123', 'NewPassword1!')
+
+      expect(result).toEqual({
+        success: false,
+        message: undefined,
+        linkInvalid: false
+      })
+    })
+
+    test('handles API errors gracefully', async () => {
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.put).mockRejectedValue(new Error('Network error'))
+
+      await expect(AuthService.resetPassword('reset-token-123', 'NewPassword1!')).rejects.toThrow('Network error')
     })
   })
 
@@ -121,12 +407,14 @@ describe('AuthService', () => {
       mockStorage['isAuthenticated'] = 'true'
       mockStorage['token'] = 'mock-token'
       mockStorage['userId'] = 'user-123'
+      mockStorage['pwdChangeRequired'] = 'true'
 
       AuthService.logout()
 
       expect(sessionStorageMock.setItem).toHaveBeenCalledWith('isAuthenticated', 'false')
       expect(sessionStorageMock.removeItem).toHaveBeenCalledWith('token')
       expect(sessionStorageMock.removeItem).toHaveBeenCalledWith('userId')
+      expect(sessionStorageMock.removeItem).toHaveBeenCalledWith('pwdChangeRequired')
     })
   })
 

@@ -76,10 +76,28 @@
               <v-list-item-title class="mb-2 settings-title">{{
                 $t('settings.userSecurity')
               }}</v-list-item-title>
+              <v-alert
+                v-if="passwordChangeForced"
+                type="warning"
+                variant="tonal"
+                class="mb-3"
+                style="max-width: 600px"
+                data-test="forced-change-alert"
+              >
+                {{ $t('settings.passwordChangeForced') }}
+              </v-alert>
               <v-list-item-subtitle class="mb-2">{{
                 $t('settings.changePassword')
               }}</v-list-item-subtitle>
               <v-form>
+                <MInputField
+                  style="width: 300px !important"
+                  class="mt-4"
+                  v-model="currentPassword"
+                  :title="$t('settings.currentPassword')"
+                  type="password"
+                >
+                </MInputField>
                 <MInputField
                   style="width: 300px !important"
                   class="mt-4"
@@ -107,6 +125,25 @@
                 >
               </v-form>
             </v-list-item>
+
+            <v-divider></v-divider>
+
+            <v-list-item class="mt-6">
+              <v-list-item-title class="mb-2 settings-title">{{
+                $t('settings.mfaTitle')
+              }}</v-list-item-title>
+              <v-list-item-subtitle class="mb-2">{{
+                $t('settings.mfaResetDescription')
+              }}</v-list-item-subtitle>
+              <v-btn
+                color="primary"
+                variant="outlined"
+                class="my-2"
+                @click="resetMfa"
+                data-test="mfa-reset-button"
+                >{{ $t('settings.mfaResetButton') }}</v-btn
+              >
+            </v-list-item>
           </v-list>
         </v-col>
       </template>
@@ -120,6 +157,10 @@ import { useI18n } from 'vue-i18n'
 import { inject } from 'vue'
 import config from '@cornflow-ui/core/config'
 import { changeLanguage } from '@cornflow-ui/core/plugins/i18n'
+import {
+  isPasswordStrongEnough,
+  PASSWORD_MIN_LENGTH,
+} from '@cornflow-ui/core/utils/passwordStrength'
 
 export default {
   components: {},
@@ -137,8 +178,10 @@ export default {
       ],
       passwordRules: [
         (value) =>
-          (value !== undefined && value.length >= 5) ||
-          this.$t('settings.passwordRuleLength', { length: '5' }),
+          (value !== undefined && value.length >= PASSWORD_MIN_LENGTH) ||
+          this.$t('settings.passwordRuleLength', {
+            length: `${PASSWORD_MIN_LENGTH}`,
+          }),
         (value) =>
           /[A-Z]/.test(value) || this.$t('settings.passwordRuleCharacters'),
         (value) =>
@@ -150,9 +193,17 @@ export default {
           this.$t('settings.passwordRuleCharacters'),
         (value) => !/\s/.test(value) || this.$t('settings.passWordRuleNoSpace'),
         (value) =>
+          !/\d{6,}/.test(value || '') ||
+          this.$t('settings.passwordRuleDigitSequence'),
+        (value) =>
+          !value ||
+          isPasswordStrongEnough(value) ||
+          this.$t('settings.passwordRuleStrength'),
+        (value) =>
           value === this.newPassword ||
           this.$t('settings.passwordRuleNotMatch'),
       ],
+      currentPassword: '',
       newPassword: '',
       confirmPassword: '',
     }
@@ -164,6 +215,11 @@ export default {
       this.selectedTab === 'user-profile'
     ) {
       this.selectedTab = 'user-settings'
+    }
+    // When the password has expired (or a change is forced) the user lands
+    // here and the profile tab is opened directly
+    if (this.passwordChangeForced && config.auth.type === 'cornflow') {
+      this.selectedTab = 'user-profile'
     }
     // Initialize language from current i18n locale
     this.language = this.$i18n.locale
@@ -186,8 +242,15 @@ export default {
     },
   },
   computed: {
+    passwordChangeForced() {
+      return (
+        this.$route?.query?.changePassword === 'true' ||
+        sessionStorage.getItem('pwdChangeRequired') === 'true'
+      )
+    },
     validPassword() {
       return (
+        this.currentPassword?.length > 0 &&
         this.newPassword?.length > 0 &&
         this.confirmPassword?.length > 0 &&
         this.newPassword === this.confirmPassword &&
@@ -223,6 +286,7 @@ export default {
       this.selectedTab = newTab
     },
     resetPasswordFields() {
+      this.currentPassword = undefined
       this.newPassword = undefined
       this.confirmPassword = undefined
       this.passwordRules.every((rule) => rule(this.newPassword) === true)
@@ -234,16 +298,47 @@ export default {
         const result = await this.generalStore.changeUserPassword(
           user.id,
           this.newPassword,
+          this.currentPassword,
         )
-        if (result) {
+        if (result?.success) {
           this.resetPasswordFields()
-          this.showSnackbar(this.$t('settings.snackbarMessageSuccess'))
+          // Changing the password revokes every session token (including
+          // the current one), so the user must log in again
+          this.showSnackbar(this.$t('settings.snackbarMessageSuccessRelogin'))
+          const { default: authService } = await import(
+            '@cornflow-ui/core/services/AuthService'
+          )
+          authService.logout()
+          this.$router.push({ path: '/sign-in', query: { changed: 'true' } })
         } else {
-          this.showSnackbar(this.$t('settings.snackbarMessageError'), 'error')
+          this.showSnackbar(
+            result?.message || this.$t('settings.snackbarMessageError'),
+            'error',
+          )
         }
       } catch (error) {
         console.error('Failed to change password:', error)
         this.showSnackbar(this.$t('settings.snackbarMessageError'), 'error')
+      }
+    },
+    async resetMfa() {
+      try {
+        const confirmed = window.confirm(
+          this.$t('settings.mfaResetConfirm'),
+        )
+        if (!confirmed) {
+          return
+        }
+        const user = this.generalStore.getUser
+        const success = await this.generalStore.resetUserMfa(user.id)
+        if (success) {
+          this.showSnackbar(this.$t('settings.mfaResetSuccess'))
+        } else {
+          this.showSnackbar(this.$t('settings.mfaResetError'), 'error')
+        }
+      } catch (error) {
+        console.error('Failed to reset the two-factor authentication:', error)
+        this.showSnackbar(this.$t('settings.mfaResetError'), 'error')
       }
     },
   },

@@ -209,8 +209,23 @@ export const useGeneralStore = defineStore('general', {
         this.user = user
 
         // Derive admin status and role names; persist both for route guards (available before store is ready)
-        const isAdmin = myAssignments.some((a: import('@cornflow-ui/core/repositories/RoleRepository').UserRoleAssignment) => a.role === 'admin')
+        // Platform administrators get the admin UI plus platform-only
+        // capabilities (e.g. unlocking accounts)
+        const isPlatformAdmin = myAssignments.some(
+          (a: import('@cornflow-ui/core/repositories/RoleRepository').UserRoleAssignment) =>
+            a.role === 'platform_admin',
+        )
+        const isAdmin =
+          isPlatformAdmin ||
+          myAssignments.some(
+            (a: import('@cornflow-ui/core/repositories/RoleRepository').UserRoleAssignment) =>
+              a.role === 'admin',
+          )
         sessionStorage.setItem('isAdmin', isAdmin ? 'true' : 'false')
+        sessionStorage.setItem(
+          'isPlatformAdmin',
+          isPlatformAdmin ? 'true' : 'false',
+        )
         const roleNames = myAssignments.map((a: import('@cornflow-ui/core/repositories/RoleRepository').UserRoleAssignment) => a.role)
         sessionStorage.setItem('userRoles', JSON.stringify(roleNames))
       } catch (error) {
@@ -235,15 +250,33 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
-    async changeUserPassword(userId: string, password: string) {
+    async changeUserPassword(
+      userId: string,
+      password: string,
+      currentPassword?: string,
+    ): Promise<{ success: boolean; message?: string }> {
       try {
         const response = await this.userRepository.changePassword(
           userId,
           password,
+          currentPassword,
         )
+        if (response.success) {
+          // A successful change clears any pending forced password change
+          sessionStorage.removeItem('pwdChangeRequired')
+        }
         return response
       } catch (error) {
         console.error('Error changing password', error)
+        return { success: false }
+      }
+    },
+
+    async resetUserMfa(userId: string): Promise<boolean> {
+      try {
+        return await this.userRepository.resetMfa(userId)
+      } catch (error) {
+        console.error('Error resetting the two-factor authentication', error)
         return false
       }
     },
@@ -968,6 +1001,15 @@ export const useGeneralStore = defineStore('general', {
      */
     isAdmin(): boolean {
       return sessionStorage.getItem('isAdmin') === 'true'
+    },
+
+    /**
+     * Returns true if the currently logged-in user is a platform
+     * administrator (can unlock locked accounts).
+     * Reads from sessionStorage (set during login).
+     */
+    isPlatformAdmin(): boolean {
+      return sessionStorage.getItem('isPlatformAdmin') === 'true'
     },
   },
 })

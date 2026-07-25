@@ -5,7 +5,8 @@ import UserRepository from '@cornflow-ui/core/repositories/UserRepository'
 vi.mock('@cornflow-ui/core/api/Api', () => ({
   default: {
     get: vi.fn(),
-    put: vi.fn()
+    put: vi.fn(),
+    remove: vi.fn()
   }
 }))
 
@@ -97,10 +98,30 @@ describe('UserRepository', () => {
       expect(mockClient.put).toHaveBeenCalledWith('/user/test-user-id/', {
         password: 'newPassword123'
       })
-      expect(result).toBe(true)
+      expect(result).toEqual({ success: true })
     })
 
-    test('should return false when password change fails with non-200 status', async () => {
+    test('should send current_password when provided', async () => {
+      const mockResponse = {
+        status: 200,
+        content: { success: true }
+      }
+      mockClient.put.mockResolvedValue(mockResponse)
+
+      const result = await repository.changePassword(
+        'test-user-id',
+        'newPassword123',
+        'oldPassword456'
+      )
+
+      expect(mockClient.put).toHaveBeenCalledWith('/user/test-user-id/', {
+        password: 'newPassword123',
+        current_password: 'oldPassword456'
+      })
+      expect(result).toEqual({ success: true })
+    })
+
+    test('should return failure with message when password change fails with non-200 status', async () => {
       const mockResponse = {
         status: 400,
         content: { error: 'Invalid password' }
@@ -109,7 +130,7 @@ describe('UserRepository', () => {
 
       const result = await repository.changePassword('test-user-id', 'weak')
 
-      expect(result).toBe(false)
+      expect(result).toEqual({ success: false, message: 'Invalid password' })
     })
 
     test('should reject when API call fails', async () => {
@@ -131,7 +152,7 @@ describe('UserRepository', () => {
       expect(mockClient.put).toHaveBeenCalledWith('/user/test-user-id/', {
         password: ''
       })
-      expect(result).toBe(true)
+      expect(result).toEqual({ success: true })
     })
 
     test('should handle unauthorized access', async () => {
@@ -143,7 +164,7 @@ describe('UserRepository', () => {
 
       const result = await repository.changePassword('test-user-id', 'newPassword123')
 
-      expect(result).toBe(false)
+      expect(result).toEqual({ success: false, message: 'Unauthorized' })
     })
 
     test('should handle forbidden access', async () => {
@@ -155,7 +176,32 @@ describe('UserRepository', () => {
 
       const result = await repository.changePassword('test-user-id', 'newPassword123')
 
+      expect(result).toEqual({ success: false, message: 'Forbidden' })
+    })
+  })
+
+  describe('resetMfa', () => {
+    test('should return true when the MFA reset succeeds', async () => {
+      mockClient.remove.mockResolvedValue({ status: 200, content: {} })
+
+      const result = await repository.resetMfa('test-user-id')
+
+      expect(mockClient.remove).toHaveBeenCalledWith('/user/test-user-id/mfa/')
+      expect(result).toBe(true)
+    })
+
+    test('should return false when the MFA reset fails', async () => {
+      mockClient.remove.mockResolvedValue({ status: 400, content: {} })
+
+      const result = await repository.resetMfa('test-user-id')
+
       expect(result).toBe(false)
+    })
+
+    test('should reject when API call fails', async () => {
+      mockClient.remove.mockRejectedValue(new Error('Network error'))
+
+      await expect(repository.resetMfa('test-user-id')).rejects.toThrow('Network error')
     })
   })
 })

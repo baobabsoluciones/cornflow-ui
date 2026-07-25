@@ -5,7 +5,8 @@ import { createI18n } from 'vue-i18n'
 import { nextTick } from 'vue'
 
 // ── Hoisted controllable composable + appConfig ─────────────────────────────
-const { rm, coreParams } = vi.hoisted(() => ({
+const { rm, coreParams, platformAdmin } = vi.hoisted(() => ({
+  platformAdmin: { value: false },
   rm: {
     roles: { value: [] as any[] },
     loadingRoles: { value: false },
@@ -22,6 +23,7 @@ const { rm, coreParams } = vi.hoisted(() => ({
     deleteRole: vi.fn().mockResolvedValue(true),
     updateUserProfile: vi.fn().mockResolvedValue(true),
     saveUserRoleAssignments: vi.fn().mockResolvedValue(true),
+    unlockUser: vi.fn().mockResolvedValue(true),
   },
   coreParams: { value: { parameters: { allowEditRoles: true } } },
 }))
@@ -32,6 +34,12 @@ vi.mock('@cornflow-ui/core/composables/roles-management/useRolesManagement', () 
 
 vi.mock('@/app/config', () => ({
   default: { getCore: () => coreParams.value },
+}))
+
+vi.mock('@cornflow-ui/core/stores/general', () => ({
+  useGeneralStore: () => ({
+    isPlatformAdmin: () => platformAdmin.value,
+  }),
 }))
 
 // Stub heavy children. The factory must be self-contained (hoisted above any
@@ -58,6 +66,7 @@ const { stubChild } = vi.hoisted(() => ({
       'icon',
       'title',
       'description',
+      'canUnlock',
     ],
     emits,
   }),
@@ -68,7 +77,12 @@ vi.mock('@cornflow-ui/core/components/roles-management/RolesPanel.vue', () => ({
   default: stubChild('RolesPanel', ['select', 'create', 'edit', 'delete']),
 }))
 vi.mock('@cornflow-ui/core/components/roles-management/UsersPanel.vue', () => ({
-  default: stubChild('UsersPanel', ['update:search', 'clear-filter', 'edit']),
+  default: stubChild('UsersPanel', [
+    'update:search',
+    'clear-filter',
+    'edit',
+    'unlock',
+  ]),
 }))
 vi.mock('@cornflow-ui/core/components/roles-management/RoleFormDialog.vue', () => ({
   default: stubChild('RoleFormDialog', ['save', 'update:modelValue']),
@@ -89,6 +103,7 @@ describe('RolesManagementView', () => {
   beforeEach(() => {
     vuetify = createVuetify()
     vi.clearAllMocks()
+    platformAdmin.value = false
     coreParams.value = { parameters: { allowEditRoles: true } }
     rm.roles.value = [
       { id: 1, name: 'admin' },
@@ -285,6 +300,56 @@ describe('RolesManagementView', () => {
       wrapper = createWrapper()
       wrapper.findComponent({ name: 'UsersPanel' }).vm.$emit('clear-filter')
       expect(rm.selectRole).toHaveBeenCalledWith(null)
+    })
+  })
+
+  describe('account unlock', () => {
+    const lockedUser = {
+      id: 7,
+      username: 'lockeduser',
+      role_names: ['planner'],
+      locked: true,
+    }
+
+    test('canUnlock is false for regular admins', () => {
+      platformAdmin.value = false
+      wrapper = createWrapper()
+      expect(
+        wrapper.findComponent({ name: 'UsersPanel' }).props('canUnlock'),
+      ).toBe(false)
+    })
+
+    test('canUnlock is true for platform admins', () => {
+      platformAdmin.value = true
+      wrapper = createWrapper()
+      expect(
+        wrapper.findComponent({ name: 'UsersPanel' }).props('canUnlock'),
+      ).toBe(true)
+    })
+
+    test('unlock event asks for confirmation and unlocks', async () => {
+      platformAdmin.value = true
+      const confirmSpy = vi
+        .spyOn(window, 'confirm')
+        .mockReturnValue(true)
+      wrapper = createWrapper()
+      wrapper.findComponent({ name: 'UsersPanel' }).vm.$emit('unlock', lockedUser)
+      await flushPromises()
+      expect(confirmSpy).toHaveBeenCalled()
+      expect(rm.unlockUser).toHaveBeenCalledWith(lockedUser)
+      confirmSpy.mockRestore()
+    })
+
+    test('declining the confirmation does not unlock', async () => {
+      platformAdmin.value = true
+      const confirmSpy = vi
+        .spyOn(window, 'confirm')
+        .mockReturnValue(false)
+      wrapper = createWrapper()
+      wrapper.findComponent({ name: 'UsersPanel' }).vm.$emit('unlock', lockedUser)
+      await flushPromises()
+      expect(rm.unlockUser).not.toHaveBeenCalled()
+      confirmSpy.mockRestore()
     })
   })
 })

@@ -75,6 +75,7 @@ const createWrapper = (authType = 'cornflow') => {
           french: 'French',
           userSecurity: 'User Security',
           changePassword: 'Change password',
+          currentPassword: 'Current Password',
           newPassword: 'New Password',
           confirmPassword: 'Confirm Password',
           submit: 'Submit',
@@ -83,9 +84,20 @@ const createWrapper = (authType = 'cornflow') => {
           passwordRuleLength: 'Password must be at least {length} characters',
           passwordRuleCharacters: 'Password must contain uppercase, lowercase, number and special character',
           passWordRuleNoSpace: 'Password cannot contain spaces',
+          passwordRuleDigitSequence: 'Password cannot contain 6 or more consecutive digits',
+          passwordRuleStrength: 'Password is too weak',
           passwordRuleNotMatch: 'Passwords do not match',
+          passwordChangeForced: 'Your password must be changed before continuing',
           snackbarMessageSuccess: 'Password changed successfully',
-          snackbarMessageError: 'Error changing password'
+          snackbarMessageSuccessRelogin:
+            'Password changed successfully. Please log in again.',
+          snackbarMessageError: 'Error changing password',
+          mfaTitle: 'Two-factor authentication',
+          mfaResetDescription: 'Reset your two-factor authentication',
+          mfaResetButton: 'Reset MFA',
+          mfaResetConfirm: 'Are you sure you want to reset your MFA?',
+          mfaResetSuccess: 'MFA reset successfully',
+          mfaResetError: 'Error resetting MFA'
         }
       }
     }
@@ -97,9 +109,11 @@ const createWrapper = (authType = 'cornflow') => {
   const generalStore = useGeneralStore()
   generalStore.user = { id: 1, name: 'Test User' }
   generalStore.changeUserPassword = vi.fn()
+  generalStore.resetUserMfa = vi.fn()
   
   const mockShowSnackbar = vi.fn()
-  
+  const mockRouter = { push: vi.fn() }
+
   // Mock config
   mockConfig.auth.type = authType
 
@@ -108,6 +122,10 @@ const createWrapper = (authType = 'cornflow') => {
       plugins: [vuetify, pinia, i18n],
       provide: {
         showSnackbar: mockShowSnackbar
+      },
+      mocks: {
+        $router: mockRouter,
+        $route: { query: {} }
       },
       stubs: {
         'MTitleView': { 
@@ -146,12 +164,13 @@ const createWrapper = (authType = 'cornflow') => {
         },
         'v-divider': { template: '<hr />' },
         'v-col': { template: '<div><slot /></div>' },
-        'v-icon': { template: '<i></i>' }
+        'v-icon': { template: '<i></i>' },
+        'v-alert': { template: '<div class="v-alert"><slot /></div>' }
       }
     }
   })
 
-  return { wrapper, generalStore, mockShowSnackbar, i18n }
+  return { wrapper, generalStore, mockShowSnackbar, mockRouter, i18n }
 }
 
 describe('UserSettingsView', () => {
@@ -220,6 +239,7 @@ describe('UserSettingsView', () => {
       expect(wrapper.vm.language).toBe('en')
       expect(Array.isArray(wrapper.vm.languages)).toBe(true)
       expect(Array.isArray(wrapper.vm.passwordRules)).toBe(true)
+      expect(wrapper.vm.currentPassword).toBe('')
       expect(wrapper.vm.newPassword).toBe('')
       expect(wrapper.vm.confirmPassword).toBe('')
     })
@@ -234,7 +254,7 @@ describe('UserSettingsView', () => {
     test('has correct password rules', () => {
       const { wrapper } = createWrapper()
       
-      expect(wrapper.vm.passwordRules).toHaveLength(7)
+      expect(wrapper.vm.passwordRules).toHaveLength(9)
       expect(typeof wrapper.vm.passwordRules[0]).toBe('function')
     })
   })
@@ -276,26 +296,77 @@ describe('UserSettingsView', () => {
       expect(tabs.some(tab => tab.value === 'user-profile')).toBe(false)
     })
 
+    test('passwordChangeForced is false by default', () => {
+      const { wrapper } = createWrapper()
+
+      expect(wrapper.vm.passwordChangeForced).toBe(false)
+    })
+
+    test('passwordChangeForced is true when pwdChangeRequired is set and opens the profile tab', () => {
+      sessionStorage.setItem('pwdChangeRequired', 'true')
+      try {
+        const { wrapper } = createWrapper()
+
+        expect(wrapper.vm.passwordChangeForced).toBe(true)
+        expect(wrapper.vm.selectedTab).toBe('user-profile')
+      } finally {
+        sessionStorage.removeItem('pwdChangeRequired')
+      }
+    })
+
     test('validPassword computed property works correctly', () => {
       const { wrapper } = createWrapper()
-      
+
       // Initially should be false
       expect(wrapper.vm.validPassword).toBe(false)
-      
-      // Set valid passwords
-      wrapper.vm.newPassword = 'ValidPass123!'
-      wrapper.vm.confirmPassword = 'ValidPass123!'
-      
+
+      // Set the current password and valid new passwords (12+ chars, strong)
+      wrapper.vm.currentPassword = 'OldPassword123!'
+      wrapper.vm.newPassword = 'Kx9#tR2m!Qw7Zp'
+      wrapper.vm.confirmPassword = 'Kx9#tR2m!Qw7Zp'
+
       // Should be true with valid matching passwords
       expect(wrapper.vm.validPassword).toBe(true)
     })
 
+    test('validPassword requires the current password to be filled', () => {
+      const { wrapper } = createWrapper()
+
+      wrapper.vm.currentPassword = ''
+      wrapper.vm.newPassword = 'Kx9#tR2m!Qw7Zp'
+      wrapper.vm.confirmPassword = 'Kx9#tR2m!Qw7Zp'
+
+      expect(wrapper.vm.validPassword).toBe(false)
+    })
+
+    test('validPassword rejects passwords shorter than 12 characters', () => {
+      const { wrapper } = createWrapper()
+
+      wrapper.vm.currentPassword = 'OldPassword123!'
+      wrapper.vm.newPassword = 'Val1dPas!'
+      wrapper.vm.confirmPassword = 'Val1dPas!'
+
+      expect(wrapper.vm.validPassword).toBe(false)
+    })
+
+    test('validPassword rejects weak passwords', () => {
+      const { wrapper } = createWrapper()
+
+      wrapper.vm.currentPassword = 'OldPassword123!'
+      // Meets the character-class rules but is a weak, guessable pattern
+      wrapper.vm.newPassword = 'Password123!'
+      wrapper.vm.confirmPassword = 'Password123!'
+
+      expect(wrapper.vm.validPassword).toBe(false)
+    })
+
     test('validPassword computed property handles mismatched passwords', () => {
       const { wrapper } = createWrapper()
-      
-      wrapper.vm.newPassword = 'ValidPass123!'
-      wrapper.vm.confirmPassword = 'DifferentPass123!'
-      
+
+      wrapper.vm.currentPassword = 'OldPassword123!'
+      wrapper.vm.newPassword = 'Kx9#tR2m!Qw7Zp'
+      wrapper.vm.confirmPassword = 'Kx9#tR2m!Qw7Zq'
+
       expect(wrapper.vm.validPassword).toBe(false)
     })
   })
@@ -311,58 +382,128 @@ describe('UserSettingsView', () => {
 
     test('resetPasswordFields clears password fields', () => {
       const { wrapper } = createWrapper()
-      
+
+      wrapper.vm.currentPassword = 'OldPassword'
       wrapper.vm.newPassword = 'SomePassword'
       wrapper.vm.confirmPassword = 'SomePassword'
-      
+
       wrapper.vm.resetPasswordFields()
-      
+
+      expect(wrapper.vm.currentPassword).toBeUndefined()
       expect(wrapper.vm.newPassword).toBeUndefined()
       expect(wrapper.vm.confirmPassword).toBeUndefined()
     })
 
     test('changePassword calls store method with correct parameters', async () => {
       const { wrapper, generalStore } = createWrapper()
-      generalStore.changeUserPassword.mockResolvedValue(true)
-      
-      wrapper.vm.newPassword = 'NewPassword123!'
-      
+      generalStore.changeUserPassword.mockResolvedValue({ success: true })
+
+      wrapper.vm.currentPassword = 'OldPassword123!'
+      wrapper.vm.newPassword = 'Kx9#tR2m!Qw7Zp'
+
       await wrapper.vm.changePassword()
-      
-      expect(generalStore.changeUserPassword).toHaveBeenCalledWith(1, 'NewPassword123!')
+
+      expect(generalStore.changeUserPassword).toHaveBeenCalledWith(
+        1,
+        'Kx9#tR2m!Qw7Zp',
+        'OldPassword123!',
+      )
     })
 
-    test('changePassword shows success message on success', async () => {
-      const { wrapper, generalStore, mockShowSnackbar } = createWrapper()
-      generalStore.changeUserPassword.mockResolvedValue(true)
-      
-      wrapper.vm.newPassword = 'NewPassword123!'
-      
+    test('changePassword logs the user out to sign in again on success', async () => {
+      const { wrapper, generalStore, mockShowSnackbar, mockRouter } =
+        createWrapper()
+      generalStore.changeUserPassword.mockResolvedValue({ success: true })
+
+      wrapper.vm.currentPassword = 'OldPassword123!'
+      wrapper.vm.newPassword = 'Kx9#tR2m!Qw7Zp'
+
       await wrapper.vm.changePassword()
-      
-      expect(mockShowSnackbar).toHaveBeenCalledWith('Password changed successfully')
+
+      // The password change revokes the session server-side, so the view
+      // logs out and sends the user to the sign-in page
+      expect(mockShowSnackbar).toHaveBeenCalledWith(
+        'Password changed successfully. Please log in again.',
+      )
+      expect(mockRouter.push).toHaveBeenCalledWith({
+        path: '/sign-in',
+        query: { changed: 'true' },
+      })
+      expect(sessionStorage.getItem('isAuthenticated')).toBe('false')
     })
 
     test('changePassword shows error message on failure', async () => {
       const { wrapper, generalStore, mockShowSnackbar } = createWrapper()
-      generalStore.changeUserPassword.mockResolvedValue(false)
-      
-      wrapper.vm.newPassword = 'NewPassword123!'
-      
+      generalStore.changeUserPassword.mockResolvedValue({ success: false })
+
+      wrapper.vm.currentPassword = 'OldPassword123!'
+      wrapper.vm.newPassword = 'Kx9#tR2m!Qw7Zp'
+
       await wrapper.vm.changePassword()
-      
+
       expect(mockShowSnackbar).toHaveBeenCalledWith('Error changing password', 'error')
+    })
+
+    test('changePassword shows the backend message on failure when present', async () => {
+      const { wrapper, generalStore, mockShowSnackbar } = createWrapper()
+      generalStore.changeUserPassword.mockResolvedValue({
+        success: false,
+        message: 'Invalid current password',
+      })
+
+      wrapper.vm.currentPassword = 'WrongPassword!'
+      wrapper.vm.newPassword = 'Kx9#tR2m!Qw7Zp'
+
+      await wrapper.vm.changePassword()
+
+      expect(mockShowSnackbar).toHaveBeenCalledWith('Invalid current password', 'error')
     })
 
     test('changePassword shows error message on exception', async () => {
       const { wrapper, generalStore, mockShowSnackbar } = createWrapper()
       generalStore.changeUserPassword.mockRejectedValue(new Error('Network error'))
-      
-      wrapper.vm.newPassword = 'NewPassword123!'
-      
+
+      wrapper.vm.currentPassword = 'OldPassword123!'
+      wrapper.vm.newPassword = 'Kx9#tR2m!Qw7Zp'
+
       await wrapper.vm.changePassword()
-      
+
       expect(mockShowSnackbar).toHaveBeenCalledWith('Error changing password', 'error')
+    })
+
+    test('resetMfa asks for confirmation and shows success message', async () => {
+      const { wrapper, generalStore, mockShowSnackbar } = createWrapper()
+      generalStore.resetUserMfa.mockResolvedValue(true)
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+      await wrapper.vm.resetMfa()
+
+      expect(confirmSpy).toHaveBeenCalledWith('Are you sure you want to reset your MFA?')
+      expect(generalStore.resetUserMfa).toHaveBeenCalledWith(1)
+      expect(mockShowSnackbar).toHaveBeenCalledWith('MFA reset successfully')
+      confirmSpy.mockRestore()
+    })
+
+    test('resetMfa does nothing when the confirmation is cancelled', async () => {
+      const { wrapper, generalStore, mockShowSnackbar } = createWrapper()
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+
+      await wrapper.vm.resetMfa()
+
+      expect(generalStore.resetUserMfa).not.toHaveBeenCalled()
+      expect(mockShowSnackbar).not.toHaveBeenCalled()
+      confirmSpy.mockRestore()
+    })
+
+    test('resetMfa shows error message on failure', async () => {
+      const { wrapper, generalStore, mockShowSnackbar } = createWrapper()
+      generalStore.resetUserMfa.mockResolvedValue(false)
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+      await wrapper.vm.resetMfa()
+
+      expect(mockShowSnackbar).toHaveBeenCalledWith('Error resetting MFA', 'error')
+      confirmSpy.mockRestore()
     })
   })
 
@@ -410,9 +551,10 @@ describe('UserSettingsView', () => {
     test('password rules validate length correctly', () => {
       const { wrapper } = createWrapper()
       const lengthRule = wrapper.vm.passwordRules[0]
-      
-      expect(lengthRule('abc')).toContain('5')
-      expect(lengthRule('abcdef')).toBe(true)
+
+      expect(lengthRule('abc')).toContain('12')
+      expect(lengthRule('abcdefghijk')).toContain('12')
+      expect(lengthRule('abcdefghijkl')).toBe(true)
     })
 
     test('password rules validate uppercase characters', () => {
@@ -455,11 +597,30 @@ describe('UserSettingsView', () => {
       expect(spaceRule('NoSpace')).toBe(true)
     })
 
+    test('password rules validate no long digit sequences', () => {
+      const { wrapper } = createWrapper()
+      const digitSequenceRule = wrapper.vm.passwordRules[6]
+
+      expect(digitSequenceRule('Abc123456!xx')).toContain('consecutive digits')
+      expect(digitSequenceRule('Abc12345!xxx')).toBe(true)
+    })
+
+    test('password rules validate zxcvbn strength', () => {
+      const { wrapper } = createWrapper()
+      const strengthRule = wrapper.vm.passwordRules[7]
+
+      expect(strengthRule('Password123!')).toContain('weak')
+      expect(strengthRule('Kx9#tR2m!Qw7Zp')).toBe(true)
+      // Empty values are left to the length/required rules
+      expect(strengthRule('')).toBe(true)
+      expect(strengthRule(undefined)).toBe(true)
+    })
+
     test('password rules validate matching passwords', () => {
       const { wrapper } = createWrapper()
       wrapper.vm.newPassword = 'TestPassword'
-      const matchRule = wrapper.vm.passwordRules[6]
-      
+      const matchRule = wrapper.vm.passwordRules[8]
+
       expect(matchRule('DifferentPassword')).toContain('match')
       expect(matchRule('TestPassword')).toBe(true)
     })

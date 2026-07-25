@@ -88,6 +88,7 @@ export function useRolesManagement() {
           first_name: u.first_name ?? '',
           last_name: u.last_name ?? '',
           email: u.email,
+          locked: !!u.locked,
           _role_ids: userRoles.map((r) => r.id),
           role_names: userRoles.map((r) => r.name),
         }
@@ -165,6 +166,27 @@ export function useRolesManagement() {
   }
 
   /**
+   * Unlocks an account locked after too many failed login attempts. Only
+   * platform administrators have permission on the unlock endpoint. Mutates
+   * the user row in place on success.
+   */
+  async function unlockUser(user: UserRow): Promise<boolean> {
+    try {
+      const success = await store.userRepository.unlockUser(user.id)
+      if (!success) {
+        showSnackbar?.(t('rolesManagement.errorUnlockUser'), 'error')
+        return false
+      }
+      user.locked = false
+      showSnackbar?.(t('rolesManagement.userUnlocked'), 'success')
+      return true
+    } catch {
+      showSnackbar?.(t('rolesManagement.errorUnlockUser'), 'error')
+      return false
+    }
+  }
+
+  /**
    * Diffs the user's current role IDs against the new role names and issues
    * one assign / unassign per change. Mutates the user row in place on
    * success so the table reflects the new state without a full refetch.
@@ -223,5 +245,6 @@ export function useRolesManagement() {
     deleteRole,
     updateUserProfile,
     saveUserRoleAssignments,
+    unlockUser,
   }
 }

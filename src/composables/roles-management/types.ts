@@ -6,6 +6,8 @@ export interface UserRow {
   last_name: string
   email: string
   role_names: string[]
+  /** Account locked after too many failed login attempts. */
+  locked: boolean
   /** Role IDs kept for API calls (parallel to role_names). */
   _role_ids: number[]
 }

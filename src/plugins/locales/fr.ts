@@ -280,6 +280,51 @@ export default {
     redirecting:
       "Redirection vers l'authentification externe... Si la redirection ne se produit pas automatiquement, veuillez contacter le support technique pour obtenir de l'aide.",
     session_expired: 'Votre session a expiré. Veuillez vous reconnecter.',
+    back_button: 'Retour',
+    mfa_code_title: 'Authentification à deux facteurs',
+    mfa_code_hint:
+      "Saisissez le code à 6 chiffres de votre application d'authentification, ou l'un de vos codes de secours.",
+    mfa_code_label: "Code d'authentification",
+    mfa_verify_button: 'Vérifier',
+    mfa_invalid_code: "Code d'authentification non valide",
+    mfa_setup_error:
+      "La configuration de l'authentification à deux facteurs n'a pas pu démarrer. Veuillez réessayer.",
+    mfa_enroll_title: "Configurez l'authentification à deux facteurs",
+    mfa_enroll_hint:
+      "Scannez ce code QR avec votre application d'authentification (Google Authenticator, Microsoft Authenticator, Aegis, FreeOTP...) et saisissez le premier code généré pour l'activer.",
+    mfa_enroll_secret: 'Ou saisissez cette clé manuellement :',
+    mfa_backup_title: 'Codes de secours',
+    mfa_backup_hint:
+      "Conservez ces codes de secours à usage unique en lieu sûr. Chacun peut être utilisé une fois pour vous connecter si vous perdez l'accès à votre application d'authentification. Ils ne seront plus affichés.",
+    mfa_backup_copy: 'Copier les codes',
+    mfa_backup_copied: 'Codes de secours copiés dans le presse-papiers',
+    mfa_backup_continue: "J'ai enregistré mes codes",
+    password_change_required:
+      'Votre mot de passe doit être changé avant de continuer',
+    forgot_password_link: 'Mot de passe oublié ?',
+    forgot_title: 'Récupération du mot de passe',
+    forgot_hint:
+      "Saisissez l'adresse e-mail de votre compte et nous vous enverrons un lien pour définir un nouveau mot de passe.",
+    forgot_email_label: 'Adresse e-mail',
+    forgot_submit: 'Envoyer le lien de récupération',
+    forgot_sent:
+      "Si l'adresse correspond à un compte, un lien de récupération a été envoyé. Vérifiez votre boîte de réception.",
+    forgot_error:
+      "L'e-mail de récupération n'a pas pu être envoyé. Réessayez ou contactez un administrateur.",
+  },
+  resetPassword: {
+    title: 'Définir un nouveau mot de passe',
+    hint: 'Choisissez un nouveau mot de passe pour votre compte. Il doit respecter la politique de mots de passe.',
+    newPassword: 'Nouveau mot de passe',
+    confirmPassword: 'Confirmer le mot de passe',
+    submit: 'Enregistrer le nouveau mot de passe',
+    success: 'Votre mot de passe a été mis à jour. Vous pouvez maintenant vous connecter.',
+    error: "Le mot de passe n'a pas pu être mis à jour.",
+    linkExpired:
+      'Ce lien a expiré ou a déjà été utilisé. Demandez-en un nouveau depuis la page de connexion.',
+    missingToken:
+      'Cette page nécessite le lien envoyé à votre adresse e-mail. Demandez-en un depuis la page de connexion.',
+    backToLogin: 'Retour à la connexion',
   },
   logOut: {
     title: 'Déconnexion',
@@ -386,6 +431,8 @@ export default {
     selectTheme: "Sélectionnez le thème principal de l'application",
     settings: 'Réglages',
     snackbarMessageSuccess: 'Mot de passe mis à jour avec succès',
+    snackbarMessageSuccessRelogin:
+      'Mot de passe mis à jour avec succès. Veuillez vous reconnecter avec votre nouveau mot de passe.',
     snackbarMessageError:
       'Une erreur est survenue lors de la mise à jour du mot de passe',
     required: 'Champ requis',
@@ -394,6 +441,21 @@ export default {
       'Doit contenir des majuscules, des minuscules, des chiffres et des caractères spéciaux',
     passWordRuleNoSpace: "Un mot de passe ne peut contenir d'espaces",
     passwordRuleNotMatch: 'Les mots de passe ne correspondent pas',
+    passwordRuleDigitSequence:
+      'Le mot de passe ne peut pas contenir de séquences de 6 chiffres ou plus (comme des dates)',
+    passwordRuleStrength:
+      'Le mot de passe est trop facile à deviner : évitez les mots et motifs courants, ou utilisez une phrase de passe plus longue',
+    passwordChangeForced:
+      'Votre mot de passe a expiré ou doit être renouvelé. Définissez un nouveau mot de passe pour continuer à utiliser l’application.',
+    mfaTitle: 'Authentification à deux facteurs',
+    mfaResetDescription:
+      "Réinitialisez votre authentification à deux facteurs si vous avez changé ou perdu votre téléphone. Vous devrez la configurer à nouveau lors de votre prochaine connexion.",
+    mfaResetButton: "Réinitialiser l'authentification à deux facteurs",
+    mfaResetConfirm:
+      'Êtes-vous sûr ? Votre application d’authentification actuelle et vos codes de secours cesseront de fonctionner.',
+    mfaResetSuccess: "L'authentification à deux facteurs a été réinitialisée",
+    mfaResetError:
+      "Une erreur est survenue lors de la réinitialisation de l'authentification à deux facteurs",
   },
   helpMenu: {
     help: "Centre d'aide",
@@ -770,6 +832,12 @@ export default {
     errorAssignRole: "Erreur lors de la mise à jour des rôles de l'utilisateur.",
     errorSaveUser: "Erreur lors de l'enregistrement des données de l'utilisateur.",
     userUpdated: "Données de l'utilisateur mises à jour avec succès.",
+    lockedBadge: 'Verrouillé',
+    unlockUser: 'Déverrouiller le compte',
+    unlockConfirm:
+      'Déverrouiller le compte de {username} ? Le compteur de tentatives échouées sera réinitialisé.',
+    userUnlocked: 'Le compte a été déverrouillé.',
+    errorUnlockUser: 'Erreur lors du déverrouillage du compte.',
     roleCreated: 'Rôle créé avec succès.',
     roleUpdated: 'Rôle mis à jour avec succès.',
     roleDeleted: 'Rôle supprimé avec succès.',

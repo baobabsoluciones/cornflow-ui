@@ -201,11 +201,40 @@ class ApiClient {
       const response = await this.performFetch(completeUrl, options)
       this.handleUnauthorizedResponse(response, url)
       const content = await this.parseResponseContent(response)
+      this.handlePasswordRotationResponse(response.status, content)
 
       return { status: response.status, content }
     } catch (error) {
       this.handleRequestError(error, url)
       throw error
+    }
+  }
+
+  /**
+   * The backend answers 403 with error_code 'password_rotation' on every
+   * endpoint when the user's password has expired or must be renewed. The
+   * user is sent to the settings view to set a new password.
+   */
+  private handlePasswordRotationResponse(status: number, content: any): void {
+    if (
+      status === 403 &&
+      content &&
+      typeof content === 'object' &&
+      content.error_code === 'password_rotation'
+    ) {
+      sessionStorage.setItem('pwdChangeRequired', 'true')
+      // Use setTimeout to ensure this runs after the current execution context
+      setTimeout(() => {
+        // Import dynamically to avoid circular dependency
+        import('@cornflow-ui/core/router').then(({ default: router }) => {
+          if (router.currentRoute.value.path !== '/user-settings') {
+            router.push({
+              path: '/user-settings',
+              query: { changePassword: 'true' },
+            })
+          }
+        })
+      }, 0)
     }
   }
 
@@ -276,7 +305,14 @@ class ApiClient {
   }
 
   private handleUnauthorizedResponse(response: Response, url: string): void {
-    if (response.status === 401 && !url.includes('/login/')) {
+    // The reset-password endpoint authenticates with the emailed reset
+    // token, not the session: its 401 (expired/used link) is handled by the
+    // reset view instead of the global session-expired redirect
+    if (
+      response.status === 401 &&
+      !url.includes('/login/') &&
+      !url.includes('/user/reset-password/')
+    ) {
       console.warn(
         'Received 401 Unauthorized response, session may have expired',
       )

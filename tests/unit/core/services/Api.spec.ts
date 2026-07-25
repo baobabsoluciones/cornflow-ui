@@ -27,7 +27,8 @@ vi.mock('@cornflow-ui/core/services/AuthServiceFactory', () => ({
 
 // Mock router
 const mockRouter = vi.hoisted(() => ({
-  push: vi.fn()
+  push: vi.fn(),
+  currentRoute: { value: { path: '/' } }
 }))
 
 vi.mock('@cornflow-ui/core/router', () => ({
@@ -137,35 +138,36 @@ describe('ApiClient', () => {
       expect(apiClient['tokenExpiration']).toBe(1234567890000)
     })
 
+    // NOTE: these tests assert with vi.getTimerCount() instead of spying on
+    // global.setTimeout: a spy on setTimeout created while fake timers are
+    // installed gets re-applied by the afterEach restoreAllMocks, leaving a
+    // dead fake setTimeout behind that hangs every later test using timers.
     test('scheduleTokenRefresh sets timer for external auth', () => {
       vi.useFakeTimers()
       mockConfig.auth.type = 'azure'
-      
+
       const futureExpiration = Date.now() + 3600000 // 1 hour from now
       apiClient['tokenExpiration'] = futureExpiration
-      
-      const setTimeoutSpy = vi.spyOn(global, 'setTimeout')
-      
+
       apiClient['scheduleTokenRefresh']()
-      
-      expect(setTimeoutSpy).toHaveBeenCalled()
-      
+
+      expect(vi.getTimerCount()).toBeGreaterThan(0)
+
+      vi.clearAllTimers()
       vi.useRealTimers()
     })
 
     test('scheduleTokenRefresh does not set timer for cornflow auth', () => {
       vi.useFakeTimers()
       mockConfig.auth.type = 'cornflow'
-      
+
       const futureExpiration = Date.now() + 3600000
       apiClient['tokenExpiration'] = futureExpiration
-      
-      const setTimeoutSpy = vi.spyOn(global, 'setTimeout')
-      
+
       apiClient['scheduleTokenRefresh']()
-      
-      expect(setTimeoutSpy).not.toHaveBeenCalled()
-      
+
+      expect(vi.getTimerCount()).toBe(0)
+
       vi.useRealTimers()
     })
 
@@ -505,6 +507,94 @@ describe('ApiClient', () => {
       expect(handleAuthFailureSpy).toHaveBeenCalled()
     })
 
+    test('request does not treat a 401 from the reset-password endpoint as a session expiry', async () => {
+      const handleAuthFailureSpy = vi.spyOn(apiClient, 'handleAuthFailure').mockImplementation(() => {})
+
+      vi.mocked(fetch).mockResolvedValue({
+        status: 401,
+        headers: {
+          get: () => 'application/json'
+        },
+        json: () => Promise.resolve({ error: 'Invalid or expired reset token' })
+      } as Response)
+
+      // The reset link token is validated by the endpoint itself: its 401 is
+      // returned to the caller instead of triggering the global redirect
+      const result = await apiClient['request']('/user/reset-password/', { method: 'PUT' })
+
+      expect(result).toEqual({
+        status: 401,
+        content: { error: 'Invalid or expired reset token' }
+      })
+      expect(handleAuthFailureSpy).not.toHaveBeenCalled()
+
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      expect(mockRouter.push).not.toHaveBeenCalled()
+    })
+
+    test('request flags the password rotation on a 403 password_rotation response', async () => {
+      mockRouter.currentRoute.value.path = '/history-execution'
+
+      vi.mocked(fetch).mockResolvedValue({
+        status: 403,
+        headers: {
+          get: () => 'application/json'
+        },
+        json: () => Promise.resolve({ error_code: 'password_rotation', error: 'Password expired' })
+      } as Response)
+
+      const result = await apiClient['request']('/test')
+
+      expect(result.status).toBe(403)
+      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('pwdChangeRequired', 'true')
+
+      // The redirect runs in a setTimeout with a dynamic import of the router
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      expect(mockRouter.push).toHaveBeenCalledWith({
+        path: '/user-settings',
+        query: { changePassword: 'true' }
+      })
+    })
+
+    test('request does not redirect for password rotation when already on the settings view', async () => {
+      mockRouter.currentRoute.value.path = '/user-settings'
+
+      vi.mocked(fetch).mockResolvedValue({
+        status: 403,
+        headers: {
+          get: () => 'application/json'
+        },
+        json: () => Promise.resolve({ error_code: 'password_rotation' })
+      } as Response)
+
+      await apiClient['request']('/test')
+
+      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('pwdChangeRequired', 'true')
+
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      expect(mockRouter.push).not.toHaveBeenCalled()
+
+      mockRouter.currentRoute.value.path = '/'
+    })
+
+    test('request ignores 403 responses without the password_rotation error code', async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        status: 403,
+        headers: {
+          get: () => 'application/json'
+        },
+        json: () => Promise.resolve({ error: 'Forbidden' })
+      } as Response)
+
+      const result = await apiClient['request']('/test')
+
+      expect(result.status).toBe(403)
+      expect(sessionStorageMock.setItem).not.toHaveBeenCalledWith('pwdChangeRequired', 'true')
+
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      expect(mockRouter.push).not.toHaveBeenCalled()
+    })
+
     test('request handles FormData body correctly', async () => {
       const formData = new FormData()
       formData.append('file', 'test')
@@ -679,17 +769,16 @@ describe('ApiClient', () => {
       expect(clearLocalStorageSpy).toHaveBeenCalled()
     })
 
-    test('handleAuthFailure redirects to sign-in page', (done) => {
+    test('handleAuthFailure redirects to sign-in page', async () => {
       apiClient['handleAuthFailure']()
-      
-      // Use setTimeout to wait for the async redirect
-      setTimeout(() => {
-        expect(mockRouter.push).toHaveBeenCalledWith({
-          path: '/sign-in',
-          query: { expired: 'true' }
-        })
-        done()
-      }, 10)
+
+      // Wait for the async redirect (scheduled with setTimeout)
+      await new Promise((resolve) => setTimeout(resolve, 10))
+
+      expect(mockRouter.push).toHaveBeenCalledWith({
+        path: '/sign-in',
+        query: { expired: 'true' }
+      })
     })
   })
 
@@ -809,14 +898,15 @@ describe('ApiClient', () => {
         clearTimeout(apiClient['refreshTimer'])
         apiClient['refreshTimer'] = null
       }
-      
-      const setTimeoutSpy = vi.spyOn(global, 'setTimeout')
-      
+
       apiClient['scheduleTokenRefresh']()
-      
-      // Should have set a timer for before expiration (15 minutes before expiration)
-      expect(setTimeoutSpy).toHaveBeenCalled()
-      
+
+      // Should have set a timer for before expiration (15 minutes before expiration).
+      // Asserted via getTimerCount instead of a setTimeout spy (see the note in
+      // the Token Management describe block).
+      expect(vi.getTimerCount()).toBeGreaterThan(0)
+
+      vi.clearAllTimers()
       vi.useRealTimers()
     })
   })
