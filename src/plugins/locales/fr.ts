@@ -311,6 +311,9 @@ export default {
       "Si l'adresse correspond à un compte, un lien de récupération a été envoyé. Vérifiez votre boîte de réception.",
     forgot_error:
       "L'e-mail de récupération n'a pas pu être envoyé. Réessayez ou contactez un administrateur.",
+    last_login_info: 'Bon retour. Votre dernière connexion date du {date}.',
+    legal_notice:
+      "Accès réservé aux personnes autorisées. L'activité sur ce système peut être surveillée et enregistrée. Toute utilisation non autorisée peut entraîner des poursuites disciplinaires ou légales.",
   },
   resetPassword: {
     title: 'Définir un nouveau mot de passe',
@@ -456,6 +459,21 @@ export default {
     mfaResetSuccess: "L'authentification à deux facteurs a été réinitialisée",
     mfaResetError:
       "Une erreur est survenue lors de la réinitialisation de l'authentification à deux facteurs",
+    mfaEnableDescription:
+      "Ajoutez un second facteur à votre compte à l'aide d'une application d'authentification.",
+    mfaEnableButton: "Activer l'authentification à deux facteurs",
+    mfaEnrollHint:
+      "Scannez ce code QR avec votre application d'authentification et saisissez le premier code pour l'activer.",
+    mfaEnrollSecret: 'Ou saisissez cette clé manuellement :',
+    mfaCodeLabel: "Code d'authentification",
+    mfaVerifyButton: 'Vérifier',
+    mfaInvalidCode: "Code d'authentification non valide",
+    mfaEnrollError: "L'authentification à deux facteurs n'a pas pu être configurée.",
+    mfaBackupHint:
+      "Conservez ces codes de secours à usage unique en lieu sûr. Ils ne seront plus affichés.",
+    mfaBackupContinue: "J'ai enregistré mes codes",
+    mfaEnableSuccess: "L'authentification à deux facteurs est maintenant activée.",
+    cancel: 'Annuler',
   },
   helpMenu: {
     help: "Centre d'aide",
@@ -838,6 +856,12 @@ export default {
       'Déverrouiller le compte de {username} ? Le compteur de tentatives échouées sera réinitialisé.',
     userUnlocked: 'Le compte a été déverrouillé.',
     errorUnlockUser: 'Erreur lors du déverrouillage du compte.',
+    resetMfa: "Réinitialiser l'authentification à deux facteurs",
+    resetMfaConfirm:
+      "Réinitialiser l'authentification à deux facteurs de {username} ? Il devra la reconfigurer lors de sa prochaine connexion.",
+    mfaReset: "L'authentification à deux facteurs a été réinitialisée.",
+    errorResetMfa:
+      "Erreur lors de la réinitialisation de l'authentification à deux facteurs.",
     roleCreated: 'Rôle créé avec succès.',
     roleUpdated: 'Rôle mis à jour avec succès.',
     roleDeleted: 'Rôle supprimé avec succès.',

@@ -7,6 +7,8 @@ export interface LoginResult {
   mfaSetupRequired?: boolean
   // The password has expired or was reset and must be changed
   changePassword?: boolean
+  // ISO timestamp of the previous successful login, if any
+  lastLogin?: string | null
   errorMessage?: string
 }
 

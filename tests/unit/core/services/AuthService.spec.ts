@@ -45,7 +45,7 @@ describe('AuthService', () => {
         { username: 'testuser', password: 'password123' },
         { 'Content-Type': 'application/json' }
       )
-      expect(result).toEqual({ success: true, changePassword: false })
+      expect(result).toEqual({ success: true, changePassword: false, lastLogin: null })
       expect(sessionStorageMock.setItem).toHaveBeenCalledWith('isAuthenticated', 'true')
       expect(sessionStorageMock.setItem).toHaveBeenCalledWith('token', 'mock-token')
       expect(sessionStorageMock.setItem).toHaveBeenCalledWith('userId', 'user-123')
@@ -73,7 +73,7 @@ describe('AuthService', () => {
         { username: 'testuser', password: 'password123', totp_code: '123456' },
         { 'Content-Type': 'application/json' }
       )
-      expect(result).toEqual({ success: true, changePassword: false })
+      expect(result).toEqual({ success: true, changePassword: false, lastLogin: null })
     })
 
     test('successful login with change_password flags the forced rotation', async () => {
@@ -91,7 +91,7 @@ describe('AuthService', () => {
 
       const result = await AuthService.login('testuser', 'password123')
 
-      expect(result).toEqual({ success: true, changePassword: true })
+      expect(result).toEqual({ success: true, changePassword: true, lastLogin: null })
       expect(sessionStorageMock.setItem).toHaveBeenCalledWith('pwdChangeRequired', 'true')
     })
 

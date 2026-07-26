@@ -31,6 +31,7 @@
         @clear-filter="selectRole(null)"
         @edit="openUserEdit"
         @unlock="onUnlockUser"
+        @reset-mfa="onResetMfa"
       />
     </div>
 
@@ -96,6 +97,7 @@ const {
   updateUserProfile,
   saveUserRoleAssignments,
   unlockUser,
+  resetUserMfa,
 } = useRolesManagement()
 
 const { t } = useI18n()
@@ -115,6 +117,14 @@ async function onUnlockUser(user: UserRow) {
   )
   if (!confirmed) return
   await unlockUser(user)
+}
+
+async function onResetMfa(user: UserRow) {
+  const confirmed = window.confirm(
+    t('rolesManagement.resetMfaConfirm', { username: user.username }),
+  )
+  if (!confirmed) return
+  await resetUserMfa(user)
 }
 
 const usersSearch = ref('')

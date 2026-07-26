@@ -8,6 +8,8 @@ export interface UserRow {
   role_names: string[]
   /** Account locked after too many failed login attempts. */
   locked: boolean
+  /** Whether the user has two-factor authentication enabled. */
+  mfaEnabled: boolean
   /** Role IDs kept for API calls (parallel to role_names). */
   _role_ids: number[]
 }

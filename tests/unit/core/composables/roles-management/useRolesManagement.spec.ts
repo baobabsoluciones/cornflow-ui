@@ -15,6 +15,7 @@ const { snackbar, repo, userRepo } = vi.hoisted(() => ({
     getAllUsers: vi.fn(),
     updateUser: vi.fn(),
     unlockUser: vi.fn(),
+    resetMfa: vi.fn(),
   },
 }))
 
@@ -96,6 +97,21 @@ describe('useRolesManagement - fetchUsers', () => {
     // no first/last name -> falls back to username
     expect(rm.users.value[1].full_name).toBe('anon')
     expect(rm.users.value[1]._role_ids).toEqual([])
+  })
+
+  test('maps mfaEnabled from the raw mfa_enabled flag', async () => {
+    userRepo.getAllUsers.mockResolvedValueOnce([
+      { id: 1, username: 'jdoe', email: 'j@x', mfa_enabled: true },
+      { id: 2, username: 'anon', email: 'a@x', mfa_enabled: false },
+      { id: 3, username: 'nomfa', email: 'n@x' },
+    ])
+    repo.getAllUserRoleAssignments.mockResolvedValueOnce([])
+    const rm = useRolesManagement()
+    await rm.fetchUsers()
+    expect(rm.users.value[0].mfaEnabled).toBe(true)
+    expect(rm.users.value[1].mfaEnabled).toBe(false)
+    // missing flag coerces to false
+    expect(rm.users.value[2].mfaEnabled).toBe(false)
   })
 
   test('shows an error snackbar on failure', async () => {
@@ -215,6 +231,45 @@ describe('useRolesManagement - unlockUser', () => {
     expect(user.locked).toBe(true)
     expect(snackbar).toHaveBeenCalledWith(
       'rolesManagement.errorUnlockUser',
+      'error',
+    )
+  })
+})
+
+describe('useRolesManagement - resetUserMfa', () => {
+  test('resets the MFA and mutates the row in place', async () => {
+    userRepo.resetMfa.mockResolvedValueOnce(true)
+    const rm = useRolesManagement()
+    const user: any = { id: 7, username: 'jdoe', mfaEnabled: true }
+    expect(await rm.resetUserMfa(user)).toBe(true)
+    expect(userRepo.resetMfa).toHaveBeenCalledWith(7)
+    expect(user.mfaEnabled).toBe(false)
+    expect(snackbar).toHaveBeenCalledWith(
+      'rolesManagement.mfaReset',
+      'success',
+    )
+  })
+
+  test('reports an error when the endpoint rejects', async () => {
+    userRepo.resetMfa.mockRejectedValueOnce(new Error('x'))
+    const rm = useRolesManagement()
+    const user: any = { id: 7, username: 'jdoe', mfaEnabled: true }
+    expect(await rm.resetUserMfa(user)).toBe(false)
+    expect(user.mfaEnabled).toBe(true)
+    expect(snackbar).toHaveBeenCalledWith(
+      'rolesManagement.errorResetMfa',
+      'error',
+    )
+  })
+
+  test('reports an error when the endpoint returns false', async () => {
+    userRepo.resetMfa.mockResolvedValueOnce(false)
+    const rm = useRolesManagement()
+    const user: any = { id: 7, username: 'jdoe', mfaEnabled: true }
+    expect(await rm.resetUserMfa(user)).toBe(false)
+    expect(user.mfaEnabled).toBe(true)
+    expect(snackbar).toHaveBeenCalledWith(
+      'rolesManagement.errorResetMfa',
       'error',
     )
   })

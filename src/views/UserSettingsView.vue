@@ -132,17 +132,93 @@
               <v-list-item-title class="mb-2 settings-title">{{
                 $t('settings.mfaTitle')
               }}</v-list-item-title>
-              <v-list-item-subtitle class="mb-2">{{
-                $t('settings.mfaResetDescription')
-              }}</v-list-item-subtitle>
-              <v-btn
-                color="primary"
-                variant="outlined"
-                class="my-2"
-                @click="resetMfa"
-                data-test="mfa-reset-button"
-                >{{ $t('settings.mfaResetButton') }}</v-btn
-              >
+
+              <!-- Already enrolled: allow resetting/disabling -->
+              <template v-if="mfaEnabled">
+                <v-list-item-subtitle class="mb-2">{{
+                  $t('settings.mfaResetDescription')
+                }}</v-list-item-subtitle>
+                <v-btn
+                  color="primary"
+                  variant="outlined"
+                  class="my-2"
+                  @click="resetMfa"
+                  data-test="mfa-reset-button"
+                  >{{ $t('settings.mfaResetButton') }}</v-btn
+                >
+              </template>
+
+              <!-- Not enrolled: allow opting in -->
+              <template v-else>
+                <template v-if="mfaStep === 'idle'">
+                  <v-list-item-subtitle class="mb-2">{{
+                    $t('settings.mfaEnableDescription')
+                  }}</v-list-item-subtitle>
+                  <v-btn
+                    color="primary"
+                    class="my-2"
+                    @click="startMfaEnroll"
+                    data-test="mfa-enable-button"
+                    >{{ $t('settings.mfaEnableButton') }}</v-btn
+                  >
+                </template>
+
+                <template v-else-if="mfaStep === 'qr'">
+                  <v-list-item-subtitle class="mb-2">{{
+                    $t('settings.mfaEnrollHint')
+                  }}</v-list-item-subtitle>
+                  <img
+                    v-if="mfaQrDataUrl"
+                    :src="mfaQrDataUrl"
+                    alt="TOTP QR code"
+                    style="width: 200px; max-width: 100%"
+                    data-test="mfa-qr"
+                  />
+                  <p class="mfa-secret" v-if="mfaSecret">
+                    {{ $t('settings.mfaEnrollSecret') }}
+                    <code>{{ mfaSecret }}</code>
+                  </p>
+                  <MInputField
+                    style="width: 300px !important"
+                    class="mt-2"
+                    v-model="mfaCode"
+                    :title="$t('settings.mfaCodeLabel')"
+                    type="text"
+                  >
+                  </MInputField>
+                  <div class="mt-2">
+                    <v-btn
+                      color="primary"
+                      class="mr-2"
+                      :disabled="!mfaCode"
+                      @click="verifyMfaEnroll"
+                      data-test="mfa-verify-button"
+                      >{{ $t('settings.mfaVerifyButton') }}</v-btn
+                    >
+                    <v-btn variant="text" @click="cancelMfaEnroll">{{
+                      $t('settings.cancel')
+                    }}</v-btn>
+                  </div>
+                </template>
+
+                <template v-else-if="mfaStep === 'backup'">
+                  <v-list-item-subtitle class="mb-2">{{
+                    $t('settings.mfaBackupHint')
+                  }}</v-list-item-subtitle>
+                  <div class="mfa-backup-codes" data-test="mfa-backup-codes">
+                    <code v-for="code in mfaBackupCodes" :key="code">{{
+                      code
+                    }}</code>
+                  </div>
+                  <v-btn
+                    color="primary"
+                    class="mt-2"
+                    @click="finishMfaEnroll"
+                    data-test="mfa-backup-done"
+                    >{{ $t('settings.mfaBackupContinue') }}</v-btn
+                  >
+                </template>
+              </template>
             </v-list-item>
           </v-list>
         </v-col>
@@ -155,8 +231,10 @@
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { useI18n } from 'vue-i18n'
 import { inject } from 'vue'
+import QRCode from 'qrcode'
 import config from '@cornflow-ui/core/config'
 import { changeLanguage } from '@cornflow-ui/core/plugins/i18n'
+import { getSpecificAuthService } from '@cornflow-ui/core/services/AuthServiceFactory'
 import {
   isPasswordStrongEnough,
   PASSWORD_MIN_LENGTH,
@@ -206,6 +284,12 @@ export default {
       currentPassword: '',
       newPassword: '',
       confirmPassword: '',
+      // Two-factor enrollment (opt-in) flow state
+      mfaStep: 'idle',
+      mfaSecret: '',
+      mfaQrDataUrl: '',
+      mfaCode: '',
+      mfaBackupCodes: [],
     }
   },
   created() {
@@ -247,6 +331,9 @@ export default {
         this.$route?.query?.changePassword === 'true' ||
         sessionStorage.getItem('pwdChangeRequired') === 'true'
       )
+    },
+    mfaEnabled() {
+      return !!this.generalStore.getUser?.mfaEnabled
     },
     validPassword() {
       return (
@@ -332,6 +419,7 @@ export default {
         const user = this.generalStore.getUser
         const success = await this.generalStore.resetUserMfa(user.id)
         if (success) {
+          if (user) user.mfaEnabled = false
           this.showSnackbar(this.$t('settings.mfaResetSuccess'))
         } else {
           this.showSnackbar(this.$t('settings.mfaResetError'), 'error')
@@ -341,6 +429,65 @@ export default {
         this.showSnackbar(this.$t('settings.mfaResetError'), 'error')
       }
     },
+    async startMfaEnroll() {
+      try {
+        const cornflowAuth = await getSpecificAuthService('cornflow')
+        const setupData = await cornflowAuth?.mfaSetup?.()
+        if (!setupData) {
+          this.showSnackbar(this.$t('settings.mfaEnrollError'), 'error')
+          return
+        }
+        this.mfaSecret = setupData.secret
+        try {
+          this.mfaQrDataUrl = await QRCode.toDataURL(
+            setupData.provisioningUri,
+            { width: 200, margin: 1 },
+          )
+        } catch (qrError) {
+          // The manual secret still allows enrollment
+          console.error('Could not render the QR code:', qrError)
+          this.mfaQrDataUrl = ''
+        }
+        this.mfaStep = 'qr'
+      } catch (error) {
+        console.error('Failed to start MFA enrollment:', error)
+        this.showSnackbar(this.$t('settings.mfaEnrollError'), 'error')
+      }
+    },
+    async verifyMfaEnroll() {
+      try {
+        if (!this.mfaCode) {
+          return
+        }
+        const cornflowAuth = await getSpecificAuthService('cornflow')
+        const verifyData = await cornflowAuth?.mfaVerify?.(this.mfaCode)
+        if (!verifyData) {
+          this.showSnackbar(this.$t('settings.mfaInvalidCode'), 'error')
+          return
+        }
+        this.mfaBackupCodes = verifyData.backupCodes
+        this.mfaStep = 'backup'
+      } catch (error) {
+        console.error('Failed to verify MFA enrollment:', error)
+        this.showSnackbar(this.$t('settings.mfaEnrollError'), 'error')
+      }
+    },
+    cancelMfaEnroll() {
+      this.mfaStep = 'idle'
+      this.mfaSecret = ''
+      this.mfaQrDataUrl = ''
+      this.mfaCode = ''
+    },
+    finishMfaEnroll() {
+      const user = this.generalStore.getUser
+      if (user) user.mfaEnabled = true
+      this.mfaStep = 'idle'
+      this.mfaSecret = ''
+      this.mfaQrDataUrl = ''
+      this.mfaCode = ''
+      this.mfaBackupCodes = []
+      this.showSnackbar(this.$t('settings.mfaEnableSuccess'))
+    },
   },
 }
 </script>
@@ -349,5 +496,30 @@ export default {
   font-weight: 500 !important;
   font-size: 1.1rem !important;
   color: var(--title) !important;
+}
+
+.mfa-secret {
+  font-size: 0.8rem;
+  word-break: break-all;
+  margin: 8px 0;
+}
+
+.mfa-secret code {
+  user-select: all;
+}
+
+.mfa-backup-codes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 160px));
+  gap: 6px;
+  padding: 12px;
+  border: 1px dashed rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  margin: 8px 0;
+}
+
+.mfa-backup-codes code {
+  text-align: center;
+  user-select: all;
 }
 </style>

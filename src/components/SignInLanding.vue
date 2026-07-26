@@ -143,6 +143,8 @@
               <span>{{ t('logIn.microsoft_button') }}</span>
             </button>
           </div>
+
+          <p class="legal-notice">{{ t('logIn.legal_notice') }}</p>
         </template>
 
         <template v-else-if="loginStep === 'forgot'">
@@ -324,6 +326,7 @@ const enrollSecret = ref('')
 const qrDataUrl = ref('')
 const backupCodes = ref<string[]>([])
 let pendingChangePassword = false
+let lastLogin: string | null = null
 
 // Auth services
 let authServices: AuthServices | null = null
@@ -379,7 +382,13 @@ const finishLogin = () => {
     router.push({ path: '/user-settings', query: { changePassword: 'true' } })
   } else {
     router.push('/')
-    showSnackbar?.(t('logIn.snackbar_message_success'), 'success')
+    if (lastLogin) {
+      // Show the user their previous access (op.acc awareness)
+      const when = new Date(lastLogin).toLocaleString()
+      showSnackbar?.(t('logIn.last_login_info', { date: when }), 'info')
+    } else {
+      showSnackbar?.(t('logIn.snackbar_message_success'), 'success')
+    }
   }
 }
 
@@ -463,6 +472,7 @@ const submitLogIn = async () => {
 
     if (result.success) {
       pendingChangePassword = !!result.changePassword
+      lastLogin = result.lastLogin ?? null
       finishLogin()
       return
     }
@@ -736,6 +746,14 @@ if (appName.includes(' ')) {
   cursor: pointer;
   text-decoration: underline;
   align-self: center;
+}
+
+.legal-notice {
+  margin-top: 16px;
+  font-size: 0.7rem;
+  line-height: 1.3;
+  color: rgba(0, 0, 0, 0.5);
+  text-align: center;
 }
 
 .mfa-form {

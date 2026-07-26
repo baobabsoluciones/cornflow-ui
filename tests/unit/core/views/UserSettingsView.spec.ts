@@ -30,6 +30,26 @@ vi.mock('@cornflow-ui/core/config', () => ({
   default: mockConfig
 }))
 
+// Mock the qrcode library used to render the MFA enrollment QR
+const mockQRCodeToDataURL = vi.hoisted(() =>
+  vi.fn().mockResolvedValue('data:image/png;base64,mock-qr'),
+)
+vi.mock('qrcode', () => ({
+  default: { toDataURL: mockQRCodeToDataURL },
+}))
+
+// Mock the cornflow auth service used for MFA enrollment (setup / verify)
+const mockCornflowAuth = vi.hoisted(() => ({
+  mfaSetup: vi.fn(),
+  mfaVerify: vi.fn(),
+}))
+vi.mock('@cornflow-ui/core/services/AuthServiceFactory', () => ({
+  default: vi.fn().mockResolvedValue(mockCornflowAuth),
+  getAllAuthServices: vi.fn().mockResolvedValue({ cornflow: mockCornflowAuth }),
+  getSpecificAuthService: vi.fn().mockResolvedValue(mockCornflowAuth),
+  isAuthServiceAvailable: vi.fn().mockReturnValue(true),
+}))
+
 // Mock Mango UI components
 vi.mock('mango-ui', () => ({
   MTitleView: {
@@ -97,7 +117,19 @@ const createWrapper = (authType = 'cornflow') => {
           mfaResetButton: 'Reset MFA',
           mfaResetConfirm: 'Are you sure you want to reset your MFA?',
           mfaResetSuccess: 'MFA reset successfully',
-          mfaResetError: 'Error resetting MFA'
+          mfaResetError: 'Error resetting MFA',
+          mfaEnableButton: 'Enable 2FA',
+          mfaEnableDescription: 'Add an extra layer of security',
+          mfaEnrollHint: 'Scan the QR code with your authenticator app',
+          mfaEnrollSecret: 'Or enter this secret manually:',
+          mfaCodeLabel: 'Verification code',
+          mfaVerifyButton: 'Verify',
+          mfaInvalidCode: 'Invalid code',
+          mfaEnrollError: 'Could not start the enrollment',
+          mfaBackupHint: 'Store these backup codes safely',
+          mfaBackupContinue: 'Continue',
+          mfaEnableSuccess: 'Two-factor authentication enabled',
+          cancel: 'Cancel'
         }
       }
     }
@@ -133,9 +165,9 @@ const createWrapper = (authType = 'cornflow') => {
           template: '<div data-testid="m-title-view"></div>',
           props: ['icon', 'title', 'description']
         },
-        'MTabTable': { 
+        'MTabTable': {
           name: 'MTabTable',
-          template: '<div data-testid="m-tab-table" class="mt-5">Theme Language User Security Change password</div>',
+          template: '<div data-testid="m-tab-table" class="mt-5"><slot name="table" :tabSelected="selectedTable" /></div>',
           props: ['selectedTable', 'direction', 'tabsData']
         },
         MInputField: true,
@@ -504,6 +536,143 @@ describe('UserSettingsView', () => {
 
       expect(mockShowSnackbar).toHaveBeenCalledWith('Error resetting MFA', 'error')
       confirmSpy.mockRestore()
+    })
+
+    test('resetMfa clears the local mfaEnabled flag on success', async () => {
+      const { wrapper, generalStore } = createWrapper()
+      generalStore.user = { id: 1, name: 'Test User', mfaEnabled: true }
+      generalStore.resetUserMfa.mockResolvedValue(true)
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+      await wrapper.vm.resetMfa()
+
+      expect(generalStore.getUser.mfaEnabled).toBe(false)
+      confirmSpy.mockRestore()
+    })
+  })
+
+  describe('MFA enrollment (opt-in)', () => {
+    test('mfaEnabled computed reflects the store user flag', () => {
+      const { wrapper, generalStore } = createWrapper()
+      expect(wrapper.vm.mfaEnabled).toBe(false)
+      generalStore.user = { id: 1, name: 'Test User', mfaEnabled: true }
+      expect(wrapper.vm.mfaEnabled).toBe(true)
+    })
+
+    test('shows the enable button when MFA is not enabled', async () => {
+      const { wrapper } = createWrapper()
+      await wrapper.setData({ selectedTab: 'user-profile' })
+      expect(wrapper.find('[data-test="mfa-enable-button"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="mfa-reset-button"]').exists()).toBe(false)
+    })
+
+    test('shows the reset button when the user already has MFA enabled', async () => {
+      const { wrapper, generalStore } = createWrapper()
+      generalStore.user = { id: 1, name: 'Test User', mfaEnabled: true }
+      await wrapper.setData({ selectedTab: 'user-profile' })
+      expect(wrapper.find('[data-test="mfa-reset-button"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="mfa-enable-button"]').exists()).toBe(false)
+    })
+
+    test('startMfaEnroll fetches the setup data and renders the QR step', async () => {
+      const { wrapper } = createWrapper()
+      mockCornflowAuth.mfaSetup.mockResolvedValueOnce({
+        secret: 'BASE32SECRET',
+        provisioningUri: 'otpauth://totp/app:user?secret=BASE32SECRET',
+      })
+
+      await wrapper.vm.startMfaEnroll()
+
+      expect(mockCornflowAuth.mfaSetup).toHaveBeenCalled()
+      expect(wrapper.vm.mfaSecret).toBe('BASE32SECRET')
+      expect(mockQRCodeToDataURL).toHaveBeenCalledWith(
+        'otpauth://totp/app:user?secret=BASE32SECRET',
+        expect.any(Object),
+      )
+      expect(wrapper.vm.mfaQrDataUrl).toBe('data:image/png;base64,mock-qr')
+      expect(wrapper.vm.mfaStep).toBe('qr')
+    })
+
+    test('startMfaEnroll shows an error when the setup data is missing', async () => {
+      const { wrapper, mockShowSnackbar } = createWrapper()
+      mockCornflowAuth.mfaSetup.mockResolvedValueOnce(null)
+
+      await wrapper.vm.startMfaEnroll()
+
+      expect(mockShowSnackbar).toHaveBeenCalledWith(
+        'Could not start the enrollment',
+        'error',
+      )
+      expect(wrapper.vm.mfaStep).toBe('idle')
+    })
+
+    test('completes the enable flow: start -> verify -> finish sets mfaEnabled true', async () => {
+      const { wrapper, generalStore, mockShowSnackbar } = createWrapper()
+      mockCornflowAuth.mfaSetup.mockResolvedValueOnce({
+        secret: 'S',
+        provisioningUri: 'otpauth://totp/x',
+      })
+      mockCornflowAuth.mfaVerify.mockResolvedValueOnce({
+        backupCodes: ['aaaa-bbbb', 'cccc-dddd'],
+      })
+
+      await wrapper.vm.startMfaEnroll()
+      expect(wrapper.vm.mfaStep).toBe('qr')
+
+      wrapper.vm.mfaCode = '123456'
+      await wrapper.vm.verifyMfaEnroll()
+
+      expect(mockCornflowAuth.mfaVerify).toHaveBeenCalledWith('123456')
+      expect(wrapper.vm.mfaBackupCodes).toEqual(['aaaa-bbbb', 'cccc-dddd'])
+      expect(wrapper.vm.mfaStep).toBe('backup')
+
+      wrapper.vm.finishMfaEnroll()
+
+      expect(generalStore.getUser.mfaEnabled).toBe(true)
+      expect(wrapper.vm.mfaStep).toBe('idle')
+      expect(wrapper.vm.mfaSecret).toBe('')
+      expect(wrapper.vm.mfaBackupCodes).toEqual([])
+      expect(mockShowSnackbar).toHaveBeenCalledWith(
+        'Two-factor authentication enabled',
+      )
+    })
+
+    test('verifyMfaEnroll does nothing without a code', async () => {
+      const { wrapper } = createWrapper()
+      wrapper.vm.mfaStep = 'qr'
+      wrapper.vm.mfaCode = ''
+
+      await wrapper.vm.verifyMfaEnroll()
+
+      expect(mockCornflowAuth.mfaVerify).not.toHaveBeenCalled()
+      expect(wrapper.vm.mfaStep).toBe('qr')
+    })
+
+    test('verifyMfaEnroll shows an error when the code is rejected', async () => {
+      const { wrapper, mockShowSnackbar } = createWrapper()
+      mockCornflowAuth.mfaVerify.mockResolvedValueOnce(null)
+      wrapper.vm.mfaStep = 'qr'
+      wrapper.vm.mfaCode = '000000'
+
+      await wrapper.vm.verifyMfaEnroll()
+
+      expect(mockShowSnackbar).toHaveBeenCalledWith('Invalid code', 'error')
+      expect(wrapper.vm.mfaStep).toBe('qr')
+    })
+
+    test('cancelMfaEnroll resets the enrollment state', () => {
+      const { wrapper } = createWrapper()
+      wrapper.vm.mfaStep = 'qr'
+      wrapper.vm.mfaSecret = 'S'
+      wrapper.vm.mfaQrDataUrl = 'data:image/png;base64,mock-qr'
+      wrapper.vm.mfaCode = '123'
+
+      wrapper.vm.cancelMfaEnroll()
+
+      expect(wrapper.vm.mfaStep).toBe('idle')
+      expect(wrapper.vm.mfaSecret).toBe('')
+      expect(wrapper.vm.mfaQrDataUrl).toBe('')
+      expect(wrapper.vm.mfaCode).toBe('')
     })
   })
 

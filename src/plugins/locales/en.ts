@@ -424,6 +424,9 @@ export default {
       'If the email address belongs to an account, a recovery link has been sent. Check your inbox.',
     forgot_error:
       'The recovery email could not be sent. Please try again or contact an administrator.',
+    last_login_info: 'Welcome back. Your last login was on {date}.',
+    legal_notice:
+      'Authorized access only. Activity on this system may be monitored and recorded. Unauthorized use may lead to disciplinary or legal action.',
   },
   resetPassword: {
     title: 'Set a new password',
@@ -577,6 +580,21 @@ export default {
     mfaResetSuccess: 'Two-factor authentication has been reset',
     mfaResetError:
       'An error occurred while resetting the two-factor authentication',
+    mfaEnableDescription:
+      'Add a second factor to your account using an authenticator app.',
+    mfaEnableButton: 'Enable two-factor authentication',
+    mfaEnrollHint:
+      'Scan this QR code with your authenticator app and enter the first code to activate it.',
+    mfaEnrollSecret: 'Or enter this key manually:',
+    mfaCodeLabel: 'Authentication code',
+    mfaVerifyButton: 'Verify',
+    mfaInvalidCode: 'Invalid authentication code',
+    mfaEnrollError: 'The two-factor authentication could not be set up.',
+    mfaBackupHint:
+      'Store these one-time backup codes in a safe place. They will not be shown again.',
+    mfaBackupContinue: 'I have saved my codes',
+    mfaEnableSuccess: 'Two-factor authentication is now enabled.',
+    cancel: 'Cancel',
   },
   helpMenu: {
     help: 'Help center',
@@ -1112,6 +1130,11 @@ export default {
       'Unlock the account of {username}? The failed login attempts counter will be reset.',
     userUnlocked: 'The account has been unlocked.',
     errorUnlockUser: 'Error unlocking the account.',
+    resetMfa: 'Reset two-factor authentication',
+    resetMfaConfirm:
+      'Reset the two-factor authentication of {username}? They will have to set it up again at their next login.',
+    mfaReset: 'The two-factor authentication has been reset.',
+    errorResetMfa: 'Error resetting the two-factor authentication.',
     roleCreated: 'Role created successfully.',
     roleUpdated: 'Role updated successfully.',
     roleDeleted: 'Role deleted successfully.',

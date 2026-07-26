@@ -61,7 +61,11 @@ class AuthService {
       sessionStorage.removeItem('pwdChangeRequired')
     }
 
-    return { success: true, changePassword: !!content.change_password }
+    return {
+      success: true,
+      changePassword: !!content.change_password,
+      lastLogin: content.last_login ?? null,
+    }
   }
 
   /**

@@ -408,6 +408,33 @@ describe('SignInLanding', () => {
       )
     })
 
+    test('shows the last login info snackbar when the result includes lastLogin', async () => {
+      const routerPushSpy = vi.spyOn(router, 'push')
+      mockAuthServices.cornflowAuthService.login.mockResolvedValueOnce({
+        success: true,
+        lastLogin: '2026-07-20T10:00:00Z',
+      })
+      wrapper = createWrapper()
+
+      const vm = wrapper.vm as any
+      vm.username = 'testuser'
+      vm.password = 'testpass'
+      vm.defaultAuth = mockAuthServices.authService
+
+      await vm.submitLogIn()
+
+      expect(routerPushSpy).toHaveBeenCalledWith('/')
+      // An info snackbar with the previous access replaces the plain success one
+      expect(mockShowSnackbar).toHaveBeenCalledWith(
+        'logIn.last_login_info',
+        'info',
+      )
+      expect(mockShowSnackbar).not.toHaveBeenCalledWith(
+        'Login successful',
+        'success',
+      )
+    })
+
     test('shows error on failed login', async () => {
       mockAuthServices.cornflowAuthService.login.mockResolvedValueOnce(false)
       wrapper = createWrapper()

@@ -55,6 +55,25 @@ describe('UserRepository', () => {
       expect(mockClient.get).toHaveBeenCalledWith('/user/test-user-id/')
     })
 
+    test('should set mfaEnabled from the raw mfa_enabled flag', async () => {
+      mockClient.get.mockResolvedValue({
+        status: 200,
+        content: { ...mockUserData, mfa_enabled: true },
+      })
+
+      const result = await repository.getUserById('test-user-id')
+
+      expect(result.mfaEnabled).toBe(true)
+    })
+
+    test('should default mfaEnabled to false when the flag is absent', async () => {
+      mockClient.get.mockResolvedValue({ status: 200, content: mockUserData })
+
+      const result = await repository.getUserById('test-user-id')
+
+      expect(result.mfaEnabled).toBe(false)
+    })
+
     test('should reject when API returns non-200 status', async () => {
       const mockResponse = {
         status: 404,

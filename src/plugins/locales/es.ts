@@ -435,6 +435,9 @@ export default {
       'Si el correo pertenece a una cuenta, se ha enviado un enlace de recuperación. Revisa tu bandeja de entrada.',
     forgot_error:
       'No se pudo enviar el correo de recuperación. Inténtalo de nuevo o contacta con un administrador.',
+    last_login_info: 'Bienvenido de nuevo. Tu último inicio de sesión fue el {date}.',
+    legal_notice:
+      'Acceso solo para personal autorizado. La actividad en este sistema puede ser monitorizada y registrada. El uso no autorizado puede conllevar acciones disciplinarias o legales.',
   },
   resetPassword: {
     title: 'Establecer una nueva contraseña',
@@ -589,6 +592,21 @@ export default {
     mfaResetSuccess: 'La autenticación de dos factores se ha restablecido',
     mfaResetError:
       'Se produjo un error al restablecer la autenticación de dos factores',
+    mfaEnableDescription:
+      'Añade un segundo factor a tu cuenta usando una aplicación de autenticación.',
+    mfaEnableButton: 'Activar la autenticación de dos factores',
+    mfaEnrollHint:
+      'Escanea este código QR con tu aplicación de autenticación e introduce el primer código para activarla.',
+    mfaEnrollSecret: 'O introduce esta clave manualmente:',
+    mfaCodeLabel: 'Código de autenticación',
+    mfaVerifyButton: 'Verificar',
+    mfaInvalidCode: 'Código de autenticación no válido',
+    mfaEnrollError: 'No se pudo configurar la autenticación de dos factores.',
+    mfaBackupHint:
+      'Guarda estos códigos de respaldo de un solo uso en un lugar seguro. No se volverán a mostrar.',
+    mfaBackupContinue: 'He guardado mis códigos',
+    mfaEnableSuccess: 'La autenticación de dos factores está activada.',
+    cancel: 'Cancelar',
   },
   helpMenu: {
     help: 'Centro de ayuda',
@@ -1131,6 +1149,11 @@ export default {
       '¿Desbloquear la cuenta de {username}? El contador de intentos fallidos se reiniciará.',
     userUnlocked: 'La cuenta se ha desbloqueado.',
     errorUnlockUser: 'Error al desbloquear la cuenta.',
+    resetMfa: 'Restablecer la autenticación de dos factores',
+    resetMfaConfirm:
+      '¿Restablecer la autenticación de dos factores de {username}? Tendrá que configurarla de nuevo en su próximo inicio de sesión.',
+    mfaReset: 'La autenticación de dos factores se ha restablecido.',
+    errorResetMfa: 'Error al restablecer la autenticación de dos factores.',
     roleCreated: 'Rol creado correctamente.',
     roleUpdated: 'Rol actualizado correctamente.',
     roleDeleted: 'Rol eliminado correctamente.',

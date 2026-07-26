@@ -8,6 +8,7 @@ interface RawUser {
   first_name?: string
   last_name?: string
   locked?: boolean
+  mfa_enabled?: boolean
 }
 
 export default class UserRepository {
@@ -33,15 +34,15 @@ export default class UserRepository {
         .then((response) => {
           if (response.status === 200) {
             const raw = response.content as RawUser
-            resolve(
-              new User(
-                String(raw.id),
-                raw.username,
-                raw.email,
-                raw.first_name || '',
-                raw.last_name || '',
-              ),
+            const user = new User(
+              String(raw.id),
+              raw.username,
+              raw.email,
+              raw.first_name || '',
+              raw.last_name || '',
             )
+            user.mfaEnabled = !!raw.mfa_enabled
+            resolve(user)
           } else {
             reject(new Error('Error getting user'))
           }

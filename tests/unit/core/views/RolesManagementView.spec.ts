@@ -24,6 +24,7 @@ const { rm, coreParams, platformAdmin } = vi.hoisted(() => ({
     updateUserProfile: vi.fn().mockResolvedValue(true),
     saveUserRoleAssignments: vi.fn().mockResolvedValue(true),
     unlockUser: vi.fn().mockResolvedValue(true),
+    resetUserMfa: vi.fn().mockResolvedValue(true),
   },
   coreParams: { value: { parameters: { allowEditRoles: true } } },
 }))
@@ -67,6 +68,7 @@ const { stubChild } = vi.hoisted(() => ({
       'title',
       'description',
       'canUnlock',
+      'mfaEnabled',
     ],
     emits,
   }),
@@ -82,6 +84,7 @@ vi.mock('@cornflow-ui/core/components/roles-management/UsersPanel.vue', () => ({
     'clear-filter',
     'edit',
     'unlock',
+    'reset-mfa',
   ]),
 }))
 vi.mock('@cornflow-ui/core/components/roles-management/RoleFormDialog.vue', () => ({
@@ -349,6 +352,38 @@ describe('RolesManagementView', () => {
       wrapper.findComponent({ name: 'UsersPanel' }).vm.$emit('unlock', lockedUser)
       await flushPromises()
       expect(rm.unlockUser).not.toHaveBeenCalled()
+      confirmSpy.mockRestore()
+    })
+  })
+
+  describe('reset MFA', () => {
+    const mfaUser = {
+      id: 8,
+      username: 'mfauser',
+      role_names: ['planner'],
+      mfaEnabled: true,
+    }
+
+    test('reset-mfa event asks for confirmation and resets', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+      wrapper = createWrapper()
+      wrapper
+        .findComponent({ name: 'UsersPanel' })
+        .vm.$emit('reset-mfa', mfaUser)
+      await flushPromises()
+      expect(confirmSpy).toHaveBeenCalled()
+      expect(rm.resetUserMfa).toHaveBeenCalledWith(mfaUser)
+      confirmSpy.mockRestore()
+    })
+
+    test('declining the confirmation does not reset', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+      wrapper = createWrapper()
+      wrapper
+        .findComponent({ name: 'UsersPanel' })
+        .vm.$emit('reset-mfa', mfaUser)
+      await flushPromises()
+      expect(rm.resetUserMfa).not.toHaveBeenCalled()
       confirmSpy.mockRestore()
     })
   })

@@ -89,6 +89,7 @@ export function useRolesManagement() {
           last_name: u.last_name ?? '',
           email: u.email,
           locked: !!u.locked,
+          mfaEnabled: !!u.mfa_enabled,
           _role_ids: userRoles.map((r) => r.id),
           role_names: userRoles.map((r) => r.name),
         }
@@ -187,6 +188,27 @@ export function useRolesManagement() {
   }
 
   /**
+   * Resets (disables) the two-factor authentication of a user. Available to
+   * admins and platform admins; the user will enroll again at next login on
+   * deployments where MFA is required. Mutates the row in place on success.
+   */
+  async function resetUserMfa(user: UserRow): Promise<boolean> {
+    try {
+      const success = await store.userRepository.resetMfa(user.id)
+      if (!success) {
+        showSnackbar?.(t('rolesManagement.errorResetMfa'), 'error')
+        return false
+      }
+      user.mfaEnabled = false
+      showSnackbar?.(t('rolesManagement.mfaReset'), 'success')
+      return true
+    } catch {
+      showSnackbar?.(t('rolesManagement.errorResetMfa'), 'error')
+      return false
+    }
+  }
+
+  /**
    * Diffs the user's current role IDs against the new role names and issues
    * one assign / unassign per change. Mutates the user row in place on
    * success so the table reflects the new state without a full refetch.
@@ -246,5 +268,6 @@ export function useRolesManagement() {
     updateUserProfile,
     saveUserRoleAssignments,
     unlockUser,
+    resetUserMfa,
   }
 }

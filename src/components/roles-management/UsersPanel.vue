@@ -113,6 +113,17 @@
             <v-icon size="16" color="error">mdi-lock-open-variant</v-icon>
           </v-btn>
           <v-btn
+            v-if="item.mfaEnabled"
+            icon
+            size="x-small"
+            variant="text"
+            :title="$t('rolesManagement.resetMfa')"
+            data-test="reset-mfa-button"
+            @click="$emit('reset-mfa', item)"
+          >
+            <v-icon size="16" color="var(--primary)">mdi-cellphone-remove</v-icon>
+          </v-btn>
+          <v-btn
             icon
             size="x-small"
             variant="text"
@@ -170,6 +181,7 @@ defineEmits<{
   (e: 'clear-filter'): void
   (e: 'edit', user: UserRow): void
   (e: 'unlock', user: UserRow): void
+  (e: 'reset-mfa', user: UserRow): void
 }>()
 
 const { t } = useI18n()
