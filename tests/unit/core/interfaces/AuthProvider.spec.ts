@@ -291,6 +291,36 @@ describe('AuthProvider Interface', () => {
     expect(mockAuthProvider.resetPassword).toHaveBeenCalledWith('token-123', 'NewPassword1!')
   })
 
+  test('should handle the optional createApiKey method', async () => {
+    const mockAuthProvider: AuthProvider = {
+      login: vi.fn().mockResolvedValue(false),
+      logout: vi.fn(),
+      getToken: vi.fn().mockReturnValue(null),
+      getUserId: vi.fn().mockReturnValue(null),
+      isAuthenticated: vi.fn().mockReturnValue(false),
+      createApiKey: vi
+        .fn()
+        .mockResolvedValueOnce({ success: true, apiKey: 'generated-api-key' })
+        .mockResolvedValueOnce({
+          success: false,
+          disabled: true,
+          message: 'Personal tokens are disabled'
+        })
+    }
+
+    await expect(mockAuthProvider.createApiKey!('123456')).resolves.toEqual({
+      success: true,
+      apiKey: 'generated-api-key'
+    })
+    expect(mockAuthProvider.createApiKey).toHaveBeenCalledWith('123456')
+
+    await expect(mockAuthProvider.createApiKey!()).resolves.toEqual({
+      success: false,
+      disabled: true,
+      message: 'Personal tokens are disabled'
+    })
+  })
+
   test('should allow minimal implementation with only required methods', () => {
     const minimalProvider: AuthProvider = {
       login: vi.fn().mockResolvedValue(true),
@@ -313,6 +343,7 @@ describe('AuthProvider Interface', () => {
     expect(minimalProvider.mfaVerify).toBeUndefined()
     expect(minimalProvider.requestPasswordReset).toBeUndefined()
     expect(minimalProvider.resetPassword).toBeUndefined()
+    expect(minimalProvider.createApiKey).toBeUndefined()
     expect(minimalProvider.getUsername).toBeUndefined()
     expect(minimalProvider.getName).toBeUndefined()
     expect(minimalProvider.getEmail).toBeUndefined()

@@ -30,6 +30,40 @@ vi.mock('@cornflow-ui/core/config', () => ({
   default: mockConfig
 }))
 
+// Mock the app config (used for the personal API key feature flag). The
+// component reads `appConfig.getCore().parameters.enablePersonalTokens`.
+// The real config has no such flag, so we override only getCore's parameters
+// while delegating every other method (getDashboardRoutes, etc., used by the
+// general store) to the real singleton.
+const mockAppConfig = vi.hoisted(() => ({
+  enablePersonalTokens: true as boolean | undefined
+}))
+vi.mock('@/app/config', async () => {
+  const actual = (await vi.importActual('@/app/config')) as any
+  const realDefault = actual.default
+  return {
+    ...actual,
+    default: new Proxy(realDefault, {
+      get(target, prop, receiver) {
+        if (prop === 'getCore') {
+          return () => {
+            const core = target.getCore()
+            return {
+              ...core,
+              parameters: {
+                ...core.parameters,
+                enablePersonalTokens: mockAppConfig.enablePersonalTokens
+              }
+            }
+          }
+        }
+        const value = Reflect.get(target, prop, receiver)
+        return typeof value === 'function' ? value.bind(target) : value
+      }
+    })
+  }
+})
+
 // Mock the qrcode library used to render the MFA enrollment QR
 const mockQRCodeToDataURL = vi.hoisted(() =>
   vi.fn().mockResolvedValue('data:image/png;base64,mock-qr'),
@@ -42,6 +76,7 @@ vi.mock('qrcode', () => ({
 const mockCornflowAuth = vi.hoisted(() => ({
   mfaSetup: vi.fn(),
   mfaVerify: vi.fn(),
+  createApiKey: vi.fn(),
 }))
 vi.mock('@cornflow-ui/core/services/AuthServiceFactory', () => ({
   default: vi.fn().mockResolvedValue(mockCornflowAuth),
@@ -129,6 +164,15 @@ const createWrapper = (authType = 'cornflow') => {
           mfaBackupHint: 'Store these backup codes safely',
           mfaBackupContinue: 'Continue',
           mfaEnableSuccess: 'Two-factor authentication enabled',
+          apiKeyTitle: 'Personal API key',
+          apiKeyDescription: 'Generate a personal API key for programmatic access',
+          apiKeyGenerateButton: 'Generate API key',
+          apiKeyOnceWarning: 'Copy this key now, it will not be shown again',
+          apiKeyCopy: 'Copy',
+          apiKeyCopied: 'API key copied to clipboard',
+          apiKeySuccess: 'API key generated successfully',
+          apiKeyError: 'Error generating the API key',
+          apiKeyDisabled: 'Personal API keys are disabled for this deployment',
           cancel: 'Cancel'
         }
       }
@@ -208,6 +252,8 @@ const createWrapper = (authType = 'cornflow') => {
 describe('UserSettingsView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Reset the personal-token feature flag to its default (enabled)
+    mockAppConfig.enablePersonalTokens = true
   })
 
   afterEach(() => {
@@ -673,6 +719,154 @@ describe('UserSettingsView', () => {
       expect(wrapper.vm.mfaSecret).toBe('')
       expect(wrapper.vm.mfaQrDataUrl).toBe('')
       expect(wrapper.vm.mfaCode).toBe('')
+    })
+  })
+
+  describe('Personal API key', () => {
+    test('personalTokenEnabled is true for cornflow auth with the flag enabled', () => {
+      const { wrapper } = createWrapper('cornflow')
+      expect(wrapper.vm.personalTokenEnabled).toBe(true)
+    })
+
+    test('personalTokenEnabled is false for non-cornflow auth', () => {
+      const { wrapper } = createWrapper('azure')
+      expect(wrapper.vm.personalTokenEnabled).toBe(false)
+    })
+
+    test('personalTokenEnabled is false when the deployment disables the flag', () => {
+      mockAppConfig.enablePersonalTokens = false
+      const { wrapper } = createWrapper('cornflow')
+      expect(wrapper.vm.personalTokenEnabled).toBe(false)
+    })
+
+    test('shows the generate button when the feature is enabled', async () => {
+      const { wrapper } = createWrapper('cornflow')
+      await wrapper.setData({ selectedTab: 'user-profile' })
+      expect(
+        wrapper.find('[data-test="api-key-generate-button"]').exists(),
+      ).toBe(true)
+    })
+
+    test('hides the section when the feature is disabled', async () => {
+      mockAppConfig.enablePersonalTokens = false
+      const { wrapper } = createWrapper('cornflow')
+      await wrapper.setData({ selectedTab: 'user-profile' })
+      expect(
+        wrapper.find('[data-test="api-key-generate-button"]').exists(),
+      ).toBe(false)
+    })
+
+    test('shows the TOTP input only when MFA is enabled', async () => {
+      const { wrapper, generalStore } = createWrapper('cornflow')
+      generalStore.user = { id: 1, name: 'Test User', mfaEnabled: true }
+      await wrapper.setData({ selectedTab: 'user-profile' })
+      expect(wrapper.find('[data-test="api-key-totp"]').exists()).toBe(true)
+    })
+
+    test('generateApiKey stores the key and shows the success snackbar', async () => {
+      const { wrapper, mockShowSnackbar } = createWrapper('cornflow')
+      mockCornflowAuth.createApiKey.mockResolvedValueOnce({
+        success: true,
+        apiKey: 'the-generated-key',
+      })
+
+      await wrapper.vm.generateApiKey()
+
+      expect(mockCornflowAuth.createApiKey).toHaveBeenCalledWith(undefined)
+      expect(wrapper.vm.apiKey).toBe('the-generated-key')
+      expect(mockShowSnackbar).toHaveBeenCalledWith(
+        'API key generated successfully',
+      )
+    })
+
+    test('generateApiKey passes the TOTP code through when provided', async () => {
+      const { wrapper } = createWrapper('cornflow')
+      mockCornflowAuth.createApiKey.mockResolvedValueOnce({
+        success: true,
+        apiKey: 'the-generated-key',
+      })
+
+      wrapper.vm.apiKeyTotp = '123456'
+      await wrapper.vm.generateApiKey()
+
+      expect(mockCornflowAuth.createApiKey).toHaveBeenCalledWith('123456')
+      // The TOTP field is cleared after a successful generation
+      expect(wrapper.vm.apiKeyTotp).toBe('')
+    })
+
+    test('generateApiKey shows the disabled error when the feature is off server-side', async () => {
+      const { wrapper, mockShowSnackbar } = createWrapper('cornflow')
+      mockCornflowAuth.createApiKey.mockResolvedValueOnce({
+        success: false,
+        disabled: true,
+        message: 'Personal tokens are disabled',
+      })
+
+      await wrapper.vm.generateApiKey()
+
+      expect(wrapper.vm.apiKey).toBe('')
+      expect(mockShowSnackbar).toHaveBeenCalledWith(
+        'Personal API keys are disabled for this deployment',
+        'error',
+      )
+    })
+
+    test('generateApiKey shows the backend message on failure', async () => {
+      const { wrapper, mockShowSnackbar } = createWrapper('cornflow')
+      mockCornflowAuth.createApiKey.mockResolvedValueOnce({
+        success: false,
+        disabled: false,
+        message: 'A valid TOTP code is required',
+      })
+
+      await wrapper.vm.generateApiKey()
+
+      expect(mockShowSnackbar).toHaveBeenCalledWith(
+        'A valid TOTP code is required',
+        'error',
+      )
+    })
+
+    test('generateApiKey falls back to the generic error message', async () => {
+      const { wrapper, mockShowSnackbar } = createWrapper('cornflow')
+      mockCornflowAuth.createApiKey.mockResolvedValueOnce({
+        success: false,
+        disabled: false,
+      })
+
+      await wrapper.vm.generateApiKey()
+
+      expect(mockShowSnackbar).toHaveBeenCalledWith(
+        'Error generating the API key',
+        'error',
+      )
+    })
+
+    test('generateApiKey shows the generic error on exception', async () => {
+      const { wrapper, mockShowSnackbar } = createWrapper('cornflow')
+      mockCornflowAuth.createApiKey.mockRejectedValueOnce(
+        new Error('Network error'),
+      )
+
+      await wrapper.vm.generateApiKey()
+
+      expect(mockShowSnackbar).toHaveBeenCalledWith(
+        'Error generating the API key',
+        'error',
+      )
+    })
+
+    test('copyApiKey writes the key to the clipboard and confirms', async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined)
+      Object.assign(navigator, { clipboard: { writeText } })
+
+      const { wrapper, mockShowSnackbar } = createWrapper('cornflow')
+      wrapper.vm.apiKey = 'the-generated-key'
+
+      await wrapper.vm.copyApiKey()
+
+      expect(writeText).toHaveBeenCalledWith('the-generated-key')
+      expect(mockShowSnackbar).toHaveBeenCalledWith('API key copied to clipboard')
     })
   })
 

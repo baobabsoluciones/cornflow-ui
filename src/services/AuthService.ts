@@ -10,6 +10,14 @@ export interface MFAVerifyData {
   backupCodes: string[]
 }
 
+export interface ApiKeyResult {
+  success: boolean
+  apiKey?: string
+  // true when the endpoint reported the feature is disabled on the deployment
+  disabled?: boolean
+  message?: string
+}
+
 class AuthService {
   async initialize(): Promise<void> {
     // Cornflow auth doesn't need initialization
@@ -151,6 +159,32 @@ class AuthService {
       message: (response.content as { error?: string })?.error,
       // 401/403: the link was already used, revoked or forged
       linkInvalid: response.status === 401 || response.status === 403,
+    }
+  }
+
+  /**
+   * Generates a personal API key for the current session. When the user has
+   * MFA enabled the server requires a fresh TOTP code (step-up). The key is
+   * returned only once; generating a new one revokes the previous key.
+   */
+  async createApiKey(totpCode?: string): Promise<ApiKeyResult> {
+    const body: Record<string, string> = {}
+    if (totpCode) {
+      body.totp_code = totpCode
+    }
+    const response = await client.post('/user/api-key/', body, {
+      'Content-Type': 'application/json',
+    })
+    if (response.status === 201) {
+      return {
+        success: true,
+        apiKey: (response.content as { api_key?: string }).api_key,
+      }
+    }
+    return {
+      success: false,
+      disabled: response.status === 501,
+      message: (response.content as { error?: string })?.error,
     }
   }
 

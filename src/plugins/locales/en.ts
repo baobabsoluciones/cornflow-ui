@@ -595,6 +595,18 @@ export default {
     mfaBackupContinue: 'I have saved my codes',
     mfaEnableSuccess: 'Two-factor authentication is now enabled.',
     cancel: 'Cancel',
+    apiKeyTitle: 'Personal access token',
+    apiKeyDescription:
+      'Generate a long-lived token to authenticate scripts and integrations without your password. Generating a new one revokes the previous token.',
+    apiKeyGenerateButton: 'Generate token',
+    apiKeyOnceWarning:
+      'Copy this token now. For security it will not be shown again.',
+    apiKeyCopy: 'Copy token',
+    apiKeyCopied: 'Token copied to the clipboard',
+    apiKeySuccess: 'Personal access token generated',
+    apiKeyError: 'The personal access token could not be generated',
+    apiKeyDisabled:
+      'Personal access tokens are disabled on this deployment',
   },
   helpMenu: {
     help: 'Help center',

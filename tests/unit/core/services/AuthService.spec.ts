@@ -359,6 +359,81 @@ describe('AuthService', () => {
     })
   })
 
+  describe('createApiKey', () => {
+    test('returns the generated key on a 201 response', async () => {
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.post).mockResolvedValue({
+        status: 201,
+        content: { api_key: 'generated-api-key' }
+      })
+
+      const result = await AuthService.createApiKey()
+
+      expect(client.post).toHaveBeenCalledWith(
+        '/user/api-key/',
+        {},
+        { 'Content-Type': 'application/json' }
+      )
+      expect(result).toEqual({ success: true, apiKey: 'generated-api-key' })
+    })
+
+    test('includes the TOTP code in the request body when given', async () => {
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.post).mockResolvedValue({
+        status: 201,
+        content: { api_key: 'generated-api-key' }
+      })
+
+      const result = await AuthService.createApiKey('123456')
+
+      expect(client.post).toHaveBeenCalledWith(
+        '/user/api-key/',
+        { totp_code: '123456' },
+        { 'Content-Type': 'application/json' }
+      )
+      expect(result).toEqual({ success: true, apiKey: 'generated-api-key' })
+    })
+
+    test('flags the feature as disabled on a 501 response', async () => {
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.post).mockResolvedValue({
+        status: 501,
+        content: { error: 'Personal tokens are disabled' }
+      })
+
+      const result = await AuthService.createApiKey()
+
+      expect(result).toEqual({
+        success: false,
+        disabled: true,
+        message: 'Personal tokens are disabled'
+      })
+    })
+
+    test('returns the backend error without flagging disabled on other failures', async () => {
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.post).mockResolvedValue({
+        status: 400,
+        content: { error: 'A valid TOTP code is required' }
+      })
+
+      const result = await AuthService.createApiKey()
+
+      expect(result).toEqual({
+        success: false,
+        disabled: false,
+        message: 'A valid TOTP code is required'
+      })
+    })
+
+    test('handles API errors gracefully', async () => {
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.post).mockRejectedValue(new Error('Network error'))
+
+      await expect(AuthService.createApiKey()).rejects.toThrow('Network error')
+    })
+  })
+
   describe('signup', () => {
     test('successful signup returns true', async () => {
       const mockResponse = {

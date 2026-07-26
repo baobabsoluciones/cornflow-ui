@@ -220,6 +220,51 @@
                 </template>
               </template>
             </v-list-item>
+
+            <v-divider v-if="personalTokenEnabled"></v-divider>
+
+            <v-list-item v-if="personalTokenEnabled" class="mt-6">
+              <v-list-item-title class="mb-2 settings-title">{{
+                $t('settings.apiKeyTitle')
+              }}</v-list-item-title>
+              <v-list-item-subtitle class="mb-2">{{
+                $t('settings.apiKeyDescription')
+              }}</v-list-item-subtitle>
+
+              <!-- Optional step-up TOTP for MFA users -->
+              <MInputField
+                v-if="mfaEnabled"
+                style="width: 300px !important"
+                class="mt-2"
+                v-model="apiKeyTotp"
+                :title="$t('settings.mfaCodeLabel')"
+                type="text"
+                data-test="api-key-totp"
+              >
+              </MInputField>
+              <v-btn
+                color="primary"
+                class="my-2"
+                @click="generateApiKey"
+                data-test="api-key-generate-button"
+                >{{ $t('settings.apiKeyGenerateButton') }}</v-btn
+              >
+
+              <!-- Shown once -->
+              <div v-if="apiKey" class="api-key-box" data-test="api-key-box">
+                <v-alert type="warning" variant="tonal" class="mb-2">
+                  {{ $t('settings.apiKeyOnceWarning') }}
+                </v-alert>
+                <code class="api-key-value">{{ apiKey }}</code>
+                <v-btn
+                  variant="outlined"
+                  size="small"
+                  class="mt-2"
+                  @click="copyApiKey"
+                  >{{ $t('settings.apiKeyCopy') }}</v-btn
+                >
+              </div>
+            </v-list-item>
           </v-list>
         </v-col>
       </template>
@@ -233,6 +278,7 @@ import { useI18n } from 'vue-i18n'
 import { inject } from 'vue'
 import QRCode from 'qrcode'
 import config from '@cornflow-ui/core/config'
+import appConfig from '@/app/config'
 import { changeLanguage } from '@cornflow-ui/core/plugins/i18n'
 import { getSpecificAuthService } from '@cornflow-ui/core/services/AuthServiceFactory'
 import {
@@ -290,6 +336,9 @@ export default {
       mfaQrDataUrl: '',
       mfaCode: '',
       mfaBackupCodes: [],
+      // Personal API key
+      apiKeyTotp: '',
+      apiKey: '',
     }
   },
   created() {
@@ -334,6 +383,14 @@ export default {
     },
     mfaEnabled() {
       return !!this.generalStore.getUser?.mfaEnabled
+    },
+    personalTokenEnabled() {
+      // Personal API keys are a cornflow-auth feature; hidden when the
+      // deployment disables them (backend also enforces it). Defaults on.
+      return (
+        config.auth.type === 'cornflow' &&
+        appConfig.getCore().parameters.enablePersonalTokens !== false
+      )
     },
     validPassword() {
       return (
@@ -478,6 +535,37 @@ export default {
       this.mfaQrDataUrl = ''
       this.mfaCode = ''
     },
+    async generateApiKey() {
+      try {
+        const cornflowAuth = await getSpecificAuthService('cornflow')
+        const result = await cornflowAuth?.createApiKey?.(
+          this.apiKeyTotp || undefined,
+        )
+        if (result?.success) {
+          this.apiKey = result.apiKey
+          this.apiKeyTotp = ''
+          this.showSnackbar(this.$t('settings.apiKeySuccess'))
+        } else if (result?.disabled) {
+          this.showSnackbar(this.$t('settings.apiKeyDisabled'), 'error')
+        } else {
+          this.showSnackbar(
+            result?.message || this.$t('settings.apiKeyError'),
+            'error',
+          )
+        }
+      } catch (error) {
+        console.error('Failed to generate the API key:', error)
+        this.showSnackbar(this.$t('settings.apiKeyError'), 'error')
+      }
+    },
+    async copyApiKey() {
+      try {
+        await navigator.clipboard.writeText(this.apiKey)
+        this.showSnackbar(this.$t('settings.apiKeyCopied'))
+      } catch (error) {
+        console.error('Could not copy the API key:', error)
+      }
+    },
     finishMfaEnroll() {
       const user = this.generalStore.getUser
       if (user) user.mfaEnabled = true
@@ -521,5 +609,20 @@ export default {
 .mfa-backup-codes code {
   text-align: center;
   user-select: all;
+}
+
+.api-key-box {
+  margin-top: 8px;
+  max-width: 600px;
+}
+
+.api-key-value {
+  display: block;
+  padding: 10px 12px;
+  border: 1px dashed rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  word-break: break-all;
+  user-select: all;
+  font-size: 0.85rem;
 }
 </style>

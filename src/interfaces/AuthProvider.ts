@@ -31,6 +31,12 @@ export interface AuthProvider {
     token: string,
     password: string,
   ): Promise<{ success: boolean; message?: string; linkInvalid?: boolean }>;
+  createApiKey?(totpCode?: string): Promise<{
+    success: boolean
+    apiKey?: string
+    disabled?: boolean
+    message?: string
+  }>;
   getUsername?(): string | null;
   getName?(): string | null;
   getEmail?(): string | null;

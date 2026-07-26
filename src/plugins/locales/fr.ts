@@ -474,6 +474,18 @@ export default {
     mfaBackupContinue: "J'ai enregistré mes codes",
     mfaEnableSuccess: "L'authentification à deux facteurs est maintenant activée.",
     cancel: 'Annuler',
+    apiKeyTitle: "Jeton d'accès personnel",
+    apiKeyDescription:
+      "Générez un jeton de longue durée pour authentifier des scripts et des intégrations sans votre mot de passe. En générer un nouveau révoque le précédent.",
+    apiKeyGenerateButton: 'Générer le jeton',
+    apiKeyOnceWarning:
+      "Copiez ce jeton maintenant. Pour des raisons de sécurité, il ne sera plus affiché.",
+    apiKeyCopy: 'Copier le jeton',
+    apiKeyCopied: 'Jeton copié dans le presse-papiers',
+    apiKeySuccess: "Jeton d'accès personnel généré",
+    apiKeyError: "Le jeton d'accès personnel n'a pas pu être généré",
+    apiKeyDisabled:
+      "Les jetons d'accès personnel sont désactivés sur ce déploiement",
   },
   helpMenu: {
     help: "Centre d'aide",

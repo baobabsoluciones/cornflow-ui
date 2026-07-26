@@ -607,6 +607,18 @@ export default {
     mfaBackupContinue: 'He guardado mis códigos',
     mfaEnableSuccess: 'La autenticación de dos factores está activada.',
     cancel: 'Cancelar',
+    apiKeyTitle: 'Token de acceso personal',
+    apiKeyDescription:
+      'Genera un token de larga duración para autenticar scripts e integraciones sin tu contraseña. Al generar uno nuevo se revoca el anterior.',
+    apiKeyGenerateButton: 'Generar token',
+    apiKeyOnceWarning:
+      'Copia este token ahora. Por seguridad no se volverá a mostrar.',
+    apiKeyCopy: 'Copiar token',
+    apiKeyCopied: 'Token copiado al portapapeles',
+    apiKeySuccess: 'Token de acceso personal generado',
+    apiKeyError: 'No se pudo generar el token de acceso personal',
+    apiKeyDisabled:
+      'Los tokens de acceso personal están deshabilitados en este despliegue',
   },
   helpMenu: {
     help: 'Centro de ayuda',
