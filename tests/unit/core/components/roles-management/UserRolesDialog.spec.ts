@@ -183,4 +183,39 @@ describe('UserRolesDialog', () => {
       expect(wrapper.emitted('update:modelValue')![0]).toEqual([false])
     })
   })
+
+  describe('platform roles visibility', () => {
+    const allRoles = [
+      { id: 1, name: 'admin' },
+      { id: 2, name: 'viewer' },
+      { id: 5, name: 'platform_admin' },
+      { id: 6, name: 'platform_viewer' },
+      { id: 7, name: 'platform_planner' },
+    ]
+
+    test('platform roles are hidden by default (client admin)', async () => {
+      wrapper = createWrapper({ roles: allRoles })
+      await nextTick()
+      const items = JSON.parse(
+        wrapper.find('.v-select').attributes('data-items')!,
+      )
+      const names = items.map((i: any) => i.value)
+      expect(names).toEqual(['admin', 'viewer'])
+    })
+
+    test('platform roles are offered to platform administrators', async () => {
+      wrapper = createWrapper({
+        roles: allRoles,
+        canAssignPlatformRoles: true,
+      })
+      await nextTick()
+      const items = JSON.parse(
+        wrapper.find('.v-select').attributes('data-items')!,
+      )
+      const names = items.map((i: any) => i.value)
+      expect(names).toContain('platform_admin')
+      expect(names).toContain('platform_viewer')
+      expect(names).toContain('platform_planner')
+    })
+  })
 })

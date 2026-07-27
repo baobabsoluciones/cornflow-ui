@@ -98,9 +98,18 @@ interface Props {
   user: UserRow | null
   roles: Role[]
   saving?: boolean
+  /**
+   * Whether the current user can assign the platform_* roles (platform
+   * administrators only). When false those roles are hidden from the
+   * options; the server enforces the rule regardless.
+   */
+  canAssignPlatformRoles?: boolean
 }
 
-const props = withDefaults(defineProps<Props>(), { saving: false })
+const props = withDefaults(defineProps<Props>(), {
+  saving: false,
+  canAssignPlatformRoles: false,
+})
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
@@ -145,8 +154,15 @@ watch(
   { immediate: true },
 )
 
+// The internal (platform_*) roles can only be granted by a platform
+// administrator: hide them from the options otherwise. Roles the user
+// already holds keep rendering as chips even when not in the options.
 const roleItems = computed(() =>
-  props.roles.map((r) => ({ value: r.name, text: r.name })),
+  props.roles
+    .filter(
+      (r) => props.canAssignPlatformRoles || !r.name.startsWith('platform_'),
+    )
+    .map((r) => ({ value: r.name, text: r.name })),
 )
 
 function onSave() {

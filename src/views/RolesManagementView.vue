@@ -56,6 +56,7 @@
       :user="userToEdit"
       :roles="roles"
       :saving="savingUser"
+      :can-assign-platform-roles="isPlatformAdmin"
       @save="onUserRolesSave"
     />
   </div>
