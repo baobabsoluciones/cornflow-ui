@@ -93,6 +93,73 @@ describe('ApiClient', () => {
     vi.clearAllTimers()
   })
 
+  describe('Cornflow refresh-token renewal on 401', () => {
+    const jsonResponse = (status: number, body: any) => ({
+      status,
+      ok: status >= 200 && status < 300,
+      headers: { get: (h: string) => (h === 'Content-Type' ? 'application/json' : null) },
+      json: async () => body,
+      blob: async () => new Blob(),
+    }) as unknown as Response
+
+    test('renews the access token and retries the request transparently', async () => {
+      sessionStorageMock.setItem('token', 'expired-access')
+      sessionStorageMock.setItem('refreshToken', 'refresh-1')
+      apiClient['authToken'] = 'expired-access'
+
+      vi.mocked(fetch)
+        .mockResolvedValueOnce(jsonResponse(401, { error: 'expired' })) // original request
+        .mockResolvedValueOnce(
+          jsonResponse(200, { token: 'new-access', refresh_token: 'refresh-2' }),
+        ) // /token/refresh/
+        .mockResolvedValueOnce(jsonResponse(200, { result: 'ok' })) // retried request
+
+      const response = await apiClient.get('/execution/')
+
+      expect(response).toEqual({ status: 200, content: { result: 'ok' } })
+      // the refresh endpoint was called with the stored refresh token
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:8000/token/refresh/',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ refresh_token: 'refresh-1' }),
+        }),
+      )
+      // the rotated tokens were stored
+      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('token', 'new-access')
+      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('refreshToken', 'refresh-2')
+    })
+
+    test('does not retry and fails when there is no refresh token', async () => {
+      sessionStorageMock.setItem('token', 'expired-access')
+      apiClient['authToken'] = 'expired-access'
+
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(401, { error: 'expired' }))
+
+      await expect(apiClient.get('/execution/')).rejects.toThrow()
+      // only the original request was made (no refresh attempt)
+      expect(fetch).toHaveBeenCalledTimes(1)
+      // let the deferred auth-failure redirect run so it does not leak
+      await new Promise((resolve) => setTimeout(resolve, 5))
+    })
+
+    test('gives up (no loop) when the refresh itself fails', async () => {
+      sessionStorageMock.setItem('token', 'expired-access')
+      sessionStorageMock.setItem('refreshToken', 'refresh-1')
+      apiClient['authToken'] = 'expired-access'
+
+      vi.mocked(fetch)
+        .mockResolvedValueOnce(jsonResponse(401, { error: 'expired' })) // original request
+        .mockResolvedValueOnce(jsonResponse(401, { error: 'invalid' })) // failed refresh
+
+      await expect(apiClient.get('/execution/')).rejects.toThrow()
+      // original request + one refresh attempt, then give up
+      expect(fetch).toHaveBeenCalledTimes(2)
+      // let the deferred auth-failure redirect run so it does not leak
+      await new Promise((resolve) => setTimeout(resolve, 5))
+    })
+  })
+
   describe('Constructor and Initialization', () => {
     test('initializes with correct base URL', () => {
       expect(apiClient['baseUrl']).toBe('http://localhost:8000')

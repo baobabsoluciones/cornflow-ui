@@ -76,6 +76,34 @@ describe('AuthService', () => {
       expect(result).toEqual({ success: true, changePassword: false, lastLogin: null })
     })
 
+    test('successful login stores the refresh token when returned', async () => {
+      const mockResponse = {
+        status: 200,
+        content: { token: 'mock-token', id: 'user-123', refresh_token: 'refresh-abc' }
+      }
+
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.post).mockResolvedValue(mockResponse)
+
+      await AuthService.login('testuser', 'password123')
+
+      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('refreshToken', 'refresh-abc')
+    })
+
+    test('login without a refresh token clears any stored one (service user)', async () => {
+      const mockResponse = {
+        status: 200,
+        content: { token: 'mock-token', id: 'user-123' }
+      }
+
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.post).mockResolvedValue(mockResponse)
+
+      await AuthService.login('serviceuser', 'password123')
+
+      expect(sessionStorageMock.removeItem).toHaveBeenCalledWith('refreshToken')
+    })
+
     test('successful login with change_password flags the forced rotation', async () => {
       const mockResponse = {
         status: 200,
@@ -227,6 +255,20 @@ describe('AuthService', () => {
       const result = await AuthService.mfaVerify('123456')
 
       expect(result).toEqual({ backupCodes: [] })
+    })
+
+    test('stores the refresh token returned after enrollment', async () => {
+      const mockResponse = {
+        status: 200,
+        content: { token: 'full-token', id: 'user-123', refresh_token: 'refresh-xyz' }
+      }
+
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.post).mockResolvedValue(mockResponse)
+
+      await AuthService.mfaVerify('123456')
+
+      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('refreshToken', 'refresh-xyz')
     })
 
     test('returns null on invalid code', async () => {
@@ -488,8 +530,24 @@ describe('AuthService', () => {
 
       expect(sessionStorageMock.setItem).toHaveBeenCalledWith('isAuthenticated', 'false')
       expect(sessionStorageMock.removeItem).toHaveBeenCalledWith('token')
+      expect(sessionStorageMock.removeItem).toHaveBeenCalledWith('refreshToken')
       expect(sessionStorageMock.removeItem).toHaveBeenCalledWith('userId')
       expect(sessionStorageMock.removeItem).toHaveBeenCalledWith('pwdChangeRequired')
+    })
+
+    test('revokes the refresh-token session server-side when one exists', async () => {
+      mockStorage['refreshToken'] = 'refresh-abc'
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.post).mockResolvedValue({ status: 200, content: {} })
+
+      AuthService.logout()
+
+      expect(client.post).toHaveBeenCalledWith(
+        '/logout/',
+        { refresh_token: 'refresh-abc' },
+        { 'Content-Type': 'application/json' }
+      )
+      expect(sessionStorageMock.removeItem).toHaveBeenCalledWith('refreshToken')
     })
   })
 

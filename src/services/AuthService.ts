@@ -58,6 +58,14 @@ class AuthService {
 
     sessionStorage.setItem('isAuthenticated', 'true')
     sessionStorage.setItem('token', content.token)
+    // The refresh token backs the sliding-inactivity session; the Api layer
+    // uses it to renew the short-lived access token transparently. Service
+    // users / refresh-disabled deployments return only the access token.
+    if (content.refresh_token) {
+      sessionStorage.setItem('refreshToken', content.refresh_token)
+    } else {
+      sessionStorage.removeItem('refreshToken')
+    }
     sessionStorage.setItem('userId', content.id)
     // isAdmin and userRoles are determined after fetching user role assignments (see general store fetchUser)
     sessionStorage.removeItem('isAdmin')
@@ -114,6 +122,11 @@ class AuthService {
     const content = response.content as Record<string, any>
     sessionStorage.setItem('isAuthenticated', 'true')
     sessionStorage.setItem('token', content.token)
+    if (content.refresh_token) {
+      sessionStorage.setItem('refreshToken', content.refresh_token)
+    } else {
+      sessionStorage.removeItem('refreshToken')
+    }
     sessionStorage.setItem('userId', content.id)
     sessionStorage.removeItem('isAdmin')
     sessionStorage.removeItem('isPlatformAdmin')
@@ -202,8 +215,21 @@ class AuthService {
   }
 
   logout(): void {
+    // Best-effort server-side revocation of the refresh-token session (do not
+    // block the local logout on the network call).
+    const refreshToken = sessionStorage.getItem('refreshToken')
+    if (refreshToken) {
+      client
+        .post(
+          '/logout/',
+          { refresh_token: refreshToken },
+          { 'Content-Type': 'application/json' },
+        )
+        .catch(() => {})
+    }
     sessionStorage.setItem('isAuthenticated', 'false')
     sessionStorage.removeItem('token')
+    sessionStorage.removeItem('refreshToken')
     sessionStorage.removeItem('userId')
     sessionStorage.removeItem('isAdmin')
     sessionStorage.removeItem('isPlatformAdmin')
@@ -224,7 +250,9 @@ class AuthService {
     return isAuthenticated
   }
 
-  // Cornflow doesn't support token refresh from front-end side, tokens are managed by the backend
+  // The cornflow access token is renewed transparently by the Api layer using
+  // the stored refresh token (see ApiClient.refreshCornflowToken). This hook,
+  // used by the external-provider refresh path, is a no-op for cornflow auth.
   async refreshToken(): Promise<{ token: string; expiresAt: number } | null> {
     return null
   }
