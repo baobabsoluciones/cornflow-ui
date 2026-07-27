@@ -494,6 +494,7 @@ class ApiClient {
     url: string,
     queryParams: Record<string, string | number | boolean | undefined> = {},
     isExternal: boolean = false,
+    retried = false,
   ): Promise<{ status: number; blob: Blob; filename: string | null }> {
     await this.handleTokenRefreshIfNeeded(url)
 
@@ -514,6 +515,16 @@ class ApiClient {
       headers: this.getHeaders(),
       mode: 'cors',
     })
+
+    // Expired access token: renew once with the refresh token and retry
+    if (
+      response.status === 401 &&
+      !retried &&
+      this.canCornflowRefresh(url) &&
+      (await this.refreshCornflowToken())
+    ) {
+      return this.getBlob(url, queryParams, isExternal, true)
+    }
 
     this.handleUnauthorizedResponse(response, url)
 
@@ -570,6 +581,7 @@ class ApiClient {
     url: string,
     body: object,
     isExternal: boolean = false,
+    retried = false,
   ): Promise<Response> {
     await this.handleTokenRefreshIfNeeded(url)
     const completeUrl = this.buildRequestUrl(url, { isExternal })
@@ -581,6 +593,17 @@ class ApiClient {
       },
       isExternal,
     })
+
+    // Expired access token: renew once with the refresh token and retry
+    if (
+      response.status === 401 &&
+      !retried &&
+      this.canCornflowRefresh(url) &&
+      (await this.refreshCornflowToken())
+    ) {
+      return this.postStream(url, body, isExternal, true)
+    }
+
     this.handleUnauthorizedResponse(response, url)
     return response
   }

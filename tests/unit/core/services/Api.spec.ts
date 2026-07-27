@@ -143,6 +143,49 @@ describe('ApiClient', () => {
       await new Promise((resolve) => setTimeout(resolve, 5))
     })
 
+    test('getBlob renews the access token and retries', async () => {
+      sessionStorageMock.setItem('token', 'expired-access')
+      sessionStorageMock.setItem('refreshToken', 'refresh-1')
+      apiClient['authToken'] = 'expired-access'
+
+      const blobResponse = {
+        status: 200,
+        ok: true,
+        headers: { get: () => null },
+        blob: async () => new Blob(['data']),
+      } as unknown as Response
+
+      vi.mocked(fetch)
+        .mockResolvedValueOnce(jsonResponse(401, { error: 'expired' })) // original download
+        .mockResolvedValueOnce(
+          jsonResponse(200, { token: 'new-access', refresh_token: 'refresh-2' }),
+        ) // /token/refresh/
+        .mockResolvedValueOnce(blobResponse) // retried download
+
+      const result = await apiClient.getBlob('/case/1/export/')
+
+      expect(result.status).toBe(200)
+      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('token', 'new-access')
+    })
+
+    test('postStream renews the access token and retries', async () => {
+      sessionStorageMock.setItem('token', 'expired-access')
+      sessionStorageMock.setItem('refreshToken', 'refresh-1')
+      apiClient['authToken'] = 'expired-access'
+
+      vi.mocked(fetch)
+        .mockResolvedValueOnce(jsonResponse(401, { error: 'expired' })) // original stream
+        .mockResolvedValueOnce(
+          jsonResponse(200, { token: 'new-access', refresh_token: 'refresh-2' }),
+        ) // /token/refresh/
+        .mockResolvedValueOnce(jsonResponse(200, { ok: true })) // retried stream
+
+      const response = await apiClient.postStream('/stream/', { q: 1 })
+
+      expect(response.status).toBe(200)
+      expect(fetch).toHaveBeenCalledTimes(3)
+    })
+
     test('gives up (no loop) when the refresh itself fails', async () => {
       sessionStorageMock.setItem('token', 'expired-access')
       sessionStorageMock.setItem('refreshToken', 'refresh-1')
