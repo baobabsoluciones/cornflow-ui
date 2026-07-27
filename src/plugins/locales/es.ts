@@ -611,6 +611,9 @@ export default {
     apiKeyDescription:
       'Genera un token de larga duración para autenticar scripts e integraciones sin tu contraseña. Al generar uno nuevo se revoca el anterior.',
     apiKeyGenerateButton: 'Generar token',
+    apiKeyReadOnlyLabel: 'Token de solo lectura',
+    apiKeyReadOnlyHint:
+      'El token solo podrá consultar datos, nunca crearlos, modificarlos ni eliminarlos. Recomendado para herramientas de informes y BI.',
     apiKeyOnceWarning:
       'Copia este token ahora. Por seguridad no se volverá a mostrar.',
     apiKeyCopy: 'Copiar token',

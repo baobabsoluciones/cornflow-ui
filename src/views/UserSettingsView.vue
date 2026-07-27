@@ -242,6 +242,16 @@
                 data-test="api-key-totp"
               >
               </MInputField>
+              <!-- Read-only scope: the key is refused on anything but GET -->
+              <v-checkbox
+                v-model="apiKeyReadOnly"
+                :label="$t('settings.apiKeyReadOnlyLabel')"
+                :hint="$t('settings.apiKeyReadOnlyHint')"
+                persistent-hint
+                density="compact"
+                class="mt-2"
+                data-test="api-key-read-only"
+              ></v-checkbox>
               <v-btn
                 color="primary"
                 class="my-2"
@@ -338,6 +348,7 @@ export default {
       mfaBackupCodes: [],
       // Personal API key
       apiKeyTotp: '',
+      apiKeyReadOnly: false,
       apiKey: '',
     }
   },
@@ -540,6 +551,7 @@ export default {
         const cornflowAuth = await getSpecificAuthService('cornflow')
         const result = await cornflowAuth?.createApiKey?.(
           this.apiKeyTotp || undefined,
+          this.apiKeyReadOnly ? 'read' : undefined,
         )
         if (result?.success) {
           this.apiKey = result.apiKey

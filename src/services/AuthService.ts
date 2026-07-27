@@ -180,10 +180,14 @@ class AuthService {
    * MFA enabled the server requires a fresh TOTP code (step-up). The key is
    * returned only once; generating a new one revokes the previous key.
    */
-  async createApiKey(totpCode?: string): Promise<ApiKeyResult> {
+  async createApiKey(totpCode?: string, scope?: string): Promise<ApiKeyResult> {
     const body: Record<string, string> = {}
     if (totpCode) {
       body.totp_code = totpCode
+    }
+    // "read" asks for a read-only key (refused by the server on writes)
+    if (scope) {
+      body.scope = scope
     }
     const response = await client.post('/user/api-key/', body, {
       'Content-Type': 'application/json',

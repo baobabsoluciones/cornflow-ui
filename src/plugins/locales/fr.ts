@@ -478,6 +478,9 @@ export default {
     apiKeyDescription:
       "Générez un jeton de longue durée pour authentifier des scripts et des intégrations sans votre mot de passe. En générer un nouveau révoque le précédent.",
     apiKeyGenerateButton: 'Générer le jeton',
+    apiKeyReadOnlyLabel: 'Jeton en lecture seule',
+    apiKeyReadOnlyHint:
+      "Le jeton pourra uniquement consulter les données, jamais les créer, les modifier ou les supprimer. Recommandé pour les outils de reporting et de BI.",
     apiKeyOnceWarning:
       "Copiez ce jeton maintenant. Pour des raisons de sécurité, il ne sera plus affiché.",
     apiKeyCopy: 'Copier le jeton',

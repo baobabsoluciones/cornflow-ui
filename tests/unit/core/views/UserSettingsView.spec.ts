@@ -772,7 +772,10 @@ describe('UserSettingsView', () => {
 
       await wrapper.vm.generateApiKey()
 
-      expect(mockCornflowAuth.createApiKey).toHaveBeenCalledWith(undefined)
+      expect(mockCornflowAuth.createApiKey).toHaveBeenCalledWith(
+        undefined,
+        undefined,
+      )
       expect(wrapper.vm.apiKey).toBe('the-generated-key')
       expect(mockShowSnackbar).toHaveBeenCalledWith(
         'API key generated successfully',
@@ -789,9 +792,28 @@ describe('UserSettingsView', () => {
       wrapper.vm.apiKeyTotp = '123456'
       await wrapper.vm.generateApiKey()
 
-      expect(mockCornflowAuth.createApiKey).toHaveBeenCalledWith('123456')
+      expect(mockCornflowAuth.createApiKey).toHaveBeenCalledWith(
+        '123456',
+        undefined,
+      )
       // The TOTP field is cleared after a successful generation
       expect(wrapper.vm.apiKeyTotp).toBe('')
+    })
+
+    test('generateApiKey requests the read scope when read-only is checked', async () => {
+      const { wrapper } = createWrapper('cornflow')
+      mockCornflowAuth.createApiKey.mockResolvedValueOnce({
+        success: true,
+        apiKey: 'the-read-only-key',
+      })
+
+      wrapper.vm.apiKeyReadOnly = true
+      await wrapper.vm.generateApiKey()
+
+      expect(mockCornflowAuth.createApiKey).toHaveBeenCalledWith(
+        undefined,
+        'read',
+      )
     })
 
     test('generateApiKey shows the disabled error when the feature is off server-side', async () => {
