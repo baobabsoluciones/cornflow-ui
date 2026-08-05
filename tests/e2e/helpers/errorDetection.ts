@@ -22,9 +22,24 @@ export function setupErrorDetection(page: Page): {
 } {
   let errorMessage: string | null = null;
 
+  // Non-fatal background errors that do NOT mean authentication failed. Some backends /
+  // environments don't serve every new startup endpoint the current core calls (e.g. the
+  // frontend-automation configuration tables), so those requests error in the console while
+  // login itself succeeds and the app renders normally. Ignore them here; a genuine login
+  // failure is still caught by the response handler below (non-2xx on /login/).
+  const IGNORED_ERROR_PATTERNS = [
+    'getConfigurationTables',
+    'FaRepository',
+    'FrontendAutomation',
+    'frontend-automation',
+  ];
+
   const consoleHandler = (msg: any) => {
     if (msg.type() === 'error') {
       const text = msg.text();
+      if (IGNORED_ERROR_PATTERNS.some((pattern) => text.includes(pattern))) {
+        return;
+      }
       if (text.includes('Error') || text.includes('error') || text.includes('failed')) {
         errorMessage = text;
       }
