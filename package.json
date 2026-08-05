@@ -4,11 +4,13 @@
   "version": "3.2.1",
   "type": "module",
   "files": [
-    "src"
+    "src",
+    "tests/e2e"
   ],
   "exports": {
     ".": "./src/index.ts",
     "./styles.css": "./src/assets/styles/main.css",
+    "./e2e/*": "./tests/e2e/*",
     "./*": "./src/*"
   },
   "scripts": {
