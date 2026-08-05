@@ -1,4 +1,4 @@
-import { createCornflowE2EConfig } from './configFactory';
+import { createCornflowE2EConfig } from './configFactory.mjs';
 
 /**
  * Cornflow core E2E config. Uses the shared factory (the same one consumer apps import
