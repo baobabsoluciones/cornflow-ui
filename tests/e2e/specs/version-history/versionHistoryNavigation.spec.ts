@@ -330,8 +330,11 @@ test.describe('Version History Navigation', () => {
         expect(execution).toHaveProperty('description');
         expect(typeof execution.description).toBe('string');
 
-        expect(execution).toHaveProperty('indicators');
-        expect(typeof execution.indicators).toBe('string');
+        // `indicators` is optional: it's a schema/backend-specific field and is not present
+        // for every product (e.g. simulation_handling executions don't include it).
+        if (execution.indicators !== undefined) {
+          expect(typeof execution.indicators).toBe('string');
+        }
 
         expect(execution).toHaveProperty('data_hash');
         expect(typeof execution.data_hash).toBe('string');

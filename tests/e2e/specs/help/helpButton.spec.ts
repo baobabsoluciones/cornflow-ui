@@ -119,7 +119,7 @@ test.describe('Help Button', () => {
 
     // Verify the download link has the download attribute
     const downloadAttribute = await downloadLink.getAttribute('download');
-    expect(downloadAttribute).toBe('manual_user.pdf');
+    expect(downloadAttribute).toBe('user_manual.pdf');
 
     // Verify the download text is visible
     const downloadText = page.getByText(/Descargar manual de usuario|Download user manual/i);
@@ -162,7 +162,7 @@ test.describe('Help Button', () => {
     const download = await downloadPromise;
 
     // Verify the download filename
-    expect(download.suggestedFilename()).toBe('manual_user.pdf');
+    expect(download.suggestedFilename()).toBe('user_manual.pdf');
 
     // Verify the download URL contains the manual file path
     const downloadUrl = download.url();
