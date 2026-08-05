@@ -223,12 +223,26 @@ Prioridad **P0** (crítico) / **P1** / **P2**.
 | **Traducciones de app** correctas (no claves crudas) — regresión del bug i18n v3.2.2 | ❌ | **P0** |
 
 ### 6.5 Módulos PREMIUM (enterprise — van en el repo enterprise, heredando esta base)
+
+> **Aclaración arquitectónica (2026-08-05):** core expone puntos de enganche
+> (`plugins/extensions.ts`, `types/extension.ts`, `useLatestPlanController.ts`,
+> `types/latestPlan.ts`) pero la **UI premium ya NO vive en core** — `SetCurrentPlanFab.vue`,
+> `LatestPlanBanner.vue`, `SetLatestPlanModal.vue`, `LatestPlanRepository.ts` están en
+> **`cornflow_ui_enterprise`**. Por tanto los e2e de estos módulos van en enterprise, como
+> **módulos e2e extra** que reutilizan el harness de core.
+
 | Módulo | Estado | Prio |
 |---|---|---|
+| **Latest plan / "plan actual"** (FAB estrella, set current plan, banner, up-to-date) | ❌ (van a enterprise) | P1 |
 | Agent (chat/mentions) | ❌ | P1 |
-| Latest plan (star, up-to-date tracking) | ❌ | P1 |
 | Recalculation | ❌ | P1 |
 | ETL (carga de instancia vía backend ETL, metadata/review) | ❌ | P1 |
+| Master-table-match | ❌ | P1 |
+
+> **Tests a REUBICAR de core→enterprise** (7 tests de "current plan" que recuperamos en core
+> pero prueban UI premium): `input-data` (2), `solution-data` (2), `validations` (2),
+> `version-history` (1). Fuente para portarlos: rama `feature/e2e_testing` de core o el
+> commit de recuperación. En core se **eliminan** (no aplican a un consumidor CORE puro).
 
 ### 6.6 Transversales (cross-cutting)
 | Aspecto | Estado | Prio |
