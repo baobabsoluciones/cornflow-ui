@@ -2126,8 +2126,11 @@ test.describe('Version History Navigation', () => {
       return;
     }
 
-    // Wait for the first row to be fully rendered with all cells
-    const firstRow = tableRows.first();
+    // Prefer a row for a SUCCESSFUL execution (Óptimo/Éxito): an errored execution's Excel
+    // export is not a valid .xlsx, which would fail the extension assertion below. Fall back
+    // to the first row when success/error state can't be distinguished.
+    const successRows = tableRows.filter({ hasText: /Óptimo|Optimal|Éxito|Success/i });
+    const firstRow = (await successRows.count()) > 0 ? successRows.first() : tableRows.first();
     await firstRow.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
     
     // Wait for cells to be rendered in the row
