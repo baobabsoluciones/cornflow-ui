@@ -4,7 +4,7 @@ import { Amplify } from 'aws-amplify'
 import { signInWithRedirect, signOut, fetchAuthSession } from 'aws-amplify/auth'
 import client from '@cornflow-ui/core/api/Api'
 import config from '@cornflow-ui/core/config'
-import router from '@cornflow-ui/core/router'
+import { getRouter } from '@cornflow-ui/core/router'
 
 export class OpenIDAuthService implements AuthProvider {
   private msalInstance: PublicClientApplication | null = null
@@ -283,7 +283,7 @@ export class OpenIDAuthService implements AuthProvider {
     )
     this.storeUserClaims(tokenClaims)
     client.initializeToken()
-    router.push('/project-execution')
+    getRouter().push('/project-execution')
   }
 
   private async handleAuthResponse(response: any) {
@@ -344,7 +344,7 @@ export class OpenIDAuthService implements AuthProvider {
         await this.initializeCognito(true)
         
         // Redirect through router to ensure query params are set
-        router.push({ path: '/sign-in', query: { expired: 'true' } })
+        getRouter().push({ path: '/sign-in', query: { expired: 'true' } })
       } catch (error) {
         console.error('Failed to retry authentication with Cognito:', error)
         // If that fails, force hard redirect to sign-in page
@@ -396,7 +396,7 @@ export class OpenIDAuthService implements AuthProvider {
         this.initializationPromise = null;
         
         // Navigate after state reset
-        router.push({ path: '/sign-in', query: { from: 'logout' } });
+        getRouter().push({ path: '/sign-in', query: { from: 'logout' } });
       }).catch((error) => {
         console.error('Error during Cognito sign out:', error);
         // Even if there's an error, clear state and redirect
@@ -404,7 +404,7 @@ export class OpenIDAuthService implements AuthProvider {
         this.handlingRedirect = false;
         this.loginAttempted = false;
         this.initializationPromise = null;
-        router.push({ path: '/sign-in', query: { from: 'logout' } });
+        getRouter().push({ path: '/sign-in', query: { from: 'logout' } });
       });
     }
   }
