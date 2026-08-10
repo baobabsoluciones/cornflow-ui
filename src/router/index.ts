@@ -1,6 +1,17 @@
+/**
+ * router/index.ts
+ *
+ * The router is built LAZILY, never at module evaluation time. Its history mode depends on
+ * `config.useHashMode`, which is only populated by `config.initConfig()` (async: it may fetch
+ * values.json). Since ES imports are evaluated before any function body runs, creating the router
+ * at module scope would always read the hardcoded default (`useHashMode: false`) and silently
+ * ignore the deployed configuration. `createCornflowApp` builds it via `getRouter()` inside
+ * `registerPlugins`, i.e. after `initConfig()` has resolved.
+ */
 // Composables
 import {
   createRouter,
+  Router,
   RouteRecordRaw,
   createWebHistory,
   createWebHashHistory,
@@ -20,10 +31,6 @@ import config from '@cornflow-ui/core/config'
 import appConfig from '@/app/config'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { isViewAllowed, getRoleDefaultView } from '@/app/rolesConfig'
-
-const dashboardRoutes = appConfig.getDashboardRoutes() || []
-const instanceDashboardRoutes = appConfig.getInstanceDashboardRoutes() || []
-const appSectionRoutes = appConfig.getAppSectionRoutes() || []
 
 let authService = null
 
@@ -165,127 +172,192 @@ const keepAliveRoute = (
     ...(meta ? { meta } : {}),
   }) as RouteRecordRaw
 
-const routes: RouteRecordRaw[] = [
-  {
-    path: '/sign-in',
-    component: LoginView,
-  },
-  {
-    path: '/',
-    name: 'Home',
-    component: IndexView,
-    beforeEnter: async (to, from, next) => {
-      try {
-        const auth = await initAuthService()
-        if (!auth.isAuthenticated() && to.name !== 'Sign In') {
-          next('/sign-in')
-        } else {
-          next()
-        }
-      } catch (error) {
-        console.error('Route guard error:', error)
-        next('/sign-in')
-      }
+// Builds the route table. Called from `createAppRouter()`, not at module scope, so the
+// app-config-driven routes are read after `appConfig.updateConfig()` has run.
+const buildRoutes = (): RouteRecordRaw[] => {
+  const dashboardRoutes = appConfig.getDashboardRoutes() || []
+  const instanceDashboardRoutes = appConfig.getInstanceDashboardRoutes() || []
+  const appSectionRoutes = appConfig.getAppSectionRoutes() || []
+
+  return [
+    {
+      path: '/sign-in',
+      component: LoginView,
     },
-    children: [
-      keepAliveRoute('user-settings', 'User settings', UserSettingsView),
-      keepAliveRoute('roles-management', 'Roles management', RolesManagementView, {
-        requiresAdmin: true,
-      }),
-      keepAliveRoute('project-execution', 'Project execution', ProjectExecutionView),
-      keepAliveRoute('history-execution', 'Executions history', HistoryExecutionView),
-      keepAliveRoute('dashboard', 'Dashboard', DashboardView),
-      ...appSectionRoutes,
-      keepAliveRoute(
-        'configuration/section/:sectionId/:subsectionKey',
-        'Configuration section subsection',
-        ConfigurationSectionSubsectionView,
-      ),
-      keepAliveRoute('configuration/:tableKey', 'Master Data', SectionView),
-      keepAliveRoute('configuration/group/:groupName/:tableKey?', 'Master Data Group', SectionView),
-      keepAliveRoute('input-data/:tableKey', 'Input Data Table', SectionView),
-      keepAliveRoute('input-data/group/:groupName/:tableKey?', 'Input Data Group', SectionView),
-      keepAliveRoute('results/:tableKey', 'Results Table', SectionView),
-      keepAliveRoute('results/group/:groupName/:tableKey?', 'Results Group', SectionView),
-      ...dashboardRoutes,
-      ...instanceDashboardRoutes,
-      // Premium routes (enterprise) are injected after module registration via
-      // `applyPremiumRoutes` (router.addRoute), not here at build time.
-      {
-        path: 'not-found',
-        name: 'Not Found',
-        component: NotFoundView,
+    {
+      path: '/',
+      name: 'Home',
+      component: IndexView,
+      beforeEnter: async (to, from, next) => {
+        try {
+          const auth = await initAuthService()
+          if (!auth.isAuthenticated() && to.name !== 'Sign In') {
+            next('/sign-in')
+          } else {
+            next()
+          }
+        } catch (error) {
+          console.error('Route guard error:', error)
+          next('/sign-in')
+        }
       },
-    ],
-  },
-  {
-    path: '/:pathMatch(.*)*',
-    redirect: '/not-found',
-  },
-]
+      children: [
+        keepAliveRoute('user-settings', 'User settings', UserSettingsView),
+        keepAliveRoute('roles-management', 'Roles management', RolesManagementView, {
+          requiresAdmin: true,
+        }),
+        keepAliveRoute('project-execution', 'Project execution', ProjectExecutionView),
+        keepAliveRoute('history-execution', 'Executions history', HistoryExecutionView),
+        keepAliveRoute('dashboard', 'Dashboard', DashboardView),
+        ...appSectionRoutes,
+        keepAliveRoute(
+          'configuration/section/:sectionId/:subsectionKey',
+          'Configuration section subsection',
+          ConfigurationSectionSubsectionView,
+        ),
+        keepAliveRoute('configuration/:tableKey', 'Master Data', SectionView),
+        keepAliveRoute(
+          'configuration/group/:groupName/:tableKey?',
+          'Master Data Group',
+          SectionView,
+        ),
+        keepAliveRoute('input-data/:tableKey', 'Input Data Table', SectionView),
+        keepAliveRoute('input-data/group/:groupName/:tableKey?', 'Input Data Group', SectionView),
+        keepAliveRoute('results/:tableKey', 'Results Table', SectionView),
+        keepAliveRoute('results/group/:groupName/:tableKey?', 'Results Group', SectionView),
+        ...dashboardRoutes,
+        ...instanceDashboardRoutes,
+        // Premium routes (enterprise) are injected after module registration via
+        // `applyPremiumRoutes` (router.addRoute), not here at build time.
+        {
+          path: 'not-found',
+          name: 'Not Found',
+          component: NotFoundView,
+        },
+      ],
+    },
+    {
+      path: '/:pathMatch(.*)*',
+      redirect: '/not-found',
+    },
+  ]
+}
 
-const router = createRouter({
-  history: config.useHashMode ? createWebHashHistory() : createWebHistory(),
-  routes,
-})
+/**
+ * Creates a fresh router instance. Reads `config.useHashMode` AT CALL TIME, so it must be invoked
+ * after `config.initConfig()` has resolved. Exported mainly for tests; app code uses `getRouter()`.
+ */
+export function createAppRouter(): Router {
+  const router = createRouter({
+    history: config.useHashMode ? createWebHashHistory() : createWebHistory(),
+    routes: buildRoutes(),
+  })
 
-router.beforeEach(async (to, from, next) => {
-  try {
-    const auth = await initAuthService()
-    const isAuthenticated = auth.isAuthenticated()
-    const isSignInPage = to.path === '/sign-in'
-    const isTargetingAuthRequiredPage = to.path !== '/sign-in'
+  router.beforeEach(async (to, from, next) => {
+    try {
+      const auth = await initAuthService()
+      const isAuthenticated = auth.isAuthenticated()
+      const isSignInPage = to.path === '/sign-in'
+      const isTargetingAuthRequiredPage = to.path !== '/sign-in'
 
-    // If not authenticated and going to a protected page
-    if (!isAuthenticated && isTargetingAuthRequiredPage) {
-      next('/sign-in')
-      return
-    }
-
-    // Resolve current user's role names — waits for initializeData if roles aren't available yet.
-    const roleNames = await getRoleNames()
-
-    const defaultView = resolveDefaultView(roleNames)
-
-    // Redirect to default view when:
-    // - authenticated and going to the login page
-    // - authenticated and going to the root
-    // - target requires admin and the user is not admin
-    // - target requires admin but the feature is disabled
-    const requiresAdmin = Boolean(to.meta?.requiresAdmin)
-    const redirectToDefault =
-      (isAuthenticated && isSignInPage) ||
-      (isAuthenticated && to.path === '/') ||
-      (requiresAdmin && sessionStorage.getItem('isAdmin') !== 'true') ||
-      (requiresAdmin && !appConfig.getCore().parameters.enableRolesManagement)
-    if (redirectToDefault) {
-      next(defaultView)
-      return
-    }
-
-    // If the role forbids this view, show the forbidden/not-found page
-    if (isViewForbidden(to, isAuthenticated, roleNames)) {
-      next({ path: '/not-found', query: { reason: 'forbidden' } })
-      return
-    }
-
-    // If authenticated and going to a configuration route, ensure configurations are loaded
-    if (isAuthenticated && isConfigurationRoute(to.path)) {
-      const configurationsLoaded = await ensureConfigurationsLoaded()
-      if (!configurationsLoaded) {
-        console.error('Failed to load configurations for route:', to.path)
-        // Optionally redirect to a safe page if configurations fail to load
-        // next('/history-execution')
-        // return
+      // If not authenticated and going to a protected page
+      if (!isAuthenticated && isTargetingAuthRequiredPage) {
+        next('/sign-in')
+        return
       }
+
+      // Resolve current user's role names — waits for initializeData if roles aren't available yet.
+      const roleNames = await getRoleNames()
+
+      const defaultView = resolveDefaultView(roleNames)
+
+      // Redirect to default view when:
+      // - authenticated and going to the login page
+      // - authenticated and going to the root
+      // - target requires admin and the user is not admin
+      // - target requires admin but the feature is disabled
+      const requiresAdmin = Boolean(to.meta?.requiresAdmin)
+      const redirectToDefault =
+        (isAuthenticated && isSignInPage) ||
+        (isAuthenticated && to.path === '/') ||
+        (requiresAdmin && sessionStorage.getItem('isAdmin') !== 'true') ||
+        (requiresAdmin && !appConfig.getCore().parameters.enableRolesManagement)
+      if (redirectToDefault) {
+        next(defaultView)
+        return
+      }
+
+      // If the role forbids this view, show the forbidden/not-found page
+      if (isViewForbidden(to, isAuthenticated, roleNames)) {
+        next({ path: '/not-found', query: { reason: 'forbidden' } })
+        return
+      }
+
+      // If authenticated and going to a configuration route, ensure configurations are loaded
+      if (isAuthenticated && isConfigurationRoute(to.path)) {
+        const configurationsLoaded = await ensureConfigurationsLoaded()
+        if (!configurationsLoaded) {
+          console.error('Failed to load configurations for route:', to.path)
+          // Optionally redirect to a safe page if configurations fail to load
+          // next('/history-execution')
+          // return
+        }
+      }
+
+      // In any other case, allow navigation
+      next()
+    } catch (error) {
+      console.error('Router guard error:', error)
+      next('/sign-in')
     }
+  })
 
-    // In any other case, allow navigation
-    next()
-  } catch (error) {
-    console.error('Router guard error:', error)
-    next('/sign-in')
+  return router
+}
+
+let routerInstance: Router | null = null
+
+/**
+ * Returns the app's router, creating it on first use. Every consumer must go through this
+ * accessor (or the default export) instead of holding a module-scope instance, so that the
+ * router is not built before `config.initConfig()` has resolved.
+ */
+export function getRouter(): Router {
+  if (!routerInstance) {
+    routerInstance = createAppRouter()
   }
-})
+  return routerInstance
+}
 
-export default router
+/** Drops the cached instance. Test-only helper. */
+export function resetRouter(): void {
+  routerInstance = null
+}
+
+/**
+ * Backwards-compatible default export: a lazy proxy that forwards to `getRouter()`. Consumers that
+ * still do `import router from '@cornflow-ui/core/router'` keep working, and the underlying router
+ * is only built the first time a property is actually accessed (i.e. at use time, not import time).
+ */
+export default new Proxy({} as Router, {
+  get(_target, prop) {
+    const router = getRouter()
+    // Receiver is deliberately the real router, not the proxy: getters must not re-enter here.
+    const value = Reflect.get(router, prop, router)
+    return typeof value === 'function' ? value.bind(router) : value
+  },
+  set(_target, prop, value) {
+    return Reflect.set(getRouter(), prop, value)
+  },
+  has(_target, prop) {
+    return Reflect.has(getRouter(), prop)
+  },
+  ownKeys() {
+    return Reflect.ownKeys(getRouter())
+  },
+  getOwnPropertyDescriptor(_target, prop) {
+    const descriptor = Reflect.getOwnPropertyDescriptor(getRouter(), prop)
+    // The proxy invariant requires reported own properties to be configurable on a plain target.
+    return descriptor ? { ...descriptor, configurable: true } : undefined
+  },
+})
