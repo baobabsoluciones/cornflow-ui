@@ -46,6 +46,7 @@ const NO_MIRROR = new Set([
   'playwright.config.ts',
   'README.md',
   'E2E_TEST_PLAN.md',
+  'E2E_ARCHITECTURE.md',
 ]);
 
 function mirrorDir(src, dest) {
@@ -166,7 +167,7 @@ export function createCornflowE2EConfig(options = {}) {
     // `modules` undefined  → run every module the layer ships (the default).
     // `modules` listed     → run only those.
     // `modules` empty array → the app uses none of them; skip the layer entirely.
-    if (layer.modules && layer.modules.length === 0) continue;
+    if (layer.modules?.length === 0) continue;
 
     const layerDir = resolveSuiteDir(consumerDir, layer.sourceDir, layer.mirrorName);
     projects.push({

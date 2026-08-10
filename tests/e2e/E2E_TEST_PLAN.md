@@ -1,9 +1,14 @@
 # Plan de Tests E2E — Cornflow UI (core)
 
-> Estado: **PROPUESTA / PLAN** (no hay tests implementados en esta rama todavía).
+> Estado: **EN EJECUCIÓN**. La suite de core ya está implementada en esta rama (60 tests, verde
+> contra south_handling pre); este documento sigue siendo la referencia de estrategia, cobertura
+> pendiente y decisiones. Las secciones que hablan en futuro describen el plan original.
 > Rama: `feature/e2e-tests` (creada desde `develop`).
 > Objetivo: definir cómo montar una suite E2E que cubra **todos los flujos posibles**, cómo
-> configurarla, mejores prácticas, y reporting por email — **antes** de escribir ningún test.
+> configurarla, mejores prácticas, y reporting por email.
+>
+> 👉 Para **cómo se reparten y heredan los tests entre core, enterprise y las apps de cliente**
+> (capas, configuración y ejecución), ver [`E2E_ARCHITECTURE.md`](./E2E_ARCHITECTURE.md).
 
 ---
 
