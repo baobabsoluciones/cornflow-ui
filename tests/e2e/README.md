@@ -1,305 +1,237 @@
-# Tests E2E con Playwright
+# E2E tests with Playwright
 
-Esta carpeta contiene los tests end-to-end (E2E) de la aplicación utilizando [Playwright](https://playwright.dev/).
+This folder holds the end-to-end (E2E) test suite, built with
+[Playwright](https://playwright.dev/).
 
-## Configuración
+The suite ships **inside the package**: consumer apps run these very same specs against their own
+app instead of copying them. For how the layers fit together (core → enterprise → client apps),
+see [`E2E_ARCHITECTURE.md`](./E2E_ARCHITECTURE.md).
 
-### 1. Variables de entorno
+## Setup
 
-Crea un archivo `.env.test` en la carpeta `tests/e2e/` con las siguientes variables:
+### 1. Environment variables
+
+Copy `.env.test.example` to `.env.test` in `tests/e2e/` and fill it in:
 
 ```env
-# Credenciales de autenticación para los tests
-PLAYWRIGHT_TEST_USER=tu_usuario
-PLAYWRIGHT_TEST_PASSWORD=tu_contraseña
+# Test credentials
+PLAYWRIGHT_TEST_USER=your_user
+PLAYWRIGHT_TEST_PASSWORD=your_password
 
-# Tipo de autenticación (opcional, por defecto: 'cornflow')
-# Valores posibles: 'cornflow', 'azure', 'cognito'
+# Authentication type (optional, defaults to 'cornflow')
+# Possible values: 'cornflow', 'azure', 'cognito'
 PLAYWRIGHT_AUTH_TYPE=cornflow
 
-# URL base de la aplicación (opcional, por defecto: 'http://localhost:3000')
+# Application base URL (optional, defaults to 'http://localhost:3000')
 PLAYWRIGHT_BASE_URL=http://localhost:3000
 
-# Variables de configuración del backend (VITE_APP_*)
-# IMPORTANTE: Usa VITE_APP_BACKEND_URL (no VITE_APP_API_URL)
-VITE_APP_BACKEND_URL=https://tu-backend.com
-VITE_APP_SCHEMA=tu_schema
+# Backend configuration (VITE_APP_*)
+# IMPORTANT: use VITE_APP_BACKEND_URL (not VITE_APP_API_URL)
+VITE_APP_BACKEND_URL=https://your-backend
+VITE_APP_SCHEMA=your_schema
 VITE_APP_AUTH_TYPE=cornflow
-# ... otras variables VITE_APP_* que necesite tu aplicación
+# ... any other VITE_APP_* variable your application needs
 ```
 
-**Nota:** El archivo `.env.test` está en `.gitignore` y no se subirá al repositorio. Asegúrate de crear tu propio archivo con las credenciales correctas.
+**Note:** `.env.test` is gitignored and never reaches the repository. Two things to keep in mind:
 
-### 2. Dependencias
+- **Vite does not read `.env.test`.** The app under test takes its configuration from the root
+  `.env`; keep both pointing at the same environment.
+- Do **not** set `PLAYWRIGHT_TEST_TEMP_PASSWORD` against a shared account: it enables the
+  change-password tests, which mutate the account.
 
-Las dependencias de Playwright ya están incluidas en el `package.json` del proyecto. Si necesitas instalarlas:
+### 2. Dependencies
 
 ```bash
 npm install
+npx playwright install chromium
 ```
 
-### 3. Servidor de desarrollo
+### 3. Dev server
 
-Los tests E2E inician automáticamente el servidor de desarrollo en el puerto 3000 antes de ejecutarse. No es necesario iniciarlo manualmente, pero si ya tienes un servidor corriendo en ese puerto, los tests lo reutilizarán (excepto en CI).
+The tests start the dev server on port 3000 automatically. If one is already running there it is
+reused (outside CI) — **kill any stale server first**, or the tests will silently run against
+whatever configuration it was started with.
 
-## Scripts disponibles
+## Available scripts
 
-### `npm run test:e2e`
+| Script | What it does |
+|---|---|
+| `npm run test:e2e` | Runs the whole suite headless. Reports land in `playwright-report/`. |
+| `npm run test:e2e:headed` | Same, with a visible browser — useful to watch what a test does. |
+| `npm run test:e2e:ui` | Playwright UI mode: run individual tests, time-travel debugging. The best option while developing tests. |
+| `npm run test:e2e:debug` | Pauses at the start of each test and opens the Playwright Inspector for step-by-step debugging. |
+| `npm run test:e2e:send-report` | Emails the corporate report. Requires a previous run and the SMTP variables (see [Emailing the report](#emailing-the-report)). |
+| `npm run test:e2e:full` | Runs the suite and emails the report — including when tests fail, so failures still get delivered. |
 
-Ejecuta todos los tests E2E en modo headless (sin interfaz gráfica del navegador).
+Useful filters:
 
-**Uso:**
 ```bash
-npm run test:e2e
+npx playwright test --list                            # what would run, without running it
+npx playwright test specs/version-history             # a single folder
+npx playwright test -g "download Excel"               # by test name
+npx playwright test --project=chromium-auth-tests     # only the login/logout specs
 ```
 
-**Descripción:**
-- Ejecuta todos los tests en la carpeta `tests/e2e/specs/`
-- Los navegadores se ejecutan en segundo plano (headless)
-- Genera reportes HTML en `playwright-report/`
-- Ideal para ejecución rápida y CI/CD
+## Authentication: log in once, reuse everywhere
 
----
+1. **`auth.setup.ts`** runs once before everything else. It performs a real UI login and saves the
+   full browser state (cookies, localStorage and **sessionStorage**) to `.auth/user.json`.
+2. **`fixtures.ts`** exports a custom `test` that injects the sessionStorage values (token, userId,
+   isAuthenticated) into every browser context before the page loads — Playwright's built-in
+   `storageState` does not cover sessionStorage, and that is where the cornflow token lives.
+3. Authenticated specs import `test` and `expect` from `../../fixtures` (**not** from
+   `@playwright/test`) and navigate straight away.
+4. The auth specs (`specs/auth/`) run in their own project, without a pre-authenticated state.
 
-### `npm run test:e2e:headed`
+> **Result:** the login runs **once** for the whole suite instead of ~50 times.
 
-Ejecuta los tests E2E con la interfaz gráfica del navegador visible.
+The saved state is resolved from the project root (see `helpers/authFile.ts`), so consumer apps
+keep their own `.auth/` — override it with `CORNFLOW_E2E_AUTH_FILE` if needed.
 
-**Uso:**
-```bash
-npm run test:e2e:headed
-```
-
-**Descripción:**
-- Mismo comportamiento que `test:e2e` pero con navegadores visibles
-- Útil para ver qué está haciendo el test en tiempo real
-- Permite observar el comportamiento de la aplicación durante la ejecución
-
----
-
-### `npm run test:e2e:ui`
-
-Abre la interfaz gráfica de Playwright (Playwright UI Mode).
-
-**Uso:**
-```bash
-npm run test:e2e:ui
-```
-
-**Descripción:**
-- Abre una interfaz interactiva en el navegador
-- Permite ejecutar tests individuales o grupos de tests
-- Incluye herramientas de depuración y visualización
-- Muestra time travel debugging
-- Ideal para desarrollo y depuración de tests
-
----
-
-### `npm run test:e2e:debug`
-
-Ejecuta los tests en modo debug con Playwright Inspector.
-
-**Uso:**
-```bash
-npm run test:e2e:debug
-```
-
-**Descripción:**
-- Pausa la ejecución al inicio de cada test
-- Abre Playwright Inspector para depuración paso a paso
-- Permite inspeccionar el estado de la página en cada momento
-- Útil para depurar tests que fallan o entender el flujo de ejecución
-- Puedes usar breakpoints y ejecutar comandos manualmente
-
----
-
-### `npm run test:e2e:send-report`
-
-Envía el reporte corporativo por email.
-
-**Uso:**
-```bash
-npm run test:e2e:send-report
-```
-
-**Descripción:**
-- Requiere haber ejecutado los tests previamente (`npm run test:e2e`)
-- Requiere configurar las variables SMTP en `.env.test` (ver sección [Envío de reportes por email](#envío-de-reportes-por-email))
-- Lee el reporte HTML corporativo y lo envía por email a los destinatarios configurados
-
----
-
-### `npm run test:e2e:full`
-
-Ejecuta todos los tests E2E y envía el reporte por email.
-
-**Uso:**
-```bash
-npm run test:e2e:full
-```
-
-**Descripción:**
-- Equivale a ejecutar `npm run test:e2e` seguido de `npm run test:e2e:send-report`
-- Ideal para CI/CD donde se quiere automatizar tests + envío de reporte
-
-## Autenticación optimizada con storageState
-
-La suite usa la estrategia **authenticate once, reuse everywhere** de Playwright:
-
-1. **`auth.setup.ts`** se ejecuta una sola vez antes de todos los tests. Hace login real por la UI y guarda el estado completo del navegador (cookies, localStorage y **sessionStorage**) en `.auth/user.json`.
-2. **`fixtures.ts`** exporta un `test` personalizado que inyecta los valores de sessionStorage (token, userId, isAuthenticated) en cada contexto de navegador antes de que cargue la página.
-3. Los tests autenticados importan `test` y `expect` desde `../../fixtures` en vez de `@playwright/test` y navegan directamente sin hacer login.
-4. Los tests de autenticación (`specs/auth/`) se ejecutan en un proyecto separado sin estado preautenticado.
-
-> **Resultado:** el login solo se ejecuta **una vez** para toda la suite, en vez de ~50 veces. Esto reduce drásticamente el tiempo de ejecución.
-
-### Cómo escribir un nuevo test autenticado
+### Writing a new authenticated test
 
 ```typescript
-// Importar desde fixtures, NO desde @playwright/test
+// Import from fixtures, NOT from @playwright/test
 import { test, expect } from '../../fixtures';
 
-test('mi test', async ({ page }) => {
-  // Navegar directamente — la página ya está autenticada
+test('my test', async ({ page }) => {
+  // Navigate straight away — the page is already authenticated
   await page.goto('/');
   const app = page.locator('.v-application');
   await app.first().waitFor({ state: 'visible', timeout: 15000 });
 
-  // ... continuar con el test
+  // ... rest of the test
 });
 ```
 
-## Estructura de archivos
+Two rules that keep these specs reusable by every consumer:
+
+- **Do not assume a schema.** No hardcoded table names, executions or row counts — adapt to
+  whatever the backend serves (`if (await tableCard.count() > 0) …`).
+- **Assert only what core owns**: its own i18n keys, structure and navigation.
+
+## File layout
 
 ```
 tests/e2e/
-├── README.md                    # Este archivo
-├── playwright.config.ts         # Configuración de Playwright
-├── auth.setup.ts                # Setup global de autenticación (se ejecuta una vez)
-├── fixtures.ts                  # Fixture personalizado con inyección de sessionStorage
-├── .env.test                    # Variables de entorno (no se sube al repo)
-├── .auth/                       # Estado de autenticación guardado (no se sube al repo)
+├── README.md                    # This file
+├── E2E_ARCHITECTURE.md          # How core / enterprise / client apps share the suite
+├── playwright.config.ts         # Thin wrapper over the shared factory
+├── configFactory.mjs            # Builds the config; also used by consumer apps
+├── auth.setup.ts                # Global auth setup (runs once)
+├── fixtures.ts                  # Custom fixture with sessionStorage injection
+├── .env.test.example            # Template (no secrets)
+├── .env.test                    # Local, gitignored
+├── .auth/                       # Saved auth state, gitignored
 │   └── user.json                # Cookies + localStorage + sessionStorage
-├── reporters/                   # Reportes personalizados
-│   ├── corporate-reporter.ts    # Reporter corporativo con branding
-│   └── send-report.ts           # Script de envío de reportes por email
-├── helpers/                     # Helpers y utilidades
-│   ├── auth/                    # Helpers de autenticación
-│   │   ├── cornflowAuth.ts      # Autenticación con usuario/contraseña
-│   │   └── index.ts             # Factory de autenticación
-│   ├── constants.ts             # Constantes y selectores
-│   ├── errorDetection.ts        # Detección de errores en la UI
-│   ├── sessionStorageHelpers.ts # Helpers para sessionStorage
-│   └── urlHelpers.ts            # Helpers para URLs y rutas
-└── specs/                       # Tests E2E
-    ├── auth/
-    │   └── login.spec.ts        # Tests de autenticación (login/logout)
-    ├── drawer/
-    │   └── pinDrawer.spec.ts    # Botón Pin drawer: fijar/desfijar menú lateral
-    ├── help/
-    │   └── helpButton.spec.ts   # Botón de ayuda y menú de ayuda
-    ├── input-data/
-    │   └── inputData.spec.ts    # Página de datos de entrada
-    ├── layout/
-    │   └── baobabLink.spec.ts   # Enlace "Powered by baobab soluciones"
-    ├── loaded-executions/
-    │   └── loadedExecutionsTabs.spec.ts  # Pestañas de ejecuciones cargadas
-    ├── user-settings/
-    │   └── userSettingsNavigation.spec.ts # Navegación a ajustes de usuario
-    └── version-history/
-        └── versionHistoryNavigation.spec.ts # Navegación al historial de versiones
+├── reporters/
+│   ├── corporate-reporter.ts    # Branded HTML report
+│   └── send-report.ts           # Emails that report over SMTP
+├── helpers/
+│   ├── auth/                    # cornflowAuth + authentication factory
+│   ├── authFile.ts              # Where the saved auth state lives
+│   ├── authInjectSkip.ts        # Opt out of session injection (password flows)
+│   ├── constants.ts             # Timeouts, routes and shared selectors
+│   ├── errorDetection.ts        # Console/network error detection
+│   ├── executionHelpers.ts      # Load/prepare executions
+│   ├── sessionStorageHelpers.ts
+│   └── urlHelpers.ts            # Hash routing helpers
+├── restore-password.spec.ts     # Restores the original password (runs on its own)
+└── specs/
+    ├── auth/login.spec.ts
+    ├── drawer/pinDrawer.spec.ts
+    ├── help/helpButton.spec.ts
+    ├── input-data/inputData.spec.ts
+    ├── layout/baobabLink.spec.ts
+    ├── loaded-executions/loadedExecutionsTabs.spec.ts
+    ├── solution-data/solutionData.spec.ts
+    ├── user-settings/userSettingsNavigation.spec.ts
+    ├── validations/validations.spec.ts
+    └── version-history/versionHistoryNavigation.spec.ts
 ```
 
-## Specs y cobertura
+## Specs and coverage
 
-| Carpeta              | Archivo                      | Descripción |
-|----------------------|-----------------------------|-------------|
-| `auth/`              | `login.spec.ts`             | Login, logout y flujo de autenticación. |
-| `drawer/`            | `pinDrawer.spec.ts`         | Botón **Pin drawer** del menú lateral: al pulsar el menú se queda desplegado; al pulsar de nuevo se contrae. |
-| `help/`              | `helpButton.spec.ts`        | Botón de ayuda, menú (Centro de ayuda, Licencias) y modal de ayuda. |
-| `input-data/`        | `inputData.spec.ts`         | Navegación a datos de entrada, tablas, visualización y carga de datos. |
-| `layout/`            | `baobabLink.spec.ts`        | Enlace **"baobab soluciones"** en la barra de la app: comprueba que el `href` es correcto y que al hacer clic se abre la URL en una nueva pestaña. |
-| `loaded-executions/` | `loadedExecutionsTabs.spec.ts` | Pestañas de ejecuciones cargadas (crear, cerrar, seleccionar). |
-| `user-settings/`     | `userSettingsNavigation.spec.ts` | Navegación a la página de ajustes de usuario. |
-| `version-history/`   | `versionHistoryNavigation.spec.ts` | Navegación al historial de versiones. |
+| Folder | File | What it covers |
+|---|---|---|
+| `auth/` | `login.spec.ts` | Login (valid, invalid, empty), redirect to a protected route, logout (programmatic and via the UI button), redirect to sign-in without a session, session persistence across reloads. |
+| `drawer/` | `pinDrawer.spec.ts` | Pin drawer button: the side menu stays open, and collapses again on a second click. |
+| `help/` | `helpButton.spec.ts` | Help menu, help centre modal, user manual download, licences modal. |
+| `input-data/` | `inputData.spec.ts` | Instance data tables, tab navigation, Excel download, navigation to edit instance. |
+| `layout/` | `baobabLink.spec.ts` | "baobab soluciones" link in the app bar: correct `href`, opens in a new tab. |
+| `loaded-executions/` | `loadedExecutionsTabs.spec.ts` | Loaded-execution tab bar: create, select and close tabs. |
+| `solution-data/` | `solutionData.spec.ts` | Solution data for the selected execution, endpoint payload, tabs, Excel download. |
+| `user-settings/` | `userSettingsNavigation.spec.ts` | Settings navigation, tabs, theme and language switching, password change. |
+| `validations/` | `validations.spec.ts` | Validation tables for the instance, endpoint payload, tabs, Excel download. |
+| `version-history/` | `versionHistoryNavigation.spec.ts` | Execution list, backend payload structure, date filters (today / yesterday / 7d / 30d), custom-range datepickers, Excel download, loading an execution, confirmation modals. |
+| *(root)* | `restore-password.spec.ts` | Restores the original password after the password-change flow. |
 
-## Reportes
+Some tests **mutate shared state** (changing the password, deleting an execution). Against a live
+environment, exclude them:
 
-Después de ejecutar los tests, se generan los siguientes reportes:
+```bash
+npx playwright test --grep-invert "change password|restore original password|delete execution"
+```
 
-### Reporte estándar de Playwright
+## Reports
 
-- **`playwright-report/index.html`**: Reporte HTML interactivo con resultados, screenshots y videos de los tests fallidos
-- **`test-results/`**: Carpeta con resultados detallados de cada ejecución (screenshots, videos, traces)
+### Playwright's own report
 
-Para ver el reporte estándar:
+- **`playwright-report/index.html`** — interactive HTML report with screenshots and videos of
+  failures.
+- **`test-results/`** — per-run artifacts (screenshots, videos, traces).
+
 ```bash
 npx playwright show-report
 ```
 
-### Reporte corporativo
+### Corporate report
 
-Además del reporte estándar, se genera un **reporte corporativo** con el branding de la empresa:
+A branded report is generated on every run at **`playwright-report/corporate-report.html`**, with
+a summary (total, passed, failed, skipped, flaky, duration), a success-rate bar, results grouped
+by file, failure screenshots and run metadata.
 
-- **`playwright-report/corporate-report.html`**: Reporte HTML con look & feel corporativo
-
-El reporte corporativo incluye:
-- Cabecera con logo y nombre del proyecto
-- Tarjetas de resumen (total, passed, failed, skipped, flaky, duración)
-- Barra de progreso visual con porcentaje de éxito
-- Resultados detallados agrupados por archivo
-- Sección de errores con screenshots para tests fallidos
-- Pie de página con metadatos de ejecución
-
-#### Personalización
-
-El reporter corporativo acepta opciones en `playwright.config.ts`:
+It takes options in `playwright.config.ts`:
 
 ```typescript
 ['./reporters/corporate-reporter.ts', {
-  outputFile: 'playwright-report/corporate-report.html', // Ruta del archivo de salida
-  companyName: 'baobab soluciones',                       // Nombre de la empresa
-  projectName: 'Cornflow UI',                             // Nombre del proyecto
-  logoPath: 'src/app/assets/logo/baobab_full_logo.png',   // Ruta al logo
-  embedScreenshots: true,                                  // Incrustar screenshots de fallos
+  outputFile: 'playwright-report/corporate-report.html', // Output path
+  companyName: 'baobab soluciones',                      // Company name
+  projectName: 'Cornflow UI',                            // Project name
+  logoPath: 'src/app/assets/logo/baobab_full_logo.png',  // Logo path
+  embedScreenshots: true,                                // Embed failure screenshots
 }]
 ```
 
-### Envío de reportes por email
-
-El reporte corporativo se puede enviar automáticamente por email:
+### Emailing the report
 
 ```bash
-# Enviar solo el reporte (requiere haber ejecutado los tests antes)
-npm run test:e2e:send-report
-
-# Ejecutar tests + enviar reporte
-npm run test:e2e:full
+npm run test:e2e:send-report   # send only (tests must have run before)
+npm run test:e2e:full          # run + send
 ```
 
-#### Configuración del email
-
-Añade las siguientes variables en `.env.test`:
+Add to `.env.test`:
 
 ```env
-REPORT_SMTP_HOST=smtp.gmail.com
+REPORT_SMTP_HOST=smtp.example.com
 REPORT_SMTP_PORT=587
-REPORT_SMTP_USER=tu_correo@gmail.com
-REPORT_SMTP_PASS=tu_app_password
-REPORT_EMAIL_FROM=tu_correo@gmail.com
-REPORT_EMAIL_TO=destinatario1@empresa.com,destinatario2@empresa.com
-REPORT_EMAIL_CC=cc@empresa.com
+REPORT_SMTP_USER=your_address
+REPORT_SMTP_PASS=your_app_password
+REPORT_EMAIL_FROM=your_address
+REPORT_EMAIL_TO=recipient1@example.com,recipient2@example.com
+REPORT_EMAIL_CC=cc@example.com
 REPORT_EMAIL_SUBJECT=E2E Test Report – Cornflow UI
 ```
 
-> **Nota:** Para Gmail, usa una [contraseña de aplicación](https://support.google.com/accounts/answer/185833) en `REPORT_SMTP_PASS`, no la contraseña habitual.
+> For Gmail, use an [app password](https://support.google.com/accounts/answer/185833) in
+> `REPORT_SMTP_PASS`, never the account password. Credentials belong in `.env.test` or in CI
+> secrets — never in the repository.
 
-#### Integración con CI/CD
-
-Para enviar el reporte automáticamente en un pipeline de CI/CD:
+### CI/CD
 
 ```yaml
-# Ejemplo para GitHub Actions
+# GitHub Actions example
 - name: Run E2E tests
   run: npm run test:e2e
   env:
@@ -318,37 +250,31 @@ Para enviar el reporte automáticamente en un pipeline de CI/CD:
     REPORT_EMAIL_TO: ${{ secrets.REPORT_TO }}
 ```
 
-Todos los archivos de reportes están en `.gitignore` y no se suben al repositorio.
+All report output is gitignored.
 
 ## Troubleshooting
 
-### Los tests fallan con "Error del servidor"
+**Tests fail with a server error**
+- Check the credentials in `.env.test`.
+- Check that `VITE_APP_*` points at the intended backend — and remember the app itself reads the
+  root `.env`, not `.env.test`.
 
-- Verifica que las credenciales en `.env.test` sean correctas
-- Asegúrate de que el backend esté configurado correctamente
-- Revisa que las variables `VITE_APP_*` en `.env.test` apunten al backend correcto
+**The server does not start**
+- Check that port 3000 is free. If a server is already running there it will be reused outside CI,
+  which may not be the one you want.
 
-### El servidor no inicia
+**The tests are slow**
+- Authentication runs once thanks to the setup project. If it feels slow, make sure you import
+  `test` from `../../fixtures` and not from `@playwright/test`.
+- Specs run sequentially (`fullyParallel: false`) to avoid clashing over the shared server: 1
+  worker locally, 2 in CI. Both are adjustable in the config.
 
-- Verifica que el puerto 3000 esté disponible
-- Si ya tienes un servidor corriendo en el puerto 3000, los tests lo reutilizarán automáticamente
-- Revisa los logs del servidor en la consola
+**Selector problems**
+- `npm run test:e2e:debug` to inspect the live page, `npm run test:e2e:ui` to step through a run.
+- Check the screenshots in `test-results/` to see the page at the moment of failure.
 
-### Los tests son lentos
+## Further reading
 
-- La autenticación se ejecuta **una sola vez** gracias al setup project (`auth.setup.ts`). Si los tests siguen siendo lentos, revisa que estés importando `test` desde `../../fixtures` y no desde `@playwright/test`.
-- Los tests se ejecutan de forma secuencial (`fullyParallel: false`) para evitar conflictos con el servidor compartido.
-- En local se usa 1 worker; en CI se usan 2 workers.
-- Puedes ajustar `workers` y `fullyParallel` en `playwright.config.ts` si es necesario.
-
-### Problemas con selectores
-
-- Usa `npm run test:e2e:debug` para inspeccionar la página en tiempo real
-- Usa `npm run test:e2e:ui` para ver la ejecución paso a paso
-- Revisa los screenshots en `test-results/` para ver el estado de la página cuando falla un test
-
-## Más información
-
-- [Documentación de Playwright](https://playwright.dev/)
-- [Guía de mejores prácticas de Playwright](https://playwright.dev/docs/best-practices)
+- [Playwright documentation](https://playwright.dev/)
+- [Playwright best practices](https://playwright.dev/docs/best-practices)
 - [Playwright Test API](https://playwright.dev/docs/api/class-test)
