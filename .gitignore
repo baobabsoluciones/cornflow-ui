@@ -45,3 +45,6 @@ lerna-debug.log*
 # Playwright
 playwright-report/
 test-results/
+tests/e2e/.auth/
+tests/e2e/.env.test
+tests/e2e/.cornflow-core/
