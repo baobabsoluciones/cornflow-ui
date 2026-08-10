@@ -330,9 +330,9 @@ class ApiClient {
     // Use setTimeout to ensure this runs after the current execution context
     setTimeout(() => {
       // Import dynamically to avoid circular dependency
-      import('@cornflow-ui/core/router').then(({ default: router }) => {
+      import('@cornflow-ui/core/router').then(({ getRouter }) => {
         // Redirect to sign-in page with expired flag
-        router.push({ path: '/sign-in', query: { expired: 'true' } })
+        getRouter().push({ path: '/sign-in', query: { expired: 'true' } })
       })
     }, 0)
   }

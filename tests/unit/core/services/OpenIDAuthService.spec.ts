@@ -32,7 +32,10 @@ const mockPush = vi.hoisted(() => vi.fn())
 vi.mock('@cornflow-ui/core/router', () => ({
   default: {
     push: mockPush
-  }
+  },
+  getRouter: () => ({
+    push: mockPush
+  })
 }))
 
 // Create mock token

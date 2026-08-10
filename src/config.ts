@@ -23,7 +23,10 @@ const config = {
   name: '',
   hasExternalApp: false,
   isStagingEnvironment: false,
-  useHashMode: false,
+  // Seeded from the build-time env var (Vite inlines `import.meta.env`) so that anything reading
+  // this before `initConfig()` resolves still sees the configured value. values.json-based
+  // deployments override it in `initConfig()`.
+  useHashMode: parseBoolean(import.meta.env.VITE_APP_USE_HASH_MODE) ?? false,
   defaultLanguage: '',
   isDeveloperMode: false,
   enableSignup: false,
