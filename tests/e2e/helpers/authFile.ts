@@ -1,4 +1,4 @@
-import path from 'path';
+import path from 'node:path';
 
 /**
  * Absolute path of the saved authentication state (cookies + localStorage + sessionStorage).

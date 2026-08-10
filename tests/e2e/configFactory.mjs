@@ -1,8 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 import { config as loadDotenv } from 'dotenv';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /**
  * Shared Playwright config factory for the Cornflow E2E suite.
@@ -23,6 +23,16 @@ import { fileURLToPath } from 'url';
  *
  * The dev server, `.env.test` and the saved auth state always come from the CONSUMER, so the
  * suite exercises the consumer's backend / schema / variables. The specs are schema-agnostic.
+ *
+ * The same mechanism composes further layers through `options.layers`, so a client app that sits
+ * on top of enterprise runs everything in one go without copying a single spec:
+ *
+ *   core specs          (this package)            → project `chromium`
+ *   enterprise premium  (@cornflow-ui/enterprise)  → project `chromium-enterprise`
+ *   app-specific specs  (the client repo)          → project `chromium-app`
+ *
+ * Client apps do not wire this by hand: they import the factory from the topmost package they
+ * consume (`@cornflow-ui/enterprise/e2e/configFactory.mjs`), which passes its own layer down.
  */
 
 const packageE2EDir = path.dirname(fileURLToPath(import.meta.url));
@@ -49,17 +59,27 @@ function mirrorDir(src, dest) {
   }
 }
 
+/** True when `dir` lives inside an installed package rather than in the repo being run. */
+function isInstalled(dir) {
+  return dir.split(path.sep).includes('node_modules');
+}
+
 /**
- * Returns the directory Playwright should use as the suite root. For a consumer (running from
- * node_modules) it mirrors the suite locally and returns that; for the core repo it returns the
- * package dir in place.
+ * Returns the directory Playwright should use for a suite that ships inside a package.
+ *
+ * When the suite comes from `node_modules` it is mirrored into `tests/e2e/<mirrorName>` in the
+ * project being tested (outside `node_modules`, so Playwright can type-strip the `.ts` specs) and
+ * that copy is returned. When it is already part of the repo being run, it is used in place.
+ *
+ * Mirror names are siblings under `tests/e2e/`, which is what keeps the layers composable: an
+ * upper layer's specs reach the core harness with the same `../.cornflow-core/…` relative path
+ * both in their own repo and once mirrored into a consumer.
  */
-function resolveSuiteDir(consumerDir) {
-  const isInstalled = packageE2EDir.split(path.sep).includes('node_modules');
-  if (!isInstalled) return packageE2EDir;
-  const dest = path.join(consumerDir, 'tests', 'e2e', '.cornflow-core');
+function resolveSuiteDir(consumerDir, sourceDir, mirrorName) {
+  if (!isInstalled(sourceDir)) return sourceDir;
+  const dest = path.join(consumerDir, 'tests', 'e2e', mirrorName);
   fs.rmSync(dest, { recursive: true, force: true });
-  mirrorDir(packageE2EDir, dest);
+  mirrorDir(sourceDir, dest);
   return dest;
 }
 
@@ -81,11 +101,22 @@ function loadConsumerEnv(consumerDir) {
 }
 
 /**
+ * @typedef {{
+ *   name: string,         // project name, e.g. 'chromium-enterprise'
+ *   sourceDir: string,    // absolute path of the specs shipped by that layer
+ *   mirrorName: string,   // folder under tests/e2e/ to mirror into, e.g. '.cornflow-enterprise'
+ *   modules?: string[],   // subset of subfolders to run (e.g. ['latest-plan']); omit for all,
+ *                         // pass [] when the app uses none of that layer's modules
+ * }} E2ELayer
+ */
+
+/**
  * @param {{
  *   consumerDir?: string,      // project root (defaults to cwd)
  *   devCommand?: string,       // app-under-test start command (defaults to consumer's dev server)
  *   baseURL?: string,
  *   consumerSpecDir?: string,  // optional: consumer's own extra specs (run authenticated)
+ *   layers?: E2ELayer[],       // optional: suites contributed by intermediate packages (enterprise…)
  *   overrides?: object,        // extra Playwright config overrides
  * }} [options]
  */
@@ -96,7 +127,7 @@ export function createCornflowE2EConfig(options = {}) {
   const isCI = !!process.env.CI;
   const baseURL = options.baseURL || process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000';
 
-  const suiteDir = resolveSuiteDir(consumerDir);
+  const suiteDir = resolveSuiteDir(consumerDir, packageE2EDir, '.cornflow-core');
   const specsDir = path.join(suiteDir, 'specs');
   const setupFile = path.join(suiteDir, 'auth.setup.ts');
   const corporateReporter = path.join(suiteDir, 'reporters', 'corporate-reporter.ts');
@@ -127,6 +158,25 @@ export function createCornflowE2EConfig(options = {}) {
       testMatch: ['**/auth/**'],
     },
   ];
+
+  // Layers contributed by packages between core and the app (enterprise, and anything built on
+  // top of it). Each one is mirrored next to the core suite and gets its own project, so a single
+  // run covers core + every intermediate layer + the app, with no spec duplicated anywhere.
+  for (const layer of options.layers ?? []) {
+    // `modules` undefined  → run every module the layer ships (the default).
+    // `modules` listed     → run only those.
+    // `modules` empty array → the app uses none of them; skip the layer entirely.
+    if (layer.modules && layer.modules.length === 0) continue;
+
+    const layerDir = resolveSuiteDir(consumerDir, layer.sourceDir, layer.mirrorName);
+    projects.push({
+      name: layer.name,
+      testDir: layerDir,
+      use: { ...devices['Desktop Chrome'], storageState },
+      dependencies: ['setup'],
+      ...(layer.modules ? { testMatch: layer.modules.map((m) => `**/${m}/**/*.spec.ts`) } : {}),
+    });
+  }
 
   if (options.consumerSpecDir) {
     projects.push({
