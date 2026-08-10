@@ -330,8 +330,8 @@ test.describe('Version History Navigation', () => {
         expect(execution).toHaveProperty('description');
         expect(typeof execution.description).toBe('string');
 
-        // `indicators` is optional: it's a schema/backend-specific field and is not present
-        // for every product (e.g. simulation_handling executions don't include it).
+        // `indicators` is optional: it's a schema/backend-specific field and some products
+        // do not return it at all.
         if (execution.indicators !== undefined) {
           expect(typeof execution.indicators).toBe('string');
         }

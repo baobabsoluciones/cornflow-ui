@@ -3,24 +3,22 @@
 > Cómo se reparten, se heredan, se configuran y se lanzan los tests E2E en los tres niveles del
 > producto. Este documento vive en **core** porque la maquinaria (la *factory* de configuración)
 > vive aquí y viaja dentro del paquete a todos los consumidores.
->
-> Documentos hermanos: [`E2E_TEST_PLAN.md`](./E2E_TEST_PLAN.md) (estrategia y cobertura),
-> `README.md` de cada repo (instrucciones locales).
 
 ---
 
 ## 1. El problema que resuelve
 
-El producto tiene tres niveles y cada uno añade código:
+El producto se consume en tres niveles, y cada uno añade código:
 
 ```
-cornflow-ui (CORE)  ──►  cornflow_ui_enterprise (ENTERPRISE)  ──►  tendam-frontend (APP)
-   flujos base              módulos premium                          vistas y lógica propias
+core  ──►  enterprise  ──►  app de cliente
+ flujos      módulos          vistas y lógica
+ base        premium          propias
 ```
 
-Un cliente como Tendam necesita probar **las tres cosas a la vez**. La salida fácil —copiar los
-tests de core a enterprise y de enterprise a cada cliente— produce N copias que divergen: se
-arregla un selector en core y nadie se entera en los otros seis repos.
+Una app de cliente necesita probar **las tres cosas a la vez**. La salida fácil —copiar los tests
+de core a enterprise y de enterprise a cada app— produce N copias que divergen: se arregla un
+selector en core y nadie se entera en los demás repos.
 
 La regla de este montaje es: **cada test se escribe una sola vez, en la capa que lo posee, y se
 hereda hacia abajo.**
@@ -32,8 +30,8 @@ hereda hacia abajo.**
 | Capa | Qué cubre | Dónde viven los specs | Proyecto Playwright |
 |---|---|---|---|
 | **Core** | Login/logout, input data, solution data, validaciones, historial de versiones, ejecuciones cargadas, ayuda, drawer, ajustes de usuario, layout | `@cornflow-ui/core` → `tests/e2e/specs/` | `chromium`, `chromium-auth-tests` |
-| **Enterprise** | Módulos premium: plan actual (*latest-plan*) y, según se vayan escribiendo, agent, recalculation, ETL, master-table-match | `@cornflow-ui/enterprise` → `tests/e2e/premium/<módulo>/` | `chromium-enterprise` |
-| **App** | Lo que solo existe en ese cliente: vistas propias, dashboards, su schema, sus parámetros | el repo del cliente → `tests/e2e/app/` | `chromium-app` |
+| **Enterprise** | Módulos premium, uno por carpeta | paquete enterprise → `tests/e2e/premium/<módulo>/` | `chromium-enterprise` |
+| **App** | Lo que solo existe en esa app: vistas propias, dashboards, su schema, sus parámetros | el repo de la app → `tests/e2e/app/` | `chromium-app` |
 
 Una sola orden (`npm run test:e2e`) ejecuta las capas que apliquen, en la misma sesión
 autenticada.
@@ -43,11 +41,11 @@ autenticada.
 ```
 ¿El comportamiento existe en cualquier app cornflow?          → core
 ¿Solo cuando está activado un módulo premium?                 → enterprise
-¿Depende de una vista, schema o regla de ESTE cliente?        → app
+¿Depende de una vista, schema o regla de ESTA app?            → app
 ```
 
-Si dudas: un test que le serviría a otro cliente **no** debe vivir en el repo del cliente. Súbelo
-a core o enterprise y todos lo heredan.
+Si dudas: un test que le serviría a otra app **no** debe vivir en el repo de la app. Súbelo a core
+o a enterprise y todos lo heredan.
 
 ---
 
@@ -59,9 +57,9 @@ Cada repo tiene un `playwright.config.mjs` mínimo que llama a una función de f
 ([`configFactory.mjs`](./configFactory.mjs)) es la que construye la configuración real:
 proyectos, reporters, dev server, timeouts y estado de autenticación.
 
-Enterprise no reimplementa nada: su
-`tests/e2e/configFactory.mjs` **delega en la de core** y le añade su capa premium. Un cliente
-importa la del paquete más alto que consume y recibe la cadena entera.
+Enterprise no reimplementa nada: su `tests/e2e/configFactory.mjs` **delega en la de core** y le
+añade su capa premium. Una app importa la del paquete más alto que consume y recibe la cadena
+entera.
 
 ### 3.2 Los *mirrors* (y por qué existen)
 
@@ -74,13 +72,13 @@ a una carpeta local del proyecto que se está probando, fuera de `node_modules`,
 Playwright ahí:
 
 ```
-tendam-frontend/
+mi-app/
 └── tests/e2e/
-    ├── .cornflow-core/         ← copia de @cornflow-ui/core/tests/e2e        (gitignored)
-    ├── .cornflow-enterprise/   ← copia de @cornflow-ui/enterprise/…/premium  (gitignored)
-    ├── .auth/user.json         ← sesión guardada por el setup                (gitignored)
-    ├── .env.test               ← credenciales y entorno                      (gitignored)
-    └── app/                    ← lo único versionado en el cliente
+    ├── .cornflow-core/         ← copia de la suite de core             (gitignored)
+    ├── .cornflow-enterprise/   ← copia de los módulos premium          (gitignored)
+    ├── .auth/user.json         ← sesión guardada por el setup          (gitignored)
+    ├── .env.test               ← credenciales y entorno                (gitignored)
+    └── app/                    ← lo único versionado en la app
 ```
 
 Los mirrors se **borran y regeneran en cada ejecución**, así que nunca se quedan desfasados y no
@@ -88,12 +86,12 @@ hay que mantenerlos. No se editan jamás: cualquier cambio ahí se pierde en el 
 
 ### 3.3 La pieza que hace que encaje: mirrors hermanos
 
-Los specs premium de enterprise importan el harness de core con una ruta relativa. Para que esa
-ruta funcione **igual en su repo y dentro de un cliente**, los mirrors se colocan como
-**hermanos** bajo `tests/e2e/`:
+Los specs premium importan el harness de core con una ruta relativa. Para que esa ruta funcione
+**igual en el repo de enterprise y dentro de una app**, los mirrors se colocan como **hermanos**
+bajo `tests/e2e/`:
 
 ```
-En cornflow_ui_enterprise:            En tendam-frontend:
+En el repo enterprise:                En una app de cliente:
 tests/e2e/premium/core-harness.ts     tests/e2e/.cornflow-enterprise/core-harness.ts
       └─► ../.cornflow-core/fixtures        └─► ../.cornflow-core/fixtures
           (mirror de core)                       (mirror de core)
@@ -110,7 +108,7 @@ harness, y los specs importan de ahí:
 | Repo | Fichero | Los specs escriben |
 |---|---|---|
 | enterprise | `tests/e2e/premium/core-harness.ts` | `import { test, expect, TIMEOUTS } from '../core-harness'` |
-| cliente | `tests/e2e/app/harness.ts` | `import { test, expect, TIMEOUTS } from '../harness'` |
+| app | `tests/e2e/app/harness.ts` | `import { test, expect, TIMEOUTS } from '../harness'` |
 
 Si un test necesita un helper de core que no está reexportado, se añade **al harness**, no al
 spec. Y si hace falta un helper que core no tiene, se añade a core y se sube el tag.
@@ -122,12 +120,13 @@ sessionStorage en `tests/e2e/.auth/user.json` del proyecto que se prueba. El res
 arrancan ya autenticados (`storageState`), salvo `chromium-auth-tests`, que prueba el login en sí
 y corre sin sesión.
 
-Ese fichero se resuelve desde la **raíz del proyecto**, no desde la ubicación de los specs — si
-se resolviera relativo al spec, en un cliente caería dentro del mirror, que se borra en cada
-ejecución. Se puede forzar otra ruta con `CORNFLOW_E2E_AUTH_FILE`.
+Ese fichero se resuelve desde la **raíz del proyecto**, no desde la ubicación de los specs — si se
+resolviera relativo al spec, en una app caería dentro del mirror, que se borra en cada ejecución.
+Se puede forzar otra ruta con `CORNFLOW_E2E_AUTH_FILE`.
 
-La autenticación de test es siempre **usuario/contraseña de cornflow**, nunca SSO: Azure/Cognito
-no son fiables en CI.
+La autenticación de test es siempre **usuario/contraseña de cornflow**, nunca SSO: los proveedores
+de SSO (redirecciones, MFA, tokens refrescados en vivo) no son automatizables de forma fiable en
+CI.
 
 ### 3.6 Qué aporta cada lado
 
@@ -155,23 +154,23 @@ import { createCornflowE2EConfig } from './tests/e2e/configFactory.mjs';
 export default createCornflowE2EConfig();
 ```
 
-**Cliente** (raíz del repo):
+**App de cliente** (raíz del repo):
 
 ```js
 import { createCornflowE2EConfig } from '@cornflow-ui/enterprise/tests/e2e/configFactory.mjs';
 
 export default createCornflowE2EConfig({
   consumerSpecDir: 'tests/e2e/app',
-  premiumModules: [],
+  premiumModules: ['<módulo>'],
 });
 ```
 
-> Un cliente que consuma **solo core** importa
-> `@cornflow-ui/core/e2e/configFactory.mjs` y omite `premiumModules`.
+> Una app que consuma **solo core** importa `@cornflow-ui/core/e2e/configFactory.mjs` y omite
+> `premiumModules`.
 >
 > La diferencia en la forma del import no es un descuido: core declara `exports` en su
-> `package.json` (de ahí el alias corto `/e2e/…`) y enterprise no, así que en enterprise se usa la
-> ruta real `/tests/e2e/…`. Enterprise se instala completo, así que la carpeta llega igual.
+> `package.json` (de ahí el alias corto `/e2e/…`) y enterprise no, así que allí se usa la ruta real
+> `/tests/e2e/…`.
 
 ### 4.2 Opciones de la factory
 
@@ -185,22 +184,21 @@ export default createCornflowE2EConfig({
 | `layers` | Capas adicionales (uso avanzado; enterprise ya inyecta la suya) | — |
 | `overrides` | Cualquier ajuste extra de Playwright | — |
 
-**`premiumModules` en detalle** — no todos los clientes activan todos los módulos premium:
+**`premiumModules` en detalle** — no todas las apps activan todos los módulos premium:
 
 | Valor | Efecto |
 |---|---|
 | omitido | Corre **todos** los módulos que enterprise publique |
-| `['latest-plan', 'etl']` | Corre **solo** esos |
+| `['modulo-a', 'modulo-b']` | Corre **solo** esos |
 | `[]` | La capa premium **se salta entera** |
 
-Debe reflejar lo que la app tiene activado en `src/app/config.ts`. Ejemplo real: Tendam tiene
-`latestPlanConfig.enableLatestPlan = false`, así que hoy lleva `[]`; usa ETL, y cuando enterprise
-publique specs de ETL pasará a `['etl']`.
+Debe reflejar lo que la app tiene activado en `src/app/config.ts`: si una app tiene desactivado un
+módulo premium, sus tests no pueden pasar y no deben ejecutarse.
 
 ### 4.3 `.env.test`
 
 Va en `tests/e2e/.env.test` del proyecto que se prueba (**gitignored**; hay un `.env.test.example`
-en cada repo para copiar):
+para copiar):
 
 ```env
 PLAYWRIGHT_TEST_USER=usuario
@@ -208,12 +206,12 @@ PLAYWRIGHT_TEST_PASSWORD=contraseña
 PLAYWRIGHT_AUTH_TYPE=cornflow
 PLAYWRIGHT_BASE_URL=http://localhost:3000
 
-VITE_APP_BACKEND_URL=https://entorno.pre.cornflow.com
+VITE_APP_BACKEND_URL=https://mi-backend
 VITE_APP_SCHEMA=mi_schema
 ```
 
-⚠️ **No definas `PLAYWRIGHT_TEST_TEMP_PASSWORD`** contra una cuenta compartida: activa los tests
-de cambio de contraseña, que mutan la cuenta y dejan a todo el mundo fuera.
+⚠️ **No definas `PLAYWRIGHT_TEST_TEMP_PASSWORD`** contra una cuenta compartida: activa los tests de
+cambio de contraseña, que mutan la cuenta y dejan fuera a quien la use.
 
 ### 4.4 `.gitignore`
 
@@ -237,7 +235,7 @@ test-results/
 "test:e2e:sync":   "playwright test --list"
 ```
 
-### 4.6 Alta de un cliente nuevo, de cero
+### 4.6 Alta de una app nueva, de cero
 
 ```bash
 npm install -D @playwright/test
@@ -279,7 +277,7 @@ npx playwright test -g "download Excel"              # por nombre de test
 npx playwright test --grep-invert "current plan"     # excluyendo
 ```
 
-**Excluir lo que muta estado compartido** (útil contra un entorno vivo):
+**Excluir lo que muta estado compartido** (recomendable contra un entorno vivo):
 
 ```bash
 npx playwright test --grep-invert "current plan|change password|restore original password|delete execution"
@@ -288,20 +286,20 @@ npx playwright test --grep-invert "current plan|change password|restore original
 ### Resultados
 
 Cada ejecución genera `playwright-report/corporate-report.html` (informe con marca) además del
-report HTML estándar de Playwright. Core tiene también envío por email
-(`npm run test:e2e:send-report`, SMTP vía Nodemailer); en los demás repos requiere añadir
-`nodemailer` y `tsx`.
+report HTML estándar de Playwright. Core incluye además envío por email
+(`npm run test:e2e:send-report`, SMTP vía Nodemailer); en otros repos requiere añadir `nodemailer`
+y `tsx`.
 
 ---
 
 ## 6. Actualizar los tests heredados
 
-**Es un cambio de tag, nada más.** No se copia ni se re-adapta nada:
+**Es un cambio de versión, nada más.** No se copia ni se re-adapta nada:
 
 ```jsonc
-// package.json del cliente
-"@cornflow-ui/core":       "git+https://github.com/baobabsoluciones/cornflow-ui.git#v3.2.4",
-"@cornflow-ui/enterprise": "git+https://github.com/baobabsoluciones/cornflow_ui_enterprise.git#v2.4.1"
+// package.json de la app
+"@cornflow-ui/core":       "…#vX.Y.Z",
+"@cornflow-ui/enterprise": "…#vA.B.C"
 ```
 
 ```bash
@@ -309,10 +307,9 @@ npm install
 npm run test:e2e:sync   # regenera los mirrors con la versión nueva
 ```
 
-Si un test de core empieza a fallar en un cliente, hay dos lecturas posibles y conviene
-distinguirlas antes de tocar nada: o el cliente ha roto un comportamiento genérico (arréglalo en
-el cliente), o el spec de core daba por hecho algo que no es universal (arréglalo **en core**, y
-todos se benefician).
+Si un test de core empieza a fallar en una app, hay dos lecturas posibles y conviene distinguirlas
+antes de tocar nada: o la app ha roto un comportamiento genérico (arréglalo en la app), o el spec
+de core daba por hecho algo que no es universal (arréglalo **en core**, y todos se benefician).
 
 ---
 
@@ -322,8 +319,8 @@ todos se benefician).
 - **No copies** specs de una capa a otra. Si lo necesitas en dos sitios, va en la capa de abajo.
 - **No importes** desde `@cornflow-ui/*` en un spec: los `.ts` de `node_modules` no se pueden
   cargar. Siempre a través del harness del repo.
-- **Cuidado con los tests que mutan**: marcar plan actual, cambiar contraseña y borrar ejecución
-  alteran estado compartido y no se deshacen. Contra entornos vivos, exclúyelos.
+- **Cuidado con los tests que mutan estado** (marcar plan actual, cambiar contraseña, borrar
+  ejecución): no se deshacen. Contra entornos compartidos, exclúyelos.
 - Los specs de core y enterprise **no pueden asumir un schema**. Si un test necesita una tabla
   concreta, pertenece a la capa de la app.
 
@@ -336,27 +333,7 @@ todos se benefician).
 | `Stripping types is currently unsupported for files under node_modules` / **0 tests** | Se está apuntando a los `.ts` dentro de `node_modules` | Usar la factory; es justo lo que evita |
 | El editor marca en rojo los imports del harness | El mirror aún no existe | `npm run test:e2e:sync` una vez |
 | Los tests corren contra el backend equivocado | Vite **no lee** `.env.test`: la app coge su config del `.env` de la raíz | Alinear ambos ficheros |
-| Cambio la config y no surte efecto | `reuseExistingServer` reutilizó un dev server viejo en :3000 | Matar el dev server anterior |
+| Cambio la config y no surte efecto | `reuseExistingServer` reutilizó un dev server viejo en el puerto | Matar el dev server anterior |
 | El proyecto autenticado falla al arrancar | No hay `.auth/user.json`: el `setup` no llegó a pasar | Mirar el fallo del proyecto `setup` (credenciales/backend) |
 | Un módulo premium falla entero | La app no lo tiene activado en `src/app/config.ts` | Quitarlo de `premiumModules` |
-| Descargas de Excel intermitentes | Carga en frío lenta y filas en estado *Error* que no generan `.xlsx` | Ya mitigado (elige fila exitosa + retries); si reaparece, subir timeout |
-
----
-
-## 9. Estado a 10-08-2026
-
-| Pieza | Estado |
-|---|---|
-| Suite de core (60 tests) | ✅ Verde contra south_handling pre |
-| Harness reutilizable + capas | ✅ En `cornflow-ui`, rama `feature/e2e-tests` (pusheada) |
-| PR de core | ⏳ Pendiente de abrir |
-| Módulo premium *latest-plan* (8 tests) | ✅ Portado a enterprise, rama `feature/e2e-tests` (sin pushear) |
-| Andamiaje de Tendam (2 tests propios) | ✅ Rama `feature/e2e-tests` (sin pushear) |
-| Ejecución real de enterprise / Tendam | ❌ Falta entorno con premium **y** un tag de core que incluya el harness |
-| Módulos premium restantes | ❌ agent, recalculation, ETL, master-table-match |
-| E2E legado de enterprise | ⚠️ Sigue en `tests/e2e/{playwright.config.ts,helpers,specs/auth}`, accesible por `test:e2e:legacy`; borrar cuando el montaje nuevo corra verde |
-| CI | ❌ Sin pipeline; hoy se lanza en local |
-
-**Camino crítico para poder ejecutar en cliente:** mergear el PR de core → tag `v3.2.4` → bump en
-enterprise → tag de enterprise → bump en el cliente. Hasta entonces, los repos de arriba solo se
-pueden verificar montando el harness a mano en `node_modules`.
+| Descargas de Excel intermitentes | Carga en frío lenta, y filas en estado *Error* que no generan `.xlsx` | Elegir una fila de ejecución exitosa; los retries cubren el resto |

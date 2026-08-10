@@ -45,7 +45,6 @@ const NO_MIRROR = new Set([
   '.auth',
   'playwright.config.ts',
   'README.md',
-  'E2E_TEST_PLAN.md',
   'E2E_ARCHITECTURE.md',
 ]);
 
