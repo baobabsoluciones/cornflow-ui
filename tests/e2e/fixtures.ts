@@ -1,13 +1,7 @@
 import { test as base, expect } from '@playwright/test';
 import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { E2E_SKIP_SESSION_AUTH_INJECT_KEY } from './helpers/authInjectSkip';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const AUTH_FILE = path.join(__dirname, '.auth', 'user.json');
+import { AUTH_FILE } from './helpers/authFile';
 
 /**
  * Extended auth state that includes sessionStorage alongside

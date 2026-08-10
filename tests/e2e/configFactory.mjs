@@ -101,8 +101,11 @@ export function createCornflowE2EConfig(options = {}) {
   const setupFile = path.join(suiteDir, 'auth.setup.ts');
   const corporateReporter = path.join(suiteDir, 'reporters', 'corporate-reporter.ts');
 
-  // Auth storage state lives in the CONSUMER project (writable, per-project).
+  // Auth storage state lives in the CONSUMER project (writable, per-project) — never inside the
+  // mirrored suite, which is wiped on every run. `auth.setup.ts` / `fixtures.ts` read this same
+  // path through `helpers/authFile.ts`, so it is published as an env var for them.
   const storageState = path.join(consumerDir, 'tests', 'e2e', '.auth', 'user.json');
+  process.env.CORNFLOW_E2E_AUTH_FILE = storageState;
 
   const reporter = isCI
     ? [['html', { open: 'never' }], ['list', {}], ['github', {}], [corporateReporter, {}]]

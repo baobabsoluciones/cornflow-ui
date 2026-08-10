@@ -3,12 +3,7 @@ import { authenticate } from './helpers/auth/index';
 import { stripSkipKeyFromSavedStorageState } from './helpers/authInjectSkip';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const authFile = path.join(__dirname, '.auth', 'user.json');
+import { AUTH_FILE as authFile } from './helpers/authFile';
 
 /**
  * Global authentication setup
