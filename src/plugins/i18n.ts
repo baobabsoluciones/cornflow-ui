@@ -3,9 +3,13 @@ import { ref, computed } from 'vue'
 import en from './locales/en.ts'
 import fr from './locales/fr.ts'
 import es from './locales/es.ts'
-import enApp from '../app/plugins/locales/en.ts'
-import frApp from '../app/plugins/locales/fr.ts'
-import esApp from '../app/plugins/locales/es.ts'
+// Use the `@/app` alias (NOT a relative path): when this package is consumed as source,
+// `@/` resolves to the CONSUMER's src, so their src/app/plugins/locales get merged in. A
+// relative `../app/...` would resolve inside this package and silently ignore the consumer's
+// translations. Standalone (core's own build) `@/` still points here, so behaviour is unchanged.
+import enApp from '@/app/plugins/locales/en.ts'
+import frApp from '@/app/plugins/locales/fr.ts'
+import esApp from '@/app/plugins/locales/es.ts'
 
 // Default language - will be overridden by config
 let defaultLanguage = 'en'

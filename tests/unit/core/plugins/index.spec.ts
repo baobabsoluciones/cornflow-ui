@@ -11,8 +11,13 @@ vi.mock('@cornflow-ui/core/plugins/vuetify', () => ({
   default: { install: vi.fn() }
 }))
 
+const { mockRouterInstance } = vi.hoisted(() => ({
+  mockRouterInstance: { install: vi.fn() }
+}))
+
 vi.mock('@cornflow-ui/core/router', () => ({
-  default: { install: vi.fn() }
+  default: mockRouterInstance,
+  getRouter: () => mockRouterInstance
 }))
 
 vi.mock('@cornflow-ui/core/plugins/i18n', () => ({

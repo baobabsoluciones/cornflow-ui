@@ -32,7 +32,8 @@ const mockRouter = vi.hoisted(() => ({
 }))
 
 vi.mock('@cornflow-ui/core/router', () => ({
-  default: mockRouter
+  default: mockRouter,
+  getRouter: () => mockRouter
 }))
 
 // Mock fetch globally

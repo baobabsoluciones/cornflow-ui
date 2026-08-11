@@ -531,7 +531,7 @@ const createAppConfig = () => ({
    */
   helpMenuFiles: [
     {
-      labelKey: 'helpMenu.downloadUserManual',
+      labelKey: 'helpMenu.download',
       publicPath: 'manual/user_manual_{lang}.pdf',
       downloadName: 'user_manual.pdf',
     },
