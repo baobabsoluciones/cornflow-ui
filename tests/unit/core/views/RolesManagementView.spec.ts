@@ -39,7 +39,11 @@ vi.mock('@/app/config', () => ({
 
 vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: () => ({
-    isPlatformAdmin: () => platformAdmin.value,
+    // `isPlatformAdmin` is a Pinia getter, so it is read as a property, never called.
+    // Mocking it as an accessor keeps that contract (and catches it if the view calls it).
+    get isPlatformAdmin() {
+      return platformAdmin.value
+    },
   }),
 }))
 

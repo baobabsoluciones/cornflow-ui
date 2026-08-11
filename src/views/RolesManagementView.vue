@@ -110,7 +110,7 @@ const allowEditRoles = computed(
 
 // Only platform administrators can unlock accounts locked after too many
 // failed login attempts
-const isPlatformAdmin = computed(() => store.isPlatformAdmin())
+const isPlatformAdmin = computed(() => store.isPlatformAdmin)
 
 async function onUnlockUser(user: UserRow) {
   const confirmed = window.confirm(
