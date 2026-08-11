@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { detectDelimiter, parseCsvContent, extractTableName, parseCsvToData } from '@/utils/csvUtils'
+import { detectDelimiter, parseCsvContent, extractTableName, parseCsvToData } from '@cornflow-ui/core/utils/csvUtils'
 
 describe('csvUtils', () => {
   describe('detectDelimiter', () => {
@@ -41,68 +41,68 @@ describe('csvUtils', () => {
       
       expect(result.headers).toEqual(['name', 'age', 'city'])
       expect(result.tableData).toEqual([
-        { name: 'John', age: 25, city: 'NYC' },
-        { name: 'Jane', age: 30, city: 'LA' }
+        { name: 'John', age: '25', city: 'NYC' },
+        { name: 'Jane', age: '30', city: 'LA' }
       ])
     })
 
     test('should parse CSV with semicolon delimiter', () => {
       const csvText = 'name;age;city\nJohn;25;NYC'
       const result = parseCsvContent(csvText, ';')
-      
+
       expect(result.headers).toEqual(['name', 'age', 'city'])
       expect(result.tableData).toEqual([
-        { name: 'John', age: 25, city: 'NYC' }
+        { name: 'John', age: '25', city: 'NYC' }
       ])
     })
 
-    test('should handle quoted values (simple quotes)', () => {
-      const csvText = 'name,description\n"John","Simple description"\n\'Jane\',"Another description"'
+    test('should handle quoted values (double quotes only)', () => {
+      const csvText = 'name,description\n"John","Simple description"\nJane,"Another description"'
       const result = parseCsvContent(csvText, ',')
-      
+
       expect(result.tableData).toEqual([
         { name: 'John', description: 'Simple description' },
         { name: 'Jane', description: 'Another description' }
       ])
     })
 
-    test('should convert numeric values', () => {
+    test('should keep numeric values as strings (schema is responsible for coercion)', () => {
       const csvText = 'name,age,score\nJohn,25,85.5\nJane,30,90'
       const result = parseCsvContent(csvText, ',')
-      
+
       expect(result.tableData).toEqual([
-        { name: 'John', age: 25, score: 85.5 },
-        { name: 'Jane', age: 30, score: 90 }
+        { name: 'John', age: '25', score: '85.5' },
+        { name: 'Jane', age: '30', score: '90' }
       ])
     })
 
     test('should skip empty lines', () => {
       const csvText = 'name,age\nJohn,25\n\nJane,30\n'
       const result = parseCsvContent(csvText, ',')
-      
+
       expect(result.tableData).toEqual([
-        { name: 'John', age: 25 },
-        { name: 'Jane', age: 30 }
+        { name: 'John', age: '25' },
+        { name: 'Jane', age: '30' }
       ])
     })
 
     test('should handle mismatched columns', () => {
       const csvText = 'name,age,city\nJohn,25\nJane,30,LA,Extra'
       const result = parseCsvContent(csvText, ',')
-      
+
       expect(result.tableData).toEqual([
-        { name: 'John', age: 25 },
-        { name: 'Jane', age: 30, city: 'LA' }
+        { name: 'John', age: '25' },
+        { name: 'Jane', age: '30', city: 'LA' }
       ])
     })
 
-    test('should handle empty values', () => {
+    test('should map empty values to null', () => {
       const csvText = 'name,age,city\nJohn,,NYC\n,25,LA'
       const result = parseCsvContent(csvText, ',')
-      
+
       expect(result.tableData).toEqual([
-        { name: 'John', age: '', city: 'NYC' },
-        { name: '', age: 25, city: 'LA' }
+        { name: 'John', age: null, city: 'NYC' },
+        { name: null, age: '25', city: 'LA' }
       ])
     })
   })
@@ -137,8 +137,8 @@ describe('csvUtils', () => {
       expect(result.tableName).toBe('users')
       expect(result.data).toEqual({
         users: [
-          { name: 'John', age: 25 },
-          { name: 'Jane', age: 30 }
+          { name: 'John', age: '25' },
+          { name: 'Jane', age: '30' }
         ]
       })
     })
@@ -146,12 +146,12 @@ describe('csvUtils', () => {
     test('should handle semicolon delimiter automatically', () => {
       const csvText = 'name;age;city\nJohn;25;NYC'
       const fileName = 'data.csv'
-      
+
       const result = parseCsvToData(csvText, fileName)
-      
+
       expect(result.data).toEqual({
         data: [
-          { name: 'John', age: 25, city: 'NYC' }
+          { name: 'John', age: '25', city: 'NYC' }
         ]
       })
     })
@@ -159,12 +159,12 @@ describe('csvUtils', () => {
     test('should handle tab delimiter automatically', () => {
       const csvText = 'name\tage\nJohn\t25'
       const fileName = 'test.csv'
-      
+
       const result = parseCsvToData(csvText, fileName)
-      
+
       expect(result.data).toEqual({
         test: [
-          { name: 'John', age: 25 }
+          { name: 'John', age: '25' }
         ]
       })
     })
@@ -198,13 +198,13 @@ describe('csvUtils', () => {
       expect(result.tableData[1].description).toBe('Special@#$%')
     })
 
-    test('should convert valid numbers but keep mixed strings', () => {
+    test('should keep all values as strings (no numeric coercion)', () => {
       const csvText = 'id,code\n001,123abc\n002,456'
       const result = parseCsvContent(csvText, ',')
-      
+
       expect(result.tableData).toEqual([
-        { id: 1, code: '123abc' },
-        { id: 2, code: 456 }
+        { id: '001', code: '123abc' },
+        { id: '002', code: '456' }
       ])
     })
   })

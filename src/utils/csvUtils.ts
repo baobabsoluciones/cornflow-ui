@@ -44,90 +44,126 @@ const findMostFrequentDelimiter = (delimiterCounts: Record<string, number>): str
 }
 
 /**
- * Parses CSV content and returns headers and table data
- * @param csvText - The CSV text content
- * @param delimiter - The delimiter to use for parsing
- * @returns Object containing headers and parsed table data
+ * Parses CSV content and returns headers and table data.
+ * Uses an RFC 4180 state machine: handles quoted fields with embedded
+ * delimiters, embedded newlines, and escaped quotes (""). Empty cells
+ * become null; values are not coerced to numbers (the consuming schema
+ * is responsible for type coercion).
  */
 export const parseCsvContent = (csvText: string, delimiter: string): ParsedCsvData => {
-  const lines = csvText.toString().split('\n')
-  const headers = lines[0].split(delimiter).map(header => header.trim())
-  const tableData = extractTableData(lines, headers, delimiter)
-  
+  const rows = parseCsvRows(csvText, delimiter)
+  if (rows.length === 0) return { headers: [], tableData: [] }
+
+  const headers = rows[0].map(h => h.trim())
+  const tableData = rows
+    .slice(1)
+    .filter(values => values.some(v => v !== ''))
+    .map(values => createRowObject(headers, values))
+
   return { headers, tableData }
 }
 
 /**
- * Extracts table data from CSV lines
- * @param lines - Array of CSV lines
- * @param headers - Array of column headers
- * @param delimiter - The delimiter character
- * @returns Array of row objects
+ * RFC 4180 row parser. Returns raw field strings (no trimming, no coercion)
+ * so callers can decide how to interpret empty/quoted values.
  */
-const extractTableData = (lines: string[], headers: string[], delimiter: string): any[] => {
-  const tableData = []
-  
-  for (let i = 1; i < lines.length; i++) {
-    if (lines[i].trim() === '') continue // Skip empty lines
-    
-    const values = lines[i].split(delimiter).map(value => value.trim())
-    const row = createRowObject(headers, values)
-    tableData.push(row)
+const parseCsvRows = (csvText: string, delimiter: string): string[][] => {
+  const text = csvText.toString().replaceAll('\r\n', '\n').replaceAll('\r', '\n')
+  const rows: string[][] = []
+  const state = {
+    row: [] as string[],
+    field: '',
+    inQuotes: false,
+    fieldStarted: false,
   }
-  
-  return tableData
+
+  let i = 0
+  while (i < text.length) {
+    if (state.inQuotes) {
+      i = handleQuotedChar(text, i, state)
+    } else {
+      handleUnquotedChar(text, i, delimiter, state, rows)
+    }
+    i++
+  }
+
+  if (state.fieldStarted || state.row.length > 0) {
+    state.row.push(state.field)
+    rows.push(state.row)
+  }
+
+  return rows
+}
+
+type ParseState = {
+  row: string[]
+  field: string
+  inQuotes: boolean
+  fieldStarted: boolean
+}
+
+/** Inside a quoted field: only `"` is special (`""` escapes a literal quote). */
+const handleQuotedChar = (text: string, i: number, state: ParseState): number => {
+  const c = text[i]
+  if (c !== '"') {
+    state.field += c
+    return i
+  }
+  if (text[i + 1] === '"') {
+    state.field += '"'
+    return i + 1
+  }
+  state.inQuotes = false
+  return i
+}
+
+/** Outside quotes: opening quote, delimiter, newline, or regular char. */
+const handleUnquotedChar = (
+  text: string,
+  i: number,
+  delimiter: string,
+  state: ParseState,
+  rows: string[][],
+): void => {
+  const c = text[i]
+
+  if (c === '"' && !state.fieldStarted) {
+    state.inQuotes = true
+    state.fieldStarted = true
+    return
+  }
+  if (c === delimiter) {
+    finishField(state)
+    return
+  }
+  if (c === '\n') {
+    finishField(state)
+    rows.push(state.row)
+    state.row = []
+    return
+  }
+  state.field += c
+  state.fieldStarted = true
+}
+
+const finishField = (state: ParseState): void => {
+  state.row.push(state.field)
+  state.field = ''
+  state.fieldStarted = false
 }
 
 /**
- * Creates a row object from headers and values
- * @param headers - Array of column headers
- * @param values - Array of row values
- * @returns Row object with mapped key-value pairs
+ * Creates a row object from headers and values. Empty values are mapped
+ * to null so they validate against nullable schema fields.
  */
 const createRowObject = (headers: string[], values: string[]): Record<string, any> => {
-  const row = {}
-  
-  for (let j = 0; j < Math.min(headers.length, values.length); j++) {
-    const processedValue = processValue(values[j])
-    row[headers[j]] = processedValue
+  const row: Record<string, any> = {}
+  const len = Math.min(headers.length, values.length)
+  for (let j = 0; j < len; j++) {
+    const trimmed = values[j].trim()
+    row[headers[j]] = trimmed === '' ? null : trimmed
   }
-  
   return row
-}
-
-/**
- * Processes a single value by removing quotes and converting to number if applicable
- * @param value - The raw value string
- * @returns Processed value (string or number)
- */
-const processValue = (value: string): string | number => {
-  const processedValue = removeQuotes(value)
-  return convertToNumber(processedValue)
-}
-
-/**
- * Removes surrounding quotes from a string value
- * @param value - The value string
- * @returns String with quotes removed
- */
-const removeQuotes = (value: string): string => {
-  if ((value.startsWith('"') && value.endsWith('"')) || 
-      (value.startsWith("'") && value.endsWith("'"))) {
-    return value.substring(1, value.length - 1)
-  }
-  return value
-}
-
-/**
- * Converts a string to number if it represents a valid number
- * @param processedValue - The processed string value
- * @returns Number if conversion is possible, otherwise the original string
- */
-const convertToNumber = (processedValue: string): string | number => {
-  if (!isNaN(processedValue as any) && processedValue !== '') {
-    return Number(processedValue)
-  }
-  return processedValue
 }
 
 /**

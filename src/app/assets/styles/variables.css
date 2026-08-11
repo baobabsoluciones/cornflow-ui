@@ -1,17 +1,60 @@
 body {
-  --primary: #326786;
-  --primary-variant: #1e3f4f;
-  --primary-light: #7fb3cc;
-  --primary-light-variant: #e6f1f7;
+  --primary: #1b5e8a;
+  --primary-variant: #1b5e8a;
+  --primary-light: #77afdd;
+  --primary-light-variant: #cbebf5;
   --title: #404040;
   --subtitle: #6e6e6e;
-  --success: #3ba780;
-  --warning: #ffb458;
+  --success: #3b7b5e;
+  --warning: #dea727;
   --danger: #f44336;
-  --background: #f6f6f6;
-  --background-variant: #fff4e6;
-  --secondary: #ffb458;
-  --accent: #4e7f9c;
+  --danger-variant: #b43c31;
+  --background: #e6e7e8;
+  --background-variant: #f6edea;
+  --secondary: #f7be68;
+  --accent: #1b5e8a;
   --dark-accent: #181926;
   --disabled: #f2f4f7;
+
+  /* Base colors general charts*/
+  --general-color-1: #5b9bd5;
+  --general-color-2: #a1cde9;
+  --general-color-3: #7dc6a0;
+  --general-color-4: #d1e8d1;
+  --general-color-5: #db7272;
+  --general-color-6: #ff9a90;
+  --general-color-7: #ffb255;
+  --general-color-8: #ffcd8e;
+  --general-color-9: #9e52a2;
+  --general-color-10: #c9a6e3;
+
+  /* Base light colors for pairing with base colors */
+  --general-color-light-1: #e0f5fc;
+  --general-color-light-3: #cef1df;
+  --general-color-light-5: #a93b3b;
+  --general-color-light-7: #ff6e6131;
+
+  /* Base colors for kpi charts and tables*/
+  --kpi-profit: var(--general-color-3);
+  --kpi-profit-light: var(--general-color-light-3);
+  --kpi-income: var(--general-color-1);
+  --kpi-income-light: var(--general-color-light-1);
+  --kpi-income-1: var(--general-color-2);
+  --kpi-cost: var(--general-color-5);
+  --kpi-cost-light: #ff6e612c;
+  --kpi-cost-1: var(--general-color-6);
+  --kpi-cost-2: #ffc5bf;
+  --kpi-cost-3: #de7066;
+
+  /* Chart color palette for auto dashboards */
+  --chart-color-1: #326786;
+  --chart-color-2: #1e3f4f;
+  --chart-color-3: #3ba780;
+  --chart-color-4: #4e7f9c;
+  --chart-color-5: #7fb3cc;
+  --chart-color-6: #2d6a5a;
+  --chart-color-7: #5a9bb5;
+  --chart-color-8: #1a5276;
+  --chart-color-9: #48a999;
+  --chart-color-10: #85c1d4;
 }

@@ -78,25 +78,32 @@
     @close="helpModal = false"
   >
     <template #content>
-      <v-card-text class="mt-6 transition-icon">
-        <a
-          :href="manualFile"
-          download="manual_user.pdf"
-          class="transition-icon"
+      <v-card-text class="mt-2">
+        <div
+          v-for="(file, index) in downloadableFiles"
+          :key="index"
+          class="mb-3"
         >
-          <v-icon small class="mr-2" style="color: var(--primary)"
-            >mdi-download</v-icon
+          <a
+            :href="resolveFilePath(file)"
+            :download="file.downloadName || fileBaseName(file.publicPath)"
+            class="transition-icon"
           >
-          <span> {{ $t('helpMenu.download') }} </span>
-        </a>
+            <v-icon small class="mr-2" style="color: var(--primary)"
+              >mdi-download</v-icon
+            >
+            <span>{{ $t(file.labelKey) }}</span>
+          </a>
+        </div>
       </v-card-text>
     </template>
   </MBaseModal>
 </template>
 
 <script>
-import { version } from '@/../package.json'
-import { useGeneralStore } from '@/stores/general'
+import { version } from '@cornflow-ui/core/../package.json'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import appConfig from '@/app/config'
 
 export default {
   data: () => ({
@@ -105,9 +112,8 @@ export default {
     store: useGeneralStore(),
   }),
   computed: {
-    manualFile() {
-      const lang = this.$i18n.locale
-      return `${import.meta.env.BASE_URL}manual/user_manual_${lang}.pdf`
+    downloadableFiles() {
+      return appConfig.getHelpMenuFiles()
     },
     licences() {
       return this.store.getLicences
@@ -119,7 +125,16 @@ export default {
       return `Cornflow version: ${this.store.cornflowVersion}`
     },
   },
-  methods: {},
+  methods: {
+    resolveFilePath(file) {
+      const lang = this.$i18n.locale
+      const path = file.publicPath.replace('{lang}', lang)
+      return `${import.meta.env.BASE_URL}${path}`
+    },
+    fileBaseName(publicPath) {
+      return publicPath.split('/').pop() || publicPath
+    },
+  },
 }
 </script>
 

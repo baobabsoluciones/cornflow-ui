@@ -1,5 +1,5 @@
-import { describe, test, vi, beforeEach, expect, afterEach } from 'vitest'
-import { OpenIDAuthService } from '@/services/OpenIDAuthService'
+import { describe, test, vi, beforeEach, expect } from 'vitest'
+import { OpenIDAuthService } from '@cornflow-ui/core/services/OpenIDAuthService'
 import { PublicClientApplication } from '@azure/msal-browser'
 import { Amplify } from 'aws-amplify'
 import { signInWithRedirect, signOut, fetchAuthSession } from 'aws-amplify/auth'
@@ -23,16 +23,19 @@ const mockApiClient = vi.hoisted(() => ({
   initializeToken: vi.fn()
 }))
 
-vi.mock('@/api/Api', () => ({
+vi.mock('@cornflow-ui/core/api/Api', () => ({
   default: mockApiClient
 }))
 
 // Mock router
 const mockPush = vi.hoisted(() => vi.fn())
-vi.mock('@/router', () => ({
+vi.mock('@cornflow-ui/core/router', () => ({
   default: {
     push: mockPush
-  }
+  },
+  getRouter: () => ({
+    push: mockPush
+  })
 }))
 
 // Create mock token
@@ -62,7 +65,9 @@ const mockMsalInstance = vi.hoisted(() => ({
 }))
 
 vi.mock('@azure/msal-browser', () => ({
-  PublicClientApplication: vi.fn(() => mockMsalInstance)
+  PublicClientApplication: vi.fn(function () {
+    return mockMsalInstance
+  }),
 }))
 
 vi.mock('aws-amplify', () => ({
@@ -77,7 +82,7 @@ vi.mock('aws-amplify/auth', () => ({
   fetchAuthSession: vi.fn()
 }))
 
-vi.mock('@/config', () => ({
+vi.mock('@cornflow-ui/core/config', () => ({
   default: {
     ...mockConfig,
     initConfig: vi.fn().mockResolvedValue(undefined)
@@ -140,10 +145,6 @@ describe('OpenIDAuthService - Enhanced Coverage', () => {
     
     azureService = new OpenIDAuthService('azure')
     cognitoService = new OpenIDAuthService('cognito')
-  })
-
-  afterEach(() => {
-    vi.restoreAllMocks()
   })
 
   describe('Constructor and Initialization', () => {

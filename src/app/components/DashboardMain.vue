@@ -28,7 +28,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue'
-import { useGeneralStore } from '@/stores/general'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 
 export default defineComponent({
   name: 'DashboardMain',
@@ -38,6 +38,11 @@ export default defineComponent({
       type: Object,
       required: true,
     },
+    dashboardType: {
+      type: String,
+      default: 'solution',
+      validator: (value: string) => ['instance', 'solution'].includes(value),
+    },
   },
   data: () => ({
     store: useGeneralStore(),
@@ -45,7 +50,10 @@ export default defineComponent({
   watch: {},
   computed: {
     dashboardComponents() {
-      return this.store.appDashboardLayout
+      // Use instance dashboard layout for instance dashboards, solution dashboard layout for solution dashboards
+      return this.dashboardType === 'instance'
+        ? this.store.appInstanceDashboardLayout
+        : this.store.appDashboardLayout
     },
   },
   methods: {},

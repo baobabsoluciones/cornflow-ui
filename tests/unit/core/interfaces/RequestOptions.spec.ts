@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import type { RequestOptions } from '@/interfaces/RequestOptions'
+import type { RequestOptions } from '@cornflow-ui/core/interfaces/RequestOptions'
 
 describe('RequestOptions Interface', () => {
   test('should allow all properties to be optional', () => {

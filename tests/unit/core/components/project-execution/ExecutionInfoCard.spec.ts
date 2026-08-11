@@ -2,7 +2,7 @@ import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import { createRouter, createWebHistory } from 'vue-router'
-import ExecutionInfoCard from '@/components/project-execution/ExecutionInfoCard.vue'
+import ExecutionInfoCard from '@cornflow-ui/core/components/project-execution/ExecutionInfoCard.vue'
 
 // Mock vue-i18n
 const mockT = vi.fn((key) => {
@@ -30,7 +30,7 @@ const mockGeneralStore = {
   incrementUploadComponentKey: vi.fn()
 }
 
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: vi.fn(() => mockGeneralStore)
 }))
 

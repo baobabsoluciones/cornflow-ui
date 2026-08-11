@@ -1,4 +1,4 @@
-import { ExperimentCore } from '@/models/Experiment';
+import { ExperimentCore } from '@cornflow-ui/core/models/Experiment';
 import { Instance } from '@/app/models/Instance';
 import { Solution } from '@/app/models/Solution';
 

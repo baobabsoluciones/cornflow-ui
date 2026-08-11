@@ -52,16 +52,18 @@ export default function useFilters(
         }
         const dValue = d[filterKey]
         switch (filter.type) {
-          case 'checkbox':
+          case 'checkbox': {
             const dValueStr = dValue ? dValue.toString() : 'false'
             return filter.value.includes(dValueStr)
+          }
           case 'range':
             return dValue >= filter.value[0] && dValue <= filter.value[1]
-          case 'daterange':
+          case 'daterange': {
             const startDate = new Date(filter.value[0])
             const endDate = new Date(filter.value[1])
             const dateValue = new Date(dValue)
             return dateValue >= startDate && dateValue <= endDate
+          }
           default:
             return true
         }

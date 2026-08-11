@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { formatDateForFilename } from '@/utils/date'
+import { formatDateForFilename } from '@cornflow-ui/core/utils/date'
 
 describe('formatDateForFilename', () => {
   test('formats a date correctly regardless of timezone', () => {

@@ -1,6 +1,5 @@
-import { computed, watch, nextTick, ref, onMounted, onBeforeUnmount } from 'vue';
-import { useI18n } from 'vue-i18n';
-import { useGeneralStore } from '@/stores/general';
+import { computed, watch, nextTick, ref, onMounted } from 'vue';
+import { useGeneralStore } from '@cornflow-ui/core/stores/general';
 import { useTableConfig } from './useTableConfig';
 import { useTableDOMManipulation } from './useTableDOMManipulation';
 import { useExecutionState } from './useExecutionState';
@@ -34,7 +33,6 @@ interface HeaderItem {
 }
 
 export function useProjectExecutionsTable(props: ExecutionTableProps) {
-  const { t } = useI18n();
   const generalStore = useGeneralStore();
   
   // Set up state
@@ -79,12 +77,20 @@ export function useProjectExecutionsTable(props: ExecutionTableProps) {
     cancelDelete,
     handleDownload,
     getSolverName,
-    getTimeLimit
+    getTimeLimit,
+    getTimeLimitDisplayUnitI18nKey,
   } = useExecutionActions();
   
-  // Connect the state from execution actions
+  // Connect the state from execution actions (two-way sync)
   watch(openModal, (newValue) => {
     openConfirmationDeleteModal.value = newValue;
+  });
+  
+  // Sync back to execution actions when modal is closed from component
+  watch(openConfirmationDeleteModal, (newValue) => {
+    if (openModal.value !== newValue) {
+      openModal.value = newValue;
+    }
   });
   
   watch(deletedExecution, (newValue) => {
@@ -144,6 +150,7 @@ export function useProjectExecutionsTable(props: ExecutionTableProps) {
     getSolutionInfo,
     getSolverName,
     getTimeLimit,
+    getTimeLimitDisplayUnitI18nKey,
     handleResize
   };
 }

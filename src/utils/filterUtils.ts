@@ -1,4 +1,4 @@
-import i18n from '@/plugins/i18n'
+import i18n from '@cornflow-ui/core/plugins/i18n'
 import { isTablePropertyFilterable, getTableHeaders, getTableJsonSchema, getTableJsonSchemaProperty, getTablePropertyTitle } from './tableUtils'
 
 /**
@@ -96,8 +96,7 @@ export function getFilterOptions(selectedExecution, collection, table, header) {
  */
 export function getFilterMinValue(selectedExecution, collection, table, header) {
   const columnData = getColumnData(selectedExecution, collection, table, header)
-  const numericData = columnData.filter(value => typeof value === 'number' && !isNaN(value)) as number[]
-  return numericData.length > 0 ? Math.min(...numericData) : 0
+  return Math.min(...(columnData as number[]))
 }
 
 /**
@@ -105,8 +104,7 @@ export function getFilterMinValue(selectedExecution, collection, table, header) 
  */
 export function getFilterMaxValue(selectedExecution, collection, table, header) {
   const columnData = getColumnData(selectedExecution, collection, table, header)
-  const numericData = columnData.filter(value => typeof value === 'number' && !isNaN(value)) as number[]
-  return numericData.length > 0 ? Math.max(...numericData) : 0
+  return Math.max(...(columnData as number[]))
 }
 
 /**
@@ -160,7 +158,7 @@ export function getFilterNames(schemaConfig, selectedExecution, collection, tabl
 
       if (
         acc[header].options[0]?.label &&
-        !isNaN(new Date(acc[header].options[0].label).getTime())
+        !Number.isNaN(new Date(acc[header].options[0].label).getTime())
       ) {
         acc[header].min = getFilterMinDate(selectedExecution, type, table, header)
         acc[header].max = getFilterMaxDate(selectedExecution, type, table, header)

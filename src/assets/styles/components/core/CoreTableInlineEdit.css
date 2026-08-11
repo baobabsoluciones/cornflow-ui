@@ -1,0 +1,354 @@
+/* Inline editing styles for CoreTable */
+/* Optimized for responsive behavior */
+
+/* ==========================================================================
+   Table Layout - Column widths during inline editing
+   ========================================================================== */
+.v-data-table-virtual .v-table__wrapper table {
+  table-layout: auto;
+}
+
+.v-data-table-virtual .v-table__wrapper table td,
+.v-data-table-virtual .v-table__wrapper table th {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 300px;
+}
+
+/* Allow overflow for editing cells to show inputs properly */
+.v-data-table-virtual
+  .v-table__wrapper
+  table
+  td:has(.inline-edit-cell.editing) {
+  overflow: visible;
+  white-space: normal;
+}
+
+/* ==========================================================================
+   Inline Edit Cell - Base styles
+   ========================================================================== */
+.inline-edit-cell {
+  position: relative;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  transition: all 0.15s ease;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.inline-edit-cell.editing {
+  background-color: transparent;
+  border-radius: 0;
+}
+
+/* Ensure the last column (with actions) has relative positioning */
+.inline-edit-cell:has(.inline-edit-actions) {
+  position: relative;
+  padding-right: 80px; /* Make room for the floating actions */
+}
+
+.inline-edit-display {
+  cursor: pointer;
+  padding: 8px 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+  width: 100%;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+}
+
+.inline-edit-display:hover {
+  background-color: rgba(var(--v-theme-primary), 0.08);
+}
+
+.inline-edit-display--disabled {
+  cursor: not-allowed !important;
+  opacity: 0.6;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+.inline-edit-display--disabled:hover {
+  background-color: rgba(0, 0, 0, 0.02) !important;
+}
+
+.inline-edit-readonly {
+  padding: 8px 4px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  width: 100%;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+}
+
+.inline-edit-input {
+  flex: 1;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.inline-edit-input .v-field {
+  font-size: 13px;
+  background: transparent !important;
+  border: 1px solid var(--primary) !important;
+  border-radius: 4px !important;
+}
+
+.inline-edit-input .v-field__input {
+  min-height: 28px;
+  padding: 2px 6px;
+}
+
+/* Clean single border for inputs - no double rectangle */
+.inline-edit-input .v-field__outline {
+  --v-field-border-opacity: 1;
+}
+
+/* Use a simple border on the whole field instead of the segmented outline */
+.inline-edit-input .v-field__outline__start,
+.inline-edit-input .v-field__outline__end,
+.inline-edit-input .v-field__outline__notch {
+  border: none !important;
+}
+
+.inline-edit-input .v-field--focused {
+  border-width: 2px !important;
+  border-color: var(--primary) !important;
+}
+
+/* Make select fields match */
+.inline-edit-input.v-select .v-field {
+  background: transparent !important;
+}
+
+.inline-edit-input.v-select .v-field__overlay {
+  background: transparent !important;
+}
+
+/* Switch styling for Fijar column */
+.inline-edit-switch {
+  flex: 0 0 auto;
+  width: auto;
+  max-width: none;
+  min-width: 0;
+}
+
+.inline-edit-switch :deep(.v-switch__track) {
+  opacity: 1;
+}
+
+.inline-edit-switch :deep(.v-switch__thumb) {
+  color: white;
+}
+
+.inline-edit-actions {
+  position: absolute;
+  right: 0px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  background: rgba(var(--v-theme-surface), 0.95);
+  backdrop-filter: blur(4px);
+  border-radius: 6px;
+  padding: 2px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+}
+
+.inline-edit-actions .v-btn {
+  min-width: 32px !important;
+  width: 32px;
+  height: 32px;
+}
+
+/* Disable other actions while editing */
+.v-data-table-virtual tbody tr.editing .inline-edit-cell:not(.editing) {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Highlight the row being edited */
+.v-data-table-virtual tbody tr:has(.inline-edit-cell.editing) {
+  background-color: rgba(var(--v-theme-primary), 0.02);
+}
+
+/* ==========================================================================
+   Responsive Adjustments
+   ========================================================================== */
+
+/* Large screens */
+@media (max-width: 1200px) {
+  .v-data-table-virtual .v-table__wrapper table td,
+  .v-data-table-virtual .v-table__wrapper table th {
+    max-width: 250px;
+  }
+}
+
+/* Medium screens */
+@media (max-width: 992px) {
+  .v-data-table-virtual .v-table__wrapper table td,
+  .v-data-table-virtual .v-table__wrapper table th {
+    max-width: 200px;
+  }
+
+  .inline-edit-cell {
+    min-height: 34px;
+    padding: 3px 6px;
+  }
+}
+
+/* Small screens */
+@media (max-width: 768px) {
+  .v-data-table-virtual .v-table__wrapper table td,
+  .v-data-table-virtual .v-table__wrapper table th {
+    max-width: 150px;
+  }
+
+  .inline-edit-input {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .inline-edit-actions {
+    right: 4px;
+    padding: 1px;
+  }
+
+  .inline-edit-actions .v-btn {
+    min-width: 28px !important;
+    width: 28px;
+    height: 28px;
+  }
+
+  .inline-edit-cell:has(.inline-edit-actions) {
+    padding-right: 65px;
+  }
+
+  .inline-edit-display {
+    padding: 6px 4px;
+    min-height: 28px;
+  }
+
+  .inline-edit-readonly {
+    padding: 6px 4px;
+    min-height: 28px;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 576px) {
+  .v-data-table-virtual .v-table__wrapper table td,
+  .v-data-table-virtual .v-table__wrapper table th {
+    max-width: 120px;
+    font-size: 13px;
+  }
+
+  .inline-edit-cell {
+    min-height: 32px;
+    padding: 2px 4px;
+  }
+
+  .inline-edit-cell:has(.inline-edit-actions) {
+    padding-right: 60px;
+  }
+
+  .inline-edit-actions .v-btn {
+    min-width: 26px !important;
+    width: 26px;
+    height: 26px;
+  }
+}
+
+/* ==========================================================================
+   Read-only Display Mode - Plain table cells (input-data/results)
+   ========================================================================== */
+.read-only-display .read-only-cell {
+  display: block;
+  padding: 8px 4px;
+  min-height: 32px;
+  line-height: 1.5;
+  color: rgba(var(--v-theme-on-surface), 1);
+  background: transparent !important;
+  border: none !important;
+  cursor: default;
+}
+
+.read-only-display .v-data-table-virtual tbody td {
+  background: transparent !important;
+}
+
+/* ==========================================================================
+   Excel-like Editing Mode - Modified Cell Styles
+   ========================================================================== */
+
+/* Modified cell indicator - green background */
+.inline-edit-cell.cell-modified {
+  background-color: rgba(76, 175, 80, 0.15) !important;
+  border-radius: 4px;
+  position: relative;
+}
+
+.inline-edit-cell.cell-modified::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 6px;
+  height: 6px;
+  background-color: #4caf50;
+  border-radius: 50%;
+  opacity: 0.8;
+}
+
+/* Modified cell hover state */
+.inline-edit-cell.cell-modified:hover {
+  background-color: rgba(76, 175, 80, 0.22) !important;
+}
+
+/* Modified cell editing state */
+.inline-edit-cell.cell-modified.editing {
+  background-color: rgba(76, 175, 80, 0.12) !important;
+}
+
+/* Excel mode - editable cell indicator on hover */
+.excel-mode .inline-edit-display:not(.inline-edit-display--disabled):hover {
+  background-color: rgba(var(--v-theme-primary), 0.12);
+  cursor: cell;
+}
+
+/* Excel mode - focused cell */
+.excel-mode .inline-edit-cell.cell-focused {
+  z-index: 5;
+}
+
+/* Excel mode - hide row-level actions */
+.excel-mode .inline-edit-actions {
+  display: none;
+}
+
+/* Excel mode - cell editing indicator */
+.excel-mode .inline-edit-cell.editing {
+  background-color: transparent;
+}
+
+/* Excel mode - modified and editing */
+.excel-mode .inline-edit-cell.cell-modified.editing {
+  background-color: rgba(76, 175, 80, 0.08);
+}
+
+/* Row with any modified cells - subtle highlight */
+.v-data-table-virtual tbody tr:has(.cell-modified) {
+  background-color: rgba(76, 175, 80, 0.03);
+}
+
+.v-data-table-virtual tbody tr:has(.cell-modified):hover {
+  background-color: rgba(76, 175, 80, 0.06);
+}

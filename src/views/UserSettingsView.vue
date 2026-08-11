@@ -115,10 +115,11 @@
 </template>
 
 <script>
-import { useGeneralStore } from '@/stores/general'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { useI18n } from 'vue-i18n'
 import { inject } from 'vue'
-import config from '@/config'
+import config from '@cornflow-ui/core/config'
+import { changeLanguage } from '@cornflow-ui/core/plugins/i18n'
 
 export default {
   components: {},
@@ -128,7 +129,7 @@ export default {
       showSnackbar: null,
       selectedTab: 'user-settings',
       theme: 'light',
-      language: 'en',
+      language: this.$i18n.locale,
       languages: [
         { title: this.$t('settings.english'), value: 'en' },
         { title: this.$t('settings.spanish'), value: 'es' },
@@ -143,7 +144,7 @@ export default {
         (value) =>
           /[a-z]/.test(value) || this.$t('settings.passwordRuleCharacters'),
         (value) =>
-          /[0-9]/.test(value) || this.$t('settings.passwordRuleCharacters'),
+          /\d/.test(value) || this.$t('settings.passwordRuleCharacters'),
         (value) =>
           /[!?@#$%^&*)(+=.<>{}[\],/¿¡:;'"|~`_-]/.test(value) ||
           this.$t('settings.passwordRuleCharacters'),
@@ -158,9 +159,14 @@ export default {
   },
   created() {
     this.showSnackbar = inject('showSnackbar')
-    if (config.auth.type !== 'cornflow' && this.selectedTab === 'user-profile') {
+    if (
+      config.auth.type !== 'cornflow' &&
+      this.selectedTab === 'user-profile'
+    ) {
       this.selectedTab = 'user-settings'
     }
+    // Initialize language from current i18n locale
+    this.language = this.$i18n.locale
   },
   updated() {
     this.resetPasswordFields()
@@ -175,31 +181,8 @@ export default {
   watch: {
     language(newLang) {
       this.locale = newLang
-    },
-  },
-  methods: {
-    resetPasswordFields() {
-      this.newPassword = undefined
-      this.confirmPassword = undefined
-      this.passwordRules.every((rule) => rule(this.newPassword) === true)
-      this.passwordRules.every((rule) => rule(this.confirmPassword) === true)
-    },
-    async changePassword() {
-      try {
-        const user = this.generalStore.getUser
-        const result = await this.generalStore.changeUserPassword(
-          user.id,
-          this.newPassword,
-        )
-        if (result) {
-          this.resetPasswordFields()
-          this.showSnackbar(this.$t('settings.snackbarMessageSuccess'))
-        } else {
-          this.showSnackbar(this.$t('settings.snackbarMessageError'), 'error')
-        }
-      } catch (error) {
-        this.showSnackbar(this.$t('settings.snackbarMessageError'), 'error')
-      }
+      // Use the new changeLanguage function to update configurations
+      changeLanguage(newLang)
     },
   },
   computed: {
@@ -216,7 +199,7 @@ export default {
         {
           text: this.$t('settings.userSettings'),
           value: 'user-settings',
-        }
+        },
       ]
 
       if (config.auth.type === 'cornflow') {
@@ -259,6 +242,7 @@ export default {
           this.showSnackbar(this.$t('settings.snackbarMessageError'), 'error')
         }
       } catch (error) {
+        console.error('Failed to change password:', error)
         this.showSnackbar(this.$t('settings.snackbarMessageError'), 'error')
       }
     },

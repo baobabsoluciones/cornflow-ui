@@ -40,7 +40,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useGeneralStore } from '@/stores/general'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 
 export default {
   props: {
@@ -69,43 +69,38 @@ export default {
       }
     }
 
+    const isNoSolution = computed(
+      () =>
+        props.type === 'solution' &&
+        !!props.selectedExecution &&
+        !props.selectedExecution.hasSolution(),
+    )
+
     const iconInfoCard = computed(() => {
-      return props.selectedExecution
-        ? props.type === 'solution' &&
-          props.selectedExecution &&
-          !props.selectedExecution.hasSolution()
-          ? 'mdi-alert-circle'
-          : 'mdi-check-circle'
-        : 'mdi-alert-circle'
+      const icon = isNoSolution.value ? 'mdi-alert-circle' : 'mdi-check-circle'
+      return props.selectedExecution ? icon : 'mdi-alert-circle'
     })
 
     const iconColorInfoCard = computed(() => {
-      return props.selectedExecution
-        ? props.type === 'solution' &&
-          props.selectedExecution &&
-          !props.selectedExecution.hasSolution()
-          ? 'var(--warning)'
-          : 'var(--success)'
-        : 'var(--warning)'
+      const color = isNoSolution.value ? 'var(--warning)' : 'var(--success)'
+      return props.selectedExecution ? color : 'var(--warning)'
     })
 
     const titleInfoCard = computed(() => {
+      const title = isNoSolution.value
+        ? t('projectExecution.infoCard.noSolutionFoundTitle')
+        : t('projectExecution.infoCard.executionCreated')
       return props.selectedExecution
-        ? props.type === 'solution' &&
-          props.selectedExecution &&
-          !props.selectedExecution.hasSolution()
-          ? t('projectExecution.infoCard.noSolutionFoundTitle')
-          : t('projectExecution.infoCard.executionCreated')
+        ? title
         : t('projectExecution.infoCard.noExecutionSelected')
     })
 
     const descriptionInfoCard = computed(() => {
+      const description = isNoSolution.value
+        ? t('projectExecution.infoCard.noSolutionMessage')
+        : t('projectExecution.infoCard.solutionWillLoadMessage')
       return props.selectedExecution
-        ? props.type === 'solution' &&
-          props.selectedExecution &&
-          !props.selectedExecution.hasSolution()
-          ? t('projectExecution.infoCard.noSolutionMessage')
-          : t('projectExecution.infoCard.solutionWillLoadMessage')
+        ? description
         : t('projectExecution.infoCard.loadExecutionMessage')
     })
 
