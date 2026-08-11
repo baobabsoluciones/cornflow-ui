@@ -67,6 +67,9 @@ class AuthService {
       sessionStorage.removeItem('refreshToken')
     }
     sessionStorage.setItem('userId', content.id)
+    // Point the Api client at the token just issued: it caches the Bearer in
+    // memory and would otherwise keep using a stale one for this session.
+    client.initializeToken()
     // isAdmin and userRoles are determined after fetching user role assignments (see general store fetchUser)
     sessionStorage.removeItem('isAdmin')
     sessionStorage.removeItem('isPlatformAdmin')
@@ -128,6 +131,9 @@ class AuthService {
       sessionStorage.removeItem('refreshToken')
     }
     sessionStorage.setItem('userId', content.id)
+    // Same as in login(): the enrollment exchanges the temporary token for a
+    // real session one, so the Api client must pick it up.
+    client.initializeToken()
     sessionStorage.removeItem('isAdmin')
     sessionStorage.removeItem('isPlatformAdmin')
     sessionStorage.removeItem('userRoles')
@@ -239,6 +245,11 @@ class AuthService {
     sessionStorage.removeItem('isPlatformAdmin')
     sessionStorage.removeItem('userRoles')
     sessionStorage.removeItem('pwdChangeRequired')
+    // Drop the Bearer the Api client keeps in memory. It caches the token and
+    // only re-reads sessionStorage when it holds none, so without this a
+    // re-login in the same tab would keep sending the previous user's token
+    // (the app never reloads on logout: it just routes to /sign-in).
+    client.initializeToken()
   }
 
   isAdmin(): boolean {

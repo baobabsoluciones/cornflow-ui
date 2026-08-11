@@ -217,5 +217,39 @@ describe('UserRolesDialog', () => {
       expect(names).toContain('platform_viewer')
       expect(names).toContain('platform_planner')
     })
+
+    test('a non-platform admin cannot revoke the platform roles a user holds', async () => {
+      // Hiding them from the options is not enough: the chips are closable, so
+      // the selection can drop a platform_* role the user already has. Saving
+      // that would be sent as a revocation.
+      wrapper = createWrapper({
+        roles: allRoles,
+        user: user({ role_names: ['admin', 'platform_admin'], _role_ids: [1, 5] }),
+      })
+      await nextTick()
+
+      // Simulate closing the platform_admin chip
+      wrapper.vm.selectedNames = ['admin']
+      wrapper.vm.onSave()
+
+      const saved = wrapper.emitted('save')![0][0] as { roleNames: string[] }
+      expect(saved.roleNames).toContain('platform_admin')
+      expect(saved.roleNames).toContain('admin')
+    })
+
+    test('a platform admin can revoke platform roles', async () => {
+      wrapper = createWrapper({
+        roles: allRoles,
+        canAssignPlatformRoles: true,
+        user: user({ role_names: ['admin', 'platform_admin'], _role_ids: [1, 5] }),
+      })
+      await nextTick()
+
+      wrapper.vm.selectedNames = ['admin']
+      wrapper.vm.onSave()
+
+      const saved = wrapper.emitted('save')![0][0] as { roleNames: string[] }
+      expect(saved.roleNames).toEqual(['admin'])
+    })
   })
 })

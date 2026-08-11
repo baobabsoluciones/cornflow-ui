@@ -167,6 +167,16 @@ const roleItems = computed(() =>
 
 function onSave() {
   if (!props.user || !isEmailValid.value) return
+
+  // Hiding platform_* from the options is not enough to protect them: the chips
+  // are closable, so a non-platform admin could remove one the user already has
+  // and the save would send it as a revocation (saveUserRoleAssignments diffs
+  // the old assignments against this list and DELETEs whatever dropped out).
+  // Carry those roles over untouched instead.
+  const preservedPlatformRoles = props.canAssignPlatformRoles
+    ? []
+    : props.user.role_names.filter((name) => name.startsWith('platform_'))
+
   emit('save', {
     user: props.user,
     profile: {
@@ -174,7 +184,7 @@ function onSave() {
       last_name: lastName.value.trim(),
       email: email.value.trim(),
     },
-    roleNames: selectedNames.value,
+    roleNames: [...new Set([...selectedNames.value, ...preservedPlatformRoles])],
   })
 }
 </script>

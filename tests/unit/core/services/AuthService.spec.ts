@@ -5,7 +5,10 @@ import AuthService from '@cornflow-ui/core/services/AuthService'
 vi.mock('@cornflow-ui/core/api/Api', () => ({
   default: {
     post: vi.fn(),
-    put: vi.fn()
+    put: vi.fn(),
+    // The client caches the Bearer in memory; AuthService must tell it to
+    // re-read sessionStorage whenever the session token changes.
+    initializeToken: vi.fn()
   }
 }))
 
@@ -52,6 +55,8 @@ describe('AuthService', () => {
       expect(sessionStorageMock.removeItem).toHaveBeenCalledWith('isAdmin')
       expect(sessionStorageMock.removeItem).toHaveBeenCalledWith('userRoles')
       expect(sessionStorageMock.removeItem).toHaveBeenCalledWith('pwdChangeRequired')
+      // The Api client must adopt the token just issued instead of any cached one
+      expect(client.initializeToken).toHaveBeenCalled()
     })
 
     test('successful login includes the TOTP code in the request body when given', async () => {
@@ -548,6 +553,17 @@ describe('AuthService', () => {
         { 'Content-Type': 'application/json' }
       )
       expect(sessionStorageMock.removeItem).toHaveBeenCalledWith('refreshToken')
+    })
+
+    test('drops the Bearer cached in the Api client', async () => {
+      // Without this the client keeps the previous user's token in memory and
+      // a re-login in the same tab would send it (the app does not reload).
+      mockStorage['token'] = 'mock-token'
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+
+      AuthService.logout()
+
+      expect(client.initializeToken).toHaveBeenCalled()
     })
   })
 
