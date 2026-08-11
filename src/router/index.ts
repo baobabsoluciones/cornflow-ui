@@ -209,7 +209,7 @@ const buildRoutes = (): RouteRecordRaw[] => {
       children: [
         keepAliveRoute('user-settings', 'User settings', UserSettingsView),
         keepAliveRoute('roles-management', 'Roles management', RolesManagementView, {
-          requiresAdmin: true,
+          requiresPlatformAdmin: true,
         }),
         keepAliveRoute('project-execution', 'Project execution', ProjectExecutionView),
         keepAliveRoute('history-execution', 'Executions history', HistoryExecutionView),
@@ -299,14 +299,20 @@ export function createAppRouter(): Router {
       // Redirect to default view when:
       // - authenticated and going to the login page
       // - authenticated and going to the root
-      // - target requires admin and the user is not admin
-      // - target requires admin but the feature is disabled
-      const requiresAdmin = Boolean(to.meta?.requiresAdmin)
+      // - target requires a platform admin and the user is not one
+      // - target requires a platform admin but the feature is disabled
+      // The roles management screen relies on endpoints reserved to platform
+      // administrators, so a client admin is redirected here as well. The
+      // drawer applies the same rule, so the entry is never shown to someone
+      // who would just bounce back.
+      const requiresPlatformAdmin = Boolean(to.meta?.requiresPlatformAdmin)
       const redirectToDefault =
         (isAuthenticated && isSignInPage) ||
         (isAuthenticated && to.path === '/') ||
-        (requiresAdmin && sessionStorage.getItem('isAdmin') !== 'true') ||
-        (requiresAdmin && !appConfig.getCore().parameters.enableRolesManagement)
+        (requiresPlatformAdmin &&
+          sessionStorage.getItem('isPlatformAdmin') !== 'true') ||
+        (requiresPlatformAdmin &&
+          !appConfig.getCore().parameters.enableRolesManagement)
       if (redirectToDefault) {
         next(defaultView)
         return

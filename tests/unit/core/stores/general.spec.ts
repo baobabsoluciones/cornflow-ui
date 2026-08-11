@@ -157,6 +157,12 @@ const mockVersionRepository = vi.hoisted(() => ({
   getCornflowVersion: vi.fn(),
 }))
 
+// fetchUser derives the role flags from these assignments, so the call has to
+// resolve for the user to be stored at all.
+const mockRoleRepository = vi.hoisted(() => ({
+  getAllUserRoleAssignments: vi.fn(),
+}))
+
 vi.mock('@cornflow-ui/core/repositories/SchemaRepository', () => ({
   default: vi.fn(function () {
     return mockSchemaRepository
@@ -193,6 +199,12 @@ vi.mock('@cornflow-ui/core/repositories/VersionRepository', () => ({
   }),
 }))
 
+vi.mock('@cornflow-ui/core/repositories/RoleRepository', () => ({
+  default: vi.fn(function () {
+    return mockRoleRepository
+  }),
+}))
+
 // Mock utility modules - keeping only the ones that exist
 
 describe('General Store', () => {
@@ -202,6 +214,9 @@ describe('General Store', () => {
     // Default: no premium master-data unless a test opts in (avoids impl leaking
     // across tests, since clearAllMocks keeps mockResolvedValue implementations).
     mockLoadPremiumMasterDataConfig.mockReset()
+    // Default: the user has no role assignments. Tests that care about the
+    // role flags override this with their own list.
+    mockRoleRepository.getAllUserRoleAssignments.mockResolvedValue([])
   })
 
   describe('State', () => {

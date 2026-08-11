@@ -213,9 +213,15 @@ export default defineComponent({
     appName() {
       return config.name || 'Application'
     },
-    isAdmin() {
+    // The roles management screen is backed by endpoints reserved to platform
+    // administrators, so only they get the section: a client admin would see
+    // the entry and be redirected away as soon as they clicked it.
+    isPlatformAdmin() {
       const user = this.store.getUser
-      return user?.roles?.some((r: { name: string }) => r.name === 'admin') ?? false
+      return (
+        user?.roles?.some((r: { name: string }) => r.name === 'platform_admin') ??
+        false
+      )
     },
     currentUserRoleNames() {
       const user = this.store.getUser
@@ -492,9 +498,9 @@ export default defineComponent({
         }))
         .filter((s) => s.to != null || (s.subPages?.length ?? 0) > 0)
     },
-    // Admin section (only visible to admins when enableRolesManagement is true)
+    // Admin section (only visible to platform admins when enableRolesManagement is true)
     adminSection() {
-      if (!this.isAdmin) return null
+      if (!this.isPlatformAdmin) return null
       if (!appConfig.getCore().parameters.enableRolesManagement) return null
       return {
         title: this.$t('rolesManagement.adminSection'),

@@ -197,9 +197,14 @@ export const useGeneralStore = defineStore('general', {
     async fetchUser() {
       try {
         const userId = session.getUserId()
+        // The assignments call must not be swallowed: every role-derived flag
+        // below is computed from it, so treating a failure as "no roles" would
+        // silently downgrade the user to a permission level they do not have,
+        // leaving the drawer and the route guards disagreeing about what they
+        // can open.
         const [user, allAssignments] = await Promise.all([
           this.userRepository.getUserById(userId),
-          this.roleRepository.getAllUserRoleAssignments().catch(() => [] as import('@cornflow-ui/core/repositories/RoleRepository').UserRoleAssignment[]),
+          this.roleRepository.getAllUserRoleAssignments(),
         ])
         // Filter assignments that belong to the current user
         const myAssignments = allAssignments.filter(
@@ -229,6 +234,10 @@ export const useGeneralStore = defineStore('general', {
         const roleNames = myAssignments.map((a: import('@cornflow-ui/core/repositories/RoleRepository').UserRoleAssignment) => a.role)
         sessionStorage.setItem('userRoles', JSON.stringify(roleNames))
       } catch (error) {
+        // The role flags are deliberately left untouched: writing "false" here
+        // would hide sections from a user who does have access, and the stale
+        // value is never more permissive than what the API will enforce on the
+        // next request anyway.
         console.error('Error getting user', error)
       }
     },

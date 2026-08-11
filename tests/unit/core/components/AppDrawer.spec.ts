@@ -809,7 +809,27 @@ describe('AppDrawer.vue', () => {
       expect(wrapper.vm.masterDataSection.subPages).toBeDefined()
     })
 
-    test('isAdmin and adminSection reflect user roles + config', async () => {
+    test('isPlatformAdmin and adminSection reflect user roles + config', async () => {
+      mockStore.getUser = {
+        ...mockUser,
+        roles: [{ name: 'platform_admin' }],
+      }
+      mockAppConfig.getCore.mockReturnValue({
+        parameters: {
+          showOpenIdUsername: true,
+          showDashboardMainView: true,
+          enableRolesManagement: true,
+        },
+      })
+      wrapper = await createWrapper()
+      await wrapper.vm.$nextTick()
+      expect(wrapper.vm.isPlatformAdmin).toBe(true)
+      expect(wrapper.vm.adminSection).not.toBeNull()
+      // reset
+      mockStore.getUser = mockUser
+    })
+
+    test('a client admin gets no admin section: the screen is platform-only', async () => {
       mockStore.getUser = {
         ...mockUser,
         roles: [{ name: 'admin' }],
@@ -823,8 +843,8 @@ describe('AppDrawer.vue', () => {
       })
       wrapper = await createWrapper()
       await wrapper.vm.$nextTick()
-      expect(wrapper.vm.isAdmin).toBe(true)
-      expect(wrapper.vm.adminSection).not.toBeNull()
+      expect(wrapper.vm.isPlatformAdmin).toBe(false)
+      expect(wrapper.vm.adminSection).toBeNull()
       // reset
       mockStore.getUser = mockUser
     })
