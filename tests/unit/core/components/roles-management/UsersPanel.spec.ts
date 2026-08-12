@@ -154,27 +154,6 @@ describe('UsersPanel', () => {
     })
   })
 
-  describe('reset MFA action', () => {
-    test('does not render the reset-mfa button when mfa is disabled', () => {
-      wrapper = createWrapper({ users: [user({ mfaEnabled: false })] })
-      expect(wrapper.find('[data-test="reset-mfa-button"]').exists()).toBe(false)
-    })
-
-    test('renders the reset-mfa button only when mfaEnabled is true', () => {
-      wrapper = createWrapper({ users: [user({ mfaEnabled: true })] })
-      expect(wrapper.find('[data-test="reset-mfa-button"]').exists()).toBe(true)
-    })
-
-    test('emits reset-mfa with the user when the button is clicked', async () => {
-      wrapper = createWrapper({ users: [user({ id: 5, username: 'mfauser', mfaEnabled: true })] })
-      await wrapper.find('[data-test="reset-mfa-button"]').trigger('click')
-      expect(wrapper.emitted('reset-mfa')).toBeTruthy()
-      expect(wrapper.emitted('reset-mfa')![0][0]).toMatchObject({
-        username: 'mfauser',
-      })
-    })
-  })
-
   describe('empty / loading states', () => {
     test('renders no-data slot when there are no users', () => {
       wrapper = createWrapper({ users: [] })

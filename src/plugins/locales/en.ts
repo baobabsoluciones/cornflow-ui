@@ -393,54 +393,6 @@ export default {
     microsoft_not_configured: 'Microsoft authentication is not configured',
     microsoft_not_available:
       'Microsoft authentication service is not available',
-    back_button: 'Back',
-    mfa_code_title: 'Two-factor authentication',
-    mfa_code_hint:
-      'Enter the 6-digit code from your authenticator app, or one of your backup codes.',
-    mfa_code_label: 'Authentication code',
-    mfa_verify_button: 'Verify',
-    mfa_invalid_code: 'Invalid authentication code',
-    mfa_setup_error:
-      'The two-factor authentication setup could not be started. Please try again.',
-    mfa_enroll_title: 'Set up two-factor authentication',
-    mfa_enroll_hint:
-      'Scan this QR code with your authenticator app (Google Authenticator, Microsoft Authenticator, Aegis, FreeOTP...) and enter the first generated code to activate it.',
-    mfa_enroll_secret: 'Or enter this key manually:',
-    mfa_backup_title: 'Backup codes',
-    mfa_backup_hint:
-      'Store these one-time backup codes in a safe place. Each of them can be used once to log in if you lose access to your authenticator app. They will not be shown again.',
-    mfa_backup_copy: 'Copy codes',
-    mfa_backup_copied: 'Backup codes copied to the clipboard',
-    mfa_backup_continue: 'I have saved my codes',
-    password_change_required:
-      'Your password must be changed before continuing',
-    forgot_password_link: 'Forgot your password?',
-    forgot_title: 'Password recovery',
-    forgot_hint:
-      'Enter the email address of your account and we will send you a link to set a new password.',
-    forgot_email_label: 'Email',
-    forgot_submit: 'Send recovery link',
-    forgot_sent:
-      'If the email address belongs to an account, a recovery link has been sent. Check your inbox.',
-    forgot_error:
-      'The recovery email could not be sent. Please try again or contact an administrator.',
-    last_login_info: 'Welcome back. Your last login was on {date}.',
-    legal_notice:
-      'Authorized access only. Activity on this system may be monitored and recorded. Unauthorized use may lead to disciplinary or legal action.',
-  },
-  resetPassword: {
-    title: 'Set a new password',
-    hint: 'Choose a new password for your account. It must comply with the password policy.',
-    newPassword: 'New password',
-    confirmPassword: 'Confirm password',
-    submit: 'Save new password',
-    success: 'Your password has been updated. You can now log in.',
-    error: 'The password could not be updated.',
-    linkExpired:
-      'This reset link has expired or was already used. Request a new one from the login page.',
-    missingToken:
-      'This page needs the reset link sent to your email. Request one from the login page.',
-    backToLogin: 'Back to login',
   },
   logOut: {
     title: 'Log out',
@@ -556,8 +508,6 @@ export default {
     selectTheme: 'Select the main theme of the application',
     settings: 'Settings',
     snackbarMessageSuccess: 'Password updated successfully',
-    snackbarMessageSuccessRelogin:
-      'Password updated successfully. Please log in again with your new password.',
     snackbarMessageError: 'An error occurred while updating the password',
     required: 'Field required',
     passwordRuleLength: 'Min. {length} characters.',
@@ -565,51 +515,6 @@ export default {
       'Must contain uppercases, lowercases, numbers and special characters',
     passWordRuleNoSpace: 'A password can not contain any spaces',
     passwordRuleNotMatch: 'Passwords do not match',
-    passwordRuleDigitSequence:
-      'The password can not contain sequences of 6 or more digits (such as dates)',
-    passwordRuleStrength:
-      'The password is too easy to guess: avoid common words and patterns, or use a longer passphrase',
-    passwordChangeForced:
-      'Your password has expired or must be renewed. Set a new password to continue using the application.',
-    mfaTitle: 'Two-factor authentication',
-    mfaResetDescription:
-      'Reset your two-factor authentication if you changed or lost your phone. You will be asked to set it up again at your next login.',
-    mfaResetButton: 'Reset two-factor authentication',
-    mfaResetConfirm:
-      'Are you sure? Your current authenticator app and backup codes will stop working.',
-    mfaResetSuccess: 'Two-factor authentication has been reset',
-    mfaResetError:
-      'An error occurred while resetting the two-factor authentication',
-    mfaEnableDescription:
-      'Add a second factor to your account using an authenticator app.',
-    mfaEnableButton: 'Enable two-factor authentication',
-    mfaEnrollHint:
-      'Scan this QR code with your authenticator app and enter the first code to activate it.',
-    mfaEnrollSecret: 'Or enter this key manually:',
-    mfaCodeLabel: 'Authentication code',
-    mfaVerifyButton: 'Verify',
-    mfaInvalidCode: 'Invalid authentication code',
-    mfaEnrollError: 'The two-factor authentication could not be set up.',
-    mfaBackupHint:
-      'Store these one-time backup codes in a safe place. They will not be shown again.',
-    mfaBackupContinue: 'I have saved my codes',
-    mfaEnableSuccess: 'Two-factor authentication is now enabled.',
-    cancel: 'Cancel',
-    apiKeyTitle: 'Personal access token',
-    apiKeyDescription:
-      'Generate a long-lived token to authenticate scripts and integrations without your password. Generating a new one revokes the previous token.',
-    apiKeyGenerateButton: 'Generate token',
-    apiKeyReadOnlyLabel: 'Read-only token',
-    apiKeyReadOnlyHint:
-      'The token will only be able to read data, never to create, modify or delete it. Recommended for reporting and BI tools.',
-    apiKeyOnceWarning:
-      'Copy this token now. For security it will not be shown again.',
-    apiKeyCopy: 'Copy token',
-    apiKeyCopied: 'Token copied to the clipboard',
-    apiKeySuccess: 'Personal access token generated',
-    apiKeyError: 'The personal access token could not be generated',
-    apiKeyDisabled:
-      'Personal access tokens are disabled on this deployment',
   },
   helpMenu: {
     help: 'Help center',
@@ -1139,17 +1044,6 @@ export default {
     errorAssignRole: 'Error updating user roles.',
     errorSaveUser: 'Error saving user data.',
     userUpdated: 'User data updated successfully.',
-    lockedBadge: 'Locked',
-    unlockUser: 'Unlock account',
-    unlockConfirm:
-      'Unlock the account of {username}? The failed login attempts counter will be reset.',
-    userUnlocked: 'The account has been unlocked.',
-    errorUnlockUser: 'Error unlocking the account.',
-    resetMfa: 'Reset two-factor authentication',
-    resetMfaConfirm:
-      'Reset the two-factor authentication of {username}? They will have to set it up again at their next login.',
-    mfaReset: 'The two-factor authentication has been reset.',
-    errorResetMfa: 'Error resetting the two-factor authentication.',
     roleCreated: 'Role created successfully.',
     roleUpdated: 'Role updated successfully.',
     roleDeleted: 'Role deleted successfully.',

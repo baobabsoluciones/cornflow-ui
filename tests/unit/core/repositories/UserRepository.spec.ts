@@ -5,8 +5,7 @@ import UserRepository from '@cornflow-ui/core/repositories/UserRepository'
 vi.mock('@cornflow-ui/core/api/Api', () => ({
   default: {
     get: vi.fn(),
-    put: vi.fn(),
-    remove: vi.fn()
+    put: vi.fn()
   }
 }))
 
@@ -55,25 +54,6 @@ describe('UserRepository', () => {
       expect(mockClient.get).toHaveBeenCalledWith('/user/test-user-id/')
     })
 
-    test('should set mfaEnabled from the raw mfa_enabled flag', async () => {
-      mockClient.get.mockResolvedValue({
-        status: 200,
-        content: { ...mockUserData, mfa_enabled: true },
-      })
-
-      const result = await repository.getUserById('test-user-id')
-
-      expect(result.mfaEnabled).toBe(true)
-    })
-
-    test('should default mfaEnabled to false when the flag is absent', async () => {
-      mockClient.get.mockResolvedValue({ status: 200, content: mockUserData })
-
-      const result = await repository.getUserById('test-user-id')
-
-      expect(result.mfaEnabled).toBe(false)
-    })
-
     test('should reject when API returns non-200 status', async () => {
       const mockResponse = {
         status: 404,
@@ -117,30 +97,10 @@ describe('UserRepository', () => {
       expect(mockClient.put).toHaveBeenCalledWith('/user/test-user-id/', {
         password: 'newPassword123'
       })
-      expect(result).toEqual({ success: true })
+      expect(result).toBe(true)
     })
 
-    test('should send current_password when provided', async () => {
-      const mockResponse = {
-        status: 200,
-        content: { success: true }
-      }
-      mockClient.put.mockResolvedValue(mockResponse)
-
-      const result = await repository.changePassword(
-        'test-user-id',
-        'newPassword123',
-        'oldPassword456'
-      )
-
-      expect(mockClient.put).toHaveBeenCalledWith('/user/test-user-id/', {
-        password: 'newPassword123',
-        current_password: 'oldPassword456'
-      })
-      expect(result).toEqual({ success: true })
-    })
-
-    test('should return failure with message when password change fails with non-200 status', async () => {
+    test('should return false when password change fails with non-200 status', async () => {
       const mockResponse = {
         status: 400,
         content: { error: 'Invalid password' }
@@ -149,7 +109,7 @@ describe('UserRepository', () => {
 
       const result = await repository.changePassword('test-user-id', 'weak')
 
-      expect(result).toEqual({ success: false, message: 'Invalid password' })
+      expect(result).toBe(false)
     })
 
     test('should reject when API call fails', async () => {
@@ -171,7 +131,7 @@ describe('UserRepository', () => {
       expect(mockClient.put).toHaveBeenCalledWith('/user/test-user-id/', {
         password: ''
       })
-      expect(result).toEqual({ success: true })
+      expect(result).toBe(true)
     })
 
     test('should handle unauthorized access', async () => {
@@ -183,7 +143,7 @@ describe('UserRepository', () => {
 
       const result = await repository.changePassword('test-user-id', 'newPassword123')
 
-      expect(result).toEqual({ success: false, message: 'Unauthorized' })
+      expect(result).toBe(false)
     })
 
     test('should handle forbidden access', async () => {
@@ -195,32 +155,7 @@ describe('UserRepository', () => {
 
       const result = await repository.changePassword('test-user-id', 'newPassword123')
 
-      expect(result).toEqual({ success: false, message: 'Forbidden' })
-    })
-  })
-
-  describe('resetMfa', () => {
-    test('should return true when the MFA reset succeeds', async () => {
-      mockClient.remove.mockResolvedValue({ status: 200, content: {} })
-
-      const result = await repository.resetMfa('test-user-id')
-
-      expect(mockClient.remove).toHaveBeenCalledWith('/user/test-user-id/mfa/')
-      expect(result).toBe(true)
-    })
-
-    test('should return false when the MFA reset fails', async () => {
-      mockClient.remove.mockResolvedValue({ status: 400, content: {} })
-
-      const result = await repository.resetMfa('test-user-id')
-
       expect(result).toBe(false)
-    })
-
-    test('should reject when API call fails', async () => {
-      mockClient.remove.mockRejectedValue(new Error('Network error'))
-
-      await expect(repository.resetMfa('test-user-id')).rejects.toThrow('Network error')
     })
   })
 })
