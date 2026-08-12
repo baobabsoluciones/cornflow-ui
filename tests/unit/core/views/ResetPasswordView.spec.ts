@@ -7,10 +7,13 @@ import ResetPasswordView from '@cornflow-ui/core/views/ResetPasswordView.vue'
 // Mock vue-router: the view reads the reset token from the route query and
 // navigates with the router after a successful reset
 const mockRoute = vi.hoisted(() => ({
+  path: '/reset-password',
   query: {} as Record<string, string>,
 }))
 const mockRouter = vi.hoisted(() => ({
   push: vi.fn(),
+  // The view strips the token from the URL as soon as it reads it
+  replace: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('vue-router', () => ({
@@ -151,6 +154,20 @@ describe('ResetPasswordView', () => {
   })
 
   describe('With a token', () => {
+    test('strips the token from the URL as soon as it is read', () => {
+      // A token left in the query string ends up in the browser history and in
+      // the Referer of anything the page loads afterwards.
+      const { wrapper } = createWrapper({ token: 'reset-token-123' })
+
+      expect(mockRouter.replace).toHaveBeenCalledWith({
+        path: '/reset-password',
+        query: {},
+        hash: '',
+      })
+      // ...and the view keeps working with the captured value
+      expect(wrapper.find('[data-test="reset-submit"]').exists()).toBe(true)
+    })
+
     test('renders the new password form', () => {
       const { wrapper } = createWrapper({ token: 'reset-token-123' })
 

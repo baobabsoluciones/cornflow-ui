@@ -343,7 +343,7 @@ onMounted(async () => {
   }
 })
 
-const backToCredentials = () => {
+const backToCredentials = async () => {
   loginStep.value = 'credentials'
   forgotEmail.value = ''
   totpCode.value = ''
@@ -352,6 +352,10 @@ const backToCredentials = () => {
   qrDataUrl.value = ''
   backupCodes.value = []
   pendingChangePassword = false
+  // Leaving the MFA enrollment half-way leaves its temporary token behind in
+  // sessionStorage; drop it so it is not sent as the Bearer of later requests.
+  const cornflowAuth = await getSpecificAuthService('cornflow')
+  cornflowAuth?.clearPendingEnrollment?.()
 }
 
 const submitForgot = async () => {

@@ -31,12 +31,22 @@ export interface AuthProvider {
     token: string,
     password: string,
   ): Promise<{ success: boolean; message?: string; linkInvalid?: boolean }>;
-  createApiKey?(totpCode?: string): Promise<{
+  /**
+   * Generates a personal API key. `scope` narrows what the key may do —
+   * 'read' asks the server for a read-only key. Implementations must forward
+   * it; the restriction itself is enforced server-side.
+   */
+  createApiKey?(
+    totpCode?: string,
+    scope?: string,
+  ): Promise<{
     success: boolean
     apiKey?: string
     disabled?: boolean
     message?: string
   }>;
+  /** Discards a half-finished MFA enrollment (drops its temporary token). */
+  clearPendingEnrollment?(): void;
   getUsername?(): string | null;
   getName?(): string | null;
   getEmail?(): string | null;

@@ -291,10 +291,7 @@ import config from '@cornflow-ui/core/config'
 import appConfig from '@/app/config'
 import { changeLanguage } from '@cornflow-ui/core/plugins/i18n'
 import { getSpecificAuthService } from '@cornflow-ui/core/services/AuthServiceFactory'
-import {
-  isPasswordStrongEnough,
-  PASSWORD_MIN_LENGTH,
-} from '@cornflow-ui/core/utils/passwordStrength'
+import { buildPasswordRules } from '@cornflow-ui/core/utils/passwordStrength'
 
 export default {
   components: {},
@@ -310,29 +307,10 @@ export default {
         { title: this.$t('settings.spanish'), value: 'es' },
         { title: this.$t('settings.french'), value: 'fr' },
       ],
+      // Policy rules come from utils/passwordStrength so every screen enforces
+      // the same ones; only the confirmation rule belongs to this view.
       passwordRules: [
-        (value) =>
-          (value !== undefined && value.length >= PASSWORD_MIN_LENGTH) ||
-          this.$t('settings.passwordRuleLength', {
-            length: `${PASSWORD_MIN_LENGTH}`,
-          }),
-        (value) =>
-          /[A-Z]/.test(value) || this.$t('settings.passwordRuleCharacters'),
-        (value) =>
-          /[a-z]/.test(value) || this.$t('settings.passwordRuleCharacters'),
-        (value) =>
-          /\d/.test(value) || this.$t('settings.passwordRuleCharacters'),
-        (value) =>
-          /[!?@#$%^&*)(+=.<>{}[\],/¿¡:;'"|~`_-]/.test(value) ||
-          this.$t('settings.passwordRuleCharacters'),
-        (value) => !/\s/.test(value) || this.$t('settings.passWordRuleNoSpace'),
-        (value) =>
-          !/\d{6,}/.test(value || '') ||
-          this.$t('settings.passwordRuleDigitSequence'),
-        (value) =>
-          !value ||
-          isPasswordStrongEnough(value) ||
-          this.$t('settings.passwordRuleStrength'),
+        ...buildPasswordRules((key, params) => this.$t(key, params)),
         (value) =>
           value === this.newPassword ||
           this.$t('settings.passwordRuleNotMatch'),

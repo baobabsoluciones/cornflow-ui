@@ -174,6 +174,30 @@ describe('AuthService', () => {
       expect(sessionStorageMock.setItem).toHaveBeenCalledWith('isAuthenticated', 'false')
       expect(sessionStorageMock.setItem).toHaveBeenCalledWith('token', 'temp-token-123')
     })
+  })
+
+  describe('clearPendingEnrollment', () => {
+    test('drops the temporary token left by an abandoned MFA enrollment', async () => {
+      // Backing out of the enrollment must not leave a usable Bearer behind
+      mockStorage['isAuthenticated'] = 'false'
+      mockStorage['token'] = 'temp-token-123'
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+
+      AuthService.clearPendingEnrollment()
+
+      expect(sessionStorageMock.removeItem).toHaveBeenCalledWith('token')
+      expect(client.initializeToken).toHaveBeenCalled()
+    })
+
+    test('leaves an established session untouched', () => {
+      mockStorage['isAuthenticated'] = 'true'
+      mockStorage['token'] = 'real-session-token'
+
+      AuthService.clearPendingEnrollment()
+
+      expect(sessionStorageMock.removeItem).not.toHaveBeenCalledWith('token')
+      expect(mockStorage['token']).toBe('real-session-token')
+    })
 
     test('handles API errors gracefully', async () => {
       const { default: client } = await import('@cornflow-ui/core/api/Api')

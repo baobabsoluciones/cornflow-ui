@@ -51,8 +51,10 @@ class AuthService {
       // Password accepted but the user must enroll in two-factor
       // authentication. The temporary token is stored so the enrollment
       // endpoints can be called; it is not a session token.
+      // Abandoning the enrollment must clear it — see clearPendingEnrollment().
       sessionStorage.setItem('isAuthenticated', 'false')
       sessionStorage.setItem('token', content.temp_token)
+      client.initializeToken()
       return { success: false, mfaSetupRequired: true }
     }
 
@@ -222,6 +224,20 @@ class AuthService {
       { 'Content-Type': 'application/json' },
     )
     return response.status === 201
+  }
+
+  /**
+   * Drops the temporary enrollment token kept after a login that demands MFA
+   * setup, for when the user backs out instead of finishing the enrollment.
+   *
+   * Without this the temp token stays in sessionStorage under `token` (with
+   * `isAuthenticated=false`) and would be sent as the Bearer of any later
+   * request. Never touches a real session: it is a no-op once authenticated.
+   */
+  clearPendingEnrollment(): void {
+    if (sessionStorage.getItem('isAuthenticated') === 'true') return
+    sessionStorage.removeItem('token')
+    client.initializeToken()
   }
 
   logout(): void {

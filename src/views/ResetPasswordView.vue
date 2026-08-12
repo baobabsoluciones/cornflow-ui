@@ -58,10 +58,7 @@ import { computed, inject, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { getSpecificAuthService } from '@cornflow-ui/core/services/AuthServiceFactory'
-import {
-  isPasswordStrongEnough,
-  PASSWORD_MIN_LENGTH,
-} from '@cornflow-ui/core/utils/passwordStrength'
+import { buildPasswordRules } from '@cornflow-ui/core/utils/passwordStrength'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -69,30 +66,41 @@ const router = useRouter()
 const showSnackbar =
   inject<(message: string, type?: string) => void>('showSnackbar')
 
-const token = computed(() => String(route.query.token ?? ''))
+/**
+ * Reset token, captured once and immediately stripped from the URL.
+ *
+ * A token in the query string ends up in the browser history and in the
+ * `Referer` of anything the page loads afterwards. It can also reach proxy and
+ * CDN access logs — that part is on whoever generates the link, but everything
+ * after the first read is on us, so the URL is cleaned right away.
+ *
+ * A fragment (`#token=…`) is read first and never leaves the browser at all;
+ * the query string stays supported because the recovery email is built by the
+ * backend and may still use it.
+ */
+const tokenFromFragment = (): string => {
+  const hash = window.location.hash
+  // In hash routing the fragment holds the route itself; the query is parsed
+  // by vue-router and read below.
+  if (!hash || hash.startsWith('#/')) return ''
+  return new URLSearchParams(hash.replace(/^#/, '')).get('token') ?? ''
+}
+
+const token = ref(tokenFromFragment() || String(route.query.token ?? ''))
+
+if (token.value && (route.query.token || tokenFromFragment())) {
+  // Replace, not push: no history entry keeps the token.
+  void router.replace({ path: route.path, query: {}, hash: '' })
+}
 
 const newPassword = ref('')
 const confirmPassword = ref('')
 const submitting = ref(false)
 
-// Mirrors the backend CCN-STIC-807 password policy
+// Policy rules come from utils/passwordStrength so every screen enforces the
+// same ones; only the confirmation rule belongs to this view.
 const passwordRules = [
-  (value: string) =>
-    (value !== undefined && value.length >= PASSWORD_MIN_LENGTH) ||
-    t('settings.passwordRuleLength', { length: `${PASSWORD_MIN_LENGTH}` }),
-  (value: string) =>
-    /[A-Z]/.test(value) || t('settings.passwordRuleCharacters'),
-  (value: string) =>
-    /[a-z]/.test(value) || t('settings.passwordRuleCharacters'),
-  (value: string) => /\d/.test(value) || t('settings.passwordRuleCharacters'),
-  (value: string) =>
-    /[!?@#$%^&*)(+=.<>{}[\],/¿¡:;'"|~`_-]/.test(value) ||
-    t('settings.passwordRuleCharacters'),
-  (value: string) => !/\s/.test(value) || t('settings.passWordRuleNoSpace'),
-  (value: string) =>
-    !/\d{6,}/.test(value || '') || t('settings.passwordRuleDigitSequence'),
-  (value: string) =>
-    !value || isPasswordStrongEnough(value) || t('settings.passwordRuleStrength'),
+  ...buildPasswordRules(t),
   (value: string) =>
     value === newPassword.value || t('settings.passwordRuleNotMatch'),
 ]
