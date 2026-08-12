@@ -185,6 +185,11 @@ const buildRoutes = (): RouteRecordRaw[] => {
       component: LoginView,
     },
     {
+      // Public page reached from the password reset link sent by email
+      path: '/reset-password',
+      component: () => import('@cornflow-ui/core/views/ResetPasswordView.vue'),
+    },
+    {
       path: '/',
       name: 'Home',
       component: IndexView,
@@ -258,11 +263,31 @@ export function createAppRouter(): Router {
       const auth = await initAuthService()
       const isAuthenticated = auth.isAuthenticated()
       const isSignInPage = to.path === '/sign-in'
-      const isTargetingAuthRequiredPage = to.path !== '/sign-in'
+      // Pages reachable without a session: login and the password reset
+      // page linked from the recovery email
+      const publicPaths = ['/sign-in', '/reset-password']
+      const isTargetingAuthRequiredPage = !publicPaths.includes(to.path)
 
       // If not authenticated and going to a protected page
       if (!isAuthenticated && isTargetingAuthRequiredPage) {
         next('/sign-in')
+        return
+      }
+
+      // The reset page is usable regardless of the session state
+      if (to.path === '/reset-password') {
+        next()
+        return
+      }
+
+      // A pending forced password change (expired or reset password) locks the
+      // navigation to the settings view until a new password is set
+      if (
+        isAuthenticated &&
+        sessionStorage.getItem('pwdChangeRequired') === 'true' &&
+        to.path !== '/user-settings'
+      ) {
+        next({ path: '/user-settings', query: { changePassword: 'true' } })
         return
       }
 

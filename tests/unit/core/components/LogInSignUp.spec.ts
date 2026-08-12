@@ -176,6 +176,52 @@ describe('LogInSignUp', () => {
       expect(snack).toHaveBeenCalledWith('logIn.snackbar_message_success', 'success')
     })
 
+    test('successful cornflow login with LoginResult object navigates home', async () => {
+      auth.login.mockResolvedValue({ success: true, changePassword: false })
+      const router = { push: vi.fn() }
+      const snack = vi.fn()
+      wrapper = createWrapper(snack, router)
+      await flushPromises()
+      wrapper.vm.username = 'u'
+      wrapper.vm.password = 'p'
+      await wrapper.vm.submitLogIn()
+      expect(router.push).toHaveBeenCalledWith('/')
+      expect(snack).toHaveBeenCalledWith('logIn.snackbar_message_success', 'success')
+    })
+
+    test('mfaRequired result redirects to the sign-in landing', async () => {
+      auth.login.mockResolvedValue({ success: false, mfaRequired: true })
+      const router = { push: vi.fn() }
+      const snack = vi.fn()
+      wrapper = createWrapper(snack, router)
+      await flushPromises()
+      wrapper.vm.username = 'u'
+      wrapper.vm.password = 'p'
+      await wrapper.vm.submitLogIn()
+      expect(router.push).toHaveBeenCalledWith('/sign-in')
+      expect(snack).not.toHaveBeenCalledWith('logIn.snackbar_message_error', 'error')
+    })
+
+    test('mfaSetupRequired result redirects to the sign-in landing', async () => {
+      auth.login.mockResolvedValue({ success: false, mfaSetupRequired: true })
+      const router = { push: vi.fn() }
+      wrapper = createWrapper(vi.fn(), router)
+      await flushPromises()
+      wrapper.vm.username = 'u'
+      wrapper.vm.password = 'p'
+      await wrapper.vm.submitLogIn()
+      expect(router.push).toHaveBeenCalledWith('/sign-in')
+    })
+
+    test('failed LoginResult shows error snackbar', async () => {
+      auth.login.mockResolvedValue({ success: false, errorMessage: 'bad' })
+      const snack = vi.fn()
+      wrapper = createWrapper(snack)
+      await flushPromises()
+      await wrapper.vm.submitLogIn()
+      expect(snack).toHaveBeenCalledWith('logIn.snackbar_message_error', 'error')
+    })
+
     test('failed login shows error snackbar', async () => {
       auth.login.mockResolvedValue(false)
       const snack = vi.fn()
@@ -273,16 +319,51 @@ describe('LogInSignUp', () => {
 
   describe('clearLocalStorageAuthData', () => {
     test('removes only auth-related localStorage keys', async () => {
-      localStorage.setItem('access_token', 'a')
-      localStorage.setItem('msal.account', 'b')
-      localStorage.setItem('keepMe', 'c')
-      wrapper = createWrapper()
-      await flushPromises()
-      wrapper.vm.clearLocalStorageAuthData()
-      expect(localStorage.getItem('access_token')).toBeNull()
-      expect(localStorage.getItem('msal.account')).toBeNull()
-      expect(localStorage.getItem('keepMe')).toBe('c')
-      localStorage.clear()
+      // Functional localStorage mock: data keys are enumerable own properties
+      // (like the real Storage) so the component's Object.keys() scan works
+      const storageMock: Record<string, string> = {}
+      Object.defineProperties(storageMock, {
+        getItem: {
+          value: (key: string) => (key in storageMock ? storageMock[key] : null),
+        },
+        setItem: {
+          value: (key: string, value: string) => {
+            storageMock[key] = String(value)
+          },
+        },
+        removeItem: {
+          value: (key: string) => {
+            delete storageMock[key]
+          },
+        },
+        clear: {
+          value: () =>
+            Object.keys(storageMock).forEach((key) => delete storageMock[key]),
+        },
+      })
+      const originalLocalStorage = Object.getOwnPropertyDescriptor(
+        window,
+        'localStorage',
+      )
+      Object.defineProperty(window, 'localStorage', {
+        value: storageMock,
+        configurable: true,
+      })
+      try {
+        wrapper = createWrapper()
+        await flushPromises()
+        window.localStorage.setItem('access_token', 'a')
+        window.localStorage.setItem('msal.account', 'b')
+        window.localStorage.setItem('keepMe', 'c')
+        wrapper.vm.clearLocalStorageAuthData()
+        expect(window.localStorage.getItem('access_token')).toBeNull()
+        expect(window.localStorage.getItem('msal.account')).toBeNull()
+        expect(window.localStorage.getItem('keepMe')).toBe('c')
+      } finally {
+        if (originalLocalStorage) {
+          Object.defineProperty(window, 'localStorage', originalLocalStorage)
+        }
+      }
     })
   })
 
@@ -292,13 +373,21 @@ describe('LogInSignUp', () => {
       await flushPromises()
       const r = wrapper.vm.passwordRules
       expect(r.length('short')).toBe('rules.password_length')
-      expect(r.length('longenough')).toBe(true)
+      expect(r.length('longenoughpassword')).toBe(true)
       expect(r.capitalLetters('lowercase1!')).toBe('rules.password_capital_letters')
       expect(r.numbers('NoDigits!')).toBe('rules.password_numbers')
       expect(r.noSpace('has space')).toBe('rules.password_no_space')
       expect(r.specialCharacter('NoSpecial1')).toBe(
         'rules.password_special_characters',
       )
+      expect(r.noDigitSequence('Aa!19911225bcd')).toBe(
+        'settings.passwordRuleDigitSequence',
+      )
+      expect(r.noDigitSequence('Kx9#tR2m!Qw7Zp')).toBe(true)
+      expect(r.strength('Aa1!aaaaaaaaaaaa')).toBe(
+        'settings.passwordRuleStrength',
+      )
+      expect(r.strength('Kx9#tR2m!Qw7Zp')).toBe(true)
     })
 
     test('email format rule', async () => {

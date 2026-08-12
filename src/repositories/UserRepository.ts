@@ -7,6 +7,8 @@ interface RawUser {
   email: string
   first_name?: string
   last_name?: string
+  locked?: boolean
+  mfa_enabled?: boolean
 }
 
 export default class UserRepository {
@@ -32,15 +34,15 @@ export default class UserRepository {
         .then((response) => {
           if (response.status === 200) {
             const raw = response.content as RawUser
-            resolve(
-              new User(
-                String(raw.id),
-                raw.username,
-                raw.email,
-                raw.first_name || '',
-                raw.last_name || '',
-              ),
+            const user = new User(
+              String(raw.id),
+              raw.username,
+              raw.email,
+              raw.first_name || '',
+              raw.last_name || '',
             )
+            user.mfaEnabled = !!raw.mfa_enabled
+            resolve(user)
           } else {
             reject(new Error('Error getting user'))
           }
@@ -70,10 +72,47 @@ export default class UserRepository {
     })
   }
 
-  changePassword(userId: string | number, password: string): Promise<boolean> {
+  changePassword(
+    userId: string | number,
+    password: string,
+    currentPassword?: string,
+  ): Promise<{ success: boolean; message?: string }> {
+    const body: Record<string, string> = { password }
+    if (currentPassword) {
+      body.current_password = currentPassword
+    }
     return new Promise((resolve, reject) => {
       client
-        .put(`/user/${userId}/`, { password })
+        .put(`/user/${userId}/`, body)
+        .then((response) => {
+          if (response.status === 200) {
+            resolve({ success: true })
+          } else {
+            resolve({
+              success: false,
+              message: (response.content as { error?: string })?.error,
+            })
+          }
+        })
+        .catch(reject)
+    })
+  }
+
+  unlockUser(userId: string | number): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      client
+        .put(`/user/${userId}/unlock/`, {})
+        .then((response) => {
+          resolve(response.status === 200)
+        })
+        .catch(reject)
+    })
+  }
+
+  resetMfa(userId: string | number): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      client
+        .remove(`/user/${userId}/mfa/`)
         .then((response) => {
           resolve(response.status === 200)
         })

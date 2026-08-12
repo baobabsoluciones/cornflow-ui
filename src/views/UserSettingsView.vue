@@ -76,10 +76,28 @@
               <v-list-item-title class="mb-2 settings-title">{{
                 $t('settings.userSecurity')
               }}</v-list-item-title>
+              <v-alert
+                v-if="passwordChangeForced"
+                type="warning"
+                variant="tonal"
+                class="mb-3"
+                style="max-width: 600px"
+                data-test="forced-change-alert"
+              >
+                {{ $t('settings.passwordChangeForced') }}
+              </v-alert>
               <v-list-item-subtitle class="mb-2">{{
                 $t('settings.changePassword')
               }}</v-list-item-subtitle>
               <v-form>
+                <MInputField
+                  style="width: 300px !important"
+                  class="mt-4"
+                  v-model="currentPassword"
+                  :title="$t('settings.currentPassword')"
+                  type="password"
+                >
+                </MInputField>
                 <MInputField
                   style="width: 300px !important"
                   class="mt-4"
@@ -107,6 +125,156 @@
                 >
               </v-form>
             </v-list-item>
+
+            <v-divider></v-divider>
+
+            <v-list-item class="mt-6">
+              <v-list-item-title class="mb-2 settings-title">{{
+                $t('settings.mfaTitle')
+              }}</v-list-item-title>
+
+              <!-- Already enrolled: allow resetting/disabling -->
+              <template v-if="mfaEnabled">
+                <v-list-item-subtitle class="mb-2">{{
+                  $t('settings.mfaResetDescription')
+                }}</v-list-item-subtitle>
+                <v-btn
+                  color="primary"
+                  variant="outlined"
+                  class="my-2"
+                  @click="resetMfa"
+                  data-test="mfa-reset-button"
+                  >{{ $t('settings.mfaResetButton') }}</v-btn
+                >
+              </template>
+
+              <!-- Not enrolled: allow opting in -->
+              <template v-else>
+                <template v-if="mfaStep === 'idle'">
+                  <v-list-item-subtitle class="mb-2">{{
+                    $t('settings.mfaEnableDescription')
+                  }}</v-list-item-subtitle>
+                  <v-btn
+                    color="primary"
+                    class="my-2"
+                    @click="startMfaEnroll"
+                    data-test="mfa-enable-button"
+                    >{{ $t('settings.mfaEnableButton') }}</v-btn
+                  >
+                </template>
+
+                <template v-else-if="mfaStep === 'qr'">
+                  <v-list-item-subtitle class="mb-2">{{
+                    $t('settings.mfaEnrollHint')
+                  }}</v-list-item-subtitle>
+                  <img
+                    v-if="mfaQrDataUrl"
+                    :src="mfaQrDataUrl"
+                    alt="TOTP QR code"
+                    style="width: 200px; max-width: 100%"
+                    data-test="mfa-qr"
+                  />
+                  <p class="mfa-secret" v-if="mfaSecret">
+                    {{ $t('settings.mfaEnrollSecret') }}
+                    <code>{{ mfaSecret }}</code>
+                  </p>
+                  <MInputField
+                    style="width: 300px !important"
+                    class="mt-2"
+                    v-model="mfaCode"
+                    :title="$t('settings.mfaCodeLabel')"
+                    type="text"
+                  >
+                  </MInputField>
+                  <div class="mt-2">
+                    <v-btn
+                      color="primary"
+                      class="mr-2"
+                      :disabled="!mfaCode"
+                      @click="verifyMfaEnroll"
+                      data-test="mfa-verify-button"
+                      >{{ $t('settings.mfaVerifyButton') }}</v-btn
+                    >
+                    <v-btn variant="text" @click="cancelMfaEnroll">{{
+                      $t('settings.cancel')
+                    }}</v-btn>
+                  </div>
+                </template>
+
+                <template v-else-if="mfaStep === 'backup'">
+                  <v-list-item-subtitle class="mb-2">{{
+                    $t('settings.mfaBackupHint')
+                  }}</v-list-item-subtitle>
+                  <div class="mfa-backup-codes" data-test="mfa-backup-codes">
+                    <code v-for="code in mfaBackupCodes" :key="code">{{
+                      code
+                    }}</code>
+                  </div>
+                  <v-btn
+                    color="primary"
+                    class="mt-2"
+                    @click="finishMfaEnroll"
+                    data-test="mfa-backup-done"
+                    >{{ $t('settings.mfaBackupContinue') }}</v-btn
+                  >
+                </template>
+              </template>
+            </v-list-item>
+
+            <v-divider v-if="personalTokenEnabled"></v-divider>
+
+            <v-list-item v-if="personalTokenEnabled" class="mt-6">
+              <v-list-item-title class="mb-2 settings-title">{{
+                $t('settings.apiKeyTitle')
+              }}</v-list-item-title>
+              <v-list-item-subtitle class="mb-2">{{
+                $t('settings.apiKeyDescription')
+              }}</v-list-item-subtitle>
+
+              <!-- Optional step-up TOTP for MFA users -->
+              <MInputField
+                v-if="mfaEnabled"
+                style="width: 300px !important"
+                class="mt-2"
+                v-model="apiKeyTotp"
+                :title="$t('settings.mfaCodeLabel')"
+                type="text"
+                data-test="api-key-totp"
+              >
+              </MInputField>
+              <!-- Read-only scope: the key is refused on anything but GET -->
+              <v-checkbox
+                v-model="apiKeyReadOnly"
+                :label="$t('settings.apiKeyReadOnlyLabel')"
+                :hint="$t('settings.apiKeyReadOnlyHint')"
+                persistent-hint
+                density="compact"
+                class="mt-2"
+                data-test="api-key-read-only"
+              ></v-checkbox>
+              <v-btn
+                color="primary"
+                class="my-2"
+                @click="generateApiKey"
+                data-test="api-key-generate-button"
+                >{{ $t('settings.apiKeyGenerateButton') }}</v-btn
+              >
+
+              <!-- Shown once -->
+              <div v-if="apiKey" class="api-key-box" data-test="api-key-box">
+                <v-alert type="warning" variant="tonal" class="mb-2">
+                  {{ $t('settings.apiKeyOnceWarning') }}
+                </v-alert>
+                <code class="api-key-value">{{ apiKey }}</code>
+                <v-btn
+                  variant="outlined"
+                  size="small"
+                  class="mt-2"
+                  @click="copyApiKey"
+                  >{{ $t('settings.apiKeyCopy') }}</v-btn
+                >
+              </div>
+            </v-list-item>
           </v-list>
         </v-col>
       </template>
@@ -118,8 +286,12 @@
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { useI18n } from 'vue-i18n'
 import { inject } from 'vue'
+import QRCode from 'qrcode'
 import config from '@cornflow-ui/core/config'
+import appConfig from '@/app/config'
 import { changeLanguage } from '@cornflow-ui/core/plugins/i18n'
+import { getSpecificAuthService } from '@cornflow-ui/core/services/AuthServiceFactory'
+import { buildPasswordRules } from '@cornflow-ui/core/utils/passwordStrength'
 
 export default {
   components: {},
@@ -135,26 +307,27 @@ export default {
         { title: this.$t('settings.spanish'), value: 'es' },
         { title: this.$t('settings.french'), value: 'fr' },
       ],
+      // Policy rules come from utils/passwordStrength so every screen enforces
+      // the same ones; only the confirmation rule belongs to this view.
       passwordRules: [
-        (value) =>
-          (value !== undefined && value.length >= 5) ||
-          this.$t('settings.passwordRuleLength', { length: '5' }),
-        (value) =>
-          /[A-Z]/.test(value) || this.$t('settings.passwordRuleCharacters'),
-        (value) =>
-          /[a-z]/.test(value) || this.$t('settings.passwordRuleCharacters'),
-        (value) =>
-          /\d/.test(value) || this.$t('settings.passwordRuleCharacters'),
-        (value) =>
-          /[!?@#$%^&*)(+=.<>{}[\],/¿¡:;'"|~`_-]/.test(value) ||
-          this.$t('settings.passwordRuleCharacters'),
-        (value) => !/\s/.test(value) || this.$t('settings.passWordRuleNoSpace'),
+        ...buildPasswordRules((key, params) => this.$t(key, params)),
         (value) =>
           value === this.newPassword ||
           this.$t('settings.passwordRuleNotMatch'),
       ],
+      currentPassword: '',
       newPassword: '',
       confirmPassword: '',
+      // Two-factor enrollment (opt-in) flow state
+      mfaStep: 'idle',
+      mfaSecret: '',
+      mfaQrDataUrl: '',
+      mfaCode: '',
+      mfaBackupCodes: [],
+      // Personal API key
+      apiKeyTotp: '',
+      apiKeyReadOnly: false,
+      apiKey: '',
     }
   },
   created() {
@@ -164,6 +337,11 @@ export default {
       this.selectedTab === 'user-profile'
     ) {
       this.selectedTab = 'user-settings'
+    }
+    // When the password has expired (or a change is forced) the user lands
+    // here and the profile tab is opened directly
+    if (this.passwordChangeForced && config.auth.type === 'cornflow') {
+      this.selectedTab = 'user-profile'
     }
     // Initialize language from current i18n locale
     this.language = this.$i18n.locale
@@ -186,8 +364,26 @@ export default {
     },
   },
   computed: {
+    passwordChangeForced() {
+      return (
+        this.$route?.query?.changePassword === 'true' ||
+        sessionStorage.getItem('pwdChangeRequired') === 'true'
+      )
+    },
+    mfaEnabled() {
+      return !!this.generalStore.getUser?.mfaEnabled
+    },
+    personalTokenEnabled() {
+      // Personal API keys are a cornflow-auth feature; hidden when the
+      // deployment disables them (backend also enforces it). Defaults on.
+      return (
+        config.auth.type === 'cornflow' &&
+        appConfig.getCore().parameters.enablePersonalTokens !== false
+      )
+    },
     validPassword() {
       return (
+        this.currentPassword?.length > 0 &&
         this.newPassword?.length > 0 &&
         this.confirmPassword?.length > 0 &&
         this.newPassword === this.confirmPassword &&
@@ -223,6 +419,7 @@ export default {
       this.selectedTab = newTab
     },
     resetPasswordFields() {
+      this.currentPassword = undefined
       this.newPassword = undefined
       this.confirmPassword = undefined
       this.passwordRules.every((rule) => rule(this.newPassword) === true)
@@ -234,17 +431,140 @@ export default {
         const result = await this.generalStore.changeUserPassword(
           user.id,
           this.newPassword,
+          this.currentPassword,
         )
-        if (result) {
+        if (result?.success) {
           this.resetPasswordFields()
-          this.showSnackbar(this.$t('settings.snackbarMessageSuccess'))
+          // Changing the password revokes every session token (including
+          // the current one), so the user must log in again
+          this.showSnackbar(this.$t('settings.snackbarMessageSuccessRelogin'))
+          const { default: authService } = await import(
+            '@cornflow-ui/core/services/AuthService'
+          )
+          authService.logout()
+          this.$router.push({ path: '/sign-in', query: { changed: 'true' } })
         } else {
-          this.showSnackbar(this.$t('settings.snackbarMessageError'), 'error')
+          this.showSnackbar(
+            result?.message || this.$t('settings.snackbarMessageError'),
+            'error',
+          )
         }
       } catch (error) {
         console.error('Failed to change password:', error)
         this.showSnackbar(this.$t('settings.snackbarMessageError'), 'error')
       }
+    },
+    async resetMfa() {
+      try {
+        const confirmed = window.confirm(
+          this.$t('settings.mfaResetConfirm'),
+        )
+        if (!confirmed) {
+          return
+        }
+        const user = this.generalStore.getUser
+        const success = await this.generalStore.resetUserMfa(user.id)
+        if (success) {
+          if (user) user.mfaEnabled = false
+          this.showSnackbar(this.$t('settings.mfaResetSuccess'))
+        } else {
+          this.showSnackbar(this.$t('settings.mfaResetError'), 'error')
+        }
+      } catch (error) {
+        console.error('Failed to reset the two-factor authentication:', error)
+        this.showSnackbar(this.$t('settings.mfaResetError'), 'error')
+      }
+    },
+    async startMfaEnroll() {
+      try {
+        const cornflowAuth = await getSpecificAuthService('cornflow')
+        const setupData = await cornflowAuth?.mfaSetup?.()
+        if (!setupData) {
+          this.showSnackbar(this.$t('settings.mfaEnrollError'), 'error')
+          return
+        }
+        this.mfaSecret = setupData.secret
+        try {
+          this.mfaQrDataUrl = await QRCode.toDataURL(
+            setupData.provisioningUri,
+            { width: 200, margin: 1 },
+          )
+        } catch (qrError) {
+          // The manual secret still allows enrollment
+          console.error('Could not render the QR code:', qrError)
+          this.mfaQrDataUrl = ''
+        }
+        this.mfaStep = 'qr'
+      } catch (error) {
+        console.error('Failed to start MFA enrollment:', error)
+        this.showSnackbar(this.$t('settings.mfaEnrollError'), 'error')
+      }
+    },
+    async verifyMfaEnroll() {
+      try {
+        if (!this.mfaCode) {
+          return
+        }
+        const cornflowAuth = await getSpecificAuthService('cornflow')
+        const verifyData = await cornflowAuth?.mfaVerify?.(this.mfaCode)
+        if (!verifyData) {
+          this.showSnackbar(this.$t('settings.mfaInvalidCode'), 'error')
+          return
+        }
+        this.mfaBackupCodes = verifyData.backupCodes
+        this.mfaStep = 'backup'
+      } catch (error) {
+        console.error('Failed to verify MFA enrollment:', error)
+        this.showSnackbar(this.$t('settings.mfaEnrollError'), 'error')
+      }
+    },
+    cancelMfaEnroll() {
+      this.mfaStep = 'idle'
+      this.mfaSecret = ''
+      this.mfaQrDataUrl = ''
+      this.mfaCode = ''
+    },
+    async generateApiKey() {
+      try {
+        const cornflowAuth = await getSpecificAuthService('cornflow')
+        const result = await cornflowAuth?.createApiKey?.(
+          this.apiKeyTotp || undefined,
+          this.apiKeyReadOnly ? 'read' : undefined,
+        )
+        if (result?.success) {
+          this.apiKey = result.apiKey
+          this.apiKeyTotp = ''
+          this.showSnackbar(this.$t('settings.apiKeySuccess'))
+        } else if (result?.disabled) {
+          this.showSnackbar(this.$t('settings.apiKeyDisabled'), 'error')
+        } else {
+          this.showSnackbar(
+            result?.message || this.$t('settings.apiKeyError'),
+            'error',
+          )
+        }
+      } catch (error) {
+        console.error('Failed to generate the API key:', error)
+        this.showSnackbar(this.$t('settings.apiKeyError'), 'error')
+      }
+    },
+    async copyApiKey() {
+      try {
+        await navigator.clipboard.writeText(this.apiKey)
+        this.showSnackbar(this.$t('settings.apiKeyCopied'))
+      } catch (error) {
+        console.error('Could not copy the API key:', error)
+      }
+    },
+    finishMfaEnroll() {
+      const user = this.generalStore.getUser
+      if (user) user.mfaEnabled = true
+      this.mfaStep = 'idle'
+      this.mfaSecret = ''
+      this.mfaQrDataUrl = ''
+      this.mfaCode = ''
+      this.mfaBackupCodes = []
+      this.showSnackbar(this.$t('settings.mfaEnableSuccess'))
     },
   },
 }
@@ -254,5 +574,45 @@ export default {
   font-weight: 500 !important;
   font-size: 1.1rem !important;
   color: var(--title) !important;
+}
+
+.mfa-secret {
+  font-size: 0.8rem;
+  word-break: break-all;
+  margin: 8px 0;
+}
+
+.mfa-secret code {
+  user-select: all;
+}
+
+.mfa-backup-codes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 160px));
+  gap: 6px;
+  padding: 12px;
+  border: 1px dashed rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  margin: 8px 0;
+}
+
+.mfa-backup-codes code {
+  text-align: center;
+  user-select: all;
+}
+
+.api-key-box {
+  margin-top: 8px;
+  max-width: 600px;
+}
+
+.api-key-value {
+  display: block;
+  padding: 10px 12px;
+  border: 1px dashed rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  word-break: break-all;
+  user-select: all;
+  font-size: 0.85rem;
 }
 </style>

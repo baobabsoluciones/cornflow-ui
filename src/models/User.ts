@@ -18,6 +18,8 @@ export class User {
    * If undefined or empty, no extra restrictions apply.
    */
   roles?: { id: number; name: string }[]
+  /** Whether the user has two-factor authentication enabled. */
+  mfaEnabled?: boolean
 
   constructor(
     id: string,

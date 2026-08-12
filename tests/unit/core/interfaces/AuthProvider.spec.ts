@@ -1,5 +1,8 @@
 import { describe, test, expect, vi } from 'vitest'
-import type { AuthProvider } from '@cornflow-ui/core/interfaces/AuthProvider'
+import type {
+  AuthProvider,
+  LoginResult,
+} from '@cornflow-ui/core/interfaces/AuthProvider'
 
 describe('AuthProvider Interface', () => {
   test('should define correct method signatures', () => {
@@ -60,6 +63,52 @@ describe('AuthProvider Interface', () => {
     const result = await mockAuthProvider.login()
     expect(result).toBe(true)
     expect(mockAuthProvider.login).toHaveBeenCalledWith()
+  })
+
+  test('should allow login with a TOTP code returning a LoginResult', async () => {
+    const loginResult: LoginResult = { success: true, changePassword: false }
+    const mockAuthProvider: AuthProvider = {
+      login: vi.fn().mockResolvedValue(loginResult),
+      logout: vi.fn(),
+      getToken: vi.fn().mockReturnValue(null),
+      getUserId: vi.fn().mockReturnValue(null),
+      isAuthenticated: vi.fn().mockReturnValue(false)
+    }
+
+    const result = await mockAuthProvider.login('username', 'password', '123456')
+    expect(result).toEqual({ success: true, changePassword: false })
+    expect(mockAuthProvider.login).toHaveBeenCalledWith('username', 'password', '123456')
+  })
+
+  test('should allow login to report MFA requirements through LoginResult', async () => {
+    const mfaResult: LoginResult = { success: false, mfaRequired: true }
+    const setupResult: LoginResult = { success: false, mfaSetupRequired: true }
+    const errorResult: LoginResult = { success: false, errorMessage: 'Invalid credentials' }
+
+    const mockAuthProvider: AuthProvider = {
+      login: vi
+        .fn()
+        .mockResolvedValueOnce(mfaResult)
+        .mockResolvedValueOnce(setupResult)
+        .mockResolvedValueOnce(errorResult),
+      logout: vi.fn(),
+      getToken: vi.fn().mockReturnValue(null),
+      getUserId: vi.fn().mockReturnValue(null),
+      isAuthenticated: vi.fn().mockReturnValue(false)
+    }
+
+    await expect(mockAuthProvider.login('u', 'p')).resolves.toEqual({
+      success: false,
+      mfaRequired: true
+    })
+    await expect(mockAuthProvider.login('u', 'p')).resolves.toEqual({
+      success: false,
+      mfaSetupRequired: true
+    })
+    await expect(mockAuthProvider.login('u', 'p')).resolves.toEqual({
+      success: false,
+      errorMessage: 'Invalid credentials'
+    })
   })
 
   test('should handle logout', () => {
@@ -187,6 +236,91 @@ describe('AuthProvider Interface', () => {
     expect(mockAuthProvider.getFamilyName!()).toBe('Smith')
   })
 
+  test('should handle optional MFA methods', async () => {
+    const mockAuthProvider: AuthProvider = {
+      login: vi.fn().mockResolvedValue(false),
+      logout: vi.fn(),
+      getToken: vi.fn().mockReturnValue(null),
+      getUserId: vi.fn().mockReturnValue(null),
+      isAuthenticated: vi.fn().mockReturnValue(false),
+      mfaSetup: vi.fn().mockResolvedValue({
+        secret: 'BASE32SECRET',
+        provisioningUri: 'otpauth://totp/app:user?secret=BASE32SECRET'
+      }),
+      mfaVerify: vi.fn().mockResolvedValue({ backupCodes: ['aaaa-bbbb'] })
+    }
+
+    await expect(mockAuthProvider.mfaSetup!()).resolves.toEqual({
+      secret: 'BASE32SECRET',
+      provisioningUri: 'otpauth://totp/app:user?secret=BASE32SECRET'
+    })
+    await expect(mockAuthProvider.mfaVerify!('123456')).resolves.toEqual({
+      backupCodes: ['aaaa-bbbb']
+    })
+    expect(mockAuthProvider.mfaVerify).toHaveBeenCalledWith('123456')
+  })
+
+  test('should handle optional password recovery methods', async () => {
+    const mockAuthProvider: AuthProvider = {
+      login: vi.fn().mockResolvedValue(false),
+      logout: vi.fn(),
+      getToken: vi.fn().mockReturnValue(null),
+      getUserId: vi.fn().mockReturnValue(null),
+      isAuthenticated: vi.fn().mockReturnValue(false),
+      requestPasswordReset: vi.fn().mockResolvedValue(true),
+      resetPassword: vi.fn().mockResolvedValue({
+        success: false,
+        message: 'Invalid token',
+        linkInvalid: true
+      })
+    }
+
+    await expect(
+      mockAuthProvider.requestPasswordReset!('user@example.com')
+    ).resolves.toBe(true)
+    expect(mockAuthProvider.requestPasswordReset).toHaveBeenCalledWith(
+      'user@example.com'
+    )
+
+    const result = await mockAuthProvider.resetPassword!('token-123', 'NewPassword1!')
+    expect(result).toEqual({
+      success: false,
+      message: 'Invalid token',
+      linkInvalid: true
+    })
+    expect(mockAuthProvider.resetPassword).toHaveBeenCalledWith('token-123', 'NewPassword1!')
+  })
+
+  test('should handle the optional createApiKey method', async () => {
+    const mockAuthProvider: AuthProvider = {
+      login: vi.fn().mockResolvedValue(false),
+      logout: vi.fn(),
+      getToken: vi.fn().mockReturnValue(null),
+      getUserId: vi.fn().mockReturnValue(null),
+      isAuthenticated: vi.fn().mockReturnValue(false),
+      createApiKey: vi
+        .fn()
+        .mockResolvedValueOnce({ success: true, apiKey: 'generated-api-key' })
+        .mockResolvedValueOnce({
+          success: false,
+          disabled: true,
+          message: 'Personal tokens are disabled'
+        })
+    }
+
+    await expect(mockAuthProvider.createApiKey!('123456')).resolves.toEqual({
+      success: true,
+      apiKey: 'generated-api-key'
+    })
+    expect(mockAuthProvider.createApiKey).toHaveBeenCalledWith('123456')
+
+    await expect(mockAuthProvider.createApiKey!()).resolves.toEqual({
+      success: false,
+      disabled: true,
+      message: 'Personal tokens are disabled'
+    })
+  })
+
   test('should allow minimal implementation with only required methods', () => {
     const minimalProvider: AuthProvider = {
       login: vi.fn().mockResolvedValue(true),
@@ -205,6 +339,11 @@ describe('AuthProvider Interface', () => {
 
     // Verify optional methods are not required
     expect(minimalProvider.refreshToken).toBeUndefined()
+    expect(minimalProvider.mfaSetup).toBeUndefined()
+    expect(minimalProvider.mfaVerify).toBeUndefined()
+    expect(minimalProvider.requestPasswordReset).toBeUndefined()
+    expect(minimalProvider.resetPassword).toBeUndefined()
+    expect(minimalProvider.createApiKey).toBeUndefined()
     expect(minimalProvider.getUsername).toBeUndefined()
     expect(minimalProvider.getName).toBeUndefined()
     expect(minimalProvider.getEmail).toBeUndefined()

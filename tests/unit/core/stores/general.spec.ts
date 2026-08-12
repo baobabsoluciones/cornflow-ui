@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
+﻿import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { LoadedExecution } from '@cornflow-ui/core/models/LoadedExecution'
@@ -146,6 +146,7 @@ const mockInstanceRepository = vi.hoisted(() => ({
 const mockUserRepository = vi.hoisted(() => ({
   getUserById: vi.fn(),
   changePassword: vi.fn(),
+  resetMfa: vi.fn(),
 }))
 
 const mockLicenceRepository = vi.hoisted(() => ({
@@ -290,16 +291,71 @@ describe('General Store', () => {
     })
 
     test('changeUserPassword successfully', async () => {
-      mockUserRepository.changePassword.mockResolvedValue(true)
+      mockUserRepository.changePassword.mockResolvedValue({ success: true })
+      window.sessionStorage.setItem('pwdChangeRequired', 'true')
 
       const store = useGeneralStore()
-      const result = await store.changeUserPassword('user123', 'newpassword')
+      const result = await store.changeUserPassword(
+        'user123',
+        'newpassword',
+        'currentpassword',
+      )
 
-      expect(result).toBe(true)
+      expect(result).toEqual({ success: true })
       expect(mockUserRepository.changePassword).toHaveBeenCalledWith(
         'user123',
         'newpassword',
+        'currentpassword',
       )
+      // A successful change clears the forced-rotation flag
+      expect(window.sessionStorage.getItem('pwdChangeRequired')).toBeNull()
+    })
+
+    test('changeUserPassword returns failure message and keeps the rotation flag', async () => {
+      mockUserRepository.changePassword.mockResolvedValue({
+        success: false,
+        message: 'Invalid current password',
+      })
+      window.sessionStorage.setItem('pwdChangeRequired', 'true')
+
+      const store = useGeneralStore()
+      const result = await store.changeUserPassword(
+        'user123',
+        'newpassword',
+        'wrongcurrent',
+      )
+
+      expect(result).toEqual({
+        success: false,
+        message: 'Invalid current password',
+      })
+      expect(window.sessionStorage.getItem('pwdChangeRequired')).toBe('true')
+      window.sessionStorage.removeItem('pwdChangeRequired')
+    })
+
+    test('resetUserMfa successfully', async () => {
+      mockUserRepository.resetMfa.mockResolvedValue(true)
+
+      const store = useGeneralStore()
+      const result = await store.resetUserMfa('user123')
+
+      expect(result).toBe(true)
+      expect(mockUserRepository.resetMfa).toHaveBeenCalledWith('user123')
+    })
+
+    test('resetUserMfa handles error', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      mockUserRepository.resetMfa.mockRejectedValue(new Error('MFA error'))
+
+      const store = useGeneralStore()
+      const result = await store.resetUserMfa('user123')
+
+      expect(result).toBe(false)
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Error resetting the two-factor authentication',
+        expect.any(Error),
+      )
+      consoleSpy.mockRestore()
     })
 
     test('setSchema successfully', async () => {
@@ -926,7 +982,7 @@ describe('General Store', () => {
       const store = useGeneralStore()
       const result = await store.changeUserPassword('user123', 'newpassword')
 
-      expect(result).toBe(false)
+      expect(result).toEqual({ success: false })
       expect(consoleSpy).toHaveBeenCalledWith(
         'Error changing password',
         expect.any(Error),

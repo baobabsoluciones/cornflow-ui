@@ -26,9 +26,12 @@
         :selected-role="selectedRole"
         :search="usersSearch"
         :loading="loadingUsers"
+        :can-unlock="isPlatformAdmin"
         @update:search="usersSearch = $event"
         @clear-filter="selectRole(null)"
         @edit="openUserEdit"
+        @unlock="onUnlockUser"
+        @reset-mfa="onResetMfa"
       />
     </div>
 
@@ -53,13 +56,16 @@
       :user="userToEdit"
       :roles="roles"
       :saving="savingUser"
+      :can-assign-platform-roles="isPlatformAdmin"
       @save="onUserRolesSave"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, inject, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import CoreTitleView from '@cornflow-ui/core/components/core/CoreTitleView.vue'
 import RolesPanel from '@cornflow-ui/core/components/roles-management/RolesPanel.vue'
 import UsersPanel from '@cornflow-ui/core/components/roles-management/UsersPanel.vue'
@@ -91,11 +97,36 @@ const {
   deleteRole,
   updateUserProfile,
   saveUserRoleAssignments,
+  unlockUser,
+  resetUserMfa,
 } = useRolesManagement()
+
+const { t } = useI18n()
+const store = useGeneralStore()
 
 const allowEditRoles = computed(
   () => appConfig.getCore().parameters.allowEditRoles,
 )
+
+// Only platform administrators can unlock accounts locked after too many
+// failed login attempts
+const isPlatformAdmin = computed(() => store.isPlatformAdmin)
+
+async function onUnlockUser(user: UserRow) {
+  const confirmed = window.confirm(
+    t('rolesManagement.unlockConfirm', { username: user.username }),
+  )
+  if (!confirmed) return
+  await unlockUser(user)
+}
+
+async function onResetMfa(user: UserRow) {
+  const confirmed = window.confirm(
+    t('rolesManagement.resetMfaConfirm', { username: user.username }),
+  )
+  if (!confirmed) return
+  await resetUserMfa(user)
+}
 
 const usersSearch = ref('')
 
