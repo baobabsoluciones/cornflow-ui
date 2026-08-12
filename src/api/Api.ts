@@ -8,9 +8,6 @@ class ApiClient {
   private tokenExpiration: number | null = null
   private authToken: string | null = null
   private refreshTimer: NodeJS.Timeout | null = null
-  // De-dupes concurrent cornflow refresh-token renewals (many requests can
-  // hit a 401 at once); they all await the same in-flight refresh.
-  private cornflowRefreshPromise: Promise<boolean> | null = null
 
   constructor() {
     this.baseUrl = config.backend || ''
@@ -196,126 +193,19 @@ class ApiClient {
     this.scheduleTokenRefresh()
   }
 
-  private async request(
-    url = '',
-    options: RequestOptions = {},
-    retried = false,
-  ) {
+  private async request(url = '', options: RequestOptions = {}) {
     const completeUrl = this.buildRequestUrl(url, options)
     await this.handleTokenRefreshIfNeeded(url)
 
     try {
-      let response = await this.performFetch(completeUrl, options)
-
-      // Cornflow session: on an expired access token (401), renew it once
-      // with the refresh token and retry transparently before giving up.
-      if (
-        response.status === 401 &&
-        !retried &&
-        this.canCornflowRefresh(url) &&
-        (await this.refreshCornflowToken())
-      ) {
-        return this.request(url, options, true)
-      }
-
+      const response = await this.performFetch(completeUrl, options)
       this.handleUnauthorizedResponse(response, url)
       const content = await this.parseResponseContent(response)
-      this.handlePasswordRotationResponse(response.status, content)
 
       return { status: response.status, content }
     } catch (error) {
       this.handleRequestError(error, url)
       throw error
-    }
-  }
-
-  /**
-   * Whether an expired access token on this request can be renewed with a
-   * cornflow refresh token: we have one stored and the request is not itself
-   * an auth endpoint (login/refresh/logout/reset-password).
-   */
-  private canCornflowRefresh(url: string): boolean {
-    return (
-      !!sessionStorage.getItem('refreshToken') &&
-      !url.includes('/login/') &&
-      !url.includes('/token/refresh/') &&
-      !url.includes('/logout/') &&
-      !url.includes('/user/reset-password/')
-    )
-  }
-
-  /**
-   * Exchanges the stored refresh token for a fresh access + refresh token
-   * pair at /token/refresh/. Returns true on success (tokens updated),
-   * false otherwise. Concurrent callers share a single in-flight request.
-   */
-  private async refreshCornflowToken(): Promise<boolean> {
-    if (this.cornflowRefreshPromise) {
-      return this.cornflowRefreshPromise
-    }
-    const refreshToken = sessionStorage.getItem('refreshToken')
-    if (!refreshToken) {
-      return false
-    }
-    this.cornflowRefreshPromise = (async () => {
-      try {
-        const basePath = config.hasExternalApp ? '/cornflow' : ''
-        const response = await fetch(`${this.baseUrl}${basePath}/token/refresh/`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-          body: JSON.stringify({ refresh_token: refreshToken }),
-          mode: 'cors',
-        })
-        if (!response.ok) {
-          return false
-        }
-        const data = await response.json()
-        if (!data.token) {
-          return false
-        }
-        sessionStorage.setItem('token', data.token)
-        this.authToken = data.token
-        if (data.refresh_token) {
-          sessionStorage.setItem('refreshToken', data.refresh_token)
-        }
-        return true
-      } catch {
-        return false
-      } finally {
-        this.cornflowRefreshPromise = null
-      }
-    })()
-    return this.cornflowRefreshPromise
-  }
-
-  /**
-   * The backend answers 403 with error_code 'password_rotation' on every
-   * endpoint when the user's password has expired or must be renewed. The
-   * user is sent to the settings view to set a new password.
-   */
-  private handlePasswordRotationResponse(status: number, content: any): void {
-    if (
-      status === 403 &&
-      content &&
-      typeof content === 'object' &&
-      content.error_code === 'password_rotation'
-    ) {
-      sessionStorage.setItem('pwdChangeRequired', 'true')
-      // Use setTimeout to ensure this runs after the current execution context
-      setTimeout(() => {
-        // Import dynamically to avoid circular dependency
-        import('@cornflow-ui/core/router').then(({ default: router }) => {
-          if (router.currentRoute.value.path !== '/user-settings') {
-            router.push({
-              path: '/user-settings',
-              query: { changePassword: 'true' },
-            })
-          }
-        })
-      }, 0)
     }
   }
 
@@ -386,14 +276,7 @@ class ApiClient {
   }
 
   private handleUnauthorizedResponse(response: Response, url: string): void {
-    // The reset-password endpoint authenticates with the emailed reset
-    // token, not the session: its 401 (expired/used link) is handled by the
-    // reset view instead of the global session-expired redirect
-    if (
-      response.status === 401 &&
-      !url.includes('/login/') &&
-      !url.includes('/user/reset-password/')
-    ) {
+    if (response.status === 401 && !url.includes('/login/')) {
       console.warn(
         'Received 401 Unauthorized response, session may have expired',
       )
@@ -435,7 +318,6 @@ class ApiClient {
 
     // Clear session storage
     sessionStorage.removeItem('token')
-    sessionStorage.removeItem('refreshToken')
     sessionStorage.removeItem('tokenExpiration')
     sessionStorage.removeItem('originalToken')
     sessionStorage.setItem('isAuthenticated', 'false')
@@ -494,7 +376,6 @@ class ApiClient {
     url: string,
     queryParams: Record<string, string | number | boolean | undefined> = {},
     isExternal: boolean = false,
-    retried = false,
   ): Promise<{ status: number; blob: Blob; filename: string | null }> {
     await this.handleTokenRefreshIfNeeded(url)
 
@@ -515,16 +396,6 @@ class ApiClient {
       headers: this.getHeaders(),
       mode: 'cors',
     })
-
-    // Expired access token: renew once with the refresh token and retry
-    if (
-      response.status === 401 &&
-      !retried &&
-      this.canCornflowRefresh(url) &&
-      (await this.refreshCornflowToken())
-    ) {
-      return this.getBlob(url, queryParams, isExternal, true)
-    }
 
     this.handleUnauthorizedResponse(response, url)
 
@@ -581,7 +452,6 @@ class ApiClient {
     url: string,
     body: object,
     isExternal: boolean = false,
-    retried = false,
   ): Promise<Response> {
     await this.handleTokenRefreshIfNeeded(url)
     const completeUrl = this.buildRequestUrl(url, { isExternal })
@@ -593,17 +463,6 @@ class ApiClient {
       },
       isExternal,
     })
-
-    // Expired access token: renew once with the refresh token and retry
-    if (
-      response.status === 401 &&
-      !retried &&
-      this.canCornflowRefresh(url) &&
-      (await this.refreshCornflowToken())
-    ) {
-      return this.postStream(url, body, isExternal, true)
-    }
-
     this.handleUnauthorizedResponse(response, url)
     return response
   }

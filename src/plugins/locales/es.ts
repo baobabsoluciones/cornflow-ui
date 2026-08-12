@@ -404,54 +404,6 @@ export default {
       'La autenticación con Microsoft no está configurada',
     microsoft_not_available:
       'El servicio de autenticación con Microsoft no está disponible',
-    back_button: 'Volver',
-    mfa_code_title: 'Autenticación de dos factores',
-    mfa_code_hint:
-      'Introduce el código de 6 dígitos de tu aplicación de autenticación, o uno de tus códigos de respaldo.',
-    mfa_code_label: 'Código de autenticación',
-    mfa_verify_button: 'Verificar',
-    mfa_invalid_code: 'Código de autenticación no válido',
-    mfa_setup_error:
-      'No se pudo iniciar la configuración de la autenticación de dos factores. Por favor, inténtalo de nuevo.',
-    mfa_enroll_title: 'Configura la autenticación de dos factores',
-    mfa_enroll_hint:
-      'Escanea este código QR con tu aplicación de autenticación (Google Authenticator, Microsoft Authenticator, Aegis, FreeOTP...) e introduce el primer código generado para activarla.',
-    mfa_enroll_secret: 'O introduce esta clave manualmente:',
-    mfa_backup_title: 'Códigos de respaldo',
-    mfa_backup_hint:
-      'Guarda estos códigos de respaldo de un solo uso en un lugar seguro. Cada uno puede usarse una vez para iniciar sesión si pierdes el acceso a tu aplicación de autenticación. No se volverán a mostrar.',
-    mfa_backup_copy: 'Copiar códigos',
-    mfa_backup_copied: 'Códigos de respaldo copiados al portapapeles',
-    mfa_backup_continue: 'He guardado mis códigos',
-    password_change_required:
-      'Debes cambiar tu contraseña antes de continuar',
-    forgot_password_link: '¿Has olvidado tu contraseña?',
-    forgot_title: 'Recuperación de contraseña',
-    forgot_hint:
-      'Introduce el correo electrónico de tu cuenta y te enviaremos un enlace para establecer una nueva contraseña.',
-    forgot_email_label: 'Correo electrónico',
-    forgot_submit: 'Enviar enlace de recuperación',
-    forgot_sent:
-      'Si el correo pertenece a una cuenta, se ha enviado un enlace de recuperación. Revisa tu bandeja de entrada.',
-    forgot_error:
-      'No se pudo enviar el correo de recuperación. Inténtalo de nuevo o contacta con un administrador.',
-    last_login_info: 'Bienvenido de nuevo. Tu último inicio de sesión fue el {date}.',
-    legal_notice:
-      'Acceso solo para personal autorizado. La actividad en este sistema puede ser monitorizada y registrada. El uso no autorizado puede conllevar acciones disciplinarias o legales.',
-  },
-  resetPassword: {
-    title: 'Establecer una nueva contraseña',
-    hint: 'Elige una nueva contraseña para tu cuenta. Debe cumplir la política de contraseñas.',
-    newPassword: 'Nueva contraseña',
-    confirmPassword: 'Confirmar contraseña',
-    submit: 'Guardar nueva contraseña',
-    success: 'Tu contraseña se ha actualizado. Ya puedes iniciar sesión.',
-    error: 'No se pudo actualizar la contraseña.',
-    linkExpired:
-      'Este enlace ha caducado o ya se ha utilizado. Solicita uno nuevo desde la página de inicio de sesión.',
-    missingToken:
-      'Esta página necesita el enlace enviado a tu correo. Solicita uno desde la página de inicio de sesión.',
-    backToLogin: 'Volver al inicio de sesión',
   },
   logOut: {
     title: 'Cerrar sesión',
@@ -568,8 +520,6 @@ export default {
     selectTheme: 'Selecciona el tema principal de la aplicación',
     settings: 'Configuraciones',
     snackbarMessageSuccess: 'Contraseña actualizada correctamente',
-    snackbarMessageSuccessRelogin:
-      'Contraseña actualizada correctamente. Vuelve a iniciar sesión con tu nueva contraseña.',
     snackbarMessageError: 'Se produjo un error al actualizar la contraseña',
     required: 'Campo requerido',
     passwordRuleLength: 'Mín. {length} caracteres.',
@@ -577,51 +527,6 @@ export default {
       'Debe contener mayúsculas, minúsculas, números y caracteres especiales',
     passWordRuleNoSpace: 'Una contraseña no puede contener espacios',
     passwordRuleNotMatch: 'Las contraseñas no coinciden',
-    passwordRuleDigitSequence:
-      'La contraseña no puede contener secuencias de 6 o más dígitos (como fechas)',
-    passwordRuleStrength:
-      'La contraseña es demasiado fácil de adivinar: evita palabras y patrones comunes, o usa una frase de contraseña más larga',
-    passwordChangeForced:
-      'Tu contraseña ha caducado o debe renovarse. Establece una nueva contraseña para seguir usando la aplicación.',
-    mfaTitle: 'Autenticación de dos factores',
-    mfaResetDescription:
-      'Restablece tu autenticación de dos factores si has cambiado o perdido tu teléfono. Se te pedirá configurarla de nuevo en tu próximo inicio de sesión.',
-    mfaResetButton: 'Restablecer la autenticación de dos factores',
-    mfaResetConfirm:
-      '¿Estás seguro? Tu aplicación de autenticación actual y tus códigos de respaldo dejarán de funcionar.',
-    mfaResetSuccess: 'La autenticación de dos factores se ha restablecido',
-    mfaResetError:
-      'Se produjo un error al restablecer la autenticación de dos factores',
-    mfaEnableDescription:
-      'Añade un segundo factor a tu cuenta usando una aplicación de autenticación.',
-    mfaEnableButton: 'Activar la autenticación de dos factores',
-    mfaEnrollHint:
-      'Escanea este código QR con tu aplicación de autenticación e introduce el primer código para activarla.',
-    mfaEnrollSecret: 'O introduce esta clave manualmente:',
-    mfaCodeLabel: 'Código de autenticación',
-    mfaVerifyButton: 'Verificar',
-    mfaInvalidCode: 'Código de autenticación no válido',
-    mfaEnrollError: 'No se pudo configurar la autenticación de dos factores.',
-    mfaBackupHint:
-      'Guarda estos códigos de respaldo de un solo uso en un lugar seguro. No se volverán a mostrar.',
-    mfaBackupContinue: 'He guardado mis códigos',
-    mfaEnableSuccess: 'La autenticación de dos factores está activada.',
-    cancel: 'Cancelar',
-    apiKeyTitle: 'Token de acceso personal',
-    apiKeyDescription:
-      'Genera un token de larga duración para autenticar scripts e integraciones sin tu contraseña. Al generar uno nuevo se revoca el anterior.',
-    apiKeyGenerateButton: 'Generar token',
-    apiKeyReadOnlyLabel: 'Token de solo lectura',
-    apiKeyReadOnlyHint:
-      'El token solo podrá consultar datos, nunca crearlos, modificarlos ni eliminarlos. Recomendado para herramientas de informes y BI.',
-    apiKeyOnceWarning:
-      'Copia este token ahora. Por seguridad no se volverá a mostrar.',
-    apiKeyCopy: 'Copiar token',
-    apiKeyCopied: 'Token copiado al portapapeles',
-    apiKeySuccess: 'Token de acceso personal generado',
-    apiKeyError: 'No se pudo generar el token de acceso personal',
-    apiKeyDisabled:
-      'Los tokens de acceso personal están deshabilitados en este despliegue',
   },
   helpMenu: {
     help: 'Centro de ayuda',
@@ -1158,17 +1063,6 @@ export default {
     errorAssignRole: 'Error al actualizar los roles del usuario.',
     errorSaveUser: 'Error al guardar los datos del usuario.',
     userUpdated: 'Datos del usuario actualizados correctamente.',
-    lockedBadge: 'Bloqueada',
-    unlockUser: 'Desbloquear cuenta',
-    unlockConfirm:
-      '¿Desbloquear la cuenta de {username}? El contador de intentos fallidos se reiniciará.',
-    userUnlocked: 'La cuenta se ha desbloqueado.',
-    errorUnlockUser: 'Error al desbloquear la cuenta.',
-    resetMfa: 'Restablecer la autenticación de dos factores',
-    resetMfaConfirm:
-      '¿Restablecer la autenticación de dos factores de {username}? Tendrá que configurarla de nuevo en su próximo inicio de sesión.',
-    mfaReset: 'La autenticación de dos factores se ha restablecido.',
-    errorResetMfa: 'Error al restablecer la autenticación de dos factores.',
     roleCreated: 'Rol creado correctamente.',
     roleUpdated: 'Rol actualizado correctamente.',
     roleDeleted: 'Rol eliminado correctamente.',

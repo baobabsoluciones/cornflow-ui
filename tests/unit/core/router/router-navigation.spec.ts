@@ -71,11 +71,6 @@ vi.mock('@cornflow-ui/core/views/OutputDataView.vue', () => ({
 vi.mock('@cornflow-ui/core/views/UserSettingsView.vue', () => ({
   default: { name: 'UserSettingsView', template: '<div>UserSettings</div>' },
 }))
-// Mock the lazy-loaded public reset-password view (the real one pulls in
-// AuthServiceFactory and the zxcvbn strength utilities)
-vi.mock('@cornflow-ui/core/views/ResetPasswordView.vue', () => ({
-  default: { name: 'ResetPasswordView', template: '<div>ResetPassword</div>' },
-}))
 
 // Mock SectionView component used in configuration routes
 vi.mock('@cornflow-ui/core/views/SectionView.vue', () => ({
@@ -271,70 +266,6 @@ describe('Router Navigation Guards', () => {
       })
 
       expect(mockNext).toHaveBeenCalledWith(undefined)
-    })
-
-    test('should redirect to user settings when a password change is pending', async () => {
-      mockAuthService.isAuthenticated.mockReturnValue(true)
-      window.sessionStorage.setItem('pwdChangeRequired', 'true')
-
-      try {
-        const { default: router } = await import('@cornflow-ui/core/router/index')
-
-        await router.push('/history-execution')
-
-        expect(router.currentRoute.value.path).toBe('/user-settings')
-        expect(router.currentRoute.value.query.changePassword).toBe('true')
-      } finally {
-        window.sessionStorage.removeItem('pwdChangeRequired')
-      }
-    })
-
-    test('should allow navigating to user settings while a password change is pending', async () => {
-      mockAuthService.isAuthenticated.mockReturnValue(true)
-      window.sessionStorage.setItem('pwdChangeRequired', 'true')
-
-      try {
-        const { default: router } = await import('@cornflow-ui/core/router/index')
-
-        await router.push('/user-settings')
-
-        expect(router.currentRoute.value.path).toBe('/user-settings')
-      } finally {
-        window.sessionStorage.removeItem('pwdChangeRequired')
-      }
-    })
-
-    test('should not redirect to user settings when no password change is pending', async () => {
-      mockAuthService.isAuthenticated.mockReturnValue(true)
-      window.sessionStorage.removeItem('pwdChangeRequired')
-
-      const { default: router } = await import('@cornflow-ui/core/router/index')
-
-      await router.push('/history-execution')
-
-      expect(router.currentRoute.value.path).toBe('/history-execution')
-    })
-
-    test('should allow an unauthenticated user to reach the reset-password page', async () => {
-      mockAuthService.isAuthenticated.mockReturnValue(false)
-
-      const { default: router } = await import('@cornflow-ui/core/router/index')
-
-      await router.push('/reset-password')
-
-      // Public path: no redirect to /sign-in even without a session
-      expect(router.currentRoute.value.path).toBe('/reset-password')
-    })
-
-    test('should allow an authenticated user to reach the reset-password page', async () => {
-      mockAuthService.isAuthenticated.mockReturnValue(true)
-
-      const { default: router } = await import('@cornflow-ui/core/router/index')
-
-      await router.push('/reset-password')
-
-      // The guard passes the reset page through before role resolution
-      expect(router.currentRoute.value.path).toBe('/reset-password')
     })
 
     test('should handle authentication service errors gracefully', async () => {
