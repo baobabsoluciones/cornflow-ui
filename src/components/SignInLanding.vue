@@ -496,6 +496,13 @@ const submitLogIn = async () => {
       return
     }
 
+    if (result.rateLimited) {
+      // The attempt never reached the credential check: say so instead of
+      // reporting the credentials as incorrect
+      showSnackbar?.(t('logIn.snackbar_message_error_rate_limited'), 'error')
+      return
+    }
+
     if (loginStep.value === 'mfa-code') {
       // Invalid TOTP or backup code
       showSnackbar?.(t('logIn.mfa_invalid_code'), 'error')

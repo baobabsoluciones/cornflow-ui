@@ -39,7 +39,14 @@ class AuthService {
 
     if (response.status !== 200) {
       sessionStorage.setItem('isAuthenticated', 'false')
-      return { success: false, errorMessage: content.error }
+      // The rate limiter answers 429 with its text in `message`, not in
+      // `error`: without reading both, a throttled attempt would be reported
+      // as bad credentials even though they were never checked.
+      return {
+        success: false,
+        rateLimited: response.status === 429,
+        errorMessage: content.error ?? content.message,
+      }
     }
 
     if (content.mfa_required) {

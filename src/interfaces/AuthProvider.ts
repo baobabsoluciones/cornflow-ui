@@ -9,6 +9,9 @@ export interface LoginResult {
   changePassword?: boolean
   // ISO timestamp of the previous successful login, if any
   lastLogin?: string | null
+  // The per-IP rate limit rejected the attempt (HTTP 429): the credentials
+  // were never checked, so the UI must not report them as incorrect
+  rateLimited?: boolean
   errorMessage?: string
 }
 

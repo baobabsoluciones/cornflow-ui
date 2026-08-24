@@ -276,6 +276,8 @@ export default {
     snackbar_message_success: 'Connexion réussie',
     snackbar_message_error_server: 'Erreur du serveur',
     snackbar_message_error_auth: 'Identifiants incorrects',
+    snackbar_message_error_rate_limited:
+      "Trop de tentatives depuis cette adresse. Patientez un instant avant de réessayer.",
     processing_auth: "Traitement de l'authentification...",
     redirecting:
       "Redirection vers l'authentification externe... Si la redirection ne se produit pas automatiquement, veuillez contacter le support technique pour obtenir de l'aide.",

@@ -389,6 +389,8 @@ export default {
     snackbar_message_success: 'Inicio de sesión exitoso',
     snackbar_message_error_server: 'Error del servidor',
     snackbar_message_error_auth: 'Credenciales incorrectas',
+    snackbar_message_error_rate_limited:
+      'Demasiados intentos desde esta dirección. Espera un momento y vuelve a intentarlo.',
     processing_auth: 'Procesando autenticación...',
     redirecting:
       'Redirigiendo a la autenticación externa... Si la redirección no ocurre automáticamente, por favor contacte con el servicio técnico para obtener ayuda.',
