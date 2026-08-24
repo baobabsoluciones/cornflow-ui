@@ -207,11 +207,14 @@ class ApiClient {
     try {
       let response = await this.performFetch(completeUrl, options)
 
-      // Cornflow session: on an expired access token (401), renew it once
+      // Cornflow session: when the access token has expired, renew it once
       // with the refresh token and retry transparently before giving up.
+      // The body has to be read to recognise the legacy 400 variant, so it is
+      // parsed here and reused below.
+      let content = await this.parseResponseContent(response)
       if (
-        response.status === 401 &&
         !retried &&
+        this.isExpiredToken(response.status, content) &&
         this.canCornflowRefresh(url) &&
         (await this.refreshCornflowToken())
       ) {
@@ -219,7 +222,6 @@ class ApiClient {
       }
 
       this.handleUnauthorizedResponse(response, url)
-      const content = await this.parseResponseContent(response)
       this.handlePasswordRotationResponse(response.status, content)
 
       return { status: response.status, content }
@@ -227,6 +229,20 @@ class ApiClient {
       this.handleRequestError(error, url)
       throw error
     }
+  }
+
+  /**
+   * Whether a response says the access token has expired.
+   *
+   * A current server answers 401. Older ones answered 400 with the expiry
+   * message, and that variant is accepted too so the app keeps renewing
+   * against a server that has not been updated yet.
+   */
+  private isExpiredToken(status: number, content: any): boolean {
+    if (status === 401) return true
+    if (status !== 400) return false
+    const message = String(content?.error ?? '').toLowerCase()
+    return message.includes('expired')
   }
 
   /**
