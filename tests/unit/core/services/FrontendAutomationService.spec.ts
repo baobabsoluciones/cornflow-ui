@@ -954,6 +954,9 @@ describe('isTableVisibleInCurrentSchema', () => {
   it('visible when schemas undefined', () => {
     expect(isTableVisibleInCurrentSchema(undefined, 'dagA')).toBe(true)
   })
+  it('visible when schemas is null (backend sends the key with a null value)', () => {
+    expect(isTableVisibleInCurrentSchema(null, 'dagA')).toBe(true)
+  })
   it('hidden when empty array', () => {
     expect(isTableVisibleInCurrentSchema([], 'dagA')).toBe(false)
   })
@@ -981,6 +984,15 @@ describe('filterTablesByCurrentSchema', () => {
     const result = filterTablesByCurrentSchema(config, 'dagA')
     expect(Object.keys(result).sort()).toEqual(['always', 'onlyA'])
   })
+  it('keeps tables whose schemas is null instead of throwing', () => {
+    const config: any = {
+      nullSchemas: { schemas: null },
+      onlyA: { schemas: ['dagA'] },
+      onlyB: { schemas: ['dagB'] },
+    }
+    const result = filterTablesByCurrentSchema(config, 'dagA')
+    expect(Object.keys(result).sort()).toEqual(['nullSchemas', 'onlyA'])
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -990,11 +1002,15 @@ describe('canUserAccessTable', () => {
   it('visible to all when table schemas undefined', () => {
     expect(canUserAccessTable(undefined, ['x'])).toBe(true)
   })
+  it('visible to all when table schemas is null', () => {
+    expect(canUserAccessTable(null, ['x'])).toBe(true)
+  })
   it('hidden to all when empty array', () => {
     expect(canUserAccessTable([], ['x'])).toBe(false)
   })
   it('full access when user has no schema restrictions', () => {
     expect(canUserAccessTable(['a'], undefined)).toBe(true)
+    expect(canUserAccessTable(['a'], null)).toBe(true)
     expect(canUserAccessTable(['a'], [])).toBe(true)
   })
   it('access when user has any required schema', () => {

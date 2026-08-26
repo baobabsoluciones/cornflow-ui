@@ -154,6 +154,36 @@ describe('transformOpenApiToTableConfig', () => {
     expect(sections[0].id).toBe('sec1')
     expect(groups[0].id).toBe('grp1')
   })
+  test('drops a null "schemas" so it never reaches the visibility filters', () => {
+    const openApiSchema = {
+      available_automations: {
+        tables: {
+          nullSchemas: {
+            title: { en: 'Null schemas' },
+            group: null,
+            section: 'sec1',
+            schemas: null,
+            get_list: { url: '/null-schemas/', http_method: 'GET' },
+          },
+          withSchemas: {
+            title: { en: 'With schemas' },
+            group: null,
+            section: 'sec1',
+            schemas: ['dagA'],
+            get_list: { url: '/with-schemas/', http_method: 'GET' },
+          },
+        },
+        groups: {},
+        sections: { sec1: { title: { en: 'Section One' }, order: 1 } },
+      },
+      definitions: {},
+      paths: {},
+    }
+    const { config } = transformOpenApiToTableConfig(openApiSchema, 'en')
+    // Absent, not null: the filters treat "absent" as "visible in all schemas".
+    expect('schemas' in config.nullSchemas).toBe(false)
+    expect(config.withSchemas.schemas).toEqual(['dagA'])
+  })
   test('handles tables-only available_automations (no groups/sections)', () => {
     const openApiSchema = {
       available_automations: {
