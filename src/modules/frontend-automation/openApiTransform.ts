@@ -141,7 +141,9 @@ export function transformOpenApiToTableConfig(
       icon,
       ...(typeof tableInfo.order === 'number' && { order: tableInfo.order }),
       ...(sectionId !== null && { section: sectionId }),
-      ...(tableInfo.schemas !== undefined && { schemas: tableInfo.schemas }),
+      // `!= null`: a backend sending `"schemas": null` means "no restriction", same as
+      // omitting the key. Keeping the null would break the schema visibility filters.
+      ...(tableInfo.schemas != null && { schemas: tableInfo.schemas }),
       ...(tableInfo.model_table_name != null &&
         String(tableInfo.model_table_name).trim() !== '' && {
           model_table_name: tableInfo.model_table_name,

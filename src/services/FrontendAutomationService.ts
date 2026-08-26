@@ -961,19 +961,21 @@ export function getConfigurationBySection(
 /**
  * Checks if a table should be shown for the current schema (DAG) the user is viewing.
  *
- * - If table has no `schemas` property: Visible in ALL schemas
+ * - If table has no `schemas` property (absent or null): Visible in ALL schemas
  * - If table has empty `schemas` array []: Visible in NO schema (hidden)
  * - If table has `schemas` with values: Visible only when currentSchema is in that list
  *
- * @param tableSchemas - The schemas array from the table configuration (can be undefined)
+ * @param tableSchemas - The schemas array from the table configuration (can be null/undefined)
  * @param currentSchema - The schema (DAG) the user is currently viewing
  * @returns true if table should be shown in the current schema context
  */
 export function isTableVisibleInCurrentSchema(
-  tableSchemas: string[] | undefined,
+  tableSchemas: string[] | null | undefined,
   currentSchema: string,
 ): boolean {
-  if (tableSchemas === undefined) {
+  // `== null` on purpose: backends may send `"schemas": null` instead of omitting the key,
+  // and `null.length` would throw. Absent and null both mean "no schema restriction".
+  if (tableSchemas == null) {
     return true
   }
   if (tableSchemas.length === 0) {
@@ -1008,20 +1010,20 @@ export function filterTablesByCurrentSchema(
  * Checks if a user has access to a specific table based on the table's schemas property.
  *
  * Access control logic:
- * - If table has no `schemas` property: Visible to ALL users
+ * - If table has no `schemas` property (absent or null): Visible to ALL users
  * - If table has empty `schemas` array []: Visible to NO users (hidden)
  * - If table has `schemas` with values: Visible only to users with access to ANY of the listed schemas
  *
- * @param tableSchemas - The schemas array from the table configuration (can be undefined)
- * @param userSchemas - The schemas the user has access to (undefined means full access)
+ * @param tableSchemas - The schemas array from the table configuration (can be null/undefined)
+ * @param userSchemas - The schemas the user has access to (null/undefined means full access)
  * @returns true if user can see the table, false otherwise
  */
 export function canUserAccessTable(
-  tableSchemas: string[] | undefined,
-  userSchemas: string[] | undefined,
+  tableSchemas: string[] | null | undefined,
+  userSchemas: string[] | null | undefined,
 ): boolean {
-  // If table has no schemas property, it's visible to ALL users
-  if (tableSchemas === undefined) {
+  // If table has no schemas property (absent or null), it's visible to ALL users
+  if (tableSchemas == null) {
     return true
   }
 
@@ -1030,8 +1032,8 @@ export function canUserAccessTable(
     return false
   }
 
-  // If user has no schema restrictions (undefined or empty), they have full access
-  if (userSchemas === undefined || userSchemas.length === 0) {
+  // If user has no schema restrictions (null/undefined or empty), they have full access
+  if (userSchemas == null || userSchemas.length === 0) {
     return true
   }
 
