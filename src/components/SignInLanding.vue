@@ -365,8 +365,12 @@ const submitForgot = async () => {
       return
     }
     const cornflowAuth = await getSpecificAuthService('cornflow')
-    const sent = await cornflowAuth?.requestPasswordReset?.(forgotEmail.value)
-    if (sent) {
+    const result = await cornflowAuth?.requestPasswordReset?.(forgotEmail.value)
+    if (result?.rateLimited) {
+      // The request never went through: showing the neutral message here
+      // would leave the user waiting for an email that will not arrive
+      showSnackbar?.(t('logIn.snackbar_message_error_rate_limited'), 'error')
+    } else if (result?.sent) {
       // Neutral message: the backend answers the same whether the email
       // exists or not, so accounts can not be enumerated
       showSnackbar?.(t('logIn.forgot_sent'), 'success')
@@ -381,6 +385,9 @@ const submitForgot = async () => {
 }
 
 const finishLogin = () => {
+  // A new session must re-fetch everything (user, schema, configurations):
+  // the store survives the SPA navigation of a logout / expired session
+  store.resetSessionData()
   if (pendingChangePassword) {
     showSnackbar?.(t('logIn.password_change_required'), 'warning')
     router.push({ path: '/user-settings', query: { changePassword: 'true' } })
@@ -493,6 +500,13 @@ const submitLogIn = async () => {
 
     if (result.mfaSetupRequired) {
       await startEnrollment()
+      return
+    }
+
+    if (result.rateLimited) {
+      // The attempt never reached the credential check: say so instead of
+      // reporting the credentials as incorrect
+      showSnackbar?.(t('logIn.snackbar_message_error_rate_limited'), 'error')
       return
     }
 

@@ -139,8 +139,45 @@ describe('AuthService', () => {
 
       const result = await AuthService.login('testuser', 'wrongpassword')
 
-      expect(result).toEqual({ success: false, errorMessage: 'Invalid credentials' })
+      expect(result).toEqual({
+        success: false,
+        rateLimited: false,
+        errorMessage: 'Invalid credentials'
+      })
       expect(sessionStorageMock.setItem).toHaveBeenCalledWith('isAuthenticated', 'false')
+    })
+
+    test('rate-limited login is reported as such, not as bad credentials', async () => {
+      // the limiter answers 429 with its text in `message`, not in `error`
+      const mockResponse = {
+        status: 429,
+        content: { message: 'Too many requests. Please slow down and try again later.' }
+      }
+
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.post).mockResolvedValue(mockResponse)
+
+      const result = await AuthService.login('testuser', 'whatever')
+
+      expect(result.success).toBe(false)
+      expect(result.rateLimited).toBe(true)
+      expect(result.errorMessage).toContain('Too many requests')
+      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('isAuthenticated', 'false')
+    })
+
+    test('a plain failed login is not flagged as rate limited', async () => {
+      const mockResponse = {
+        status: 400,
+        content: { error: 'Invalid credentials' }
+      }
+
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.post).mockResolvedValue(mockResponse)
+
+      const result = await AuthService.login('testuser', 'wrongpassword')
+
+      expect(result.rateLimited).toBe(false)
+      expect(result.errorMessage).toBe('Invalid credentials')
     })
 
     test('mfa_required response asks for the code without storing tokens', async () => {
@@ -312,7 +349,7 @@ describe('AuthService', () => {
   })
 
   describe('requestPasswordReset', () => {
-    test('sends the email to the recover-password endpoint and returns true on 200', async () => {
+    test('sends the email to the recover-password endpoint and reports it sent on 200', async () => {
       const { default: client } = await import('@cornflow-ui/core/api/Api')
       vi.mocked(client.put).mockResolvedValue({ status: 200, content: {} })
 
@@ -323,16 +360,25 @@ describe('AuthService', () => {
         { email: 'user@example.com' },
         { 'Content-Type': 'application/json' }
       )
-      expect(result).toBe(true)
+      expect(result).toEqual({ sent: true, rateLimited: false })
     })
 
-    test('returns false on a non-200 status', async () => {
+    test('reports not sent on a non-200 status', async () => {
       const { default: client } = await import('@cornflow-ui/core/api/Api')
       vi.mocked(client.put).mockResolvedValue({ status: 400, content: {} })
 
       const result = await AuthService.requestPasswordReset('user@example.com')
 
-      expect(result).toBe(false)
+      expect(result).toEqual({ sent: false, rateLimited: false })
+    })
+
+    test('flags the rate limit apart on a 429 status', async () => {
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.put).mockResolvedValue({ status: 429, content: {} })
+
+      const result = await AuthService.requestPasswordReset('user@example.com')
+
+      expect(result).toEqual({ sent: false, rateLimited: true })
     })
 
     test('handles API errors gracefully', async () => {

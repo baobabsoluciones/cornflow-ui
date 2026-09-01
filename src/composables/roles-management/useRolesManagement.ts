@@ -216,6 +216,7 @@ export function useRolesManagement() {
   async function saveUserRoleAssignments(
     user: UserRow,
     newNames: string[],
+    totpCode?: string,
   ): Promise<boolean> {
     const oldIds = new Set(user._role_ids)
     const newIds = new Set(
@@ -232,9 +233,17 @@ export function useRolesManagement() {
         ...toRemove.map((id) =>
           store.roleRepository.removeRoleFromUser(user.id, id),
         ),
-        ...toAdd.map((id) =>
-          store.roleRepository.assignRoleToUser(user.id, id),
-        ),
+        ...toAdd.map((id) => {
+          // The step-up code only concerns the internal (platform_*) roles
+          const isPlatform = roles.value
+            .find((r) => r.id === id)
+            ?.name.startsWith('platform_')
+          return store.roleRepository.assignRoleToUser(
+            user.id,
+            id,
+            isPlatform ? totpCode : undefined,
+          )
+        }),
       ])
       user._role_ids = [...newIds]
       user.role_names = [...newNames]

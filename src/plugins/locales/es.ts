@@ -389,6 +389,8 @@ export default {
     snackbar_message_success: 'Inicio de sesión exitoso',
     snackbar_message_error_server: 'Error del servidor',
     snackbar_message_error_auth: 'Credenciales incorrectas',
+    snackbar_message_error_rate_limited:
+      'Demasiados intentos desde esta dirección. Espera un momento y vuelve a intentarlo.',
     processing_auth: 'Procesando autenticación...',
     redirecting:
       'Redirigiendo a la autenticación externa... Si la redirección no ocurre automáticamente, por favor contacte con el servicio técnico para obtener ayuda.',
@@ -1156,6 +1158,9 @@ export default {
     errorSaveRole: 'Error al guardar el rol.',
     errorDeleteRole: 'Error al eliminar el rol.',
     errorAssignRole: 'Error al actualizar los roles del usuario.',
+    totpLabel: 'Código de verificación (doble factor)',
+    totpHint:
+      'Conceder un rol de plataforma requiere confirmar con un código de tu aplicación de autenticación.',
     errorSaveUser: 'Error al guardar los datos del usuario.',
     userUpdated: 'Datos del usuario actualizados correctamente.',
     lockedBadge: 'Bloqueada',

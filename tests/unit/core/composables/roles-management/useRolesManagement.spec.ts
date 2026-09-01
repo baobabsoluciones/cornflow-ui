@@ -180,11 +180,31 @@ describe('useRolesManagement - saveUserRoleAssignments', () => {
     const ok = await rm.saveUserRoleAssignments(user, ['admin', 'viewer'])
     expect(ok).toBe(true)
     expect(repo.removeRoleFromUser).toHaveBeenCalledWith(7, 2)
-    expect(repo.assignRoleToUser).toHaveBeenCalledWith(7, 3)
+    expect(repo.assignRoleToUser).toHaveBeenCalledWith(7, 3, undefined)
     // user row mutated in place
     expect(user._role_ids).toEqual([1, 3])
     expect(user.role_names).toEqual(['admin', 'viewer'])
     expect(snackbar).toHaveBeenCalledWith('rolesManagement.roleAssigned', 'success')
+  })
+
+  test('forwards the step-up code only for platform-role grants', async () => {
+    repo.assignRoleToUser.mockResolvedValue({})
+    const rm = useRolesManagement()
+    rm.roles.value = [
+      { id: 2, name: 'planner' },
+      { id: 901, name: 'platform_viewer' },
+    ] as any
+    const user: any = { id: 7, _role_ids: [], role_names: [] }
+
+    const ok = await rm.saveUserRoleAssignments(
+      user,
+      ['planner', 'platform_viewer'],
+      '123456',
+    )
+    expect(ok).toBe(true)
+    // the ordinary role goes without a code; the platform role carries it
+    expect(repo.assignRoleToUser).toHaveBeenCalledWith(7, 2, undefined)
+    expect(repo.assignRoleToUser).toHaveBeenCalledWith(7, 901, '123456')
   })
 
   test('returns false and reports when a call fails', async () => {

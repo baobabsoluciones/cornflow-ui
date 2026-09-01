@@ -357,16 +357,12 @@ export default defineComponent({
       const hasData = Object.keys(inputDataConfig).length > 0
       const subPages = []
 
-      // Add input data tables if available
+      // Add input data tables if available. There is no fallback entry when
+      // the schema brings no table config: the old '/input-data' page no
+      // longer exists as a route (tables live at '/input-data/<table>'), so
+      // the fallback was a dead link that ended in the not-found view.
       if (hasData) {
         subPages.push(...navigationItems)
-      } else {
-        // Fallback to old structure
-        subPages.push({
-          title: this.$t('inputOutputData.inputTitle'),
-          icon: 'mdi-table-arrow-left',
-          to: '/input-data',
-        })
       }
 
       // Add instance dashboard pages if available
@@ -424,16 +420,11 @@ export default defineComponent({
 
       const subPages = []
 
-      // Add solution data tables if available
+      // Add solution data tables if available. No fallback entry: the old
+      // '/output-data' page predates the route renaming (results live at
+      // '/results/<table>') and pointed at a route that no longer exists.
       if (Object.keys(resultsDataConfig).length > 0) {
         subPages.push(...navigationItems)
-      } else {
-        // Fallback to old structure
-        subPages.push({
-          title: this.$t('inputOutputData.outputTitle'),
-          icon: 'mdi-table-arrow-right',
-          to: '/output-data',
-        })
       }
 
       // Add dashboard if configured

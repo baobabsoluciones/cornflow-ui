@@ -131,6 +131,43 @@ describe('ApiClient', () => {
       expect(sessionStorageMock.setItem).toHaveBeenCalledWith('refreshToken', 'refresh-2')
     })
 
+    test('an expired token reported as 400 is also renewed and retried', async () => {
+      // UAT 12.5: the server used to answer 400 (not 401) on expiry, so a
+      // retry that only looked at 401 never fired
+      sessionStorageMock.setItem('token', 'expired-access')
+      sessionStorageMock.setItem('refreshToken', 'refresh-1')
+      apiClient['authToken'] = 'expired-access'
+
+      vi.mocked(fetch)
+        .mockResolvedValueOnce(
+          jsonResponse(400, { error: 'The token has expired, please login again' }),
+        )
+        .mockResolvedValueOnce(
+          jsonResponse(200, { token: 'new-access', refresh_token: 'refresh-2' }),
+        )
+        .mockResolvedValueOnce(jsonResponse(200, { result: 'ok' }))
+
+      const response = await apiClient.get('/execution/')
+
+      expect(response).toEqual({ status: 200, content: { result: 'ok' } })
+      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('token', 'new-access')
+    })
+
+    test('an ordinary 400 is surfaced without renewing', async () => {
+      sessionStorageMock.setItem('token', 'good-access')
+      sessionStorageMock.setItem('refreshToken', 'refresh-1')
+      apiClient['authToken'] = 'good-access'
+
+      vi.mocked(fetch).mockResolvedValueOnce(
+        jsonResponse(400, { error: 'Invalid payload' }),
+      )
+
+      const response = await apiClient.get('/execution/')
+
+      expect(response.status).toBe(400)
+      expect(fetch).toHaveBeenCalledTimes(1)
+    })
+
     test('does not retry and fails when there is no refresh token', async () => {
       sessionStorageMock.setItem('token', 'expired-access')
       apiClient['authToken'] = 'expired-access'

@@ -381,6 +381,8 @@ export default {
     snackbar_message_success: 'Successfully logged in',
     snackbar_message_error_server: 'Server error',
     snackbar_message_error_auth: 'Incorrect credentials',
+    snackbar_message_error_rate_limited:
+      'Too many attempts from this address. Please wait a moment and try again.',
     processing_auth: 'Processing authentication...',
     redirecting:
       'Redirecting to external authentication... If the redirection does not happen automatically, please contact technical support for assistance.',
@@ -1137,6 +1139,9 @@ export default {
     errorSaveRole: 'Error saving role.',
     errorDeleteRole: 'Error deleting role.',
     errorAssignRole: 'Error updating user roles.',
+    totpLabel: 'Verification code (two-factor)',
+    totpHint:
+      'Granting a platform role requires confirming with a code from your authenticator app.',
     errorSaveUser: 'Error saving user data.',
     userUpdated: 'User data updated successfully.',
     lockedBadge: 'Locked',

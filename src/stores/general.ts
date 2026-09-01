@@ -161,6 +161,21 @@ export const useGeneralStore = defineStore('general', {
     } as HistoricalState,
   }),
   actions: {
+    /**
+     * Marks the store so the next initializeData() runs again from scratch.
+     *
+     * Must be called on every new login. Logging out (or being logged out by
+     * an expired session) navigates within the SPA without reloading the
+     * page, so the store survives: without this reset, initializeData()'s
+     * guard would skip re-fetching the user, the schema and the
+     * configurations of the new session, leaving the app without menu tables
+     * (UAT incident 5) and, worse, showing data cached from the previous
+     * user.
+     */
+    resetSessionData() {
+      this.dataInitialized = false
+    },
+
     async initializeData() {
       if (this.dataInitialized) return
       this.dataInitialized = true

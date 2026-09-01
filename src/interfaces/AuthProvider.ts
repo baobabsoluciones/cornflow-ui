@@ -9,6 +9,9 @@ export interface LoginResult {
   changePassword?: boolean
   // ISO timestamp of the previous successful login, if any
   lastLogin?: string | null
+  // The per-IP rate limit rejected the attempt (HTTP 429): the credentials
+  // were never checked, so the UI must not report them as incorrect
+  rateLimited?: boolean
   errorMessage?: string
 }
 
@@ -26,7 +29,9 @@ export interface AuthProvider {
   refreshToken?(): Promise<{ token: string; expiresAt: number } | null>;
   mfaSetup?(): Promise<{ secret: string; provisioningUri: string } | null>;
   mfaVerify?(totpCode: string): Promise<{ backupCodes: string[] } | null>;
-  requestPasswordReset?(email: string): Promise<boolean>;
+  requestPasswordReset?(
+    email: string,
+  ): Promise<{ sent: boolean; rateLimited: boolean }>;
   resetPassword?(
     token: string,
     password: string,

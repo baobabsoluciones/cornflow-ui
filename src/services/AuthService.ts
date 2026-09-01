@@ -39,7 +39,14 @@ class AuthService {
 
     if (response.status !== 200) {
       sessionStorage.setItem('isAuthenticated', 'false')
-      return { success: false, errorMessage: content.error }
+      // The rate limiter answers 429 with its text in `message`, not in
+      // `error`: without reading both, a throttled attempt would be reported
+      // as bad credentials even though they were never checked.
+      return {
+        success: false,
+        rateLimited: response.status === 429,
+        errorMessage: content.error ?? content.message,
+      }
     }
 
     if (content.mfa_required) {
@@ -144,15 +151,22 @@ class AuthService {
 
   /**
    * Requests a password reset link for the given email. The backend always
-   * answers with the same message whether the email exists or not.
+   * answers with the same message whether the email exists or not; the rate
+   * limit is surfaced apart so the form does not show the neutral "check
+   * your email" message for a request that was actually throttled.
    */
-  async requestPasswordReset(email: string): Promise<boolean> {
+  async requestPasswordReset(
+    email: string,
+  ): Promise<{ sent: boolean; rateLimited: boolean }> {
     const response = await client.put(
       '/user/recover-password/',
       { email },
       { 'Content-Type': 'application/json' },
     )
-    return response.status === 200
+    return {
+      sent: response.status === 200,
+      rateLimited: response.status === 429,
+    }
   }
 
   /**
