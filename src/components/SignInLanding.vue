@@ -365,8 +365,12 @@ const submitForgot = async () => {
       return
     }
     const cornflowAuth = await getSpecificAuthService('cornflow')
-    const sent = await cornflowAuth?.requestPasswordReset?.(forgotEmail.value)
-    if (sent) {
+    const result = await cornflowAuth?.requestPasswordReset?.(forgotEmail.value)
+    if (result?.rateLimited) {
+      // The request never went through: showing the neutral message here
+      // would leave the user waiting for an email that will not arrive
+      showSnackbar?.(t('logIn.snackbar_message_error_rate_limited'), 'error')
+    } else if (result?.sent) {
       // Neutral message: the backend answers the same whether the email
       // exists or not, so accounts can not be enumerated
       showSnackbar?.(t('logIn.forgot_sent'), 'success')

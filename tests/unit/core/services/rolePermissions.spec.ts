@@ -58,3 +58,36 @@ describe('rolePermissions.isEndpointAllowed', () => {
     expect(isEndpointAllowed([], 'POST', '/execution/', config)).toBe(true)
   })
 })
+
+// The project data shipped in @/app/rolesConfig: the read-only roles must not
+// be offered the execution-creation wizard (UAT 7.2)
+import {
+  isViewAllowed as appIsViewAllowed,
+  getRoleDefaultView as appGetRoleDefaultView,
+} from '@/app/rolesConfig'
+
+describe('app rolesConfig data (read-only roles)', () => {
+  test('viewer and platform_viewer can not open the creation wizard', () => {
+    expect(appIsViewAllowed(['viewer'], 'project-execution')).toBe(false)
+    expect(appIsViewAllowed(['platform_viewer'], 'project-execution')).toBe(
+      false,
+    )
+  })
+
+  test('read-only roles keep their reading views and land on the history', () => {
+    expect(appIsViewAllowed(['viewer'], 'history-execution')).toBe(true)
+    expect(appIsViewAllowed(['platform_viewer'], 'history-execution')).toBe(
+      true,
+    )
+    expect(appGetRoleDefaultView(['viewer'])).toBe('history-execution')
+    expect(appGetRoleDefaultView(['platform_viewer'])).toBe('history-execution')
+  })
+
+  test('write roles are unaffected', () => {
+    expect(appIsViewAllowed(['planner'], 'project-execution')).toBe(true)
+    expect(appIsViewAllowed(['platform_planner'], 'project-execution')).toBe(
+      true,
+    )
+    expect(appIsViewAllowed(['admin'], 'project-execution')).toBe(true)
+  })
+})

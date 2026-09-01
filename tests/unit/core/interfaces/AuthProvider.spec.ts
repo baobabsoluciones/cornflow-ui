@@ -267,7 +267,9 @@ describe('AuthProvider Interface', () => {
       getToken: vi.fn().mockReturnValue(null),
       getUserId: vi.fn().mockReturnValue(null),
       isAuthenticated: vi.fn().mockReturnValue(false),
-      requestPasswordReset: vi.fn().mockResolvedValue(true),
+      requestPasswordReset: vi
+        .fn()
+        .mockResolvedValue({ sent: true, rateLimited: false }),
       resetPassword: vi.fn().mockResolvedValue({
         success: false,
         message: 'Invalid token',
@@ -277,7 +279,7 @@ describe('AuthProvider Interface', () => {
 
     await expect(
       mockAuthProvider.requestPasswordReset!('user@example.com')
-    ).resolves.toBe(true)
+    ).resolves.toEqual({ sent: true, rateLimited: false })
     expect(mockAuthProvider.requestPasswordReset).toHaveBeenCalledWith(
       'user@example.com'
     )

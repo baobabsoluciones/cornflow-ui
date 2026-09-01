@@ -191,7 +191,7 @@ describe('SignInLanding', () => {
     mockAuthServices.cornflowAuthService.mfaSetup.mockResolvedValue(null)
     mockAuthServices.cornflowAuthService.mfaVerify.mockResolvedValue(null)
     mockAuthServices.cornflowAuthService.requestPasswordReset.mockResolvedValue(
-      true,
+      { sent: true, rateLimited: false },
     )
     mockQRCodeToDataURL.mockResolvedValue('data:image/png;base64,mock-qr')
 
@@ -747,7 +747,7 @@ describe('SignInLanding', () => {
 
     test('submitForgot sends the request and returns to the credentials step on success', async () => {
       mockAuthServices.cornflowAuthService.requestPasswordReset.mockResolvedValueOnce(
-        true,
+        { sent: true, rateLimited: false },
       )
       wrapper = createWrapper()
 
@@ -768,9 +768,33 @@ describe('SignInLanding', () => {
       expect(vm.forgotEmail).toBe('')
     })
 
+    test('submitForgot shows the rate limit message instead of the neutral one when throttled', async () => {
+      mockAuthServices.cornflowAuthService.requestPasswordReset.mockResolvedValueOnce(
+        { sent: false, rateLimited: true },
+      )
+      wrapper = createWrapper()
+
+      const vm = wrapper.vm as any
+      vm.loginStep = 'forgot'
+      vm.forgotEmail = 'user@example.com'
+
+      await vm.submitForgot()
+
+      expect(mockShowSnackbar).toHaveBeenCalledWith(
+        'logIn.snackbar_message_error_rate_limited',
+        'error',
+      )
+      // The neutral success message must NOT be shown for a throttled request
+      expect(mockShowSnackbar).not.toHaveBeenCalledWith(
+        'logIn.forgot_sent',
+        'success',
+      )
+      expect(vm.loginStep).toBe('forgot')
+    })
+
     test('submitForgot shows an error and stays on the forgot step when the request fails', async () => {
       mockAuthServices.cornflowAuthService.requestPasswordReset.mockResolvedValueOnce(
-        false,
+        { sent: false, rateLimited: false },
       )
       wrapper = createWrapper()
 

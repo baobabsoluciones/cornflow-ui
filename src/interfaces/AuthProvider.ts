@@ -29,7 +29,9 @@ export interface AuthProvider {
   refreshToken?(): Promise<{ token: string; expiresAt: number } | null>;
   mfaSetup?(): Promise<{ secret: string; provisioningUri: string } | null>;
   mfaVerify?(totpCode: string): Promise<{ backupCodes: string[] } | null>;
-  requestPasswordReset?(email: string): Promise<boolean>;
+  requestPasswordReset?(
+    email: string,
+  ): Promise<{ sent: boolean; rateLimited: boolean }>;
   resetPassword?(
     token: string,
     password: string,
