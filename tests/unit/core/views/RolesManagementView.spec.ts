@@ -258,7 +258,7 @@ describe('RolesManagementView', () => {
       }
       await wrapper.vm.onUserRolesSave({ user, profile, roleNames: ['admin'] })
       expect(rm.updateUserProfile).toHaveBeenCalledWith(user, profile)
-      expect(rm.saveUserRoleAssignments).toHaveBeenCalledWith(user, ['admin'])
+      expect(rm.saveUserRoleAssignments).toHaveBeenCalledWith(user, ['admin'], undefined)
       expect(wrapper.vm.userDialog).toBe(false)
     })
 

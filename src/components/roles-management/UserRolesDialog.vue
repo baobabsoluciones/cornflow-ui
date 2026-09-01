@@ -59,6 +59,18 @@
           closable-chips
           :placeholder="$t('rolesManagement.noRoles2')"
         />
+
+        <v-text-field
+          v-if="addsPlatformRole"
+          v-model="totpCode"
+          :label="$t('rolesManagement.totpLabel')"
+          :hint="$t('rolesManagement.totpHint')"
+          persistent-hint
+          variant="outlined"
+          density="comfortable"
+          autocomplete="one-time-code"
+          maxlength="8"
+        />
       </v-card-text>
 
       <v-card-actions class="px-6 pb-5 pt-0 d-flex justify-end ga-2">
@@ -119,6 +131,7 @@ const emit = defineEmits<{
       user: UserRow
       profile: UserProfileValue
       roleNames: string[]
+      totpCode?: string
     },
   ): void
 }>()
@@ -128,6 +141,20 @@ const selectedNames = ref<string[]>([])
 const firstName = ref('')
 const lastName = ref('')
 const email = ref('')
+const totpCode = ref('')
+
+// Granting a platform role goes through a server-side step-up: the acting
+// administrator confirms with a fresh two-factor code. The field only shows
+// when the selection ADDS a platform role the user does not hold yet.
+const addsPlatformRole = computed(
+  () =>
+    props.canAssignPlatformRoles &&
+    selectedNames.value.some(
+      (name) =>
+        name.startsWith('platform_') &&
+        !props.user?.role_names.includes(name),
+    ),
+)
 
 // Bounded quantifiers (local part max 64, domain parts max 63) to avoid ReDoS
 // super-linear backtracking (SonarQube S5852).
@@ -149,6 +176,7 @@ watch(
       firstName.value = props.user.first_name
       lastName.value = props.user.last_name
       email.value = props.user.email
+      totpCode.value = ''
     }
   },
   { immediate: true },
@@ -185,6 +213,7 @@ function onSave() {
       email: email.value.trim(),
     },
     roleNames: [...new Set([...selectedNames.value, ...preservedPlatformRoles])],
+    totpCode: totpCode.value.trim() || undefined,
   })
 }
 </script>

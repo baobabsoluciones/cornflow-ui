@@ -152,6 +152,53 @@ describe('UserRolesDialog', () => {
       expect(payload.roleNames).toEqual(['admin', 'viewer'])
     })
 
+    test('shows the totp field only when a platform role is being added', async () => {
+      wrapper = createWrapper({
+        canAssignPlatformRoles: true,
+        roles: [
+          { id: 1, name: 'admin' },
+          { id: 901, name: 'platform_viewer' },
+        ],
+      })
+      await nextTick()
+      expect(wrapper.vm.addsPlatformRole).toBe(false)
+      wrapper.vm.selectedNames = ['admin', 'platform_viewer']
+      await nextTick()
+      expect(wrapper.vm.addsPlatformRole).toBe(true)
+      // roles the user already holds do not re-trigger the step-up
+      wrapper = createWrapper({
+        canAssignPlatformRoles: true,
+        user: user({ role_names: ['platform_viewer'], _role_ids: [901] }),
+        roles: [{ id: 901, name: 'platform_viewer' }],
+      })
+      await nextTick()
+      expect(wrapper.vm.addsPlatformRole).toBe(false)
+    })
+
+    test('includes the totp code in the save payload when filled', async () => {
+      wrapper = createWrapper({
+        canAssignPlatformRoles: true,
+        roles: [
+          { id: 1, name: 'admin' },
+          { id: 901, name: 'platform_viewer' },
+        ],
+      })
+      await nextTick()
+      wrapper.vm.selectedNames = ['admin', 'platform_viewer']
+      wrapper.vm.totpCode = ' 654321 '
+      wrapper.vm.onSave()
+      const payload = wrapper.emitted('save')![0][0] as any
+      expect(payload.totpCode).toBe('654321')
+    })
+
+    test('omits the totp code from the payload when empty', async () => {
+      wrapper = createWrapper()
+      await nextTick()
+      wrapper.vm.onSave()
+      const payload = wrapper.emitted('save')![0][0] as any
+      expect(payload.totpCode).toBeUndefined()
+    })
+
     test('does not emit save when user is null', () => {
       wrapper = createWrapper({ user: null })
       wrapper.vm.onSave()

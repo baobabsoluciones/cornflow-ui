@@ -865,6 +865,9 @@ export default {
     errorSaveRole: "Erreur lors de l'enregistrement du rôle.",
     errorDeleteRole: 'Erreur lors de la suppression du rôle.',
     errorAssignRole: "Erreur lors de la mise à jour des rôles de l'utilisateur.",
+    totpLabel: 'Code de vérification (double facteur)',
+    totpHint:
+      "L'attribution d'un rôle de plateforme requiert une confirmation avec un code de votre application d'authentification.",
     errorSaveUser: "Erreur lors de l'enregistrement des données de l'utilisateur.",
     userUpdated: "Données de l'utilisateur mises à jour avec succès.",
     lockedBadge: 'Verrouillé',

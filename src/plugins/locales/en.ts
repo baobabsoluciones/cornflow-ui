@@ -1139,6 +1139,9 @@ export default {
     errorSaveRole: 'Error saving role.',
     errorDeleteRole: 'Error deleting role.',
     errorAssignRole: 'Error updating user roles.',
+    totpLabel: 'Verification code (two-factor)',
+    totpHint:
+      'Granting a platform role requires confirming with a code from your authenticator app.',
     errorSaveUser: 'Error saving user data.',
     userUpdated: 'User data updated successfully.',
     lockedBadge: 'Locked',

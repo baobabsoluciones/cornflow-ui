@@ -92,6 +92,18 @@ describe('RoleRepository - user/role assignments', () => {
     await expect(repo.assignRoleToUser(1, 2)).rejects.toThrow('Error assigning role to user')
   })
 
+  test('assignRoleToUser passes the step-up totp code through when provided', async () => {
+    mockClient.post.mockResolvedValueOnce({ status: 201, content: { id: 6 } })
+    await expect(repo.assignRoleToUser(1, 901, '123456')).resolves.toEqual({
+      id: 6,
+    })
+    expect(mockClient.post).toHaveBeenCalledWith('/user/role/', {
+      user_id: 1,
+      role_id: 901,
+      totp_code: '123456',
+    })
+  })
+
   test('removeRoleFromUser returns boolean by status', async () => {
     mockClient.remove.mockResolvedValueOnce({ status: 200 })
     await expect(repo.removeRoleFromUser(1, 2)).resolves.toBe(true)

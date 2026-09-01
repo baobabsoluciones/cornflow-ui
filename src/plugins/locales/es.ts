@@ -1158,6 +1158,9 @@ export default {
     errorSaveRole: 'Error al guardar el rol.',
     errorDeleteRole: 'Error al eliminar el rol.',
     errorAssignRole: 'Error al actualizar los roles del usuario.',
+    totpLabel: 'Código de verificación (doble factor)',
+    totpHint:
+      'Conceder un rol de plataforma requiere confirmar con un código de tu aplicación de autenticación.',
     errorSaveUser: 'Error al guardar los datos del usuario.',
     userUpdated: 'Datos del usuario actualizados correctamente.',
     lockedBadge: 'Bloqueada',
