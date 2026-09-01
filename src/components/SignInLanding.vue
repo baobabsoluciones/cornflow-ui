@@ -381,6 +381,9 @@ const submitForgot = async () => {
 }
 
 const finishLogin = () => {
+  // A new session must re-fetch everything (user, schema, configurations):
+  // the store survives the SPA navigation of a logout / expired session
+  store.resetSessionData()
   if (pendingChangePassword) {
     showSnackbar?.(t('logIn.password_change_required'), 'warning')
     router.push({ path: '/user-settings', query: { changePassword: 'true' } })

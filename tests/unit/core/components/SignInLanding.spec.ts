@@ -76,6 +76,8 @@ const mockGeneralStore = {
       hasMicrosoftAuth: true,
     },
   },
+  // Called by finishLogin so a new session re-fetches user/schema/config
+  resetSessionData: vi.fn(),
 }
 
 vi.mock('@cornflow-ui/core/stores/general', () => ({
@@ -384,6 +386,24 @@ describe('SignInLanding', () => {
       // Test the validation rule directly
       const result = vm.rules.required('')
       expect(result).toBe('This field is required')
+    })
+
+    test('a successful login resets the session data so it is re-fetched', async () => {
+      // Without this, logging in again after a logout or an expired session
+      // (SPA navigation, the store survives) kept the initializeData guard
+      // set and the schema/menu were never requested again (UAT incident 5)
+      mockGeneralStore.resetSessionData.mockClear()
+      wrapper = createWrapper()
+
+      const vm = wrapper.vm as any
+      vm.username = 'testuser'
+      vm.password = 'testpass'
+      vm.defaultAuth = mockAuthServices.authService
+      mockAuthServices.cornflowAuthService.login.mockResolvedValueOnce(true)
+
+      await vm.submitLogIn()
+
+      expect(mockGeneralStore.resetSessionData).toHaveBeenCalled()
     })
 
     test('redirects to home on successful login', async () => {

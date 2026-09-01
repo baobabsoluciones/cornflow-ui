@@ -5,9 +5,11 @@
       :title="title"
       :description="description"
     />
+    <!-- Sin altura fija: con 90vh clavados, el contenido que no cabe (MFA y
+         token personal) quedaba cortado sin scroll, porque el desplazamiento
+         vive en .view-container y no dentro del componente de pestañas. -->
     <MTabTable
       class="mt-5"
-      style="height: 90vh !important"
       :tabsData="userTabs"
       @update:selectedTab="handleTabSelected"
       :selectedTable="selectedTab"
@@ -231,6 +233,18 @@
                 $t('settings.apiKeyDescription')
               }}</v-list-item-subtitle>
 
+              <!-- The server said generation is disabled on this deployment -->
+              <v-alert
+                v-if="apiKeyServerDisabled"
+                type="info"
+                variant="tonal"
+                style="max-width: 600px"
+                data-test="api-key-disabled-alert"
+              >
+                {{ $t('settings.apiKeyDisabled') }}
+              </v-alert>
+
+              <template v-else>
               <!-- Optional step-up TOTP for MFA users -->
               <MInputField
                 v-if="mfaEnabled"
@@ -274,6 +288,7 @@
                   >{{ $t('settings.apiKeyCopy') }}</v-btn
                 >
               </div>
+              </template>
             </v-list-item>
           </v-list>
         </v-col>
@@ -327,6 +342,10 @@ export default {
       // Personal API key
       apiKeyTotp: '',
       apiKeyReadOnly: false,
+      // Set when the server answers 501: generation is disabled on this
+      // deployment (PERSONAL_TOKEN_ENABLED=0), so the form is hidden and a
+      // persistent notice shown instead of failing on every attempt
+      apiKeyServerDisabled: false,
       apiKey: '',
     }
   },
@@ -536,6 +555,7 @@ export default {
           this.apiKeyTotp = ''
           this.showSnackbar(this.$t('settings.apiKeySuccess'))
         } else if (result?.disabled) {
+          this.apiKeyServerDisabled = true
           this.showSnackbar(this.$t('settings.apiKeyDisabled'), 'error')
         } else {
           this.showSnackbar(
