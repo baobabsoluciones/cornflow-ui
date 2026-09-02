@@ -17,6 +17,7 @@
     <template #content>
       <div class="button-container" v-if="!selectedExecution">
         <v-btn
+          v-if="canCreateExecution"
           @click="navigateTo('/project-execution')"
           variant="outlined"
           prepend-icon="mdi-chart-timeline-variant"
@@ -41,6 +42,7 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import { isViewAllowed } from '@/app/rolesConfig'
 
 export default {
   props: {
@@ -68,6 +70,16 @@ export default {
         router.push(path)
       }
     }
+
+    // The read-only roles are denied the creation wizard by the router and by
+    // the drawer: the button here would only bounce them to the forbidden
+    // page (UAT 7.2).
+    const canCreateExecution = computed(() =>
+      isViewAllowed(
+        generalStore.getUser?.roles?.map((r) => r.name) ?? [],
+        'project-execution',
+      ),
+    )
 
     const isNoSolution = computed(
       () =>
@@ -106,6 +118,7 @@ export default {
 
     return {
       navigateTo,
+      canCreateExecution,
       iconInfoCard,
       iconColorInfoCard,
       titleInfoCard,

@@ -590,6 +590,15 @@ export default {
 }
 </script>
 <style scoped>
+/* The global `.view-container` rule in SectionView.css pins `overflow: hidden`
+   for all views. Dropping the tab component's fixed 90vh took away the inner
+   scroller it used to rely on, so without this override the MFA and personal
+   token blocks are still unreachable on a short viewport. Same fix as
+   ProjectExecutionView. */
+.view-container {
+  overflow-y: auto;
+}
+
 .settings-title {
   font-weight: 500 !important;
   font-size: 1.1rem !important;

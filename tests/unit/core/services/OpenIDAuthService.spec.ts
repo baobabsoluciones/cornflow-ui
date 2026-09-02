@@ -285,7 +285,8 @@ describe('OpenIDAuthService - Enhanced Coverage', () => {
       expect(sessionStorageMock.setItem).toHaveBeenCalledWith('tokenExpiration', expect.any(String))
       expect(sessionStorageMock.setItem).toHaveBeenCalledWith('azureTokenExpiration', expect.any(String))
       expect(sessionStorageMock.setItem).toHaveBeenCalledWith('refreshTokenExpiration', expect.any(String))
-      expect(mockPush).toHaveBeenCalledWith('/project-execution')
+      // '/' so the router guard resolves the landing view for the role
+      expect(mockPush).toHaveBeenCalledWith('/')
     })
   })
 

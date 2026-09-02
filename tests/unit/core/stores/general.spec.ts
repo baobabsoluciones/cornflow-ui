@@ -240,6 +240,36 @@ describe('General Store', () => {
     })
   })
 
+  describe('resetSessionData', () => {
+    test('clears the identity and the execution state of the previous session', () => {
+      const store = useGeneralStore()
+      store.dataInitialized = true
+      store.user = {
+        id: 1,
+        name: 'A',
+        roles: [{ name: 'platform_admin' }],
+      } as any
+      store.loadedExecutions = [{ executionId: 'e1' }] as any
+      store.selectedExecution = { executionId: 'e1' } as any
+      store.lastExecutions = [{ id: 'e1' }] as any
+      store.historical.executionId = 'e1'
+      store.autoLoadInterval = setInterval(() => {}, 100000) as any
+
+      store.resetSessionData()
+
+      expect(store.dataInitialized).toBe(false)
+      // the router guard reads getUser.roles before initializeData has
+      // refetched: the previous user must not be there to route the new one
+      expect(store.user).toEqual({})
+      expect(store.loadedExecutions).toEqual([])
+      expect(store.selectedExecution).toBeNull()
+      expect(store.lastExecutions).toEqual([])
+      expect(store.historical.executionId).toBeNull()
+      // the poller must not keep ticking against the new session
+      expect(store.autoLoadInterval).toBeNull()
+    })
+  })
+
   describe('Actions - Core Functionality', () => {
     test('initializeData fetches required data', async () => {
       const store = useGeneralStore()

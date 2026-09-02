@@ -92,6 +92,7 @@ import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
 import CoreTitleView from '@cornflow-ui/core/components/core/CoreTitleView.vue'
 import CorePanelData from '@cornflow-ui/core/components/core/CorePanelData.vue'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import { isViewAllowed } from '@/app/rolesConfig'
 import { inject } from 'vue'
 import appConfig from '@/app/config'
 
@@ -207,7 +208,18 @@ export default {
         }))
         .filter((group) => group.data.length > 0)
     },
+    /**
+     * The read-only roles are denied the creation wizard by the router and by
+     * the drawer. Offering the action anywhere else only bounces them to the
+     * forbidden page: the misleading action that just fails of UAT 7.2.
+     */
+    canCreateExecution() {
+      const roleNames =
+        this.generalStore?.getUser?.roles?.map((r) => r.name) ?? []
+      return isViewAllowed(roleNames, 'project-execution')
+    },
     dropdownMenuItems() {
+      if (!this.canCreateExecution) return []
       return [
         {
           id: 'create-new-execution',

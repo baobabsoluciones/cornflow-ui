@@ -182,6 +182,22 @@ describe('HistoryExecutionView', () => {
   })
 
   describe('Computed Properties', () => {
+    test('hides the creation entry from read-only roles', async () => {
+      const { wrapper, generalStore } = createWrapper()
+
+      // unrestricted by default
+      expect(wrapper.vm.canCreateExecution).toBe(true)
+      expect(wrapper.vm.dropdownMenuItems).toHaveLength(1)
+
+      generalStore.user = { roles: [{ name: 'viewer' }] }
+      await wrapper.vm.$nextTick()
+
+      // the router and the drawer already deny the wizard to this role:
+      // offering it here only bounces them to the forbidden page (UAT 7.2)
+      expect(wrapper.vm.canCreateExecution).toBe(false)
+      expect(wrapper.vm.dropdownMenuItems).toEqual([])
+    })
+
     test('title computed property returns correct value', () => {
       const { wrapper } = createWrapper()
       

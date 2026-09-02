@@ -174,6 +174,22 @@ export const useGeneralStore = defineStore('general', {
      */
     resetSessionData() {
       this.dataInitialized = false
+
+      // The identity has to go with it. The router guard resolves the landing
+      // view and the forbidden-view check from store.getUser.roles, and it
+      // runs before initializeData() has refetched anything: leaving the
+      // previous user in place routes the new one by the old permissions.
+      this.user = {}
+
+      // Execution state is per-session too. Without this the drawer keeps
+      // offering the previous user's Input data / Results tables and their
+      // selected execution, and the poller keeps ticking against the new
+      // session.
+      this.stopAutoLoadExecutions()
+      this.resetLoadedExecutions()
+      this.setSelectedExecution(null)
+      this.clearHistoricalExecution()
+      this.lastExecutions = []
     },
 
     async initializeData() {

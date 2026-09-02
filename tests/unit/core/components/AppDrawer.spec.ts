@@ -787,6 +787,36 @@ describe('AppDrawer.vue', () => {
       mockStore.selectedExecution = null
     })
 
+    test('a section with nothing in it stays out of the drawer', async () => {
+      // With the '/input-data' and '/output-data' fallbacks gone, a schema
+      // that declares no table config leaves these sections with no sub-pages
+      // and no destination: rendering them draws a header that goes nowhere.
+      mockStore.selectedExecution = { ...baseExecution }
+      mockStore.getConfigurations = {
+        masterData: {},
+        inputData: {},
+        resultsData: {},
+      }
+      mockStore.masterDataSections = []
+      mockStore.masterDataGroups = undefined
+      mockStore.appInstanceDashboardPages = []
+      mockStore.appDashboardPages = []
+
+      wrapper = await createWrapper()
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.vm.inputDataSection.subPages).toEqual([])
+
+      for (const section of wrapper.vm.allSections) {
+        expect(
+          section.to != null || (section.subPages?.length ?? 0) > 0,
+        ).toBe(true)
+      }
+
+      // reset
+      mockStore.selectedExecution = null
+    })
+
     test('inputDataSection null without selected execution', async () => {
       mockStore.selectedExecution = null
       wrapper = await createWrapper()

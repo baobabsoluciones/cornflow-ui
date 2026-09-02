@@ -183,6 +183,14 @@ import { useSectionTitles } from '@cornflow-ui/core/composables/useSectionTitles
 import { isViewAllowed } from '@/app/rolesConfig'
 import { getPremiumDrawerSections } from '@cornflow-ui/core/plugins/extensions'
 
+/**
+ * A drawer section is worth rendering only when it goes somewhere: with no
+ * `to` and no children it draws a header that does nothing, followed by a
+ * divider.
+ */
+const sectionHasEntries = (section: any) =>
+  section.to != null || (section.subPages?.length ?? 0) > 0
+
 export default defineComponent({
   name: 'CoreAppDrawer',
   components: {},
@@ -469,7 +477,7 @@ export default defineComponent({
               to: sub.to,
             })),
         }))
-        .filter((s) => s.to != null || (s.subPages?.length ?? 0) > 0)
+        .filter(sectionHasEntries)
     },
     /**
      * Drawer entries contributed by premium modules (enterprise). Empty when none registered.
@@ -487,7 +495,7 @@ export default defineComponent({
             to: sub.to,
           })),
         }))
-        .filter((s) => s.to != null || (s.subPages?.length ?? 0) > 0)
+        .filter(sectionHasEntries)
     },
     // Admin section (only visible to platform admins when enableRolesManagement is true)
     adminSection() {
@@ -536,13 +544,23 @@ export default defineComponent({
         }
       }
 
-      // Add input data section if execution is selected and role allows it
-      if (this.inputDataSection && allowed('input-data')) {
+      // Add input data section if execution is selected and role allows it.
+      // A schema that declares no input tables leaves it with no sub-pages,
+      // and an empty section is just a dead header.
+      if (
+        this.inputDataSection &&
+        allowed('input-data') &&
+        sectionHasEntries(this.inputDataSection)
+      ) {
         sections.push(this.inputDataSection)
       }
 
       // Add results section if execution is selected and role allows it
-      if (this.resultsSection && allowed('results')) {
+      if (
+        this.resultsSection &&
+        allowed('results') &&
+        sectionHasEntries(this.resultsSection)
+      ) {
         sections.push(this.resultsSection)
       }
 

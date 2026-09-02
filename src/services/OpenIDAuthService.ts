@@ -283,7 +283,10 @@ export class OpenIDAuthService implements AuthProvider {
     )
     this.storeUserClaims(tokenClaims)
     client.initializeToken()
-    getRouter().push('/project-execution')
+    // '/' so the router guard resolves the landing view for this user's role;
+    // hard-pushing the creation wizard sent read-only roles straight to the
+    // forbidden page right after logging in.
+    getRouter().push('/')
   }
 
   private async handleAuthResponse(response: any) {

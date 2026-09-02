@@ -27,7 +27,8 @@ vi.mock('vue-i18n', () => ({
 
 // Mock Pinia store
 const mockGeneralStore = {
-  incrementUploadComponentKey: vi.fn()
+  incrementUploadComponentKey: vi.fn(),
+  getUser: { roles: [] }
 }
 
 vi.mock('@cornflow-ui/core/stores/general', () => ({
@@ -137,6 +138,21 @@ describe('ExecutionInfoCard', () => {
       expect(buttons).toHaveLength(2)
       expect(buttons[0].text()).toContain('Create New Execution')
       expect(buttons[1].text()).toContain('Load from History')
+    })
+
+    test('hides the creation button from read-only roles', () => {
+      // The router and the drawer already deny the wizard to this role, so
+      // the button would only bounce them to the forbidden page (UAT 7.2)
+      mockGeneralStore.getUser = { roles: [{ name: 'viewer' }] }
+      try {
+        wrapper = createWrapper({ selectedExecution: null })
+
+        const buttons = wrapper.findAll('.v-btn')
+        expect(buttons).toHaveLength(1)
+        expect(buttons[0].text()).toContain('Load from History')
+      } finally {
+        mockGeneralStore.getUser = { roles: [] }
+      }
     })
   })
 
