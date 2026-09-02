@@ -95,13 +95,19 @@ describe('ApiClient', () => {
   })
 
   describe('Cornflow refresh-token renewal on 401', () => {
-    const jsonResponse = (status: number, body: any) => ({
-      status,
-      ok: status >= 200 && status < 300,
-      headers: { get: (h: string) => (h === 'Content-Type' ? 'application/json' : null) },
-      json: async () => body,
-      blob: async () => new Blob(),
-    }) as unknown as Response
+    const jsonResponse = (status: number, body: any) => {
+      const res: any = {
+        status,
+        ok: status >= 200 && status < 300,
+        headers: { get: (h: string) => (h === 'Content-Type' ? 'application/json' : null) },
+        json: async () => body,
+        blob: async () => new Blob(),
+      }
+      // getBlob/postStream inspect a 400 body through clone() so the original
+      // stream stays intact for the caller
+      res.clone = () => res
+      return res as unknown as Response
+    }
 
     test('renews the access token and retries the request transparently', async () => {
       sessionStorageMock.setItem('token', 'expired-access')
@@ -168,6 +174,46 @@ describe('ApiClient', () => {
       expect(fetch).toHaveBeenCalledTimes(1)
     })
 
+    test('a 400 about something other than the token is never replayed', async () => {
+      // A TOTP that rolls over mid-submit answers 400 "The code has expired".
+      // Renewing and retrying would re-send the one-time code, already spent,
+      // as a second failed 2FA attempt: only the token may trigger the retry.
+      sessionStorageMock.setItem('token', 'good-access')
+      sessionStorageMock.setItem('refreshToken', 'refresh-1')
+      apiClient['authToken'] = 'good-access'
+
+      vi.mocked(fetch).mockResolvedValueOnce(
+        jsonResponse(400, { error: 'The code has expired' }),
+      )
+
+      const response = await apiClient.post('/mfa/verify/', { code: '123456' })
+
+      expect(response.status).toBe(400)
+      // no refresh, no replay of the consumed code
+      expect(fetch).toHaveBeenCalledTimes(1)
+    })
+
+    test('a legacy 400 expiry whose refresh fails ends the session', async () => {
+      // Otherwise the caller only sees an opaque 400 and the app sits in a
+      // zombie session: no teardown and no redirect to sign-in.
+      sessionStorageMock.setItem('token', 'expired-access')
+      sessionStorageMock.setItem('refreshToken', 'refresh-1')
+      apiClient['authToken'] = 'expired-access'
+
+      vi.mocked(fetch)
+        .mockResolvedValueOnce(
+          jsonResponse(400, { error: 'The token has expired, please login again' }),
+        )
+        .mockResolvedValueOnce(jsonResponse(401, { error: 'invalid' })) // failed refresh
+
+      await expect(apiClient.get('/execution/')).rejects.toThrow(
+        'Unauthorized: Session expired',
+      )
+      expect(sessionStorageMock.removeItem).toHaveBeenCalledWith('token')
+      // let the deferred auth-failure redirect run so it does not leak
+      await new Promise((resolve) => setTimeout(resolve, 5))
+    })
+
     test('does not retry and fails when there is no refresh token', async () => {
       sessionStorageMock.setItem('token', 'expired-access')
       apiClient['authToken'] = 'expired-access'
@@ -206,6 +252,34 @@ describe('ApiClient', () => {
       expect(sessionStorageMock.setItem).toHaveBeenCalledWith('token', 'new-access')
     })
 
+    test('getBlob renews on the legacy 400 expiry too', async () => {
+      // Without this the download handed back the error body as the file
+      sessionStorageMock.setItem('token', 'expired-access')
+      sessionStorageMock.setItem('refreshToken', 'refresh-1')
+      apiClient['authToken'] = 'expired-access'
+
+      const blobResponse = {
+        status: 200,
+        ok: true,
+        headers: { get: () => null },
+        blob: async () => new Blob(['data']),
+      } as unknown as Response
+
+      vi.mocked(fetch)
+        .mockResolvedValueOnce(
+          jsonResponse(400, { error: 'The token has expired, please login again' }),
+        )
+        .mockResolvedValueOnce(
+          jsonResponse(200, { token: 'new-access', refresh_token: 'refresh-2' }),
+        ) // /token/refresh/
+        .mockResolvedValueOnce(blobResponse) // retried download
+
+      const result = await apiClient.getBlob('/case/1/export/')
+
+      expect(result.status).toBe(200)
+      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('token', 'new-access')
+    })
+
     test('postStream renews the access token and retries', async () => {
       sessionStorageMock.setItem('token', 'expired-access')
       sessionStorageMock.setItem('refreshToken', 'refresh-1')
@@ -213,6 +287,26 @@ describe('ApiClient', () => {
 
       vi.mocked(fetch)
         .mockResolvedValueOnce(jsonResponse(401, { error: 'expired' })) // original stream
+        .mockResolvedValueOnce(
+          jsonResponse(200, { token: 'new-access', refresh_token: 'refresh-2' }),
+        ) // /token/refresh/
+        .mockResolvedValueOnce(jsonResponse(200, { ok: true })) // retried stream
+
+      const response = await apiClient.postStream('/stream/', { q: 1 })
+
+      expect(response.status).toBe(200)
+      expect(fetch).toHaveBeenCalledTimes(3)
+    })
+
+    test('postStream renews on the legacy 400 expiry too', async () => {
+      sessionStorageMock.setItem('token', 'expired-access')
+      sessionStorageMock.setItem('refreshToken', 'refresh-1')
+      apiClient['authToken'] = 'expired-access'
+
+      vi.mocked(fetch)
+        .mockResolvedValueOnce(
+          jsonResponse(400, { error: 'The token has expired, please login again' }),
+        )
         .mockResolvedValueOnce(
           jsonResponse(200, { token: 'new-access', refresh_token: 'refresh-2' }),
         ) // /token/refresh/

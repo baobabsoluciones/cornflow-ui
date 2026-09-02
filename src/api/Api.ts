@@ -211,17 +211,18 @@ class ApiClient {
       // with the refresh token and retry transparently before giving up.
       // The body has to be read to recognise the legacy 400 variant, so it is
       // parsed here and reused below.
-      let content = await this.parseResponseContent(response)
+      const content = await this.parseResponseContent(response)
+      const expired = this.isExpiredToken(response.status, content)
       if (
         !retried &&
-        this.isExpiredToken(response.status, content) &&
+        expired &&
         this.canCornflowRefresh(url) &&
         (await this.refreshCornflowToken())
       ) {
         return this.request(url, options, true)
       }
 
-      this.handleUnauthorizedResponse(response, url)
+      this.handleUnauthorizedResponse(response, url, expired)
       this.handlePasswordRotationResponse(response.status, content)
 
       return { status: response.status, content }
@@ -237,12 +238,33 @@ class ApiClient {
    * A current server answers 401. Older ones answered 400 with the expiry
    * message, and that variant is accepted too so the app keeps renewing
    * against a server that has not been updated yet.
+   *
+   * The 400 match is deliberately narrow. Unlike a 401, a 400 is a business
+   * status: the endpoint already processed the request, so renewing and
+   * retrying REPLAYS it. Only a message naming the token as the thing that
+   * expired qualifies -- the "code has expired" of a rolled-over TOTP must
+   * not be read as a session expiry and replayed with the code already spent.
    */
   private isExpiredToken(status: number, content: any): boolean {
     if (status === 401) return true
     if (status !== 400) return false
     const message = String(content?.error ?? '').toLowerCase()
-    return message.includes('expired')
+    return message.includes('token') && message.includes('expired')
+  }
+
+  /**
+   * The same check for responses whose body has not been parsed yet
+   * (downloads, SSE streams): the legacy 400 variant needs the body, so it is
+   * read from a clone to leave the original stream intact for the caller.
+   */
+  private async isExpiredTokenResponse(response: Response): Promise<boolean> {
+    if (response.status === 401) return true
+    if (response.status !== 400) return false
+    try {
+      return this.isExpiredToken(400, await response.clone().json())
+    } catch {
+      return false
+    }
   }
 
   /**
@@ -401,12 +423,24 @@ class ApiClient {
     return body instanceof FormData ? body : JSON.stringify(body)
   }
 
-  private handleUnauthorizedResponse(response: Response, url: string): void {
+  /**
+   * Ends the session when the server says the token is no longer usable.
+   *
+   * `expired` covers the legacy 400 variant as well (see isExpiredToken):
+   * once the renewal has failed, both statuses mean the session is gone, and
+   * without this teardown the caller would only see an opaque 400 while the
+   * app sat in a zombie session with no redirect to sign-in.
+   */
+  private handleUnauthorizedResponse(
+    response: Response,
+    url: string,
+    expired: boolean = response.status === 401,
+  ): void {
     // The reset-password endpoint authenticates with the emailed reset
     // token, not the session: its 401 (expired/used link) is handled by the
     // reset view instead of the global session-expired redirect
     if (
-      response.status === 401 &&
+      expired &&
       !url.includes('/login/') &&
       !url.includes('/user/reset-password/')
     ) {
@@ -532,9 +566,13 @@ class ApiClient {
       mode: 'cors',
     })
 
-    // Expired access token: renew once with the refresh token and retry
+    // Expired access token: renew once with the refresh token and retry.
+    // The legacy 400 variant counts too, so a download against a server that
+    // has not been updated renews instead of handing back an error body as
+    // the file.
+    const expired = await this.isExpiredTokenResponse(response)
     if (
-      response.status === 401 &&
+      expired &&
       !retried &&
       this.canCornflowRefresh(url) &&
       (await this.refreshCornflowToken())
@@ -542,7 +580,7 @@ class ApiClient {
       return this.getBlob(url, queryParams, isExternal, true)
     }
 
-    this.handleUnauthorizedResponse(response, url)
+    this.handleUnauthorizedResponse(response, url, expired)
 
     const blob = await response.blob()
 
@@ -610,9 +648,12 @@ class ApiClient {
       isExternal,
     })
 
-    // Expired access token: renew once with the refresh token and retry
+    // Expired access token: renew once with the refresh token and retry.
+    // The legacy 400 variant counts too, so a stream opened with a token that
+    // has just expired renews instead of failing outright.
+    const expired = await this.isExpiredTokenResponse(response)
     if (
-      response.status === 401 &&
+      expired &&
       !retried &&
       this.canCornflowRefresh(url) &&
       (await this.refreshCornflowToken())
@@ -620,7 +661,7 @@ class ApiClient {
       return this.postStream(url, body, isExternal, true)
     }
 
-    this.handleUnauthorizedResponse(response, url)
+    this.handleUnauthorizedResponse(response, url, expired)
     return response
   }
 
