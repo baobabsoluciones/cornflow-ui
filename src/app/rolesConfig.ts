@@ -42,8 +42,9 @@ export type { RolePermissions } from '@cornflow-ui/core/services/rolePermissions
 // The read-only roles must not see the execution-creation wizard: the server
 // already answers 403 to their writes, but offering the action just to fail
 // with a generic error is misleading (UAT 7.2). Note the mechanism is strict
-// with multi-role users (a view is allowed only when NO role forbids it), so
-// these entries assume viewer-type roles are not combined with write roles.
+// with multi-role users -- access is granted only when NO role forbids it,
+// for views and endpoints alike -- so these entries assume viewer-type roles
+// are not combined with write roles.
 const rolesConfig: Record<string, RolePermissions> = {
   viewer: {
     forbidden_views: ['project-execution'],

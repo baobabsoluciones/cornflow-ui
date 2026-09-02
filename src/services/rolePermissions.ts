@@ -8,13 +8,10 @@
  * core (router, AppDrawer) and the premium modules (via `ExtensionContext.isViewAllowed`) use
  * the same mechanism without coupling to a specific project.
  *
- * Semantics: see `@/app/rolesConfig` (denylist).
- *
- * Mind that the two gates do NOT agree on multi-role users. `isViewAllowed` is restrictive
- * (any role forbidding the view denies it); `isEndpointAllowed` is permissive (any role not
- * forbidding the call allows it). A user holding `viewer` alongside a write role is therefore
- * denied the screen but allowed the POST behind it. Each function documents its own rule --
- * do not infer one from the other, and do not read this header as "permissive" for both.
+ * Semantics: see `@/app/rolesConfig` (denylist; restrictive multi-role: access is granted only
+ * when NO role forbids it). Views and endpoints follow the same rule, so a user holding `viewer`
+ * alongside a write role is denied the screen AND the write behind it. isEndpointAllowed used to
+ * be permissive, which let exactly that user through to the call its own screen refused them.
  */
 
 export interface RolePermissions {
@@ -86,7 +83,11 @@ export function getRoleDefaultView(
 
 /**
  * Returns true if the user is allowed to call `method /path/`, given the project's role `config`.
- * Supports '*' as a wildcard for a single path segment. Multi-role permissive union.
+ * Supports '*' as a wildcard for a single path segment.
+ *
+ * Multi-role semantics (restrictive union), the same rule isViewAllowed applies: forbidden if ANY
+ * configured role forbids the call; unconfigured roles add no restrictions; no roles → always
+ * allowed (backwards-compatible).
  */
 export function isEndpointAllowed(
   roleNames: string[] | string | undefined,
@@ -97,7 +98,7 @@ export function isEndpointAllowed(
   const names = normaliseRoleNames(roleNames)
   if (names.length === 0) return true
   const key = `${method.toUpperCase()} ${path}`
-  return names.some((name) => {
+  return names.every((name) => {
     if (!(name in config)) return true
     const forbidden = config[name]?.forbidden_endpoints ?? []
     return !forbidden.some((pattern) => matchesEndpointPattern(pattern, key))

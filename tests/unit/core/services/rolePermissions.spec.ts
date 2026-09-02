@@ -57,6 +57,21 @@ describe('rolePermissions.isEndpointAllowed', () => {
   test('no roles → always allowed', () => {
     expect(isEndpointAllowed([], 'POST', '/execution/', config)).toBe(true)
   })
+
+  test('unconfigured role adds no restrictions', () => {
+    expect(isEndpointAllowed(['ghost'], 'POST', '/execution/', config)).toBe(true)
+  })
+
+  test('restrictive union: forbidden if ANY role forbids the call', () => {
+    // Same rule as isViewAllowed: this user is denied the creation wizard, so
+    // they must not reach the write behind it either
+    expect(
+      isEndpointAllowed(['viewer', 'admin'], 'POST', '/execution/', config),
+    ).toBe(false)
+    expect(
+      isEndpointAllowed(['viewer', 'admin'], 'GET', '/execution/', config),
+    ).toBe(true)
+  })
 })
 
 // The project data shipped in @/app/rolesConfig: the read-only roles must not
