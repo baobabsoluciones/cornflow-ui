@@ -382,8 +382,6 @@ export default {
     hideReplanned: 'Afficher uniquement les exécutions du modèle',
   },
   inputOutputData: {
-    inputTitle: "Données d'entrée",
-    outputTitle: 'Données de sortie',
     save: 'Enregistrer',
     exitWithoutSaving: 'Quitter sans enregistrer',
     saveChanges: 'Enregistrer les modifications',

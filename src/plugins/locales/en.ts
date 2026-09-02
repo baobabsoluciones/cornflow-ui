@@ -494,8 +494,6 @@ export default {
   },
   inputOutputData: {
     title: 'Project management',
-    inputTitle: 'Input data',
-    outputTitle: 'Output data',
     save: 'Save',
     exitWithoutSaving: 'Exit without saving',
     saveChanges: 'Save changes',

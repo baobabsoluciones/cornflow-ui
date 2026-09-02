@@ -506,8 +506,6 @@ export default {
   },
   inputOutputData: {
     title: 'Gestión del proyecto',
-    inputTitle: 'Datos de entrada',
-    outputTitle: 'Datos de salida',
     save: 'Guardar',
     exitWithoutSaving: 'Salir sin guardar',
     saveChanges: 'Guardar cambios',

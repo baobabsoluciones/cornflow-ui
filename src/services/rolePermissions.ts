@@ -8,7 +8,13 @@
  * core (router, AppDrawer) and the premium modules (via `ExtensionContext.isViewAllowed`) use
  * the same mechanism without coupling to a specific project.
  *
- * Semantics: see `@/app/rolesConfig` (denylist; permissive multi-role: a role with no restriction grants access).
+ * Semantics: see `@/app/rolesConfig` (denylist).
+ *
+ * Mind that the two gates do NOT agree on multi-role users. `isViewAllowed` is restrictive
+ * (any role forbidding the view denies it); `isEndpointAllowed` is permissive (any role not
+ * forbidding the call allows it). A user holding `viewer` alongside a write role is therefore
+ * denied the screen but allowed the POST behind it. Each function documents its own rule --
+ * do not infer one from the other, and do not read this header as "permissive" for both.
  */
 
 export interface RolePermissions {
