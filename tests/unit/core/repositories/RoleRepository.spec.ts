@@ -104,12 +104,18 @@ describe('RoleRepository - user/role assignments', () => {
     })
   })
 
-  test('removeRoleFromUser returns boolean by status', async () => {
+  test('removeRoleFromUser resolves on 200/204 and rejects otherwise', async () => {
     mockClient.remove.mockResolvedValueOnce({ status: 200 })
     await expect(repo.removeRoleFromUser(1, 2)).resolves.toBe(true)
     expect(mockClient.remove).toHaveBeenCalledWith('/user/role/1/2/')
 
-    mockClient.remove.mockResolvedValueOnce({ status: 500 })
-    await expect(repo.removeRoleFromUser(1, 2)).resolves.toBe(false)
+    mockClient.remove.mockResolvedValueOnce({ status: 204 })
+    await expect(repo.removeRoleFromUser(1, 2)).resolves.toBe(true)
+
+    // a refused revocation must not read as a success
+    mockClient.remove.mockResolvedValueOnce({ status: 403 })
+    await expect(repo.removeRoleFromUser(1, 2)).rejects.toThrow(
+      'Error removing role from user',
+    )
   })
 })

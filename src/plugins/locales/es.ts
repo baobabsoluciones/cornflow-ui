@@ -1161,6 +1161,10 @@ export default {
     totpLabel: 'Código de verificación (doble factor)',
     totpHint:
       'Conceder un rol de plataforma requiere confirmar con un código de tu aplicación de autenticación.',
+    totpRequired: 'Introduce el código de verificación.',
+    totpInvalid: 'El código debe tener entre 6 y 8 caracteres.',
+    errorAssignRoleSome:
+      'No se han podido actualizar estos roles: {roles}. El resto se ha guardado.',
     errorSaveUser: 'Error al guardar los datos del usuario.',
     userUpdated: 'Datos del usuario actualizados correctamente.',
     lockedBadge: 'Bloqueada',

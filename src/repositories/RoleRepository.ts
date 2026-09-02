@@ -136,12 +136,23 @@ export default class RoleRepository {
     })
   }
 
+  /**
+   * Unassigns a role. Rejects when the server refuses the revocation (a 403
+   * on the last platform admin, say) instead of resolving false: the sibling
+   * assignRoleToUser already rejects, and a caller awaiting both could not
+   * tell a refusal from a success, reporting a role as removed while the
+   * server still had it.
+   */
   removeRoleFromUser(userId: number, roleId: number): Promise<boolean> {
     return new Promise((resolve, reject) => {
       client
         .remove(`/user/role/${userId}/${roleId}/`)
         .then((response) => {
-          resolve(response.status === 200 || response.status === 204)
+          if (response.status === 200 || response.status === 204) {
+            resolve(true)
+          } else {
+            reject(new Error('Error removing role from user'))
+          }
         })
         .catch(reject)
     })

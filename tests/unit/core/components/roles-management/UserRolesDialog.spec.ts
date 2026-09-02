@@ -191,6 +191,66 @@ describe('UserRolesDialog', () => {
       expect(payload.totpCode).toBe('654321')
     })
 
+    test('blocks the save until the step-up code is valid', async () => {
+      // The save used to go out with totpCode undefined: the server refused
+      // the grant and the only feedback was a generic error, after the
+      // revocations in the same save had already been applied
+      wrapper = createWrapper({
+        canAssignPlatformRoles: true,
+        roles: [
+          { id: 1, name: 'admin' },
+          { id: 901, name: 'platform_viewer' },
+        ],
+      })
+      await nextTick()
+      wrapper.vm.selectedNames = ['admin', 'platform_viewer']
+      await nextTick()
+
+      expect(wrapper.vm.isTotpValid).toBe(false)
+      wrapper.vm.onSave()
+      expect(wrapper.emitted('save')).toBeFalsy()
+
+      const saveBtn = wrapper
+        .findAll('.core-button')
+        .find((b: any) => b.attributes('data-text') === 'rolesManagement.save')
+      expect(saveBtn!.attributes('disabled')).toBeDefined()
+
+      // too short for either a TOTP or a backup code
+      wrapper.vm.totpCode = '123'
+      await nextTick()
+      expect(wrapper.vm.isTotpValid).toBe(false)
+
+      wrapper.vm.totpCode = '654321'
+      await nextTick()
+      expect(wrapper.vm.isTotpValid).toBe(true)
+      wrapper.vm.onSave()
+      expect(wrapper.emitted('save')).toBeTruthy()
+    })
+
+    test('the step-up rule tells an empty code from a malformed one', async () => {
+      wrapper = createWrapper({
+        canAssignPlatformRoles: true,
+        roles: [{ id: 901, name: 'platform_viewer' }],
+      })
+      await nextTick()
+      wrapper.vm.selectedNames = ['platform_viewer']
+      await nextTick()
+
+      const [rule] = wrapper.vm.totpRules
+      expect(rule('')).toBe('rolesManagement.totpRequired')
+      expect(rule('12')).toBe('rolesManagement.totpInvalid')
+      expect(rule('654321')).toBe(true)
+      expect(rule('A1B2C3D4')).toBe(true) // backup code
+    })
+
+    test('no code is demanded when no platform role is being added', async () => {
+      wrapper = createWrapper()
+      await nextTick()
+      const [rule] = wrapper.vm.totpRules
+      expect(rule('')).toBe(true)
+      expect(wrapper.vm.isTotpValid).toBe(true)
+    })
+
     test('omits the totp code from the payload when empty', async () => {
       wrapper = createWrapper()
       await nextTick()

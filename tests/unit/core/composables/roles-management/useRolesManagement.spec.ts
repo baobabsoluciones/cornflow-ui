@@ -215,6 +215,79 @@ describe('useRolesManagement - saveUserRoleAssignments', () => {
     expect(await rm.saveUserRoleAssignments(user, ['viewer'])).toBe(false)
     expect(snackbar).toHaveBeenCalledWith('rolesManagement.errorAssignRole', 'error')
   })
+
+  test('reconciles the row with what the server accepted, not what was asked', async () => {
+    // The revocation goes through and the platform grant is refused: the row
+    // has to show the revocation. Claiming the requested state instead made
+    // the next save re-send the revoked role as an addition.
+    repo.removeRoleFromUser.mockResolvedValue(true)
+    repo.assignRoleToUser.mockRejectedValueOnce(new Error('step-up refused'))
+    const rm = useRolesManagement()
+    rm.roles.value = [
+      { id: 1, name: 'admin' },
+      { id: 2, name: 'planner' },
+      { id: 901, name: 'platform_admin' },
+    ] as any
+    const user: any = { id: 7, _role_ids: [1, 2], role_names: ['admin', 'planner'] }
+
+    const ok = await rm.saveUserRoleAssignments(user, ['admin', 'platform_admin'])
+
+    expect(ok).toBe(false)
+    expect(user._role_ids).toEqual([1])
+    expect(user.role_names).toEqual(['admin'])
+    // the message names the grant to retry with a fresh code
+    expect(snackbar).toHaveBeenCalledWith(
+      'rolesManagement.errorAssignRoleSome',
+      'error',
+    )
+  })
+
+  test('a refused revocation leaves the role on the row', async () => {
+    repo.removeRoleFromUser.mockRejectedValueOnce(new Error('403'))
+    const rm = useRolesManagement()
+    rm.roles.value = [
+      { id: 1, name: 'admin' },
+      { id: 2, name: 'planner' },
+    ] as any
+    const user: any = { id: 7, _role_ids: [1, 2], role_names: ['admin', 'planner'] }
+
+    const ok = await rm.saveUserRoleAssignments(user, ['admin'])
+
+    expect(ok).toBe(false)
+    // the server still has planner: the table must not claim otherwise
+    expect(user._role_ids).toEqual([1, 2])
+    expect(user.role_names).toEqual(['admin', 'planner'])
+  })
+
+  test('issues the writes one at a time', async () => {
+    // A single-use step-up code must not go out on two concurrent grants
+    let inFlight = 0
+    let peak = 0
+    repo.assignRoleToUser.mockImplementation(async () => {
+      inFlight++
+      peak = Math.max(peak, inFlight)
+      await new Promise((r) => setTimeout(r, 0))
+      inFlight--
+      return {}
+    })
+    const rm = useRolesManagement()
+    rm.roles.value = [
+      { id: 901, name: 'platform_viewer' },
+      { id: 902, name: 'platform_admin' },
+    ] as any
+    const user: any = { id: 7, _role_ids: [], role_names: [] }
+
+    const ok = await rm.saveUserRoleAssignments(
+      user,
+      ['platform_viewer', 'platform_admin'],
+      '654321',
+    )
+
+    expect(ok).toBe(true)
+    expect(peak).toBe(1)
+    // do not leak the implementation into the tests that follow
+    repo.assignRoleToUser.mockReset()
+  })
 })
 
 describe('useRolesManagement - unlockUser', () => {

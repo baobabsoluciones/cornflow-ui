@@ -70,6 +70,7 @@
           density="comfortable"
           autocomplete="one-time-code"
           maxlength="8"
+          :rules="totpRules"
         />
       </v-card-text>
 
@@ -87,7 +88,7 @@
           variant="filled"
           color="primary"
           size="small"
-          :disabled="saving || !isEmailValid"
+          :disabled="saving || !isEmailValid || !isTotpValid"
           @click="onSave"
         />
       </v-card-actions>
@@ -156,6 +157,24 @@ const addsPlatformRole = computed(
     ),
 )
 
+// Once a platform role is being granted the step-up code is mandatory: with
+// the field left empty the save went out without it, the server refused the
+// grant, and the only feedback was a generic error -- after the revocations
+// in the same save had already gone through. Six digits for a TOTP, eight
+// characters for a backup code.
+const TOTP_RE = /^[A-Za-z0-9]{6,8}$/
+const isTotpValid = computed(
+  () => !addsPlatformRole.value || TOTP_RE.test(totpCode.value.trim()),
+)
+const totpRules = computed(() => [
+  (v: string) => {
+    if (!addsPlatformRole.value) return true
+    const code = (v ?? '').trim()
+    if (!code) return t('rolesManagement.totpRequired')
+    return TOTP_RE.test(code) || t('rolesManagement.totpInvalid')
+  },
+])
+
 // Bounded quantifiers (local part max 64, domain parts max 63) to avoid ReDoS
 // super-linear backtracking (SonarQube S5852).
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,63}\.[^\s@]{1,63}$/
@@ -194,7 +213,7 @@ const roleItems = computed(() =>
 )
 
 function onSave() {
-  if (!props.user || !isEmailValid.value) return
+  if (!props.user || !isEmailValid.value || !isTotpValid.value) return
 
   // Hiding platform_* from the options is not enough to protect them: the chips
   // are closable, so a non-platform admin could remove one the user already has

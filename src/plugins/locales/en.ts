@@ -1142,6 +1142,10 @@ export default {
     totpLabel: 'Verification code (two-factor)',
     totpHint:
       'Granting a platform role requires confirming with a code from your authenticator app.',
+    totpRequired: 'Enter the verification code.',
+    totpInvalid: 'The code must be 6 to 8 characters.',
+    errorAssignRoleSome:
+      'These roles could not be updated: {roles}. The rest were saved.',
     errorSaveUser: 'Error saving user data.',
     userUpdated: 'User data updated successfully.',
     lockedBadge: 'Locked',

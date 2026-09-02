@@ -210,8 +210,16 @@ export function useRolesManagement() {
 
   /**
    * Diffs the user's current role IDs against the new role names and issues
-   * one assign / unassign per change. Mutates the user row in place on
-   * success so the table reflects the new state without a full refetch.
+   * one assign / unassign per change. Mutates the user row in place so the
+   * table reflects the new state without a full refetch.
+   *
+   * The writes run one at a time and the row is reconciled with what the
+   * server accepted, never with what was requested. Firing them together let
+   * a save that failed half-way -- a step-up code missing, wrong or already
+   * spent -- leave the revocations applied on the server while the table
+   * still showed the old roles, so the next save re-sent them as additions.
+   * Running in sequence also stops one single-use step-up code from being
+   * replayed concurrently across several platform grants.
    */
   async function saveUserRoleAssignments(
     user: UserRow,
@@ -228,31 +236,58 @@ export function useRolesManagement() {
     const toRemove = [...oldIds].filter((id) => !newIds.has(id))
     const toAdd = [...newIds].filter((id) => !oldIds.has(id))
 
-    try {
-      await Promise.all([
-        ...toRemove.map((id) =>
-          store.roleRepository.removeRoleFromUser(user.id, id),
-        ),
-        ...toAdd.map((id) => {
-          // The step-up code only concerns the internal (platform_*) roles
-          const isPlatform = roles.value
-            .find((r) => r.id === id)
-            ?.name.startsWith('platform_')
-          return store.roleRepository.assignRoleToUser(
-            user.id,
-            id,
-            isPlatform ? totpCode : undefined,
-          )
-        }),
-      ])
-      user._role_ids = [...newIds]
-      user.role_names = [...newNames]
-      showSnackbar?.(t('rolesManagement.roleAssigned'), 'success')
-      return true
-    } catch {
-      showSnackbar?.(t('rolesManagement.errorAssignRole'), 'error')
+    const nameOf = (id: number) => roles.value.find((r) => r.id === id)?.name
+
+    // Advanced only by the writes the server confirmed
+    const applied = new Set(oldIds)
+    const failed: number[] = []
+
+    for (const id of toRemove) {
+      try {
+        await store.roleRepository.removeRoleFromUser(user.id, id)
+        applied.delete(id)
+      } catch {
+        failed.push(id)
+      }
+    }
+
+    for (const id of toAdd) {
+      // The step-up code only concerns the internal (platform_*) roles
+      const isPlatform = nameOf(id)?.startsWith('platform_')
+      try {
+        await store.roleRepository.assignRoleToUser(
+          user.id,
+          id,
+          isPlatform ? totpCode : undefined,
+        )
+        applied.add(id)
+      } catch {
+        failed.push(id)
+      }
+    }
+
+    user._role_ids = [...applied]
+    user.role_names = [...applied]
+      .map(nameOf)
+      .filter((name): name is string => name != null)
+
+    if (failed.length > 0) {
+      // Name what did not go through: on a partial save the generic message
+      // left no way to tell which grant to retry with a fresh code
+      const allFailed = failed.length === toRemove.length + toAdd.length
+      showSnackbar?.(
+        allFailed
+          ? t('rolesManagement.errorAssignRole')
+          : t('rolesManagement.errorAssignRoleSome', {
+              roles: failed.map((id) => nameOf(id) ?? String(id)).join(', '),
+            }),
+        'error',
+      )
       return false
     }
+
+    showSnackbar?.(t('rolesManagement.roleAssigned'), 'success')
+    return true
   }
 
   return {

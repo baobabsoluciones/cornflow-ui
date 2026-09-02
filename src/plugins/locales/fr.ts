@@ -868,6 +868,10 @@ export default {
     totpLabel: 'Code de vérification (double facteur)',
     totpHint:
       "L'attribution d'un rôle de plateforme requiert une confirmation avec un code de votre application d'authentification.",
+    totpRequired: 'Saisissez le code de vérification.',
+    totpInvalid: 'Le code doit comporter de 6 à 8 caractères.',
+    errorAssignRoleSome:
+      "Ces rôles n'ont pas pu être mis à jour : {roles}. Les autres ont été enregistrés.",
     errorSaveUser: "Erreur lors de l'enregistrement des données de l'utilisateur.",
     userUpdated: "Données de l'utilisateur mises à jour avec succès.",
     lockedBadge: 'Verrouillé',
