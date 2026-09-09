@@ -59,6 +59,22 @@
           closable-chips
           :placeholder="$t('rolesManagement.noRoles2')"
         />
+
+        <!-- The server requires a step-up TOTP code to grant a platform_*
+             role, so the field only appears when one is actually being
+             newly granted; it is never required for other roles. -->
+        <v-text-field
+          v-if="showPlatformRoleTotp"
+          v-model="totpCode"
+          data-test="platform-role-totp"
+          :label="$t('rolesManagement.platformRoleTotpLabel')"
+          :hint="$t('rolesManagement.platformRoleTotpHint')"
+          persistent-hint
+          autocomplete="one-time-code"
+          inputmode="numeric"
+          variant="outlined"
+          density="comfortable"
+        />
       </v-card-text>
 
       <v-card-actions class="px-6 pb-5 pt-0 d-flex justify-end ga-2">
@@ -119,6 +135,7 @@ const emit = defineEmits<{
       user: UserRow
       profile: UserProfileValue
       roleNames: string[]
+      totpCode: string | undefined
     },
   ): void
 }>()
@@ -128,6 +145,7 @@ const selectedNames = ref<string[]>([])
 const firstName = ref('')
 const lastName = ref('')
 const email = ref('')
+const totpCode = ref('')
 
 // Bounded quantifiers (local part max 64, domain parts max 63) to avoid ReDoS
 // super-linear backtracking (SonarQube S5852).
@@ -149,6 +167,7 @@ watch(
       firstName.value = props.user.first_name
       lastName.value = props.user.last_name
       email.value = props.user.email
+      totpCode.value = ''
     }
   },
   { immediate: true },
@@ -165,6 +184,17 @@ const roleItems = computed(() =>
     .map((r) => ({ value: r.name, text: r.name })),
 )
 
+// The TOTP field only makes sense when a platform_* role is actually being
+// newly granted: the server does not ask for step-up verification to keep
+// a role the user already holds, and non platform admins cannot select one.
+const showPlatformRoleTotp = computed(() => {
+  if (!props.canAssignPlatformRoles) return false
+  const currentNames = new Set(props.user?.role_names ?? [])
+  return selectedNames.value.some(
+    (name) => name.startsWith('platform_') && !currentNames.has(name),
+  )
+})
+
 function onSave() {
   if (!props.user || !isEmailValid.value) return
 
@@ -177,6 +207,8 @@ function onSave() {
     ? []
     : props.user.role_names.filter((name) => name.startsWith('platform_'))
 
+  const trimmedTotpCode = totpCode.value.trim()
+
   emit('save', {
     user: props.user,
     profile: {
@@ -185,6 +217,7 @@ function onSave() {
       email: email.value.trim(),
     },
     roleNames: [...new Set([...selectedNames.value, ...preservedPlatformRoles])],
+    totpCode: trimmedTotpCode === '' ? undefined : trimmedTotpCode,
   })
 }
 </script>

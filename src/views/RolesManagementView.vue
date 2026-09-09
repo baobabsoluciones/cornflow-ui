@@ -190,6 +190,7 @@ async function onUserRolesSave(payload: {
   user: UserRow
   profile: UserProfileValue
   roleNames: string[]
+  totpCode?: string
 }) {
   savingUser.value = true
   const profileOk = await updateUserProfile(payload.user, payload.profile)
@@ -200,6 +201,7 @@ async function onUserRolesSave(payload: {
   const rolesOk = await saveUserRoleAssignments(
     payload.user,
     payload.roleNames,
+    payload.totpCode,
   )
   savingUser.value = false
   if (rolesOk) userDialog.value = false

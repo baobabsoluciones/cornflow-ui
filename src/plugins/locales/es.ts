@@ -1169,6 +1169,11 @@ export default {
       '¿Restablecer la autenticación de dos factores de {username}? Tendrá que configurarla de nuevo en su próximo inicio de sesión.',
     mfaReset: 'La autenticación de dos factores se ha restablecido.',
     errorResetMfa: 'Error al restablecer la autenticación de dos factores.',
+    platformRoleTotpLabel: 'Código de autenticación',
+    platformRoleTotpHint:
+      'Para conceder un rol de plataforma se pide el código de tu aplicación de autenticación (o un código de respaldo). Solo es necesario si tu cuenta tiene la verificación en dos pasos activada.',
+    errorPlatformRoleTotp:
+      'Para conceder un rol de plataforma hace falta un código de autenticación válido.',
     roleCreated: 'Rol creado correctamente.',
     roleUpdated: 'Rol actualizado correctamente.',
     roleDeleted: 'Rol eliminado correctamente.',

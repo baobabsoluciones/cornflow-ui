@@ -1150,6 +1150,11 @@ export default {
       'Reset the two-factor authentication of {username}? They will have to set it up again at their next login.',
     mfaReset: 'The two-factor authentication has been reset.',
     errorResetMfa: 'Error resetting the two-factor authentication.',
+    platformRoleTotpLabel: 'Authentication code',
+    platformRoleTotpHint:
+      'Granting a platform role asks for the code from your authenticator app (or a backup code). Only needed if your account has two-factor authentication enabled.',
+    errorPlatformRoleTotp:
+      'A valid authentication code is required to grant a platform role.',
     roleCreated: 'Role created successfully.',
     roleUpdated: 'Role updated successfully.',
     roleDeleted: 'Role deleted successfully.',

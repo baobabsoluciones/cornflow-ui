@@ -258,8 +258,39 @@ describe('RolesManagementView', () => {
       }
       await wrapper.vm.onUserRolesSave({ user, profile, roleNames: ['admin'] })
       expect(rm.updateUserProfile).toHaveBeenCalledWith(user, profile)
-      expect(rm.saveUserRoleAssignments).toHaveBeenCalledWith(user, ['admin'])
+      expect(rm.saveUserRoleAssignments).toHaveBeenCalledWith(user, ['admin'], undefined)
       expect(wrapper.vm.userDialog).toBe(false)
+    })
+
+    test('onUserRolesSave forwards the totpCode from the dialog payload', async () => {
+      wrapper = createWrapper()
+      wrapper.vm.userDialog = true
+      const user = { id: 9, username: 'k' }
+      const profile = {
+        first_name: 'Kate',
+        last_name: 'Smith',
+        email: 'k@example.com',
+      }
+      await wrapper.vm.onUserRolesSave({
+        user,
+        profile,
+        roleNames: ['platform_admin'],
+        totpCode: '123456',
+      })
+      expect(rm.saveUserRoleAssignments).toHaveBeenCalledWith(user, ['platform_admin'], '123456')
+    })
+
+    test('onUserRolesSave forwards an undefined totpCode when the dialog omits it', async () => {
+      wrapper = createWrapper()
+      wrapper.vm.userDialog = true
+      const user = { id: 9, username: 'k' }
+      const profile = {
+        first_name: 'Kate',
+        last_name: 'Smith',
+        email: 'k@example.com',
+      }
+      await wrapper.vm.onUserRolesSave({ user, profile, roleNames: ['admin'] })
+      expect(rm.saveUserRoleAssignments).toHaveBeenCalledWith(user, ['admin'], undefined)
     })
 
     test('onUserRolesSave keeps dialog open when profile save fails', async () => {

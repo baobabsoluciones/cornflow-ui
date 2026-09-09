@@ -111,13 +111,35 @@ export default class RoleRepository {
     })
   }
 
-  assignRoleToUser(userId: number, roleId: number): Promise<UserRoleAssignment> {
+  /**
+   * Platform roles (platform_viewer/planner/admin) require a step-up TOTP
+   * code when the acting admin has MFA enabled; the server rejects the
+   * grant with a 400 "two-factor" error when it is missing or invalid. Non
+   * platform roles ignore the field, so it is only sent when provided.
+   */
+  assignRoleToUser(
+    userId: number,
+    roleId: number,
+    totpCode?: string,
+  ): Promise<UserRoleAssignment> {
     return new Promise((resolve, reject) => {
+      const body: Record<string, unknown> = {
+        user_id: userId,
+        role_id: roleId,
+      }
+      if (totpCode) {
+        body.totp_code = totpCode
+      }
       client
-        .post('/user/role/', { user_id: userId, role_id: roleId })
+        .post('/user/role/', body)
         .then((response) => {
           if (response.status === 200 || response.status === 201) {
             resolve(response.content as UserRoleAssignment)
+          } else if (
+            response.status === 400 &&
+            /two-factor/i.test(response.content?.error ?? '')
+          ) {
+            reject(new Error('totp_required'))
           } else {
             reject(new Error('Error assigning role to user'))
           }

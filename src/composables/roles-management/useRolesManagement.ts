@@ -212,10 +212,15 @@ export function useRolesManagement() {
    * Diffs the user's current role IDs against the new role names and issues
    * one assign / unassign per change. Mutates the user row in place on
    * success so the table reflects the new state without a full refetch.
+   *
+   * The TOTP code is only forwarded for newly granted platform_* roles: the
+   * server requires step-up verification to grant a platform role, and
+   * ignores the field for every other role.
    */
   async function saveUserRoleAssignments(
     user: UserRow,
     newNames: string[],
+    totpCode?: string,
   ): Promise<boolean> {
     const oldIds = new Set(user._role_ids)
     const newIds = new Set(
@@ -232,16 +237,36 @@ export function useRolesManagement() {
         ...toRemove.map((id) =>
           store.roleRepository.removeRoleFromUser(user.id, id),
         ),
-        ...toAdd.map((id) =>
-          store.roleRepository.assignRoleToUser(user.id, id),
-        ),
+        ...toAdd.map((id) => {
+          const roleName = roles.value.find((r) => r.id === id)?.name
+          // Only forward a (possibly empty) totp argument when the caller
+          // actually supplied one; otherwise call with the original arity
+          // so non platform-role callers keep behaving exactly as before.
+          if (totpCode === undefined) {
+            return store.roleRepository.assignRoleToUser(user.id, id)
+          }
+          const codeForRole = roleName?.startsWith('platform_')
+            ? totpCode
+            : undefined
+          return store.roleRepository.assignRoleToUser(
+            user.id,
+            id,
+            codeForRole,
+          )
+        }),
       ])
       user._role_ids = [...newIds]
       user.role_names = [...newNames]
       showSnackbar?.(t('rolesManagement.roleAssigned'), 'success')
       return true
-    } catch {
-      showSnackbar?.(t('rolesManagement.errorAssignRole'), 'error')
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Error assigning role to user'
+      if (message === 'totp_required') {
+        showSnackbar?.(t('rolesManagement.errorPlatformRoleTotp'), 'error')
+      } else {
+        showSnackbar?.(t('rolesManagement.errorAssignRole'), 'error')
+      }
       return false
     }
   }
