@@ -92,6 +92,61 @@ describe('RoleRepository - user/role assignments', () => {
     await expect(repo.assignRoleToUser(1, 2)).rejects.toThrow('Error assigning role to user')
   })
 
+  test('assignRoleToUser omits totp_code from the body when not provided', async () => {
+    mockClient.post.mockResolvedValueOnce({ status: 200, content: { id: 5 } })
+    await repo.assignRoleToUser(1, 901)
+    expect(mockClient.post).toHaveBeenCalledWith('/user/role/', { user_id: 1, role_id: 901 })
+    const body = mockClient.post.mock.calls[0][1]
+    expect(body).not.toHaveProperty('totp_code')
+  })
+
+  test('assignRoleToUser omits totp_code from the body when it is an empty string', async () => {
+    mockClient.post.mockResolvedValueOnce({ status: 200, content: { id: 5 } })
+    await repo.assignRoleToUser(1, 901, '')
+    expect(mockClient.post).toHaveBeenCalledWith('/user/role/', { user_id: 1, role_id: 901 })
+    const body = mockClient.post.mock.calls[0][1]
+    expect(body).not.toHaveProperty('totp_code')
+  })
+
+  test('assignRoleToUser includes totp_code in the body when provided', async () => {
+    mockClient.post.mockResolvedValueOnce({ status: 200, content: { id: 5 } })
+    await repo.assignRoleToUser(1, 901, '123456')
+    expect(mockClient.post).toHaveBeenCalledWith('/user/role/', {
+      user_id: 1,
+      role_id: 901,
+      totp_code: '123456',
+    })
+  })
+
+  test('assignRoleToUser rejects with totp_required on a 400 two-factor error', async () => {
+    mockClient.post.mockResolvedValueOnce({
+      status: 400,
+      content: { error: 'A valid two-factor authentication code is required to grant a platform role' },
+    })
+    await expect(repo.assignRoleToUser(1, 901)).rejects.toThrow('totp_required')
+  })
+
+  test('assignRoleToUser recognizes the two-factor error case-insensitively', async () => {
+    mockClient.post.mockResolvedValueOnce({
+      status: 400,
+      content: { error: 'Two-Factor authentication required' },
+    })
+    await expect(repo.assignRoleToUser(1, 901)).rejects.toThrow('totp_required')
+  })
+
+  test('assignRoleToUser keeps the generic error for other 400 failures', async () => {
+    mockClient.post.mockResolvedValueOnce({
+      status: 400,
+      content: { error: 'Some unrelated validation error' },
+    })
+    await expect(repo.assignRoleToUser(1, 2)).rejects.toThrow('Error assigning role to user')
+  })
+
+  test('assignRoleToUser keeps the generic error for a 400 with no content', async () => {
+    mockClient.post.mockResolvedValueOnce({ status: 400, content: null })
+    await expect(repo.assignRoleToUser(1, 2)).rejects.toThrow('Error assigning role to user')
+  })
+
   test('removeRoleFromUser returns boolean by status', async () => {
     mockClient.remove.mockResolvedValueOnce({ status: 200 })
     await expect(repo.removeRoleFromUser(1, 2)).resolves.toBe(true)

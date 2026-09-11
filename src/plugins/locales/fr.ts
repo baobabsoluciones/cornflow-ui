@@ -877,6 +877,11 @@ export default {
     mfaReset: "L'authentification à deux facteurs a été réinitialisée.",
     errorResetMfa:
       "Erreur lors de la réinitialisation de l'authentification à deux facteurs.",
+    platformRoleTotpLabel: "Code d'authentification",
+    platformRoleTotpHint:
+      "L'attribution d'un rôle de plateforme demande le code de votre application d'authentification (ou un code de secours). Nécessaire uniquement si votre compte a la vérification en deux étapes activée.",
+    errorPlatformRoleTotp:
+      "Un code d'authentification valide est requis pour attribuer un rôle de plateforme.",
     roleCreated: 'Rôle créé avec succès.',
     roleUpdated: 'Rôle mis à jour avec succès.',
     roleDeleted: 'Rôle supprimé avec succès.',

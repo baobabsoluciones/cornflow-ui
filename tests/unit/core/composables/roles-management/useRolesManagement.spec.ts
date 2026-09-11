@@ -195,6 +195,70 @@ describe('useRolesManagement - saveUserRoleAssignments', () => {
     expect(await rm.saveUserRoleAssignments(user, ['viewer'])).toBe(false)
     expect(snackbar).toHaveBeenCalledWith('rolesManagement.errorAssignRole', 'error')
   })
+
+  test('passes totpCode only for newly added platform_* roles', async () => {
+    repo.assignRoleToUser.mockResolvedValue({})
+    const rm = useRolesManagement()
+    rm.roles.value = [
+      { id: 2, name: 'editor' },
+      { id: 5, name: 'platform_admin' },
+    ] as any
+    const user: any = { id: 7, _role_ids: [], role_names: [] }
+
+    await rm.saveUserRoleAssignments(user, ['editor', 'platform_admin'], '123456')
+
+    expect(repo.assignRoleToUser).toHaveBeenCalledWith(7, 2, undefined)
+    expect(repo.assignRoleToUser).toHaveBeenCalledWith(7, 5, '123456')
+  })
+
+  test('does not pass totpCode when no platform_* role is being added', async () => {
+    repo.assignRoleToUser.mockResolvedValue({})
+    const rm = useRolesManagement()
+    rm.roles.value = [{ id: 2, name: 'editor' }] as any
+    const user: any = { id: 7, _role_ids: [], role_names: [] }
+
+    await rm.saveUserRoleAssignments(user, ['editor'], '123456')
+
+    expect(repo.assignRoleToUser).toHaveBeenCalledWith(7, 2, undefined)
+  })
+
+  test('does not pass totpCode for a platform_* role the user already has', async () => {
+    repo.assignRoleToUser.mockResolvedValue({})
+    const rm = useRolesManagement()
+    rm.roles.value = [
+      { id: 2, name: 'editor' },
+      { id: 5, name: 'platform_admin' },
+    ] as any
+    const user: any = { id: 7, _role_ids: [5], role_names: ['platform_admin'] }
+
+    // platform_admin is kept, only editor is newly added
+    await rm.saveUserRoleAssignments(user, ['editor', 'platform_admin'], '123456')
+
+    expect(repo.assignRoleToUser).toHaveBeenCalledWith(7, 2, undefined)
+    expect(repo.assignRoleToUser).not.toHaveBeenCalledWith(7, 5, expect.anything())
+  })
+
+  test('shows a dedicated snackbar and returns false when a totp code is required', async () => {
+    repo.assignRoleToUser.mockRejectedValueOnce(new Error('totp_required'))
+    const rm = useRolesManagement()
+    rm.roles.value = [{ id: 5, name: 'platform_admin' }] as any
+    const user: any = { id: 7, _role_ids: [], role_names: [] }
+
+    expect(await rm.saveUserRoleAssignments(user, ['platform_admin'])).toBe(false)
+    expect(snackbar).toHaveBeenCalledWith('rolesManagement.errorPlatformRoleTotp', 'error')
+    expect(snackbar).not.toHaveBeenCalledWith('rolesManagement.errorAssignRole', 'error')
+  })
+
+  test('keeps the generic error snackbar for non-totp failures', async () => {
+    repo.assignRoleToUser.mockRejectedValueOnce(new Error('boom'))
+    const rm = useRolesManagement()
+    rm.roles.value = [{ id: 5, name: 'platform_admin' }] as any
+    const user: any = { id: 7, _role_ids: [], role_names: [] }
+
+    expect(await rm.saveUserRoleAssignments(user, ['platform_admin'])).toBe(false)
+    expect(snackbar).toHaveBeenCalledWith('rolesManagement.errorAssignRole', 'error')
+    expect(snackbar).not.toHaveBeenCalledWith('rolesManagement.errorPlatformRoleTotp', 'error')
+  })
 })
 
 describe('useRolesManagement - unlockUser', () => {

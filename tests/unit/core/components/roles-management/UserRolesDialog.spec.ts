@@ -68,9 +68,10 @@ describe('UserRolesDialog', () => {
           'v-icon': { template: '<i><slot /></i>' },
           'v-text-field': {
             template:
-              '<input class="v-text-field" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
-            props: ['modelValue', 'label', 'type', 'rules'],
+              '<input class="v-text-field" :data-test="$attrs[\'data-test\']" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+            props: ['modelValue', 'label', 'hint', 'type', 'rules'],
             emits: ['update:modelValue'],
+            inheritAttrs: false,
           },
           'v-select': {
             template: '<div class="v-select" :data-items="JSON.stringify(items)"></div>',
@@ -250,6 +251,106 @@ describe('UserRolesDialog', () => {
 
       const saved = wrapper.emitted('save')![0][0] as { roleNames: string[] }
       expect(saved.roleNames).toEqual(['admin'])
+    })
+  })
+
+  describe('platform role TOTP field', () => {
+    const allRoles = [
+      { id: 1, name: 'admin' },
+      { id: 2, name: 'viewer' },
+      { id: 5, name: 'platform_admin' },
+      { id: 6, name: 'platform_viewer' },
+    ]
+
+    test('is hidden when canAssignPlatformRoles is false, even when selecting a platform role', async () => {
+      wrapper = createWrapper({ roles: allRoles, canAssignPlatformRoles: false })
+      await nextTick()
+      wrapper.vm.selectedNames = ['admin', 'platform_admin']
+      await nextTick()
+      expect(wrapper.find('[data-test="platform-role-totp"]').exists()).toBe(false)
+    })
+
+    test('is hidden when canAssignPlatformRoles is true but no platform role is selected', async () => {
+      wrapper = createWrapper({ roles: allRoles, canAssignPlatformRoles: true })
+      await nextTick()
+      wrapper.vm.selectedNames = ['admin']
+      await nextTick()
+      expect(wrapper.find('[data-test="platform-role-totp"]').exists()).toBe(false)
+    })
+
+    test('is hidden when the selected platform role is one the user already has', async () => {
+      wrapper = createWrapper({
+        roles: allRoles,
+        canAssignPlatformRoles: true,
+        user: user({ role_names: ['admin', 'platform_admin'], _role_ids: [1, 5] }),
+      })
+      await nextTick()
+      // no new platform_* role is being granted, platform_admin was already held
+      expect(wrapper.find('[data-test="platform-role-totp"]').exists()).toBe(false)
+    })
+
+    test('is shown when canAssignPlatformRoles is true and a new platform role is selected', async () => {
+      wrapper = createWrapper({ roles: allRoles, canAssignPlatformRoles: true })
+      await nextTick()
+      wrapper.vm.selectedNames = ['admin', 'platform_admin']
+      await nextTick()
+      expect(wrapper.find('[data-test="platform-role-totp"]').exists()).toBe(true)
+    })
+
+    test('is not required to save: the save button stays enabled while empty', async () => {
+      wrapper = createWrapper({ roles: allRoles, canAssignPlatformRoles: true })
+      await nextTick()
+      wrapper.vm.selectedNames = ['admin', 'platform_admin']
+      await nextTick()
+      const saveBtn = wrapper.findAll('.core-button').find((b) => b.attributes('data-text') === 'rolesManagement.save')
+      expect(saveBtn!.attributes('disabled')).toBeUndefined()
+    })
+
+    test('is cleared when the dialog is reopened', async () => {
+      wrapper = createWrapper({
+        roles: allRoles,
+        canAssignPlatformRoles: true,
+        modelValue: true,
+        user: user({ id: 1, role_names: ['admin'] }),
+      })
+      await nextTick()
+      wrapper.vm.selectedNames = ['admin', 'platform_admin']
+      await nextTick()
+      const totpField = wrapper.find('[data-test="platform-role-totp"]')
+      await totpField.setValue('654321')
+      expect(wrapper.vm.totpCode).toBe('654321')
+
+      await wrapper.setProps({
+        modelValue: false,
+      })
+      await wrapper.setProps({
+        modelValue: true,
+        user: user({ id: 2, role_names: ['viewer'] }),
+      })
+      await nextTick()
+
+      expect(wrapper.vm.totpCode).toBe('')
+    })
+
+    test('includes the trimmed totpCode in the save payload', async () => {
+      wrapper = createWrapper({ roles: allRoles, canAssignPlatformRoles: true })
+      await nextTick()
+      wrapper.vm.selectedNames = ['admin', 'platform_admin']
+      wrapper.vm.totpCode = '  123456  '
+      wrapper.vm.onSave()
+
+      const payload = wrapper.emitted('save')![0][0] as any
+      expect(payload.totpCode).toBe('123456')
+    })
+
+    test('includes an undefined totpCode in the save payload when left empty', async () => {
+      wrapper = createWrapper({ roles: allRoles, canAssignPlatformRoles: true })
+      await nextTick()
+      wrapper.vm.selectedNames = ['admin']
+      wrapper.vm.onSave()
+
+      const payload = wrapper.emitted('save')![0][0] as any
+      expect(payload.totpCode).toBeUndefined()
     })
   })
 })
