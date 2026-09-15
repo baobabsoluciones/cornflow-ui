@@ -14,7 +14,7 @@ describe('plugins/webfontloader', () => {
   })
 
   test('should load Google Roboto fonts', async () => {
-    const { loadFonts } = await import('@/plugins/webfontloader')
+    const { loadFonts } = await import('@cornflow-ui/core/plugins/webfontloader')
     await loadFonts()
 
     expect(mockWebFontLoader.load).toHaveBeenCalledTimes(1)
@@ -26,7 +26,7 @@ describe('plugins/webfontloader', () => {
   })
 
   test('should be an async function', async () => {
-    const { loadFonts } = await import('@/plugins/webfontloader')
+    const { loadFonts } = await import('@cornflow-ui/core/plugins/webfontloader')
     expect(loadFonts).toBeInstanceOf(Function)
     
     const result = loadFonts()
@@ -35,7 +35,7 @@ describe('plugins/webfontloader', () => {
   })
 
   test('should use correct font configuration', async () => {
-    const { loadFonts } = await import('@/plugins/webfontloader')
+    const { loadFonts } = await import('@cornflow-ui/core/plugins/webfontloader')
     await loadFonts()
 
     const loadCall = mockWebFontLoader.load.mock.calls[0][0]
@@ -44,7 +44,7 @@ describe('plugins/webfontloader', () => {
   })
 
   test('should only load Google fonts', async () => {
-    const { loadFonts } = await import('@/plugins/webfontloader')
+    const { loadFonts } = await import('@cornflow-ui/core/plugins/webfontloader')
     await loadFonts()
 
     const loadCall = mockWebFontLoader.load.mock.calls[0][0]
@@ -52,7 +52,7 @@ describe('plugins/webfontloader', () => {
   })
 
   test('should include all Roboto font weights', async () => {
-    const { loadFonts } = await import('@/plugins/webfontloader')
+    const { loadFonts } = await import('@cornflow-ui/core/plugins/webfontloader')
     await loadFonts()
 
     const loadCall = mockWebFontLoader.load.mock.calls[0][0]
@@ -72,7 +72,7 @@ describe('plugins/webfontloader', () => {
       throw new Error('Font loading failed')
     })
 
-    const { loadFonts } = await import('@/plugins/webfontloader')
+    const { loadFonts } = await import('@cornflow-ui/core/plugins/webfontloader')
     await expect(loadFonts()).rejects.toThrow('Font loading failed')
   })
 })

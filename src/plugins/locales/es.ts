@@ -1,11 +1,55 @@
 export default {
+  $vuetify: {
+    dataFooter: {
+      itemsPerPageText: 'Elementos por página:',
+      itemsPerPageAll: 'Todos',
+      pageText: '{0}-{1} de {2}',
+      nextPage: 'Página siguiente',
+      prevPage: 'Página anterior',
+      firstPage: 'Primera página',
+      lastPage: 'Última página',
+    },
+    dataTable: {
+      itemsPerPageText: 'Elementos por página:',
+      ariaLabel: {
+        sortDescending: 'Orden descendente.',
+        sortAscending: 'Orden ascendente.',
+        sortNone: 'Sin ordenar.',
+        activateAscending: 'Activar para ordenar ascendente.',
+        activateDescending: 'Activar para ordenar descendente.',
+      },
+      sortBy: 'Ordenar por',
+    },
+    pagination: {
+      ariaLabel: {
+        root: 'Navegación de paginación',
+        currentPage: 'Página {0}, página actual',
+        page: 'Ir a la página {0}',
+        next: 'Página siguiente',
+        previous: 'Página anterior',
+        first: 'Primera página',
+        last: 'Última página',
+      },
+    },
+    noDataText: 'No hay datos disponibles',
+    loading: 'Cargando...',
+  },
+  DecisionOps: 'DecisionOps',
+  baobab: 'baobab',
+  general: {
+    loading: 'Cargando...',
+  },
   projectExecution: {
     title: 'Ejecución',
     description:
       'Crea una nueva ejecución o carga una existente para visualizar la solución que estás buscando. Para hacerlo, sigue los pasos a continuación:',
     continueButton: 'Continuar',
     previousButton: 'Anterior',
+    maximize: 'Maximizar',
+    minimize: 'Minimizar',
     create: 'Añadir nuevo',
+    downloadExcel: 'Descargar datos',
+    uploadExcel: 'Sobreescribir datos',
     snackbar: {
       instanceDataChecksSuccess: 'Verificación de datos finalizado con éxito',
       instanceDataChecksError:
@@ -21,12 +65,18 @@ export default {
       errorDelete: 'Ocurrió un error al eliminar la ejecución',
       successLoad: 'Ejecución cargada con éxito',
       errorLoad: 'Ocurrió un error al cargar la ejecución',
+      autoLoadError:
+        'Ocurrió un error inesperado al recuperar la información de la ejecución',
+    },
+    exitConfirmation: {
+      title: 'Salir del proceso de creación',
+      message:
+        '¿Seguro que quieres salir del proceso de creación de la ejecución?\nSi sales ahora, se reiniciará el flujo y se perderá todo el progreso realizado.',
+      confirmButton: 'Sí, salir',
+      cancelButton: 'Cancelar',
     },
     steps: {
       step1: {
-        title: 'Nueva ejecución',
-        description: 'Crear una nueva ejecución',
-        titleContent: 'Elige una',
         firstOption: {
           title: 'Crear una nueva ejecución',
           description:
@@ -38,17 +88,7 @@ export default {
             'Busca por fecha una ejecución existente y cárgala para verla.',
         },
       },
-      step2Search: {
-        title: 'Seleccionar fechas',
-        description: 'Selecciona las fechas para buscar una ejecución',
-        titleContent: 'Selecciona las fechas',
-        subtitleContent:
-          'Elige una fecha de inicio y una fecha de fin para buscar ejecuciones dentro del intervalo entre ellas',
-        startDate: 'Fecha de inicio',
-        endDate: 'Fecha de fin',
-        search: 'Buscar',
-      },
-      step2: {
+      nameDescription: {
         title: 'Nombre y descripción',
         description: 'Nombra y describe la ejecución',
         titleContent: 'Completa la siguiente información',
@@ -59,67 +99,203 @@ export default {
         namePlaceholder: 'Por favor, inserta un nombre',
         descriptionPlaceholder: 'Por favor, inserta una descripción',
       },
-      step3: {
+      loadInstance: {
         title: 'Cargar instancia',
         description: 'Carga un archivo con los datos de la instancia',
         titleContent: 'Cargar instancia',
         subtitleContent:
           'Selecciona uno o varios archivos para cargar los datos de la instancia. Cuando finalices la carga, pulsa el botón de abajo para cargar los datos de la instancia. Si se seleccionan varios archivos, los datos se combinarán en una sola instancia.',
         loadInstance: {
-          dragAndDropDescription: 'Arrastra y suelta tu archivo / archivos de instancia aquí',
+          dragAndDropDescription:
+            'Arrastra y suelta tu archivo / archivos de instancia aquí',
           uploadFile: 'Subir archivo',
           noSchemaError:
             'No se encontró ningún esquema: ¿estás conectado al servidor?',
           instanceSchemaError: 'La instancia no cumple con el esquema',
           instanceLoaded: 'Instancia cargada con éxito',
-          instancesLoaded: 'Archivos combinados para crear la instancia y cargados con éxito',
+          instancesLoaded:
+            'Archivos combinados para crear la instancia y cargados con éxito',
+          warningTitle: 'Advertencia',
           loadInstance: 'Cargar instancia',
           selectedFiles: 'Archivos seleccionados',
-          invalidFileFormat: 'Formato de archivo no válido. Por favor, inténtalo de nuevo.',
-          unexpectedError: 'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.',
+          invalidFileFormat:
+            'Formato de archivo no válido. Por favor, inténtalo de nuevo.',
+          unexpectedError:
+            'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.',
           instanceLoadedWithErrors: 'Instancia cargada con errores',
-          noValidInstancesError: 'No se encontraron instancias válidas en los archivos cargados',
-          downloadExcel: 'Descargar Excel',
+          noValidInstancesError:
+            'No se encontraron instancias válidas en los archivos cargados',
+          downloadExcel: 'Descargar excel',
+          downloadAllErrors: 'Descargar todos los errores',
+          showingErrorsTruncated:
+            'Mostrando los primeros {displayed} de {total} errores. Descarga la lista completa de errores para ver todos los errores.',
+          totalErrors: 'Hay {total} errores',
+          andMoreErrors: 'y {count} más',
+          errorsDownloadStarted: 'Descarga del archivo de errores iniciada',
+          errorsDownloadError: 'Error al descargar el archivo de errores',
+          noFilesSelectedError: 'Selecciona al menos un archivo',
+          optionalOrDivider: 'o',
+          loadFromDb: 'Obtener todos los datos de base de datos',
+          loadParameters: 'Cargar parámetros',
+          alternativeParametersHint:
+            'Introduce los siguientes parámetros y cárgalos como datos de instancia',
+          noParametersDataError: 'No hay datos de parámetros para enviar',
+          noParametersSheetsError:
+            'No se pudo generar el archivo a partir de los parámetros (revisa los nombres de tabla en la configuración)',
         },
       },
-      step4: {
+      reviewInstance: {
+        title: 'Revisar instancia',
+        description: 'Revisa y edita los datos de la instancia',
+        titleContent: 'Revisar instancia',
+        subtitleContent:
+          'Revisa los datos de la instancia cargada y editalos si es necesario. Estos cambios no se van a guardar en el sistema hasta que no confirmes en el último paso.',
+      },
+      checkData: {
         title: 'Verificar datos',
-        description: 'Revisa y verifica los datos de la instancia',
+        description: 'Verifica la consistencia de los datos',
         titleContent: 'Verificar datos',
         subtitleContent:
-          'Revisa los datos de la instancia cargada y editalos si es necesario. Opcionalmente, puedes comprobar si los datos tienen inconsistencias. Ten en cuenta que si no compruebas y corriges los datos si es necesario, es posible que la ejecución no pueda encontrar una solución',
+          'Opcionalmente, puedes comprobar si los datos de la instancia tienen inconsistencias. Ten en cuenta que si no compruebas y corriges los datos si es necesario, es posible que la ejecución no pueda encontrar una solución',
         check: 'Verificar datos',
       },
-      step5: {
+      selectSolver: {
         title: 'Seleccionar solver',
         description: 'Selecciona el solver a usar para la ejecución',
         titleContent: 'Selecciona un solver',
         subtitleContent:
           'El solver que selecciones será el algoritmo utilizado para encontrar la solución',
       },
-      step6: {
+      configParams: {
         title: 'Parámetros de ejecución',
         description: 'Configura los parámetros de ejecución',
         titleContent: 'Configurar parámetros de ejecución',
-        subtitleContent: 'Establece los parámetros que controlarán el comportamiento de la ejecución. Estos parámetros se pueden configurar según tus necesidades.',
+        subtitleContent:
+          'Establece los parámetros que controlarán el comportamiento de la ejecución. Estos parámetros se pueden configurar según tus necesidades.',
         timeLimitPlaceholder: 'Por favor, inserta un límite de tiempo',
         time: 'Límite de tiempo',
         secondsSuffix: 'seg',
       },
-      step7: {
+      solve: {
         title: 'Confirmar',
         description: 'Confirma los datos de la ejecución e inicia la ejecución',
         titleContent: 'Confirmación de la resolución de la ejecución',
         subtitleContent:
           'Si eliges resolver la ejecución, el modelo se iniciará automáticamente y tardará el tiempo estimado en finalizar. Puedes acceder a su estado abriendo la pestaña con el nombre asignado en la barra horizontal inferior.',
         resolve: 'Resolver',
-        review: 'Revisar',
         successMessage:
           'La ejecución se ha lanzado con éxito. Se ha abierto una nueva pestaña en la barra inferior. Puedes hacer clic en esta pestaña para abrirla.',
-        errorMessage:
-          'Ha ocurrido un error al crear la ejecución. Por favor inténtelo de nuevo.',
         loadNewExecution: 'Cargar nueva ejecución',
+        developerMode: {
+          title: 'Modo desarrollador',
+          normalSolve: 'Resolver normalmente',
+          uploadSolution: 'Subir solución',
+          dragAndDropDescription:
+            'Arrastra y suelta un archivo de solución o haz clic para buscar',
+          uploadFile: 'Subir archivo de solución',
+          invalidFileFormat:
+            'Formato de archivo no válido. Por favor, sube un archivo JSON, XLSX o CSV.',
+          solutionSchemaError:
+            'El archivo de solución no coincide con el esquema requerido',
+          unsupportedFileFormat: 'Formato de archivo no soportado',
+          fileReadError: 'Error al leer el archivo',
+          noSolutionData: 'Por favor, sube un archivo de solución primero',
+          uploadError: 'Error al subir los datos de la solución',
+        },
       },
+      // Legacy step keys for backward compatibility
+      step2: {
+        nameTitleField: 'Nombre',
+        descriptionTitleField: 'Descripción',
+        namePlaceholder: 'Por favor, inserta un nombre',
+        descriptionPlaceholder: 'Por favor, inserta una descripción',
+      },
+      step3: {
+        loadInstance: {
+          dragAndDropDescription:
+            'Arrastra y suelta tu archivo / archivos de instancia aquí',
+          uploadFile: 'Subir archivo',
+          noSchemaError:
+            'No se encontró ningún esquema: ¿estás conectado al servidor?',
+          instanceSchemaError: 'La instancia no cumple con el esquema',
+          instanceLoaded: 'Instancia cargada con éxito',
+          instancesLoaded:
+            'Archivos combinados para crear la instancia y cargados con éxito',
+          warningTitle: 'Advertencia',
+          loadInstance: 'Cargar instancia',
+          selectedFiles: 'Archivos seleccionados',
+          invalidFileFormat:
+            'Formato de archivo no válido. Por favor, inténtalo de nuevo.',
+          unexpectedError:
+            'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.',
+          instanceLoadedWithErrors: 'Instancia cargada con errores',
+          noValidInstancesError:
+            'No se encontraron instancias válidas en los archivos cargados',
+          downloadExcel: 'Descargar excel',
+          downloadAllErrors: 'Descargar todos los errores',
+          showingErrorsTruncated:
+            'Mostrando los primeros {displayed} de {total} errores. Descarga la lista completa de errores para ver todos los errores.',
+          totalErrors: 'Hay {total} errores',
+          andMoreErrors: 'y {count} más',
+          errorsDownloadStarted: 'Descarga del archivo de errores iniciada',
+          errorsDownloadError: 'Error al descargar el archivo de errores',
+          noFilesSelectedError: 'Selecciona al menos un archivo',
+          optionalOrDivider: 'o',
+          loadFromDb: 'Obtener todos los datos de base de datos',
+          loadParameters: 'Cargar parámetros',
+          alternativeParametersHint:
+            'Introduce los siguientes parámetros y cárgalos como datos de instancia',
+          noParametersDataError: 'No hay datos de parámetros para enviar',
+          noParametersSheetsError:
+            'No se pudo generar el archivo a partir de los parámetros (revisa los nombres de tabla en la configuración)',
+        },
+      },
+      step4: {
+        titleContent: 'Revisar instancia',
+      },
+      step5: {
+        title: 'Verificar datos',
+        check: 'Verificar datos',
+      },
+      step7: {
+        timeLimitPlaceholder: 'Por favor, inserta un límite de tiempo',
+        time: 'Límite de tiempo',
+        secondsSuffix: 'seg',
+      },
+      step8: {
+        resolve: 'Resolver',
+        successMessage:
+          'La ejecución se ha lanzado con éxito. Se ha abierto una nueva pestaña en la barra inferior. Puedes hacer clic en esta pestaña para abrirla.',
+        loadNewExecution: 'Cargar nueva ejecución',
+        developerMode: {
+          title: 'Developer Mode',
+          normalSolve: 'Solve normally',
+          uploadSolution: 'Upload solution',
+          dragAndDropDescription:
+            'Drag and drop a solution file or click to browse',
+          uploadFile: 'Upload solution file',
+          invalidFileFormat:
+            'Invalid file format. Please upload a JSON, XLSX, or CSV file.',
+          solutionSchemaError:
+            'Solution file does not match the required schema',
+          unsupportedFileFormat: 'Unsupported file format',
+          fileReadError: 'Error reading file',
+          noSolutionData: 'Please upload a solution file first',
+          uploadError: 'Error uploading solution data',
+        },
+      },
+    },
+    downloadExcelMessages: {
+      success: 'Excel descargado con éxito',
+      error: 'Error al descargar el Excel',
+      noDataError: 'No hay datos para descargar',
+    },
+    uploadExcelMessages: {
+      success: 'Excel cargado con éxito',
+      error: 'Error al cargar el Excel',
+      validationFailed:
+        'El archivo Excel no cumple con el esquema de la instancia y no se puede reemplazar',
+      validationErrorTitle: 'Errores de validación',
     },
     infoCard: {
       createNewExecution: 'Crear nueva ejecución',
@@ -134,8 +310,12 @@ export default {
       noSolutionMessage:
         'La ejecución se ha creado correctamente, pero no se ha encontrado ninguna solución',
     },
-     stagingWarning: 
-      'Estás en un entorno de pruebas, destinado solamente a desarrollo y testeo. Para ejecuciones reales, por favor utiliza el entorno de producción.'
+    stagingWarning:
+      'Estás en un entorno de pruebas, destinado solamente a desarrollo y testeo. Para ejecuciones reales, por favor utiliza el entorno de producción.',
+    checks: {
+      blockingErrorsFound:
+        'Se han encontrado errores en la verificación de datos. Corrígelos antes de continuar.',
+    },
   },
   executionTable: {
     date: 'Hora',
@@ -172,7 +352,8 @@ export default {
     nodeLimit: 'Límite de nodos',
     nodeLimitTooltip: 'La ejecución ha alcanzado el límite de nodos',
     notRunByUser: 'No ejecutado por el usuario',
-    notRunByUserTooltip: 'La ejecución no fue ejecutada por elección del usuario',
+    notRunByUserTooltip:
+      'La ejecución no fue ejecutada por elección del usuario',
     licensingProblem: 'Problema de licencia',
     licensingProblemTooltip:
       'La ejecución ha encontrado un problema de licencia. Por favor, contacta con el administrador',
@@ -192,6 +373,7 @@ export default {
     loading: 'Cargando',
     loadExecution: 'Cargar ejecución',
     deleteExecution: 'Eliminar ejecución',
+    replanning: 'Replanificación',
   },
   logIn: {
     subtitle: '¡Inicia sesión para empezar!',
@@ -205,16 +387,23 @@ export default {
     question: '¿Nuevo en Cornflow?',
     alternative: 'Registrarse',
     snackbar_message_success: 'Inicio de sesión exitoso',
-    snackbar_message_error: 'Credenciales incorrectas',
+    snackbar_message_error_server: 'Error del servidor',
+    snackbar_message_error_auth: 'Credenciales incorrectas',
     processing_auth: 'Procesando autenticación...',
-    redirecting: 'Redirigiendo a la autenticación externa... Si la redirección no ocurre automáticamente, por favor contacte con el servicio técnico para obtener ayuda.',
-    session_expired: 'Tu sesión ha expirado. Por favor, inicia sesión de nuevo.',
+    redirecting:
+      'Redirigiendo a la autenticación externa... Si la redirección no ocurre automáticamente, por favor contacte con el servicio técnico para obtener ayuda.',
+    session_expired:
+      'Tu sesión ha expirado. Por favor, inicia sesión de nuevo.',
     or_divider: 'O',
-    form_login_disabled: 'El inicio de sesión con usuario y contraseña no está disponible con este método de autenticación. Por favor, use los botones de inicio de sesión social.',
+    form_login_disabled:
+      'El inicio de sesión con usuario y contraseña no está disponible con este método de autenticación. Por favor, use los botones de inicio de sesión social.',
     google_not_configured: 'La autenticación con Google no está configurada',
-    google_not_available: 'El servicio de autenticación con Google no está disponible',
-    microsoft_not_configured: 'La autenticación con Microsoft no está configurada',
-    microsoft_not_available: 'El servicio de autenticación con Microsoft no está disponible',
+    google_not_available:
+      'El servicio de autenticación con Google no está disponible',
+    microsoft_not_configured:
+      'La autenticación con Microsoft no está configurada',
+    microsoft_not_available:
+      'El servicio de autenticación con Microsoft no está disponible',
   },
   logOut: {
     title: 'Cerrar sesión',
@@ -261,6 +450,9 @@ export default {
     from: 'Desde',
     to: 'Hasta',
     noData: 'No se encontraron datos para el rango de fechas seleccionado',
+    loading: 'Cargando ejecuciones...',
+    createNewExecution: 'Crear nueva ejecución',
+    hideReplanned: 'Mostrar solo ejecuciones del modelo',
   },
   inputOutputData: {
     title: 'Gestión del proyecto',
@@ -273,12 +465,13 @@ export default {
     addItem: 'Agregar nuevo elemento',
     viewDetails: 'Ver detalles',
     hideDetails: 'Ocultar detalles',
+    noDataAvailable: 'No hay datos disponibles',
     dataChecksInstanceMessage:
       'Se han detectado inconsistencias en la verificación de datos, lo que puede dar lugar a soluciones incorrectas o, en algunos casos, a la imposibilidad de encontrar una solución.',
     dataChecksSolutionMessage:
       'Se han detectado inconsistencias en la verificación de datos para la solución.',
     dataChecksPassedMessage:
-      'La verificación de datos ha finalizado correctamente',
+      'La verificación de datos ha finalizado correctamente. No hay inconsistencias en los datos.',
     dataChecksLoadingMessage:
       'La verificación de datos está en curso. Por favor, espere...',
     dataChecksFailedMessage:
@@ -293,11 +486,16 @@ export default {
     deleteButton: 'Eliminar',
     cancelButton: 'Cancelar',
     errorDownloadingExcel: 'Ocurrió un error al descargar el excel',
+    filesRegenerating:
+      'Se están regenerando los archivos de la ejecución. Inténtalo de nuevo en unos momentos.',
+    filesRegenerationTimeout:
+      'La regeneración de los archivos está tardando más de lo esperado. Inténtalo de nuevo más tarde.',
     generating: 'Generando...',
     download: 'Descargar',
     downloadDataChecks: 'Descargar excel',
     generatingDataChecks: 'Generando verificación de datos...',
-    errorDownloadingDataChecks: 'Ocurrió un error al descargar la verificación de datos',
+    errorDownloadingDataChecks:
+      'Ocurrió un error al descargar la verificación de datos',
   },
   settings: {
     currentPassword: 'Contraseña actual',
@@ -335,5 +533,609 @@ export default {
     licences: 'Licencias',
     close: 'Cerrar',
     download: 'Descargar manual de usuario',
+  },
+  navigation: {
+    executions: 'Ejecuciones',
+    masterData: 'Tablas de configuración',
+    inputData: 'Datos de entrada',
+    results: 'Resultados',
+  },
+  sectionView: {
+    editInputData:
+      'Crear nueva ejecución a partir de los datos de entrada actuales',
+    downloadInstance: 'Descargar instancia',
+    downloadSolution: 'Descargar solución',
+    downloadExcel: 'Descargar excel',
+    downloadSuccess: 'Archivo descargado correctamente',
+    downloadError: 'Error al descargar el archivo',
+    downloadNoData: 'No hay datos para descargar',
+    etlMetadataInfo: {
+      fromDbTooltip:
+        'Esta tabla contiene la información disponible en la base de datos en el momento de la ejecución.',
+      notFromDbTooltip:
+        'Esta tabla proviene de un fichero cargado por el usuario.',
+      fromDbValueTooltip:
+        'Este valor contiene la información disponible en la base de datos en el momento de la ejecución.',
+      notFromDbValueTooltip:
+        'Este valor proviene de un fichero cargado por el usuario.',
+    },
+    exitConfirmation: {
+      title: 'Salir con cambios sin guardar',
+      message:
+        'Tienes cambios sin guardar en los datos maestros. Si sales ahora, se perderán. ¿Seguro que quieres salir?',
+      confirmButton: 'Sí, salir',
+      cancelButton: 'Cancelar',
+    },
+    editAllMasterTables: 'Cargar todas las tablas maestras',
+    editAllMasterTablesTitle: 'Cargar todas las tablas maestras',
+    editAllMasterTablesSuccess: 'Tablas maestras actualizadas correctamente',
+    validationWarningTab: 'Esta tabla contiene advertencias',
+    validationErrorTab: 'Esta tabla contiene errores',
+  },
+  table: {
+    loading: 'Cargando datos...',
+    noDataAvailable: 'No hay datos disponibles para esta tabla',
+    loadingError: 'Error al cargar los datos de la tabla',
+    apiNotSupported: 'API no disponible o operación no soportada',
+    searchPlaceholder: 'Buscar...',
+    validationMessageColumn: 'Mensaje',
+    groups: {
+      inputTables: 'Datos de entrada',
+      outputTables: 'Datos de la solución',
+    },
+    actions: 'Acciones',
+    add: 'Añadir',
+    edit: 'Editar',
+    delete: 'Eliminar',
+    bulkUpload: 'Carga masiva',
+    addItem: 'Añadir elemento',
+    editItem: 'Editar elemento',
+    deleteItem: 'Eliminar elemento',
+    confirmDelete: 'Eliminar elemento',
+    deleteMessage: '¿Estás seguro de que quieres eliminar este elemento?',
+    cancel: 'Cancelar',
+    save: 'Guardar',
+    update: 'Actualizar',
+    ok: 'Aceptar',
+    clickToEdit: 'Clic para editar',
+    fieldReadOnly: 'Este campo no se puede editar',
+    upload: 'Subir',
+    selectFile: 'Seleccionar archivo',
+    selectFiles: 'Seleccionar archivos',
+    multipleFileAccumulateHint:
+      'Puedes añadir más archivos en otra selección; se unen a la lista (si repites nombre, se sustituye).',
+    dragAndDrop: 'Arrastra y suelta archivos aquí o haz clic para seleccionar',
+    supportedFormats: 'Formatos soportados:',
+    filters: {
+      title: 'Filtros',
+      noFilters: 'No hay filtros aplicados',
+      addFirst: 'Añade tu primer filtro',
+      addCondition: 'Añadir condición',
+      field: 'Campo',
+      operator: 'Operador',
+      value: 'Valor',
+      valueTo: 'Hasta',
+      and: 'Y',
+      remove: 'Eliminar filtro',
+      clearAll: 'Limpiar todo',
+      removeAll: 'Eliminar todo',
+      apply: 'Aplicar filtros',
+      cancel: 'Cancelar',
+      dateFrom: 'Desde',
+      dateTo: 'Hasta',
+      reset: 'Restablecer',
+      activeFilters: 'Filtros activos',
+      operators: {
+        is: 'es',
+        is_not: 'no es',
+        contains: 'contiene',
+        has_any_value: 'tiene algún valor',
+        is_greater_than: 'es mayor que',
+        is_less_than: 'es menor que',
+        is_between: 'está entre',
+        is_greater_than_or_equal: 'es mayor o igual que',
+        is_less_than_or_equal: 'es menor o igual que',
+      },
+    },
+    maxFileSize: 'Tamaño máximo de archivo',
+    downloadFullMessage: 'Descargar mensaje completo',
+    uploadMode: 'Modo de carga',
+    updateMode: 'Actualizar datos existentes',
+    updateModeDescription:
+      'Los registros existentes se actualizarán con los nuevos datos. Los registros nuevos se añadirán a la tabla.',
+    recommended: 'Recomendado',
+    addMode: 'Añadir a datos existentes',
+    addModeDescription:
+      'Agregar nuevos registros a los datos existentes de la tabla. Los registros actuales se conservarán.',
+    overwriteMode: 'Reemplazar todos los datos',
+    overwriteModeDescription:
+      'Reemplazar todos los datos existentes de la tabla con los registros cargados. Todos los datos actuales se eliminarán.',
+    itemAdded: 'Elemento añadido correctamente',
+    itemUpdated: 'Elemento actualizado correctamente',
+    itemDeleted: 'Elemento eliminado correctamente',
+    itemsDeleted: 'Elementos eliminados correctamente',
+    bulkUploadSuccess: 'Carga masiva completada correctamente',
+    messages: {
+      itemCreated: 'Elemento creado correctamente',
+      itemUpdated: 'Elemento actualizado correctamente',
+      itemDeleted: 'Elemento eliminado correctamente',
+      itemsDeleted: 'Elementos eliminados correctamente',
+      bulkUploadSuccess: 'Carga masiva completada correctamente',
+      errorSaving: 'Error al guardar el elemento',
+      errorDeleting: 'Error al eliminar el elemento',
+      errorDeletingItems: 'Error al eliminar los elementos',
+      errorBulkUpload: 'Error en la carga masiva',
+      downloadExcelSuccess: 'Archivo excel descargado correctamente',
+      errorDownloadExcelTable: 'Error al descargar archivo excel',
+      fileProcessingError: 'Error al procesar archivo',
+      bulkUploadReferenceNotFound:
+        'Fila {row}: no existe ningún registro para {fieldKey}="{fieldValue}" en la tabla de referencia "{tableName}". La carga se ha cancelado.',
+      asyncUploadQueued: 'Esperando para empezar…',
+      asyncUploadProcessing:
+        'Cargando datos — {count} filas importadas hasta ahora',
+      asyncUploadCompleted: 'Listo — {count} filas importadas',
+      asyncUploadFailed: 'No se pudo procesar la carga',
+      asyncUploadNotFound: 'Carga no encontrada',
+    },
+    downloadExcelTable: 'Descargar excel',
+    downloadExcelSuccess: 'Archivo excel descargado correctamente',
+    errorDownloadExcelTable: 'Error al descargar archivo excel',
+    // Selection and bulk operations
+    selectedItems: '{count} seleccionados',
+    clearSelection: 'Limpiar selección',
+    deleteSelected: 'Eliminar seleccionados',
+    confirmBulkDelete: 'Confirmar eliminación múltiple',
+    bulkDeleteMessage:
+      '¿Está seguro de que desea eliminar {count} elementos? Esta acción no se puede deshacer.',
+    deletingPleaseWait: 'Eliminando. Espere, por favor.',
+    overwritingPleaseWait: 'Procesando los datos. Espere, por favor.',
+    uploadingPleaseWait: 'Subiendo datos… Espere, por favor.',
+    bulkDeleteSuccess: '{count} elementos eliminados correctamente',
+    bulkDeleteAllFailed: 'Error al eliminar todos los elementos seleccionados',
+    bulkDeletePartialFailed:
+      'Los elementos con IDs {ids} no se pudieron eliminar',
+    errorBulkDelete: 'Error durante la eliminación múltiple',
+    errorAdding: 'Error al añadir elemento',
+    errorUpdating: 'Error al actualizar elemento',
+    errorDeleting: 'Error al eliminar elemento',
+    errorBulkUpload: 'Error durante la carga masiva',
+    invalidFileFormat: 'Formato de archivo inválido',
+    fileProcessingError: 'Error al procesar archivo',
+    noValidDataFound: 'No se encontraron datos válidos en el archivo',
+    bulkEdit: 'Edición masiva',
+    bulkEditDescription: 'Editar {count} elementos seleccionados. Deja un campo en blanco para mantener los valores existentes sin cambios.',
+    bulkEditNoChange: 'Sin cambios',
+    bulkEditHint: 'Solo los campos rellenados se aplicarán a los elementos seleccionados.',
+    applyToSelected: 'Aplicar a seleccionados',
+    bulkEditApplied: '{count} elementos actualizados correctamente',
+    yes: 'Sí',
+    no: 'No',
+    search: 'Buscar',
+    forceRetry: {
+      title: 'Confirmar sobrescritura',
+      accept: 'Sobrescribir de todos modos',
+      reject: 'Cancelar',
+    },
+    repository: {
+      operationNotSupported: 'Esta acción no está disponible para esta tabla',
+      unsupportedHttpMethod: 'Ocurrió un error al procesar tu solicitud',
+      apiCallFailed: 'Ocurrió un error al guardar los datos.',
+    },
+  },
+  validation: {
+    required: 'Este campo es obligatorio',
+    email: 'Por favor, introduce una dirección de correo electrónico válida',
+    min: 'El valor mínimo es {min}',
+    max: 'El valor máximo es {max}',
+    minLength: 'La longitud mínima es de {length} caracteres',
+    maxLength: 'La longitud máxima es de {length} caracteres',
+    pattern: 'Formato inválido',
+    invalidNumber: 'Por favor, introduce un número válido',
+    integer: 'Por favor, introduce un número entero',
+    url: 'Por favor, introduce una URL válida',
+    date: 'Por favor, introduce una fecha válida',
+    phone: 'Por favor, introduce un número de teléfono válido',
+    alphanumeric: 'Solo se permiten letras y números',
+    keywords: {
+      type: 'Tipo',
+      required: 'Requerido',
+      maximum: 'Máximo',
+      minimum: 'Mínimo',
+      maxLength: 'Longitud máxima',
+      minLength: 'Longitud mínima',
+      pattern: 'Patrón',
+      format: 'Formato',
+      enum: 'Enum',
+      const: 'Constante',
+      multipleOf: 'Múltiplo de',
+      exclusiveMaximum: 'Máximo exclusivo',
+      exclusiveMinimum: 'Mínimo exclusivo',
+      maxItems: 'Máximo de elementos',
+      minItems: 'Mínimo de elementos',
+      uniqueItems: 'Elementos únicos',
+      maxProperties: 'Máximo de propiedades',
+      minProperties: 'Mínimo de propiedades',
+      additionalProperties: 'Propiedades adicionales',
+      oneOf: 'Uno de',
+      anyOf: 'Cualquiera de',
+      allOf: 'Todos de',
+      not: 'No',
+      if: 'Si',
+      then: 'Entonces',
+      else: 'Sino',
+    },
+    params: {
+      limit: 'Límite',
+      comparison: 'Comparación',
+      value: 'Valor',
+      allowedValue: 'Valor permitido',
+      allowedValues: 'Valores permitidos',
+      pattern: 'Patrón',
+      format: 'Formato',
+      multipleOf: 'Múltiplo de',
+      maxLength: 'Longitud máxima',
+      minLength: 'Longitud mínima',
+      maxItems: 'Máximo de elementos',
+      minItems: 'Mínimo de elementos',
+      maxProperties: 'Máximo de propiedades',
+      minProperties: 'Mínimo de propiedades',
+      missingProperty: 'Propiedad requerida',
+      type: 'Tipo',
+    },
+    errorFormats: {
+      typeError:
+        'error - se esperaba {type}, pero se recibió un tipo diferente',
+      typeErrorNoField: 'error - se esperaba {type}',
+      requiredError: '- falta la propiedad {property}',
+      requiredErrorNoPath: '- falta la propiedad requerida {property}',
+      requiredErrorGeneric: '- falta la propiedad requerida',
+    },
+    types: {
+      integer: 'entero',
+      number: 'número',
+      string: 'cadena de texto',
+      boolean: 'booleano',
+      array: 'array',
+      object: 'objeto',
+      null: 'null',
+    },
+    messages: {
+      maximum: 'debe ser <= {limit}',
+      minimum: 'debe ser >= {limit}',
+      maxLength: 'NO debe tener más de {limit} caracteres',
+      minLength: 'NO debe tener menos de {limit} caracteres',
+      required: 'es requerido',
+      type: 'debe ser {type}',
+      pattern: 'debe coincidir con el patrón',
+      format: 'debe coincidir con el formato',
+      enum: 'debe ser igual a uno de los valores permitidos',
+      const: 'debe ser igual a la constante',
+      multipleOf: 'debe ser múltiplo de {limit}',
+      exclusiveMaximum: 'debe ser < {limit}',
+      exclusiveMinimum: 'debe ser > {limit}',
+      maxItems: 'NO debe tener más de {limit} elementos',
+      minItems: 'NO debe tener menos de {limit} elementos',
+      uniqueItems: 'NO debe tener elementos duplicados',
+      maxProperties: 'NO debe tener más de {limit} propiedades',
+      minProperties: 'NO debe tener menos de {limit} propiedades',
+    },
+  },
+  dashboard: {
+    widgets: {
+      total: '{column} total',
+      average: 'Promedio {column}',
+      overTime: '{column} a lo largo del tiempo',
+      by: '{numericColumn} por {categoryColumn}',
+      distributionBy: 'Distribución por {column}',
+      cumulative: '{column} acumulado',
+      map: 'Mapa de {valueColumn}',
+      mapBy: '{valueColumn} por {locationColumn}',
+    },
+  },
+  masterTableMatch: {
+    loading: 'Comparando con tablas maestras...',
+    alertTitle: 'Coincidencias con tablas maestras detectadas',
+    alertDescription:
+      'Algunas tablas en los datos subidos coinciden con tablas maestras existentes. Por favor, elige cómo manejar cada coincidencia a continuación.',
+    hasDifferences: 'Tiene diferencias',
+    hasDifferencesWithMaster:
+      'Esta tabla tiene diferencias con la tabla maestra',
+    identical: 'Idénticas',
+    identicalToMaster: 'Esta tabla es idéntica a la tabla maestra',
+    viewDifferences: 'Comparar',
+    matchFoundWith: 'Coincide con maestro:',
+    matchFoundWithMaster: 'Coincide con tabla maestra: {masterTable}',
+    uploadedRows: 'Filas subidas',
+    masterRows: 'Filas en maestro',
+    newRows: 'Filas nuevas',
+    removedRows: 'Filas eliminadas',
+    modifiedRows: 'Filas modificadas',
+    identicalRows: 'Filas idénticas',
+    selectAction: 'Selecciona una acción:',
+    option: {
+      keepUploaded: {
+        title: 'Mantener datos subidos',
+        short: 'Mantener',
+        description:
+          'Usar los datos subidos para esta ejecución sin modificar la tabla maestra.',
+      },
+      useMaster: {
+        title: 'Aplicar datos del maestro',
+        short: 'Aplicar maestro',
+        description:
+          'Usar los datos de la tabla maestra en lugar de los subidos para esta ejecución.',
+      },
+      replaceMaster: {
+        title: 'Guardar en tabla maestra',
+        short: 'Guardar en maestro',
+        description:
+          'Guardar los datos subidos en la tabla maestra. Esto afecta a todas las ejecuciones futuras.',
+        notAvailable: 'Esta operación no está disponible para esta tabla',
+      },
+    },
+    messages: {
+      usingMasterData: 'Usando datos del maestro para la tabla "{tableName}"',
+      masterTableUpdated: 'La tabla maestra "{tableName}" ha sido actualizada',
+      updateError: 'Error al actualizar la tabla maestra',
+      errorLoadingMasterTable: 'Error al cargar la tabla maestra {tableName}',
+      unknownError: 'Error desconocido',
+      failedToUpdateMasterTable:
+        'Error al actualizar la tabla maestra "{tableName}": {error}',
+      relatedTableNotFound:
+        'Tabla relacionada {tableName} no encontrada en configuraciones',
+      noMatchingItemFound:
+        'No se encontró elemento coincidente para {fieldKey}="{fieldValue}" en tabla {tableName}',
+      errorProcessingDependentField:
+        'Error al procesar campo dependiente {fieldKey}',
+    },
+    confirmUseMaster: {
+      title: 'Aplicar datos del maestro',
+      message:
+        '¿Quieres usar los datos de la tabla maestra para "{tableName}"? Los datos que has subido serán reemplazados por los del maestro solo para esta ejecución.',
+      confirm: 'Aplicar maestro',
+    },
+    confirmReplaceMaster: {
+      title: 'Guardar en tabla maestra',
+      message:
+        '¿Quieres guardar los datos subidos en la tabla maestra "{tableName}"? Esto modificará permanentemente la tabla maestra y afectará a todas las ejecuciones futuras.',
+      confirm: 'Guardar en maestro',
+    },
+  },
+  dataComparison: {
+    title: 'Comparación de datos: {tableName}',
+    subtitle: 'Comparando datos subidos con la tabla maestra "{masterTable}"',
+    loading: 'Cargando datos de comparación...',
+    uploadedData: 'Datos subidos',
+    masterData: 'Datos del maestro',
+    rows: 'filas',
+    newRows: 'Nuevas',
+    removedRows: 'Eliminadas',
+    modifiedRows: 'Modificadas',
+    identicalRows: 'Idénticas',
+    tabs: {
+      summary: 'Resumen',
+      sideBySide: 'Lado a lado',
+      changes: 'Cambios',
+    },
+    filter: {
+      all: 'Todos',
+      added: 'Añadidos',
+      removed: 'Eliminados',
+      modified: 'Modificados',
+    },
+    noChangesInFilter: 'No hay cambios en este filtro',
+    restoreRow: 'Restaurar esta fila desde el maestro',
+    restoreRowQueued:
+      'Fila en cola para restaurar — revisa y guarda en la tabla',
+    deleteRow: 'Eliminar esta fila de los datos subidos',
+    deleteRowQueued: 'Fila en cola para eliminar — revisa y guarda en la tabla',
+    changeType: {
+      added: 'Fila añadida',
+      removed: 'Fila eliminada',
+      modified: 'Fila modificada',
+    },
+  },
+  pendingChanges: {
+    title: 'Cambios pendientes',
+    subtitle: 'Revisa y confirma tus cambios antes de guardar',
+    changes: 'cambios',
+    modifiedTables: 'Tablas modificadas',
+    modifiedRows: 'Filas modificadas',
+    modifiedRow: 'Fila modificada',
+    totalChanges: 'Total de cambios',
+    noChanges: 'No hay cambios pendientes',
+    row: 'Fila',
+    rowContext: 'Datos de la fila',
+    changedFields: 'Campos modificados',
+    originalValue: 'Valor original',
+    newValue: 'Nuevo valor',
+    revert: 'Revertir',
+    revertField: 'Revertir este cambio',
+    revertRow: 'Revertir cambios de la fila',
+    revertAllTable: 'Revertir todos los cambios de esta tabla',
+    revertAll: 'Revertir todo',
+    revertAllChanges: 'Revertir todos los cambios',
+    saveAllChanges: 'Guardar todos los cambios',
+    processingChanges: 'Se están procesando los cambios. Espere, por favor.',
+    confirmRevertAll: {
+      title: 'Revertir todos los cambios',
+      message:
+        '¿Estás seguro de que quieres revertir todos los cambios pendientes? Esta acción no se puede deshacer.',
+      confirm: 'Sí, revertir todo',
+    },
+    unsavedChangesWarning: {
+      title: 'Cambios sin guardar',
+      message:
+        'Tienes cambios sin guardar. Si sales ahora, tus cambios se perderán.',
+      stay: 'Quedarse',
+      leave: 'Salir de todos modos',
+    },
+    reviewChanges: 'Revisar cambios',
+    changesIndicator: '{count} cambios pendientes',
+    changeStaged: 'Cambio añadido a pendientes. Se aplicará al guardar.',
+    createReverted: 'Nueva fila eliminada. No hay cambios que guardar.',
+    newRow: 'Nueva fila',
+    deletedRow: 'Fila eliminada',
+    saveErrorNoInstanceData:
+      'No hay datos de instancia. No se pueden guardar los cambios.',
+  },
+  common: {
+    close: 'Cerrar',
+    cancel: 'Cancelar',
+    file: 'archivo',
+    files: 'archivos',
+    error: 'error',
+    errors: 'errores',
+  },
+  configParams: {
+    msg: 'Mensajes',
+    msgPlaceholder: 'Activar o desactivar mensajes',
+    timeLimit: 'Límite de tiempo',
+    timeLimitPlaceholder: 'Límite de tiempo en segundos',
+    timeLimitPlaceholderMinutes: 'Límite de tiempo en minutos',
+    solver: 'Solver',
+    solverPlaceholder: 'Seleccionar solver',
+    minutesSuffix: 'min',
+    secondsSuffix: 'seg',
+  },
+  historical: {
+    toggleExecution: 'Datos de ejecución',
+    toggleHistorical: 'Datos históricos',
+    dateFrom: 'Desde',
+    dateTo: 'Hasta',
+    load: 'Cargar',
+    creating: 'Creando ejecución histórica...',
+    checking: 'Ejecutando comprobaciones...',
+    polling: 'Calculando KPIs...',
+    error: 'Error al cargar datos históricos',
+    statusCalculationError:
+      'Ha habido un problema al calcular los datos históricos.',
+    noData: 'No hay datos históricos disponibles para el rango seleccionado',
+    clear: 'Limpiar',
+    checksErrorTitle: 'Se encontraron errores en los checks de la solución',
+    checksErrorDescription:
+      'No se pudieron calcular los KPIs porque los checks de la solución contienen errores. Revisa los detalles a continuación.',
+    showErrors: 'Ver detalle de errores',
+    hideErrors: 'Ocultar detalle de errores',
+    checksWarningTitle: 'KPIs calculados con advertencias',
+    checksWarningDescription:
+      'Los KPIs se han calculado correctamente, pero algunas tablas de checks contienen advertencias. Revisa los detalles a continuación.',
+    showWarnings: 'Ver detalle de advertencias',
+    hideWarnings: 'Ocultar detalle de advertencias',
+    viewingHistoricalData: 'Viendo datos históricos',
+  },
+  notFound: {
+    title: 'Página no encontrada',
+    message: 'La página que buscas no existe.',
+    forbiddenTitle: 'Acceso denegado',
+    forbiddenMessage: 'No tienes permiso para ver esta página.',
+    goHome: 'Ir al inicio',
+  },
+  rolesManagement: {
+    title: 'Gestión de roles',
+    description: 'Gestiona los roles y asígnalos a los usuarios.',
+    adminSection: 'Administración',
+    rolesTitle: 'Roles',
+    usersTitle: 'Usuarios',
+    addRole: 'Añadir rol',
+    editRole: 'Editar rol',
+    editUser: 'Editar usuario',
+    firstName: 'Nombre',
+    lastName: 'Apellidos',
+    invalidEmail: 'Introduce un correo electrónico válido.',
+    roleName: 'Nombre del rol',
+    deleteRoleTitle: 'Eliminar rol',
+    deleteRoleMessage: '¿Estás seguro de que quieres eliminar el rol "{name}"? Se eliminará de todos los usuarios asignados.',
+    delete: 'Eliminar',
+    cancel: 'Cancelar',
+    save: 'Guardar',
+    searchUsers: 'Buscar usuarios...',
+    colUsername: 'Usuario',
+    colName: 'Nombre',
+    colEmail: 'Correo electrónico',
+    colRoles: 'Roles',
+    noRoles: 'No hay roles definidos aún.',
+    noRoles2: 'Sin roles',
+    errorLoadRoles: 'Error al cargar los roles.',
+    errorLoadUsers: 'Error al cargar los usuarios.',
+    errorSaveRole: 'Error al guardar el rol.',
+    errorDeleteRole: 'Error al eliminar el rol.',
+    errorAssignRole: 'Error al actualizar los roles del usuario.',
+    errorSaveUser: 'Error al guardar los datos del usuario.',
+    userUpdated: 'Datos del usuario actualizados correctamente.',
+    roleCreated: 'Rol creado correctamente.',
+    roleUpdated: 'Rol actualizado correctamente.',
+    roleDeleted: 'Rol eliminado correctamente.',
+    roleAssigned: 'Roles del usuario actualizados correctamente.',
+    allUsers: 'Todos los usuarios',
+    allUsersSubtitle: 'Vista combinada de todos los roles',
+    filteringByRole: 'Filtrando por rol',
+    rolePermissionsTitle: 'Permisos del rol',
+    noPermissionsDefined: 'Sin permisos definidos para este rol.',
+    noDescription: 'Sin descripción',
+    roleMeta: {
+      admin: {
+        description: 'Acceso total · gestiona usuarios y roles',
+        permissions: [
+          'Leer instancias y soluciones',
+          'Crear y lanzar ejecuciones',
+          'Editar datos maestros',
+          'Gestionar usuarios y roles',
+        ],
+      },
+      planner: {
+        description: 'Crea ejecuciones y edita datos maestros',
+        permissions: [
+          'Leer instancias y soluciones',
+          'Crear y lanzar ejecuciones',
+          'Editar datos maestros',
+        ],
+      },
+      viewer: {
+        description: 'Solo lectura sobre ejecuciones',
+        permissions: ['Leer instancias y soluciones'],
+      },
+      service: {
+        description: 'Cuenta técnica para integraciones',
+        permissions: [
+          'Leer instancias y soluciones',
+          'Crear y lanzar ejecuciones',
+        ],
+      },
+      ie_viewer: {
+        description: 'Visualización limitada al entorno IE',
+        permissions: ['Leer instancias y soluciones'],
+      },
+    },
+  },
+  externalEtl: {
+    switch: {
+      fromDbLabel: 'Esta tabla se ha obtenido de la base de datos.',
+      fromExcelLabel:
+        'Esta tabla se ha subido desde un archivo en el paso anterior.',
+      editedFromDbLabel:
+        'Se han realizado cambios manuales y la tabla ya no es idéntica a la de base de datos.',
+      reuploadedLabel:
+        'Los datos de esta tabla proceden de un archivo Excel importado.',
+      fixTable: 'Fijar tabla',
+      replaceWithDb: 'Usar datos de la base de datos',
+      staticMode: 'Modo estático',
+      staticModeTooltip:
+        'La tabla se mantendrá tal como está y no se actualizará desde la base de datos al calcular la última solución.',
+      trackChanges: 'Actualizar con BD',
+      trackChangesTooltip:
+        'La tabla se actualizará con los últimos datos de la base de datos al calcular la última solución.',
+      useExcelData: 'Usar datos del Excel',
+      useDbData: 'Usar datos de la base de datos',
+      default: 'Por defecto',
+      fromDb: 'Desde base de datos',
+      fixed: 'Fijado',
+    },
+    parameter: {
+      fromDb: 'Desde base de datos (se actualizará)',
+      fixed: 'Fijado (se mantiene el valor actual)',
+      cannotBeFromDb: 'Siempre proporcionado por el usuario',
+      columnFromDb: 'Desde base de datos',
+    },
   },
 }

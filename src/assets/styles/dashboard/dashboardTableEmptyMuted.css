@@ -1,0 +1,9 @@
+/* Shared dashboard table styles — extracted to remove duplicated CSS.
+ * Imported via <style scoped src> so each component keeps its own scope id.
+ * Members: Detalle, Flujos, Desglose, Stock, Pending */
+
+.empty {
+  text-align: center;
+  color: var(--dash-text-subtle);
+  padding: 24px;
+}

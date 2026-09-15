@@ -1,0 +1,17 @@
+/* CoreConfirmDialog Component Styles - Specific styles only */
+
+/* Specific styles for confirm dialog */
+.core-confirm-dialog__message {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--subtitle);
+  margin: 0;
+}
+
+.core-confirm-dialog__loading-message {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--primary);
+  margin: 8px 0 0;
+  font-weight: 500;
+}

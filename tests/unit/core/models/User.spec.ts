@@ -1,8 +1,8 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { User } from '@/models/User'
+import { User } from '@cornflow-ui/core/models/User'
 
 // Mock the getUserFullName utility
-vi.mock('@/utils/user', () => ({
+vi.mock('@cornflow-ui/core/utils/user', () => ({
   default: vi.fn()
 }))
 
@@ -11,7 +11,7 @@ describe('User', () => {
 
   beforeEach(async () => {
     // Get the mocked function
-    const userUtils = await import('@/utils/user')
+    const userUtils = await import('@cornflow-ui/core/utils/user')
     mockGetUserFullName = userUtils.default
     
     // Reset mocks

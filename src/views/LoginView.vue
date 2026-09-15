@@ -3,8 +3,7 @@
 </template>
 
 <script>
-import { inject } from 'vue'
-import SignInLanding from '@/components/SignInLanding.vue'
+import SignInLanding from '@cornflow-ui/core/components/SignInLanding.vue'
 
 export default {
   components: {
@@ -23,6 +22,3 @@ export default {
   },
 }
 </script>
-
-<style lang="scss">
-</style>

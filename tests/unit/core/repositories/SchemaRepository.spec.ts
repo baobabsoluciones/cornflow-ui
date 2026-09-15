@@ -1,15 +1,15 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import SchemaRepository from '@/repositories/SchemaRepository'
+import SchemaRepository from '@cornflow-ui/core/repositories/SchemaRepository'
 
 // Mock the API client
-vi.mock('@/api/Api', () => ({
+vi.mock('@cornflow-ui/core/api/Api', () => ({
   default: {
     get: vi.fn()
   }
 }))
 
 // Mock SchemaConfig model
-vi.mock('@/models/SchemaConfig', () => ({
+vi.mock('@cornflow-ui/core/models/SchemaConfig', () => ({
   SchemaConfig: vi.fn()
 }))
 
@@ -19,7 +19,7 @@ describe('SchemaRepository', () => {
 
   beforeEach(async () => {
     // Get mocked modules
-    const Api = await import('@/api/Api')
+    const Api = await import('@cornflow-ui/core/api/Api')
     mockClient = Api.default
     
     // Reset mocks

@@ -1,4 +1,4 @@
-import i18n from '@/plugins/i18n'
+import i18n from '@cornflow-ui/core/plugins/i18n'
 import appConfig from '@/app/config'
 
 /**
@@ -89,7 +89,7 @@ export function getTableOption(schemaConfig, collection: string, table, option):
  */
 export function showTable(schemaConfig, collection: string, table: string): boolean {
   const show = getTableOption(schemaConfig, collection, table, 'show')
-  return show !== undefined ? show : true
+  return show === undefined ? true : show
 }
 
 /**
@@ -127,7 +127,7 @@ export function isTablePropertySortable(schemaConfig, collection, table, item): 
       table,
       item,
     ).sortable
-    return tableSortable !== undefined ? tableSortable : true
+    return tableSortable === undefined ? true : tableSortable
   }
   return propSortable
 }
@@ -149,7 +149,7 @@ export function isTablePropertyFilterable(schemaConfig, collection, table, item)
       table,
       item,
     ).filterable
-    return tableFilterable !== undefined ? tableFilterable : false
+    return tableFilterable === undefined ? false : tableFilterable
   }
   return propFilterable
 }
@@ -247,14 +247,14 @@ export function getTableHeadersData(schemaConfig, collection, table, lang = 'en'
 export function getConfigTableHeadersData(): any[] {
   return [
     {
-      title: i18n.global.t('inputOutputData.parameter'),
+      title: (i18n.global as any).t('inputOutputData.parameter'),
       value: 'displayName',
       sortable: true,
       disabled: true,
       config: true,
     },
     {
-      title: i18n.global.t('inputOutputData.value'),
+      title: (i18n.global as any).t('inputOutputData.value'),
       value: 'value',
       sortable: true,
       config: true,

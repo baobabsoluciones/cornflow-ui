@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import useFilters from '@/utils/useFilters'
+import useFilters from '@cornflow-ui/core/utils/useFilters'
 
 describe('useFilters', () => {
   const mockData = [

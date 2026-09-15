@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from 'vitest'
-import Licence from '@/models/Licence'
+import Licence from '@cornflow-ui/core/models/Licence'
 
 describe('Licence', () => {
   describe('constructor', () => {

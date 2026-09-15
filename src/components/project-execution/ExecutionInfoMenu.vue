@@ -38,8 +38,8 @@
   </v-btn>
 </template>
 <script>
-import { formatDate } from '@/utils/data_io'
-import { useGeneralStore } from '@/stores/general'
+import { formatDate } from '@cornflow-ui/core/utils/data_io'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 
 export default {
   props: {

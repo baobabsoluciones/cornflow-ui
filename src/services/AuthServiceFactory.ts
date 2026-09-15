@@ -1,7 +1,7 @@
-import { AuthProvider } from '@/interfaces/AuthProvider';
+import { AuthProvider } from '@cornflow-ui/core/interfaces/AuthProvider';
 import { OpenIDAuthService } from './OpenIDAuthService';
 import CornflowAuthService from './AuthService';
-import config from '@/config';
+import config from '@cornflow-ui/core/config';
 
 export interface AuthServices {
   cornflow: AuthProvider;
@@ -10,7 +10,7 @@ export interface AuthServices {
 }
 
 export class AuthServiceFactory {
-  private static instances: Partial<AuthServices> = {};
+  private static readonly instances: Partial<AuthServices> = {};
   private static initialized = false;
 
   static async getAllAuthServices(): Promise<AuthServices> {
@@ -25,7 +25,7 @@ export class AuthServiceFactory {
     }
 
     return {
-      cornflow: this.instances.cornflow!,
+      cornflow: this.instances.cornflow,
       azure: this.instances.azure || null,
       cognito: this.instances.cognito || null
     };
@@ -101,9 +101,7 @@ export class AuthServiceFactory {
 let defaultAuthServicePromise: Promise<AuthProvider> | null = null;
 
 export default async function getAuthService(): Promise<AuthProvider> {
-  if (!defaultAuthServicePromise) {
-    defaultAuthServicePromise = AuthServiceFactory.getDefaultAuthService();
-  }
+  defaultAuthServicePromise ??= AuthServiceFactory.getDefaultAuthService();
   return defaultAuthServicePromise;
 }
 

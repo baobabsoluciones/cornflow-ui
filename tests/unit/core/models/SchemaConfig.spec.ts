@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from 'vitest'
-import { SchemaConfig } from '@/models/SchemaConfig'
+import { SchemaConfig } from '@cornflow-ui/core/models/SchemaConfig'
 
 describe('SchemaConfig', () => {
   describe('constructor', () => {

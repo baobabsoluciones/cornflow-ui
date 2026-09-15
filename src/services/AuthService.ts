@@ -3,7 +3,6 @@ import client from '../api/Api'
 class AuthService {
   async initialize(): Promise<void> {
     // Cornflow auth doesn't need initialization
-    return Promise.resolve()
   }
 
   async login(username: string, password: string): Promise<boolean> {
@@ -20,6 +19,9 @@ class AuthService {
       sessionStorage.setItem('isAuthenticated', 'true')
       sessionStorage.setItem('token', token)
       sessionStorage.setItem('userId', userId)
+      // isAdmin and userRoles are determined after fetching user role assignments (see general store fetchUser)
+      sessionStorage.removeItem('isAdmin')
+      sessionStorage.removeItem('userRoles')
     } else {
       sessionStorage.setItem('isAuthenticated', 'false')
     }
@@ -27,13 +29,16 @@ class AuthService {
     return isAuthenticated
   }
 
-  async signup(email: string, username: string, password: string): Promise<boolean> {
+  async signup(
+    email: string,
+    username: string,
+    password: string,
+  ): Promise<boolean> {
     const response = await client.post(
       '/signup/',
       { email, username, password },
       { 'Content-Type': 'application/json' },
     )
-    
     return response.status === 201
   }
 
@@ -41,6 +46,12 @@ class AuthService {
     sessionStorage.setItem('isAuthenticated', 'false')
     sessionStorage.removeItem('token')
     sessionStorage.removeItem('userId')
+    sessionStorage.removeItem('isAdmin')
+    sessionStorage.removeItem('userRoles')
+  }
+
+  isAdmin(): boolean {
+    return sessionStorage.getItem('isAdmin') === 'true'
   }
 
   getToken = () => sessionStorage.getItem('token')

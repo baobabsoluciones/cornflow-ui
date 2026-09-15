@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
-import ExecutionOptionCard from '@/components/project-execution/ExecutionOptionCard.vue'
+import ExecutionOptionCard from '@cornflow-ui/core/components/project-execution/ExecutionOptionCard.vue'
 
 describe('ExecutionOptionCard', () => {
   let vuetify

@@ -1,0 +1,8 @@
+/* Shared dashboard table styles — extracted to remove duplicated CSS.
+ * Imported via <style scoped src> so each component keeps its own scope id.
+ * Members: Detalle, Flujos, PlanEnt, Stock, Interc, Pending */
+
+.subtitle {
+  font-size: 12px;
+  color: var(--dash-text-muted);
+}

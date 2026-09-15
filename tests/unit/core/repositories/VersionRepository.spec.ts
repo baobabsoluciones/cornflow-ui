@@ -1,8 +1,8 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import VersionRepository from '@/repositories/VersionRepository'
+import VersionRepository from '@cornflow-ui/core/repositories/VersionRepository'
 
 // Mock the API client
-vi.mock('@/api/Api', () => ({
+vi.mock('@cornflow-ui/core/api/Api', () => ({
   default: {
     get: vi.fn()
   }
@@ -14,7 +14,7 @@ describe('VersionRepository', () => {
 
   beforeEach(async () => {
     // Get mocked modules
-    const Api = await import('@/api/Api')
+    const Api = await import('@cornflow-ui/core/api/Api')
     mockClient = Api.default
     
     // Reset mocks

@@ -1,8 +1,8 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import UserRepository from '@/repositories/UserRepository'
+import UserRepository from '@cornflow-ui/core/repositories/UserRepository'
 
 // Mock the API client
-vi.mock('@/api/Api', () => ({
+vi.mock('@cornflow-ui/core/api/Api', () => ({
   default: {
     get: vi.fn(),
     put: vi.fn()
@@ -10,7 +10,7 @@ vi.mock('@/api/Api', () => ({
 }))
 
 // Mock User model
-vi.mock('@/models/User', () => ({
+vi.mock('@cornflow-ui/core/models/User', () => ({
   User: vi.fn()
 }))
 
@@ -20,7 +20,7 @@ describe('UserRepository', () => {
 
   beforeEach(async () => {
     // Get mocked modules
-    const Api = await import('@/api/Api')
+    const Api = await import('@cornflow-ui/core/api/Api')
     mockClient = Api.default
     
     // Reset mocks

@@ -1,11 +1,11 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
-import ExecutionInfoMenu from '@/components/project-execution/ExecutionInfoMenu.vue'
+import ExecutionInfoMenu from '@cornflow-ui/core/components/project-execution/ExecutionInfoMenu.vue'
 
 // Mock formatDate utility
 const mockFormatDate = vi.hoisted(() => vi.fn((date) => `formatted-${date}`))
-vi.mock('@/utils/data_io', () => ({
+vi.mock('@cornflow-ui/core/utils/data_io', () => ({
   formatDate: mockFormatDate
 }))
 
@@ -39,7 +39,7 @@ const mockGeneralStore = {
   }
 }
 
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: vi.fn(() => mockGeneralStore)
 }))
 

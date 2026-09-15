@@ -1,13 +1,17 @@
 {
   "compilerOptions": {
+    // Silencia los errores de deprecación de TS 6.0 (baseUrl, moduleResolution=node10, alwaysStrict)
+    // hasta migrar esas opciones; sin esto, vue-tsc falla en CI con TS 6.x.
+    "ignoreDeprecations": "6.0",
     "target": "ES2020",
     "module": "ESNext",
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "skipLibCheck": true,
     "baseUrl": ".",
     "allowJs": true,
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@cornflow-ui/core/*": ["src/*"]
     },
     "moduleResolution": "node",
     "resolveJsonModule": true,

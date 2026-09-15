@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
-import CreateExecutionNameDescription from '@/components/project-execution/CreateExecutionNameDescription.vue'
+import CreateExecutionNameDescription from '@cornflow-ui/core/components/project-execution/CreateExecutionNameDescription.vue'
 
 // Mock i18n
 const mockT = vi.fn((key) => {

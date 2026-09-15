@@ -1,0 +1,122 @@
+/* Core Modal Base Styles - Shared across all modal components */
+
+/* Card Base */
+.core-modal-base__card {
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+/* Header Base */
+.core-modal-base__header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 20px 20px 12px 20px !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Override Vuetify's v-card-title default styles */
+.core-modal-base__header.v-card-title {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.core-modal-base__title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--title);
+  margin: 0;
+}
+
+.core-modal-base__close {
+  flex-shrink: 0 !important;
+  margin-left: auto !important;
+}
+
+/* Content Base */
+.core-modal-base__content {
+  padding: 20px;
+}
+
+/* Actions Base */
+.core-modal-base__actions {
+  padding: 12px 20px 20px 20px;
+  gap: 8px;
+}
+
+/* Field styling - Common for form modals */
+.core-modal-base :deep(.v-field) {
+  border-radius: 8px;
+  min-height: 40px;
+}
+
+.core-modal-base :deep(.v-field--focused) {
+  box-shadow: 0 0 0 2px rgba(var(--v-theme-primary), 0.2);
+}
+
+.core-modal-base :deep(.v-text-field .v-field__input) {
+  padding: 8px 16px;
+  min-height: 40px;
+  font-size: 14px;
+}
+
+.core-modal-base :deep(.v-textarea .v-field__input) {
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+.core-modal-base :deep(.v-field__outline) {
+  --v-field-border-width: 1px;
+}
+
+.core-modal-base :deep(.v-field--variant-outlined .v-field__outline__start) {
+  border-radius: 8px 0 0 8px;
+}
+
+.core-modal-base :deep(.v-field--variant-outlined .v-field__outline__end) {
+  border-radius: 0 8px 8px 0;
+}
+
+/* Alert styling - Common for modals with alerts */
+.core-modal-base :deep(.v-alert) {
+  border-radius: 8px;
+}
+
+.core-modal-base :deep(.v-alert--variant-tonal) {
+  background-color: rgba(var(--v-theme-info), 0.1);
+  border: 1px solid rgba(var(--v-theme-info), 0.2);
+}
+
+.core-modal-base :deep(.v-alert--variant-tonal.v-alert--type-error) {
+  background-color: rgba(var(--v-theme-error), 0.1);
+  border: 1px solid rgba(var(--v-theme-error), 0.2);
+}
+
+/* Chip styling - Common for file uploads */
+.core-modal-base :deep(.v-chip) {
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+/* Responsive adjustments - Base responsive behavior */
+@media (max-width: 600px) {
+  .core-modal-base__card {
+    margin: 16px;
+    max-width: calc(100vw - 32px);
+  }
+
+  .core-modal-base__header {
+    padding: 16px 16px 8px 16px;
+  }
+
+  .core-modal-base__content {
+    padding: 16px;
+  }
+
+  .core-modal-base__actions {
+    padding: 8px 16px 16px 16px;
+  }
+}

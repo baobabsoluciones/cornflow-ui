@@ -20,21 +20,28 @@
             v-for="field in configFields"
             :key="field.key"
             :prepend-icon="field.icon || defaultIcon"
+            v-if="shouldShowConfigFields"
           >
             <template v-if="field.type === 'boolean'">
               <v-list-item-title class="small-font d-flex align-center">
                 <span class="mr-2">{{ $t(field.title) }}:</span>
-                <v-icon color="success" v-if="newExecution.config[field.key]">mdi-check-circle</v-icon>
+                <v-icon color="success" v-if="newExecution.config[field.key]"
+                  >mdi-check-circle</v-icon
+                >
                 <v-icon color="error" v-else>mdi-close-circle</v-icon>
               </v-list-item-title>
             </template>
             <template v-else>
               <v-list-item-title class="small-font">
-                {{ $t(field.title) }}: {{ newExecution.config[field.key] }}<span v-if="field.suffix">{{ $t(field.suffix) }}</span>
+                {{ $t(field.title) }}: {{ newExecution.config[field.key]
+                }}<span v-if="field.suffix">{{ $t(field.suffix) }}</span>
               </v-list-item-title>
             </template>
           </v-list-item>
-          <v-list-item prepend-icon="mdi-wrench-outline" v-if="newExecution.config.solver">
+          <v-list-item
+            prepend-icon="mdi-wrench-outline"
+            v-if="newExecution.config.solver"
+          >
             <v-list-item-title class="small-font">
               {{ newExecution.config.solver + ` solver` }}
             </v-list-item-title>
@@ -47,24 +54,46 @@
         <v-col>
           <v-card class="pa-4">
             <v-card-title class="text-h6">
-              {{ $t('projectExecution.steps.step7.developerMode.title') }}
+              {{ $t('projectExecution.steps.step8.developerMode.title') }}
             </v-card-title>
             <v-card-text>
               <v-radio-group v-model="solveMode" class="mt-2">
-                <v-radio :label="$t('projectExecution.steps.step7.developerMode.normalSolve')" value="normal"></v-radio>
-                <v-radio :label="$t('projectExecution.steps.step7.developerMode.uploadSolution')" value="upload"></v-radio>
+                <v-radio
+                  :label="
+                    $t('projectExecution.steps.step8.developerMode.normalSolve')
+                  "
+                  value="normal"
+                ></v-radio>
+                <v-radio
+                  :label="
+                    $t(
+                      'projectExecution.steps.step8.developerMode.uploadSolution',
+                    )
+                  "
+                  value="upload"
+                ></v-radio>
               </v-radio-group>
 
               <div v-if="solveMode === 'upload'" class="mt-4">
                 <MDragNDropFile
                   :multiple="false"
                   downloadIcon="mdi-upload"
-                  :description="$t('projectExecution.steps.step7.developerMode.dragAndDropDescription')"
+                  :description="
+                    $t(
+                      'projectExecution.steps.step8.developerMode.dragAndDropDescription',
+                    )
+                  "
                   :uploadedFiles="solutionFile ? [solutionFile] : []"
-                  :formatsAllowed="['json', 'xlsx', 'csv']"
+                  :formatsAllowed="SUPPORTED_DATA_EXTENSIONS"
                   :errors="solutionErrors"
-                  :downloadButtonTitle="$t('projectExecution.steps.step7.developerMode.uploadFile')"
-                  :invalidFileText="$t('projectExecution.steps.step7.developerMode.invalidFileFormat')"
+                  :downloadButtonTitle="
+                    $t('projectExecution.steps.step8.developerMode.uploadFile')
+                  "
+                  :invalidFileText="
+                    $t(
+                      'projectExecution.steps.step8.developerMode.invalidFileFormat',
+                    )
+                  "
                   @file-selected="onSolutionFileSelected"
                 />
               </div>
@@ -74,13 +103,13 @@
       </v-row>
 
       <v-row class="justify-center">
-        <v-btn 
-          @click="createExecution()" 
-          variant="outlined" 
+        <v-btn
+          @click="createExecution()"
+          variant="outlined"
           class="mt-5"
           :disabled="solveMode === 'upload' && !solutionFile"
         >
-          {{ $t('projectExecution.steps.step7.resolve') }}
+          {{ $t('projectExecution.steps.step8.resolve') }}
         </v-btn>
       </v-row>
     </v-col>
@@ -93,23 +122,26 @@
       >mdi-check-circle-outline</v-icon
     >
     <p class="text-center mt-3" style="font-size: 0.9rem">
-      {{ $t('projectExecution.steps.step7.successMessage') }}
+      {{ $t('projectExecution.steps.step8.successMessage') }}
     </p>
     <v-btn
       @click="$emit('resetAndLoadNewExecution')"
       variant="outlined"
       class="mt-10"
     >
-      {{ $t('projectExecution.steps.step7.loadNewExecution') }}
+      {{ $t('projectExecution.steps.step8.loadNewExecution') }}
     </v-btn>
   </div>
 </template>
 
 <script>
-import { inject, computed, ref } from 'vue'
-import { useGeneralStore } from '@/stores/general'
-import { Solution } from '@/app/models/Solution'
-import config from '@/config'
+import { inject } from 'vue'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import {
+  formatValidationErrors,
+  formatSingleErrorWithTitle,
+} from '@cornflow-ui/core/utils/errorFormatting'
+import { FILE_EXTENSIONS, getFileExtension } from '@cornflow-ui/core/utils/fileConstants'
 
 export default {
   components: {},
@@ -129,16 +161,20 @@ export default {
       solveMode: 'normal',
       solutionFile: null,
       solutionErrors: null,
-      solutionData: null
+      solutionData: null,
     }
   },
   computed: {
     configFields() {
       return this.generalStore.appConfig.parameters.configFields || []
     },
+    shouldShowConfigFields() {
+      return this.generalStore.appConfig.parameters.configFieldsConfig
+        ?.showConfigFieldsStep
+    },
     isDeveloperMode() {
-      return config.isDeveloperMode
-    }
+      return this.generalStore.appConfig.parameters.isDeveloperMode
+    },
   },
   created() {
     this.showSnackbar = inject('showSnackbar')
@@ -149,20 +185,20 @@ export default {
       this.solutionErrors = null
 
       try {
-        const extension = file.name.split('.').pop()
+        const extension = getFileExtension(file.name)
         const solution = await this.parseSolutionFile(file, extension)
-        
+
         // Validate solution schema
         const errors = await solution.checkSchema()
         if (errors && errors.length > 0) {
-          this.solutionErrors = errors
-            .map(error => `<li>${error.instancePath} - ${error.message}</li>`)
-            .join('')
+          this.solutionErrors = formatValidationErrors(errors)
           this.solutionData = null
           if (this.showSnackbar) {
             this.showSnackbar(
-              this.$t('projectExecution.steps.step7.developerMode.solutionSchemaError'),
-              'error'
+              this.$t(
+                'projectExecution.steps.step8.developerMode.solutionSchemaError',
+              ),
+              'error',
             )
           }
           return
@@ -171,7 +207,7 @@ export default {
         this.solutionData = solution.data
       } catch (error) {
         console.error('Error processing solution file:', error)
-        this.solutionErrors = `<p><strong>Error:</strong></p><li>${error.message}</li>`
+        this.solutionErrors = formatSingleErrorWithTitle('Error', error.message)
         this.solutionData = null
         if (this.showSnackbar) {
           this.showSnackbar(error.message || error, 'error')
@@ -182,51 +218,61 @@ export default {
     async parseSolutionFile(file, extension) {
       return new Promise((resolve, reject) => {
         const fileReader = new FileReader()
-        
+
         fileReader.onload = async () => {
           try {
             const { Solution } = this.generalStore.appConfig
             const schemas = this.generalStore.getSchemaConfig
 
-            if (extension === 'xlsx') {
+            if (extension === FILE_EXTENSIONS.XLSX) {
               const solution = await Solution.fromExcel(
                 fileReader.result,
                 schemas.solutionSchema,
-                this.generalStore.appConfig.parameters.schema
+                this.generalStore.appConfig.parameters.schema,
               )
               resolve(solution)
-            } else if (extension === 'json') {
+            } else if (extension === FILE_EXTENSIONS.JSON) {
               const jsonData = JSON.parse(fileReader.result)
               const solution = new Solution(
                 null,
                 jsonData,
                 schemas.solutionSchema,
                 schemas.solutionChecksSchema,
-                this.generalStore.appConfig.parameters.schema
+                this.generalStore.appConfig.parameters.schema,
               )
               resolve(solution)
-            } else if (extension === 'csv') {
+            } else if (extension === FILE_EXTENSIONS.CSV) {
               const solution = await Solution.fromCsv(
                 fileReader.result,
                 file.name,
                 schemas.solutionSchema,
                 schemas.solutionChecksSchema,
-                this.generalStore.appConfig.parameters.schema
+                this.generalStore.appConfig.parameters.schema,
               )
               resolve(solution)
             } else {
-              throw new Error(this.$t('projectExecution.steps.step7.developerMode.unsupportedFileFormat'))
+              throw new Error(
+                this.$t(
+                  'projectExecution.steps.step8.developerMode.unsupportedFileFormat',
+                ),
+              )
             }
           } catch (error) {
             reject(error)
           }
         }
-        
+
         fileReader.onerror = () => {
-          reject(new Error(this.$t('projectExecution.steps.step7.developerMode.fileReadError')))
+          reject(
+            new Error(
+              this.$t(
+                'projectExecution.steps.step8.developerMode.fileReadError',
+              ),
+            ),
+          )
         }
-        
-        if (extension === 'xlsx') {
+
+        if (extension === FILE_EXTENSIONS.XLSX) {
           fileReader.readAsArrayBuffer(file)
         } else {
           fileReader.readAsText(file)
@@ -239,52 +285,63 @@ export default {
         this.executionIsLoading = true
 
         if (this.solveMode === 'upload' && !this.solutionData) {
-          throw new Error(this.$t('projectExecution.steps.step7.developerMode.noSolutionData'))
+          throw new Error(
+            this.$t(
+              'projectExecution.steps.step8.developerMode.noSolutionData',
+            ),
+          )
         }
 
         // Create execution with run=0 if uploading solution
         const result = await this.generalStore.createExecution(
           this.newExecution,
-          this.solveMode === 'upload' ? '?run=0' : ''
+          this.solveMode === 'upload' ? '?run=0' : '',
         )
 
         if (result) {
           if (this.solveMode === 'upload') {
-            // Upload solution data
             const uploadResult = await this.generalStore.uploadSolutionData(
               result.id,
-              this.solutionData
+              this.solutionData,
             )
             if (!uploadResult) {
-              throw new Error(this.$t('projectExecution.steps.step7.developerMode.uploadError'))
+              throw new Error(
+                this.$t(
+                  'projectExecution.steps.step8.developerMode.uploadError',
+                ),
+              )
             }
           }
 
-          const loadedResult = await this.generalStore.fetchLoadedExecution(result.id)
+          const loadedResult = await this.generalStore.fetchLoadedExecution(
+            result.id,
+          )
 
           if (loadedResult) {
             this.executionIsLoading = false
             this.executionLaunched = true
+            this.$emit('executionLaunched')
             this.showSnackbar(
-              this.$t('projectExecution.snackbar.successCreate')
+              this.$t('projectExecution.snackbar.successCreate'),
             )
           } else {
+            this.executionIsLoading = false
             this.showSnackbar(
               this.$t('projectExecution.snackbar.errorCreate'),
-              'error'
+              'error',
             )
           }
         } else {
           this.showSnackbar(
             this.$t('projectExecution.snackbar.errorCreate'),
-            'error'
+            'error',
           )
           this.executionIsLoading = false
         }
       } catch (error) {
         this.showSnackbar(
           error.message || this.$t('projectExecution.snackbar.errorCreate'),
-          'error'
+          'error',
         )
         this.executionIsLoading = false
       }

@@ -1,7 +1,12 @@
 import { enableAutoUnmount } from '@vue/test-utils'
-import { afterEach } from 'vitest'
+import { afterEach, vi } from 'vitest'
 
 enableAutoUnmount(afterEach)
+
+// Avoid loading apexcharts ESM from a CJS-marked package (Vitest "Unexpected token 'export'").
+vi.mock('vue3-apexcharts', () => ({
+  default: { name: 'VueApexChartStub', template: '<div class="vue-apexchart-stub" />' },
+}))
 
 /* With jest-dom the resizeObserver seems to not be included, it is used by Vuetify so we have
    to include it somehow for tests.

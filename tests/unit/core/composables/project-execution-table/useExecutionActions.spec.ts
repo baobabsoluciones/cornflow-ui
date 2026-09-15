@@ -1,14 +1,23 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
 import { nextTick } from 'vue'
-import { useExecutionActions } from '@/composables/project-execution-table/useExecutionActions'
-import type { Execution } from '@/composables/project-execution-table/types'
+import {
+  useExecutionActions,
+  isConfigTimeLimitInMinutes,
+  getTimeLimitUnitI18nKey,
+} from '@cornflow-ui/core/composables/project-execution-table/useExecutionActions'
+import type { Execution } from '@cornflow-ui/core/composables/project-execution-table/types'
 
 // Mock Pinia store
 const mockGeneralStore = {
-  getDataToDownload: vi.fn()
+  getDataToDownload: vi.fn(),
+  appConfig: {
+    parameters: {
+      configFields: [] as Array<{ key?: string; minutes?: boolean }>,
+    },
+  },
 }
 
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: () => mockGeneralStore
 }))
 
@@ -48,7 +57,8 @@ describe('useExecutionActions', () => {
       expect(result).toHaveProperty('handleDownload')
       expect(result).toHaveProperty('getSolverName')
       expect(result).toHaveProperty('getTimeLimit')
-      
+      expect(result).toHaveProperty('getTimeLimitDisplayUnitI18nKey')
+
       expect(typeof result.loadExecution).toBe('function')
       expect(typeof result.deleteExecution).toBe('function')
       expect(typeof result.confirmDelete).toBe('function')
@@ -56,6 +66,7 @@ describe('useExecutionActions', () => {
       expect(typeof result.handleDownload).toBe('function')
       expect(typeof result.getSolverName).toBe('function')
       expect(typeof result.getTimeLimit).toBe('function')
+      expect(typeof result.getTimeLimitDisplayUnitI18nKey).toBe('function')
     })
 
     test('should initialize with correct default state', () => {
@@ -411,6 +422,52 @@ describe('useExecutionActions', () => {
       const result = getTimeLimit(executionWithNegativeTimeLimit)
       
       expect(result).toBe(-1)
+    })
+  })
+
+  describe('time limit unit (minutes vs seconds)', () => {
+    test('isConfigTimeLimitInMinutes is false without matching field', () => {
+      expect(isConfigTimeLimitInMinutes(undefined)).toBe(false)
+      expect(isConfigTimeLimitInMinutes([])).toBe(false)
+      expect(
+        isConfigTimeLimitInMinutes([{ key: 'solver', minutes: true }]),
+      ).toBe(false)
+    })
+
+    test('isConfigTimeLimitInMinutes respects timeLimit field', () => {
+      expect(
+        isConfigTimeLimitInMinutes([{ key: 'timeLimit', minutes: true }]),
+      ).toBe(true)
+      expect(
+        isConfigTimeLimitInMinutes([{ key: 'TimeLimit', minutes: true }]),
+      ).toBe(true)
+      expect(
+        isConfigTimeLimitInMinutes([{ key: 'timeLimit', minutes: false }]),
+      ).toBe(false)
+    })
+
+    test('getTimeLimitUnitI18nKey maps to suffix keys', () => {
+      expect(getTimeLimitUnitI18nKey(undefined)).toBe(
+        'configParams.secondsSuffix',
+      )
+      expect(
+        getTimeLimitUnitI18nKey([{ key: 'timeLimit', minutes: true }]),
+      ).toBe('configParams.minutesSuffix')
+    })
+
+    test('getTimeLimitDisplayUnitI18nKey reads store configFields', () => {
+      mockGeneralStore.appConfig.parameters.configFields = [
+        { key: 'timeLimit', minutes: true },
+      ]
+      const { getTimeLimitDisplayUnitI18nKey } = useExecutionActions()
+      expect(getTimeLimitDisplayUnitI18nKey()).toBe('configParams.minutesSuffix')
+
+      mockGeneralStore.appConfig.parameters.configFields = [
+        { key: 'timeLimit' },
+      ]
+      expect(useExecutionActions().getTimeLimitDisplayUnitI18nKey()).toBe(
+        'configParams.secondsSuffix',
+      )
     })
   })
 

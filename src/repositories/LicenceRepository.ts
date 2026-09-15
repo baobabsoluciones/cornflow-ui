@@ -1,5 +1,5 @@
-import client from '@/api/Api'
-import Licence from '@/models/Licence'
+import client from '@cornflow-ui/core/api/Api'
+import Licence from '@cornflow-ui/core/models/Licence'
 
 export default class LicenceRepository {
   getLicences(): Promise<any> {

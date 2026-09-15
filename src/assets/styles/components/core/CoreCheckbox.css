@@ -1,0 +1,103 @@
+/* CoreCheckbox Component Styles */
+
+.core-checkbox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.core-checkbox--disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.core-checkbox__input {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 4px;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  position: relative;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Hover state */
+.core-checkbox:not(.core-checkbox--disabled):hover .core-checkbox__input {
+  border-color: var(--checkbox-color);
+  box-shadow: 0 0 0 3px rgba(9, 132, 198, 0.1);
+}
+
+/* Checked state - outlined style */
+.core-checkbox--checked .core-checkbox__input {
+  background-color: white;
+  border-color: var(--checkbox-color);
+  border-width: 1px;
+  box-shadow: 0 0 0 1px var(--checkbox-color);
+}
+
+/* Indeterminate state - outlined style */
+.core-checkbox--indeterminate .core-checkbox__input {
+  background-color: white;
+  border-color: var(--checkbox-color);
+  border-width: 2px;
+  box-shadow: 0 0 0 1px var(--checkbox-color);
+}
+
+/* Icon styling */
+.core-checkbox__icon {
+  color: var(--checkbox-color);
+  transition: all 0.15s ease;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.core-checkbox__icon--checked,
+.core-checkbox__icon--indeterminate {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Animation for check appearance */
+.core-checkbox--checked .core-checkbox__icon--checked {
+  animation: checkAppear 0.2s ease-out;
+}
+
+@keyframes checkAppear {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Focus styles for accessibility */
+.core-checkbox:focus-visible .core-checkbox__input {
+  outline: 2px solid var(--checkbox-color);
+  outline-offset: 2px;
+}
+
+/* Disabled state */
+.core-checkbox--disabled .core-checkbox__input {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.core-checkbox--disabled.core-checkbox--checked .core-checkbox__input,
+.core-checkbox--disabled.core-checkbox--indeterminate .core-checkbox__input {
+  background-color: white;
+  border-color: #d1d5db;
+  box-shadow: none;
+}
+
+.core-checkbox--disabled .core-checkbox__icon {
+  color: #9ca3af;
+}

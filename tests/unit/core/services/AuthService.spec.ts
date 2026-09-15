@@ -1,8 +1,8 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
-import AuthService from '@/services/AuthService'
+import AuthService from '@cornflow-ui/core/services/AuthService'
 
 // Mock API client
-vi.mock('@/api/Api', () => ({
+vi.mock('@cornflow-ui/core/api/Api', () => ({
   default: {
     post: vi.fn()
   }
@@ -34,7 +34,7 @@ describe('AuthService', () => {
         }
       }
 
-      const { default: client } = await import('@/api/Api')
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
       vi.mocked(client.post).mockResolvedValue(mockResponse)
 
       const result = await AuthService.login('testuser', 'password123')
@@ -56,7 +56,7 @@ describe('AuthService', () => {
         content: {}
       }
 
-      const { default: client } = await import('@/api/Api')
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
       vi.mocked(client.post).mockResolvedValue(mockResponse)
 
       const result = await AuthService.login('testuser', 'wrongpassword')
@@ -66,7 +66,7 @@ describe('AuthService', () => {
     })
 
     test('handles API errors gracefully', async () => {
-      const { default: client } = await import('@/api/Api')
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
       vi.mocked(client.post).mockRejectedValue(new Error('Network error'))
 
       await expect(AuthService.login('testuser', 'password123')).rejects.toThrow('Network error')
@@ -80,7 +80,7 @@ describe('AuthService', () => {
         content: {}
       }
 
-      const { default: client } = await import('@/api/Api')
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
       vi.mocked(client.post).mockResolvedValue(mockResponse)
 
       const result = await AuthService.signup('test@example.com', 'testuser', 'password123')
@@ -99,7 +99,7 @@ describe('AuthService', () => {
         content: {}
       }
 
-      const { default: client } = await import('@/api/Api')
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
       vi.mocked(client.post).mockResolvedValue(mockResponse)
 
       const result = await AuthService.signup('test@example.com', 'testuser', 'password123')
@@ -108,7 +108,7 @@ describe('AuthService', () => {
     })
 
     test('handles API errors gracefully', async () => {
-      const { default: client } = await import('@/api/Api')
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
       vi.mocked(client.post).mockRejectedValue(new Error('Network error'))
 
       await expect(AuthService.signup('test@example.com', 'testuser', 'password123')).rejects.toThrow('Network error')

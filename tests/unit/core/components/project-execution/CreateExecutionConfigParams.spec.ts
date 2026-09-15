@@ -2,7 +2,7 @@ import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import { nextTick } from 'vue'
-import CreateExecutionConfigParams from '@/components/project-execution/CreateExecutionConfigParams.vue'
+import CreateExecutionConfigParams from '@cornflow-ui/core/components/project-execution/CreateExecutionConfigParams.vue'
 
 // Mock Pinia store
 const mockGeneralStore = {
@@ -58,7 +58,7 @@ const mockGeneralStore = {
   fetchParametro: vi.fn()
 }
 
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: vi.fn(() => mockGeneralStore)
 }))
 

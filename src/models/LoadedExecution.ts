@@ -3,7 +3,7 @@ import { ExperimentCore } from './Experiment'
 type UIPreferences = {
   inputData: { selectedTable: null | string; filters: null | object }
   outputData: { selectedTable: null | string; filters: null | object }
-  dashboard: null | any
+  dashboard: any
 }
 
 export class LoadedExecution {
@@ -15,26 +15,26 @@ export class LoadedExecution {
   state: number
   messageState: string
   config: any
-  private uiPreferences: UIPreferences
+  private readonly uiPreferences: UIPreferences
 
-  constructor(
-    experiment: ExperimentCore,
-    executionId: string,
-    name: string,
-    description: string,
-    createdAt: string,
-    state: number,
-    message: string,
-    config: any,
-  ) {
-    this.experiment = experiment
-    this.executionId = executionId
-    this.name = name
-    this.description = description
-    this.createdAt = createdAt
-    this.state = state
-    this.messageState = message
-    this.config = config
+  constructor(params: {
+    experiment: ExperimentCore
+    executionId: string
+    name: string
+    description: string
+    createdAt: string
+    state: number
+    message: string
+    config: any
+  }) {
+    this.experiment = params.experiment
+    this.executionId = params.executionId
+    this.name = params.name
+    this.description = params.description
+    this.createdAt = params.createdAt
+    this.state = params.state
+    this.messageState = params.message
+    this.config = params.config
     this.uiPreferences = {
       inputData: { selectedTable: null, filters: {} },
       outputData: { selectedTable: null, filters: {} },

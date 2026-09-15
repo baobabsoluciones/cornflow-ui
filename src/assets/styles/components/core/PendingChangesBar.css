@@ -1,0 +1,17 @@
+/* Shared pending changes bar (SectionView master tables, ExecutionDataView review) */
+.pending-changes-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 12px 16px;
+  background: linear-gradient(
+    90deg,
+    rgba(76, 175, 80, 0.12) 0%,
+    rgba(76, 175, 80, 0.05) 100%
+  );
+  border: 1px solid rgba(76, 175, 80, 0.25);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  gap: 8px;
+  flex-shrink: 0;
+}

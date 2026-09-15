@@ -1,10 +1,24 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
-import HelpMenu from '@/components/core/HelpMenu.vue'
+import HelpMenu from '@cornflow-ui/core/components/core/HelpMenu.vue'
+import appConfig from '@/app/config'
+
+function fileBaseName(publicPath: string) {
+  return publicPath.split('/').pop() || publicPath
+}
+
+function expectedDownloadName(file: { publicPath: string; downloadName?: string }) {
+  return file.downloadName || fileBaseName(file.publicPath)
+}
+
+function expectedHref(file: { publicPath: string }, locale: string) {
+  const path = file.publicPath.replace('{lang}', locale)
+  return `${import.meta.env.BASE_URL}${path}`
+}
 
 // Mock package.json version
-vi.mock('@/../package.json', () => ({
+vi.mock('@cornflow-ui/core/../package.json', () => ({
   version: '1.2.3'
 }))
 
@@ -29,7 +43,7 @@ const mockGeneralStore = {
   cornflowVersion: '2.4.1'
 }
 
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: vi.fn(() => mockGeneralStore)
 }))
 
@@ -39,7 +53,7 @@ const mockT = vi.fn((key) => {
     'helpMenu.help': 'Help',
     'helpMenu.licences': 'Licenses',
     'helpMenu.close': 'Close',
-    'helpMenu.download': 'Download Manual'
+    'helpMenu.download': 'Download Manual',
   }
   return translations[key] || key
 })
@@ -180,11 +194,17 @@ describe('HelpMenu', () => {
     expect(vm.backendVersion).toBe('Cornflow version: 2.4.1')
   })
 
-  test('computes manual file URL correctly', () => {
+  test('downloadableFiles and resolveFilePath match app config for current locale', () => {
     wrapper = createWrapper()
-    
+
     const vm = wrapper.vm as any
-    expect(vm.manualFile).toBe('/manual/user_manual_en.pdf')
+    const configured = appConfig.getHelpMenuFiles()
+    expect(vm.downloadableFiles).toEqual(configured)
+
+    const locale = vm.$i18n.locale
+    configured.forEach((file: { publicPath: string }) => {
+      expect(vm.resolveFilePath(file)).toBe(expectedHref(file, locale))
+    })
   })
 
   test('opens help modal when help menu item is clicked', async () => {
@@ -279,17 +299,22 @@ describe('HelpMenu', () => {
     expect(licensesModal?.exists()).toBe(true)
   })
 
-  test('help modal contains download link', async () => {
+  test('help modal renders one anchor per configured help file', async () => {
     wrapper = createWrapper()
-    
-    // Open help modal
+
     const vm = wrapper.vm as any
     vm.helpModal = true
     await wrapper.vm.$nextTick()
-    
-    const downloadLink = wrapper.find('a[download="manual_user.pdf"]')
-    expect(downloadLink.exists()).toBe(true)
-    expect(downloadLink.attributes('href')).toBe('/manual/user_manual_en.pdf')
+
+    const configured = appConfig.getHelpMenuFiles()
+    const locale = vm.$i18n.locale
+
+    configured.forEach((file: { publicPath: string; downloadName?: string }) => {
+      const download = expectedDownloadName(file)
+      const link = wrapper.find(`a[download="${download}"]`)
+      expect(link.exists(), `missing link for ${file.publicPath}`).toBe(true)
+      expect(link.attributes('href')).toBe(expectedHref(file, locale))
+    })
   })
 
   test('closes help modal when cancel is emitted', async () => {
@@ -356,15 +381,21 @@ describe('HelpMenu', () => {
     expect(vm.licensesModal).toBe(false)
   })
 
-  test('manual file URL changes with locale', async () => {
+  test('resolveFilePath uses locale for paths with {lang} placeholder', async () => {
     wrapper = createWrapper()
-    
-    // Change locale
+
     const vm = wrapper.vm as any
+    const configured = appConfig.getHelpMenuFiles()
+    const withLangToken = configured.filter((f: { publicPath: string }) =>
+      f.publicPath.includes('{lang}'),
+    )
+
     vm.$i18n.locale = 'es'
     await wrapper.vm.$nextTick()
-    
-    expect(vm.manualFile).toBe('/manual/user_manual_es.pdf')
+
+    withLangToken.forEach((file: { publicPath: string }) => {
+      expect(vm.resolveFilePath(file)).toBe(expectedHref(file, 'es'))
+    })
   })
 
   test('component has correct initial data', () => {

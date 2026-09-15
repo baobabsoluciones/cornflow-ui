@@ -1,6 +1,21 @@
-import configService from '@/services/ConfigService';
+import configService from '@cornflow-ui/core/services/ConfigService';
 import appConfig from '@/app/config';
-import { parseBoolean } from '@/utils/common';
+import { parseBoolean } from '@cornflow-ui/core/utils/common';
+
+// Builds the auth object from VITE_APP_AUTH_* environment variables.
+// Shared by the env-vars branch and the error fallback in initConfig().
+function buildAuthFromEnv() {
+  return {
+    type: import.meta.env.VITE_APP_AUTH_TYPE || 'cornflow',
+    clientId: import.meta.env.VITE_APP_AUTH_CLIENT_ID || '',
+    authority: import.meta.env.VITE_APP_AUTH_AUTHORITY || '',
+    redirectUri: import.meta.env.VITE_APP_AUTH_REDIRECT_URI || '',
+    region: import.meta.env.VITE_APP_AUTH_REGION || '',
+    userPoolId: import.meta.env.VITE_APP_AUTH_USER_POOL_ID || '',
+    domain: import.meta.env.VITE_APP_AUTH_DOMAIN || '',
+    providers: import.meta.env.VITE_APP_AUTH_PROVIDERS ? import.meta.env.VITE_APP_AUTH_PROVIDERS.split(',') : []
+  };
+}
 
 const config = {
   backend: '',
@@ -8,7 +23,10 @@ const config = {
   name: '',
   hasExternalApp: false,
   isStagingEnvironment: false,
-  useHashMode: false,
+  // Seeded from the build-time env var (Vite inlines `import.meta.env`) so that anything reading
+  // this before `initConfig()` resolves still sees the configured value. values.json-based
+  // deployments override it in `initConfig()`.
+  useHashMode: parseBoolean(import.meta.env.VITE_APP_USE_HASH_MODE) ?? false,
   defaultLanguage: '',
   isDeveloperMode: false,
   enableSignup: false,
@@ -81,16 +99,7 @@ const config = {
         this.isDeveloperMode = parseBoolean(import.meta.env.VITE_APP_IS_DEVELOPER_MODE) ?? config.isDeveloperMode;
         this.enableSignup = parseBoolean(import.meta.env.VITE_APP_ENABLE_SIGNUP) ?? config.enableSignup;
         
-        this.auth = {
-          type: import.meta.env.VITE_APP_AUTH_TYPE || 'cornflow',
-          clientId: import.meta.env.VITE_APP_AUTH_CLIENT_ID || '',
-          authority: import.meta.env.VITE_APP_AUTH_AUTHORITY || '',
-          redirectUri: import.meta.env.VITE_APP_AUTH_REDIRECT_URI || '',
-          region: import.meta.env.VITE_APP_AUTH_REGION || '',
-          userPoolId: import.meta.env.VITE_APP_AUTH_USER_POOL_ID || '',
-          domain: import.meta.env.VITE_APP_AUTH_DOMAIN || '',
-          providers: import.meta.env.VITE_APP_AUTH_PROVIDERS ? import.meta.env.VITE_APP_AUTH_PROVIDERS.split(',') : []
-        };
+        this.auth = buildAuthFromEnv();
       }
     } catch (error) {
       console.error('Error initializing config:', error);
@@ -106,16 +115,7 @@ const config = {
       this.isDeveloperMode = parseBoolean(import.meta.env.VITE_APP_IS_DEVELOPER_MODE) ?? false;
       this.enableSignup = parseBoolean(import.meta.env.VITE_APP_ENABLE_SIGNUP) ?? false;
       
-      this.auth = {
-        type: import.meta.env.VITE_APP_AUTH_TYPE || 'cornflow',
-        clientId: import.meta.env.VITE_APP_AUTH_CLIENT_ID || '',
-        authority: import.meta.env.VITE_APP_AUTH_AUTHORITY || '',
-        redirectUri: import.meta.env.VITE_APP_AUTH_REDIRECT_URI || '',
-        region: import.meta.env.VITE_APP_AUTH_REGION || '',
-        userPoolId: import.meta.env.VITE_APP_AUTH_USER_POOL_ID || '',
-        domain: import.meta.env.VITE_APP_AUTH_DOMAIN || '',
-        providers: import.meta.env.VITE_APP_AUTH_PROVIDERS ? import.meta.env.VITE_APP_AUTH_PROVIDERS.split(',') : []
-      };
+      this.auth = buildAuthFromEnv();
     }
   },
   

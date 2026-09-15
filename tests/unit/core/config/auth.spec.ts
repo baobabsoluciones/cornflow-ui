@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
-import type { AuthConfig } from '@/config/auth'
-import auth from '@/config/auth'
+import type { AuthConfig } from '@cornflow-ui/core/config/auth'
+import auth from '@cornflow-ui/core/config/auth'
 
 describe('config/auth', () => {
   beforeEach(() => {

@@ -1,4 +1,4 @@
-import { SolutionCore } from '@/models/Solution'
+import { SolutionCore } from '@cornflow-ui/core/models/Solution'
 
 export class Solution extends SolutionCore {
   constructor(
@@ -8,7 +8,8 @@ export class Solution extends SolutionCore {
     schemaChecks: object,
     schemaName: string,
     dataChecks: object = {},
+    kpis: Record<string, any> | null = null,
   ) {
-    super(id, data, schema, schemaChecks, schemaName, dataChecks)
+    super(id, data, schema, schemaChecks, schemaName, dataChecks, kpis)
   }
 }

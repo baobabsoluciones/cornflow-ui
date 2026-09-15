@@ -1,0 +1,8 @@
+/* Shared dashboard table styles — extracted to remove duplicated CSS.
+ * Imported via <style scoped src> so each component keeps its own scope id.
+ * Members: Flujos, PlanEnt, Desglose, Stock, Interc */
+
+.strong {
+  font-weight: 700;
+  color: var(--dash-text-strong);
+}

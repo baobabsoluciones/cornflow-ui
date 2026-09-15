@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import AppHeader from '@/components/AppHeader.vue'
+import AppHeader from '@cornflow-ui/core/components/AppHeader.vue'
 
 // Mock Vuetify components
 const MockVSystemBar = {

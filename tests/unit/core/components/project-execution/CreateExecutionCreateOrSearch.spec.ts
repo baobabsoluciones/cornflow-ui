@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
-import CreateExecutionCreateOrSearch from '@/components/project-execution/CreateExecutionCreateOrSearch.vue'
+import CreateExecutionCreateOrSearch from '@cornflow-ui/core/components/project-execution/CreateExecutionCreateOrSearch.vue'
 
 // Mock i18n
 const mockT = vi.fn((key) => {

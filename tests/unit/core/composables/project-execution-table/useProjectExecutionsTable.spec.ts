@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
 import { nextTick, ref } from 'vue'
-import { useProjectExecutionsTable } from '@/composables/project-execution-table/useProjectExecutionsTable'
-import type { ExecutionTableProps, Execution } from '@/composables/project-execution-table/types'
+import { useProjectExecutionsTable } from '@cornflow-ui/core/composables/project-execution-table/useProjectExecutionsTable'
+import type { ExecutionTableProps, Execution } from '@cornflow-ui/core/composables/project-execution-table/types'
 
 // Mock all the sub-composables
 const mockUseTableConfig = {
@@ -35,7 +35,8 @@ const mockUseExecutionActions = {
   cancelDelete: vi.fn(),
   handleDownload: vi.fn(() => Promise.resolve(true)),
   getSolverName: vi.fn((execution) => execution?.config?.solver || '-'),
-  getTimeLimit: vi.fn((execution) => execution?.config?.timeLimit || '-')
+  getTimeLimit: vi.fn((execution) => execution?.config?.timeLimit || '-'),
+  getTimeLimitDisplayUnitI18nKey: vi.fn(() => 'configParams.secondsSuffix'),
 }
 
 // Mock vue-i18n
@@ -61,24 +62,24 @@ const mockGeneralStore = {
   }
 }
 
-vi.mock('@/stores/general', () => ({
+vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: () => mockGeneralStore
 }))
 
 // Mock the individual composables
-vi.mock('@/composables/project-execution-table/useTableConfig', () => ({
+vi.mock('@cornflow-ui/core/composables/project-execution-table/useTableConfig', () => ({
   useTableConfig: vi.fn(() => mockUseTableConfig)
 }))
 
-vi.mock('@/composables/project-execution-table/useTableDOMManipulation', () => ({
+vi.mock('@cornflow-ui/core/composables/project-execution-table/useTableDOMManipulation', () => ({
   useTableDOMManipulation: vi.fn(() => mockUseTableDOMManipulation)
 }))
 
-vi.mock('@/composables/project-execution-table/useExecutionState', () => ({
+vi.mock('@cornflow-ui/core/composables/project-execution-table/useExecutionState', () => ({
   useExecutionState: vi.fn(() => mockUseExecutionState)
 }))
 
-vi.mock('@/composables/project-execution-table/useExecutionActions', () => ({
+vi.mock('@cornflow-ui/core/composables/project-execution-table/useExecutionActions', () => ({
   useExecutionActions: vi.fn(() => mockUseExecutionActions)
 }))
 
@@ -154,6 +155,7 @@ describe('useProjectExecutionsTable', () => {
       expect(result).toHaveProperty('getSolutionInfo')
       expect(result).toHaveProperty('getSolverName')
       expect(result).toHaveProperty('getTimeLimit')
+      expect(result).toHaveProperty('getTimeLimitDisplayUnitI18nKey')
       expect(result).toHaveProperty('handleResize')
       
       // Check method types
@@ -167,6 +169,7 @@ describe('useProjectExecutionsTable', () => {
       expect(typeof result.getSolutionInfo).toBe('function')
       expect(typeof result.getSolverName).toBe('function')
       expect(typeof result.getTimeLimit).toBe('function')
+      expect(typeof result.getTimeLimitDisplayUnitI18nKey).toBe('function')
       expect(typeof result.handleResize).toBe('function')
     })
 
@@ -326,6 +329,16 @@ describe('useProjectExecutionsTable', () => {
       
       expect(mockUseExecutionActions.getTimeLimit).toHaveBeenCalledWith(execution)
       expect(timeLimitResult).toBe(300)
+    })
+
+    test('should expose getTimeLimitDisplayUnitI18nKey from execution actions', () => {
+      const result = useProjectExecutionsTable(mockProps)
+      expect(result.getTimeLimitDisplayUnitI18nKey()).toBe(
+        'configParams.secondsSuffix',
+      )
+      expect(
+        mockUseExecutionActions.getTimeLimitDisplayUnitI18nKey,
+      ).toHaveBeenCalled()
     })
 
     test('should expose addColgroup method', () => {

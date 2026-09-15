@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import type { Execution, HeaderItem, StateInfo, ExecutionTableProps } from '@/composables/project-execution-table/types'
+import type { Execution, HeaderItem, StateInfo, ExecutionTableProps } from '@cornflow-ui/core/composables/project-execution-table/types'
 
 describe('project-execution-table types', () => {
   describe('Execution interface', () => {

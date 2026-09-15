@@ -23,7 +23,7 @@
 </template>
 
 <script>
-import ExecutionOptionCard from '@/components/project-execution/ExecutionOptionCard.vue'
+import ExecutionOptionCard from '@cornflow-ui/core/components/project-execution/ExecutionOptionCard.vue'
 
 export default {
   components: {

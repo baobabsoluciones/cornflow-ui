@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
-import DateRangePicker from '@/components/core/DateRangePicker.vue'
+import DateRangePicker from '@cornflow-ui/core/components/core/DateRangePicker.vue'
 
 describe('DateRangePicker', () => {
   let vuetify: any

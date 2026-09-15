@@ -1,0 +1,31 @@
+.simple-list-container {
+  width: 100%;
+}
+
+.simple-list-content {
+  max-height: calc(100vh - 320px);
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+
+.simple-list-items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.simple-list-item {
+  margin: 0;
+}
+
+.simple-list-item__text {
+  font-size: 13px !important;
+  line-height: 1.6;
+  word-wrap: break-word;
+  white-space: normal;
+  color: inherit;
+}
+
+.no-data-alert {
+  margin: 0;
+}

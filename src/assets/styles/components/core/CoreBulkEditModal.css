@@ -1,0 +1,86 @@
+/* CoreBulkEditModal Component Styles */
+
+.core-bulk-edit-modal {
+  border-radius: 12px !important;
+}
+
+/* Header */
+.core-bulk-edit-modal__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px 24px 16px;
+}
+
+.core-bulk-edit-modal__header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(var(--v-theme-primary), 0.1);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.core-bulk-edit-modal__header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.core-bulk-edit-modal__title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--title);
+  line-height: 1.4;
+}
+
+.core-bulk-edit-modal__subtitle {
+  font-size: 0.8rem;
+  color: var(--subtitle);
+  line-height: 1.4;
+}
+
+/* Body */
+.core-bulk-edit-modal__body {
+  padding: 20px 24px !important;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+/* Field */
+.core-bulk-edit-modal__field-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.core-bulk-edit-modal__field-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--label-text);
+}
+
+/* Actions */
+.core-bulk-edit-modal__actions {
+  padding: 12px 24px !important;
+  gap: 8px;
+}
+
+.core-bulk-edit-modal__hint {
+  display: flex;
+  align-items: center;
+  font-size: 0.75rem;
+  color: var(--subtitle);
+}
+
+.core-bulk-edit-modal__cancel-btn {
+  font-size: 0.85rem;
+}
+
+.core-bulk-edit-modal__apply-btn {
+  font-size: 0.85rem;
+}

@@ -1,5 +1,5 @@
 import { describe, test, expect, vi } from 'vitest'
-import type { AuthProvider } from '@/interfaces/AuthProvider'
+import type { AuthProvider } from '@cornflow-ui/core/interfaces/AuthProvider'
 
 describe('AuthProvider Interface', () => {
   test('should define correct method signatures', () => {
