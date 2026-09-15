@@ -1,7 +1,7 @@
 {
   "name": "@cornflow-ui/core",
   "private": true,
-  "version": "3.2.5",
+  "version": "3.2.6",
   "type": "module",
   "files": [
     "src",
@@ -62,24 +62,26 @@
     },
     "uuid": "14.0.0",
     "fast-xml-parser": "5.7.0",
-    "@xmldom/xmldom": "0.9.10"
+    "@xmldom/xmldom": "0.9.12",
+    "fast-uri": "3.1.6",
+    "fflate": "0.7.5"
   },
   "devDependencies": {
     "@playwright/test": "1.60.0",
     "@types/node": "25.9.4",
     "@types/nodemailer": "7.0.12",
     "@vitejs/plugin-vue": "6.0.7",
-    "@vitest/coverage-v8": "4.1.9",
+    "@vitest/coverage-v8": "4.1.11",
     "@vue/test-utils": "2.4.11",
     "dotenv": "17.4.2",
     "jsdom": "29.1.1",
-    "nodemailer": "9.0.5",
+    "nodemailer": "9.1.1",
     "rollup": "4.61.1",
     "sass": "1.100.0",
     "typescript": "6.0.3",
     "tsx": "4.23.7",
     "vite": "8.0.16",
-    "vitest": "4.1.9",
+    "vitest": "4.1.11",
     "vue-tsc": "3.3.5"
   }
 }
