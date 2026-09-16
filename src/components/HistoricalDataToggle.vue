@@ -118,119 +118,141 @@
   </div>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
+import { computed, onActivated, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import HistoricalChecksAlert from '@cornflow-ui/core/components/HistoricalChecksAlert.vue'
 
-export default {
-  name: 'HistoricalDataToggle',
-  components: { HistoricalChecksAlert },
-  emits: ['update:isHistorical'],
-  data() {
-    return {
-      generalStore: useGeneralStore(),
-      mode: 'execution',
-      dateFrom: '',
-      dateTo: '',
-      checksExpanded: false,
+const emit = defineEmits(['update:isHistorical'])
+
+const { t } = useI18n()
+const generalStore = useGeneralStore()
+
+const mode = ref('execution')
+const dateFrom = ref('')
+const dateTo = ref('')
+const checksExpanded = ref(false)
+
+const enabled = computed(
+  () => generalStore.appConfig?.parameters?.enableHistoricalKpis === true,
+)
+
+const historical = computed(() => generalStore.historicalState)
+
+const isLoading = computed(() => {
+  const m = historical.value.bannerMode
+  return m === 'creating' || m === 'data_check' || m === 'polling'
+})
+
+const canLoad = computed(
+  () => dateFrom.value !== '' && dateTo.value !== '' && !isLoading.value,
+)
+
+const statusMessage = computed(() => {
+  switch (historical.value.bannerMode) {
+    case 'creating':
+      return t('historical.creating')
+    case 'data_check':
+      return t('historical.checking')
+    case 'polling':
+      return t('historical.polling')
+    case 'error':
+      return historical.value.errorMessage || t('historical.error')
+    default:
+      return null
+  }
+})
+
+const statusClass = computed(() =>
+  historical.value.bannerMode === 'error' ? 'error-text' : 'info-text',
+)
+
+watch(mode, (newMode) => {
+  emit('update:isHistorical', newMode === 'historical')
+})
+
+watch(
+  () => historical.value.bannerMode,
+  (newMode) => {
+    if (
+      (newMode === 'done' || newMode === 'checks_warning') &&
+      historical.value.execution
+    ) {
+      mode.value = 'historical'
+      dateFrom.value = historical.value.dateRange.from
+      dateTo.value = historical.value.dateRange.to
+      if (newMode === 'checks_warning') {
+        checksExpanded.value = false
+      }
+    } else if (newMode === 'checks_error') {
+      mode.value = 'historical'
+      dateFrom.value = historical.value.dateRange.from
+      dateTo.value = historical.value.dateRange.to
+      checksExpanded.value = false
+    } else if (newMode === 'idle') {
+      mode.value = 'execution'
+      dateFrom.value = ''
+      dateTo.value = ''
+      checksExpanded.value = false
     }
   },
-  computed: {
-    enabled() {
-      return (
-        this.generalStore.appConfig?.parameters?.enableHistoricalKpis === true
-      )
-    },
-    historical() {
-      return this.generalStore.historicalState
-    },
-    isLoading() {
-      const m = this.historical.bannerMode
-      return m === 'creating' || m === 'data_check' || m === 'polling'
-    },
-    canLoad() {
-      return this.dateFrom !== '' && this.dateTo !== '' && !this.isLoading
-    },
-    statusMessage() {
-      switch (this.historical.bannerMode) {
-        case 'creating':
-          return this.$t('historical.creating')
-        case 'data_check':
-          return this.$t('historical.checking')
-        case 'polling':
-          return this.$t('historical.polling')
-        case 'error':
-          return this.historical.errorMessage || this.$t('historical.error')
-        default:
-          return null
-      }
-    },
-    statusClass() {
-      const m = this.historical.bannerMode
-      return m === 'error' ? 'error-text' : 'info-text'
-    },
-  },
-  watch: {
-    mode(newMode) {
-      this.$emit('update:isHistorical', newMode === 'historical')
-    },
-    'historical.bannerMode'(newMode) {
-      if ((newMode === 'done' || newMode === 'checks_warning') && this.historical.execution) {
-        this.mode = 'historical'
-        this.dateFrom = this.historical.dateRange.from
-        this.dateTo = this.historical.dateRange.to
-        if (newMode === 'checks_warning') {
-          this.checksExpanded = false
-        }
-      } else if (newMode === 'checks_error') {
-        this.mode = 'historical'
-        this.dateFrom = this.historical.dateRange.from
-        this.dateTo = this.historical.dateRange.to
-        this.checksExpanded = false
-      } else if (newMode === 'idle') {
-        this.mode = 'execution'
-        this.dateFrom = ''
-        this.dateTo = ''
-        this.checksExpanded = false
-      }
-    },
-  },
-  created() {
-    this.syncFromStore()
-  },
-  activated() {
-    this.syncFromStore()
-  },
-  methods: {
-    syncFromStore() {
-      const m = this.historical.bannerMode
-      if ((m === 'done' || m === 'checks_warning') && this.historical.execution) {
-        this.mode = 'historical'
-        this.dateFrom = this.historical.dateRange.from
-        this.dateTo = this.historical.dateRange.to
-      } else if (m === 'idle') {
-        this.mode = 'execution'
-      }
-    },
-    async loadHistorical() {
-      await this.generalStore.runHistoricalKpiFlow(this.dateFrom, this.dateTo)
-    },
-    clearHistorical() {
-      this.generalStore.clearHistoricalExecution()
-      this.mode = 'execution'
-      this.dateFrom = ''
-      this.dateTo = ''
-      this.checksExpanded = false
-    },
-    formatCheckTableName(key) {
-      return key.replaceAll('_', ' ').replaceAll(/\b\w/g, (c) => c.toUpperCase())
-    },
-    isWarningTable(tableName) {
-      const keys = this.historical.checksWarningKeys
-      return Array.isArray(keys) && keys.includes(tableName)
-    },
-  },
+)
+
+function syncFromStore() {
+  const m = historical.value.bannerMode
+  if ((m === 'done' || m === 'checks_warning') && historical.value.execution) {
+    mode.value = 'historical'
+    dateFrom.value = historical.value.dateRange.from
+    dateTo.value = historical.value.dateRange.to
+  } else if (m === 'idle') {
+    mode.value = 'execution'
+  }
 }
+
+async function loadHistorical() {
+  await generalStore.runHistoricalKpiFlow(dateFrom.value, dateTo.value)
+}
+
+function clearHistorical() {
+  generalStore.clearHistoricalExecution()
+  mode.value = 'execution'
+  dateFrom.value = ''
+  dateTo.value = ''
+  checksExpanded.value = false
+}
+
+function formatCheckTableName(key) {
+  return key.replaceAll('_', ' ').replaceAll(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function isWarningTable(tableName) {
+  const keys = historical.value.checksWarningKeys
+  return Array.isArray(keys) && keys.includes(tableName)
+}
+
+// Ran in created() before the conversion; the setup body is the equivalent hook.
+syncFromStore()
+onActivated(syncFromStore)
+
+// The unit suite drives this component through its instance (reads and writes
+// `mode`/`dateFrom`/..., calls `loadHistorical()`), so the bindings stay public.
+defineExpose({
+  mode,
+  dateFrom,
+  dateTo,
+  checksExpanded,
+  enabled,
+  historical,
+  isLoading,
+  canLoad,
+  statusMessage,
+  statusClass,
+  loadHistorical,
+  clearHistorical,
+  formatCheckTableName,
+  isWarningTable,
+})
 </script>
 
 <style scoped>
