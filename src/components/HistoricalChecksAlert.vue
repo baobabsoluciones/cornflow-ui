@@ -16,7 +16,7 @@
         variant="text"
         size="small"
         :color="type"
-        @click="$emit('update:expanded', true)"
+        @click="emit('update:expanded', true)"
       >
         {{ showLabel }}
       </v-btn>
@@ -26,7 +26,7 @@
           size="small"
           :color="type"
           class="mb-2"
-          @click="$emit('update:expanded', false)"
+          @click="emit('update:expanded', false)"
         >
           {{ hideLabel }}
         </v-btn>
@@ -63,25 +63,23 @@
   </v-alert>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
 import type { PropType } from 'vue'
 
-export default {
-  name: 'HistoricalChecksAlert',
-  props: {
-    /** Alert severity: 'warning' or 'error'. Also drives button color. */
-    type: { type: String as PropType<'warning' | 'error'>, required: true },
-    title: { type: String, required: true },
-    description: { type: String, required: true },
-    showLabel: { type: String, required: true },
-    hideLabel: { type: String, required: true },
-    expanded: { type: Boolean, default: false },
-    checksData: { type: Object, default: null },
-    isWarningTable: { type: Function, required: true },
-    formatCheckTableName: { type: Function, required: true },
-  },
-  emits: ['update:expanded'],
-}
+defineProps({
+  /** Alert severity: 'warning' or 'error'. Also drives button color. */
+  type: { type: String as PropType<'warning' | 'error'>, required: true },
+  title: { type: String, required: true },
+  description: { type: String, required: true },
+  showLabel: { type: String, required: true },
+  hideLabel: { type: String, required: true },
+  expanded: { type: Boolean, default: false },
+  checksData: { type: Object, default: null },
+  isWarningTable: { type: Function, required: true },
+  formatCheckTableName: { type: Function, required: true },
+})
+
+const emit = defineEmits(['update:expanded'])
 </script>
 
 <style scoped>
