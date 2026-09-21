@@ -236,18 +236,29 @@ const loadExcel = async function (
   return Object.fromEntries(results)
 }
 
-/** Column order for array-type sheets: schema property order when defined, else row keys. */
+/**
+ * Column order for array-type sheets: row keys (the data's natural order) by
+ * default, matching what the instance/solution actually contains. Pass
+ * `preferSchemaColumnOrder` to use the schema's declared `properties` order instead
+ * — only correct when the schema's property order was itself chosen to *be*
+ * the display order (e.g. `buildTableExportSchema`, built from configured
+ * table columns), not for arbitrary backend-declared schemas whose property
+ * order is incidental (often alphabetical).
+ */
 function getArrayTypeExportHeaders(
   sheetName: string,
   schema: Record<string, any> | null,
   firstRow: Record<string, any>,
+  preferSchemaColumnOrder = false,
 ): string[] {
-  const itemProperties = schema?.properties?.[sheetName]?.items?.properties
-  if (itemProperties && typeof itemProperties === 'object') {
-    const fromSchema = Object.keys(itemProperties).filter((key) =>
-      isFieldVisible(key, schema, sheetName, false),
-    )
-    if (fromSchema.length > 0) return fromSchema
+  if (preferSchemaColumnOrder) {
+    const itemProperties = schema?.properties?.[sheetName]?.items?.properties
+    if (itemProperties && typeof itemProperties === 'object') {
+      const fromSchema = Object.keys(itemProperties).filter((key) =>
+        isFieldVisible(key, schema, sheetName, false),
+      )
+      if (fromSchema.length > 0) return fromSchema
+    }
   }
   return Object.keys(firstRow).filter((key) =>
     isFieldVisible(key, schema, sheetName, false),
@@ -262,11 +273,13 @@ function processArrayTypeWorksheet(
   sheetData: any[],
   schema: Record<string, any> | null,
   sheetName: string,
+  preferSchemaColumnOrder = false,
 ): void {
   const headers = getArrayTypeExportHeaders(
     sheetName,
     schema,
     sheetData[0] as Record<string, any>,
+    preferSchemaColumnOrder,
   )
 
   const tableData = [
@@ -302,9 +315,13 @@ async function schemaDataToTable(
   wb: any,
   data: Record<string, any>,
   schema: Record<string, any> | null = null,
-  options: { includeTablesWithoutSchema?: boolean } = {},
+  options: {
+    includeTablesWithoutSchema?: boolean
+    preferSchemaColumnOrder?: boolean
+  } = {},
 ) {
   const includeTablesWithoutSchema = options.includeTablesWithoutSchema ?? true
+  const preferSchemaColumnOrder = options.preferSchemaColumnOrder ?? false
   const dataArray: Array<[string, any[]]> = Object.entries(data).map(
     ([sheetName, sheetData]) => {
       const normalizedData = Array.isArray(sheetData) ? sheetData : [sheetData]
@@ -331,7 +348,13 @@ async function schemaDataToTable(
     if (isObjectType) {
       processObjectTypeWorksheet(worksheet, sheetData, schema, sheetName)
     } else {
-      processArrayTypeWorksheet(worksheet, sheetData, schema, sheetName)
+      processArrayTypeWorksheet(
+        worksheet,
+        sheetData,
+        schema,
+        sheetName,
+        preferSchemaColumnOrder,
+      )
     }
   }
 }
@@ -476,9 +499,13 @@ async function arraySheetToCsvBlob(
 async function buildAsCsvZip(
   data: Record<string, any>,
   schema: Record<string, any> | null,
-  options: { includeTablesWithoutSchema?: boolean } = {},
+  options: {
+    includeTablesWithoutSchema?: boolean
+    preferSchemaColumnOrder?: boolean
+  } = {},
 ): Promise<Uint8Array> {
   const includeTablesWithoutSchema = options.includeTablesWithoutSchema ?? true
+  const preferSchemaColumnOrder = options.preferSchemaColumnOrder ?? false
   // Dynamic import keeps JSZip out of the main bundle when it's not needed.
   const JSZip = (await import('jszip')).default
   const zip = new JSZip()
@@ -509,6 +536,7 @@ async function buildAsCsvZip(
       sheetName,
       schema,
       normalizedData[0] as Record<string, any>,
+      preferSchemaColumnOrder,
     )
     if (headers.length === 0) {
       zip.file(filename, '')
@@ -542,11 +570,21 @@ async function buildAsCsvZip(
  *  - No worker available (jsdom/SSR) → ExcelJS on main thread (legacy).
  *
  * Callers use the returned `format` to choose the file extension.
+ *
+ * `options.preferSchemaColumnOrder` controls array-sheet column order: when
+ * false (default), columns follow the data's own key order, which is what
+ * instance/solution exports need since backend schemas don't promise their
+ * `properties` order matches the intended display order. Pass `true` only
+ * when the schema's property order was deliberately built to *be* the
+ * display order (see `buildTableExportSchema`).
  */
 async function buildExcelBuffer(
   data: Record<string, any>,
   schema: Record<string, any> | null = null,
-  options: { includeTablesWithoutSchema?: boolean } = {},
+  options: {
+    includeTablesWithoutSchema?: boolean
+    preferSchemaColumnOrder?: boolean
+  } = {},
 ): Promise<ExcelBuildResult> {
   const cellCount = estimateSheetCellCount(data, schema)
 
@@ -1004,6 +1042,10 @@ async function exportTableToExcel(
     const result = await buildExcelBuffer(
       { [sheetKey]: exportItems },
       buildTableExportSchema(sheetKey, schemaFields, exportItems),
+      // schemaFields (and thus the synthesized schema's property order) is
+      // already the intended display order — same order the small-table
+      // path above uses via `headerRowLabels`.
+      { preferSchemaColumnOrder: true },
     )
     triggerTableBuiltDownload(result, tableName)
     return

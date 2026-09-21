@@ -133,7 +133,10 @@ export async function parseExcelInWorker(
 export async function buildExcelBufferInWorker(
   data: Record<string, any>,
   schema: Record<string, any> | null,
-  options: { includeTablesWithoutSchema?: boolean } = {},
+  options: {
+    includeTablesWithoutSchema?: boolean
+    preferSchemaColumnOrder?: boolean
+  } = {},
 ): Promise<Uint8Array | null> {
   const worker = getWorker()
   if (!worker) return null
