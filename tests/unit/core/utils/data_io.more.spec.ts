@@ -345,6 +345,53 @@ describe('data_io extra coverage', () => {
       expect(names).not.toContain('EmptyArr.csv')
       expect(names).not.toContain('PrimitiveArr.csv')
     })
+
+    test('csv-zip column order follows row data order by default, not the schema property order', async () => {
+      // Real order is name -> age; schema declares the opposite order (as many
+      // backends do, e.g. alphabetical `properties`). Regression from #186 /
+      // v3.2.7: the schema order used to win here.
+      const data = {
+        Real: [{ name: 'John', age: 25 }],
+        Trip: makeTripSheet(), // routes buildExcelBuffer into the zip path
+      }
+      const schema = {
+        properties: {
+          Real: {
+            type: 'array',
+            items: { properties: { age: {}, name: {} } },
+          },
+        },
+      }
+      const result = await buildExcelBuffer(data, schema)
+      expect(result.format).toBe('zip')
+      const JSZip = (await import('jszip')).default
+      const zip = await JSZip.loadAsync(result.bytes)
+      const csv = await zip.files['Real.csv'].async('string')
+      expect(csv.startsWith('name,age\n')).toBe(true)
+    })
+
+    test('csv-zip column order follows the schema property order when preferSchemaColumnOrder is opted in', async () => {
+      const data = {
+        Real: [{ name: 'John', age: 25 }],
+        Trip: makeTripSheet(),
+      }
+      const schema = {
+        properties: {
+          Real: {
+            type: 'array',
+            items: { properties: { age: {}, name: {} } },
+          },
+        },
+      }
+      const result = await buildExcelBuffer(data, schema, {
+        preferSchemaColumnOrder: true,
+      })
+      expect(result.format).toBe('zip')
+      const JSZip = (await import('jszip')).default
+      const zip = await JSZip.loadAsync(result.bytes)
+      const csv = await zip.files['Real.csv'].async('string')
+      expect(csv.startsWith('age,name\n')).toBe(true)
+    })
   })
 
   // ───────────────────────── schemaDataToTable extra branches ──────────────
@@ -407,6 +454,46 @@ describe('data_io extra coverage', () => {
       expect(headerRow).toContain('visibleCol')
       expect(headerRow).not.toContain('id')
       expect(headerRow).not.toContain('hiddenCol')
+    })
+
+    test('array column order defaults to row data order, not schema property order', async () => {
+      const wb = makeMockWorkbook()
+      const data = {
+        T: [{ name: 'a', age: 1 }],
+      }
+      const schema = {
+        properties: {
+          T: {
+            type: 'array',
+            items: { properties: { age: {}, name: {} } },
+          },
+        },
+      }
+      await schemaDataToTable(wb, data, schema)
+      const ws = wb._worksheets[0]
+      const headerRow = ws.addRows.mock.calls[0][0][0]
+      expect(headerRow).toEqual(['name', 'age'])
+    })
+
+    test('array column order uses schema property order when preferSchemaColumnOrder is opted in', async () => {
+      const wb = makeMockWorkbook()
+      const data = {
+        T: [{ name: 'a', age: 1 }],
+      }
+      const schema = {
+        properties: {
+          T: {
+            type: 'array',
+            items: { properties: { age: {}, name: {} } },
+          },
+        },
+      }
+      await schemaDataToTable(wb, data, schema, {
+        preferSchemaColumnOrder: true,
+      })
+      const ws = wb._worksheets[0]
+      const headerRow = ws.addRows.mock.calls[0][0][0]
+      expect(headerRow).toEqual(['age', 'name'])
     })
   })
 
@@ -548,6 +635,16 @@ describe('data_io extra coverage', () => {
 
       expect(workerBuild).toHaveBeenCalledTimes(1)
       expect(clickSpy).toHaveBeenCalled()
+      // Unlike instance/solution exports, table exports build their schema
+      // FROM the configured column order (extractSchemaFields), so it must
+      // opt in to schema-driven column order for the large-table path too —
+      // otherwise it would regress to whatever key order `formatItemsForExport`
+      // happens to produce.
+      const [, schemaArg, optionsArg] = workerBuild.mock.calls[0]
+      expect(optionsArg).toMatchObject({ preferSchemaColumnOrder: true })
+      expect(Object.keys(schemaArg.properties.BigTable.items.properties)).toEqual(
+        ['name', 'active', 'count', 'ratio'],
+      )
     })
   })
 })

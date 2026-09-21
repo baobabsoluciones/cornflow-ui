@@ -239,6 +239,20 @@ describe('ExperimentCore', () => {
       expect(mockCreateObjectURL).toHaveBeenCalledTimes(2)
     })
 
+    test('should build instance/solution excel with the data order (no schema column-order override)', async () => {
+      // Regression guard for #186/v3.2.7: instance/solution schemas are
+      // backend-declared and their `properties` order is not guaranteed to
+      // match the intended display order, so downloadExcel must rely on
+      // buildExcelBuffer's default (row-order) column ordering instead of
+      // opting into `preferSchemaColumnOrder`.
+      await experiment.downloadExcel('test-execution')
+
+      for (const call of mockBuildExcelBuffer.mock.calls) {
+        const options = call[2]
+        expect(options?.preferSchemaColumnOrder).not.toBe(true)
+      }
+    })
+
     test('should download only instance when saveInstance=true, saveSolution=false', async () => {
       await experiment.downloadExcel('test-execution', true, false)
 

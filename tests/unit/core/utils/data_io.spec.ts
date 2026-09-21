@@ -641,5 +641,84 @@ describe('data_io utilities', () => {
       expect(mockWorkbook.addWorksheet).toHaveBeenCalledWith('KnownTable')
       expect(mockWorkbook.addWorksheet).not.toHaveBeenCalledWith('UnknownTable')
     })
+
+    test('column order follows the row data order by default, even when the schema declares properties in a different order', async () => {
+      const worksheet = {
+        addRows: vi.fn(),
+        getColumn: vi.fn().mockReturnValue({ width: 0 }),
+        getCell: vi.fn().mockReturnValue({
+          fill: {},
+          font: {},
+          border: {},
+        }),
+      }
+      const mockWorkbook = {
+        addWorksheet: vi.fn().mockReturnValue(worksheet),
+      }
+
+      // Row order is name -> age; the schema declares the opposite order
+      // (as many backends do, e.g. alphabetical `properties`). The schema
+      // order must NOT win here (regression from #186 / v3.2.7).
+      const data = {
+        TestTable: [{ name: 'John', age: 25 }],
+      }
+      const schema = {
+        properties: {
+          TestTable: {
+            type: 'array',
+            items: {
+              properties: {
+                age: { type: 'number', visible: true },
+                name: { type: 'string', visible: true },
+              },
+            },
+          },
+        },
+      }
+
+      await schemaDataToTable(mockWorkbook, data, schema)
+
+      const headerRow = worksheet.addRows.mock.calls[0][0][0]
+      expect(headerRow).toEqual(['name', 'age'])
+    })
+
+    test('column order follows the schema property order when preferSchemaColumnOrder is opted in', async () => {
+      const worksheet = {
+        addRows: vi.fn(),
+        getColumn: vi.fn().mockReturnValue({ width: 0 }),
+        getCell: vi.fn().mockReturnValue({
+          fill: {},
+          font: {},
+          border: {},
+        }),
+      }
+      const mockWorkbook = {
+        addWorksheet: vi.fn().mockReturnValue(worksheet),
+      }
+
+      const data = {
+        TestTable: [{ name: 'John', age: 25 }],
+      }
+      const schema = {
+        properties: {
+          TestTable: {
+            type: 'array',
+            items: {
+              properties: {
+                age: { type: 'number', visible: true },
+                name: { type: 'string', visible: true },
+              },
+            },
+          },
+        },
+      }
+
+      await schemaDataToTable(mockWorkbook, data, schema, {
+        preferSchemaColumnOrder: true,
+      })
+
+      const headerRow = worksheet.addRows.mock.calls[0][0][0]
+      expect(headerRow).toEqual(['age', 'name'])
+    })
   })
 })
