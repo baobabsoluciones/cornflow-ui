@@ -349,6 +349,55 @@ describe('excelWorker', () => {
       const names = mockState.addedWorksheets.map((w) => w.name)
       expect(names).toEqual(['Shown'])
     })
+
+    it('orders columns by row data order by default, even when the schema declares a different property order', async () => {
+      // Regression guard: this is the code path a real browser takes for
+      // Experiment.downloadExcel (instance/solution exports go through this
+      // worker, not the main-thread fallback in data_io.ts).
+      await loadWorker()
+      mockState.excelWriteBufferImpl.mockResolvedValue(new Uint8Array([1]).buffer)
+
+      const data = { Trades: [{ name: 'John', age: 25 }] }
+      const schema = {
+        properties: {
+          Trades: {
+            type: 'array',
+            items: { properties: { age: {}, name: {} } },
+          },
+        },
+      }
+      dispatch({ id: 33, type: 'build', payload: { data, schema } })
+      await flush()
+
+      expect(posted[0].ok).toBe(true)
+      const headerRow = mockState.addedWorksheets[0]._rows[0].values
+      expect(headerRow).toEqual(['name', 'age'])
+    })
+
+    it('orders columns by schema property order when preferSchemaColumnOrder is opted in', async () => {
+      await loadWorker()
+      mockState.excelWriteBufferImpl.mockResolvedValue(new Uint8Array([1]).buffer)
+
+      const data = { Trades: [{ name: 'John', age: 25 }] }
+      const schema = {
+        properties: {
+          Trades: {
+            type: 'array',
+            items: { properties: { age: {}, name: {} } },
+          },
+        },
+      }
+      dispatch({
+        id: 34,
+        type: 'build',
+        payload: { data, schema, options: { preferSchemaColumnOrder: true } },
+      })
+      await flush()
+
+      expect(posted[0].ok).toBe(true)
+      const headerRow = mockState.addedWorksheets[0]._rows[0].values
+      expect(headerRow).toEqual(['age', 'name'])
+    })
   })
 
   describe('build via SheetJS (large dataset over threshold)', () => {
@@ -370,6 +419,53 @@ describe('excelWorker', () => {
       expect(posted[0].result).toBeInstanceOf(Uint8Array)
       // ExcelJS path must NOT have been used.
       expect(mockState.addedWorksheets).toHaveLength(0)
+    })
+
+    it('orders columns by row data order by default, even when the schema declares a different property order', async () => {
+      await loadWorker()
+      mockState.xlsxWriteImpl.mockReturnValue(new Uint8Array([5, 6, 7]))
+
+      // 100_001 rows x 2 columns = 200_002 cells > LARGE_BUILD_CELL_THRESHOLD.
+      const rows = new Array(100_001)
+        .fill(0)
+        .map((_, i) => ({ name: `r${i}`, age: i }))
+      const data = { Big: rows }
+      const schema = {
+        properties: {
+          Big: { type: 'array', items: { properties: { age: {}, name: {} } } },
+        },
+      }
+      dispatch({ id: 42, type: 'build', payload: { data, schema } })
+      await flush()
+
+      expect(posted[0].ok).toBe(true)
+      const wb = mockState.xlsxWriteImpl.mock.calls[0][0]
+      expect(wb.Sheets['Big'].__aoa[0]).toEqual(['name', 'age'])
+    })
+
+    it('orders columns by schema property order when preferSchemaColumnOrder is opted in', async () => {
+      await loadWorker()
+      mockState.xlsxWriteImpl.mockReturnValue(new Uint8Array([5, 6, 7]))
+
+      const rows = new Array(100_001)
+        .fill(0)
+        .map((_, i) => ({ name: `r${i}`, age: i }))
+      const data = { Big: rows }
+      const schema = {
+        properties: {
+          Big: { type: 'array', items: { properties: { age: {}, name: {} } } },
+        },
+      }
+      dispatch({
+        id: 43,
+        type: 'build',
+        payload: { data, schema, options: { preferSchemaColumnOrder: true } },
+      })
+      await flush()
+
+      expect(posted[0].ok).toBe(true)
+      const wb = mockState.xlsxWriteImpl.mock.calls[0][0]
+      expect(wb.Sheets['Big'].__aoa[0]).toEqual(['age', 'name'])
     })
 
     it('falls back to ExcelJS when SheetJS build throws', async () => {

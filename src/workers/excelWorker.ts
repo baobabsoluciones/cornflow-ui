@@ -232,17 +232,27 @@ async function parseWorkbook(
  */
 const STYLING_ROW_LIMIT = 50_000
 
+/**
+ * Column order for array-type sheets: row keys (the data's natural order) by
+ * default. Pass `preferSchemaColumnOrder` to use the schema's declared `properties`
+ * order instead — only correct when that order was deliberately built to *be*
+ * the display order (see `buildTableExportSchema` in `@/utils/data_io`), not
+ * for arbitrary backend-declared schemas whose property order is incidental.
+ */
 function getArrayTypeExportHeaders(
   sheetName: string,
   schema: Record<string, any> | null,
   firstRow: Record<string, any>,
+  preferSchemaColumnOrder = false,
 ): string[] {
-  const itemProperties = schema?.properties?.[sheetName]?.items?.properties
-  if (itemProperties && typeof itemProperties === 'object') {
-    const fromSchema = Object.keys(itemProperties).filter((key) =>
-      isFieldVisible(key, schema, sheetName, false),
-    )
-    if (fromSchema.length > 0) return fromSchema
+  if (preferSchemaColumnOrder) {
+    const itemProperties = schema?.properties?.[sheetName]?.items?.properties
+    if (itemProperties && typeof itemProperties === 'object') {
+      const fromSchema = Object.keys(itemProperties).filter((key) =>
+        isFieldVisible(key, schema, sheetName, false),
+      )
+      if (fromSchema.length > 0) return fromSchema
+    }
   }
   return Object.keys(firstRow).filter((key) =>
     isFieldVisible(key, schema, sheetName, false),
@@ -254,11 +264,13 @@ function processArrayTypeWorksheet(
   sheetData: any[],
   schema: Record<string, any> | null,
   sheetName: string,
+  preferSchemaColumnOrder = false,
 ): void {
   const headers = getArrayTypeExportHeaders(
     sheetName,
     schema,
     sheetData[0] as Record<string, any>,
+    preferSchemaColumnOrder,
   )
 
   // Single pass: header + body via addRows
@@ -350,11 +362,13 @@ function buildArraySheetAOA(
   sheetData: any[],
   schema: Record<string, any> | null,
   sheetName: string,
+  preferSchemaColumnOrder = false,
 ): any[][] {
   const headers = getArrayTypeExportHeaders(
     sheetName,
     schema,
     sheetData[0] as Record<string, any>,
+    preferSchemaColumnOrder,
   )
   const aoa: any[][] = new Array(sheetData.length + 1)
   aoa[0] = headers
@@ -374,6 +388,7 @@ function appendSheetJsSheet(
   sheetName: string,
   sheetData: any[],
   schema: Record<string, any> | null,
+  preferSchemaColumnOrder = false,
 ): void {
   const isObjectType = schema?.properties?.[sheetName]?.type === 'object'
   if (isObjectType) {
@@ -382,7 +397,7 @@ function appendSheetJsSheet(
     XLSX.utils.book_append_sheet(wb, ws, sheetName)
     return
   }
-  const aoa = buildArraySheetAOA(sheetData, schema, sheetName)
+  const aoa = buildArraySheetAOA(sheetData, schema, sheetName, preferSchemaColumnOrder)
   const headers = aoa[0] as string[]
   const ws = XLSX.utils.aoa_to_sheet(aoa)
   ws['!cols'] = headers.map((h) => ({ wch: h.length + 5 }))
@@ -398,10 +413,14 @@ function normalizeSheetJsOutput(out: unknown): Uint8Array {
 async function buildWithSheetJS(
   data: Record<string, any>,
   schema: Record<string, any> | null,
-  options: { includeTablesWithoutSchema?: boolean } = {},
+  options: {
+    includeTablesWithoutSchema?: boolean
+    preferSchemaColumnOrder?: boolean
+  } = {},
 ): Promise<Uint8Array> {
   const XLSX = await loadSheetJS()
   const includeTablesWithoutSchema = options.includeTablesWithoutSchema ?? true
+  const preferSchemaColumnOrder = options.preferSchemaColumnOrder ?? false
   const wb = XLSX.utils.book_new()
 
   for (const [sheetName, rawSheetData] of Object.entries(data)) {
@@ -411,7 +430,7 @@ async function buildWithSheetJS(
     const sheetData = prepareSheetData(normalizedData, schema, sheetName)
     if (!sheetData) continue
 
-    appendSheetJsSheet(XLSX, wb, sheetName, sheetData, schema)
+    appendSheetJsSheet(XLSX, wb, sheetName, sheetData, schema, preferSchemaColumnOrder)
   }
 
   // `compression: true` runs DEFLATE on the zip entries (smaller files,
@@ -427,9 +446,13 @@ async function buildWithSheetJS(
 async function buildWithExcelJS(
   data: Record<string, any>,
   schema: Record<string, any> | null,
-  options: { includeTablesWithoutSchema?: boolean } = {},
+  options: {
+    includeTablesWithoutSchema?: boolean
+    preferSchemaColumnOrder?: boolean
+  } = {},
 ): Promise<Uint8Array> {
   const includeTablesWithoutSchema = options.includeTablesWithoutSchema ?? true
+  const preferSchemaColumnOrder = options.preferSchemaColumnOrder ?? false
   const workbook = new ExcelJS.Workbook()
 
   for (const [sheetName, rawSheetData] of Object.entries(data)) {
@@ -457,7 +480,13 @@ async function buildWithExcelJS(
         STYLING_ROW_LIMIT,
       )
     } else {
-      processArrayTypeWorksheet(worksheet, sheetData, schema, sheetName)
+      processArrayTypeWorksheet(
+        worksheet,
+        sheetData,
+        schema,
+        sheetName,
+        preferSchemaColumnOrder,
+      )
     }
   }
 
@@ -471,7 +500,10 @@ async function buildWithExcelJS(
 async function buildWorkbookBuffer(
   data: Record<string, any>,
   schema: Record<string, any> | null,
-  options: { includeTablesWithoutSchema?: boolean } = {},
+  options: {
+    includeTablesWithoutSchema?: boolean
+    preferSchemaColumnOrder?: boolean
+  } = {},
 ): Promise<Uint8Array> {
   const cellEstimate = estimateSheetCellCount(data, schema)
   if (cellEstimate > LARGE_BUILD_CELL_THRESHOLD) {
@@ -497,7 +529,10 @@ type Request =
       payload: {
         data: Record<string, any>
         schema: Record<string, any> | null
-        options?: { includeTablesWithoutSchema?: boolean }
+        options?: {
+          includeTablesWithoutSchema?: boolean
+          preferSchemaColumnOrder?: boolean
+        }
       }
     }
 
