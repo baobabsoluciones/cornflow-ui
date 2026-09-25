@@ -1502,7 +1502,7 @@ describe('SectionView', () => {
   // -------------------------------------------------------------------------
   describe('dropdown menu', () => {
     test('configuration section shows edit-all-master-tables when allowed', () => {
-      mockCoreParams.enableReplaceMasterWithUploaded = true
+      mockCoreParams.enableEditAllMasterTables = true
       mockSectionConfig.sectionType.value = 'configuration'
       const vm = createWrapper().vm as any
       const ids = vm.dropdownMenuItems.map((i: any) => i.id)
@@ -1554,7 +1554,7 @@ describe('SectionView', () => {
     })
 
     test('edit-all-master-tables action opens modal', () => {
-      mockCoreParams.enableReplaceMasterWithUploaded = true
+      mockCoreParams.enableEditAllMasterTables = true
       mockSectionConfig.sectionType.value = 'configuration'
       const vm = createWrapper().vm as any
       const item = vm.dropdownMenuItems.find(
