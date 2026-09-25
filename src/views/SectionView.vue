@@ -1000,7 +1000,7 @@ const editAllTablesForceContext = ref<{
 const editAllTablesForceLoading = ref(false)
 
 const canEditAllMasterTables = computed(() => {
-  if (!appConfig.getCore().parameters.enableReplaceMasterWithUploaded) return false
+  if (!appConfig.getCore().parameters.enableEditAllMasterTables) return false
   if (sectionType.value !== 'configuration') return false
   const cfg = currentConfiguration.value
   if (!cfg || typeof cfg !== 'object') return false

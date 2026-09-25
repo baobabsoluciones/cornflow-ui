@@ -252,6 +252,7 @@ const mockCoreParams: any = {
   enableSolutionRecalculation: false,
   enableRecalculationOnMasterEdit: false,
   enableReplaceMasterWithUploaded: false,
+  enableEditAllMasterTables: false,
   allowEditInstance: false,
   enableAutoInstanceDashboard: false,
   enableAutoSolutionDashboard: false,
@@ -319,6 +320,7 @@ const resetState = () => {
     enableSolutionRecalculation: false,
     enableRecalculationOnMasterEdit: false,
     enableReplaceMasterWithUploaded: false,
+    enableEditAllMasterTables: false,
     allowEditInstance: false,
     enableAutoInstanceDashboard: false,
     enableAutoSolutionDashboard: false,
@@ -791,31 +793,50 @@ describe('SectionView', () => {
   })
 
   // -------------------------------------------------------------------------
-  // canEditAllMasterTables
+  // canEditAllMasterTables — 4 combinations of the two flags
   // -------------------------------------------------------------------------
   describe('canEditAllMasterTables', () => {
-    test('false when flag disabled', () => {
+    // Combination 1: both flags false → false
+    test('false when both enableEditAllMasterTables and enableReplaceMasterWithUploaded are false', () => {
+      mockCoreParams.enableEditAllMasterTables = false
       mockCoreParams.enableReplaceMasterWithUploaded = false
       const vm = createWrapper().vm as any
       expect(vm.canEditAllMasterTables).toBe(false)
     })
 
-    test('false when not configuration section', () => {
+    // Combination 2: only enableEditAllMasterTables true → true (the correct gate)
+    test('true when enableEditAllMasterTables is true and enableReplaceMasterWithUploaded is false', () => {
+      mockCoreParams.enableEditAllMasterTables = true
+      mockCoreParams.enableReplaceMasterWithUploaded = false
+      const vm = createWrapper().vm as any
+      expect(vm.canEditAllMasterTables).toBe(true)
+    })
+
+    // Combination 3: only enableReplaceMasterWithUploaded true → false (wrong flag must NOT gate)
+    test('false when enableEditAllMasterTables is false and enableReplaceMasterWithUploaded is true', () => {
+      mockCoreParams.enableEditAllMasterTables = false
       mockCoreParams.enableReplaceMasterWithUploaded = true
+      const vm = createWrapper().vm as any
+      expect(vm.canEditAllMasterTables).toBe(false)
+    })
+
+    // Combination 4: both flags true → true
+    test('true when both enableEditAllMasterTables and enableReplaceMasterWithUploaded are true', () => {
+      mockCoreParams.enableEditAllMasterTables = true
+      mockCoreParams.enableReplaceMasterWithUploaded = true
+      const vm = createWrapper().vm as any
+      expect(vm.canEditAllMasterTables).toBe(true)
+    })
+
+    test('false when not configuration section even if flag enabled', () => {
+      mockCoreParams.enableEditAllMasterTables = true
       mockSectionConfig.sectionType.value = 'input-data'
       const vm = createWrapper().vm as any
       expect(vm.canEditAllMasterTables).toBe(false)
     })
 
-    test('true when enabled in configuration with config', () => {
-      mockCoreParams.enableReplaceMasterWithUploaded = true
-      mockSectionConfig.sectionType.value = 'configuration'
-      const vm = createWrapper().vm as any
-      expect(vm.canEditAllMasterTables).toBe(true)
-    })
-
-    test('false when configuration empty', () => {
-      mockCoreParams.enableReplaceMasterWithUploaded = true
+    test('false when configuration is empty even if flag enabled', () => {
+      mockCoreParams.enableEditAllMasterTables = true
       mockSectionConfig.currentConfiguration.value = {}
       const vm = createWrapper().vm as any
       expect(vm.canEditAllMasterTables).toBe(false)
