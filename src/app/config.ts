@@ -232,11 +232,17 @@ const createAppConfig = () => ({
       },
       showTablesWithoutSchema: false,
       showOpenIdUsername: true,
+      /**
+       * Optional columns of the project executions table. `showSolver` is the odd one out:
+       * the solver column is shown unless it is explicitly set to false, so deployments with
+       * a single solver can drop a column that carries no information.
+       */
       showExtraProjectExecutionColumns: {
         showUserName: false,
         showEndCreationDate: true,
         showTimeLimit: false,
         showUserFullName: true,
+        showSolver: true,
       },
 
       allowEditInstance: true,

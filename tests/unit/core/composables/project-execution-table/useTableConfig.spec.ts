@@ -67,7 +67,8 @@ describe('useTableConfig', () => {
       showEndCreationDate: false,
       showUserName: false,
       showTimeLimit: false,
-      showUserFullName: false
+      showUserFullName: false,
+      showSolver: true
     }
     if (!mockGeneralStore.appConfig.parameters.configFieldsConfig) {
       mockGeneralStore.appConfig.parameters.configFieldsConfig = {}
@@ -295,6 +296,65 @@ describe('useTableConfig', () => {
       expect(values.indexOf('userFullName')).toBeLessThan(values.indexOf('name'))
       expect(values.indexOf('timeLimit')).toBeGreaterThan(values.indexOf('solver'))
       expect(values.indexOf('timeLimit')).toBeLessThan(values.indexOf('solution'))
+    })
+  })
+
+  describe('solver column', () => {
+    test('is shown when the flag is absent, so existing deployments keep it', () => {
+      const { headerExecutions } = useTableConfig({ formatDateByTime: false })
+
+      expect(headerExecutions.value.find(h => h.value === 'solver')).toBeDefined()
+    })
+
+    test('is hidden when showSolver is false', () => {
+      mockGeneralStore.appConfig.parameters.showExtraProjectExecutionColumns.showSolver = false
+
+      const { headerExecutions } = useTableConfig({ formatDateByTime: false })
+      const headers = headerExecutions.value
+
+      expect(headers.find(h => h.value === 'solver')).toBeUndefined()
+      expect(headers).toHaveLength(7)
+      expect(headers.map(h => h.value)).toEqual([
+        'createdAt',
+        'name',
+        'description',
+        'excel',
+        'state',
+        'solution',
+        'actions'
+      ])
+    })
+
+    test('gives its width to the description so the row still spans full width', () => {
+      mockGeneralStore.appConfig.parameters.showExtraProjectExecutionColumns.showSolver = false
+
+      const { headerExecutions } = useTableConfig({ formatDateByTime: false })
+
+      // 21% (description) + 14% (solver)
+      expect(headerExecutions.value.find(h => h.value === 'description')?.width).toBe('35%')
+    })
+
+    test('hands over the reduced width when extra columns are on', () => {
+      mockGeneralStore.appConfig.parameters.showExtraProjectExecutionColumns = {
+        showEndCreationDate: true,
+        showUserName: true,
+        showTimeLimit: false,
+        showUserFullName: false,
+        showSolver: false
+      }
+
+      const { headerExecutions } = useTableConfig({ formatDateByTime: false })
+
+      // 17% (description with two extra columns) + 10% (solver)
+      expect(headerExecutions.value.find(h => h.value === 'description')?.width).toBe('27%')
+    })
+
+    test('is shown when showSolver is explicitly true', () => {
+      mockGeneralStore.appConfig.parameters.showExtraProjectExecutionColumns.showSolver = true
+
+      const { headerExecutions } = useTableConfig({ formatDateByTime: false })
+
+      expect(headerExecutions.value.find(h => h.value === 'solver')).toBeDefined()
     })
   })
 

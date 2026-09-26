@@ -823,6 +823,7 @@ Controls which columns are displayed in the execution history table.
 | `showEndCreationDate` | `boolean` | Show the end creation date column |
 | `showTimeLimit`       | `boolean` | Show the time limit column        |
 | `showUserFullName`    | `boolean` | Show the user's full name column  |
+| `showSolver`          | `boolean` | Show the solver column. Unlike the rest, it defaults to **shown**: only an explicit `false` hides it, so deployments with a single solver can drop a column that carries no information. |
 
 #### latestPlanConfig
 
