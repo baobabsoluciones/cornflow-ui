@@ -353,6 +353,23 @@ describe('data_io utilities', () => {
     })
   })
 
+  describe('formatDateForHeaders with a day key', () => {
+    test('shows the same calendar day whatever the timezone', () => {
+      // Restore by re-assigning the resolved zone: deleting TZ does not reset
+      // Node's cached timezone.
+      const originalTZ =
+        process.env.TZ ?? Intl.DateTimeFormat().resolvedOptions().timeZone
+      process.env.TZ = 'America/Mexico_City'
+      try {
+        const result = formatDateForHeaders('2026-09-28', { value: 'en' })
+        expect(result).toContain('28')
+        expect(result).toContain('Monday')
+      } finally {
+        process.env.TZ = originalTZ
+      }
+    })
+  })
+
   describe('formatDate', () => {
     test('formats date string correctly', () => {
       const dateString = '2023-12-25T15:30:45.000Z'

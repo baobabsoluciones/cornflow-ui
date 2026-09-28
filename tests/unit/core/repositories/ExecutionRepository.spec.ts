@@ -49,7 +49,8 @@ vi.mock('@cornflow-ui/core/repositories/InstanceRepository', () => ({
 }))
 
 // Mock date utility
-vi.mock('@cornflow-ui/core/utils/date', () => ({
+vi.mock('@cornflow-ui/core/utils/date', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@cornflow-ui/core/utils/date')>()),
   formatDateForFilename: vi.fn().mockReturnValue('2023-01-01-120000')
 }))
 
@@ -146,6 +147,29 @@ describe('ExecutionRepository', () => {
       const result = await repository.getExecutions('test-schema', '', '')
 
       expect(result).toBeDefined()
+    })
+
+    test('should normalise naive backend timestamps to UTC', async () => {
+      const { Execution } = await import('@cornflow-ui/core/models/Execution')
+      mockClient.get.mockResolvedValue({
+        status: 200,
+        content: [
+          {
+            ...mockExecutionData,
+            created_at: '2026-09-28T08:30:12.123456',
+            updated_at: '2026-09-28T08:45:00',
+          },
+        ],
+      })
+
+      await repository.getExecutions('test-schema', '', '')
+
+      expect(Execution).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createdAt: '2026-09-28T08:30:12.123Z',
+          finishedAt: '2026-09-28T08:45:00Z',
+        }),
+      )
     })
 
     test('should throw error when API returns non-200 status', async () => {

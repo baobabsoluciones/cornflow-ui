@@ -1,6 +1,9 @@
 import readXlsxFile, { readSheetNames } from 'read-excel-file'
 import i18n from '@cornflow-ui/core/plugins/i18n'
-import { formatDateForExcel } from '@cornflow-ui/core/utils/date'
+import {
+  formatDateForExcel,
+  parseLocalDateKey,
+} from '@cornflow-ui/core/utils/date'
 import { getListResponseRowProperties } from '@cornflow-ui/core/utils/schemaUtils'
 import * as ExcelJS from 'exceljs'
 import {
@@ -609,6 +612,10 @@ async function buildExcelBuffer(
   return { bytes, format: 'xlsx' }
 }
 
+/**
+ * @deprecated Use `toUTCDayBoundary` from `@cornflow-ui/core/utils/date`,
+ * which sends the same instant in UTC and does not mutate `date`.
+ */
 const toISOStringLocal = function (date, isEndDate = false) {
   if (date) {
     const timezoneOffsetMin = date.getTimezoneOffset()
@@ -637,7 +644,8 @@ const toISOStringLocal = function (date, isEndDate = false) {
 }
 
 const formatDateForHeaders = function (date, locale = i18n.global.locale) {
-  const itemDate = new Date(date)
+  // Group keys are bare local days (`YYYY-MM-DD`); read them as local midnight.
+  const itemDate = typeof date === 'string' ? parseLocalDateKey(date) : new Date(date)
   const options: Intl.DateTimeFormatOptions = {
     weekday: 'long',
     year: 'numeric',
