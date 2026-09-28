@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div v-for="(field, index) in configFields" :key="index" style="width: 40%">
+    <div v-for="(field, index) in visibleFields" :key="index" style="width: 40%">
       <template v-if="field.type === 'boolean'">
         <v-switch
           v-model="fieldValues[field.key]"
@@ -18,6 +18,18 @@
           :placeholder="$t(field.placeholder || '')"
           type="text"
           :prependInnerIcon="field.icon || defaultIcon"
+          @update:modelValue="handleFieldUpdate(field.key, $event)"
+        />
+      </template>
+      <template v-else-if="field.type === 'date'">
+        <v-text-field
+          class="mt-4"
+          v-model="fieldValues[field.key]"
+          :label="$t(field.title || '')"
+          type="date"
+          variant="outlined"
+          density="comfortable"
+          :prepend-inner-icon="field.icon || defaultIcon"
           @update:modelValue="handleFieldUpdate(field.key, $event)"
         />
       </template>
@@ -61,6 +73,21 @@ export default {
       type: Object,
       required: true,
     },
+    /**
+     * Which config fields this instance renders:
+     * - 'preEtl'   only the ones the schema marked `pre_etl: true` (the step that runs
+     *              before the instance is loaded, because the ETL filters with them).
+     * - 'standard' everything else (the usual execution-parameters step).
+     * - 'all'      the whole set, the behaviour before the pre-ETL step existed.
+     *
+     * Defaulting to 'all' keeps every deployment that renders this component directly
+     * working unchanged.
+     */
+    scope: {
+      type: String,
+      default: 'all',
+      validator: (value) => ['all', 'preEtl', 'standard'].includes(value),
+    },
   },
   emits: ['update:modelValue'],
   setup(props, { emit }) {
@@ -69,6 +96,19 @@ export default {
 
     const configFields = computed(() => {
       return generalStore.appConfig.parameters.configFields || []
+    })
+
+    // Only the rendered subset changes with `scope`. `configFields` stays whole on
+    // purpose: onMounted seeds defaults for every field, so a config parameter still
+    // gets its default even when no step on screen shows it.
+    const visibleFields = computed(() => {
+      if (props.scope === 'preEtl') {
+        return configFields.value.filter((field) => field.preEtl === true)
+      }
+      if (props.scope === 'standard') {
+        return configFields.value.filter((field) => field.preEtl !== true)
+      }
+      return configFields.value
     })
 
     const fieldValues = computed({
@@ -141,8 +181,15 @@ export default {
           } catch (error) {
             console.error(`Error fetching parameter ${field.param}:`, error)
           }
-        } else if (field.default !== undefined) {
-          // Use default value if specified
+        } else if (
+          field.default !== undefined &&
+          initialValues[field.key] === undefined
+        ) {
+          // Seed the default only where nothing has been set yet. Two instances of this
+          // component can now mount in one wizard run (the pre-ETL step and the regular
+          // one); without this guard the second mount would reset a pre-ETL value the
+          // user already typed back to its schema default. Same for edit mode, where the
+          // config comes from the execution being edited.
           initialValues[field.key] = field.default
         }
       }
@@ -155,6 +202,7 @@ export default {
 
     return {
       configFields,
+      visibleFields,
       fieldValues,
       handleFieldUpdate,
       defaultIcon,

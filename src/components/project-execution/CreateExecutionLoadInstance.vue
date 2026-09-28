@@ -478,7 +478,10 @@ const processFiles = async () => {
   resetErrors()
 
   try {
-    const result = await instanceProcessing.processFiles(selectedFiles.value)
+    const result = await instanceProcessing.processFiles(
+      selectedFiles.value,
+      props.newExecution?.config,
+    )
 
     if (result.success && result.instance) {
       handleProcessingSuccess(result.instance, result.warning)
@@ -499,7 +502,9 @@ const processFromDb = async () => {
   resetErrors()
 
   try {
-    const result = await instanceProcessing.processFromDb()
+    const result = await instanceProcessing.processFromDb(
+      props.newExecution?.config,
+    )
 
     if (result.success && result.instance) {
       handleProcessingSuccess(result.instance, result.warning)
@@ -531,7 +536,10 @@ const processParameters = async () => {
   )
 
   try {
-    const result = await instanceProcessing.processInstanceData(payload)
+    const result = await instanceProcessing.processInstanceData(
+      payload,
+      props.newExecution?.config,
+    )
 
     if (result.success && result.instance) {
       handleProcessingSuccess(result.instance, result.warning)

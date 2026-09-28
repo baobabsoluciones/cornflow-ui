@@ -99,6 +99,13 @@ export default {
         namePlaceholder: 'Por favor, inserta un nombre',
         descriptionPlaceholder: 'Por favor, inserta una descripción',
       },
+      preEtlParams: {
+        title: 'Datos de la carga',
+        description: 'Indica los datos con los que se cargará la instancia',
+        titleContent: 'Parámetros de la carga de datos',
+        subtitleContent:
+          'Estos parámetros determinan qué datos se traen al cargar la instancia, así que se piden antes de la carga. Si los cambias después, tendrás que volver a cargar la instancia para que tengan efecto.',
+      },
       loadInstance: {
         title: 'Cargar instancia',
         description: 'Carga un archivo con los datos de la instancia',

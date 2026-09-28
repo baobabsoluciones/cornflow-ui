@@ -88,6 +88,13 @@ export default {
         endDate: 'Date de fin',
         search: 'Rechercher',
       },
+      preEtlParams: {
+        title: 'Paramètres du chargement',
+        description: "Indiquez les paramètres avec lesquels l'instance sera chargée",
+        titleContent: 'Paramètres du chargement des données',
+        subtitleContent:
+          "Ces paramètres déterminent quelles données sont récupérées lors du chargement de l'instance ; ils sont donc demandés au préalable. Les modifier ensuite oblige à recharger l'instance pour qu'ils prennent effet.",
+      },
       step2: {
         title: "Charger l'instance",
         description: "Chargez un fichier avec les données de l'instance",

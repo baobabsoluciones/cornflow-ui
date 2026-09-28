@@ -525,12 +525,15 @@ describe('General Store', () => {
       mockInstanceRepository.getInstance.mockResolvedValue(mockInstance)
 
       const store = useGeneralStore()
-      const result = await store.getInstanceDataChecksById('123')
+      const result = await store.getInstanceDataChecksById('123', {
+        horizon_days: 3,
+      })
 
       expect(result).toEqual(mockInstance)
+      // The execution config is passed straight through to the data-check request.
       expect(
         mockInstanceRepository.launchInstanceDataChecks,
-      ).toHaveBeenCalledWith('123')
+      ).toHaveBeenCalledWith('123', { horizon_days: 3 })
       expect(mockExecutionRepository.loadExecution).toHaveBeenCalledWith(
         'exec123',
       )

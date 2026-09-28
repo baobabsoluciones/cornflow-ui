@@ -279,6 +279,12 @@ const createWrapper = (appConfig = {}, routeQuery = {}) => {
               titleContent: 'Configuration',
               subtitleContent: 'Set parameters',
             },
+            preEtlParams: {
+              title: 'Pre ETL Params',
+              description: 'Data load parameters',
+              titleContent: 'Data load',
+              subtitleContent: 'Set the load parameters',
+            },
             nameDescription: {
               title: 'Name Description',
               description: 'Name and description',
@@ -919,28 +925,164 @@ describe('ProjectExecutionView', () => {
   })
 
   describe('step ordering helpers', () => {
-    test('calculates name/solve order with both optional steps shown', () => {
+    /** A step's `order` is its position, so it must always match its index in the list. */
+    const expectSequentialOrders = (steps: any[]) => {
+      expect(steps.map((step) => step.order)).toEqual(
+        steps.map((_, index) => index + 1),
+      )
+    }
+
+    test('orders the steps with both optional steps shown', () => {
       const { wrapper } = createWrapper({
         solverConfig: { showSolverStep: true, defaultSolver: 'd' },
         configFieldsConfig: { showConfigFieldsStep: true, autoLoadValues: false },
       })
-      expect(wrapper.vm.calculateNameDescriptionStepOrder()).toBe(6)
-      expect(wrapper.vm.calculateSolveStepOrder()).toBe(7)
+      expect(wrapper.vm.steps.map((step: any) => step.key)).toEqual([
+        'loadInstance',
+        'reviewInstance',
+        'checkData',
+        'selectSolver',
+        'configParams',
+        'nameDescription',
+        'solve',
+      ])
+      expectSequentialOrders(wrapper.vm.steps)
     })
 
-    test('calculates name/solve order with no optional steps', () => {
+    test('orders the steps with no optional steps', () => {
       const { wrapper } = createWrapper({
         solverConfig: { showSolverStep: false, defaultSolver: 'd' },
         configFieldsConfig: { showConfigFieldsStep: false, autoLoadValues: false },
       })
-      expect(wrapper.vm.calculateNameDescriptionStepOrder()).toBe(4)
-      expect(wrapper.vm.calculateSolveStepOrder()).toBe(5)
+      expect(wrapper.vm.steps.map((step: any) => step.key)).toEqual([
+        'loadInstance',
+        'reviewInstance',
+        'checkData',
+        'nameDescription',
+        'solve',
+      ])
+      expectSequentialOrders(wrapper.vm.steps)
     })
 
     test('reviewInstanceStepIndex resolves the review step position', () => {
       const { wrapper } = createWrapper()
       const idx = wrapper.vm.reviewInstanceStepIndex
       expect(wrapper.vm.steps[idx].key).toBe('reviewInstance')
+    })
+  })
+
+  describe('pre-ETL parameters step', () => {
+    const PRE_ETL_FIELDS = [
+      { key: 'horizon_days', title: '', type: 'number', preEtl: true },
+      { key: 'date', title: '', type: 'date', preEtl: true },
+      { key: 'n_scenarios', title: '', type: 'number', required: true },
+    ]
+
+    const withPreEtl = (overrides = {}, routeQuery = {}) =>
+      createWrapper(
+        {
+          configFields: PRE_ETL_FIELDS,
+          etl: { useEtlBackend: true },
+          ...overrides,
+        },
+        routeQuery,
+      )
+
+    test('comes first, before the instance is loaded', () => {
+      const { wrapper } = withPreEtl({
+        solverConfig: { showSolverStep: false, defaultSolver: 'd' },
+      })
+      const keys = wrapper.vm.steps.map((step: any) => step.key)
+      expect(keys[0]).toBe('preEtlParams')
+      // The ETL runs while loading the instance, so the parameters it filters with
+      // have to be asked for before that step.
+      expect(keys.indexOf('preEtlParams')).toBeLessThan(
+        keys.indexOf('loadInstance'),
+      )
+      expect(wrapper.vm.steps.map((step: any) => step.order)).toEqual(
+        wrapper.vm.steps.map((_: any, index: number) => index + 1),
+      )
+    })
+
+    test('is skipped when the deployment runs no ETL', () => {
+      const { wrapper } = withPreEtl({ etl: {} })
+      expect(wrapper.vm.steps.map((s: any) => s.key)).not.toContain(
+        'preEtlParams',
+      )
+    })
+
+    test('is skipped when no config field is marked pre_etl', () => {
+      const { wrapper } = withPreEtl({
+        configFields: [{ key: 'n_scenarios', title: '', type: 'number' }],
+      })
+      expect(wrapper.vm.steps.map((s: any) => s.key)).not.toContain(
+        'preEtlParams',
+      )
+    })
+
+    test('is skipped in edit mode, where no ETL call is made', async () => {
+      const { wrapper } = withPreEtl()
+      // Edit mode reuses an existing instance, so nothing ever calls the ETL and there
+      // is no load step to run ahead of.
+      wrapper.vm.isEditMode = true
+      await wrapper.vm.$nextTick()
+
+      const keys = wrapper.vm.steps.map((s: any) => s.key)
+      expect(keys).not.toContain('preEtlParams')
+      expect(keys).not.toContain('loadInstance')
+      // With no pre-ETL step the regular step keeps showing every field.
+      expect(wrapper.vm.configParamsScope).toBe('all')
+      expect(wrapper.vm.configParamsFields.map((f: any) => f.key)).toEqual([
+        'horizon_days',
+        'date',
+        'n_scenarios',
+      ])
+    })
+
+    test('hands the remaining fields to the regular parameters step', () => {
+      const { wrapper } = withPreEtl()
+      expect(wrapper.vm.configParamsScope).toBe('standard')
+      expect(wrapper.vm.configParamsFields.map((f: any) => f.key)).toEqual([
+        'n_scenarios',
+      ])
+      expect(wrapper.vm.steps.map((s: any) => s.key)).toContain('configParams')
+    })
+
+    test('drops the regular step when every field is pre-ETL', () => {
+      const { wrapper } = withPreEtl({
+        configFields: PRE_ETL_FIELDS.filter((f) => f.preEtl),
+      })
+      const keys = wrapper.vm.steps.map((s: any) => s.key)
+      expect(keys).toContain('preEtlParams')
+      expect(keys).not.toContain('configParams')
+    })
+
+    test('blocks Continue only on a required parameter left empty', async () => {
+      const { wrapper } = withPreEtl({
+        configFields: [
+          { key: 'date', title: '', type: 'date', preEtl: true },
+          {
+            key: 'horizon_days',
+            title: '',
+            type: 'number',
+            preEtl: true,
+            required: true,
+          },
+        ],
+        solverConfig: { showSolverStep: false, defaultSolver: 'd' },
+      })
+      expect(wrapper.vm.steps[wrapper.vm.currentStep].key).toBe('preEtlParams')
+
+      expect(wrapper.vm.isPreEtlIncomplete).toBe(true)
+      expect(wrapper.vm.disableNextButton).toBe(true)
+
+      wrapper.vm.newExecution.config = { horizon_days: 2 }
+      await wrapper.vm.$nextTick()
+
+      // `date` is nullable in the schema and stays empty on purpose: leaving it blank is
+      // how the run is told to anchor itself.
+      expect(wrapper.vm.isPreEtlIncomplete).toBe(false)
+      expect(wrapper.vm.disableNextButton).toBe(false)
     })
   })
 

@@ -155,6 +155,37 @@ describe('InstanceRepository', () => {
       expect(result).toEqual(mockResponse.content)
     })
 
+    test('sends the execution config so the checks match the solve', async () => {
+      mockClient.post.mockResolvedValue({ status: 201, content: { id: 'x' } })
+
+      await repository.launchInstanceDataChecks('test-instance-id', {
+        horizon_days: 3,
+        date: '2026-09-28',
+      })
+
+      expect(mockClient.post).toHaveBeenCalledWith(
+        '/data-check/instance/test-instance-id/',
+        { config: { horizon_days: 3, date: '2026-09-28' } },
+        {
+          'Content-Type': 'application/json',
+        },
+      )
+    })
+
+    test('keeps the body empty when there is no config to send', async () => {
+      mockClient.post.mockResolvedValue({ status: 201, content: { id: 'x' } })
+
+      await repository.launchInstanceDataChecks('test-instance-id', {})
+
+      expect(mockClient.post).toHaveBeenCalledWith(
+        '/data-check/instance/test-instance-id/',
+        {},
+        {
+          'Content-Type': 'application/json',
+        },
+      )
+    })
+
     test('should throw error when API returns non-201 status', async () => {
       const mockResponse = {
         status: 400,

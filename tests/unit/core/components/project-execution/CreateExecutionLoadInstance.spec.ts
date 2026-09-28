@@ -342,9 +342,12 @@ describe('CreateExecutionLoadInstance', () => {
 
       await wrapper.vm.processFiles()
 
-      expect(mockInstanceProcessing.processFiles).toHaveBeenCalledWith([
-        testFile,
-      ])
+      expect(mockInstanceProcessing.processFiles).toHaveBeenCalledWith(
+        [testFile],
+        // The execution config travels with the files so the ETL gets its pre-ETL
+        // parameters; the default `newExecution` in these tests carries none.
+        undefined,
+      )
       expect(wrapper.emitted('instanceSelected')).toBeTruthy()
       expect(mockShowSnackbar).toHaveBeenCalledWith(
         'Instances loaded successfully',
@@ -360,9 +363,12 @@ describe('CreateExecutionLoadInstance', () => {
 
       await wrapper.vm.processFiles()
 
-      expect(mockInstanceProcessing.processFiles).toHaveBeenCalledWith([
-        testFile,
-      ])
+      expect(mockInstanceProcessing.processFiles).toHaveBeenCalledWith(
+        [testFile],
+        // The execution config travels with the files so the ETL gets its pre-ETL
+        // parameters; the default `newExecution` in these tests carries none.
+        undefined,
+      )
       expect(wrapper.emitted('instanceSelected')).toBeTruthy()
     })
 
@@ -375,9 +381,12 @@ describe('CreateExecutionLoadInstance', () => {
 
       await wrapper.vm.processFiles()
 
-      expect(mockInstanceProcessing.processFiles).toHaveBeenCalledWith([
-        testFile,
-      ])
+      expect(mockInstanceProcessing.processFiles).toHaveBeenCalledWith(
+        [testFile],
+        // The execution config travels with the files so the ETL gets its pre-ETL
+        // parameters; the default `newExecution` in these tests carries none.
+        undefined,
+      )
       expect(wrapper.emitted('instanceSelected')).toBeTruthy()
     })
 
@@ -504,9 +513,12 @@ describe('CreateExecutionLoadInstance', () => {
 
       await wrapper.vm.processFiles()
 
-      expect(mockInstanceProcessing.processFiles).toHaveBeenCalledWith([
-        testFile,
-      ])
+      expect(mockInstanceProcessing.processFiles).toHaveBeenCalledWith(
+        [testFile],
+        // The execution config travels with the files so the ETL gets its pre-ETL
+        // parameters; the default `newExecution` in these tests carries none.
+        undefined,
+      )
       expect(wrapper.emitted('instanceSelected')).toBeTruthy()
     })
 
@@ -728,9 +740,12 @@ describe('CreateExecutionLoadInstance', () => {
       await wrapper.vm.processFiles()
 
       // 3. Verify results
-      expect(mockInstanceProcessing.processFiles).toHaveBeenCalledWith([
-        testFile,
-      ])
+      expect(mockInstanceProcessing.processFiles).toHaveBeenCalledWith(
+        [testFile],
+        // The execution config travels with the files so the ETL gets its pre-ETL
+        // parameters; the default `newExecution` in these tests carries none.
+        undefined,
+      )
       expect(wrapper.emitted('instanceSelected')).toBeTruthy()
       expect(mockShowSnackbar).toHaveBeenCalledWith(
         'Instances loaded successfully',

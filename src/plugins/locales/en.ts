@@ -97,6 +97,13 @@ export default {
         namePlaceholder: 'Please insert a name',
         descriptionPlaceholder: 'Please insert a description',
       },
+      preEtlParams: {
+        title: 'Data load parameters',
+        description: 'Set the parameters the instance will be loaded with',
+        titleContent: 'Data load parameters',
+        subtitleContent:
+          'These parameters decide which data is brought in when the instance is loaded, so they are asked for beforehand. Changing them later means loading the instance again for them to take effect.',
+      },
       loadInstance: {
         title: 'Load instance',
         description: 'Load a file with the instance data',
