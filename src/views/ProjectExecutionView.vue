@@ -28,15 +28,6 @@
           />
         </template>
 
-        <!-- Parameters the ETL needs before the instance exists -->
-        <template v-else-if="step.key === 'preEtlParams'">
-          <CreateExecutionConfigParams
-            v-model="newExecution"
-            scope="preEtl"
-            class="mt-4"
-          />
-        </template>
-
         <!-- Template for step 2 -->
         <template v-else-if="step.key === 'loadInstance'">
           <CreateExecutionLoadInstance
@@ -48,6 +39,7 @@
             @instanceSelected="handleInstanceSelected"
             @externalEtlData="handleExternalEtlData"
             @update:existingInstanceErrors="existingInstanceErrors = $event"
+            @update:config="newExecution.config = $event"
             class="mt-4"
           >
           </CreateExecutionLoadInstance>
@@ -543,12 +535,6 @@ export default {
     getBaseCreateSteps() {
       const steps = []
 
-      // Parameters the ETL filters with. They have to be asked before the instance is
-      // loaded, because loading it is what calls the ETL.
-      if (this.shouldShowPreEtlStep()) {
-        steps.push(this.createStepConfig('preEtlParams', 0, true))
-      }
-
       // In edit mode, skip loadInstance step
       if (!this.isEditMode) {
         steps.push(this.createStepConfig('loadInstance', 0, true))
@@ -565,10 +551,10 @@ export default {
         baseSteps.push(this.createStepConfig('selectSolver', 0, true))
       }
 
-      // Skip the regular parameters step only when the pre-ETL step already took every
-      // field; without a pre-ETL step the behaviour is untouched.
+      // Skip the regular parameters step only when the load step already took every
+      // field; where no parameter is pre-ETL the behaviour is untouched.
       const configParamsWouldBeEmpty =
-        this.shouldShowPreEtlStep() && this.standardConfigFields.length === 0
+        this.preEtlAskedInLoadStep && this.standardConfigFields.length === 0
       if (this.shouldShowConfigFieldsStep() && !configParamsWouldBeEmpty) {
         baseSteps.push(this.createStepConfig('configParams', 0, true))
       }
@@ -606,22 +592,6 @@ export default {
         ?.showConfigFieldsStep
     },
 
-    /**
-     * The pre-ETL step only makes sense when the deployment actually runs an ETL and the
-     * config schema marks at least one parameter with `pre_etl: true`. It is also skipped
-     * in edit mode: there the instance already exists and no ETL call is made.
-     */
-    shouldShowPreEtlStep() {
-      if (this.isEditMode) return false
-      if (this.preEtlConfigFields.length === 0) return false
-
-      const etl = this.generalStore.appConfig.parameters.etl
-      return Boolean(
-        etl?.useEtlBackend ||
-          etl?.enableLoadFromDb ||
-          (etl?.alternativeParameterFields?.length ?? 0) > 0,
-      )
-    },
 
 
     handleExternalEtlData(rawData) {
@@ -730,7 +700,6 @@ export default {
       const currentStepKey = this.steps[this.currentStep]?.key
 
       return (
-        (currentStepKey === 'preEtlParams' && this.isPreEtlIncomplete) ||
         (currentStepKey === 'nameDescription' && !this.newExecution.name) ||
         (currentStepKey === 'loadInstance' && this.loadInstanceStepBlocked) ||
         (currentStepKey === 'reviewInstance' &&
@@ -804,27 +773,32 @@ export default {
     standardConfigFields() {
       return this.allConfigFields.filter((field) => field.preEtl !== true)
     },
-    /** What the regular parameters step renders once the pre-ETL step took its share. */
+    /**
+     * Whether the load-instance step is the one asking for the pre-ETL parameters. That
+     * only makes sense when the deployment actually runs an ETL and the config schema
+     * marks at least one parameter with `pre_etl: true`. In edit mode there is no load
+     * step at all -- the instance already exists and no ETL call is made -- so those
+     * parameters go back to the regular parameters step.
+     */
+    preEtlAskedInLoadStep() {
+      if (this.isEditMode) return false
+      if (this.preEtlConfigFields.length === 0) return false
+
+      const etl = this.generalStore.appConfig.parameters.etl
+      return Boolean(
+        etl?.useEtlBackend ||
+          etl?.enableLoadFromDb ||
+          (etl?.alternativeParameterFields?.length ?? 0) > 0,
+      )
+    },
+    /** What the regular parameters step renders once the load step took its share. */
     configParamsScope() {
-      return this.shouldShowPreEtlStep() ? 'standard' : 'all'
+      return this.preEtlAskedInLoadStep ? 'standard' : 'all'
     },
     configParamsFields() {
       return this.configParamsScope === 'standard'
         ? this.standardConfigFields
         : this.allConfigFields
-    },
-    /**
-     * Blocks Continue on the pre-ETL step while a parameter the config schema lists as
-     * `required` is still empty. Only those: a nullable parameter such as `date` is meant
-     * to be left blank, and the ETL answers that by anchoring the run itself.
-     */
-    isPreEtlIncomplete() {
-      return this.preEtlConfigFields.some((field) => {
-        if (!field.required) return false
-        const value = this.newExecution.config[field.key]
-        if (field.type === 'boolean') return typeof value !== 'boolean'
-        return value === null || value === undefined || value === ''
-      })
     },
     isConfigFieldsIncomplete() {
       const fields = this.configParamsFields

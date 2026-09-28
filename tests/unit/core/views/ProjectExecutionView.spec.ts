@@ -971,66 +971,65 @@ describe('ProjectExecutionView', () => {
     })
   })
 
-  describe('pre-ETL parameters step', () => {
+  describe('pre-ETL parameters', () => {
     const PRE_ETL_FIELDS = [
       { key: 'horizon_days', title: '', type: 'number', preEtl: true },
       { key: 'date', title: '', type: 'date', preEtl: true },
       { key: 'n_scenarios', title: '', type: 'number', required: true },
     ]
 
-    const withPreEtl = (overrides = {}, routeQuery = {}) =>
-      createWrapper(
-        {
-          configFields: PRE_ETL_FIELDS,
-          etl: { useEtlBackend: true },
-          ...overrides,
-        },
-        routeQuery,
-      )
+    const withPreEtl = (overrides = {}) =>
+      createWrapper({
+        configFields: PRE_ETL_FIELDS,
+        etl: { useEtlBackend: true },
+        ...overrides,
+      })
 
-    test('comes first, before the instance is loaded', () => {
+    test('adds no step of its own: they are asked in the load step', () => {
       const { wrapper } = withPreEtl({
         solverConfig: { showSolverStep: false, defaultSolver: 'd' },
       })
-      const keys = wrapper.vm.steps.map((step: any) => step.key)
-      expect(keys[0]).toBe('preEtlParams')
-      // The ETL runs while loading the instance, so the parameters it filters with
-      // have to be asked for before that step.
-      expect(keys.indexOf('preEtlParams')).toBeLessThan(
-        keys.indexOf('loadInstance'),
-      )
+      // The ETL runs while loading the instance, so the parameters it filters with are
+      // asked for right there, next to the upload, instead of in a step of their own.
+      expect(wrapper.vm.preEtlAskedInLoadStep).toBe(true)
+      expect(wrapper.vm.steps.map((step: any) => step.key)).toEqual([
+        'loadInstance',
+        'reviewInstance',
+        'checkData',
+        'configParams',
+        'nameDescription',
+        'solve',
+      ])
       expect(wrapper.vm.steps.map((step: any) => step.order)).toEqual(
         wrapper.vm.steps.map((_: any, index: number) => index + 1),
       )
     })
 
-    test('is skipped when the deployment runs no ETL', () => {
+    test('the load step does not own them when the deployment runs no ETL', () => {
       const { wrapper } = withPreEtl({ etl: {} })
-      expect(wrapper.vm.steps.map((s: any) => s.key)).not.toContain(
-        'preEtlParams',
-      )
+      expect(wrapper.vm.preEtlAskedInLoadStep).toBe(false)
+      // Nothing is taken away from the regular parameters step.
+      expect(wrapper.vm.configParamsScope).toBe('all')
     })
 
-    test('is skipped when no config field is marked pre_etl', () => {
+    test('the load step does not own them when no field is marked pre_etl', () => {
       const { wrapper } = withPreEtl({
         configFields: [{ key: 'n_scenarios', title: '', type: 'number' }],
       })
-      expect(wrapper.vm.steps.map((s: any) => s.key)).not.toContain(
-        'preEtlParams',
-      )
+      expect(wrapper.vm.preEtlAskedInLoadStep).toBe(false)
+      expect(wrapper.vm.configParamsScope).toBe('all')
     })
 
-    test('is skipped in edit mode, where no ETL call is made', async () => {
+    test('in edit mode they go back to the regular parameters step', async () => {
       const { wrapper } = withPreEtl()
-      // Edit mode reuses an existing instance, so nothing ever calls the ETL and there
-      // is no load step to run ahead of.
+      // Edit mode reuses an existing instance: there is no load step to ask in, and
+      // nothing ever calls the ETL.
       wrapper.vm.isEditMode = true
       await wrapper.vm.$nextTick()
 
       const keys = wrapper.vm.steps.map((s: any) => s.key)
-      expect(keys).not.toContain('preEtlParams')
       expect(keys).not.toContain('loadInstance')
-      // With no pre-ETL step the regular step keeps showing every field.
+      expect(wrapper.vm.preEtlAskedInLoadStep).toBe(false)
       expect(wrapper.vm.configParamsScope).toBe('all')
       expect(wrapper.vm.configParamsFields.map((f: any) => f.key)).toEqual([
         'horizon_days',
@@ -1039,7 +1038,7 @@ describe('ProjectExecutionView', () => {
       ])
     })
 
-    test('hands the remaining fields to the regular parameters step', () => {
+    test('leaves the remaining fields to the regular parameters step', () => {
       const { wrapper } = withPreEtl()
       expect(wrapper.vm.configParamsScope).toBe('standard')
       expect(wrapper.vm.configParamsFields.map((f: any) => f.key)).toEqual([
@@ -1052,15 +1051,14 @@ describe('ProjectExecutionView', () => {
       const { wrapper } = withPreEtl({
         configFields: PRE_ETL_FIELDS.filter((f) => f.preEtl),
       })
-      const keys = wrapper.vm.steps.map((s: any) => s.key)
-      expect(keys).toContain('preEtlParams')
-      expect(keys).not.toContain('configParams')
+      expect(wrapper.vm.steps.map((s: any) => s.key)).not.toContain(
+        'configParams',
+      )
     })
 
-    test('blocks Continue only on a required parameter left empty', async () => {
+    test('does not gate Continue: the load buttons do', async () => {
       const { wrapper } = withPreEtl({
         configFields: [
-          { key: 'date', title: '', type: 'date', preEtl: true },
           {
             key: 'horizon_days',
             title: '',
@@ -1071,17 +1069,12 @@ describe('ProjectExecutionView', () => {
         ],
         solverConfig: { showSolverStep: false, defaultSolver: 'd' },
       })
-      expect(wrapper.vm.steps[wrapper.vm.currentStep].key).toBe('preEtlParams')
+      expect(wrapper.vm.steps[wrapper.vm.currentStep].key).toBe('loadInstance')
 
-      expect(wrapper.vm.isPreEtlIncomplete).toBe(true)
-      expect(wrapper.vm.disableNextButton).toBe(true)
-
-      wrapper.vm.newExecution.config = { horizon_days: 2 }
+      // Continue on the load step is gated on the instance, as it always was. A missing
+      // pre-ETL value blocks the load button instead, which is where it matters.
+      wrapper.vm.newExecution.instance = { id: 'i1' }
       await wrapper.vm.$nextTick()
-
-      // `date` is nullable in the schema and stays empty on purpose: leaving it blank is
-      // how the run is told to anchor itself.
-      expect(wrapper.vm.isPreEtlIncomplete).toBe(false)
       expect(wrapper.vm.disableNextButton).toBe(false)
     })
   })

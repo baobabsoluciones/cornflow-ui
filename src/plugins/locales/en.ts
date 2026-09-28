@@ -97,13 +97,6 @@ export default {
         namePlaceholder: 'Please insert a name',
         descriptionPlaceholder: 'Please insert a description',
       },
-      preEtlParams: {
-        title: 'Data load parameters',
-        description: 'Set the parameters the instance will be loaded with',
-        titleContent: 'Data load parameters',
-        subtitleContent:
-          'These parameters decide which data is brought in when the instance is loaded, so they are asked for beforehand. Changing them later means loading the instance again for them to take effect.',
-      },
       loadInstance: {
         title: 'Load instance',
         description: 'Load a file with the instance data',
@@ -246,6 +239,9 @@ export default {
           loadParameters: 'Load parameters',
           alternativeParametersHint:
             'Enter the values below and load them as instance data',
+          preEtlParamsHint: 'Data the instance will be loaded with',
+          preEtlChangedAfterLoad:
+            'You changed these after loading. Load again so they apply to the instance.',
           noParametersDataError: 'No parameter data to send',
           noParametersSheetsError:
             'Could not build a file from the parameters (check table names in config)',

@@ -1,6 +1,10 @@
 <template>
   <div>
-    <div v-for="(field, index) in visibleFields" :key="index" style="width: 40%">
+    <div
+      v-for="(field, index) in visibleFields"
+      :key="index"
+      :style="{ width: fieldWidth }"
+    >
       <template v-if="field.type === 'boolean'">
         <v-switch
           v-model="fieldValues[field.key]"
@@ -87,6 +91,14 @@ export default {
       type: String,
       default: 'all',
       validator: (value) => ['all', 'preEtl', 'standard'].includes(value),
+    },
+    /**
+     * Width of each field. The default suits a full-width step; a caller that renders
+     * these inside a narrow column (the load-instance step) passes '100%'.
+     */
+    fieldWidth: {
+      type: String,
+      default: '40%',
     },
   },
   emits: ['update:modelValue'],

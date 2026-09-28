@@ -99,13 +99,6 @@ export default {
         namePlaceholder: 'Por favor, inserta un nombre',
         descriptionPlaceholder: 'Por favor, inserta una descripción',
       },
-      preEtlParams: {
-        title: 'Datos de la carga',
-        description: 'Indica los datos con los que se cargará la instancia',
-        titleContent: 'Parámetros de la carga de datos',
-        subtitleContent:
-          'Estos parámetros determinan qué datos se traen al cargar la instancia, así que se piden antes de la carga. Si los cambias después, tendrás que volver a cargar la instancia para que tengan efecto.',
-      },
       loadInstance: {
         title: 'Cargar instancia',
         description: 'Carga un archivo con los datos de la instancia',
@@ -252,6 +245,9 @@ export default {
           loadParameters: 'Cargar parámetros',
           alternativeParametersHint:
             'Introduce los siguientes parámetros y cárgalos como datos de instancia',
+          preEtlParamsHint: 'Datos con los que se cargará la instancia',
+          preEtlChangedAfterLoad:
+            'Has cambiado estos datos después de cargar. Vuelve a cargar para que se apliquen a la instancia.',
           noParametersDataError: 'No hay datos de parámetros para enviar',
           noParametersSheetsError:
             'No se pudo generar el archivo a partir de los parámetros (revisa los nombres de tabla en la configuración)',

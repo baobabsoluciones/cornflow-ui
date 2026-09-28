@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import { nextTick } from 'vue'
 import CreateExecutionLoadInstance from '@cornflow-ui/core/components/project-execution/CreateExecutionLoadInstance.vue'
@@ -108,6 +108,14 @@ vi.mock('vue-i18n', () => ({
   useI18n: () => ({
     t: mockT,
   }),
+  // The component reaches schemaUtils, which pulls in the i18n plugin; that module calls
+  // createI18n at import time, so the mock has to provide it.
+  // `createI18n` runs while the module graph is still loading, before the spec body has
+  // assigned mockT, so this one cannot close over it.
+  createI18n: () => ({
+    global: { t: (key: string) => key, locale: { value: 'en' } },
+    install: () => {},
+  }),
 }))
 
 // Mock MDragNDropFile component
@@ -178,6 +186,7 @@ describe('CreateExecutionLoadInstance', () => {
     mockInstanceProcessing.canProcessFiles.value = true
     // Reset etl config + raw configurations to a clean default each test
     mockGeneralStore.appConfig.parameters.etl = undefined
+    mockGeneralStore.appConfig.parameters.configFields = []
     mockGeneralStore.rawConfigurations = { masterData: null }
   })
 
@@ -225,10 +234,100 @@ describe('CreateExecutionLoadInstance', () => {
             props: ['type', 'variant', 'density', 'closable'],
             emits: ['click:close'],
           },
+          CreateExecutionConfigParams: {
+            name: 'CreateExecutionConfigParams',
+            template:
+              '<div class="config-params" :data-scope="scope" :data-field-width="fieldWidth"></div>',
+            props: ['modelValue', 'scope', 'fieldWidth'],
+            emits: ['update:modelValue'],
+          },
         },
       },
     })
   }
+
+  describe('Pre-ETL parameters', () => {
+    const PRE_ETL_FIELDS = [
+      { key: 'horizon_days', title: '', type: 'number', preEtl: true, required: true },
+      { key: 'date', title: '', type: 'date', preEtl: true },
+      { key: 'n_scenarios', title: '', type: 'number' },
+    ]
+
+    const withPreEtl = (config = {}, fields = PRE_ETL_FIELDS) => {
+      mockGeneralStore.appConfig.parameters.etl = { useEtlBackend: true }
+      mockGeneralStore.appConfig.parameters.configFields = fields
+      return createWrapper({ newExecution: { config } })
+    }
+
+    test('renders the fields next to the upload, only for the pre-ETL ones', () => {
+      wrapper = withPreEtl({ horizon_days: 1 })
+
+      const panel = wrapper.find('.pre-etl-fields')
+      expect(panel.exists()).toBe(true)
+      const fields = panel.find('.config-params')
+      expect(fields.attributes('data-scope')).toBe('preEtl')
+      // They sit in a narrow column, so they take its full width.
+      expect(fields.attributes('data-field-width')).toBe('100%')
+    })
+
+    test('renders nothing when no config field is marked pre_etl', () => {
+      wrapper = withPreEtl({}, [{ key: 'n_scenarios', title: '', type: 'number' }])
+      expect(wrapper.find('.pre-etl-fields').exists()).toBe(false)
+    })
+
+    test('blocks the load button while a required parameter is empty', async () => {
+      wrapper = withPreEtl({})
+      await wrapper.setProps({ selectedFiles: [new File(['x'], 'a.xlsx')] })
+      wrapper.vm.selectedFiles = [new File(['x'], 'a.xlsx')]
+      await nextTick()
+
+      // Loading with a required pre-ETL value missing would filter the data wrongly, so
+      // the button is what blocks, not Continue.
+      expect(wrapper.vm.canProcess).toBe(false)
+
+      await wrapper.setProps({ newExecution: { config: { horizon_days: 2 } } })
+      expect(wrapper.vm.canProcess).toBe(true)
+    })
+
+    test('a nullable parameter left blank does not block', async () => {
+      wrapper = withPreEtl({ horizon_days: 1, date: null })
+      wrapper.vm.selectedFiles = [new File(['x'], 'a.xlsx')]
+      await nextTick()
+
+      // `date` is not in the schema's root `required`: leaving it blank is a real answer.
+      expect(wrapper.vm.canProcess).toBe(true)
+    })
+
+    test('emits the updated config when a field changes', async () => {
+      wrapper = withPreEtl({ horizon_days: 1 })
+
+      await wrapper
+        .findComponent({ name: 'CreateExecutionConfigParams' })
+        .vm.$emit('update:modelValue', { config: { horizon_days: 5 } })
+
+      expect(wrapper.emitted('update:config')).toBeTruthy()
+      expect(wrapper.emitted('update:config')![0][0]).toEqual({ horizon_days: 5 })
+    })
+
+    test('warns when a value changes after the data was loaded', async () => {
+      wrapper = withPreEtl({ horizon_days: 1 })
+      wrapper.vm.selectedFiles = [new File(['x'], 'a.xlsx')]
+      await nextTick()
+
+      expect(wrapper.vm.preEtlChangedAfterLoad).toBe(false)
+
+      await wrapper.vm.processFiles()
+      await flushPromises()
+      // Nothing changed yet, so nothing to warn about.
+      expect(wrapper.vm.preEtlChangedAfterLoad).toBe(false)
+
+      await wrapper.setProps({ newExecution: { config: { horizon_days: 9 } } })
+      // The loaded data was filtered with the old value and is kept, but the user is
+      // told it no longer matches what is on screen.
+      expect(wrapper.vm.preEtlChangedAfterLoad).toBe(true)
+      expect(wrapper.find('.pre-etl-fields .v-alert').exists()).toBe(true)
+    })
+  })
 
   describe('Component Rendering', () => {
     beforeEach(() => {
