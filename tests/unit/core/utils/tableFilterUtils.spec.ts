@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   generateSecureId,
+  generateFrontendRowId,
+  isFrontendRowId,
   getFilterFieldTypeFromSchemaProperty,
   isDateLikeFieldType,
   getOperatorsForFieldType,
@@ -21,6 +23,25 @@ const filter = (overrides: Partial<FilterCondition> = {}): FilterCondition => ({
   operator: 'is',
   value: '',
   ...overrides,
+})
+
+describe('generateFrontendRowId / isFrontendRowId', () => {
+  test('generates recognisable row ids with and without index', () => {
+    const withIndex = generateFrontendRowId('products', 3)
+    const withoutIndex = generateFrontendRowId('products')
+    expect(withIndex).toMatch(/^products_3_[0-9a-f]{12}$/)
+    expect(withoutIndex).toMatch(/^products_[0-9a-f]{12}$/)
+    expect(isFrontendRowId(withIndex, 'products')).toBe(true)
+    expect(isFrontendRowId(withoutIndex, 'products')).toBe(true)
+  })
+
+  test('does not match real ids or other tables', () => {
+    expect(isFrontendRowId(7, 'products')).toBe(false)
+    expect(isFrontendRowId('P-001', 'products')).toBe(false)
+    expect(isFrontendRowId('products_abc', 'products')).toBe(false)
+    expect(isFrontendRowId(generateFrontendRowId('stations'), 'products')).toBe(false)
+    expect(isFrontendRowId('products_1a2b3c4d5e6f', '')).toBe(false)
+  })
 })
 
 describe('generateSecureId', () => {
