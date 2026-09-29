@@ -267,10 +267,17 @@ export function useFormFields(props: UseFormFieldsProps) {
 
   const formatDate = (dateString: string): string => {
     if (!dateString) return ''
+    const str = String(dateString)
     try {
-      return new Date(dateString).toLocaleDateString()
+      const d = new Date(str)
+      // `toLocaleDateString()` does not throw on an unparseable date: it returns the
+      // literal string "Invalid Date", which then ends up painted in the cell. Falling
+      // back to the raw value at least shows the data, and matches what formatDateTime
+      // and formatTime already do.
+      if (Number.isNaN(d.getTime())) return str
+      return d.toLocaleDateString()
     } catch {
-      return dateString
+      return str
     }
   }
 
