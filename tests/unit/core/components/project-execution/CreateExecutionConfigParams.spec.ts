@@ -512,13 +512,41 @@ describe('CreateExecutionConfigParams', () => {
       expect(finalEmit.config).toEqual({ horizon_days: 1, n_scenarios: 10 })
     })
 
-    test('renders a date field as a date input', () => {
+    test('renders a date through the same field as the others, typed as a date', () => {
       mockGeneralStore.appConfig.parameters.configFields = [
         { key: 'date', type: 'date', title: 'config.description.title' },
       ]
       wrapper = createWrapper()
 
-      expect(wrapper.find('.v-date-input').exists()).toBe(true)
+      // Same component as every other parameter, so the label sits above the box rather
+      // than notched into the border.
+      const field = wrapper.find('[data-testid="input-field"]')
+      expect(field.exists()).toBe(true)
+      expect(field.find('input').attributes('type')).toBe('date')
+    })
+
+    test("'grid' lays the fields out in a grid instead of stacking them", () => {
+      mockGeneralStore.appConfig.parameters.configFields = [
+        { key: 'a', type: 'number', title: 't' },
+        { key: 'b', type: 'number', title: 't' },
+      ]
+      wrapper = createWrapper({ layout: 'grid' })
+
+      expect(wrapper.find('.config-params-grid').exists()).toBe(true)
+      // The grid's gap does the spacing, so no per-field top margin.
+      expect(wrapper.find('[data-testid="input-field"]').classes()).not.toContain(
+        'mt-4',
+      )
+    })
+
+    test("'stack' stays the historical 40%-wide column", () => {
+      mockGeneralStore.appConfig.parameters.configFields = [
+        { key: 'a', type: 'number', title: 't' },
+      ]
+      wrapper = createWrapper()
+
+      expect(wrapper.find('.config-params-grid').exists()).toBe(false)
+      expect(wrapper.findAll('[style*="width: 40%"]')).toHaveLength(1)
     })
   })
 

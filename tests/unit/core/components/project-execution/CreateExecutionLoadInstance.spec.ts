@@ -237,8 +237,8 @@ describe('CreateExecutionLoadInstance', () => {
           CreateExecutionConfigParams: {
             name: 'CreateExecutionConfigParams',
             template:
-              '<div class="config-params" :data-scope="scope" :data-field-width="fieldWidth"></div>',
-            props: ['modelValue', 'scope', 'fieldWidth'],
+              '<div class="config-params" :data-scope="scope" :data-layout="layout"></div>',
+            props: ['modelValue', 'scope', 'layout'],
             emits: ['update:modelValue'],
           },
         },
@@ -266,8 +266,8 @@ describe('CreateExecutionLoadInstance', () => {
       expect(panel.exists()).toBe(true)
       const fields = panel.find('.config-params')
       expect(fields.attributes('data-scope')).toBe('preEtl')
-      // They sit in a narrow column, so they take its full width.
-      expect(fields.attributes('data-field-width')).toBe('100%')
+      // They sit in a column of their own, so they go two per row instead of stacking.
+      expect(fields.attributes('data-layout')).toBe('grid')
     })
 
     test('renders nothing when no config field is marked pre_etl', () => {

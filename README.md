@@ -1280,15 +1280,21 @@ Some execution-config parameters decide **which data the ETL brings in**, not ho
 **Where they are asked.** In the load-instance step itself, in the left column under the dropzone, so they read as part of loading rather than as a separate stage. They are not a third alternative next to `alternativeParameterFields`: that column is an **either/or** with the upload, while these travel with whichever way the data is loaded.
 
 ```
-┌──────────────────┐  │  ┌────────────────────┐
-│  drop your files │  │  │ From: ___________  │
-│                  │ ─O─ │ To:   ___________  │
-├──────────────────┤  │  └────────────────────┘
-│ Days: 1          │  │
-│ Date: 2026-09-28 │  │
-└──────────────────┘  │
-  [Load files]              [Load parameters]
+┌───────────────────────────┐  │  ┌────────────────────┐
+│    drop your files        │  │  │ From: ___________  │
+│                           │ ─O─ │ To:   ___________  │
+├───────────────────────────┤  │  └────────────────────┘
+│ Days           Date       │  │
+│ [3        ]    [01/09/26] │  │
+│ Seed                      │  │
+│ [         ]               │  │
+└───────────────────────────┘  │
+  [Load files]                      [Load parameters]
 ```
+
+The fields go two per row, wrapping as needed: three of them give a row of two and a row
+of one. On a narrow screen they fall back to a single column. Elsewhere the component
+keeps its historical stacked layout, so no other step changes.
 
 The panel is shown whenever the config schema marks at least one parameter with `pre_etl: true`. In edit mode there is no load step at all -- the instance already exists and no ETL call is made -- so those parameters go back to the regular parameters step.
 
@@ -1310,7 +1316,7 @@ The panel is shown whenever the config schema marks at least one parameter with 
 
 **Labels.** The fields use the `configParams.<key>` translation keys like any other config parameter, so a new pre-ETL parameter needs its label added in `src/app/plugins/locales/`.
 
-Implementation: `CreateExecutionLoadInstance.vue` (the panel, the button gating and the changed-after-load warning), `CreateExecutionConfigParams.vue` (`scope` prop: `'preEtl' | 'standard' | 'all'`, plus `fieldWidth`), `ProjectExecutionView.vue` (`preEtlAskedInLoadStep`, `configParamsScope`), `schemaUtils.ts` (`getPreEtlConfigFields`, `pickPreEtlConfigValues`), `useInstanceProcessing.ts`, `InstanceRepository.ts`.
+Implementation: `CreateExecutionLoadInstance.vue` (the panel, the button gating and the changed-after-load warning), `CreateExecutionConfigParams.vue` (`scope` prop: `'preEtl' | 'standard' | 'all'`, and `layout`: `'stack' | 'grid'`), `ProjectExecutionView.vue` (`preEtlAskedInLoadStep`, `configParamsScope`), `schemaUtils.ts` (`getPreEtlConfigFields`, `pickPreEtlConfigValues`), `useInstanceProcessing.ts`, `InstanceRepository.ts`.
 
 #### Instance editing: allowEditInstance
 

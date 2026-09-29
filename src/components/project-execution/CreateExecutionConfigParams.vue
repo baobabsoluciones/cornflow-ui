@@ -1,9 +1,9 @@
 <template>
-  <div>
+  <div :class="layout === 'grid' ? 'config-params-grid' : ''">
     <div
       v-for="(field, index) in visibleFields"
       :key="index"
-      :style="{ width: fieldWidth }"
+      :style="layout === 'grid' ? undefined : { width: '40%' }"
     >
       <template v-if="field.type === 'boolean'">
         <v-switch
@@ -11,35 +11,26 @@
           :label="$t(field.title || '')"
           color="primary"
           inset
-          class="mt-4"
+          :class="fieldSpacing"
         />
       </template>
-      <template v-else-if="field.type === 'text'">
+      <!-- A date is the same field as a text one with a native date input; sharing the
+           branch keeps its label above the box like every other parameter, instead of
+           notched into the border as a bare v-text-field would render it. -->
+      <template v-else-if="field.type === 'text' || field.type === 'date'">
         <MInputField
-          class="mt-4"
+          :class="fieldSpacing"
           v-model="fieldValues[field.key]"
           :title="$t(field.title || '')"
-          :placeholder="$t(field.placeholder || '')"
-          type="text"
+          :placeholder="field.placeholder ? $t(field.placeholder) : ''"
+          :type="field.type === 'date' ? 'date' : 'text'"
           :prependInnerIcon="field.icon || defaultIcon"
-          @update:modelValue="handleFieldUpdate(field.key, $event)"
-        />
-      </template>
-      <template v-else-if="field.type === 'date'">
-        <v-text-field
-          class="mt-4"
-          v-model="fieldValues[field.key]"
-          :label="$t(field.title || '')"
-          type="date"
-          variant="outlined"
-          density="comfortable"
-          :prepend-inner-icon="field.icon || defaultIcon"
           @update:modelValue="handleFieldUpdate(field.key, $event)"
         />
       </template>
       <template v-else-if="field.type === 'select'">
         <v-select
-          class="mt-4"
+          :class="fieldSpacing"
           v-model="fieldValues[field.key]"
           :label="$t(field.title || '')"
           :items="field.options || []"
@@ -51,7 +42,7 @@
       </template>
       <template v-else>
         <MInputField
-          class="mt-4"
+          :class="fieldSpacing"
           v-model="fieldValues[field.key]"
           :title="$t(field.title || '')"
           :placeholder="$t(getFieldPlaceholder(field))"
@@ -93,12 +84,15 @@ export default {
       validator: (value) => ['all', 'preEtl', 'standard'].includes(value),
     },
     /**
-     * Width of each field. The default suits a full-width step; a caller that renders
-     * these inside a narrow column (the load-instance step) passes '100%'.
+     * - 'stack' (default) keeps the historical look: one field per row at 40% width.
+     * - 'grid' lays them out two per row, each filling its half, wrapping as needed and
+     *   collapsing to a single column on narrow screens. Used where the fields sit in a
+     *   column of their own (the load-instance step) and stacking wastes the width.
      */
-    fieldWidth: {
+    layout: {
       type: String,
-      default: '40%',
+      default: 'stack',
+      validator: (value) => ['stack', 'grid'].includes(value),
     },
   },
   emits: ['update:modelValue'],
@@ -113,6 +107,10 @@ export default {
     // Only the rendered subset changes with `scope`. `configFields` stays whole on
     // purpose: onMounted seeds defaults for every field, so a config parameter still
     // gets its default even when no step on screen shows it.
+    // In the grid the gap does the spacing, so the per-field top margin would only push
+    // the first row away from the heading.
+    const fieldSpacing = computed(() => (props.layout === 'grid' ? '' : 'mt-4'))
+
     const visibleFields = computed(() => {
       if (props.scope === 'preEtl') {
         return configFields.value.filter((field) => field.preEtl === true)
@@ -215,6 +213,7 @@ export default {
     return {
       configFields,
       visibleFields,
+      fieldSpacing,
       fieldValues,
       handleFieldUpdate,
       defaultIcon,
@@ -224,3 +223,20 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+/* Two per row, wrapping on their own: three fields give a row of two and a row of one,
+   which is what the last one filling only its half looks like. */
+.config-params-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+  align-items: start;
+}
+
+@media (max-width: 599px) {
+  .config-params-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+</style>

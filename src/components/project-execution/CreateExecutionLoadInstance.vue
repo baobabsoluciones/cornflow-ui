@@ -62,7 +62,7 @@
           <CreateExecutionConfigParams
             :model-value="newExecution"
             scope="preEtl"
-            field-width="100%"
+            layout="grid"
             @update:model-value="onPreEtlUpdate"
           />
         </div>
@@ -812,6 +812,12 @@ const resetErrors = () => {
 }
 
 .parameters-fields {
+  min-height: 0;
+}
+
+/* This panel is as tall as its fields. Without this it inherits the 260px the dropzone
+   needs, leaving a large empty band under the last row. */
+.pre-etl-fields {
   min-height: 0;
 }
 
