@@ -79,6 +79,7 @@ describe('CreateExecutionCheckData', () => {
           id: 'test-execution',
           name: 'Test Execution',
           data: { test: 'data' },
+          config: { horizon_days: 3 },
         },
         ...props,
       },
@@ -251,8 +252,11 @@ describe('CreateExecutionCheckData', () => {
       expect(mockGeneralStore.createInstance).toHaveBeenCalledWith(
         wrapper.props('newExecution'),
       )
+      // The execution config goes with the data-check request so the checks run under
+      // the same parameters as the solve will.
       expect(mockGeneralStore.getInstanceDataChecksById).toHaveBeenCalledWith(
         'instance-123',
+        { horizon_days: 3 },
       )
       expect(wrapper.vm.checksFinished).toBe(true)
       expect(wrapper.vm.checksError).toBe(false)

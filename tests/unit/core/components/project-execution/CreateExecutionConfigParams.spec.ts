@@ -138,6 +138,12 @@ describe('CreateExecutionConfigParams', () => {
             props: ['modelValue', 'label', 'color', 'inset'],
             emits: ['update:modelValue']
           },
+          VTextField: {
+            template:
+              '<div class="v-date-input" :data-type="type" :data-label="label"></div>',
+            props: ['modelValue', 'label', 'type', 'variant', 'density', 'prependInnerIcon'],
+            emits: ['update:modelValue'],
+          },
           VSelect: {
             template: `
               <div class="v-select" :data-label="label">
@@ -441,8 +447,106 @@ describe('CreateExecutionConfigParams', () => {
       const finalEmit = emittedEvents![emittedEvents!.length - 1][0]
       
       expect(finalEmit.config.customField).toBe('preserved')
-      // The component's logic applies defaults even when values exist, so timeout will be the default
-      expect(finalEmit.config.timeout).toBe(300) // Default value applies during initialization
+      // A default only fills a key that has no value yet, so an existing one survives.
+      // This matters now that two instances of the component can mount in one wizard run
+      // (the pre-ETL step and the regular one): the second must not reset the first's values.
+      expect(finalEmit.config.timeout).toBe(999)
+    })
+  })
+
+  describe('Field scope', () => {
+    // These tests swap the store's config fields, so put the originals back for the
+    // rest of the suite.
+    const originalFields = mockGeneralStore.appConfig.parameters.configFields
+    afterEach(() => {
+      mockGeneralStore.appConfig.parameters.configFields = originalFields
+    })
+
+    const scopedStore = () => {
+      mockGeneralStore.appConfig.parameters.configFields = [
+        { key: 'horizon_days', type: 'number', title: 'config.timeout.title', preEtl: true },
+        { key: 'date', type: 'date', title: 'config.description.title', preEtl: true },
+        { key: 'n_scenarios', type: 'number', title: 'config.timeout.title' },
+      ]
+    }
+
+    test("'preEtl' renders only the fields the schema marked pre_etl", () => {
+      scopedStore()
+      wrapper = createWrapper({ scope: 'preEtl' })
+
+      expect(wrapper.vm.visibleFields.map((f: any) => f.key)).toEqual([
+        'horizon_days',
+        'date',
+      ])
+    })
+
+    test("'standard' renders everything else", () => {
+      scopedStore()
+      wrapper = createWrapper({ scope: 'standard' })
+
+      expect(wrapper.vm.visibleFields.map((f: any) => f.key)).toEqual([
+        'n_scenarios',
+      ])
+    })
+
+    test("defaults to 'all' so existing usages are unchanged", () => {
+      scopedStore()
+      wrapper = createWrapper()
+
+      expect(wrapper.vm.visibleFields).toHaveLength(3)
+    })
+
+    test('seeds defaults for every field, not just the rendered ones', async () => {
+      // Each step only shows its own fields, but a parameter still needs its default
+      // even while no step on screen is showing it.
+      mockGeneralStore.appConfig.parameters.configFields = [
+        { key: 'horizon_days', type: 'number', title: 't', preEtl: true, default: 1 },
+        { key: 'n_scenarios', type: 'number', title: 't', default: 10 },
+      ]
+      wrapper = createWrapper({ scope: 'preEtl' })
+      await nextTick()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      const emitted = wrapper.emitted('update:modelValue')
+      const finalEmit = emitted![emitted!.length - 1][0] as any
+      expect(finalEmit.config).toEqual({ horizon_days: 1, n_scenarios: 10 })
+    })
+
+    test('renders a date through the same field as the others, typed as a date', () => {
+      mockGeneralStore.appConfig.parameters.configFields = [
+        { key: 'date', type: 'date', title: 'config.description.title' },
+      ]
+      wrapper = createWrapper()
+
+      // Same component as every other parameter, so the label sits above the box rather
+      // than notched into the border.
+      const field = wrapper.find('[data-testid="input-field"]')
+      expect(field.exists()).toBe(true)
+      expect(field.find('input').attributes('type')).toBe('date')
+    })
+
+    test("'grid' lays the fields out in a grid instead of stacking them", () => {
+      mockGeneralStore.appConfig.parameters.configFields = [
+        { key: 'a', type: 'number', title: 't' },
+        { key: 'b', type: 'number', title: 't' },
+      ]
+      wrapper = createWrapper({ layout: 'grid' })
+
+      expect(wrapper.find('.config-params-grid').exists()).toBe(true)
+      // The grid's gap does the spacing, so no per-field top margin.
+      expect(wrapper.find('[data-testid="input-field"]').classes()).not.toContain(
+        'mt-4',
+      )
+    })
+
+    test("'stack' stays the historical 40%-wide column", () => {
+      mockGeneralStore.appConfig.parameters.configFields = [
+        { key: 'a', type: 'number', title: 't' },
+      ]
+      wrapper = createWrapper()
+
+      expect(wrapper.find('.config-params-grid').exists()).toBe(false)
+      expect(wrapper.findAll('[style*="width: 40%"]')).toHaveLength(1)
     })
   })
 

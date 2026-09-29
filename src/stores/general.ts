@@ -467,10 +467,10 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
-    async getInstanceDataChecksById(id: string) {
+    async getInstanceDataChecksById(id: string, config?: Record<string, any>) {
       try {
         const dataChecks =
-          await this.instanceRepository.launchInstanceDataChecks(id)
+          await this.instanceRepository.launchInstanceDataChecks(id, config)
         const executionId = dataChecks.id
 
         let execution

@@ -44,6 +44,29 @@
           />
         </div>
 
+        <div v-if="showPreEtlFields" class="load-instance-panel pre-etl-fields pa-4 mt-4">
+          <h4 class="alternative-parameters-hint mb-2">
+            {{ t('projectExecution.steps.step3.loadInstance.preEtlParamsHint') }}
+          </h4>
+          <v-alert
+            v-if="preEtlChangedAfterLoad"
+            type="warning"
+            variant="tonal"
+            density="compact"
+            class="mb-3"
+          >
+            {{
+              t('projectExecution.steps.step3.loadInstance.preEtlChangedAfterLoad')
+            }}
+          </v-alert>
+          <CreateExecutionConfigParams
+            :model-value="newExecution"
+            scope="preEtl"
+            layout="grid"
+            @update:model-value="onPreEtlUpdate"
+          />
+        </div>
+
         <div class="d-flex justify-center mt-4">
           <v-btn
             color="primary"
@@ -77,7 +100,7 @@
           <div class="d-flex justify-center">
             <v-btn
               color="primary"
-              :disabled="isCheckingSchema"
+              :disabled="isCheckingSchema || preEtlIncomplete"
               @click="processFromDb"
               class="load-instance-btn load-from-db-btn"
               elevation="2"
@@ -180,6 +203,8 @@ import { useErrorDownload } from '@cornflow-ui/core/composables/useErrorDownload
 import { formatValidationErrors } from '@cornflow-ui/core/utils/errorFormatting'
 import type { ErrorObject } from 'ajv'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import { pickPreEtlConfigValues } from '@cornflow-ui/core/utils/schemaUtils'
+import CreateExecutionConfigParams from '@cornflow-ui/core/components/project-execution/CreateExecutionConfigParams.vue'
 import type { LoadInstanceAlternativeParamField } from '@/app/config'
 
 // Composables
@@ -211,6 +236,8 @@ const props = defineProps({
 // Emits
 const emit = defineEmits<{
   'update:existingInstanceErrors': [value: string | null]
+  /** The pre-ETL fields are edited here, so the execution config is written back up. */
+  'update:config': [config: Record<string, any>]
   filesSelected: [files: File[]]
   instanceSelected: [instance: Instance]
   externalEtlData: [rawData: Record<string, any>]
@@ -224,6 +251,13 @@ const dragDropFileRef = ref<any>(null)
 const paramValues = ref<Record<string, unknown>>({})
 const warningMessage = ref<string | null>(null)
 
+/**
+ * The pre-ETL values the instance on screen was actually loaded with, serialized. Null
+ * until something is loaded. Compared against the current ones to tell the user when
+ * they have edited a value the loaded data was not filtered by.
+ */
+const loadedPreEtlValues = ref<string | null>(null)
+
 const etlConfig = computed(() => generalStore.appConfig.parameters.etl)
 
 const alternativeFields = computed(
@@ -236,6 +270,58 @@ const showLoadFromDbButton = computed(
   () => etlConfig.value?.useEtlBackend && etlConfig.value?.enableLoadFromDb,
 )
 
+const configFields = computed(
+  () => generalStore.appConfig.parameters.configFields || [],
+)
+
+const preEtlFields = computed(() =>
+  configFields.value.filter((field: any) => field.preEtl === true),
+)
+
+/**
+ * The parameters the ETL filters the loaded data with are asked for here, next to the
+ * upload, rather than in the parameters step further down the wizard: by the time that
+ * step is reached the data has already been loaded and filtering it again would mean
+ * loading it all over.
+ */
+const showPreEtlFields = computed(() => preEtlFields.value.length > 0)
+
+/** Serialized pre-ETL values currently in the execution config. */
+const currentPreEtlValues = computed(() =>
+  JSON.stringify(
+    pickPreEtlConfigValues(props.newExecution?.config, configFields.value),
+  ),
+)
+
+/**
+ * A pre-ETL parameter is only mandatory when the config schema's root `required` lists
+ * it. A nullable one such as a date is meant to be left blank, which is how the backend
+ * is told to resolve it itself.
+ */
+const preEtlIncomplete = computed(() =>
+  preEtlFields.value.some((field: any) => {
+    if (!field.required) return false
+    const value = props.newExecution?.config?.[field.key]
+    if (field.type === 'boolean') return typeof value !== 'boolean'
+    return value === null || value === undefined || value === ''
+  }),
+)
+
+/**
+ * True once the user edits a pre-ETL value after having loaded data. The instance is
+ * kept -- throwing away a load over a keystroke would be worse -- but the new value
+ * does not reach the already loaded data, so the user is told to load again.
+ */
+const preEtlChangedAfterLoad = computed(
+  () =>
+    loadedPreEtlValues.value !== null &&
+    loadedPreEtlValues.value !== currentPreEtlValues.value,
+)
+
+const onPreEtlUpdate = (updated: Record<string, any>) => {
+  emit('update:config', updated.config)
+}
+
 const showSnackbar =
   inject<(message: string, color?: string) => void>('showSnackbar')
 
@@ -246,13 +332,16 @@ const isCheckingSchema = computed(
 
 const canProcess = computed(
   () =>
-    selectedFiles.value.length > 0 && instanceProcessing.canProcessFiles.value,
+    selectedFiles.value.length > 0 &&
+    instanceProcessing.canProcessFiles.value &&
+    !preEtlIncomplete.value,
 )
 
 const canProcessParameters = computed(() => {
   if (
     !showAlternativeColumn.value ||
-    !instanceProcessing.canProcessFiles.value
+    !instanceProcessing.canProcessFiles.value ||
+    preEtlIncomplete.value
   ) {
     return false
   }
@@ -478,7 +567,10 @@ const processFiles = async () => {
   resetErrors()
 
   try {
-    const result = await instanceProcessing.processFiles(selectedFiles.value)
+    const result = await instanceProcessing.processFiles(
+      selectedFiles.value,
+      props.newExecution?.config,
+    )
 
     if (result.success && result.instance) {
       handleProcessingSuccess(result.instance, result.warning)
@@ -499,7 +591,9 @@ const processFromDb = async () => {
   resetErrors()
 
   try {
-    const result = await instanceProcessing.processFromDb()
+    const result = await instanceProcessing.processFromDb(
+      props.newExecution?.config,
+    )
 
     if (result.success && result.instance) {
       handleProcessingSuccess(result.instance, result.warning)
@@ -531,7 +625,10 @@ const processParameters = async () => {
   )
 
   try {
-    const result = await instanceProcessing.processInstanceData(payload)
+    const result = await instanceProcessing.processInstanceData(
+      payload,
+      props.newExecution?.config,
+    )
 
     if (result.success && result.instance) {
       handleProcessingSuccess(result.instance, result.warning)
@@ -552,6 +649,7 @@ const handleProcessingSuccess = (
   instance: Instance,
   warning: string | null | undefined = null,
 ) => {
+  loadedPreEtlValues.value = currentPreEtlValues.value
   emit('instanceSelected', instance)
   warningMessage.value = warning ?? null
 
@@ -714,6 +812,12 @@ const resetErrors = () => {
 }
 
 .parameters-fields {
+  min-height: 0;
+}
+
+/* This panel is as tall as its fields. Without this it inherits the 260px the dropzone
+   needs, leaving a large empty band under the last row. */
+.pre-etl-fields {
   min-height: 0;
 }
 

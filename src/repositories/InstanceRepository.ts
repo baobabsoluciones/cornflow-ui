@@ -29,10 +29,17 @@ export default class InstanceRepository {
     }
   }
 
-  async launchInstanceDataChecks(id: string) {
+  /**
+   * Launches the data checks for an instance. The execution `config` travels with the
+   * request so the checks run under the same parameters as the solve will, including
+   * the ones the schema marks `pre_etl` (the ETL filtered the data with them).
+   */
+  async launchInstanceDataChecks(id: string, config?: Record<string, any>) {
+    const body =
+      config && Object.keys(config).length > 0 ? { config } : {}
     const response = await client.post(
       `/data-check/instance/${id}/`,
-      {},
+      body,
       {
         'Content-Type': 'application/json',
       },

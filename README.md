@@ -25,6 +25,7 @@ The execution management section handles the complete lifecycle of optimization 
 - **Purpose**: Step-by-step execution creation workflow
 - **Features**:
   - Multi-step execution creation process
+  - Pre-ETL parameters, asked in the load step itself when the config schema declares any - see [Pre-ETL parameters](#pre-etl-parameters-pre_etl)
   - Instance file upload and validation
   - Solver configuration (when enabled)
   - Parameter configuration (when enabled)
@@ -1231,7 +1232,7 @@ Defines the configuration fields for execution parameters. Each field can have:
 - `placeholder` (string): Translation key for the field placeholder.
 - `suffix` (string): Translation key for the field suffix (e.g., units).
 - `icon` (string): Material Design icon name.
-- `type` ('number' | 'float' | 'boolean' | 'text' | 'select'): Field type.
+- `type` ('number' | 'float' | 'boolean' | 'text' | 'date' | 'select'): Field type.
 - `source` (string, optional): Table name in instance.data to get the value from (e.g., 'eParametros').
 - `param` (string, optional): Key or ID to look up in the source table/array.
 - `lookupType` (string, optional): How to look up the value in the source. Supported:
@@ -1239,8 +1240,83 @@ Defines the configuration fields for execution parameters. Each field can have:
   - If null, searches directly as key[value] for source[param].
 - `lookupParam` (string, optional, for arrayByValue): The property to match in the array (e.g., 'ID').
 - `lookupValue` (string, optional, for arrayByValue): The property to return from the found object (e.g., 'VALOR').
-- `default` (any, optional): Default value if not found in the instance.
+- `default` (any, optional): Default value if not found in the instance. It only fills a key that has no value yet, so it never overwrites an answer the user already gave or the config of the execution being edited.
 - `options` (Array<{label: string, value: any}>, for select type): Options for select fields.
+- `preEtl` (boolean, from the schema): Set from `"pre_etl": true`. See [Pre-ETL parameters](#pre-etl-parameters-pre_etl).
+- `required` (boolean, from the schema): Set when the config schema's root `required` lists the key. Only the pre-ETL step reads it, to decide what blocks **Continue**.
+
+**Fields derived from the backend schema.** Once the app has the schema from `GET /schema/<name>/`, `getExecutionConfigFromSchemaConfig` (in `schemaUtils.ts`) rebuilds `configFields` from `schema.config.properties` and replaces whatever `src/app/config.ts` declared, so the backend schema is the source of truth. The mapping:
+
+| In the schema | Becomes |
+| --- | --- |
+| `type: 'boolean'` | `type: 'boolean'` |
+| `type: 'number'` / `'integer'` | `type: 'number'` |
+| `type: 'string'` | `type: 'text'` |
+| `type: 'string'` + `format: 'date'` | `type: 'date'` (date input; the value stays a `YYYY-MM-DD` string, as the schema's `pattern` expects) |
+| a non-empty `enum` | `type: 'select'` with its options |
+| `default` | `default` |
+| `pre_etl: true` | `preEtl: true` |
+| listed in the root `required` | `required: true` |
+
+The `solver` and `msg` keys are skipped; `solver` drives the solver step instead.
+
+<a id="pre-etl-parameters-pre_etl"></a>
+
+#### Pre-ETL parameters (`pre_etl`)
+
+Some execution-config parameters decide **which data the ETL brings in**, not how the model solves. They have to be answered before the load happens, because loading the instance is what calls the ETL. A parameter says it is one of those in the backend's config JSON schema:
+
+```json
+{
+  "properties": {
+    "horizon_days": { "type": "integer", "default": 1, "pre_etl": true },
+    "date": { "type": ["string", "null"], "format": "date", "pre_etl": true },
+    "n_scenarios": { "type": "integer" }
+  },
+  "required": ["n_scenarios"]
+}
+```
+
+**Where they are asked.** In the load-instance step itself, in the left column under the dropzone, so they read as part of loading rather than as a separate stage. They are not a third alternative next to `alternativeParameterFields`: that column is an **either/or** with the upload, while these travel with whichever way the data is loaded.
+
+```
+┌───────────────────────────┐  │  ┌────────────────────┐
+│    drop your files        │  │  │ From: ___________  │
+│                           │ ─O─ │ To:   ___________  │
+├───────────────────────────┤  │  └────────────────────┘
+│ Days           Date       │  │
+│ [3        ]    [01/09/26] │  │
+│ Seed                      │  │
+│ [         ]               │  │
+└───────────────────────────┘  │
+  [Load files]                      [Load parameters]
+```
+
+The fields go two per row, wrapping as needed: three of them give a row of two and a row
+of one. On a narrow screen they fall back to a single column. Elsewhere the component
+keeps its historical stacked layout, so no other step changes.
+
+The panel is shown whenever the config schema marks at least one parameter with `pre_etl: true`. In edit mode there is no load step at all -- the instance already exists and no ETL call is made -- so those parameters go back to the regular parameters step.
+
+**Nothing is asked twice.** While the load step is asking for them, they are removed from the regular parameters step. Offering them again there would mislead: by then the ETL has already filtered the data, and a new value would not reload it. If every config parameter is pre-ETL, the regular step is dropped rather than shown empty.
+
+**What blocks what.** A missing required pre-ETL value disables the **load** buttons (files, load from DB and load parameters), not **Continue**. Loading is the point of no return: once the data is in, filtering it differently means loading it again. **Continue** keeps its usual condition, an instance being loaded.
+
+**Changing one after loading.** The loaded instance is kept -- throwing away a load over a keystroke would be worse -- but a warning appears in the panel saying the loaded data was not filtered with the new value and the data has to be loaded again. The new value still reaches the data checks and the execution.
+
+**Required vs optional.** A parameter is mandatory only when the config schema's root `required` lists it. A nullable one such as `date` can be left blank on purpose - that is how the backend is told to resolve it itself. For the same reason an empty value is never appended to the ETL form: a loose form field cannot carry `null`, so leaving the key out is what says "not given".
+
+**Where the values go.** They live in `newExecution.config` like any other parameter, so they reach everywhere the config already reached, plus the ETL:
+
+| Request | What it carries |
+| --- | --- |
+| `POST /external/etl/` | The pre-ETL parameters only, as loose form fields in the body - one field per parameter, not a JSON blob and not a query arg. Values are stringified, and an empty one is left out. The premium ETL module does the appending. |
+| `POST /data-check/instance/<id>/` | The whole execution config, as `{ config }`. This body used to go out empty; it is sent so the checks run under the same parameters the ETL filtered with and the solve will use. |
+| `POST /execution/` | The whole execution config, unchanged. |
+
+**Labels.** The fields use the `configParams.<key>` translation keys like any other config parameter, so a new pre-ETL parameter needs its label added in `src/app/plugins/locales/`.
+
+Implementation: `CreateExecutionLoadInstance.vue` (the panel, the button gating and the changed-after-load warning), `CreateExecutionConfigParams.vue` (`scope` prop: `'preEtl' | 'standard' | 'all'`, and `layout`: `'stack' | 'grid'`), `ProjectExecutionView.vue` (`preEtlAskedInLoadStep`, `configParamsScope`), `schemaUtils.ts` (`getPreEtlConfigFields`, `pickPreEtlConfigValues`), `useInstanceProcessing.ts`, `InstanceRepository.ts`.
 
 #### Instance editing: allowEditInstance
 
@@ -1256,6 +1332,7 @@ Controls whether users can edit existing instances from the input data section.
 - `solverConfig` is used to determine if the solver step is shown and to set the default solver.
 - `configFieldsConfig` is used to determine if the config fields step is shown and to auto-load values.
 - `configFields` is used to render the config fields step, auto-load values from the instance, and display the config summary in the confirmation step.
+- a `preEtl` flag on a config field moves it into the load step, next to the upload, and sends it to the ETL - see [Pre-ETL parameters](#pre-etl-parameters-pre_etl).
 - `allowEditInstance` enables instance editing functionality in SectionView.vue for input data sections.
 
 ## Router configuration

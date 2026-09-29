@@ -1707,11 +1707,12 @@ const DEFAULT_FIELD_ICONS: Record<string, string> = {
   number: 'mdi-numeric',
   text: 'mdi-form-textbox',
   select: 'mdi-format-list-checks',
+  date: 'mdi-calendar',
 }
 
 const CONFIG_FIELDS_EXCLUDED_KEYS = new Set(['solver', 'msg'])
 
-interface ExecutionConfigField {
+export interface ExecutionConfigField {
   key: string
   title: string
   placeholder?: string
@@ -1721,6 +1722,15 @@ interface ExecutionConfigField {
   minutes?: boolean
   default?: unknown
   options?: Array<{ value: string; label: string }>
+  /**
+   * True when the schema property carries `"pre_etl": true`. Such a parameter is
+   * needed *before* the instance exists, because the ETL backend filters the data
+   * with it, so the wizard asks for it in its own step ahead of the instance load
+   * and sends it in the `POST /external/etl/` form.
+   */
+  preEtl?: boolean
+  /** True when the key is listed in the config schema's root `required`. */
+  required?: boolean
 }
 
 /** Resolves solver list and default from the `solver` schema property. */
@@ -1752,6 +1762,22 @@ function applyEnumOptionsToField(field: ExecutionConfigField, prop: any): void {
     }))
     field.icon = DEFAULT_FIELD_ICONS.select
   }
+}
+
+/**
+ * Applies date-input overrides when the schema property is a `format: date` string.
+ * JSON Schema's `format` is the only signal here: `type` alone is `string`, which
+ * would otherwise render as a free-text box and let the user type something the
+ * schema's `pattern` (YYYY-MM-DD) rejects only once the execution is created.
+ */
+function applyDateFieldOverrides(
+  field: ExecutionConfigField,
+  prop: any,
+  fieldType: string,
+): void {
+  if (fieldType !== 'text' || prop.format !== 'date') return
+  field.type = 'date'
+  field.icon = DEFAULT_FIELD_ICONS.date
 }
 
 /** Applies time-related suffix/icon overrides for numeric time fields. */
@@ -1791,7 +1817,9 @@ function buildExecutionConfigField(
   }
 
   if (prop.default !== undefined) field.default = prop.default
+  if (prop.pre_etl === true) field.preEtl = true
   applyEnumOptionsToField(field, prop)
+  applyDateFieldOverrides(field, prop, fieldType)
   applyTimeFieldOverrides(field, prop, fieldType, key)
 
   return field
@@ -1812,12 +1840,17 @@ export function getExecutionConfigFromSchemaConfig(schemaConfig: any): {
 
   const props = schemaConfig.properties
   const { executionSolvers, defaultSolver } = resolveSolverConfig(props.solver)
+  const requiredKeys = new Set<string>(
+    Array.isArray(schemaConfig.required) ? schemaConfig.required : [],
+  )
 
   const configFields: ExecutionConfigField[] = []
   for (const [key, prop] of Object.entries(props)) {
     if (!prop || typeof prop !== 'object') continue
     if (CONFIG_FIELDS_EXCLUDED_KEYS.has(key)) continue
-    configFields.push(buildExecutionConfigField(key, prop))
+    const field = buildExecutionConfigField(key, prop)
+    if (requiredKeys.has(key)) field.required = true
+    configFields.push(field)
   }
 
   return {
@@ -1825,6 +1858,38 @@ export function getExecutionConfigFromSchemaConfig(schemaConfig: any): {
     executionSolvers,
     configFields,
   }
+}
+
+/** The config fields the schema marked with `pre_etl: true`, in schema order. */
+export function getPreEtlConfigFields(
+  configFields: ExecutionConfigField[] | null | undefined,
+): ExecutionConfigField[] {
+  if (!Array.isArray(configFields)) return []
+  return configFields.filter((field) => field?.preEtl === true)
+}
+
+/**
+ * The subset of an execution config that the ETL backend needs, ready to be appended
+ * to the `POST /external/etl/` form as loose fields (agreed contract: one form field
+ * per parameter, not a single JSON blob).
+ *
+ * Empty values are dropped rather than sent blank: a loose form field cannot carry
+ * `null`, and for a nullable parameter such as `date` an empty string would be
+ * indistinguishable from "the user left it blank", which the backend answers by
+ * anchoring the run itself instead of to a given day.
+ */
+export function pickPreEtlConfigValues(
+  config: Record<string, any> | null | undefined,
+  configFields: ExecutionConfigField[] | null | undefined,
+): Record<string, unknown> {
+  if (!config) return {}
+  const values: Record<string, unknown> = {}
+  for (const field of getPreEtlConfigFields(configFields)) {
+    const value = config[field.key]
+    if (value === null || value === undefined || value === '') continue
+    values[field.key] = value
+  }
+  return values
 }
 
 /** JSON Schema `type` may be a string or e.g. `['number', 'null']`. */
