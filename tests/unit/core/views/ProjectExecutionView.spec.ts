@@ -279,6 +279,12 @@ const createWrapper = (appConfig = {}, routeQuery = {}) => {
               titleContent: 'Configuration',
               subtitleContent: 'Set parameters',
             },
+            preEtlParams: {
+              title: 'Pre ETL Params',
+              description: 'Data load parameters',
+              titleContent: 'Data load',
+              subtitleContent: 'Set the load parameters',
+            },
             nameDescription: {
               title: 'Name Description',
               description: 'Name and description',
@@ -919,28 +925,157 @@ describe('ProjectExecutionView', () => {
   })
 
   describe('step ordering helpers', () => {
-    test('calculates name/solve order with both optional steps shown', () => {
+    /** A step's `order` is its position, so it must always match its index in the list. */
+    const expectSequentialOrders = (steps: any[]) => {
+      expect(steps.map((step) => step.order)).toEqual(
+        steps.map((_, index) => index + 1),
+      )
+    }
+
+    test('orders the steps with both optional steps shown', () => {
       const { wrapper } = createWrapper({
         solverConfig: { showSolverStep: true, defaultSolver: 'd' },
         configFieldsConfig: { showConfigFieldsStep: true, autoLoadValues: false },
       })
-      expect(wrapper.vm.calculateNameDescriptionStepOrder()).toBe(6)
-      expect(wrapper.vm.calculateSolveStepOrder()).toBe(7)
+      expect(wrapper.vm.steps.map((step: any) => step.key)).toEqual([
+        'loadInstance',
+        'reviewInstance',
+        'checkData',
+        'selectSolver',
+        'configParams',
+        'nameDescription',
+        'solve',
+      ])
+      expectSequentialOrders(wrapper.vm.steps)
     })
 
-    test('calculates name/solve order with no optional steps', () => {
+    test('orders the steps with no optional steps', () => {
       const { wrapper } = createWrapper({
         solverConfig: { showSolverStep: false, defaultSolver: 'd' },
         configFieldsConfig: { showConfigFieldsStep: false, autoLoadValues: false },
       })
-      expect(wrapper.vm.calculateNameDescriptionStepOrder()).toBe(4)
-      expect(wrapper.vm.calculateSolveStepOrder()).toBe(5)
+      expect(wrapper.vm.steps.map((step: any) => step.key)).toEqual([
+        'loadInstance',
+        'reviewInstance',
+        'checkData',
+        'nameDescription',
+        'solve',
+      ])
+      expectSequentialOrders(wrapper.vm.steps)
     })
 
     test('reviewInstanceStepIndex resolves the review step position', () => {
       const { wrapper } = createWrapper()
       const idx = wrapper.vm.reviewInstanceStepIndex
       expect(wrapper.vm.steps[idx].key).toBe('reviewInstance')
+    })
+  })
+
+  describe('pre-ETL parameters', () => {
+    const PRE_ETL_FIELDS = [
+      { key: 'horizon_days', title: '', type: 'number', preEtl: true },
+      { key: 'date', title: '', type: 'date', preEtl: true },
+      { key: 'n_scenarios', title: '', type: 'number', required: true },
+    ]
+
+    const withPreEtl = (overrides = {}) =>
+      createWrapper({
+        configFields: PRE_ETL_FIELDS,
+        etl: { useEtlBackend: true },
+        ...overrides,
+      })
+
+    test('adds no step of its own: they are asked in the load step', () => {
+      const { wrapper } = withPreEtl({
+        solverConfig: { showSolverStep: false, defaultSolver: 'd' },
+      })
+      // The ETL runs while loading the instance, so the parameters it filters with are
+      // asked for right there, next to the upload, instead of in a step of their own.
+      expect(wrapper.vm.preEtlAskedInLoadStep).toBe(true)
+      expect(wrapper.vm.steps.map((step: any) => step.key)).toEqual([
+        'loadInstance',
+        'reviewInstance',
+        'checkData',
+        'configParams',
+        'nameDescription',
+        'solve',
+      ])
+      expect(wrapper.vm.steps.map((step: any) => step.order)).toEqual(
+        wrapper.vm.steps.map((_: any, index: number) => index + 1),
+      )
+    })
+
+    test('the load step does not own them when the deployment runs no ETL', () => {
+      const { wrapper } = withPreEtl({ etl: {} })
+      expect(wrapper.vm.preEtlAskedInLoadStep).toBe(false)
+      // Nothing is taken away from the regular parameters step.
+      expect(wrapper.vm.configParamsScope).toBe('all')
+    })
+
+    test('the load step does not own them when no field is marked pre_etl', () => {
+      const { wrapper } = withPreEtl({
+        configFields: [{ key: 'n_scenarios', title: '', type: 'number' }],
+      })
+      expect(wrapper.vm.preEtlAskedInLoadStep).toBe(false)
+      expect(wrapper.vm.configParamsScope).toBe('all')
+    })
+
+    test('in edit mode they go back to the regular parameters step', async () => {
+      const { wrapper } = withPreEtl()
+      // Edit mode reuses an existing instance: there is no load step to ask in, and
+      // nothing ever calls the ETL.
+      wrapper.vm.isEditMode = true
+      await wrapper.vm.$nextTick()
+
+      const keys = wrapper.vm.steps.map((s: any) => s.key)
+      expect(keys).not.toContain('loadInstance')
+      expect(wrapper.vm.preEtlAskedInLoadStep).toBe(false)
+      expect(wrapper.vm.configParamsScope).toBe('all')
+      expect(wrapper.vm.configParamsFields.map((f: any) => f.key)).toEqual([
+        'horizon_days',
+        'date',
+        'n_scenarios',
+      ])
+    })
+
+    test('leaves the remaining fields to the regular parameters step', () => {
+      const { wrapper } = withPreEtl()
+      expect(wrapper.vm.configParamsScope).toBe('standard')
+      expect(wrapper.vm.configParamsFields.map((f: any) => f.key)).toEqual([
+        'n_scenarios',
+      ])
+      expect(wrapper.vm.steps.map((s: any) => s.key)).toContain('configParams')
+    })
+
+    test('drops the regular step when every field is pre-ETL', () => {
+      const { wrapper } = withPreEtl({
+        configFields: PRE_ETL_FIELDS.filter((f) => f.preEtl),
+      })
+      expect(wrapper.vm.steps.map((s: any) => s.key)).not.toContain(
+        'configParams',
+      )
+    })
+
+    test('does not gate Continue: the load buttons do', async () => {
+      const { wrapper } = withPreEtl({
+        configFields: [
+          {
+            key: 'horizon_days',
+            title: '',
+            type: 'number',
+            preEtl: true,
+            required: true,
+          },
+        ],
+        solverConfig: { showSolverStep: false, defaultSolver: 'd' },
+      })
+      expect(wrapper.vm.steps[wrapper.vm.currentStep].key).toBe('loadInstance')
+
+      // Continue on the load step is gated on the instance, as it always was. A missing
+      // pre-ETL value blocks the load button instead, which is where it matters.
+      wrapper.vm.newExecution.instance = { id: 'i1' }
+      await wrapper.vm.$nextTick()
+      expect(wrapper.vm.disableNextButton).toBe(false)
     })
   })
 

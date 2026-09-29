@@ -39,12 +39,15 @@ import {
   isMasterDataParameterObjectTable,
   filterParameterObjectByVisibleProperties,
   stripInvisibleParameterPropertiesFromInstanceData,
+  stripFrontendRowIdsFromInstanceData,
   normalizeMasterListToParameterRows,
   parameterRowsToParameterObject,
   transformJsonSchemaToAutomationFormat,
   displayValueMatchesValueNone,
   resolveDisplayValuesToFkIds,
   getExecutionConfigFromSchemaConfig,
+  getPreEtlConfigFields,
+  pickPreEtlConfigValues,
   coerceValueToJsonSchemaField,
   coerceSolutionDataBySchema,
 } from '@cornflow-ui/core/utils/schemaUtils'
@@ -767,6 +770,98 @@ describe('stripInvisibleParameterPropertiesFromInstanceData', () => {
   })
 })
 
+describe('stripFrontendRowIdsFromInstanceData', () => {
+  const instanceSchema = {
+    properties: {
+      products: {
+        type: 'array',
+        items: { properties: { name: { type: 'string' }, qty: { type: 'number' } } },
+      },
+      Stations: {
+        type: 'array',
+        items: { properties: { id: { type: 'integer' }, name: { type: 'string' } } },
+      },
+      params: { type: 'object', properties: { id: { type: 'string' }, a: {} } },
+    },
+  }
+
+  test('removes UI row ids from tables whose schema has no id column', () => {
+    const data = {
+      products: [
+        { id: 'products_0_1a2b3c4d5e6f', name: 'A', qty: 1 },
+        { id: 'products_9f8e7d6c5b4a', name: 'B', qty: 2 },
+      ],
+    }
+    const out = stripFrontendRowIdsFromInstanceData(data, instanceSchema)
+    expect(out.products).toEqual([
+      { name: 'A', qty: 1 },
+      { name: 'B', qty: 2 },
+    ])
+  })
+
+  test('keeps id when the table schema declares it (key matched case-insensitively)', () => {
+    const data = { stations: [{ id: 7, name: 'S1' }] }
+    const out = stripFrontendRowIdsFromInstanceData(data, instanceSchema)
+    expect(out.stations).toEqual([{ id: 7, name: 'S1' }])
+  })
+
+  test('removes generated ids even when the table schema declares id', () => {
+    const data = {
+      stations: [
+        { id: 7, name: 'S1' },
+        { id: 'stations_1_1a2b3c4d5e6f', name: 'S2' },
+        { id: 'stations_abcdef012345', name: 'S3' },
+      ],
+    }
+    const out = stripFrontendRowIdsFromInstanceData(data, instanceSchema)
+    expect(out.stations).toEqual([
+      { id: 7, name: 'S1' },
+      { name: 'S2' },
+      { name: 'S3' },
+    ])
+  })
+
+  test('leaves parameter objects and tables missing from the schema untouched', () => {
+    const data = {
+      params: { id: 'p', a: 1 },
+      unknown: [{ id: 'x', v: 1 }],
+    }
+    const out = stripFrontendRowIdsFromInstanceData(data, instanceSchema)
+    expect(out.params).toEqual({ id: 'p', a: 1 })
+    expect(out.unknown).toEqual([{ id: 'x', v: 1 }])
+  })
+
+  test('removes generated ids from tables with no known schema', () => {
+    const data = { unknown: [{ id: 'unknown_0_1a2b3c4d5e6f', v: 1 }, { id: 'x', v: 2 }] }
+    expect(stripFrontendRowIdsFromInstanceData(data, instanceSchema).unknown).toEqual([
+      { v: 1 },
+      { id: 'x', v: 2 },
+    ])
+    expect(stripFrontendRowIdsFromInstanceData(data, null).unknown).toEqual([
+      { v: 1 },
+      { id: 'x', v: 2 },
+    ])
+  })
+
+  test('does not mutate the input data', () => {
+    const row = { id: 'products_0_abc', name: 'A', qty: 1 }
+    const data = { products: [row] }
+    stripFrontendRowIdsFromInstanceData(data, instanceSchema)
+    expect(row.id).toBe('products_0_abc')
+    expect(data.products[0]).toBe(row)
+  })
+
+  test('handles empty values', () => {
+    expect(stripFrontendRowIdsFromInstanceData(null as any, instanceSchema)).toBeNull()
+    expect(stripFrontendRowIdsFromInstanceData({ products: [] }, instanceSchema)).toEqual({
+      products: [],
+    })
+    expect(stripFrontendRowIdsFromInstanceData({ products: [{ id: 'x' }] }, null)).toEqual({
+      products: [{ id: 'x' }],
+    })
+  })
+})
+
 describe('normalizeMasterListToParameterRows', () => {
   test('returns empty for empty data', () => {
     expect(normalizeMasterListToParameterRows([], {})).toEqual([])
@@ -953,6 +1048,79 @@ describe('getExecutionConfigFromSchemaConfig', () => {
   test('default solver when no solver prop', () => {
     const result = getExecutionConfigFromSchemaConfig({ properties: { x: { type: 'string' } } })!
     expect(result.solverConfig.defaultSolver).toBe('MIPModel.gurobi')
+  })
+  test('carries pre_etl, required and date-format fields', () => {
+    const schemaConfig = {
+      properties: {
+        horizon_days: { type: 'integer', default: 1, pre_etl: true },
+        date: { type: ['string', 'null'], format: 'date', pre_etl: true },
+        n_scenarios: { type: 'integer' },
+        plain: { type: 'string' },
+      },
+      required: ['n_scenarios'],
+    }
+    const fields = getExecutionConfigFromSchemaConfig(schemaConfig)!.configFields
+    const byKey = Object.fromEntries(fields.map((f) => [f.key, f]))
+
+    expect(byKey.horizon_days.preEtl).toBe(true)
+    expect(byKey.date.preEtl).toBe(true)
+    expect(byKey.n_scenarios.preEtl).toBeUndefined()
+
+    // Only the root `required` list marks a field as mandatory.
+    expect(byKey.n_scenarios.required).toBe(true)
+    expect(byKey.horizon_days.required).toBeUndefined()
+
+    // `format: date` is what tells a date apart from any other string.
+    expect(byKey.date.type).toBe('date')
+    expect(byKey.date.icon).toBe('mdi-calendar')
+    expect(byKey.plain.type).toBe('text')
+  })
+})
+
+// ─── pre-ETL config selectors ───────────────────────────────────────────────
+
+describe('getPreEtlConfigFields / pickPreEtlConfigValues', () => {
+  const fields = [
+    { key: 'horizon_days', title: '', type: 'number', preEtl: true },
+    { key: 'date', title: '', type: 'date', preEtl: true },
+    { key: 'n_scenarios', title: '', type: 'number' },
+  ]
+
+  test('selects only the fields the schema marked pre_etl', () => {
+    expect(getPreEtlConfigFields(fields).map((f) => f.key)).toEqual([
+      'horizon_days',
+      'date',
+    ])
+    expect(getPreEtlConfigFields(null)).toEqual([])
+  })
+
+  test('picks the pre-ETL values out of an execution config', () => {
+    expect(
+      pickPreEtlConfigValues(
+        { horizon_days: 3, date: '2026-09-28', n_scenarios: 10 },
+        fields,
+      ),
+    ).toEqual({ horizon_days: 3, date: '2026-09-28' })
+  })
+
+  test('drops empty values instead of sending them blank', () => {
+    // A loose form field cannot carry null, so an unset parameter is left out and the
+    // backend reads that as "not given" rather than as an empty value.
+    expect(
+      pickPreEtlConfigValues(
+        { horizon_days: 1, date: null, other: undefined },
+        [...fields, { key: 'other', title: '', type: 'text', preEtl: true }],
+      ),
+    ).toEqual({ horizon_days: 1 })
+    expect(pickPreEtlConfigValues({ date: '' }, fields)).toEqual({})
+    expect(pickPreEtlConfigValues(null, fields)).toEqual({})
+  })
+
+  test('keeps falsy values that are real answers', () => {
+    const boolFields = [{ key: 'flag', title: '', type: 'boolean', preEtl: true }]
+    expect(pickPreEtlConfigValues({ flag: false }, boolFields)).toEqual({
+      flag: false,
+    })
   })
 })
 

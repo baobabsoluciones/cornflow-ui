@@ -2,7 +2,6 @@ import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   loadExcel,
   schemaDataToTable,
-  toISOStringLocal,
   formatDateForHeaders,
   formatDate,
   getLetterFromNumber,
@@ -297,42 +296,6 @@ describe('data_io utilities', () => {
     })
   })
 
-  describe('toISOStringLocal', () => {
-    test('converts date to local ISO string for start date', () => {
-      const date = new Date('2023-12-25T10:30:45.000Z')
-      const result = toISOStringLocal(date)
-
-      // The result should have timezone offset and time set to 00:00
-      expect(result).toMatch(/2023-12-25T00:00:00\.\d{3}[+-]\d{2}:\d{2}/)
-    })
-
-    test('converts date to local ISO string for end date', () => {
-      const date = new Date('2023-12-25T10:30:45.000Z')
-      const result = toISOStringLocal(date, true)
-
-      // The result should have timezone offset and time set to 23:59
-      expect(result).toMatch(/2023-12-25T23:59:00\.\d{3}[+-]\d{2}:\d{2}/)
-    })
-
-    test('returns undefined for null date', () => {
-      const result = toISOStringLocal(null)
-      expect(result).toBeUndefined()
-    })
-
-    test('returns undefined for undefined date', () => {
-      const result = toISOStringLocal(undefined)
-      expect(result).toBeUndefined()
-    })
-
-    test('handles different timezone correctly', () => {
-      const date = new Date('2023-12-25T10:30:45.000Z')
-      const result = toISOStringLocal(date)
-
-      // Should include proper timezone offset format
-      expect(result).toMatch(/[+-]\d{2}:\d{2}$/)
-    })
-  })
-
   describe('formatDateForHeaders', () => {
     test('formats date for headers with default locale', () => {
       const date = '2023-12-25T15:30:45.000Z'
@@ -350,6 +313,23 @@ describe('data_io utilities', () => {
 
       expect(typeof result).toBe('string')
       expect(result.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('formatDateForHeaders with a day key', () => {
+    test('shows the same calendar day whatever the timezone', () => {
+      // Restore by re-assigning the resolved zone: deleting TZ does not reset
+      // Node's cached timezone.
+      const originalTZ =
+        process.env.TZ ?? Intl.DateTimeFormat().resolvedOptions().timeZone
+      process.env.TZ = 'America/Mexico_City'
+      try {
+        const result = formatDateForHeaders('2026-09-28', { value: 'en' })
+        expect(result).toContain('28')
+        expect(result).toContain('Monday')
+      } finally {
+        process.env.TZ = originalTZ
+      }
     })
   })
 

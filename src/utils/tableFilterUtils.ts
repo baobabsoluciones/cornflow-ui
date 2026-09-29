@@ -12,6 +12,32 @@ export const generateSecureId = (prefix: string = ''): string => {
   return prefix ? `${prefix}_${uuid}` : uuid
 }
 
+// Random part of a secure id: 12 lowercase hex chars (see generateSecureId).
+const FRONTEND_ROW_ID_SUFFIX = /^(?:\d+_)?[0-9a-f]{12}$/
+
+/**
+ * Frontend-only row id for an instance table row: `{tableKey}_{index}_{hex}`
+ * or `{tableKey}_{hex}`. Used to track edits/selection; never sent to the
+ * backend (see `stripFrontendRowIdsFromInstanceData`).
+ */
+export const generateFrontendRowId = (
+  tableKey: string,
+  index?: number,
+): string =>
+  generateSecureId(index === undefined ? tableKey : `${tableKey}_${index}`)
+
+/**
+ * True when `value` was produced by `generateFrontendRowId` for `tableKey`.
+ */
+export const isFrontendRowId = (value: unknown, tableKey: string): boolean => {
+  if (typeof value !== 'string' || !tableKey) return false
+  const prefix = `${tableKey}_`
+  return (
+    value.startsWith(prefix) &&
+    FRONTEND_ROW_ID_SUFFIX.test(value.slice(prefix.length))
+  )
+}
+
 export interface FilterCondition {
   id: string
   field: string

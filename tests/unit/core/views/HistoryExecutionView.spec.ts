@@ -522,8 +522,9 @@ describe('HistoryExecutionView', () => {
         } 
       })
       
-      expect(wrapper.vm.selectedDates.startDate).toEqual(new Date('2023-01-01'))
-      expect(wrapper.vm.selectedDates.endDate).toEqual(new Date('2023-01-31'))
+      // Picked days are read as local midnight, not UTC midnight
+      expect(wrapper.vm.selectedDates.startDate).toEqual(new Date(2023, 0, 1))
+      expect(wrapper.vm.selectedDates.endDate).toEqual(new Date(2023, 0, 31))
     })
 
     test('selectedDates watcher calls fetchData', async () => {

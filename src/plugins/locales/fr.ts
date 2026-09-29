@@ -158,6 +158,9 @@ export default {
           noFilesSelectedError: 'Veuillez sélectionner au moins un fichier',
           optionalOrDivider: 'ou',
           loadParameters: 'Charger les paramètres',
+          preEtlParamsHint: "Données avec lesquelles l'instance sera chargée",
+          preEtlChangedAfterLoad:
+            "Vous avez modifié ces données après le chargement. Rechargez pour qu'elles s'appliquent à l'instance.",
           alternativeParametersHint:
             'Saisissez les valeurs ci-dessous et chargez-les comme données d’instance',
           noParametersDataError: 'Aucune donnée de paramètre à envoyer',

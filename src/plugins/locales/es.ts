@@ -245,6 +245,9 @@ export default {
           loadParameters: 'Cargar parámetros',
           alternativeParametersHint:
             'Introduce los siguientes parámetros y cárgalos como datos de instancia',
+          preEtlParamsHint: 'Datos con los que se cargará la instancia',
+          preEtlChangedAfterLoad:
+            'Has cambiado estos datos después de cargar. Vuelve a cargar para que se apliquen a la instancia.',
           noParametersDataError: 'No hay datos de parámetros para enviar',
           noParametersSheetsError:
             'No se pudo generar el archivo a partir de los parámetros (revisa los nombres de tabla en la configuración)',

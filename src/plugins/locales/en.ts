@@ -239,6 +239,9 @@ export default {
           loadParameters: 'Load parameters',
           alternativeParametersHint:
             'Enter the values below and load them as instance data',
+          preEtlParamsHint: 'Data the instance will be loaded with',
+          preEtlChangedAfterLoad:
+            'You changed these after loading. Load again so they apply to the instance.',
           noParametersDataError: 'No parameter data to send',
           noParametersSheetsError:
             'Could not build a file from the parameters (check table names in config)',
