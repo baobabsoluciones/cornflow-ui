@@ -15,6 +15,8 @@ vi.mock('@cornflow-ui/core/utils/tableFilterUtils', () => ({
   generateHeadersFromData: (rows: any[]) =>
     Object.keys(rows[0] || {}).map((k) => ({ key: k, value: k })),
   generateSecureId: (seed: string) => `id_${seed}`,
+  generateFrontendRowId: (tableKey: string, index?: number) =>
+    `id_${index === undefined ? tableKey : `${tableKey}_${index}`}`,
 }))
 
 import {

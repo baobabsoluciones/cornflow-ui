@@ -39,6 +39,7 @@ import {
   isMasterDataParameterObjectTable,
   filterParameterObjectByVisibleProperties,
   stripInvisibleParameterPropertiesFromInstanceData,
+  stripFrontendRowIdsFromInstanceData,
   normalizeMasterListToParameterRows,
   parameterRowsToParameterObject,
   transformJsonSchemaToAutomationFormat,
@@ -766,6 +767,98 @@ describe('stripInvisibleParameterPropertiesFromInstanceData', () => {
     const data = { a: 1 }
     expect(stripInvisibleParameterPropertiesFromInstanceData(data, {})).toEqual({ a: 1 })
     expect(stripInvisibleParameterPropertiesFromInstanceData(null as any, {})).toBeNull()
+  })
+})
+
+describe('stripFrontendRowIdsFromInstanceData', () => {
+  const instanceSchema = {
+    properties: {
+      products: {
+        type: 'array',
+        items: { properties: { name: { type: 'string' }, qty: { type: 'number' } } },
+      },
+      Stations: {
+        type: 'array',
+        items: { properties: { id: { type: 'integer' }, name: { type: 'string' } } },
+      },
+      params: { type: 'object', properties: { id: { type: 'string' }, a: {} } },
+    },
+  }
+
+  test('removes UI row ids from tables whose schema has no id column', () => {
+    const data = {
+      products: [
+        { id: 'products_0_1a2b3c4d5e6f', name: 'A', qty: 1 },
+        { id: 'products_9f8e7d6c5b4a', name: 'B', qty: 2 },
+      ],
+    }
+    const out = stripFrontendRowIdsFromInstanceData(data, instanceSchema)
+    expect(out.products).toEqual([
+      { name: 'A', qty: 1 },
+      { name: 'B', qty: 2 },
+    ])
+  })
+
+  test('keeps id when the table schema declares it (key matched case-insensitively)', () => {
+    const data = { stations: [{ id: 7, name: 'S1' }] }
+    const out = stripFrontendRowIdsFromInstanceData(data, instanceSchema)
+    expect(out.stations).toEqual([{ id: 7, name: 'S1' }])
+  })
+
+  test('removes generated ids even when the table schema declares id', () => {
+    const data = {
+      stations: [
+        { id: 7, name: 'S1' },
+        { id: 'stations_1_1a2b3c4d5e6f', name: 'S2' },
+        { id: 'stations_abcdef012345', name: 'S3' },
+      ],
+    }
+    const out = stripFrontendRowIdsFromInstanceData(data, instanceSchema)
+    expect(out.stations).toEqual([
+      { id: 7, name: 'S1' },
+      { name: 'S2' },
+      { name: 'S3' },
+    ])
+  })
+
+  test('leaves parameter objects and tables missing from the schema untouched', () => {
+    const data = {
+      params: { id: 'p', a: 1 },
+      unknown: [{ id: 'x', v: 1 }],
+    }
+    const out = stripFrontendRowIdsFromInstanceData(data, instanceSchema)
+    expect(out.params).toEqual({ id: 'p', a: 1 })
+    expect(out.unknown).toEqual([{ id: 'x', v: 1 }])
+  })
+
+  test('removes generated ids from tables with no known schema', () => {
+    const data = { unknown: [{ id: 'unknown_0_1a2b3c4d5e6f', v: 1 }, { id: 'x', v: 2 }] }
+    expect(stripFrontendRowIdsFromInstanceData(data, instanceSchema).unknown).toEqual([
+      { v: 1 },
+      { id: 'x', v: 2 },
+    ])
+    expect(stripFrontendRowIdsFromInstanceData(data, null).unknown).toEqual([
+      { v: 1 },
+      { id: 'x', v: 2 },
+    ])
+  })
+
+  test('does not mutate the input data', () => {
+    const row = { id: 'products_0_abc', name: 'A', qty: 1 }
+    const data = { products: [row] }
+    stripFrontendRowIdsFromInstanceData(data, instanceSchema)
+    expect(row.id).toBe('products_0_abc')
+    expect(data.products[0]).toBe(row)
+  })
+
+  test('handles empty values', () => {
+    expect(stripFrontendRowIdsFromInstanceData(null as any, instanceSchema)).toBeNull()
+    expect(stripFrontendRowIdsFromInstanceData({ products: [] }, instanceSchema)).toEqual({
+      products: [],
+    })
+    expect(stripFrontendRowIdsFromInstanceData({ products: [{ id: 'x' }] }, null)).toEqual({
+      products: [{ id: 'x' }],
+    })
   })
 })
 

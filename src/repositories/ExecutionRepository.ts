@@ -3,7 +3,10 @@ import { Execution } from '@cornflow-ui/core/models/Execution'
 import { LoadedExecution } from '@cornflow-ui/core/models/LoadedExecution'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import InstanceRepository from './InstanceRepository'
-import { formatDateForFilename } from '@cornflow-ui/core/utils/date'
+import {
+  formatDateForFilename,
+  normalizeBackendDate,
+} from '@cornflow-ui/core/utils/date'
 import {
   getApiErrorMessageFromContent,
   getMessageFromResponseContentOrNull,
@@ -154,7 +157,7 @@ export default class ExecutionRepository {
           : { sol_code: -3, status_code: -3, status_message: '' }
         return new Execution({
           message: execution.message,
-          createdAt: execution.created_at,
+          createdAt: normalizeBackendDate(execution.created_at),
           config: execution.config,
           state: execution.state,
           solution_state: logStatusCode,
@@ -169,7 +172,7 @@ export default class ExecutionRepository {
           userName: execution.username,
           userFirstName: execution.first_name,
           userLastName: execution.last_name,
-          finishedAt: execution.updated_at,
+          finishedAt: normalizeBackendDate(execution.updated_at),
         })
       })
     } else {
@@ -237,7 +240,7 @@ export default class ExecutionRepository {
           executionId: execution.id,
           name: execution.name,
           description: execution.description,
-          createdAt: execution.created_at,
+          createdAt: normalizeBackendDate(execution.created_at),
           state: execution.state,
           message: execution.message,
           config: execution.config,
@@ -378,7 +381,7 @@ export default class ExecutionRepository {
         const filename =
           execution.name.toLowerCase().replaceAll(' ', '_') +
           '-' +
-          formatDateForFilename(execution.created_at)
+          formatDateForFilename(normalizeBackendDate(execution.created_at))
         await experiment.downloadExcel(filename, onlySolution, onlyInstance)
 
         return pickDownloadReturnValue(experiment, onlySolution, onlyInstance)

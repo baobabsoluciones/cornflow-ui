@@ -9,16 +9,18 @@ vi.mock('@cornflow-ui/core/api/Api', () => ({
   },
 }))
 
-// Mock the general store
+// Mock the general store (schemaConfig is shared so tests can set a schema)
+const mockSchemaConfig = vi.hoisted(() => ({
+  instanceSchema: {} as any,
+  instanceChecksSchema: {},
+}))
+
 vi.mock('@cornflow-ui/core/stores/general', () => ({
   useGeneralStore: () => ({
     appConfig: {
       Instance: vi.fn(),
     },
-    schemaConfig: {
-      instanceSchema: {},
-      instanceChecksSchema: {},
-    },
+    schemaConfig: mockSchemaConfig,
     getSchemaName: 'test-schema',
   }),
 }))
@@ -280,6 +282,38 @@ describe('InstanceRepository', () => {
       await expect(repository.createInstance(mockInstanceData)).rejects.toThrow(
         'Network error',
       )
+    })
+
+    test('should not send frontend-generated row ids', async () => {
+      mockSchemaConfig.instanceSchema = {
+        properties: {
+          products: { type: 'array', items: { properties: { name: {} } } },
+          stations: {
+            type: 'array',
+            items: { properties: { id: {}, name: {} } },
+          },
+        },
+      }
+      mockClient.post.mockResolvedValue({ status: 201, content: { id: 'i1' } })
+      const rows = [{ id: 'products_0_1a2b3c4d5e6f', name: 'A' }]
+
+      try {
+        await repository.createInstance({
+          name: 'Test Instance',
+          instance: {
+            data: { products: rows, stations: [{ id: 3, name: 'S' }] },
+          },
+        })
+      } finally {
+        mockSchemaConfig.instanceSchema = {}
+      }
+
+      expect(mockClient.post.mock.calls[0][1].data).toEqual({
+        products: [{ name: 'A' }],
+        stations: [{ id: 3, name: 'S' }],
+      })
+      // The UI keeps its row ids for edit tracking
+      expect(rows[0].id).toBe('products_0_1a2b3c4d5e6f')
     })
 
     test('should handle missing instance data', async () => {

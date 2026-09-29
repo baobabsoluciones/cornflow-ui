@@ -92,6 +92,11 @@ import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
 import CoreTitleView from '@cornflow-ui/core/components/core/CoreTitleView.vue'
 import CorePanelData from '@cornflow-ui/core/components/core/CorePanelData.vue'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import {
+  formatLocalDateKey,
+  formatLocalTimeHHmm,
+  parseLocalDateKey,
+} from '@cornflow-ui/core/utils/date'
 import { inject } from 'vue'
 import appConfig from '@/app/config'
 
@@ -292,8 +297,8 @@ export default {
           newVal.startDate &&
           newVal.endDate
         ) {
-          this.selectedDates.startDate = new Date(newVal.startDate)
-          this.selectedDates.endDate = new Date(newVal.endDate)
+          this.selectedDates.startDate = parseLocalDateKey(newVal.startDate)
+          this.selectedDates.endDate = parseLocalDateKey(newVal.endDate)
         }
       },
       deep: true,
@@ -434,18 +439,20 @@ export default {
           return acc
         }
 
-        const date = item.createdAt.split('T')[0]
+        // Group by the user's local day (createdAt is already normalised to
+        // UTC by the repository), so executions launched around midnight land
+        // on the day the user actually launched them.
+        const date = formatLocalDateKey(item.createdAt)
+        if (!date) {
+          return acc
+        }
         if (!acc[date]) {
           acc[date] = {
             date,
             data: [],
           }
         }
-        const timeParts = item.createdAt.split('T')[1]?.split(':')
-        if (!timeParts || timeParts.length < 2) {
-          return acc
-        }
-        const formattedTime = `${timeParts[0]}:${String(timeParts[1]).padStart(2, '0')}`
+        const formattedTime = formatLocalTimeHHmm(item.createdAt)
         acc[date].data.push({
           time: formattedTime,
           ...item,
