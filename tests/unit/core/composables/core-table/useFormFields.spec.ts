@@ -140,6 +140,12 @@ describe('useFormFields - validation & formatting', () => {
 
   test('formatDate handles empty and invalid', () => {
     expect(f.formatDate('')).toBe('')
+    // An unparseable date falls back to the raw value. `toLocaleDateString()` would
+    // otherwise return the literal "Invalid Date" without throwing, and that string
+    // would be shown in the cell instead of the data.
+    expect(f.formatDate('not-a-date')).toBe('not-a-date')
+    expect(f.formatDate('27/04/2026')).toBe('27/04/2026')
+    expect(f.formatCellValue('27/04/2026', 'date')).toBe('27/04/2026')
   })
 
   test('getFieldCols and getFieldMd', () => {

@@ -26,6 +26,7 @@ import {
   convertParameterNameValueArraysToObjectsForInstance,
   getInstanceSchemaRootForTables,
   patchInstanceSchemaRootForParameterTableEtlExport,
+  pickPreEtlConfigValues,
 } from '@cornflow-ui/core/utils/schemaUtils'
 import { unwrapEtlResponse } from '@cornflow-ui/core/utils/etlResponse'
 import type { LoadInstanceAlternativeParamField } from '@/app/config'
@@ -97,8 +98,22 @@ export function useInstanceProcessing() {
    * Process partial instance JSON: same validation as file upload; with ETL enabled,
    * builds an XLSX (one sheet per table) and sends it as FormData like file upload.
    */
+  /**
+   * The values the ETL backend needs out of an execution config, i.e. the parameters the
+   * config schema marked `pre_etl: true`. Callers hand over the whole config and this
+   * picks the subset, so no caller has to know which parameters those are.
+   */
+  const preEtlParamsFrom = (
+    executionConfig?: Record<string, any> | null,
+  ): Record<string, unknown> =>
+    pickPreEtlConfigValues(
+      executionConfig,
+      store.appConfig.parameters.configFields,
+    )
+
   const processInstanceData = async (
     data: Record<string, any>,
+    executionConfig?: Record<string, any> | null,
   ): Promise<ProcessingResult> => {
     if (!data || Object.keys(data).length === 0) {
       return createErrorResult(
@@ -142,7 +157,7 @@ export function useInstanceProcessing() {
             null,
           )
         }
-        return await processWithEtlBackend([file])
+        return await processWithEtlBackend([file], executionConfig)
       }
 
       const schemas = store.getSchemaConfig
@@ -177,7 +192,10 @@ export function useInstanceProcessing() {
     }
   }
 
-  const processFiles = async (files: File[]): Promise<ProcessingResult> => {
+  const processFiles = async (
+    files: File[],
+    executionConfig?: Record<string, any> | null,
+  ): Promise<ProcessingResult> => {
     if (files.length === 0) {
       return createErrorResult(
         t('projectExecution.steps.step3.loadInstance.noFilesSelectedError'),
@@ -195,7 +213,7 @@ export function useInstanceProcessing() {
         (store.appConfig.parameters.etl.enableEtlMetadataAndReview ||
           store.appConfig.parameters.etl.useEtlBackend)
       ) {
-        return await processWithEtlBackend(files)
+        return await processWithEtlBackend(files, executionConfig)
       } else {
         return await processWithFrontend(files)
       }
@@ -410,11 +428,15 @@ export function useInstanceProcessing() {
    */
   const processWithEtlBackend = async (
     files: File[],
+    executionConfig?: Record<string, any> | null,
   ): Promise<ProcessingResult> => {
     try {
       const preprocessed = await preProcessFilesForEtl(files)
       const filesToSend = preprocessed ?? files
-      const rawResponse = await etlBackend!.useEtlBackend(filesToSend)
+      const rawResponse = await etlBackend!.useEtlBackend(
+        filesToSend,
+        preEtlParamsFrom(executionConfig),
+      )
       const { instance, rawData, warning } =
         buildInstanceFromEtlResponse(rawResponse)
 
@@ -444,7 +466,9 @@ export function useInstanceProcessing() {
    * Used when `etl.enableLoadFromDb` is true and the user clicks "Obtener todos los datos de base de datos".
    * Reuses the same metadata/review logic as processWithEtlBackend.
    */
-  const processFromDb = async (): Promise<ProcessingResult> => {
+  const processFromDb = async (
+    executionConfig?: Record<string, any> | null,
+  ): Promise<ProcessingResult> => {
     if (!etlBackend) {
       return createErrorResult(
         t('projectExecution.steps.step3.loadInstance.unexpectedError'),
@@ -457,7 +481,9 @@ export function useInstanceProcessing() {
     state.value.errors = null
 
     try {
-      const rawResponse = await etlBackend.useEtlBackendFromDb()
+      const rawResponse = await etlBackend.useEtlBackendFromDb(
+        preEtlParamsFrom(executionConfig),
+      )
       const { instance, rawData, warning } =
         buildInstanceFromEtlResponse(rawResponse)
 

@@ -506,7 +506,7 @@ import {
   generateFilterId,
   applyFiltersAndSearch as applyFiltersAndSearchUtil,
   generateHeadersFromData,
-  generateSecureId,
+  generateFrontendRowId,
   type FilterCondition,
 } from '@cornflow-ui/core/utils/tableFilterUtils'
 import {
@@ -1331,7 +1331,7 @@ const handleSaveItem = (data: any) => {
       tableData[index] = { ...dataWithoutId, id: data.id }
     }
   } else {
-    const tempId = generateSecureId(table.key)
+    const tempId = generateFrontendRowId(table.key)
     tableData.push({ ...dataWithoutId, id: tempId })
   }
 
@@ -1795,7 +1795,7 @@ function applyArrayTableChanges(
   // 3. Add pending creates (with new id for JSON)
   const creates = tableChanges.getPendingCreates(tableKey)
   creates.forEach((c) => {
-    const newId = generateSecureId(tableKey)
+    const newId = generateFrontendRowId(tableKey)
     const row = convertDataTypesBasedOnSchema(
       { ...c.data, id: newId },
       tableKey,

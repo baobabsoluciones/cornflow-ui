@@ -5,7 +5,11 @@
  * unit-tested without mounting the component.
  */
 
-import { generateHeadersFromData, generateSecureId } from '@cornflow-ui/core/utils/tableFilterUtils'
+import {
+  generateFrontendRowId,
+  generateHeadersFromData,
+  generateSecureId,
+} from '@cornflow-ui/core/utils/tableFilterUtils'
 import {
   isAllowLoadFromDbDisabled,
   isParameterPropertySchemaVisible,
@@ -455,7 +459,7 @@ export function createTableObject(
   // Ensure all items have an ID (before generating headers)
   tableData.forEach((item: any, index: number) => {
     if (!item.id) {
-      item.id = generateSecureId(`${tableKey}_${index}`)
+      item.id = generateFrontendRowId(tableKey, index)
     }
   })
 

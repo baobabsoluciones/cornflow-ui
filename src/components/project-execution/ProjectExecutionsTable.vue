@@ -20,7 +20,7 @@
               {{
                 formatDateByTime
                   ? formatToHHmm(item.createdAt)
-                  : new Date(item.createdAt).toISOString().split('T')[0]
+                  : formatLocalDateKey(item.createdAt)
               }}
             </span>
           </div>
@@ -32,7 +32,7 @@
                 item.finishedAt
                   ? formatDateByTime
                     ? formatToHHmm(item.finishedAt)
-                    : new Date(item.finishedAt).toISOString().split('T')[0]
+                    : formatLocalDateKey(item.finishedAt)
                   : '-'
               }}
             </span>
@@ -305,6 +305,10 @@ import { useProjectExecutionsTable } from '@cornflow-ui/core/composables/project
 import { useI18n } from 'vue-i18n'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { useLatestPlanController } from '@cornflow-ui/core/composables/project-execution/useLatestPlanController'
+import {
+  formatLocalDateKey,
+  formatLocalTimeHHmm,
+} from '@cornflow-ui/core/utils/date'
 
 // Setup i18n
 const { t } = useI18n()
@@ -438,14 +442,9 @@ const handleDownloadClick = async (item: any) => {
   }
 }
 
-// Utility function to format time as HH:mm
+// Utility function to format time as HH:mm (user's local timezone)
 function formatToHHmm(dateString: string): string {
-  const date = new Date(dateString)
-  return date.toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
+  return formatLocalTimeHHmm(dateString)
 }
 
 // Keep all execution tables horizontally aligned by syncing the scroll position

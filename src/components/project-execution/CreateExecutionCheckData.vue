@@ -135,6 +135,7 @@ export default {
 
         const instance = await this.generalStore.getInstanceDataChecksById(
           result.id,
+          this.newExecution.config,
         )
         if (instance) {
           this.checksFinished = true

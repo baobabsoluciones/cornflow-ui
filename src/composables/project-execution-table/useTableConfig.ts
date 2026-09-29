@@ -47,6 +47,9 @@ export function useTableConfig(props: { formatDateByTime: boolean }) {
     const hasTimeLimit =
       (showExtraColumns?.showTimeLimit || false) && showConfigFieldsStep
     const hasUserFullName = showExtraColumns?.showUserFullName || false
+    // The solver column is the exception: it predates the flag, so it stays visible
+    // unless a deployment turns it off explicitly.
+    const hasSolver = showExtraColumns?.showSolver !== false
     const extraColumnsCount =
       (hasEndDate ? 1 : 0) +
       (hasUserName ? 1 : 0) +
@@ -70,6 +73,12 @@ export function useTableConfig(props: { formatDateByTime: boolean }) {
       nameWidth = '11%'
       solverWidth = '10%'
       actionWidth = '9%'
+    }
+
+    // With no solver column, its share goes to the description so the row still
+    // spans the full width instead of leaving a gap on the right.
+    if (!hasSolver) {
+      descWidth = `${Number.parseInt(descWidth, 10) + Number.parseInt(solverWidth, 10)}%`
     }
 
     // Base columns array with the date column
@@ -143,14 +152,17 @@ export function useTableConfig(props: { formatDateByTime: boolean }) {
         sortable: !props.formatDateByTime,
         fixedWidth: true,
       },
-      {
+    )
+
+    if (hasSolver) {
+      headers.push({
         title: t('executionTable.solver'),
         value: 'solver',
         width: solverWidth,
         sortable: !props.formatDateByTime,
         fixedWidth: true,
-      },
-    )
+      })
+    }
 
     // Add timeLimit column only if enabled
     if (hasTimeLimit) {

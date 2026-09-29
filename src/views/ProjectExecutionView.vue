@@ -39,6 +39,7 @@
             @instanceSelected="handleInstanceSelected"
             @externalEtlData="handleExternalEtlData"
             @update:existingInstanceErrors="existingInstanceErrors = $event"
+            @update:config="newExecution.config = $event"
             class="mt-4"
           >
           </CreateExecutionLoadInstance>
@@ -81,7 +82,11 @@
 
         <!-- Template for step 6 -->
         <template v-else-if="step.key === 'configParams'">
-          <CreateExecutionConfigParams v-model="newExecution" class="mt-4" />
+          <CreateExecutionConfigParams
+            v-model="newExecution"
+            :scope="configParamsScope"
+            class="mt-4"
+          />
         </template>
 
         <!-- Template for step 7 -->
@@ -148,6 +153,7 @@ import { inject } from 'vue'
 import { useRoute } from 'vue-router'
 import { useTableChanges } from '@cornflow-ui/core/composables/useTableChanges'
 import { useEtlFlowController } from '@cornflow-ui/core/composables/project-execution/useEtlFlowController'
+import { getPreEtlConfigFields } from '@cornflow-ui/core/utils/schemaUtils'
 
 export default {
   components: {
@@ -520,7 +526,10 @@ export default {
       const baseSteps = this.getBaseCreateSteps()
       this.addOptionalSteps(baseSteps)
       this.addSolveStep(baseSteps)
-      return baseSteps
+      // `order` is just the step's position, and the steps are pushed in the order they
+      // are shown. Numbering here keeps it right whatever combination of optional steps
+      // is enabled, instead of each helper having to know about all the others.
+      return baseSteps.map((step, index) => ({ ...step, order: index + 1 }))
     },
 
     getBaseCreateSteps() {
@@ -528,41 +537,32 @@ export default {
 
       // In edit mode, skip loadInstance step
       if (!this.isEditMode) {
-        steps.push(this.createStepConfig('loadInstance', 1, true))
+        steps.push(this.createStepConfig('loadInstance', 0, true))
       }
 
-      // Review instance step (order depends on whether loadInstance is present)
-      const reviewOrder = this.isEditMode ? 1 : 2
-      steps.push(this.createStepConfig('reviewInstance', reviewOrder, true))
-
-      // Check data step
-      const checkOrder = this.isEditMode ? 2 : 3
-      steps.push(this.createStepConfig('checkData', checkOrder, true))
+      steps.push(this.createStepConfig('reviewInstance', 0, true))
+      steps.push(this.createStepConfig('checkData', 0, true))
 
       return steps
     },
 
     addOptionalSteps(baseSteps) {
-      let nextOrder = 4
-
       if (this.shouldShowSolverStep()) {
-        baseSteps.push(this.createStepConfig('selectSolver', nextOrder, true))
-        nextOrder++
+        baseSteps.push(this.createStepConfig('selectSolver', 0, true))
       }
 
-      if (this.shouldShowConfigFieldsStep()) {
-        baseSteps.push(this.createStepConfig('configParams', nextOrder, true))
-        nextOrder++
+      // Skip the regular parameters step only when the load step already took every
+      // field; where no parameter is pre-ETL the behaviour is untouched.
+      const configParamsWouldBeEmpty =
+        this.preEtlAskedInLoadStep && this.standardConfigFields.length === 0
+      if (this.shouldShowConfigFieldsStep() && !configParamsWouldBeEmpty) {
+        baseSteps.push(this.createStepConfig('configParams', 0, true))
       }
     },
 
     addSolveStep(baseSteps) {
-      const nameDescriptionOrder = this.calculateNameDescriptionStepOrder()
-      baseSteps.push(
-        this.createStepConfig('nameDescription', nameDescriptionOrder, true),
-      )
-      const solveOrder = this.calculateSolveStepOrder()
-      baseSteps.push(this.createStepConfig('solve', solveOrder, true))
+      baseSteps.push(this.createStepConfig('nameDescription', 0, true))
+      baseSteps.push(this.createStepConfig('solve', 0, true))
     },
 
     createStepConfig(key, order, hasSubtitle = false) {
@@ -592,18 +592,6 @@ export default {
         ?.showConfigFieldsStep
     },
 
-    calculateNameDescriptionStepOrder() {
-      let order = 4
-      if (this.shouldShowSolverStep()) order++
-      if (this.shouldShowConfigFieldsStep()) order++
-      return order
-    },
-    calculateSolveStepOrder() {
-      let order = 5
-      if (this.shouldShowSolverStep()) order++
-      if (this.shouldShowConfigFieldsStep()) order++
-      return order
-    },
 
 
     handleExternalEtlData(rawData) {
@@ -776,8 +764,44 @@ export default {
       // Default: file upload required
       return !this.newExecution.instance
     },
+    allConfigFields() {
+      return this.generalStore.appConfig.parameters.configFields || []
+    },
+    preEtlConfigFields() {
+      return getPreEtlConfigFields(this.allConfigFields)
+    },
+    standardConfigFields() {
+      return this.allConfigFields.filter((field) => field.preEtl !== true)
+    },
+    /**
+     * Whether the load-instance step is the one asking for the pre-ETL parameters. That
+     * only makes sense when the deployment actually runs an ETL and the config schema
+     * marks at least one parameter with `pre_etl: true`. In edit mode there is no load
+     * step at all -- the instance already exists and no ETL call is made -- so those
+     * parameters go back to the regular parameters step.
+     */
+    preEtlAskedInLoadStep() {
+      if (this.isEditMode) return false
+      if (this.preEtlConfigFields.length === 0) return false
+
+      const etl = this.generalStore.appConfig.parameters.etl
+      return Boolean(
+        etl?.useEtlBackend ||
+          etl?.enableLoadFromDb ||
+          (etl?.alternativeParameterFields?.length ?? 0) > 0,
+      )
+    },
+    /** What the regular parameters step renders once the load step took its share. */
+    configParamsScope() {
+      return this.preEtlAskedInLoadStep ? 'standard' : 'all'
+    },
+    configParamsFields() {
+      return this.configParamsScope === 'standard'
+        ? this.standardConfigFields
+        : this.allConfigFields
+    },
     isConfigFieldsIncomplete() {
-      const fields = this.generalStore.appConfig.parameters.configFields || []
+      const fields = this.configParamsFields
       return fields.some((field) => {
         const value = this.newExecution.config[field.key]
         if (field.type === 'boolean') {

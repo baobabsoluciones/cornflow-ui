@@ -82,12 +82,30 @@ vi.mock('@cornflow-ui/core/utils/data_io', () => ({
 
 // schemaUtils
 const mockBuildAlternative = vi.fn(() => ({ built: true }))
+// The whole module is replaced (importing it for real drags in i18n, which this suite
+// mocks). `pickPreEtlConfigValues` is reproduced here only so the call reads naturally;
+// what these tests check is the wiring — which arguments the composable hands it and
+// that its result reaches the ETL backend. The picking itself is covered in
+// tests/unit/core/utils/schemaUtils.spec.ts.
+const mockPickPreEtlConfigValues = vi.fn(
+  (config: any, fields: any[]): Record<string, unknown> => {
+    const picked: Record<string, unknown> = {}
+    for (const field of (fields || []).filter((f: any) => f?.preEtl === true)) {
+      const value = config?.[field.key]
+      if (value === null || value === undefined || value === '') continue
+      picked[field.key] = value
+    }
+    return picked
+  },
+)
 vi.mock('@cornflow-ui/core/utils/schemaUtils', () => ({
   buildAlternativeParameterInstanceData: (...args: any[]) =>
     mockBuildAlternative(...args),
   convertParameterNameValueArraysToObjectsForInstance: vi.fn((data: any) => data),
   getInstanceSchemaRootForTables: vi.fn(() => null),
   patchInstanceSchemaRootForParameterTableEtlExport: vi.fn(() => null),
+  pickPreEtlConfigValues: (...args: any[]) =>
+    (mockPickPreEtlConfigValues as any)(...args),
 }))
 
 // errorFormatting — keep simple, identifiable strings
@@ -326,6 +344,55 @@ describe('useInstanceProcessing - processFiles (ETL backend)', () => {
     expect(result.success).toBe(true)
     expect(mockUseEtlBackend).toHaveBeenCalled()
     expect((result.instance as any).data).toEqual({ table_a: [{ id: 1 }] })
+  })
+
+  test('forwards only the pre-ETL parameters of the execution config', async () => {
+    etlStore({
+      configFields: [
+        { key: 'horizon_days', title: '', type: 'number', preEtl: true },
+        { key: 'date', title: '', type: 'date', preEtl: true },
+        { key: 'n_scenarios', title: '', type: 'number' },
+      ],
+    })
+    mockUseEtlBackend.mockResolvedValue({ data: { table_a: [] } })
+
+    const { processFiles } = useInstanceProcessing()
+    await processFiles([makeFile('a.xlsx')], {
+      horizon_days: 3,
+      date: '2026-09-28',
+      n_scenarios: 10,
+      solver: 'base_solver',
+    })
+
+    // The whole config is handed over together with the deployment's config fields, so
+    // the composable is the only place that has to know which parameters are pre-ETL.
+    expect(mockPickPreEtlConfigValues).toHaveBeenCalledWith(
+      {
+        horizon_days: 3,
+        date: '2026-09-28',
+        n_scenarios: 10,
+        solver: 'base_solver',
+      },
+      storeState.appConfig.parameters.configFields,
+    )
+    // Only the parameters the backend filters the load with travel to the ETL; the
+    // rest of the config is none of its business.
+    expect(mockUseEtlBackend).toHaveBeenCalledWith(expect.any(Array), {
+      horizon_days: 3,
+      date: '2026-09-28',
+    })
+  })
+
+  test('sends no pre-ETL parameters when the schema marks none', async () => {
+    etlStore({
+      configFields: [{ key: 'n_scenarios', title: '', type: 'number' }],
+    })
+    mockUseEtlBackend.mockResolvedValue({ data: { table_a: [] } })
+
+    const { processFiles } = useInstanceProcessing()
+    await processFiles([makeFile('a.xlsx')], { n_scenarios: 10 })
+
+    expect(mockUseEtlBackend).toHaveBeenCalledWith(expect.any(Array), {})
   })
 
   test('strips __metadata__ and exposes rawData when review enabled', async () => {

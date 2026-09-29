@@ -156,10 +156,20 @@ export interface TableEditStrategy {
  * so that the core does not depend on the premium module (invariant for the npm packaging).
  */
 export interface EtlBackendOperations {
-  /** POST `/external/etl/` with the uploaded files; returns the raw response body. */
-  useEtlBackend: (files: File[]) => Promise<any>
+  /**
+   * POST `/external/etl/` with the uploaded files; returns the raw response body.
+   * `preEtlParams` holds the execution-config values the schema marked `pre_etl: true`;
+   * they go in the request form (one field per parameter) so the backend can filter the
+   * data it loads. Omitted keys mean "not given".
+   */
+  useEtlBackend: (
+    files: File[],
+    preEtlParams?: Record<string, unknown>,
+  ) => Promise<any>
   /** Direct load from DB via ETL (no files); returns the raw response body. */
-  useEtlBackendFromDb: () => Promise<any>
+  useEtlBackendFromDb: (
+    preEtlParams?: Record<string, unknown>,
+  ) => Promise<any>
 }
 
 /** §3.7 Capabilities/services whose implementation is premium and the core consumes by interface. DRAFT. */
