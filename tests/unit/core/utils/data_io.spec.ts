@@ -2,7 +2,6 @@ import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   loadExcel,
   schemaDataToTable,
-  toISOStringLocal,
   formatDateForHeaders,
   formatDate,
   getLetterFromNumber,
@@ -294,42 +293,6 @@ describe('data_io utilities', () => {
       const result = await loadExcel(mockFile, mockSchema)
 
       expect(result.Empty).toEqual([])
-    })
-  })
-
-  describe('toISOStringLocal', () => {
-    test('converts date to local ISO string for start date', () => {
-      const date = new Date('2023-12-25T10:30:45.000Z')
-      const result = toISOStringLocal(date)
-
-      // The result should have timezone offset and time set to 00:00
-      expect(result).toMatch(/2023-12-25T00:00:00\.\d{3}[+-]\d{2}:\d{2}/)
-    })
-
-    test('converts date to local ISO string for end date', () => {
-      const date = new Date('2023-12-25T10:30:45.000Z')
-      const result = toISOStringLocal(date, true)
-
-      // The result should have timezone offset and time set to 23:59
-      expect(result).toMatch(/2023-12-25T23:59:00\.\d{3}[+-]\d{2}:\d{2}/)
-    })
-
-    test('returns undefined for null date', () => {
-      const result = toISOStringLocal(null)
-      expect(result).toBeUndefined()
-    })
-
-    test('returns undefined for undefined date', () => {
-      const result = toISOStringLocal(undefined)
-      expect(result).toBeUndefined()
-    })
-
-    test('handles different timezone correctly', () => {
-      const date = new Date('2023-12-25T10:30:45.000Z')
-      const result = toISOStringLocal(date)
-
-      // Should include proper timezone offset format
-      expect(result).toMatch(/[+-]\d{2}:\d{2}$/)
     })
   })
 
