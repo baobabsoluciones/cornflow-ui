@@ -62,3 +62,37 @@ describe('i18n Plugin - Additional Coverage', () => {
     })
   })
 })
+
+describe('i18n Plugin - language validation', () => {
+  test('falls back to en with a warning for an unregistered language', async () => {
+    const i18nModule = await import('@cornflow-ui/core/plugins/i18n')
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    i18nModule.setDefaultLanguage('es')
+    i18nModule.setDefaultLanguage('xx')
+
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("'xx' is not registered"))
+    expect(i18nModule.i18n.global.locale.value).toBe('en')
+    expect(i18nModule.currentLocale.value).toBe('en')
+    warn.mockRestore()
+  })
+
+  test('changeLanguage also falls back to en for an unregistered language', async () => {
+    const i18nModule = await import('@cornflow-ui/core/plugins/i18n')
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    i18nModule.changeLanguage('fr')
+    expect(i18nModule.i18n.global.locale.value).toBe('fr')
+
+    i18nModule.changeLanguage('xx')
+    expect(warn).toHaveBeenCalled()
+    expect(i18nModule.i18n.global.locale.value).toBe('en')
+    warn.mockRestore()
+  })
+
+  test('registers messages for every registered language', async () => {
+    const i18nModule = await import('@cornflow-ui/core/plugins/i18n')
+
+    expect(i18nModule.i18n.global.availableLocales.sort()).toEqual(['en', 'es', 'fr'])
+  })
+})

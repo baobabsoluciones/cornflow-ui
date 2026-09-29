@@ -382,7 +382,7 @@ frontendAutomationSectionSubsections: {
 },
 ```
 
-Add the corresponding keys (e.g. `ateneaPlanning.dashboardTitle`) in `src/app/plugins/locales/` (en, es, fr) and create the view component in `src/app/views/`.
+Add the corresponding keys (e.g. `ateneaPlanning.dashboardTitle`) in `src/app/plugins/locales/` (one file per language, see [Internationalization configuration](#internationalization-configuration)) and create the view component in `src/app/views/`.
 
 #### Multi-schema access control
 
@@ -915,7 +915,7 @@ It's important not to edit any other file or folders. Only the folders, files an
 | **Schema**              | Application schema name       | `VITE_APP_SCHEMA`                 | `schema`               | String identifier                |
 | **App Name**            | Application display name      | `VITE_APP_NAME`                   | `name`                 | String                           |
 | **Hash Mode**           | Router mode (hash vs history) | `VITE_APP_USE_HASH_MODE`          | `useHashMode`          | `true`/`false` (accepts `1`/`0`) |
-| **Default Language**    | UI language                   | `VITE_APP_DEFAULT_LANGUAGE`       | `defaultLanguage`      | `en`, `es`, `fr`                 |
+| **Default Language**    | UI language                   | `VITE_APP_DEFAULT_LANGUAGE`       | `defaultLanguage`      | Any registered language code     |
 | **Developer Mode**      | Enable dev features           | `VITE_APP_IS_DEVELOPER_MODE`      | `isDeveloperMode`      | `true`/`false` (accepts `1`/`0`) |
 | **Enable Signup**       | Show registration option      | `VITE_APP_ENABLE_SIGNUP`          | `enableSignup`         | `true`/`false` (accepts `1`/`0`) |
 | **External App**        | API URL prefix mode           | `VITE_APP_EXTERNAL_APP`           | `hasExternalApp`       | `true`/`false` (accepts `1`/`0`) |
@@ -1095,7 +1095,7 @@ The application has four main navigation sections with default titles:
 
 **Option 1: Using app-specific translations (recommended)**
 
-Add custom translations in your app's locale files (`src/app/plugins/locales/*.ts`):
+Add custom translations in your app's locale files (`src/app/plugins/locales/*.ts`, see [Adding or hiding languages in a project](#adding-or-hiding-languages-in-a-project)):
 
 ```typescript
 // src/app/plugins/locales/en.ts
@@ -1276,16 +1276,59 @@ When hash mode is enabled, all routes will include a hash (#) in the URL (e.g., 
 
 ## Internationalization configuration
 
-The application supports multiple languages (English, Spanish, and French). You can configure the default language:
+Core ships English, Spanish and French. Each project can add languages or hide core ones without modifying the core (see below). You can configure the default language:
 
 **Environment variable**: `VITE_APP_DEFAULT_LANGUAGE=es`
 **JSON**: `"defaultLanguage": "es"`
 
-Available language codes:
+`defaultLanguage` accepts any registered language code. An unregistered code falls back to `en` and logs a warning.
+
+Core language codes:
 
 - `'en'` - English
 - `'es'` - Spanish
 - `'fr'` - French
+
+### Adding or hiding languages in a project
+
+Project translations live in `src/app/plugins/locales/`. There are two ways to declare them:
+
+**Default (no `index.ts`)**: the core loads `en.ts`, `es.ts` and `fr.ts` from that folder, if they exist, and merges them over its own texts. This is how existing projects keep working unchanged.
+
+**With `index.ts`**: create `src/app/plugins/locales/index.ts` to add languages, override core ones or hide them. When this file exists, it is the only one the core reads, so import every language file you use:
+
+```typescript
+// src/app/plugins/locales/index.ts
+import en from './en'
+import es from './es'
+import pt from './pt'
+
+export default {
+  languages: [
+    { code: 'en', messages: en },                 // core language: merged over core texts
+    { code: 'es', messages: es },
+    { code: 'pt', label: 'Português', dateLocale: 'pt-PT', messages: pt }, // new language
+  ],
+  hidden: ['fr'],                                   // removed from the language selector
+}
+```
+
+Each entry accepts:
+
+| Field        | Required               | Description                                                             |
+| ------------ | ---------------------- | ----------------------------------------------------------------------- |
+| `code`       | Yes                    | Locale code (`pt`, `de`…). Use it in `defaultLanguage`.               |
+| `messages`   | No                     | Translations. For a core language they are merged over the core texts.  |
+| `label`      | For new languages      | Name shown in the language selector (usually the native name).          |
+| `labelKey`   | No                     | i18n key for the label; takes precedence over `label`.                 |
+| `dateLocale` | For new languages      | BCP-47 code for date pickers (`pt-PT`). Defaults to `code`, with a warning. |
+
+Notes:
+
+- Core texts missing in a new language are shown in English (`fallbackLocale: 'en'`).
+- `en` cannot be hidden, because it is the fallback language.
+- Precedence when merging translations: project > premium modules > core.
+- English dates use `es-ES` on purpose (DD/MM/YYYY). A project can change it with `{ code: 'en', dateLocale: 'en-GB' }`.
 
 ## Values.json path configuration
 

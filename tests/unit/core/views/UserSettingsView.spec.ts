@@ -229,6 +229,20 @@ describe('UserSettingsView', () => {
       
       expect(wrapper.vm.languages).toHaveLength(3)
       expect(wrapper.vm.languages.map(l => l.value)).toEqual(['en', 'es', 'fr'])
+      expect(wrapper.vm.languages.map(l => l.title)).toEqual(['English', 'Spanish', 'French'])
+    })
+
+    test('lists project languages from the registry, using label when there is no labelKey', async () => {
+      const languagesModule = await import('@cornflow-ui/core/plugins/languages')
+      const original = [...languagesModule.languages]
+      languagesModule.languages.push({ code: 'pt', label: 'Português', dateLocale: 'pt-PT', messages: {} })
+
+      try {
+        const { wrapper } = createWrapper()
+        expect(wrapper.vm.languages.at(-1)).toEqual({ title: 'Português', value: 'pt' })
+      } finally {
+        languagesModule.languages.splice(0, languagesModule.languages.length, ...original)
+      }
     })
 
     test('has correct password rules', () => {

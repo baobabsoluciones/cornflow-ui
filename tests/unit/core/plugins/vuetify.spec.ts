@@ -93,3 +93,14 @@ describe('plugins/vuetify', () => {
     }).rejects.toThrow('Vuetify creation failed')
   })
 })
+
+describe('plugins/vuetify - date locales', () => {
+  test('maps every registered language to its dateLocale', async () => {
+    vi.resetModules()
+    const { createVuetify } = await import('vuetify')
+    await import('@cornflow-ui/core/plugins/vuetify')
+
+    const options = (createVuetify as any).mock.calls.at(-1)[0]
+    expect(options.date.locale).toEqual({ en: 'es-ES', es: 'es-ES', fr: 'fr-FR' })
+  })
+})

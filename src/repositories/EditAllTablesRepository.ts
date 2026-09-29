@@ -7,9 +7,8 @@ import {
 import {
   getLocalizedMessage,
   getMessageFromResponseContent,
+  LOCALE_KEYS,
 } from '@cornflow-ui/core/utils/i18nUtils'
-
-const LOCALE_KEYS = ['en', 'es', 'fr', 'de', 'it', 'pt', 'ja']
 
 function isTranslationObject(value: unknown): value is Record<string, string> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false

@@ -30,6 +30,7 @@ import type {
 import type { ExternalEtlFlowController } from '@cornflow-ui/core/types/etlFlow'
 import type { RecalculationController } from '@cornflow-ui/core/types/recalculation'
 import type { LatestPlanController } from '@cornflow-ui/core/types/latestPlan'
+import { deepMerge } from '@cornflow-ui/core/utils/deepMerge'
 
 let registeredModules: PremiumModule[] = []
 
@@ -41,28 +42,6 @@ export function registerPremiumModules(modules: PremiumModule[]): void {
 /** Raw list of registered modules (not filtered by enabled state). */
 export function getRegisteredPremiumModules(): PremiumModule[] {
   return registeredModules
-}
-
-function deepMerge(
-  base: Record<string, any>,
-  override: Record<string, any>,
-): Record<string, any> {
-  const result = { ...base }
-  for (const key of Object.keys(override)) {
-    if (
-      override[key] !== null &&
-      typeof override[key] === 'object' &&
-      !Array.isArray(override[key]) &&
-      typeof base[key] === 'object' &&
-      base[key] !== null &&
-      !Array.isArray(base[key])
-    ) {
-      result[key] = deepMerge(base[key], override[key])
-    } else {
-      result[key] = override[key]
-    }
-  }
-  return result
 }
 
 function buildConfigAccessor(): ConfigAccessor {

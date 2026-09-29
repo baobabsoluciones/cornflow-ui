@@ -74,13 +74,10 @@ export async function createCornflowApp(
     document.title = config.name
   }
 
-  // Set the default language from external config
+  // Set the default language from external config. setDefaultLanguage validates it against
+  // the language registry and falls back to English (with a warning) if it is not registered.
   const defaultLanguage = config.defaultLanguage
-  if (
-    defaultLanguage === 'en' ||
-    defaultLanguage === 'es' ||
-    defaultLanguage === 'fr'
-  ) {
+  if (defaultLanguage) {
     setDefaultLanguage(defaultLanguage)
   }
 

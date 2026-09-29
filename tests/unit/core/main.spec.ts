@@ -201,14 +201,14 @@ describe('Main Module Integration', () => {
     expect(mockSetDefaultLanguage).toHaveBeenCalledWith('fr')
   })
 
-  test('should not set language for invalid language', async () => {
+  test('should delegate unknown languages to setDefaultLanguage (it validates and falls back)', async () => {
     mockConfig.defaultLanguage = 'invalid'
 
     const { initApp } = await import('@cornflow-ui/core/main')
-    
+
     await initApp()
 
-    expect(mockSetDefaultLanguage).not.toHaveBeenCalled()
+    expect(mockSetDefaultLanguage).toHaveBeenCalledWith('invalid')
   })
 
   test('should not set language when undefined', async () => {

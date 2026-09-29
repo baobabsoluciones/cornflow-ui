@@ -120,6 +120,7 @@ import { useI18n } from 'vue-i18n'
 import { inject } from 'vue'
 import config from '@cornflow-ui/core/config'
 import { changeLanguage } from '@cornflow-ui/core/plugins/i18n'
+import { languages as registeredLanguages } from '@cornflow-ui/core/plugins/languages'
 
 export default {
   components: {},
@@ -130,11 +131,6 @@ export default {
       selectedTab: 'user-settings',
       theme: 'light',
       language: this.$i18n.locale,
-      languages: [
-        { title: this.$t('settings.english'), value: 'en' },
-        { title: this.$t('settings.spanish'), value: 'es' },
-        { title: this.$t('settings.french'), value: 'fr' },
-      ],
       passwordRules: [
         (value) =>
           (value !== undefined && value.length >= 5) ||
@@ -186,6 +182,12 @@ export default {
     },
   },
   computed: {
+    languages() {
+      return registeredLanguages.map((lang) => ({
+        title: lang.labelKey ? this.$t(lang.labelKey) : (lang.label ?? lang.code),
+        value: lang.code,
+      }))
+    },
     validPassword() {
       return (
         this.newPassword?.length > 0 &&

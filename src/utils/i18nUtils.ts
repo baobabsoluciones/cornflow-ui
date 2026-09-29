@@ -1,5 +1,6 @@
 import { getCurrentInstance } from 'vue'
 import { currentLocale } from '@cornflow-ui/core/plugins/i18n'
+import { languages } from '@cornflow-ui/core/plugins/languages'
 
 /**
  * Resolves a title that can be either a string or a multilingual object
@@ -124,7 +125,13 @@ export function getLocalizedMessage(
   return fallback
 }
 
-const LOCALE_KEYS = ['en', 'es', 'fr', 'de', 'it', 'pt', 'ja']
+/**
+ * Keys that mark an object as a translation map (e.g. schema titles `{ en, es }`). Includes
+ * common locales even if not registered in the UI, plus every registered language.
+ */
+export const LOCALE_KEYS: string[] = [
+  ...new Set(['en', 'es', 'fr', 'de', 'it', 'pt', 'ja', ...languages.map((l) => l.code)]),
+]
 
 /**
  * Returns true when the value looks like a translation object (e.g. { en: "...", es: "..." }).
