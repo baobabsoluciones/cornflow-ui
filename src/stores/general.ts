@@ -23,7 +23,7 @@ import RoleRepository from '@cornflow-ui/core/repositories/RoleRepository'
 import WarningsRepository from '@cornflow-ui/core/repositories/WarningsRepository'
 import type { Warning } from '@cornflow-ui/core/repositories/WarningsRepository'
 
-import { toISOStringLocal } from '@cornflow-ui/core/utils/data_io'
+import { toUTCDayBoundary } from '@cornflow-ui/core/utils/date'
 
 // Import utility functions
 import {
@@ -424,8 +424,8 @@ export const useGeneralStore = defineStore('general', {
         } else {
           executions = await this.executionRepository.getExecutions(
             this.getSchemaName,
-            toISOStringLocal(fromDate),
-            toISOStringLocal(toDate, true),
+            toUTCDayBoundary(fromDate),
+            toUTCDayBoundary(toDate, true),
           )
         }
 

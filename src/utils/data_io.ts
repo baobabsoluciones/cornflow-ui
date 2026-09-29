@@ -1,6 +1,9 @@
 import readXlsxFile, { readSheetNames } from 'read-excel-file'
 import i18n from '@cornflow-ui/core/plugins/i18n'
-import { formatDateForExcel } from '@cornflow-ui/core/utils/date'
+import {
+  formatDateForExcel,
+  parseLocalDateKey,
+} from '@cornflow-ui/core/utils/date'
 import { getListResponseRowProperties } from '@cornflow-ui/core/utils/schemaUtils'
 import * as ExcelJS from 'exceljs'
 import {
@@ -609,35 +612,9 @@ async function buildExcelBuffer(
   return { bytes, format: 'xlsx' }
 }
 
-const toISOStringLocal = function (date, isEndDate = false) {
-  if (date) {
-    const timezoneOffsetMin = date.getTimezoneOffset()
-    const offsetHours = Math.abs(timezoneOffsetMin / 60)
-    const offsetMinutes = timezoneOffsetMin % 60
-    const offsetSign = timezoneOffsetMin > 0 ? '-' : '+'
-
-    // If it's an end date, set the time to 23:59
-    if (isEndDate) {
-      date.setHours(23, 59, 0, 0)
-    } else {
-      // If it's a start date, set the time to 00:00
-      date.setHours(0, 0, 0, 0)
-    }
-
-    return (
-      new Date(date.getTime() - timezoneOffsetMin * 60 * 1000)
-        .toISOString()
-        .slice(0, -1) +
-      offsetSign +
-      String(offsetHours).padStart(2, '0') +
-      ':' +
-      String(offsetMinutes).padStart(2, '0')
-    )
-  }
-}
-
 const formatDateForHeaders = function (date, locale = i18n.global.locale) {
-  const itemDate = new Date(date)
+  // Group keys are bare local days (`YYYY-MM-DD`); read them as local midnight.
+  const itemDate = typeof date === 'string' ? parseLocalDateKey(date) : new Date(date)
   const options: Intl.DateTimeFormatOptions = {
     weekday: 'long',
     year: 'numeric',
@@ -1067,7 +1044,6 @@ export {
   schemaDataToTable,
   buildExcelBuffer,
   exportTableToExcel,
-  toISOStringLocal,
   formatDateForHeaders,
   formatDate,
   getLetterFromNumber,

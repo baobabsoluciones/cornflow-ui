@@ -101,8 +101,9 @@ vi.mock('@cornflow-ui/core/plugins/i18n', () => ({
   locale: { value: 'en' },
 }))
 
-vi.mock('@cornflow-ui/core/utils/data_io', () => ({
-  toISOStringLocal: vi.fn((date, isEnd) =>
+vi.mock('@cornflow-ui/core/utils/date', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@cornflow-ui/core/utils/date')>()),
+  toUTCDayBoundary: vi.fn((date, isEnd) =>
     isEnd ? '2023-01-01T23:59:59.999Z' : '2023-01-01T00:00:00.000Z',
   ),
 }))
