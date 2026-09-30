@@ -535,7 +535,7 @@ const createAppConfig = () => ({
    * `CORE_LANGUAGES` in `plugins/languages.ts`), in this order.
    * Empty or undefined: all core languages are shown.
    */
-  languages: ['es', 'en'] as string[], // e.g. ['en', 'es']
+  languages: [] as string[], // e.g. ['en', 'es']
 
   /**
    * Files shown in the Help Center download list.

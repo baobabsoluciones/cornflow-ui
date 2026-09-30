@@ -51,14 +51,6 @@ describe('languages registry', () => {
       expect(warn).toHaveBeenCalledWith(expect.stringContaining('"pt"'))
     })
 
-    test('does not warn when warn is false', () => {
-      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-
-      expect(codes(resolveVisibleLanguages(['en', 'pt'], { warn: false }))).toEqual(['en'])
-      expect(codes(resolveVisibleLanguages(['pt'], { warn: false }))).toEqual(['en', 'es', 'fr'])
-      expect(warn).not.toHaveBeenCalled()
-    })
-
     test('returns all core languages when no configured code is valid', () => {
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 

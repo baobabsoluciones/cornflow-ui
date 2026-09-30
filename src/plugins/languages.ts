@@ -41,20 +41,16 @@ export function isCoreLanguage(code: unknown): code is string {
 
 /**
  * Core languages to show, in the order given by `codes`.
- * Empty/undefined `codes` → all core languages. Unknown codes are ignored with a warning, unless
- * `warn` is false (for callers that recompute the list often; bootstrap already warned at startup).
+ * Empty/undefined `codes` → all core languages. Unknown codes are ignored with a warning.
  */
-export function resolveVisibleLanguages(
-  codes?: string[] | null,
-  { warn = true }: { warn?: boolean } = {},
-): LanguageDefinition[] {
+export function resolveVisibleLanguages(codes?: string[] | null): LanguageDefinition[] {
   if (!codes || codes.length === 0) return [...CORE_LANGUAGES]
 
   const visible: LanguageDefinition[] = []
   for (const code of codes) {
     const lang = CORE_LANGUAGES.find((l) => l.code === code)
     if (!lang) {
-      if (warn) console.warn(
+      console.warn(
         `[i18n] Language "${code}" in config.languages does not exist in the core and is ignored. ` +
           `Available: ${getCoreLanguageCodes().join(', ')}.`,
       )
@@ -64,7 +60,7 @@ export function resolveVisibleLanguages(
   }
 
   if (visible.length === 0) {
-    if (warn) console.warn('[i18n] No valid language in config.languages; showing all core languages.')
+    console.warn('[i18n] No valid language in config.languages; showing all core languages.')
     return [...CORE_LANGUAGES]
   }
   return visible

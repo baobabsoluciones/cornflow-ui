@@ -257,19 +257,24 @@ describe('UserSettingsView', () => {
       ])
     })
 
-    test('ignores languages that do not exist in the core, without warning (reported at startup)', async () => {
+    test('ignores languages that do not exist in the core and warns each time the selector is recomputed', async () => {
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const ptWarnings = () =>
+        warn.mock.calls.filter(([msg]) =>
+          String(msg).includes('[i18n] Language "pt"'),
+        ).length
       mockGetLanguages.mockReturnValue(['en', 'pt'])
       const { wrapper, i18n } = createWrapper()
 
       expect(wrapper.vm.languages.map(l => l.value)).toEqual(['en'])
+      expect(ptWarnings()).toBe(1)
 
-      // Recomputing the selector (e.g. on a language change) must not warn either
+      // Recomputing the selector (e.g. on a language change) warns again
       i18n.global.locale.value = 'es'
       await wrapper.vm.$nextTick()
-      wrapper.vm.languages
 
-      expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('[i18n]'))
+      expect(wrapper.vm.languages.map(l => l.value)).toEqual(['en'])
+      expect(ptWarnings()).toBe(2)
     })
 
     test('has correct password rules', () => {

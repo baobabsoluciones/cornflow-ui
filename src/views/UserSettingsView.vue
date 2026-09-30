@@ -184,12 +184,11 @@ export default {
   },
   computed: {
     // Core languages the project chose to show (`languages` in app config), in that order.
-    // No warnings here: invalid codes are already reported once at startup (bootstrap), and
-    // this is recomputed on every language change.
+    // Invalid codes are reported in the console each time the selector is recomputed.
     languages() {
-      return resolveVisibleLanguages(appConfig.getLanguages?.() ?? [], {
-        warn: false,
-      }).map((l) => ({ title: this.$t(l.labelKey), value: l.code }))
+      return resolveVisibleLanguages(appConfig.getLanguages?.() ?? []).map(
+        (l) => ({ title: this.$t(l.labelKey), value: l.code }),
+      )
     },
     validPassword() {
       return (
