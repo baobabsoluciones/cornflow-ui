@@ -531,6 +531,13 @@ const createAppConfig = () => ({
   },
 
   /**
+   * Languages shown in the Settings selector (must exist in the core, see
+   * `CORE_LANGUAGES` in `plugins/languages.ts`), in this order.
+   * Empty or undefined: all core languages are shown.
+   */
+  languages: ['es', 'en'] as string[], // e.g. ['en', 'es']
+
+  /**
    * Files shown in the Help Center download list.
    * Each entry renders as a download link with an icon.
    * Use `{lang}` in `publicPath` for language-aware files.
@@ -681,6 +688,10 @@ class Config {
 
   getHelpMenuFiles(): HelpMenuDownloadableFile[] {
     return this.ensureConfig().helpMenuFiles ?? []
+  }
+
+  getLanguages(): string[] {
+    return this.ensureConfig().languages ?? []
   }
 }
 

@@ -28,8 +28,10 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Notes 
+# Notes
 *.excalidraw
+# Task spec for the language configuration (content now documented in README.md)
+correccion_parametrizacion_idiomas.md
 
 # Editor directories and files
 .vscode/*

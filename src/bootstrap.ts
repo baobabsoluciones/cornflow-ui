@@ -37,6 +37,10 @@ import {
 import config from '@cornflow-ui/core/config'
 import appConfig from '@/app/config'
 import { setDefaultLanguage } from '@cornflow-ui/core/plugins/i18n'
+import {
+  resolveDefaultLanguage,
+  resolveVisibleLanguages,
+} from '@cornflow-ui/core/plugins/languages'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import getAuthService from '@cornflow-ui/core/services/AuthServiceFactory'
 import { registerPremiumModules } from '@cornflow-ui/core/plugins/extensions'
@@ -74,15 +78,14 @@ export async function createCornflowApp(
     document.title = config.name
   }
 
-  // Set the default language from external config
-  const defaultLanguage = config.defaultLanguage
-  if (
-    defaultLanguage === 'en' ||
-    defaultLanguage === 'es' ||
-    defaultLanguage === 'fr'
-  ) {
-    setDefaultLanguage(defaultLanguage)
-  }
+  // Set the default language from external config, restricted to the languages the project
+  // shows (`languages` in app config). `getLanguages` may be missing in older app configs.
+  const visibleLanguages = resolveVisibleLanguages(
+    appConfig.getLanguages?.() ?? [],
+  )
+  setDefaultLanguage(
+    resolveDefaultLanguage(config.defaultLanguage, visibleLanguages),
+  )
 
   const app = createApp(options.rootComponent)
   const pinia = createPinia()

@@ -14,6 +14,7 @@ import * as labs from 'vuetify/labs/components'
 import { createVueI18nAdapter } from 'vuetify/locale/adapters/vue-i18n'
 import { useI18n } from 'vue-i18n'
 import { i18n } from './i18n'
+import { CORE_LANGUAGES } from './languages'
 
 // https://vuetifyjs.com/en/introduction/why-vuetify/#feature-guides
 export default createVuetify({
@@ -25,12 +26,11 @@ export default createVuetify({
   },
   // Map vue-i18n locales to BCP-47 codes used by the date adapter.
   // Without this, Vuetify's date components default to en-US (MM/DD/YYYY).
+  // Taken from the core language registry (`dateLocale` of each language).
   date: {
-    locale: {
-      es: 'es-ES',
-      en: 'es-ES',
-      fr: 'fr-FR',
-    },
+    locale: Object.fromEntries(
+      CORE_LANGUAGES.map((l) => [l.code, l.dateLocale]),
+    ),
   },
   theme: {
     themes: {
