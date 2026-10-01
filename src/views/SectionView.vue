@@ -595,6 +595,7 @@ import type { EditAllTablesApiOperation } from '@cornflow-ui/core/types/frontend
 import { useTableChanges } from '@cornflow-ui/core/composables/useTableChanges'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { useRecalculationController } from '@cornflow-ui/core/composables/section-view/useRecalculationController'
+import { useFilePreProcessing } from '@cornflow-ui/core/composables/useFilePreProcessing'
 import { generateAutoDashboard } from '@cornflow-ui/core/services/AutoDashboardService'
 import type { DashboardWidget } from '@cornflow-ui/core/services/AutoDashboardService'
 import {
@@ -769,6 +770,9 @@ const forceRetryOfferFromSaveAll = ref<{
 const forceRetryLoadingFromSaveAll = ref(false)
 
 const recalculation = useRecalculationController()
+// The deployment's fileProcessors have to run before a file is uploaded, whatever the
+// endpoint: the master-data upload takes the same files the instance load does.
+const { preProcessFiles } = useFilePreProcessing()
 const enableRecalculation = computed(
   () => appConfig.getCore().parameters.enableRecalculationOnMasterEdit === true,
 )
@@ -1019,9 +1023,12 @@ const handleEditAllMasterTablesUpload = async (uploadData: {
   editAllMasterTablesUploading.value = true
   try {
     const apiOp = mapBulkUiOperationToEditAllApi(uploadData.operation)
-    pendingEditAllFiles.value = uploadData.files
+    const files = (await preProcessFiles(uploadData.files)) ?? uploadData.files
+    // Keep the processed files for the force-retry path, so the retry sends what the
+    // first attempt sent rather than the raw upload.
+    pendingEditAllFiles.value = files
     pendingEditAllApiOperation.value = apiOp
-    await postEditAllTables(uploadData.files, apiOp)
+    await postEditAllTables(files, apiOp)
     postEditAllSucceeded = true
   } catch (err) {
     if (
