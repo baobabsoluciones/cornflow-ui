@@ -70,3 +70,45 @@ export const getFileExtension = (filename: string): string => {
   const extension = filename.split('.').pop()?.toLowerCase() || ''
   return extension
 }
+
+/**
+ * Resolves the file extensions a deployment accepts for an upload.
+ *
+ * `configured` comes straight from `src/app/config.ts`, so it is whatever the deployment
+ * happened to write. Entries are normalised (trimmed, lowercased, a leading dot dropped) and
+ * anything the core cannot actually read is discarded: letting it through would only move the
+ * rejection to the parser, after the user has already picked the file and been told it was
+ * fine.
+ *
+ * An absent, empty or entirely unusable list falls back to `fallback`, so a deployment that
+ * configures nothing keeps the behaviour it had before the setting existed.
+ */
+export const resolveAllowedExtensions = (
+  configured: unknown,
+  fallback: readonly string[],
+): readonly string[] => {
+  if (!Array.isArray(configured) || configured.length === 0) return fallback
+
+  const normalized = configured
+    .filter((value): value is string => typeof value === 'string')
+    .map((value) => value.trim().toLowerCase().replace(/^\./, ''))
+
+  const allowed = [
+    ...new Set(
+      normalized.filter((value) =>
+        (ALL_SUPPORTED_EXTENSIONS as readonly string[]).includes(value),
+      ),
+    ),
+  ]
+
+  const rejected = normalized.filter((value) => !allowed.includes(value))
+  if (rejected.length > 0) {
+    // A typo here is otherwise invisible: the setting would appear to do nothing.
+    console.warn(
+      `Ignoring unreadable file extensions in config: ${rejected.join(', ')}. ` +
+        `Supported: ${ALL_SUPPORTED_EXTENSIONS.join(', ')}.`,
+    )
+  }
+
+  return allowed.length > 0 ? allowed : fallback
+}

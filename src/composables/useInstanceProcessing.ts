@@ -18,6 +18,7 @@ import type { ErrorObject } from 'ajv'
 import {
   FILE_EXTENSIONS,
   SUPPORTED_DATA_EXTENSIONS,
+  resolveAllowedExtensions,
   isExcelExtension,
   getFileExtension,
 } from '@cornflow-ui/core/utils/fileConstants'
@@ -92,7 +93,16 @@ export function useInstanceProcessing() {
   })
 
   // Computed
-  const supportedExtensions = computed(() => SUPPORTED_DATA_EXTENSIONS)
+  // What the instance drop zone accepts. A deployment can narrow it through
+  // `parameters.instanceFileFormats`: a project that only ever receives Excel gains nothing
+  // from offering json and csv, beyond an upload that cannot work. Left unset, this is what
+  // it has always been.
+  const supportedExtensions = computed(() =>
+    resolveAllowedExtensions(
+      store.appConfig?.parameters?.instanceFileFormats,
+      SUPPORTED_DATA_EXTENSIONS,
+    ),
+  )
   const canProcessFiles = computed(() => !state.value.isProcessing)
 
   /**

@@ -410,6 +410,10 @@ const createAppConfig = () => ({
       ],
       fileProcessors: {},
 
+      // File extensions the instance upload accepts. Empty means the default
+      // (json, xlsx, csv); narrow it to e.g. ['xlsx'] where only Excel is ever received.
+      instanceFileFormats: [],
+
       enableAutoInstanceDashboard: false,
       enableAutoSolutionDashboard: false,
 
