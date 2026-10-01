@@ -77,6 +77,7 @@ const createWrapper = (authType = 'cornflow') => {
           english: 'English',
           spanish: 'Spanish',
           french: 'French',
+          portuguese: 'Portuguese',
           userSecurity: 'User Security',
           changePassword: 'Change password',
           newPassword: 'New Password',
@@ -232,8 +233,8 @@ describe('UserSettingsView', () => {
     test('has correct language options', () => {
       const { wrapper } = createWrapper()
       
-      expect(wrapper.vm.languages).toHaveLength(3)
-      expect(wrapper.vm.languages.map(l => l.value)).toEqual(['en', 'es', 'fr'])
+      expect(wrapper.vm.languages).toHaveLength(4)
+      expect(wrapper.vm.languages.map(l => l.value)).toEqual(['en', 'es', 'fr', 'pt'])
     })
 
     test('shows all core languages when config.languages is empty', () => {
@@ -244,6 +245,7 @@ describe('UserSettingsView', () => {
         { title: 'English', value: 'en' },
         { title: 'Spanish', value: 'es' },
         { title: 'French', value: 'fr' },
+        { title: 'Portuguese', value: 'pt' },
       ])
     })
 
@@ -259,22 +261,22 @@ describe('UserSettingsView', () => {
 
     test('ignores languages that do not exist in the core and warns each time the selector is recomputed', async () => {
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-      const ptWarnings = () =>
+      const deWarnings = () =>
         warn.mock.calls.filter(([msg]) =>
-          String(msg).includes('[i18n] Language "pt"'),
+          String(msg).includes('[i18n] Language "de"'),
         ).length
-      mockGetLanguages.mockReturnValue(['en', 'pt'])
+      mockGetLanguages.mockReturnValue(['en', 'de'])
       const { wrapper, i18n } = createWrapper()
 
       expect(wrapper.vm.languages.map(l => l.value)).toEqual(['en'])
-      expect(ptWarnings()).toBe(1)
+      expect(deWarnings()).toBe(1)
 
       // Recomputing the selector (e.g. on a language change) warns again
       i18n.global.locale.value = 'es'
       await wrapper.vm.$nextTick()
 
       expect(wrapper.vm.languages.map(l => l.value)).toEqual(['en'])
-      expect(ptWarnings()).toBe(2)
+      expect(deWarnings()).toBe(2)
     })
 
     test('has correct password rules', () => {

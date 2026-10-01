@@ -1361,6 +1361,7 @@ Core languages (registry `CORE_LANGUAGES` in `src/plugins/languages.ts`):
 - `'en'` - English (fallback language)
 - `'es'` - Spanish
 - `'fr'` - French
+- `'pt'` - Portuguese (Portugal)
 
 ### Visible languages
 
@@ -1397,11 +1398,11 @@ Enterprise module texts are merged afterwards (`applyPremiumLocales`), and proje
 
 ### Adding a new language to the core
 
-Example for Portuguese:
+Example for German:
 
-1. **Core:** create `src/plugins/locales/pt.ts` with all the keys, including `$vuetify`. Add `{ code: 'pt', labelKey: 'settings.portuguese', dateLocale: 'pt-PT', messages: pt }` to `CORE_LANGUAGES` and the `settings.portuguese` key to every language.
-2. **Enterprise:** add the `pt` translations to the `locales` of each module that has texts.
-3. **Project:** add `'pt'` to `languages` in `config.ts` and create `src/app/plugins/locales/pt.ts` with the project's own keys.
+1. **Core:** create `src/plugins/locales/de.ts` with all the keys, including `$vuetify`. Add `{ code: 'de', labelKey: 'settings.german', dateLocale: 'de-DE', messages: de }` to `CORE_LANGUAGES` and the `settings.german` key to every language.
+2. **Enterprise:** add the `de` translations to the `locales` of each module that has texts.
+3. **Project:** add `'de'` to `languages` in `config.ts` and create `src/app/plugins/locales/de.ts` with the project's own keys.
 
 A new language requires a new core release (and an enterprise release, if applicable).
 

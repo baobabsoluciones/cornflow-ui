@@ -57,7 +57,7 @@ describe('i18n Plugin - Additional Coverage', () => {
   test('should accept valid language parameters', async () => {
     const i18nModule = await import('@cornflow-ui/core/plugins/i18n')
     
-    const validLanguages = ['en', 'es', 'fr'] as const
+    const validLanguages = ['en', 'es', 'fr', 'pt'] as const
     
     validLanguages.forEach(lang => {
       expect(() => i18nModule.setDefaultLanguage(lang)).not.toThrow()
@@ -105,11 +105,11 @@ describe('i18n Plugin - buildMessages (project texts)', () => {
     const { buildMessages } = await import('@cornflow-ui/core/plugins/i18n')
 
     const messages = buildMessages(core, {
-      '/src/app/plugins/locales/pt.ts': { default: { myApp: { title: 'Meu app' } } },
+      '/src/app/plugins/locales/de.ts': { default: { myApp: { title: 'Meine App' } } },
     })
 
     expect(Object.keys(messages)).toEqual(['en', 'es'])
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('"pt"'))
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('"de"'))
   })
 
   test('discards (with a warning) project keys that already exist in the core', async () => {
@@ -138,7 +138,7 @@ describe('i18n Plugin - language validation', () => {
       await import('@cornflow-ui/core/plugins/i18n')
 
     changeLanguage('es')
-    changeLanguage('pt')
+    changeLanguage('de')
     setDefaultLanguage('xx')
 
     expect(currentLocale.value).toBe('es')

@@ -11,9 +11,10 @@
 import en from './locales/en.ts'
 import es from './locales/es.ts'
 import fr from './locales/fr.ts'
+import pt from './locales/pt.ts'
 
 export interface LanguageDefinition {
-  /** Language code, e.g. 'en', 'es', 'fr'. */
+  /** Language code, e.g. 'en', 'es', 'fr', 'pt'. */
   code: string
   /** i18n key with the language name, e.g. 'settings.english'. */
   labelKey: string
@@ -29,6 +30,7 @@ export const CORE_LANGUAGES: LanguageDefinition[] = [
   { code: 'en', labelKey: 'settings.english', dateLocale: 'es-ES', messages: en },
   { code: 'es', labelKey: 'settings.spanish', dateLocale: 'es-ES', messages: es },
   { code: 'fr', labelKey: 'settings.french', dateLocale: 'fr-FR', messages: fr },
+  { code: 'pt', labelKey: 'settings.portuguese', dateLocale: 'pt-PT', messages: pt },
 ]
 
 export function getCoreLanguageCodes(): string[] {

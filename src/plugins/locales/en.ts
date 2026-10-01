@@ -504,6 +504,7 @@ export default {
     english: 'English',
     spanish: 'Spanish',
     french: 'French',
+    portuguese: 'Portuguese',
     selectLanguage: 'Select the main language of the application',
     theme: 'Theme',
     light: 'Light',

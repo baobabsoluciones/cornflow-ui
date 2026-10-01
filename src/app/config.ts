@@ -531,11 +531,14 @@ const createAppConfig = () => ({
   },
 
   /**
-   * Languages shown in the Settings selector (must exist in the core, see
-   * `CORE_LANGUAGES` in `plugins/languages.ts`), in this order.
-   * Empty or undefined: all core languages are shown.
+   * Languages available in the Settings selector, in the order listed.
+   * To restrict the application to specific languages, list only their codes,
+   * e.g. `['en', 'es']` for English and Spanish only.
+   *
+   * Supported codes: 'en', 'es', 'fr', 'pt' (see `CORE_LANGUAGES` in `plugins/languages.ts`).
+   * If empty, all supported languages are shown; unsupported codes are ignored.
    */
-  languages: [] as string[], // e.g. ['en', 'es']
+  languages: ['en', 'es'] as string[],
 
   /**
    * Files shown in the Help Center download list.

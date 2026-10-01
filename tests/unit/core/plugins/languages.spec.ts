@@ -15,8 +15,8 @@ describe('languages registry', () => {
     vi.restoreAllMocks()
   })
 
-  test('defines en, es and fr with label, date locale and messages', () => {
-    expect(getCoreLanguageCodes()).toEqual(['en', 'es', 'fr'])
+  test('defines en, es, fr and pt with label, date locale and messages', () => {
+    expect(getCoreLanguageCodes()).toEqual(['en', 'es', 'fr', 'pt'])
     expect(FALLBACK_LANGUAGE).toBe('en')
     for (const lang of CORE_LANGUAGES) {
       expect(lang.labelKey).toMatch(/^settings\./)
@@ -27,14 +27,15 @@ describe('languages registry', () => {
 
   test('isCoreLanguage', () => {
     expect(isCoreLanguage('es')).toBe(true)
-    expect(isCoreLanguage('pt')).toBe(false)
+    expect(isCoreLanguage('pt')).toBe(true)
+    expect(isCoreLanguage('de')).toBe(false)
     expect(isCoreLanguage(undefined)).toBe(false)
   })
 
   describe('resolveVisibleLanguages', () => {
     test('returns all core languages when the list is empty or undefined', () => {
-      expect(codes(resolveVisibleLanguages())).toEqual(['en', 'es', 'fr'])
-      expect(codes(resolveVisibleLanguages([]))).toEqual(['en', 'es', 'fr'])
+      expect(codes(resolveVisibleLanguages())).toEqual(['en', 'es', 'fr', 'pt'])
+      expect(codes(resolveVisibleLanguages([]))).toEqual(['en', 'es', 'fr', 'pt'])
     })
 
     test('keeps the configured order and removes duplicates', () => {
@@ -47,17 +48,18 @@ describe('languages registry', () => {
     test('ignores unknown codes with a warning', () => {
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-      expect(codes(resolveVisibleLanguages(['en', 'pt']))).toEqual(['en'])
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining('"pt"'))
+      expect(codes(resolveVisibleLanguages(['en', 'de']))).toEqual(['en'])
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('"de"'))
     })
 
     test('returns all core languages when no configured code is valid', () => {
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-      expect(codes(resolveVisibleLanguages(['pt', 'de']))).toEqual([
+      expect(codes(resolveVisibleLanguages(['it', 'de']))).toEqual([
         'en',
         'es',
         'fr',
+        'pt',
       ])
       expect(warn).toHaveBeenCalledTimes(3)
     })
