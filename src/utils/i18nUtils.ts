@@ -1,5 +1,6 @@
 import { getCurrentInstance } from 'vue'
 import { currentLocale } from '@cornflow-ui/core/plugins/i18n'
+import { getCoreLanguageCodes } from '@cornflow-ui/core/plugins/languages'
 
 /**
  * Resolves a title that can be either a string or a multilingual object
@@ -124,12 +125,13 @@ export function getLocalizedMessage(
   return fallback
 }
 
-const LOCALE_KEYS = ['en', 'es', 'fr', 'de', 'it', 'pt', 'ja']
+/** Language codes recognised in translation objects: the core language registry. */
+export const LOCALE_KEYS = getCoreLanguageCodes()
 
 /**
  * Returns true when the value looks like a translation object (e.g. { en: "...", es: "..." }).
  */
-function isTranslationObject(value: unknown): value is Record<string, string> {
+export function isTranslationObject(value: unknown): value is Record<string, string> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   const obj = value as Record<string, unknown>
   return LOCALE_KEYS.some((key) => typeof obj[key] === 'string')

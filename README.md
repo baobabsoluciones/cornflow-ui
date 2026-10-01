@@ -896,7 +896,7 @@ Inside the app folder, there are several changes that can be done to configurate
 - `views`: This directory should contain all the custom views needed for the application.
 - `components`: This directory should contain any additional components that are not in the core components.
 - `store/app.ts`: This file should define any additional store-specific configurations for the application.
-- `plugins/locales`: This folder contains three files (`en.ts`, `es.ts`, `fr.ts`) to add any text needed in the app views and components. Be careful not to duplicate the names with the original locales files (`src/plugins/locales`).
+- `plugins/locales`: One optional file per language (`<code>.ts`, e.g. `en.ts`, `es.ts`, `fr.ts`) with the texts of the project's own keys. Only core languages are loaded: a file for a language that does not exist in the core is ignored (with a console warning). Only **new** keys can be added: a key that already exists in the core translations (`src/plugins/locales`) is discarded with a console warning, so core texts cannot be changed from the project. See [Internationalization configuration](#internationalization-configuration).
 
 * Additionally, favicon can be replaced by a new one in public/favicon.png
 
@@ -919,7 +919,7 @@ It's important not to edit any other file or folders. Only the folders, files an
 | **Schema**              | Application schema name       | `VITE_APP_SCHEMA`                 | `schema`               | String identifier                |
 | **App Name**            | Application display name      | `VITE_APP_NAME`                   | `name`                 | String                           |
 | **Hash Mode**           | Router mode (hash vs history) | `VITE_APP_USE_HASH_MODE`          | `useHashMode`          | `true`/`false` (accepts `1`/`0`) |
-| **Default Language**    | UI language                   | `VITE_APP_DEFAULT_LANGUAGE`       | `defaultLanguage`      | `en`, `es`, `fr`                 |
+| **Default Language**    | UI language                   | `VITE_APP_DEFAULT_LANGUAGE`       | `defaultLanguage`      | A visible core language (`en`, `es`, `fr`) |
 | **Developer Mode**      | Enable dev features           | `VITE_APP_IS_DEVELOPER_MODE`      | `isDeveloperMode`      | `true`/`false` (accepts `1`/`0`) |
 | **Enable Signup**       | Show registration option      | `VITE_APP_ENABLE_SIGNUP`          | `enableSignup`         | `true`/`false` (accepts `1`/`0`) |
 | **External App**        | API URL prefix mode           | `VITE_APP_EXTERNAL_APP`           | `hasExternalApp`       | `true`/`false` (accepts `1`/`0`) |
@@ -1385,16 +1385,57 @@ When hash mode is enabled, all routes will include a hash (#) in the URL (e.g., 
 
 ## Internationalization configuration
 
-The application supports multiple languages (English, Spanish, and French). You can configure the default language:
+Languages are defined and translated **only in the core** (and in enterprise for its modules). A project can only choose which of them are shown; it cannot add languages nor change core translations.
+
+Core languages (registry `CORE_LANGUAGES` in `src/plugins/languages.ts`):
+
+- `'en'` - English (fallback language)
+- `'es'` - Spanish
+- `'fr'` - French
+- `'pt'` - Portuguese (Portugal)
+
+### Visible languages
+
+In `src/app/config.ts`, `languages` sets the languages shown in the Settings selector, in that order:
+
+```typescript
+/**
+ * Languages shown in the Settings selector (must exist in the core).
+ * Empty or undefined: all core languages are shown.
+ */
+languages: ['en', 'es'] as string[],
+```
+
+- Empty or undefined: all core languages are shown.
+- Codes that do not exist in the core are ignored, with a console warning.
+
+### Default language
 
 **Environment variable**: `VITE_APP_DEFAULT_LANGUAGE=es`
 **JSON**: `"defaultLanguage": "es"`
 
-Available language codes:
+The default language is used if it is among the visible languages. Otherwise, the first language of `languages` is used (or `en` if the list is empty) and a console warning is shown.
 
-- `'en'` - English
-- `'es'` - Spanish
-- `'fr'` - French
+### Project texts
+
+The project's own keys are translated in `src/app/plugins/locales/<code>.ts` (one optional file per core language). These files never contain core translations:
+
+- A file whose code is not a core language is ignored, with a console warning.
+- A key that already exists in the core is discarded, with a console warning. Only new keys are added.
+
+> **Breaking change:** in previous versions, a project could override core texts from these files. Those overrides are now ignored; move any such text to a key of your own.
+
+Enterprise module texts are merged afterwards (`applyPremiumLocales`), and project keys still take precedence over them.
+
+### Adding a new language to the core
+
+Example for German:
+
+1. **Core:** create `src/plugins/locales/de.ts` with all the keys, including `$vuetify`. Add `{ code: 'de', labelKey: 'settings.german', dateLocale: 'de-DE', messages: de }` to `CORE_LANGUAGES` and the `settings.german` key to every language.
+2. **Enterprise:** add the `de` translations to the `locales` of each module that has texts.
+3. **Project:** add `'de'` to `languages` in `config.ts` and create `src/app/plugins/locales/de.ts` with the project's own keys.
+
+A new language requires a new core release (and an enterprise release, if applicable).
 
 ## Values.json path configuration
 

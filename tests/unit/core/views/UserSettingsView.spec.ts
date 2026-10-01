@@ -5,6 +5,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
 import UserSettingsView from '@cornflow-ui/core/views/UserSettingsView.vue'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import appConfig from '@/app/config'
 
 const mockChangeLanguage = vi.hoisted(() => vi.fn())
 
@@ -29,6 +30,9 @@ const mockConfig = vi.hoisted(() => ({
 vi.mock('@cornflow-ui/core/config', () => ({
   default: mockConfig
 }))
+
+// App config: only `getLanguages` (languages chosen by the project) is stubbed per test
+let mockGetLanguages: ReturnType<typeof vi.spyOn>
 
 // Mock Mango UI components
 vi.mock('mango-ui', () => ({
@@ -73,6 +77,7 @@ const createWrapper = (authType = 'cornflow') => {
           english: 'English',
           spanish: 'Spanish',
           french: 'French',
+          portuguese: 'Portuguese',
           userSecurity: 'User Security',
           changePassword: 'Change password',
           newPassword: 'New Password',
@@ -157,6 +162,7 @@ const createWrapper = (authType = 'cornflow') => {
 describe('UserSettingsView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetLanguages = vi.spyOn(appConfig, 'getLanguages').mockReturnValue([])
   })
 
   afterEach(() => {
@@ -227,8 +233,50 @@ describe('UserSettingsView', () => {
     test('has correct language options', () => {
       const { wrapper } = createWrapper()
       
-      expect(wrapper.vm.languages).toHaveLength(3)
-      expect(wrapper.vm.languages.map(l => l.value)).toEqual(['en', 'es', 'fr'])
+      expect(wrapper.vm.languages).toHaveLength(4)
+      expect(wrapper.vm.languages.map(l => l.value)).toEqual(['en', 'es', 'fr', 'pt'])
+    })
+
+    test('shows all core languages when config.languages is empty', () => {
+      mockGetLanguages.mockReturnValue([])
+      const { wrapper } = createWrapper()
+
+      expect(wrapper.vm.languages).toEqual([
+        { title: 'English', value: 'en' },
+        { title: 'Spanish', value: 'es' },
+        { title: 'French', value: 'fr' },
+        { title: 'Portuguese', value: 'pt' },
+      ])
+    })
+
+    test('shows only the configured languages, in that order', () => {
+      mockGetLanguages.mockReturnValue(['es', 'en'])
+      const { wrapper } = createWrapper()
+
+      expect(wrapper.vm.languages).toEqual([
+        { title: 'Spanish', value: 'es' },
+        { title: 'English', value: 'en' },
+      ])
+    })
+
+    test('ignores languages that do not exist in the core and warns each time the selector is recomputed', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const deWarnings = () =>
+        warn.mock.calls.filter(([msg]) =>
+          String(msg).includes('[i18n] Language "de"'),
+        ).length
+      mockGetLanguages.mockReturnValue(['en', 'de'])
+      const { wrapper, i18n } = createWrapper()
+
+      expect(wrapper.vm.languages.map(l => l.value)).toEqual(['en'])
+      expect(deWarnings()).toBe(1)
+
+      // Recomputing the selector (e.g. on a language change) warns again
+      i18n.global.locale.value = 'es'
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.vm.languages.map(l => l.value)).toEqual(['en'])
+      expect(deWarnings()).toBe(2)
     })
 
     test('has correct password rules', () => {
