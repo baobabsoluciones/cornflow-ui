@@ -200,8 +200,7 @@ describe('createTableObject', () => {
     warn.mockRestore()
   })
 
-  test('enriches data headers when schema keys do not match the data', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  test('keeps a data column the schema never declared', () => {
     const config = {
       get_list: {
         response_schema: {
@@ -209,11 +208,71 @@ describe('createTableObject', () => {
         },
       },
     }
-    // data uses "bar", schema declares "foo" -> mismatch -> enriched fallback
+    // Data carries "bar", the schema declares "foo". The data decides, so "bar" is shown
+    // and "foo" — which no row carries — is not.
     const table = createTableObject('t', [{ bar: 1 }], {}, config, { applyFilters: identity })
     expect(table.headers.map((h: any) => h.key)).toEqual(['selection', 'bar'])
-    expect(warn).toHaveBeenCalled()
-    warn.mockRestore()
+  })
+
+  test('the data decides the order, not the schema', () => {
+    const config = {
+      get_list: {
+        response_schema: {
+          items: {
+            required: [],
+            // Declaration order is deliberately the reverse of the data's.
+            properties: { c: {}, b: {}, a: {} },
+          },
+        },
+      },
+    }
+    const table = createTableObject('t', [{ a: 1, b: 2, c: 3 }], {}, config, {
+      applyFilters: identity,
+    })
+    expect(table.headers.map((h: any) => h.key)).toEqual(['selection', 'a', 'b', 'c'])
+  })
+
+  test('without rows the order comes from required, then the rest', () => {
+    const config = {
+      get_list: {
+        response_schema: {
+          items: { required: ['b'], properties: { a: {}, b: {}, c: {} } },
+        },
+      },
+    }
+    // Nothing to read the order from, so `required` leads and no column is lost.
+    const table = createTableObject('t', [], {}, config, { applyFilters: identity })
+    expect(table.headers.map((h: any) => h.key)).toEqual([
+      'selection',
+      'b',
+      'a',
+      'c',
+    ])
+  })
+
+  test('schema metadata still reaches the header it belongs to', () => {
+    const config = {
+      get_list: {
+        response_schema: {
+          items: {
+            required: ['b'],
+            properties: {
+              b: { title: 'Bee', type: 'integer' },
+              a: { title: 'Ay', type: 'string' },
+            },
+          },
+        },
+      },
+    }
+    // Reordering must not cost a column its title, type or required flag.
+    const table = createTableObject('t', [{ a: 'x', b: 1 }], {}, config, {
+      applyFilters: identity,
+    })
+    const byKey = Object.fromEntries(table.headers.map((h: any) => [h.key, h]))
+    expect(byKey.a.title).toBe('Ay')
+    expect(byKey.b.title).toBe('Bee')
+    expect(byKey.b.required).toBe(true)
+    expect(byKey.a.required).toBe(false)
   })
 })
 

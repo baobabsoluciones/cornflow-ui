@@ -332,6 +332,43 @@ describe('useTableData — master table capabilities', () => {
     expect(keys).not.toContain('id')
   })
 
+  test('loaded rows decide the column order, not the schema', async () => {
+    // Declaration order here is c, b, a; the rows arrive as a, b, c. The table must show
+    // what the rows say, so it cannot disagree with the Excel download of the same table.
+    const config = {
+      ...masterConfig,
+      __rowSchema: {
+        properties: { c: { type: 'string' }, b: { type: 'string' }, a: { type: 'string' } },
+        required: [],
+      },
+    }
+    repoCtrl.getListResult = [{ a: 1, b: 2, c: 3 }]
+
+    const { api } = mountTableData(config)
+    await api.loadData()
+    await nextTick()
+
+    expect(
+      api.headers.value.map((h: any) => h.value).filter((v: string) => v !== 'selection'),
+    ).toEqual(['a', 'b', 'c'])
+  })
+
+  test('without rows the order comes from required, then the rest', () => {
+    const config = {
+      ...masterConfig,
+      __rowSchema: {
+        properties: { a: { type: 'string' }, b: { type: 'string' }, c: { type: 'string' } },
+        required: ['c'],
+      },
+    }
+
+    const { api } = mountTableData(config)
+
+    expect(
+      api.headers.value.map((h: any) => h.value).filter((v: string) => v !== 'selection'),
+    ).toEqual(['c', 'a', 'b'])
+  })
+
   test('availableFilterFields and formFields derived from schema', () => {
     const { api } = mountTableData(masterConfig)
     expect(api.availableFilterFields.value.map((f: any) => f.key)).toContain('name')

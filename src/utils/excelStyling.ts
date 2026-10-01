@@ -6,6 +6,8 @@
  * no `document`. These run on the main thread AND inside a Web Worker.
  */
 
+import { resolveTableColumnOrder } from './tableColumnOrder'
+
 /**
  * Applies the standard thin border style to a cell (ExcelJS cell).
  */
@@ -77,10 +79,18 @@ export function prepareSheetData(
   sheetName: string,
 ): any[] | null {
   if (sheetData.length === 0) {
-    const requiredHeaders = schema?.properties?.[sheetName]?.items?.required
-    if (!requiredHeaders) return null
+    // With no rows the schema is all there is, and `required` is what orders it. The
+    // remaining declared columns follow, so an empty sheet carries the same columns the
+    // table shows on screen rather than only the mandatory ones.
+    const itemSchema = schema?.properties?.[sheetName]?.items
+    const headers = resolveTableColumnOrder(
+      null,
+      itemSchema?.properties,
+      itemSchema?.required,
+    )
+    if (headers.length === 0) return null
     return [
-      requiredHeaders.reduce((acc: Record<string, any>, header: string) => {
+      headers.reduce((acc: Record<string, any>, header: string) => {
         acc[header] = null
         return acc
       }, {}),

@@ -17,6 +17,7 @@ import {
   normalizeJsonSchemaPropertyTypeForUi,
 } from '@cornflow-ui/core/utils/schemaUtils'
 import { resolveTitle } from '@cornflow-ui/core/utils/i18nUtils'
+import { resolveTableColumnOrder } from '@cornflow-ui/core/utils/tableColumnOrder'
 
 /** Synthetic row id for single-row (horizontal) object tables. */
 export const OBJECT_TABLE_ROW_ID = '__object__'
@@ -487,28 +488,48 @@ export function createTableObject(
     const properties = responseSchema.items.properties
     const requiredFields = responseSchema.items.required || []
 
-    // SAFETY CHECK: Verify that schema property keys actually exist in the data.
-    // When a master table config is used (effectiveConfig), its column keys may differ
-    // from the instance data keys (e.g., different casing or different column set),
-    // which would cause empty cells since item[header.key] wouldn't find a match.
-    const schemaKeys = Object.keys(properties).filter((k) => k !== 'id')
-    const dataKeys =
-      tableData.length > 0
-        ? Object.keys(tableData[0]).filter((k) => k !== 'id' && k !== '_id')
-        : []
+    // One rule for the order, shared with the Excel export: the data decides when there
+    // are rows, `required` decides when there are none. The schema is still what supplies
+    // every column's metadata — title, type, choices, visibility — it just no longer
+    // reorders what the data already ordered.
+    const columnOrder = resolveTableColumnOrder(
+      tableData,
+      properties,
+      requiredFields,
+    ).filter((key) => key !== 'id' && key !== '_id' && key !== 'selection')
 
-    const keysMatchData =
-      dataKeys.length === 0 || schemaKeys.some((sk) => dataKeys.includes(sk))
+    // Metadata lookup is case-insensitive: a master table config may declare a column
+    // with different casing from the instance data it is matched against.
+    const propsLookup = new Map<string, any>()
+    Object.entries(properties).forEach(([key, prop]) => {
+      propsLookup.set(key.toLowerCase(), prop as any)
+    })
 
-    if (keysMatchData) {
-      // Schema keys match data keys - use schema headers with full metadata
-      const schemaHeaders = Object.entries(properties)
-        .filter(([key]) => key !== 'id')
-        .filter(([, prop]) => isParameterPropertySchemaVisible(prop))
-        .map(([key, prop]: [string, any]) => ({
+    const dataHeaders = columnOrder
+      .filter((key) => {
+        const prop = propsLookup.get(key.toLowerCase())
+        // A column the schema does not declare is still shown: it is in the data, so
+        // hiding it would lose information the export keeps. Only an explicit
+        // schema-level hide removes one.
+        return !prop || isParameterPropertySchemaVisible(prop)
+      })
+      .map((key) => {
+        const prop = propsLookup.get(key.toLowerCase())
+        if (!prop) {
+          return {
+            title: formatTitle(key),
+            value: key,
+            key,
+            sortable: true,
+            filterable: true,
+            type: 'string',
+            required: requiredFields.includes(key),
+          }
+        }
+        return {
           title: prop.title || key,
           value: key,
-          key: key,
+          key,
           sortable: true,
           filterable: true,
           type: normalizeJsonSchemaPropertyTypeForUi(prop),
@@ -532,62 +553,10 @@ export function createTableObject(
             (Array.isArray(prop.enum) && prop.enum.length > 0
               ? prop.enum
               : undefined),
-        }))
-
-      headers = [selectionHeader, ...schemaHeaders]
-    } else {
-      // Schema keys DON'T match data keys (e.g., master table config has different
-      // column names than the instance data). Fall back to data-derived headers
-      // but enrich them with metadata from the master config via case-insensitive matching.
-      console.warn(
-        `ExecutionDataView: Schema property keys for "${tableKey}" don't match data keys (schema: [${schemaKeys.join(', ')}], data: [${dataKeys.join(', ')}]). Falling back to data-derived headers.`,
-      )
-
-      // Build a case-insensitive lookup from the config properties for enrichment
-      const configPropsLookup = new Map<string, any>()
-      Object.entries(properties).forEach(([key, prop]) => {
-        configPropsLookup.set(key.toLowerCase(), prop as any)
+        }
       })
 
-      const dataHeaders = generateHeadersFromData(tableData)
-      const enrichedHeaders = dataHeaders
-        .filter((h: any) => h.key !== 'id' && h.key !== 'selection')
-        .map((h: any) => {
-          const configProp = configPropsLookup.get(h.key.toLowerCase())
-          if (configProp) {
-            return {
-              ...h,
-              title: configProp.title || h.title,
-              type:
-                configProp.type === 'integer'
-                  ? 'number'
-                  : configProp.type || h.type,
-              required: requiredFields.includes(h.key),
-              frontendReadOnly: configProp.frontendReadOnly || false,
-              isForeignKey: configProp.isForeignKey || false,
-              isDependentField: configProp.isDependentField || false,
-              isMainSelector: configProp.isMainSelector || false,
-              joinFrom: configProp.joinFrom || undefined,
-              columnsToJoin: configProp.columnsToJoin || undefined,
-              foreignKeyField: configProp.foreignKeyField || undefined,
-              hidden: configProp.hidden || false,
-              choices:
-                configProp.choices ??
-                (Array.isArray(configProp.enum) && configProp.enum.length > 0
-                  ? configProp.enum
-                  : undefined),
-            }
-          }
-          return h
-        })
-        .filter((h: any) => {
-          const cp = configPropsLookup.get(String(h.key).toLowerCase())
-          if (cp && !isParameterPropertySchemaVisible(cp)) return false
-          return true
-        })
-
-      headers = [selectionHeader, ...enrichedHeaders]
-    }
+    headers = [selectionHeader, ...dataHeaders]
   } else {
     console.warn(
       `ExecutionDataView: No response schema items.properties for "${tableKey}", using fallback`,
