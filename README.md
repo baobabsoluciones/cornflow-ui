@@ -782,6 +782,7 @@ This file contains **internal application-specific configuration** that is part 
       executionSolvers: ['mip-gurobi'],
       configFields: [...],
       fileProcessors: { ... },
+      instanceFileFormats: ['xlsx'],
       enableAutoInstanceDashboard: false,
       enableAutoSolutionDashboard: false,
       tableDashboards: { ... },
@@ -813,6 +814,7 @@ This file contains **internal application-specific configuration** that is part 
 | `enableAutoSolutionDashboard` | `boolean`  | Auto-generate dashboards for solution tables          |
 | `enableMasterTableMatching`   | `boolean`  | Enable master table matching during instance review   |
 | `executionSolvers`            | `string[]` | List of available solvers for execution               |
+| `instanceFileFormats`         | `string[]` | File extensions the instance upload accepts. Empty or absent means the default (`json`, `xlsx`, `csv`). |
 
 #### showExtraProjectExecutionColumns
 
@@ -1145,6 +1147,35 @@ The section title resolution follows this priority:
 3. **Default navigation key**: Falls back to `navigation.<section>` (base translations)
 
 This allows for flexible customization while maintaining sensible defaults.
+
+### Instance upload file formats
+
+The instance upload accepts `json`, `xlsx` and `csv` by default. A deployment that only ever
+receives one of them can narrow the list through `instanceFileFormats` in the core parameters
+of `src/app/config.ts`:
+
+```typescript
+parameters: {
+  // other parameters
+  instanceFileFormats: ['xlsx'],
+  // other parameters
+}
+```
+
+The list drives the upload drop zone, which both validates what is dropped — by extension and
+MIME type — and tells the user which formats are accepted. Narrowing it therefore also stops
+the help text from advertising formats the project never uses.
+
+Notes:
+
+- Leaving it empty, or omitting it, keeps the default `json`, `xlsx`, `csv`.
+- Entries are normalised, so `['.XLSX']` and `['xlsx']` are the same thing.
+- Beyond the three defaults, `xls`, `xlsm` and `xlsb` can be opted into: the parser reads them,
+  the default list just leaves them out.
+- Anything the core cannot read is dropped with a console warning, and a list that ends up
+  empty falls back to the default — a typo narrows nothing rather than blocking every upload.
+- This setting only narrows. It cannot widen beyond what the core can parse, and it does not
+  affect the master-table bulk upload or the developer-mode solution upload.
 
 ### Custom file processors
 

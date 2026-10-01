@@ -1,4 +1,4 @@
-import { describe, test, expect } from 'vitest'
+import { describe, test, expect, vi } from 'vitest'
 import {
   isExcelExtension,
   isSupportedDataExtension,
@@ -6,6 +6,7 @@ import {
   FILE_EXTENSIONS,
   EXCEL_EXTENSIONS,
   SUPPORTED_DATA_EXTENSIONS,
+  resolveAllowedExtensions,
 } from '@cornflow-ui/core/utils/fileConstants'
 
 describe('isExcelExtension', () => {
@@ -105,5 +106,78 @@ describe('constants', () => {
 
   test('SUPPORTED_DATA_EXTENSIONS contains json, xlsx, csv', () => {
     expect(SUPPORTED_DATA_EXTENSIONS).toEqual(['json', 'xlsx', 'csv'])
+  })
+})
+
+describe('resolveAllowedExtensions', () => {
+  const FALLBACK = SUPPORTED_DATA_EXTENSIONS
+
+  test.each([
+    ['undefined', undefined],
+    ['null', null],
+    ['an empty array', []],
+    ['a non-array', 'xlsx'],
+  ])('falls back when the config is %s', (_label, configured) => {
+    expect(resolveAllowedExtensions(configured, FALLBACK)).toBe(FALLBACK)
+  })
+
+  test('narrows to what the deployment configured', () => {
+    expect(resolveAllowedExtensions(['xlsx'], FALLBACK)).toEqual(['xlsx'])
+  })
+
+  test('normalises case, surrounding space and a leading dot', () => {
+    expect(resolveAllowedExtensions([' .XLSX ', 'Csv'], FALLBACK)).toEqual([
+      'xlsx',
+      'csv',
+    ])
+  })
+
+  test('allows the Excel variants the parser can read but the default omits', () => {
+    // The default list is json/xlsx/csv, yet processFileContent reads xls, xlsm and xlsb
+    // too, so a deployment is free to opt into them.
+    expect(resolveAllowedExtensions(['xls', 'xlsm', 'xlsb'], FALLBACK)).toEqual([
+      'xls',
+      'xlsm',
+      'xlsb',
+    ])
+  })
+
+  test('drops extensions the core cannot read, and says so', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    // Accepting 'txt' would only move the rejection to the parser, after the user has
+    // already been told the file was fine.
+    expect(resolveAllowedExtensions(['xlsx', 'txt', 'pdf'], FALLBACK)).toEqual([
+      'xlsx',
+    ])
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('txt, pdf'))
+
+    warn.mockRestore()
+  })
+
+  test('falls back when nothing configured is usable', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    // A typo must not leave the drop zone accepting nothing at all.
+    expect(resolveAllowedExtensions(['xslx'], FALLBACK)).toBe(FALLBACK)
+    expect(warn).toHaveBeenCalled()
+
+    warn.mockRestore()
+  })
+
+  test('ignores non-string entries', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    expect(resolveAllowedExtensions(['xlsx', 42, null, {}], FALLBACK)).toEqual([
+      'xlsx',
+    ])
+
+    warn.mockRestore()
+  })
+
+  test('de-duplicates', () => {
+    expect(resolveAllowedExtensions(['xlsx', '.xlsx', 'XLSX'], FALLBACK)).toEqual([
+      'xlsx',
+    ])
   })
 })
