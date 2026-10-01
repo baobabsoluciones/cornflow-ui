@@ -241,6 +241,18 @@ vi.mock('@cornflow-ui/core/repositories/EditAllTablesRepository', () => ({
     op === 'overwrite' ? 'overwrite_all' : 'post_bulk',
 }))
 
+// ---- useFilePreProcessing ---------------------------------------------------
+// Returns null by default ("no processors configured"), which is what every other test
+// here assumes: the raw files are uploaded unchanged.
+const mockPreProcessFiles = vi.fn(async (_files: File[]) => null as File[] | null)
+vi.mock('@cornflow-ui/core/composables/useFilePreProcessing', () => ({
+  useFilePreProcessing: () => ({
+    preProcessFiles: (files: File[]) => mockPreProcessFiles(files),
+    preProcessFile: async (file: File) => file,
+    hasFileProcessors: () => false,
+  }),
+}))
+
 // ---- AutoDashboardService --------------------------------------------------
 const mockGenerateAutoDashboard = vi.fn(() => [] as any[])
 vi.mock('@cornflow-ui/core/services/AutoDashboardService', () => ({
@@ -659,6 +671,35 @@ describe('SectionView', () => {
       expect(mockInvalidateAllTableDataCaches).toHaveBeenCalled()
       expect(mockTableDataInstances[0].loadData).toHaveBeenCalled()
       expect(vm.showEditAllMasterTablesModal).toBe(false)
+    })
+
+    test('uploads what the processors produced, not the raw files', async () => {
+      // The whole point of a fileProcessor is that the raw file is in a shape no backend
+      // endpoint accepts, so /edit-all-tables/ has to get the processed one like the
+      // instance load does.
+      const raw = new File(['raw'], 'matrix.xlsx')
+      const processed = new File(['flat'], 'matrix.xlsx')
+      mockPreProcessFiles.mockResolvedValueOnce([processed])
+
+      const vm = createWrapper().vm as any
+      await vm.handleEditAllMasterTablesUpload({ files: [raw], operation: 'add' })
+      await flushPromises()
+
+      expect(mockPreProcessFiles).toHaveBeenCalledWith([raw])
+      expect(mockPostEditAllTables).toHaveBeenCalledWith([processed], 'post_bulk')
+    })
+
+    test('the force-retry path reuses the processed files, not the upload', async () => {
+      const raw = new File(['raw'], 'matrix.xlsx')
+      const processed = new File(['flat'], 'matrix.xlsx')
+      mockPreProcessFiles.mockResolvedValueOnce([processed])
+
+      const vm = createWrapper().vm as any
+      await vm.handleEditAllMasterTablesUpload({ files: [raw], operation: 'add' })
+      await flushPromises()
+
+      // Retrying with the raw file would undo the processing on the second attempt.
+      expect(vm.pendingEditAllFiles).toEqual([processed])
     })
 
     test('success path in group view reloads selected table data', async () => {

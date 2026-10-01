@@ -267,7 +267,21 @@ vi.mock('@/app/config', () => ({
 }))
 
 vi.mock('@/app/composables/useFileProcessors', () => ({
-  useFileProcessors: () => ({ processors: {} }),
+  useFileProcessors: () => ({
+    processors: {},
+    needsSpecialProcessing: () => false,
+    processFileByPrefix: async () => null,
+  }),
+}))
+
+// Identity by default: no deployment processor configured, file goes through untouched.
+const mockPreProcessFile = vi.hoisted(() => vi.fn(async (file: any) => file))
+vi.mock('@cornflow-ui/core/composables/useFilePreProcessing', () => ({
+  useFilePreProcessing: () => ({
+    preProcessFile: mockPreProcessFile,
+    preProcessFiles: async () => null,
+    hasFileProcessors: () => false,
+  }),
 }))
 
 // exceljs — controllable workbook for the Excel parse path. Aliased in vitest

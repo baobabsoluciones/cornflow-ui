@@ -49,6 +49,7 @@ import {
   parseCsvContent as parseCsvWithDelimiter,
 } from '@cornflow-ui/core/utils/csvUtils'
 import appConfig from '@/app/config'
+import { useFilePreProcessing } from '@cornflow-ui/core/composables/useFilePreProcessing'
 
 /** Plain (non-object) cell value produced when flattening spreadsheet cells. */
 type PlainCellValue = string | number | boolean
@@ -160,6 +161,9 @@ export function useTableData(
   const generalStore = useGeneralStore()
   // Recalculation controller injected by the premium module (§3.7); inert if no module is present.
   const recalculation = useRecalculationController()
+  // A configured processor has to run before the file is sent or parsed; without it the
+  // raw shape reaches the backend on the async route and the standard reader on the other.
+  const { preProcessFile } = useFilePreProcessing()
 
   /** After master-data bulk/overwrite: POST `/update-plan-data/` then pending replan only if plan is outdated. */
   const maybeRequestMasterRecalculationPending = async () => {
@@ -2642,7 +2646,7 @@ export function useTableData(
       let mappedData: any[] | null = null
       try {
         // Get the first file (modal is set to multiple=false)
-        const file = uploadData.files[0]
+        const file = await preProcessFile(uploadData.files[0])
 
         // Async path: when the table declares the async counterpart of the chosen operation,
         // send the raw (unprocessed) file and poll for status — no client-side parsing.
