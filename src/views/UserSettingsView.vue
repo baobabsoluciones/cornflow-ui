@@ -119,7 +119,9 @@ import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { useI18n } from 'vue-i18n'
 import { inject } from 'vue'
 import config from '@cornflow-ui/core/config'
+import appConfig from '@/app/config'
 import { changeLanguage } from '@cornflow-ui/core/plugins/i18n'
+import { resolveVisibleLanguages } from '@cornflow-ui/core/plugins/languages'
 
 export default {
   components: {},
@@ -130,11 +132,6 @@ export default {
       selectedTab: 'user-settings',
       theme: 'light',
       language: this.$i18n.locale,
-      languages: [
-        { title: this.$t('settings.english'), value: 'en' },
-        { title: this.$t('settings.spanish'), value: 'es' },
-        { title: this.$t('settings.french'), value: 'fr' },
-      ],
       passwordRules: [
         (value) =>
           (value !== undefined && value.length >= 5) ||
@@ -186,6 +183,13 @@ export default {
     },
   },
   computed: {
+    // Core languages the project chose to show (`languages` in app config), in that order.
+    // Invalid codes are reported in the console each time the selector is recomputed.
+    languages() {
+      return resolveVisibleLanguages(appConfig.getLanguages?.() ?? []).map(
+        (l) => ({ title: this.$t(l.labelKey), value: l.code }),
+      )
+    },
     validPassword() {
       return (
         this.newPassword?.length > 0 &&

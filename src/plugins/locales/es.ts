@@ -528,6 +528,7 @@ export default {
     english: 'Inglés',
     spanish: 'Español',
     french: 'Francés',
+    portuguese: 'Portugués',
     selectLanguage: 'Selecciona el idioma principal de la aplicación',
     theme: 'Tema',
     light: 'Claro',
