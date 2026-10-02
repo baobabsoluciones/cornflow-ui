@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.4.1] - 02-10-2026
+
+### Fixed
+- **`config.languages` no longer required of every client**  
+  - #225 called `appConfig.getLanguages()` on the consumer's own `Config` class, and the clients written before that setting existed do not declare it, so `vue-tsc` failed in all of them while the app itself ran fine
+  - `readConfiguredLanguages()` reads the method when it is there and returns an empty list when it is not, which already meant "offer every core language"
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #231
+
 ## [3.4.0] - 02-10-2026
 
 ### Added
