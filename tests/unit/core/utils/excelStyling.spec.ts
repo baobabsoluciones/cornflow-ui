@@ -51,6 +51,25 @@ describe('prepareSheetData — the empty-table half of the column-order rule', (
     expect(prepareSheetData([], null, 'cualquiera')).toBeNull()
   })
 
+  test("the schema's declared order outranks required", () => {
+    const withOrder = {
+      properties: {
+        turnos: {
+          items: {
+            order: ['hora_fin', 'nombre'],
+            required: ['id_turno'],
+            properties: { nombre: {}, id_turno: {}, hora_fin: {} },
+          },
+        },
+      },
+    }
+    expect(Object.keys(prepareSheetData([], withOrder, 'turnos')![0])).toEqual([
+      'hora_fin',
+      'nombre',
+      'id_turno',
+    ])
+  })
+
   test('rows are left alone — the data orders itself', () => {
     const rows = [{ hora_fin: '21:00', id_turno: 1 }]
     expect(prepareSheetData(rows, schema, 'turnos')).toBe(rows)

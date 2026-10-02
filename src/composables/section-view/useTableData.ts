@@ -466,6 +466,7 @@ export function useTableData(
       items.value,
       properties,
       requiredList,
+      rowSchema.order,
     ).filter((key) => key !== 'id')
 
     const dataHeaders = columnOrder

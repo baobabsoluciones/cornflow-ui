@@ -5,7 +5,10 @@ import {
   parseLocalDateKey,
 } from '@cornflow-ui/core/utils/date'
 import { getListResponseRowProperties } from '@cornflow-ui/core/utils/schemaUtils'
-import { resolveTableColumnOrder } from '@cornflow-ui/core/utils/tableColumnOrder'
+import {
+  resolveTableColumnOrder,
+  readDeclaredColumnOrder,
+} from '@cornflow-ui/core/utils/tableColumnOrder'
 import * as ExcelJS from 'exceljs'
 import {
   parseExcelInWorker,
@@ -255,8 +258,10 @@ function getArrayTypeExportHeaders(
   firstRow: Record<string, any>,
   preferSchemaColumnOrder = false,
 ): string[] {
+  const tableSchema = schema?.properties?.[sheetName]
+  const itemProperties = tableSchema?.items?.properties
+
   if (preferSchemaColumnOrder) {
-    const itemProperties = schema?.properties?.[sheetName]?.items?.properties
     if (itemProperties && typeof itemProperties === 'object') {
       const fromSchema = Object.keys(itemProperties).filter((key) =>
         isFieldVisible(key, schema, sheetName, false),
@@ -264,9 +269,13 @@ function getArrayTypeExportHeaders(
       if (fromSchema.length > 0) return fromSchema
     }
   }
-  return Object.keys(firstRow).filter((key) =>
-    isFieldVisible(key, schema, sheetName, false),
-  )
+
+  return resolveTableColumnOrder(
+    [firstRow],
+    itemProperties,
+    tableSchema?.items?.required,
+    readDeclaredColumnOrder(tableSchema?.items, tableSchema),
+  ).filter((key) => isFieldVisible(key, schema, sheetName, false))
 }
 
 /**

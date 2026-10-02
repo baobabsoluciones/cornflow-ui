@@ -250,6 +250,63 @@ describe('createTableObject', () => {
     ])
   })
 
+  test("the schema's declared order outranks the data", () => {
+    const config = {
+      get_list: {
+        response_schema: {
+          items: {
+            order: ['c', 'a', 'b'],
+            required: ['a'],
+            properties: { a: {}, b: {}, c: {} },
+          },
+        },
+      },
+    }
+    const table = createTableObject('t', [{ a: 1, b: 2, c: 3 }], {}, config, {
+      applyFilters: identity,
+    })
+    expect(table.headers.map((h: any) => h.key)).toEqual([
+      'selection',
+      'c',
+      'a',
+      'b',
+    ])
+  })
+
+  test('an order written on the table, beside description, is honoured too', () => {
+    const config = {
+      get_list: {
+        response_schema: {
+          order: ['b', 'a'],
+          items: { required: [], properties: { a: {}, b: {} } },
+        },
+      },
+    }
+    const table = createTableObject('t', [{ a: 1, b: 2 }], {}, config, {
+      applyFilters: identity,
+    })
+    expect(table.headers.map((h: any) => h.key)).toEqual(['selection', 'b', 'a'])
+  })
+
+  test('a column the order omits is still shown, after the ordered ones', () => {
+    const config = {
+      get_list: {
+        response_schema: {
+          items: { order: ['c'], required: [], properties: { a: {}, b: {}, c: {} } },
+        },
+      },
+    }
+    const table = createTableObject('t', [{ a: 1, b: 2, c: 3 }], {}, config, {
+      applyFilters: identity,
+    })
+    expect(table.headers.map((h: any) => h.key)).toEqual([
+      'selection',
+      'c',
+      'a',
+      'b',
+    ])
+  })
+
   test('schema metadata still reaches the header it belongs to', () => {
     const config = {
       get_list: {

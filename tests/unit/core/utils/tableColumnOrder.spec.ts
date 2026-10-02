@@ -1,5 +1,8 @@
 import { describe, test, expect } from 'vitest'
-import { resolveTableColumnOrder } from '@cornflow-ui/core/utils/tableColumnOrder'
+import {
+  resolveTableColumnOrder,
+  readDeclaredColumnOrder,
+} from '@cornflow-ui/core/utils/tableColumnOrder'
 
 const PROPS = {
   mes: {},
@@ -121,5 +124,98 @@ describe('resolveTableColumnOrder', () => {
         ['mes', 'variabilidad_numero', 'variabilidad_puntualidad', 'numero_camiones', 'inicio_horario'],
       )
     })
+  })
+
+  describe("the schema's declared order outranks both", () => {
+    const ROWS = [{ mes: 'Enero', numero_camiones: 4, inicio_horario: '09:00' }]
+
+    test('beats the data order', () => {
+      expect(
+        resolveTableColumnOrder(ROWS, PROPS, REQUIRED, [
+          'inicio_horario',
+          'mes',
+          'numero_camiones',
+        ]),
+      ).toEqual(['inicio_horario', 'mes', 'numero_camiones'])
+    })
+
+    test('beats required when there are no rows', () => {
+      const order = resolveTableColumnOrder([], PROPS, REQUIRED, [
+        'inicio_horario',
+      ])
+      expect(order[0]).toBe('inicio_horario')
+      // ...and the rest still follow the required-first fallback.
+      expect(order).toEqual([
+        'inicio_horario',
+        'mes',
+        'numero_camiones',
+        'variabilidad_numero',
+        'variabilidad_puntualidad',
+      ])
+    })
+
+    test('a partial order places what it names and leaves the rest alone', () => {
+      // It orders columns; it does not select them. Dropping the unnamed ones would put
+      // the table back out of step with its own export.
+      expect(
+        resolveTableColumnOrder(ROWS, PROPS, REQUIRED, ['inicio_horario']),
+      ).toEqual(['inicio_horario', 'mes', 'numero_camiones'])
+    })
+
+    test('drops a name no column answers to', () => {
+      // A stale schema must not add a phantom column.
+      expect(resolveTableColumnOrder(ROWS, PROPS, REQUIRED, ['ghost', 'mes'])).toEqual([
+        'mes',
+        'numero_camiones',
+        'inicio_horario',
+      ])
+    })
+
+    test('de-duplicates', () => {
+      expect(
+        resolveTableColumnOrder(ROWS, PROPS, REQUIRED, ['mes', 'mes', 'inicio_horario']),
+      ).toEqual(['mes', 'inicio_horario', 'numero_camiones'])
+    })
+
+    test.each([
+      ['empty', []],
+      ['null', null],
+      ['undefined', undefined],
+      ['entirely unknown names', ['ghost']],
+    ])('falls back to the default rule when the order is %s', (_label, order) => {
+      expect(resolveTableColumnOrder(ROWS, PROPS, REQUIRED, order as any)).toEqual(
+        Object.keys(ROWS[0]),
+      )
+    })
+  })
+})
+
+describe('readDeclaredColumnOrder', () => {
+  test('reads the order from the first candidate that has one', () => {
+    expect(readDeclaredColumnOrder({ order: ['a'] }, { order: ['b'] })).toEqual(['a'])
+  })
+
+  test('falls through to the table level when the items declare none', () => {
+    // `description` sits on the table and `properties` on its items, so "beside
+    // properties" and "beside description" are different levels. Both are accepted.
+    expect(
+      readDeclaredColumnOrder({ properties: {} }, { description: 'x', order: ['b'] }),
+    ).toEqual(['b'])
+  })
+
+  test.each([
+    ['nothing declares one', [{}, null, undefined]],
+    ['it is not an array', [{ order: 'a,b' }]],
+    ['it is empty', [{ order: [] }]],
+    ['it holds no usable names', [{ order: [1, null, ''] }]],
+  ])('returns null when %s', (_label, candidates) => {
+    expect(readDeclaredColumnOrder(...(candidates as any))).toBeNull()
+  })
+
+  test('keeps only the usable names', () => {
+    expect(readDeclaredColumnOrder({ order: ['a', 2, '', null, 'b'] } as any)).toEqual([
+      'a',
+      'b',
+    ])
   })
 })

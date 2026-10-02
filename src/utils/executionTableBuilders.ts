@@ -17,7 +17,10 @@ import {
   normalizeJsonSchemaPropertyTypeForUi,
 } from '@cornflow-ui/core/utils/schemaUtils'
 import { resolveTitle } from '@cornflow-ui/core/utils/i18nUtils'
-import { resolveTableColumnOrder } from '@cornflow-ui/core/utils/tableColumnOrder'
+import {
+  resolveTableColumnOrder,
+  readDeclaredColumnOrder,
+} from '@cornflow-ui/core/utils/tableColumnOrder'
 
 /** Synthetic row id for single-row (horizontal) object tables. */
 export const OBJECT_TABLE_ROW_ID = '__object__'
@@ -496,6 +499,7 @@ export function createTableObject(
       tableData,
       properties,
       requiredFields,
+      readDeclaredColumnOrder(responseSchema.items, responseSchema),
     ).filter((key) => key !== 'id' && key !== '_id' && key !== 'selection')
 
     // Metadata lookup is case-insensitive: a master table config may declare a column

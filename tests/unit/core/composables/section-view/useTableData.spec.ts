@@ -369,6 +369,26 @@ describe('useTableData — master table capabilities', () => {
     ).toEqual(['c', 'a', 'b'])
   })
 
+  test("the schema's declared order outranks the loaded rows", async () => {
+    const config = {
+      ...masterConfig,
+      __rowSchema: {
+        order: ['c', 'a', 'b'],
+        properties: { a: { type: 'string' }, b: { type: 'string' }, c: { type: 'string' } },
+        required: [],
+      },
+    }
+    repoCtrl.getListResult = [{ a: 1, b: 2, c: 3 }]
+
+    const { api } = mountTableData(config)
+    await api.loadData()
+    await nextTick()
+
+    expect(
+      api.headers.value.map((h: any) => h.value).filter((v: string) => v !== 'selection'),
+    ).toEqual(['c', 'a', 'b'])
+  })
+
   test('availableFilterFields and formFields derived from schema', () => {
     const { api } = mountTableData(masterConfig)
     expect(api.availableFilterFields.value.map((f: any) => f.key)).toContain('name')
