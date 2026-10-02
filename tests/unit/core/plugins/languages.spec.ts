@@ -6,6 +6,7 @@ import {
   isCoreLanguage,
   resolveDefaultLanguage,
   resolveVisibleLanguages,
+  readConfiguredLanguages,
 } from '@cornflow-ui/core/plugins/languages'
 
 const codes = (langs: { code: string }[]) => langs.map((l) => l.code)
@@ -30,6 +31,51 @@ describe('languages registry', () => {
     expect(isCoreLanguage('pt')).toBe(true)
     expect(isCoreLanguage('de')).toBe(false)
     expect(isCoreLanguage(undefined)).toBe(false)
+  })
+
+  describe('readConfiguredLanguages', () => {
+    // `appConfig` is the consumer's own Config class, and the clients written before this
+    // setting existed do not declare `getLanguages` at all. Reading it off the type broke
+    // `vue-tsc` in every one of them while the app itself ran fine.
+    test('a client config without getLanguages yields no restriction', () => {
+      class OldClientConfig {
+        getCore() {
+          return {}
+        }
+      }
+      expect(readConfiguredLanguages(new OldClientConfig())).toEqual([])
+      // ...and that empty list means "show them all", not "show none".
+      expect(codes(resolveVisibleLanguages(readConfiguredLanguages(new OldClientConfig())))).toEqual(
+        ['en', 'es', 'fr', 'pt'],
+      )
+    })
+
+    test('reads the list a client config does declare', () => {
+      const config = { getLanguages: () => ['es', 'en'] }
+      expect(readConfiguredLanguages(config)).toEqual(['es', 'en'])
+    })
+
+    test('keeps `this` bound to the config', () => {
+      // A real Config reads the list off its own resolved state, so calling the method
+      // detached from the instance would throw.
+      class ClientConfig {
+        private languages = ['fr']
+        getLanguages() {
+          return this.languages
+        }
+      }
+      expect(readConfiguredLanguages(new ClientConfig())).toEqual(['fr'])
+    })
+
+    test.each([
+      ['null', null],
+      ['undefined', undefined],
+      ['a non-function getLanguages', { getLanguages: 'es,en' }],
+      ['a getLanguages returning nothing', { getLanguages: () => undefined }],
+      ['a getLanguages returning a non-array', { getLanguages: () => 'es' }],
+    ])('yields an empty list for %s', (_label, config) => {
+      expect(readConfiguredLanguages(config as any)).toEqual([])
+    })
   })
 
   describe('resolveVisibleLanguages', () => {

@@ -42,6 +42,27 @@ export function isCoreLanguage(code: unknown): code is string {
 }
 
 /**
+ * Reads `languages` out of the project's app config.
+ *
+ * `appConfig` here is the **consumer's** `src/app/config.ts`, not the core's: every client
+ * keeps its own `Config` class, and the ones written before this setting existed have no
+ * `getLanguages` at all. Optional chaining alone does not cover that — TypeScript rejects
+ * the property outright on a class that never declares it, which broke `vue-tsc` in every
+ * client consuming core v3.4.0 while the app itself ran fine.
+ *
+ * Reading it through this helper keeps the call sites typed against what a client may
+ * actually provide, and a config without the method simply shows all core languages.
+ */
+export function readConfiguredLanguages(appConfig: unknown): string[] {
+  const getLanguages = (appConfig as { getLanguages?: () => string[] } | null)
+    ?.getLanguages
+  if (typeof getLanguages !== 'function') return []
+
+  const languages = getLanguages.call(appConfig)
+  return Array.isArray(languages) ? languages : []
+}
+
+/**
  * Core languages to show, in the order given by `codes`.
  * Empty/undefined `codes` → all core languages. Unknown codes are ignored with a warning.
  */

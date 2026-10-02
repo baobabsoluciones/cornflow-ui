@@ -40,6 +40,7 @@ import { setDefaultLanguage } from '@cornflow-ui/core/plugins/i18n'
 import {
   resolveDefaultLanguage,
   resolveVisibleLanguages,
+  readConfiguredLanguages,
 } from '@cornflow-ui/core/plugins/languages'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import getAuthService from '@cornflow-ui/core/services/AuthServiceFactory'
@@ -79,9 +80,10 @@ export async function createCornflowApp(
   }
 
   // Set the default language from external config, restricted to the languages the project
-  // shows (`languages` in app config). `getLanguages` may be missing in older app configs.
+  // shows (`languages` in app config). Clients written before that setting have no
+  // `getLanguages`, so it is read through a helper rather than off the type.
   const visibleLanguages = resolveVisibleLanguages(
-    appConfig.getLanguages?.() ?? [],
+    readConfiguredLanguages(appConfig),
   )
   setDefaultLanguage(
     resolveDefaultLanguage(config.defaultLanguage, visibleLanguages),
