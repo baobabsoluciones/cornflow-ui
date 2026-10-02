@@ -1176,6 +1176,66 @@ Notes:
   empty falls back to the default — a typo narrows nothing rather than blocking every upload.
 - This setting only narrows. It cannot widen beyond what the core can parse, and it does not
   affect the master-table bulk upload or the developer-mode solution upload.
+### Table column order
+
+Every table and every export follows one rule, so the interface, the Excel download and the
+frontend-automation tables cannot disagree:
+
+1. **The schema's `order` decides, when it declares one.** It is the only list a backend
+   writes for the express purpose of ordering columns, so it outranks everything else.
+2. **Otherwise, with rows, the data decides.** Columns appear in the order of the keys of the
+   first row, exactly as the backend sent them.
+3. **Otherwise, `required` decides.** With no rows to read the order from, the schema is all
+   there is, and `required` is then the only list in it whose order was written deliberately.
+
+In every case the columns the leading list does not mention keep their relative order and
+follow after it, so a table never shows fewer columns than its own export.
+
+#### `order`
+
+A list of column names, written by the backend in the instance, solution and
+frontend-automation schemas:
+
+```json
+{
+  "t_turnos": {
+    "type": "array",
+    "description": "...",
+    "order": ["id_turno", "nombre", "hora_inicio"],
+    "items": {
+      "type": "object",
+      "properties": { "nombre": {}, "id_turno": {}, "hora_inicio": {} },
+      "required": ["id_turno"]
+    }
+  }
+}
+```
+
+It is accepted both on the table, beside `description`, and inside `items`, beside
+`properties` — those are different levels, and "next to `properties`" is ambiguous between
+them. The inner one wins when both are present.
+
+It **orders** columns; it does not select them. A partial `order` places the columns it names
+and leaves the rest behind them, and a name no column answers to is ignored, so a stale
+schema cannot add a phantom column.
+
+A schema's `properties` order is **not** used for ordering. Nothing in JSON Schema makes that
+order meaningful and backends often emit it alphabetically, so letting it reorder the columns
+produced tables that disagreed with their own Excel download. `properties` still supplies each
+column's metadata — title, type, `required`, `choices`, visibility — it just no longer decides
+where the column goes.
+
+A column present in the data but absent from the schema is shown: the export keeps it, so the
+table has to as well. A column the schema declares but no row carries is not.
+
+The single implementation is `resolveTableColumnOrder` in `src/utils/tableColumnOrder.ts`,
+used by the instance/solution tables, the frontend-automation tables, the Excel builders
+(main thread, worker and csv-zip) and the empty-sheet path. The module is dependency-free
+because the Excel Web Worker imports it.
+
+One exception, by design: `exportTableToExcel` — downloading one on-screen table — passes
+`preferSchemaColumnOrder: true` with a schema synthesised from the table's visible columns.
+There the order *is* the display order, which is itself produced by the rule above.
 
 ### Custom file processors
 
