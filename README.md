@@ -782,6 +782,7 @@ This file contains **internal application-specific configuration** that is part 
       executionSolvers: ['mip-gurobi'],
       configFields: [...],
       fileProcessors: { ... },
+      instanceFileFormats: ['xlsx'],
       enableAutoInstanceDashboard: false,
       enableAutoSolutionDashboard: false,
       tableDashboards: { ... },
@@ -813,6 +814,7 @@ This file contains **internal application-specific configuration** that is part 
 | `enableAutoSolutionDashboard` | `boolean`  | Auto-generate dashboards for solution tables          |
 | `enableMasterTableMatching`   | `boolean`  | Enable master table matching during instance review   |
 | `executionSolvers`            | `string[]` | List of available solvers for execution               |
+| `instanceFileFormats`         | `string[]` | File extensions the instance upload accepts. Empty or absent means the default (`json`, `xlsx`, `csv`). |
 
 #### showExtraProjectExecutionColumns
 
@@ -894,7 +896,7 @@ Inside the app folder, there are several changes that can be done to configurate
 - `views`: This directory should contain all the custom views needed for the application.
 - `components`: This directory should contain any additional components that are not in the core components.
 - `store/app.ts`: This file should define any additional store-specific configurations for the application.
-- `plugins/locales`: This folder contains three files (`en.ts`, `es.ts`, `fr.ts`) to add any text needed in the app views and components. Be careful not to duplicate the names with the original locales files (`src/plugins/locales`).
+- `plugins/locales`: One optional file per language (`<code>.ts`, e.g. `en.ts`, `es.ts`, `fr.ts`) with the texts of the project's own keys. Only core languages are loaded: a file for a language that does not exist in the core is ignored (with a console warning). Only **new** keys can be added: a key that already exists in the core translations (`src/plugins/locales`) is discarded with a console warning, so core texts cannot be changed from the project. See [Internationalization configuration](#internationalization-configuration).
 
 * Additionally, favicon can be replaced by a new one in public/favicon.png
 
@@ -917,7 +919,7 @@ It's important not to edit any other file or folders. Only the folders, files an
 | **Schema**              | Application schema name       | `VITE_APP_SCHEMA`                 | `schema`               | String identifier                |
 | **App Name**            | Application display name      | `VITE_APP_NAME`                   | `name`                 | String                           |
 | **Hash Mode**           | Router mode (hash vs history) | `VITE_APP_USE_HASH_MODE`          | `useHashMode`          | `true`/`false` (accepts `1`/`0`) |
-| **Default Language**    | UI language                   | `VITE_APP_DEFAULT_LANGUAGE`       | `defaultLanguage`      | `en`, `es`, `fr`                 |
+| **Default Language**    | UI language                   | `VITE_APP_DEFAULT_LANGUAGE`       | `defaultLanguage`      | A visible core language (`en`, `es`, `fr`) |
 | **Developer Mode**      | Enable dev features           | `VITE_APP_IS_DEVELOPER_MODE`      | `isDeveloperMode`      | `true`/`false` (accepts `1`/`0`) |
 | **Enable Signup**       | Show registration option      | `VITE_APP_ENABLE_SIGNUP`          | `enableSignup`         | `true`/`false` (accepts `1`/`0`) |
 | **External App**        | API URL prefix mode           | `VITE_APP_EXTERNAL_APP`           | `hasExternalApp`       | `true`/`false` (accepts `1`/`0`) |
@@ -1146,6 +1148,95 @@ The section title resolution follows this priority:
 
 This allows for flexible customization while maintaining sensible defaults.
 
+### Instance upload file formats
+
+The instance upload accepts `json`, `xlsx` and `csv` by default. A deployment that only ever
+receives one of them can narrow the list through `instanceFileFormats` in the core parameters
+of `src/app/config.ts`:
+
+```typescript
+parameters: {
+  // other parameters
+  instanceFileFormats: ['xlsx'],
+  // other parameters
+}
+```
+
+The list drives the upload drop zone, which both validates what is dropped — by extension and
+MIME type — and tells the user which formats are accepted. Narrowing it therefore also stops
+the help text from advertising formats the project never uses.
+
+Notes:
+
+- Leaving it empty, or omitting it, keeps the default `json`, `xlsx`, `csv`.
+- Entries are normalised, so `['.XLSX']` and `['xlsx']` are the same thing.
+- Beyond the three defaults, `xls`, `xlsm` and `xlsb` can be opted into: the parser reads them,
+  the default list just leaves them out.
+- Anything the core cannot read is dropped with a console warning, and a list that ends up
+  empty falls back to the default — a typo narrows nothing rather than blocking every upload.
+- This setting only narrows. It cannot widen beyond what the core can parse, and it does not
+  affect the master-table bulk upload or the developer-mode solution upload.
+### Table column order
+
+Every table and every export follows one rule, so the interface, the Excel download and the
+frontend-automation tables cannot disagree:
+
+1. **The schema's `order` decides, when it declares one.** It is the only list a backend
+   writes for the express purpose of ordering columns, so it outranks everything else.
+2. **Otherwise, with rows, the data decides.** Columns appear in the order of the keys of the
+   first row, exactly as the backend sent them.
+3. **Otherwise, `required` decides.** With no rows to read the order from, the schema is all
+   there is, and `required` is then the only list in it whose order was written deliberately.
+
+In every case the columns the leading list does not mention keep their relative order and
+follow after it, so a table never shows fewer columns than its own export.
+
+#### `order`
+
+A list of column names, written by the backend in the instance, solution and
+frontend-automation schemas:
+
+```json
+{
+  "t_turnos": {
+    "type": "array",
+    "description": "...",
+    "order": ["id_turno", "nombre", "hora_inicio"],
+    "items": {
+      "type": "object",
+      "properties": { "nombre": {}, "id_turno": {}, "hora_inicio": {} },
+      "required": ["id_turno"]
+    }
+  }
+}
+```
+
+It is accepted both on the table, beside `description`, and inside `items`, beside
+`properties` — those are different levels, and "next to `properties`" is ambiguous between
+them. The inner one wins when both are present.
+
+It **orders** columns; it does not select them. A partial `order` places the columns it names
+and leaves the rest behind them, and a name no column answers to is ignored, so a stale
+schema cannot add a phantom column.
+
+A schema's `properties` order is **not** used for ordering. Nothing in JSON Schema makes that
+order meaningful and backends often emit it alphabetically, so letting it reorder the columns
+produced tables that disagreed with their own Excel download. `properties` still supplies each
+column's metadata — title, type, `required`, `choices`, visibility — it just no longer decides
+where the column goes.
+
+A column present in the data but absent from the schema is shown: the export keeps it, so the
+table has to as well. A column the schema declares but no row carries is not.
+
+The single implementation is `resolveTableColumnOrder` in `src/utils/tableColumnOrder.ts`,
+used by the instance/solution tables, the frontend-automation tables, the Excel builders
+(main thread, worker and csv-zip) and the empty-sheet path. The module is dependency-free
+because the Excel Web Worker imports it.
+
+One exception, by design: `exportTableToExcel` — downloading one on-screen table — passes
+`preferSchemaColumnOrder: true` with a schema synthesised from the table's visible columns.
+There the order *is* the display order, which is itself produced by the rule above.
+
 ### Custom file processors
 
 The application supports custom file processing for instances based on filename prefixes. This feature is useful when you need to handle files with special formats or structures before merging them with other files to create an instance.
@@ -1354,16 +1445,57 @@ When hash mode is enabled, all routes will include a hash (#) in the URL (e.g., 
 
 ## Internationalization configuration
 
-The application supports multiple languages (English, Spanish, and French). You can configure the default language:
+Languages are defined and translated **only in the core** (and in enterprise for its modules). A project can only choose which of them are shown; it cannot add languages nor change core translations.
+
+Core languages (registry `CORE_LANGUAGES` in `src/plugins/languages.ts`):
+
+- `'en'` - English (fallback language)
+- `'es'` - Spanish
+- `'fr'` - French
+- `'pt'` - Portuguese (Portugal)
+
+### Visible languages
+
+In `src/app/config.ts`, `languages` sets the languages shown in the Settings selector, in that order:
+
+```typescript
+/**
+ * Languages shown in the Settings selector (must exist in the core).
+ * Empty or undefined: all core languages are shown.
+ */
+languages: ['en', 'es'] as string[],
+```
+
+- Empty or undefined: all core languages are shown.
+- Codes that do not exist in the core are ignored, with a console warning.
+
+### Default language
 
 **Environment variable**: `VITE_APP_DEFAULT_LANGUAGE=es`
 **JSON**: `"defaultLanguage": "es"`
 
-Available language codes:
+The default language is used if it is among the visible languages. Otherwise, the first language of `languages` is used (or `en` if the list is empty) and a console warning is shown.
 
-- `'en'` - English
-- `'es'` - Spanish
-- `'fr'` - French
+### Project texts
+
+The project's own keys are translated in `src/app/plugins/locales/<code>.ts` (one optional file per core language). These files never contain core translations:
+
+- A file whose code is not a core language is ignored, with a console warning.
+- A key that already exists in the core is discarded, with a console warning. Only new keys are added.
+
+> **Breaking change:** in previous versions, a project could override core texts from these files. Those overrides are now ignored; move any such text to a key of your own.
+
+Enterprise module texts are merged afterwards (`applyPremiumLocales`), and project keys still take precedence over them.
+
+### Adding a new language to the core
+
+Example for German:
+
+1. **Core:** create `src/plugins/locales/de.ts` with all the keys, including `$vuetify`. Add `{ code: 'de', labelKey: 'settings.german', dateLocale: 'de-DE', messages: de }` to `CORE_LANGUAGES` and the `settings.german` key to every language.
+2. **Enterprise:** add the `de` translations to the `locales` of each module that has texts.
+3. **Project:** add `'de'` to `languages` in `config.ts` and create `src/app/plugins/locales/de.ts` with the project's own keys.
+
+A new language requires a new core release (and an enterprise release, if applicable).
 
 ## Values.json path configuration
 

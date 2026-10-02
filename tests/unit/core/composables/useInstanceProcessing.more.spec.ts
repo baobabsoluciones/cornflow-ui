@@ -220,6 +220,24 @@ describe('useInstanceProcessing - state & computeds', () => {
     })
   })
 
+  test('narrows the supported extensions to what the deployment configured', () => {
+    // A deployment that only ever receives Excel should not be offering json and csv in the
+    // drop zone: the upload would be accepted and then fail further in.
+    storeState = makeStore({ parameters: { instanceFileFormats: ['xlsx'] } })
+
+    const { supportedExtensions } = useInstanceProcessing()
+
+    expect(supportedExtensions.value).toEqual(['xlsx'])
+  })
+
+  test('keeps the default extensions when the deployment configures none', () => {
+    storeState = makeStore({ parameters: { instanceFileFormats: [] } })
+
+    const { supportedExtensions } = useInstanceProcessing()
+
+    expect(supportedExtensions.value).toEqual(['json', 'xlsx', 'csv'])
+  })
+
   test('resetState clears errors, instances and processing flag', async () => {
     const { state, resetState, processFiles } = useInstanceProcessing()
     // Provoke an error to populate state.errors

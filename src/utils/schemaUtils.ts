@@ -2,6 +2,7 @@
 import type { MasterTableCompareStrategy } from '@/app/config'
 import { resolveTitleWithLocale } from './i18nUtils'
 import { isFrontendRowId } from './tableFilterUtils'
+import { readDeclaredColumnOrder } from './tableColumnOrder'
 
 // ─── Shared helpers ──────────────────────────────────────────────────────────
 
@@ -535,6 +536,8 @@ export function isParameterTableAutomationConfig(tableConfig: any): boolean {
 export function getListResponseRowProperties(tableConfig: any): {
   properties: Record<string, any>
   required: string[]
+  /** The schema's declared column order, when it declares one. */
+  order: string[] | null
 } | null {
   const rs = tableConfig?.get_list?.response_schema
   if (!rs) return null
@@ -542,12 +545,14 @@ export function getListResponseRowProperties(tableConfig: any): {
     return {
       properties: rs.items.properties,
       required: Array.isArray(rs.items.required) ? rs.items.required : [],
+      order: readDeclaredColumnOrder(rs.items, rs),
     }
   }
   if (isParameterTableSchema(rs) && rs.properties) {
     return {
       properties: rs.properties,
       required: Array.isArray(rs.required) ? rs.required : [],
+      order: readDeclaredColumnOrder(rs),
     }
   }
   return null
@@ -1426,6 +1431,11 @@ export function transformJsonSchemaToAutomationFormat(
             response_schema: {
               type: 'array',
               items: convertJsonSchemaItemToSchema(tableSchema.items),
+              // `order` written beside `description`, on the table rather than on its
+              // items, would otherwise be lost here: the converter only ever sees `items`.
+              ...(readDeclaredColumnOrder(tableSchema)
+                ? { order: readDeclaredColumnOrder(tableSchema) }
+                : {}),
             },
           },
         }
@@ -1480,7 +1490,13 @@ export function transformJsonSchemaToAutomationFormat(
             url: '',
             http_method: 'GET',
             request_schema: null,
-            response_schema: { type: 'array', items: itemSchema },
+            response_schema: {
+              type: 'array',
+              items: itemSchema,
+              ...(readDeclaredColumnOrder(checkSchema)
+                ? { order: readDeclaredColumnOrder(checkSchema) }
+                : {}),
+            },
           },
         }
       },
@@ -1521,6 +1537,9 @@ function convertObjectTablePropertiesToSchema(tableSchema: any): {
   return {
     properties,
     required: requiredRaw.filter((k: string) => properties[k] != null),
+    ...(readDeclaredColumnOrder(tableSchema)
+      ? { order: readDeclaredColumnOrder(tableSchema) }
+      : {}),
   }
 }
 
@@ -1569,6 +1588,11 @@ function convertJsonSchemaItemToSchema(itemSchema: any): any {
     type: 'object',
     properties,
     required: requiredRaw.filter((k: string) => properties[k] != null),
+    // The backend's declared column order has to survive the conversion, or the tables fall
+    // back to guessing while the raw schema knew the answer all along.
+    ...(readDeclaredColumnOrder(itemSchema)
+      ? { order: readDeclaredColumnOrder(itemSchema) }
+      : {}),
     additionalProperties: itemSchema.additionalProperties ?? false,
     title: itemSchema.title || 'Item',
     _originalTitle: itemSchema.title || 'Item',

@@ -11,6 +11,7 @@
  * master-data comparison/diff logic) and `resolveTitleWithLocale` (`@cornflow-ui/core/utils/i18nUtils`).
  */
 import { resolveTitleWithLocale } from '@cornflow-ui/core/utils/i18nUtils'
+import { readDeclaredColumnOrder } from '@cornflow-ui/core/utils/tableColumnOrder'
 import {
   formatTitle,
   hasValidChoices,
@@ -452,6 +453,9 @@ export function convertDefinitionToSchema(
       type: 'object',
       properties: {},
       required: definition.required || [],
+      ...(readDeclaredColumnOrder(definition)
+        ? { order: readDeclaredColumnOrder(definition) }
+        : {}),
     }
   }
   const requiredSet = new Set(
@@ -499,6 +503,11 @@ export function convertDefinitionToSchema(
     type: 'object',
     properties,
     required: definition.required || [],
+    // The backend writes `order` beside `required`; dropping it here would leave the
+    // frontend-automation tables guessing while the swagger knew the answer.
+    ...(readDeclaredColumnOrder(definition)
+      ? { order: readDeclaredColumnOrder(definition) }
+      : {}),
     additionalProperties: false,
     title: resolveTitleWithLocale(definition.title, locale, definition.title),
     description: resolveTitleWithLocale(

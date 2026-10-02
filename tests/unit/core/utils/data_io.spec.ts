@@ -662,6 +662,39 @@ describe('data_io utilities', () => {
       expect(headerRow).toEqual(['name', 'age'])
     })
 
+    test("the schema's declared order outranks the row data order", async () => {
+      const worksheet = {
+        addRows: vi.fn(),
+        getColumn: vi.fn().mockReturnValue({ width: 0 }),
+        getCell: vi.fn().mockReturnValue({ fill: {}, font: {}, border: {} }),
+      }
+      const mockWorkbook = { addWorksheet: vi.fn().mockReturnValue(worksheet) }
+
+      // `order` is the one list a backend writes to order columns, so it wins over the
+      // data — and the table on screen resolves it the same way.
+      const data = { TestTable: [{ name: 'John', age: 25, city: 'X' }] }
+      const schema = {
+        properties: {
+          TestTable: {
+            type: 'array',
+            items: {
+              order: ['age', 'name'],
+              properties: {
+                age: { type: 'number', visible: true },
+                name: { type: 'string', visible: true },
+                city: { type: 'string', visible: true },
+              },
+            },
+          },
+        },
+      }
+
+      await schemaDataToTable(mockWorkbook, data, schema)
+
+      // `city` is not named by `order`, so it keeps its place behind the ordered ones.
+      expect(worksheet.addRows.mock.calls[0][0][0]).toEqual(['age', 'name', 'city'])
+    })
+
     test('column order follows the schema property order when preferSchemaColumnOrder is opted in', async () => {
       const worksheet = {
         addRows: vi.fn(),

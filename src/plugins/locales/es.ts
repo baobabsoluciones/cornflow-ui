@@ -1,6 +1,14 @@
+// Vuetify's own component strings are the base for `$vuetify`: the library asks for some
+// twenty-odd message groups ($vuetify.fileInput.counterSize, $vuetify.input.clear, the date
+// picker, the stepper...) and the vue-i18n adapter renders the raw key for every one it does
+// not find. Only the handful overridden below differ from what Vuetify ships.
+import { es as vuetifyLocale } from 'vuetify/locale'
+
 export default {
   $vuetify: {
+    ...vuetifyLocale,
     dataFooter: {
+      ...vuetifyLocale.dataFooter,
       itemsPerPageText: 'Elementos por página:',
       itemsPerPageAll: 'Todos',
       pageText: '{0}-{1} de {2}',
@@ -10,8 +18,10 @@ export default {
       lastPage: 'Última página',
     },
     dataTable: {
+      ...vuetifyLocale.dataTable,
       itemsPerPageText: 'Elementos por página:',
       ariaLabel: {
+        ...vuetifyLocale.dataTable.ariaLabel,
         sortDescending: 'Orden descendente.',
         sortAscending: 'Orden ascendente.',
         sortNone: 'Sin ordenar.',
@@ -21,7 +31,9 @@ export default {
       sortBy: 'Ordenar por',
     },
     pagination: {
+      ...vuetifyLocale.pagination,
       ariaLabel: {
+        ...vuetifyLocale.pagination.ariaLabel,
         root: 'Navegación de paginación',
         currentPage: 'Página {0}, página actual',
         page: 'Ir a la página {0}',
@@ -516,6 +528,7 @@ export default {
     english: 'Inglés',
     spanish: 'Español',
     french: 'Francés',
+    portuguese: 'Portugués',
     selectLanguage: 'Selecciona el idioma principal de la aplicación',
     theme: 'Tema',
     light: 'Claro',

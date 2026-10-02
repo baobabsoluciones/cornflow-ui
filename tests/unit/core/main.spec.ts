@@ -66,6 +66,7 @@ const mockAppConfig = {
   getDashboardRoutes: vi.fn().mockReturnValue([]),
   getInstanceDashboardRoutes: vi.fn().mockReturnValue([]),
   getAppSectionRoutes: vi.fn().mockReturnValue([]),
+  getLanguages: vi.fn().mockReturnValue([] as string[]),
 }
 
 vi.mock('@/app/config', () => ({
@@ -131,6 +132,7 @@ describe('Main Module Integration', () => {
     mockCreatePinia.mockReturnValue(mockPinia)
     mockConfig.initConfig.mockResolvedValue(undefined)
     mockConfig.defaultLanguage = 'en'
+    mockAppConfig.getLanguages.mockReturnValue([])
     mockAppConfig.getCore.mockReturnValue({
       parameters: {
         defaultLanguage: 'en'
@@ -201,24 +203,68 @@ describe('Main Module Integration', () => {
     expect(mockSetDefaultLanguage).toHaveBeenCalledWith('fr')
   })
 
-  test('should not set language for invalid language', async () => {
+  test('should fall back to the first visible language (with a warning) for an invalid language', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     mockConfig.defaultLanguage = 'invalid'
 
     const { initApp } = await import('@cornflow-ui/core/main')
-    
+
     await initApp()
 
-    expect(mockSetDefaultLanguage).not.toHaveBeenCalled()
+    expect(mockSetDefaultLanguage).toHaveBeenCalledWith('en')
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('"invalid"'))
   })
 
-  test('should not set language when undefined', async () => {
+  test('should use the first visible language without warning when undefined', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     mockConfig.defaultLanguage = undefined
 
     const { initApp } = await import('@cornflow-ui/core/main')
-    
+
     await initApp()
 
-    expect(mockSetDefaultLanguage).not.toHaveBeenCalled()
+    expect(mockSetDefaultLanguage).toHaveBeenCalledWith('en')
+    expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('[i18n]'))
+  })
+
+  test('should use defaultLanguage when it is among config.languages', async () => {
+    mockAppConfig.getLanguages.mockReturnValue(['es', 'fr'])
+    mockConfig.defaultLanguage = 'fr'
+
+    const { initApp } = await import('@cornflow-ui/core/main')
+
+    await initApp()
+
+    expect(mockSetDefaultLanguage).toHaveBeenCalledWith('fr')
+  })
+
+  test('should use the first of config.languages (with a warning) when defaultLanguage is not visible', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    mockAppConfig.getLanguages.mockReturnValue(['es', 'fr'])
+    mockConfig.defaultLanguage = 'en'
+
+    const { initApp } = await import('@cornflow-ui/core/main')
+
+    await initApp()
+
+    expect(mockSetDefaultLanguage).toHaveBeenCalledWith('es')
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('"en"'))
+  })
+
+  test('should work with an older app config without getLanguages', async () => {
+    const getLanguages = mockAppConfig.getLanguages
+    delete (mockAppConfig as Partial<typeof mockAppConfig>).getLanguages
+    mockConfig.defaultLanguage = 'es'
+
+    try {
+      const { initApp } = await import('@cornflow-ui/core/main')
+
+      await initApp()
+
+      expect(mockSetDefaultLanguage).toHaveBeenCalledWith('es')
+    } finally {
+      mockAppConfig.getLanguages = getLanguages
+    }
   })
 
   test('should handle config initialization error', async () => {

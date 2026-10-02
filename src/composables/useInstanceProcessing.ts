@@ -7,6 +7,7 @@ import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { getPremiumEtlBackend } from '@cornflow-ui/core/plugins/extensions'
+import { useFilePreProcessing } from '@cornflow-ui/core/composables/useFilePreProcessing'
 import { useFileProcessors } from '@/app/composables/useFileProcessors'
 import { Instance } from '@/app/models/Instance'
 import {
@@ -17,6 +18,7 @@ import type { ErrorObject } from 'ajv'
 import {
   FILE_EXTENSIONS,
   SUPPORTED_DATA_EXTENSIONS,
+  resolveAllowedExtensions,
   isExcelExtension,
   getFileExtension,
 } from '@cornflow-ui/core/utils/fileConstants'
@@ -79,6 +81,9 @@ export function useInstanceProcessing() {
   // The core no longer imports `useEtlStore` — it consumes the backend through the interface.
   const etlBackend = getPremiumEtlBackend()
   const { processFileByPrefix, needsSpecialProcessing } = useFileProcessors()
+  // Shared with the master-data uploads: a processed file has to look the same whichever
+  // endpoint it is headed for.
+  const { preProcessFiles: preProcessFilesForEtl } = useFilePreProcessing()
 
   // State
   const state = ref<ProcessingState>({
@@ -88,7 +93,16 @@ export function useInstanceProcessing() {
   })
 
   // Computed
-  const supportedExtensions = computed(() => SUPPORTED_DATA_EXTENSIONS)
+  // What the instance drop zone accepts. A deployment can narrow it through
+  // `parameters.instanceFileFormats`: a project that only ever receives Excel gains nothing
+  // from offering json and csv, beyond an upload that cannot work. Left unset, this is what
+  // it has always been.
+  const supportedExtensions = computed(() =>
+    resolveAllowedExtensions(
+      store.appConfig?.parameters?.instanceFileFormats,
+      SUPPORTED_DATA_EXTENSIONS,
+    ),
+  )
   const canProcessFiles = computed(() => !state.value.isProcessing)
 
   /**
@@ -224,23 +238,6 @@ export function useInstanceProcessing() {
     }
   }
 
-  /** Serializes an array of row objects to a CSV string. */
-  const serializeToCSV = (rows: Record<string, any>[]): string => {
-    if (!rows || rows.length === 0) return ''
-    const headers = Object.keys(rows[0])
-    const escape = (v: any): string => {
-      const s = v === null || v === undefined ? '' : String(v)
-      return s.includes(',') || s.includes('"') || s.includes('\n')
-        ? `"${s.replaceAll('"', '""')}"`
-        : s
-    }
-    const lines = [
-      headers.join(','),
-      ...rows.map((row) => headers.map((h) => escape(row[h])).join(',')),
-    ]
-    return lines.join('\n')
-  }
-
   /**
    * Resolves the schema root used when serialising instance data to xlsx for the
    * ETL endpoint.
@@ -298,64 +295,6 @@ export function useInstanceProcessing() {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     })
     return new File([blob], filename, { type: blob.type })
-  }
-
-  /**
-   * Pre-processes a single file through the configured fileProcessors and returns a new File
-   * with the processed data. xlsx/csv files keep their extension; json/other are re-serialised
-   * to xlsx so the ETL accepts them. Returns the original file if no processor matches.
-   *
-   * Note: type coercion against the instance schema happens inside processFileByPrefix
-   * (see useFileProcessors.createInstance), so the data returned here is already coerced.
-   */
-  const preProcessSingleFileForEtl = async (file: File): Promise<File> => {
-    if (!needsSpecialProcessing(file.name)) return file
-
-    const extension = getFileExtension(file.name)
-    const fileContent = await readFile(file, extension)
-
-    const processedInstance = await processFileByPrefix(
-      file,
-      fileContent,
-      extension,
-      store.getSchemaConfig,
-    )
-
-    if (!processedInstance) return file
-
-    const data = processedInstance.data as Record<string, any>
-
-    if (extension === FILE_EXTENSIONS.CSV) {
-      const tableName = file.name.replace(/\.[^.]+$/, '')
-      const rows: Record<string, any>[] =
-        data[tableName] ?? Object.values(data)[0] ?? []
-      const csvContent = serializeToCSV(rows)
-      const blob = new Blob([csvContent], { type: 'text/csv' })
-      return new File([blob], file.name, { type: 'text/csv' })
-    }
-
-    const outputName = isExcelExtension(extension)
-      ? file.name
-      : file.name.replace(/\.[^.]+$/, '.xlsx')
-    return await buildInstanceXlsxFile(data, outputName)
-  }
-
-  /**
-   * Pre-processes each file individually through the configured fileProcessors and returns
-   * the list of processed files (one per original file, same order).
-   * Returns null if no fileProcessors are configured.
-   */
-  const preProcessFilesForEtl = async (files: File[]): Promise<File[] | null> => {
-    const fileProcessors = store.appConfig.parameters?.fileProcessors || {}
-    if (!fileProcessors || Object.keys(fileProcessors).length === 0) return null
-
-    const result: File[] = []
-    for (const file of files) {
-      const processed = await preProcessSingleFileForEtl(file)
-      result.push(processed)
-    }
-
-    return result
   }
 
   /**

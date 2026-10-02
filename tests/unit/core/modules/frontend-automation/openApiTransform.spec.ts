@@ -21,6 +21,36 @@ describe('convertDefinitionToSchema', () => {
     expect(result.properties).toEqual({})
     expect(result.required).toEqual(['x'])
   })
+  test("carries the backend's declared column order through", () => {
+    // `order` is written beside `required`, in the same shape the backend sends for
+    // c_recepciones_camiones: a logical order, while `required` happens to be alphabetical.
+    const def = {
+      required: ['fin_horario', 'inicio_horario', 'mes', 'numero_camiones'],
+      order: ['id', 'mes', 'numero_camiones', 'inicio_horario', 'fin_horario'],
+      properties: {
+        id: { type: 'integer' },
+        mes: { type: 'string' },
+        numero_camiones: { type: 'integer' },
+        inicio_horario: { type: 'string', format: 'time' },
+        fin_horario: { type: 'string', format: 'time' },
+      },
+    }
+    expect(convertDefinitionToSchema(def).order).toEqual([
+      'id',
+      'mes',
+      'numero_camiones',
+      'inicio_horario',
+      'fin_horario',
+    ])
+  })
+
+  test('declares no order when the backend sends none', () => {
+    const plain = convertDefinitionToSchema({ properties: { a: { type: 'string' } } })
+    expect(plain.order).toBeUndefined()
+    // Not even on the no-properties path.
+    expect(convertDefinitionToSchema({ required: ['x'] }).order).toBeUndefined()
+  })
+
   test('converts properties with formats, choices, columns_to_join, join_from', () => {
     const def = {
       title: 'My Table',

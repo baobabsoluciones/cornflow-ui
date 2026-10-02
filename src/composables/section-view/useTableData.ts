@@ -49,6 +49,8 @@ import {
   parseCsvContent as parseCsvWithDelimiter,
 } from '@cornflow-ui/core/utils/csvUtils'
 import appConfig from '@/app/config'
+import { useFilePreProcessing } from '@cornflow-ui/core/composables/useFilePreProcessing'
+import { resolveTableColumnOrder } from '@cornflow-ui/core/utils/tableColumnOrder'
 
 /** Plain (non-object) cell value produced when flattening spreadsheet cells. */
 type PlainCellValue = string | number | boolean
@@ -160,6 +162,9 @@ export function useTableData(
   const generalStore = useGeneralStore()
   // Recalculation controller injected by the premium module (§3.7); inert if no module is present.
   const recalculation = useRecalculationController()
+  // A configured processor has to run before the file is sent or parsed; without it the
+  // raw shape reaches the backend on the async route and the standard reader on the other.
+  const { preProcessFile } = useFilePreProcessing()
 
   /** After master-data bulk/overwrite: POST `/update-plan-data/` then pending replan only if plan is outdated. */
   const maybeRequestMasterRecalculationPending = async () => {
@@ -454,16 +459,33 @@ export function useTableData(
 
     const properties = rowSchema.properties
     const requiredList = rowSchema.required
-    const dataHeaders = Object.entries(properties)
-      .filter(([key]) => key !== 'id') // Exclude id column from display
-      .filter(([, prop]) => isParameterPropertySchemaVisible(prop))
-      .map(([key, prop]: [string, any]) => ({
-        ...buildFieldDescriptorFromProperty(key, prop, requiredList),
-        value: key,
-        sortable: true,
-        filterable: true,
-        valueNone: prop.valueNone || undefined,
-      }))
+    // Same rule as the instance/solution tables and the Excel export: rows decide the
+    // order, `required` decides it when there are none. The schema still supplies every
+    // column's metadata.
+    const columnOrder = resolveTableColumnOrder(
+      items.value,
+      properties,
+      requiredList,
+      rowSchema.order,
+    ).filter((key) => key !== 'id')
+
+    const dataHeaders = columnOrder
+      .filter((key) => {
+        const prop = (properties as Record<string, any>)[key]
+        // A column present in the data but absent from the config is still shown — the
+        // export keeps it, so hiding it here would make the two disagree again.
+        return !prop || isParameterPropertySchemaVisible(prop)
+      })
+      .map((key) => {
+        const prop = (properties as Record<string, any>)[key] ?? { type: 'string' }
+        return {
+          ...buildFieldDescriptorFromProperty(key, prop, requiredList),
+          value: key,
+          sortable: true,
+          filterable: true,
+          valueNone: prop.valueNone || undefined,
+        }
+      })
 
     // Add selection column if selection is enabled
     const enableSelection =
@@ -2642,7 +2664,7 @@ export function useTableData(
       let mappedData: any[] | null = null
       try {
         // Get the first file (modal is set to multiple=false)
-        const file = uploadData.files[0]
+        const file = await preProcessFile(uploadData.files[0])
 
         // Async path: when the table declares the async counterpart of the chosen operation,
         // send the raw (unprocessed) file and poll for status — no client-side parsing.

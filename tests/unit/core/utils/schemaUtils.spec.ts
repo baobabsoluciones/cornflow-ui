@@ -352,6 +352,7 @@ describe('getListResponseRowProperties', () => {
     expect(getListResponseRowProperties(cfg)).toEqual({
       properties: { a: {} },
       required: ['a'],
+      order: null,
     })
   })
   test('returns object props for parameter tables', () => {
@@ -361,7 +362,31 @@ describe('getListResponseRowProperties', () => {
     expect(getListResponseRowProperties(cfg)).toEqual({
       properties: { a: {} },
       required: [],
+      order: null,
     })
+  })
+  test("surfaces the schema's declared column order", () => {
+    const onItems = {
+      get_list: {
+        response_schema: {
+          type: 'array',
+          items: { properties: { a: {}, b: {} }, required: [], order: ['b', 'a'] },
+        },
+      },
+    }
+    expect(getListResponseRowProperties(onItems)!.order).toEqual(['b', 'a'])
+
+    // Also when written one level up, beside `description`.
+    const onTable = {
+      get_list: {
+        response_schema: {
+          type: 'array',
+          order: ['b', 'a'],
+          items: { properties: { a: {}, b: {} }, required: [] },
+        },
+      },
+    }
+    expect(getListResponseRowProperties(onTable)!.order).toEqual(['b', 'a'])
   })
 })
 
