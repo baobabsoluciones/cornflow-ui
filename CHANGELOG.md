@@ -1,5 +1,248 @@
 # Changelog
 
+## [3.4.0] - 02-10-2026
+
+### Added
+- **Configurable instance upload file formats**  
+  - Added `instanceFileFormats` to the core parameters: a deployment that only ever receives Excel can narrow the upload drop zone instead of advertising `json` and `csv` it cannot use
+  - Unreadable extensions are dropped with a console warning, and a list that ends up empty falls back to the default, so a typo narrows nothing rather than blocking every upload
+  - `xls`, `xlsm` and `xlsb` can be opted into; the parser already read them
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #227
+
+- **Schema-declared column order**  
+  - Tables and exports honour an `order` list written by the backend beside `required`, accepted both on the table and inside `items`
+  - It orders columns without selecting them: a partial `order` places what it names and leaves the rest behind it
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #228
+
+- **Project languages driven by configuration**  
+  - The visible languages now come from `config.languages` instead of being fixed
+  *Contributors:* [@sergiodelatorre](#)  
+  *Commit ID:* #225
+
+### Fixed
+- **One column-order rule for every table and every export**  
+  - The interface and the Excel download disagreed about column order, and the frontend-automation tables followed a third path of their own
+  - All of them now share one rule: with rows the data decides, without rows `required` does, and `order` outranks both
+  - Empty tables keep every column instead of only the mandatory ones, and tables with no `required` are no longer dropped from the workbook
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #228
+
+- **File processors on master-data uploads**  
+  - The configured `fileProcessors` only ran on the instance-load path, so "edit all master tables" and the per-table bulk upload sent the raw file and the backend rejected it
+  - Extracted to a shared `useFilePreProcessing` so all three upload routes go through it
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #226
+
+- **`$vuetify` messages rendered as raw keys**  
+  - The hand-written `$vuetify` block covered 5 of the ~26 message groups Vuetify asks for, and the vue-i18n adapter prints the raw key for anything missing, so `$vuetify.fileInput.counterSize` appeared verbatim in the bulk-upload modal
+  - Vuetify's own locale is now the base, with the project translations on top
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #226
+
+### Changed
+- **Version in `package-lock.json`**  
+  - The lockfile had been left at 3.2.6 and is now kept in step with `package.json`
+
+## [3.3.0] - 30-09-2026
+
+### Added
+- **Pre-ETL parameters in the load-instance step**  
+  - Config parameters marked `pre_etl: true` in the JSON schema are asked for alongside the instance upload and sent to the ETL, the data checks and the solve
+  - Shown as a grid in the left column of the same step, two fields per row
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #221
+
+### Fixed
+- **UTC hours**  
+  - Corrected the hour handling that shifted times in the execution views
+  *Contributors:* [@david-hidalgo-baobab](#)  
+  *Commit ID:* #220
+
+## [3.2.9] - 28-09-2026
+
+### Added
+- **Hide the solver column from the execution history**  
+  - `showSolver` in `showExtraProjectExecutionColumns`; unlike the rest it defaults to shown, so deployments with a single solver can drop a column that carries no information
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #218
+
+### Fixed
+- **`canEditAllMasterTables` checked the wrong flag**  
+  *Contributors:* [@sergiodelatorre](#)  
+  *Commit ID:* #219
+
+## [3.2.8] - 22-09-2026
+
+### Fixed
+- **Solution Excel column order**  
+  - `getArrayTypeExportHeaders` was letting the schema's `properties` order override the data's own, a regression from #186; the data order is the default again and the schema order became opt-in for the one call site that builds its schema from the configured columns
+  - Fixed in both copies of the function, the main thread and the Excel Web Worker
+  *Contributors:* [@david-hidalgo-baobab](#)  
+  *Commit ID:* #215
+
+## [3.2.7] - 16-09-2026
+
+### Changed
+- **Historical components migrated to `<script setup>`**  
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #213
+
+## [3.2.6] - 15-09-2026
+
+### Fixed
+- **Dependabot alerts**  
+  - Resolved the open dependency vulnerability alerts
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #211
+
+## [3.2.5] - 26-08-2026
+
+### Added
+- **Unit specs recovered from an enterprise branch**  
+  - 11 specs that had been stranded outside the core
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #204
+
+### Changed
+- **CI runners on Node 24**  
+  - Moved the runners and recorded the real cause of the Sonar 413
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #206
+
+### Fixed
+- **Frontend automation: a null `schemas` means no schema restriction**  
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #205
+
+- **Dependency vulnerabilities**  
+  - `npm audit` clean
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #201
+
+### Removed
+- **Hardening branch reverted**  
+  - #196 was reverted in #203
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #203
+
+## [3.2.4] - 10-08-2026
+
+### Added
+- **End-to-end tests**  
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #198
+
+## [3.2.3] - 06-08-2026
+
+### Fixed
+- **Router built after config init**  
+  - `useHashMode` was read before the config had resolved, so it was ignored
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #199
+
+## [3.2.2] - 05-08-2026
+
+### Fixed
+- **Consumer app locales loaded via the `@/` alias**  
+  - A relative path broke the lookup once the core was consumed as a package
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #197
+
+## [3.2.1] - 15-07-2026
+
+### Changed
+- **Spanish code comments translated to English**  
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #193
+
+### Fixed
+- **Create-execution view scrolls to the wizard buttons**  
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #194
+
+## [3.2.0] - 09-07-2026
+
+### Added
+- **Frontend automation moved into the core**  
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #188
+
+- **Execution polling hardening**  
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #187
+
+### Fixed
+- **Core table: deferred height timer cancelled and DOM access guarded**  
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #191
+
+- **ReDoS in the email regex (S5852)**  
+  - Bounded the quantifiers
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #190
+
+- **CI inherited from the carve**  
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #189
+
+## [3.1.0] - 07-07-2026
+
+### Added
+- **Frontend-automation module shipped in the core**  
+  *Contributors:* [@HelenaCA](#)
+
+### Changed
+- **Core re-baseline v3**  
+  - The baseline the whole 3.x line builds on
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #186
+
+## [3.0.3] - 01-07-2026
+
+### Added
+- **Edit a user profile from the roles dialog**  
+  *Contributors:* [@HelenaCA](#)
+
+### Changed
+- **Dependency bumps**  
+  - vue 3.5.39, vue-i18n 11.4.6, dompurify, prettier, @types/node, @aws-amplify/core
+  *Contributors:* [@HelenaCA](#)
+
+### Fixed
+- **Large table exports routed through the worker/zip path**  
+  - Avoids freezing the tab on datasets that would otherwise exhaust memory
+  *Contributors:* [@HelenaCA](#)
+
+## [3.0.2] - 30-06-2026
+
+### Fixed
+- **TypeScript 6.0 and vue-tsc errors**  
+  - tsconfig deprecations and pre-existing type debt
+  *Contributors:* [@HelenaCA](#)
+
+## [3.0.1] - 29-06-2026
+
+### Changed
+- **The core is consumable as a package** (breaking)  
+  - Self-referencing imports and an explicit exports map, so a client can depend on `@cornflow-ui/core` instead of cloning the codebase
+  *Contributors:* [@HelenaCA](#)
+
+## [3.0.0] - 29-06-2026
+
+### Changed
+- **Re-baselined as `@cornflow-ui/core`** (breaking)  
+  - The repository becomes the shared core package the client frontends consume, rather than an application in its own right
+  *Contributors:* [@HelenaCA](#)
+
+### Added
+- **Frontend-automation filters, sections and automatic dashboards**  
+  - Filtering in frontend automation (#182), new frontend-automation and app-specific sections (#180), improved automatic dashboards (#179), instance setting (#177) and search input operation (#178)
+  *Contributors:* [@HelenaCA](#)
+
+> Versions 2.x were never released: the project went from the 1.x application to the 3.x core package.
+
 ## [1.3.2] - 24-09-2025
 
 ### Added
