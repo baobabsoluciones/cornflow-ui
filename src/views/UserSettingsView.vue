@@ -121,7 +121,10 @@ import { inject } from 'vue'
 import config from '@cornflow-ui/core/config'
 import appConfig from '@/app/config'
 import { changeLanguage } from '@cornflow-ui/core/plugins/i18n'
-import { resolveVisibleLanguages } from '@cornflow-ui/core/plugins/languages'
+import {
+  resolveVisibleLanguages,
+  readConfiguredLanguages,
+} from '@cornflow-ui/core/plugins/languages'
 
 export default {
   components: {},
@@ -186,7 +189,7 @@ export default {
     // Core languages the project chose to show (`languages` in app config), in that order.
     // Invalid codes are reported in the console each time the selector is recomputed.
     languages() {
-      return resolveVisibleLanguages(appConfig.getLanguages?.() ?? []).map(
+      return resolveVisibleLanguages(readConfiguredLanguages(appConfig)).map(
         (l) => ({ title: this.$t(l.labelKey), value: l.code }),
       )
     },
