@@ -59,8 +59,7 @@ export { unwrapEtlResponse } from '@cornflow-ui/core/utils/etlResponse'
 /**
  * Normalizes the `details` of an ETL backend error to the shape the error list and the
  * download expect. Entries without a `message` are dropped; the rest get the fields they
- * lack. Both the check list (`{ message, check, level, ... }`) and the older flat list
- * (`[{ message }]`) are accepted.
+ * lack.
  */
 function normalizeEtlErrorDetails(details: unknown): EtlCheckError[] {
   if (!Array.isArray(details)) return []
@@ -79,7 +78,10 @@ function normalizeEtlErrorDetails(details: unknown): EtlCheckError[] {
     }))
 }
 
-/** The `checks` of the ETL error body, when the implementation passed the body on. */
+/**
+ * The `checks` of the ETL error body, when the implementation passed the body on. Their
+ * presence is what tells a pre-check report from any other ETL failure.
+ */
 function etlChecksFromBody(body: unknown): EtlChecksSummary | null {
   const checks = (body as Record<string, any> | null | undefined)?.checks
   return checks && typeof checks === 'object' && !Array.isArray(checks)
@@ -383,17 +385,19 @@ export function useInstanceProcessing() {
 
   /**
    * Build a standard error result from an ETL backend failure.
-   * When the error carries the failed checks (`details`), they become `rawErrors`, listed
-   * by check like schema errors and downloadable. Otherwise it prefers the backend's own
-   * message, falling back to the generic "unexpected error" i18n string. Shared by
-   * processWithEtlBackend and processFromDb to keep their catch blocks identical.
+   * When the body is the pre-check report (it has `checks`) and the error carries the
+   * failed checks (`details`), they become `rawErrors`, listed by check like schema errors
+   * and downloadable. Any other failure keeps showing the backend's own message, falling
+   * back to the generic "unexpected error" i18n string: other ETL backends may put in
+   * `message` what their `errors` do not say, and listing only the errors would hide it.
+   * Shared by processWithEtlBackend and processFromDb to keep their catch blocks identical.
    */
   const buildEtlBackendErrorResult = (
     error: EtlBackendError | any,
   ): ProcessingResult => {
-    const checkErrors = normalizeEtlErrorDetails(error?.details)
+    const etlChecks = etlChecksFromBody(error?.body)
+    const checkErrors = etlChecks ? normalizeEtlErrorDetails(error?.details) : []
     if (checkErrors.length > 0) {
-      const etlChecks = etlChecksFromBody(error?.body)
       return {
         ...createErrorResult(
           formatEtlCheckErrors(checkErrors, etlChecks, t),

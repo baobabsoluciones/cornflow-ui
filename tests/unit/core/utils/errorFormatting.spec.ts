@@ -333,7 +333,7 @@ describe('formatEtlCheckErrors', () => {
     expect(html.indexOf('loose')).toBeGreaterThan(html.indexOf('grouped'))
   })
 
-  it('renders the older flat list as a simple list', () => {
+  it('renders errors with no checks as a simple list', () => {
     const html = formatEtlCheckErrors(
       [etlError('one'), etlError('two')],
       null,

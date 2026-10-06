@@ -152,9 +152,10 @@ export interface TableEditStrategy {
 
 /**
  * What an `EtlBackendOperations` implementation throws when the backend answers with a
- * status other than 2xx. `message` is the backend's own message; without `details` (network
- * errors, 5xx) the core shows just that. With them, the core lists each error, grouped by
- * `check`, and offers them for download.
+ * status other than 2xx. `message` is the backend's own message, and by default the core
+ * shows just that. Only when `body` is a pre-check report (it has `checks`) and `details`
+ * holds the failed checks does the core list each error instead, grouped by `check`, and
+ * offer them for download.
  */
 export interface EtlBackendError extends Error {
   /**
@@ -165,7 +166,8 @@ export interface EtlBackendError extends Error {
   details?: Array<Record<string, any>>
   /**
    * The whole response body. The core reads `checks` from it
-   * (`{ [check]: { count, message } }`) to head each group of errors.
+   * (`{ [check]: { count, message } }`) to head each group of errors; without `checks`,
+   * `details` is not listed.
    */
   body?: unknown
 }

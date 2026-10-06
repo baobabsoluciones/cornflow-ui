@@ -756,13 +756,18 @@ describe('useInstanceProcessing - ETL pre-check errors', () => {
   })
 
   test('fills in the fields an error lacks and drops those without a message', async () => {
+    const checks = { some_check: { count: 1, message: 'Some check' } }
     mockUseEtlBackend.mockRejectedValue(
-      etlError('failed', [
-        { message: 'only a check', check: 'some_check' },
-        { message: 'nothing else' },
-        { check: 'no_message' },
-        null,
-      ]),
+      etlError(
+        'failed',
+        [
+          { message: 'only a check', check: 'some_check' },
+          { message: 'nothing else' },
+          { check: 'no_message' },
+          null,
+        ],
+        { checks },
+      ),
     )
 
     const { processFiles } = useInstanceProcessing()
@@ -785,11 +790,10 @@ describe('useInstanceProcessing - ETL pre-check errors', () => {
         params: {},
       },
     ])
-    // No body was passed on, so there is nothing to head the groups with.
-    expect(result.etlChecks).toBeNull()
+    expect(result.etlChecks).toEqual(checks)
   })
 
-  test('accepts the older flat list of messages as a simple list', async () => {
+  test('keeps showing just the message for the older flat list of messages', async () => {
     const flat = [{ message: 'first problem' }, { message: 'second problem' }]
     mockUseEtlBackend.mockRejectedValue(etlError('failed', flat, flat))
 
@@ -797,14 +801,38 @@ describe('useInstanceProcessing - ETL pre-check errors', () => {
     const result = await processFiles([makeFile('a.xlsx')])
 
     expect(result.success).toBe(false)
-    expect(result.errorSource).toBe('etl')
-    expect(result.etlChecks).toBeNull()
-    expect(result.errors).toBe('ETL:2:')
-    expect(result.rawErrors!.map((e: any) => e.message)).toEqual([
-      'first problem',
-      'second problem',
-    ])
-    expect(result.rawErrors!.every((e: any) => e.check === undefined)).toBe(true)
+    expect(result.errors).toBe('DETAILS:Error:failed')
+    expect(result.rawErrors).toBeNull()
+    expect(result.errorSource).toBeUndefined()
+  })
+
+  test('keeps showing just the message when the body is not a pre-check report', async () => {
+    // Another ETL backend: its `errors` carry messages, but its own message may say
+    // something they do not, so the core does not swap one for the other.
+    const body = {
+      message: 'Sheet "products" is missing',
+      errors: [{ instancePath: '/products', message: 'required' }],
+    }
+    mockUseEtlBackend.mockRejectedValue(etlError(body.message, body.errors, body))
+
+    const { processFiles } = useInstanceProcessing()
+    const result = await processFiles([makeFile('a.xlsx')])
+
+    expect(result.errors).toBe('DETAILS:Error:Sheet "products" is missing')
+    expect(result.rawErrors).toBeNull()
+    expect(result.errorSource).toBeUndefined()
+  })
+
+  test('keeps showing just the message when the implementation did not pass the body on', async () => {
+    mockUseEtlBackend.mockRejectedValue(
+      etlError(checksBody.message, checksBody.errors),
+    )
+
+    const { processFiles } = useInstanceProcessing()
+    const result = await processFiles([makeFile('a.xlsx')])
+
+    expect(result.errors).toBe(`DETAILS:Error:${checksBody.message}`)
+    expect(result.rawErrors).toBeNull()
   })
 
   test('keeps showing just the message when the error has no details', async () => {
