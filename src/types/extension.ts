@@ -151,9 +151,32 @@ export interface TableEditStrategy {
 }
 
 /**
+ * What an `EtlBackendOperations` implementation throws when the backend answers with a
+ * status other than 2xx. `message` is the backend's own message; without `details` (network
+ * errors, 5xx) the core shows just that. With them, the core lists each error, grouped by
+ * `check`, and offers them for download.
+ */
+export interface EtlBackendError extends Error {
+  /**
+   * The failed checks: `content.errors` of the response body, or the body itself when it is
+   * an array. Entries without `message` are ignored. Each one may carry `instancePath`,
+   * `schemaPath`, `keyword`, `params`, `check` and `level` (`'ERROR'` | `'WARNING'`).
+   */
+  details?: Array<Record<string, any>>
+  /**
+   * The whole response body. The core reads `checks` from it
+   * (`{ [check]: { count, message } }`) to head each group of errors.
+   */
+  body?: unknown
+}
+
+/**
  * §3.7 External ETL backend operations, injected by the premium `etl` module.
  * The core (useInstanceProcessing) consumes them by interface instead of importing `useEtlStore`,
  * so that the core does not depend on the premium module (invariant for the npm packaging).
+ *
+ * Both operations reject with an `EtlBackendError` when the backend answers with a status
+ * other than 2xx.
  */
 export interface EtlBackendOperations {
   /**

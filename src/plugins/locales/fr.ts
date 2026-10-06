@@ -164,6 +164,7 @@ export default {
             'Affichage des {displayed} premières erreurs sur {total}. Téléchargez la liste complète des erreurs pour voir toutes les erreurs.',
           totalErrors: 'Il y a {total} erreurs',
           andMoreErrors: 'et {count} de plus',
+          etlChecksFailed: "Les données n'ont pas passé les vérifications du backend",
           errorsDownloadStarted: "Téléchargement du fichier d'erreurs démarré",
           errorsDownloadError:
             "Erreur lors du téléchargement du fichier d'erreurs",

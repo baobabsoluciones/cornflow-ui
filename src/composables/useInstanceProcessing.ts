@@ -13,7 +13,13 @@ import { Instance } from '@/app/models/Instance'
 import {
   formatValidationErrorsWithTitle,
   formatErrorDetails,
+  formatEtlCheckErrors,
 } from '@cornflow-ui/core/utils/errorFormatting'
+import type {
+  EtlCheckError,
+  EtlChecksSummary,
+} from '@cornflow-ui/core/utils/errorFormatting'
+import type { EtlBackendError } from '@cornflow-ui/core/types/extension'
 import type { ErrorObject } from 'ajv'
 import {
   FILE_EXTENSIONS,
@@ -41,10 +47,45 @@ export interface ProcessingResult {
   rawData?: Record<string, any> | null
   /** Optional non-blocking message returned by the ETL backend; resolved to current locale. */
   warning?: string | null
+  /** Set when `rawErrors` are the ETL backend's pre-check errors rather than schema errors. */
+  errorSource?: 'etl'
+  /** The ETL error body's `checks`, used to head each group of `rawErrors`. */
+  etlChecks?: EtlChecksSummary | null
 }
 
 // Re-exported from `@/utils/etlResponse` so existing imports keep working.
 export { unwrapEtlResponse } from '@cornflow-ui/core/utils/etlResponse'
+
+/**
+ * Normalizes the `details` of an ETL backend error to the shape the error list and the
+ * download expect. Entries without a `message` are dropped; the rest get the fields they
+ * lack. Both the check list (`{ message, check, level, ... }`) and the older flat list
+ * (`[{ message }]`) are accepted.
+ */
+function normalizeEtlErrorDetails(details: unknown): EtlCheckError[] {
+  if (!Array.isArray(details)) return []
+  return details
+    .filter(
+      (detail) =>
+        detail && typeof detail === 'object' && detail.message,
+    )
+    .map((detail) => ({
+      ...detail,
+      instancePath: detail.instancePath ?? '',
+      schemaPath: detail.schemaPath ?? '',
+      keyword: detail.keyword ?? detail.check ?? '',
+      params: detail.params ?? {},
+      message: String(detail.message),
+    }))
+}
+
+/** The `checks` of the ETL error body, when the implementation passed the body on. */
+function etlChecksFromBody(body: unknown): EtlChecksSummary | null {
+  const checks = (body as Record<string, any> | null | undefined)?.checks
+  return checks && typeof checks === 'object' && !Array.isArray(checks)
+    ? checks
+    : null
+}
 
 export interface ProcessingState {
   isProcessing: boolean
@@ -342,11 +383,27 @@ export function useInstanceProcessing() {
 
   /**
    * Build a standard error result from an ETL backend failure.
-   * Prefers the backend's own message, falling back to the generic
-   * "unexpected error" i18n string. Shared by processWithEtlBackend
-   * and processFromDb to keep their catch blocks identical.
+   * When the error carries the failed checks (`details`), they become `rawErrors`, listed
+   * by check like schema errors and downloadable. Otherwise it prefers the backend's own
+   * message, falling back to the generic "unexpected error" i18n string. Shared by
+   * processWithEtlBackend and processFromDb to keep their catch blocks identical.
    */
-  const buildEtlBackendErrorResult = (error: any): ProcessingResult => {
+  const buildEtlBackendErrorResult = (
+    error: EtlBackendError | any,
+  ): ProcessingResult => {
+    const checkErrors = normalizeEtlErrorDetails(error?.details)
+    if (checkErrors.length > 0) {
+      const etlChecks = etlChecksFromBody(error?.body)
+      return {
+        ...createErrorResult(
+          formatEtlCheckErrors(checkErrors, etlChecks, t),
+          checkErrors,
+        ),
+        errorSource: 'etl',
+        etlChecks,
+      }
+    }
+
     const backendMessage =
       (error?.message && String(error.message).trim()) || String(error || '')
     const message =

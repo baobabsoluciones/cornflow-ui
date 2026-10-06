@@ -87,6 +87,64 @@ describe('useErrorDownload - createErrorWorkbook', () => {
     expect(note.values[0]).toContain('and 2 more errors')
   })
 
+  test('leaves out the Check and Level columns when no error has them', () => {
+    const { createErrorWorkbook } = useErrorDownload()
+    const wb: any = createErrorWorkbook([mkError(1)])
+    const ws = wb.worksheets[0]
+    expect(ws.rows[0].values).toEqual([
+      'Error #',
+      'Path',
+      'Message',
+      'Keyword',
+      'Parameters',
+      'Schema Path',
+    ])
+    expect(ws.rows[3].values).toHaveLength(6)
+  })
+
+  test('adds the Check and Level columns when errors carry them', () => {
+    const { createErrorWorkbook } = useErrorDownload()
+    const wb: any = createErrorWorkbook([
+      {
+        ...mkError(1),
+        keyword: 'missing_product_isp',
+        check: 'missing_product_isp',
+        level: 'ERROR',
+      },
+      // An error without them still gets the columns, empty.
+      mkError(2),
+    ])
+    const ws = wb.worksheets[0]
+    expect(ws.rows[0].values.slice(6)).toEqual(['Check', 'Level'])
+    expect(ws.rows[1].values).toHaveLength(8) // summary row spans every column
+    expect(ws.rows[3].values.slice(6)).toEqual(['missing_product_isp', 'ERROR'])
+    expect(ws.rows[4].values.slice(6)).toEqual(['', ''])
+    expect(ws.getColumn(7).width).toBe(25)
+    expect(ws.getColumn(8).width).toBe(10)
+  })
+
+  test('adds only the optional column some error has', () => {
+    const { createErrorWorkbook } = useErrorDownload()
+    const wb: any = createErrorWorkbook([{ ...mkError(1), check: 'c' }])
+    const ws = wb.worksheets[0]
+    expect(ws.rows[0].values.slice(6)).toEqual(['Check'])
+    expect(ws.rows[3].values.slice(6)).toEqual(['c'])
+  })
+
+  test('writes object parameters as JSON', () => {
+    const { createErrorWorkbook } = useErrorDownload()
+    const wb: any = createErrorWorkbook([
+      {
+        message: 'm',
+        params: { station_id: 14496, park_id: null, pair: { a: 1 }, ids: [1, 2] },
+      } as any,
+    ])
+    const ws = wb.worksheets[0]
+    expect(ws.rows[3].values[4]).toBe(
+      'station_id: 14496, park_id: null, pair: {"a":1}, ids: [1,2]',
+    )
+  })
+
   test('formats empty params as an empty string', () => {
     const { createErrorWorkbook } = useErrorDownload()
     const wb: any = createErrorWorkbook([{ message: 'm', params: {} } as any])
