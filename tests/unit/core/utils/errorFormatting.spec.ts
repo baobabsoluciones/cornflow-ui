@@ -4,7 +4,9 @@ import {
   formatValidationErrorsWithTitle,
   formatSingleErrorWithTitle,
   formatErrorDetails,
+  formatEtlCheckErrors,
 } from '@cornflow-ui/core/utils/errorFormatting'
+import type { EtlCheckError } from '@cornflow-ui/core/utils/errorFormatting'
 
 // Translation stub: returns a recognizable string for known keys, otherwise echoes
 // the key (so the "translation === key -> fallback" branches are exercised).
@@ -250,5 +252,136 @@ describe('formatErrorDetails', () => {
   it('treats non-array details as a single message', () => {
     const html = formatErrorDetails('T', 'plain string' as any, 'fallback')
     expect(html).toBe('<p><strong>T:</strong></p><li>plain string</li>')
+  })
+})
+
+describe('formatEtlCheckErrors', () => {
+  const etlError = (
+    message: string,
+    extra: Partial<EtlCheckError> = {},
+  ): EtlCheckError => ({
+    instancePath: '',
+    schemaPath: '',
+    keyword: extra.check ?? '',
+    params: {},
+    message,
+    ...extra,
+  })
+
+  const checks = {
+    missing_product_cost: { count: 2, message: 'Missing park cost' },
+    missing_product_isp: { count: 1, message: 'No ISP value' },
+  }
+
+  it('heads the list with the translated title', () => {
+    const html = formatEtlCheckErrors([etlError('m')], null, tKnown)
+    expect(html.startsWith(
+      '<p><strong>projectExecution.steps.step3.loadInstance.etlChecksFailed:</strong></p>',
+    )).toBe(true)
+  })
+
+  it('groups errors by check, in the order of checks, with message and count', () => {
+    const html = formatEtlCheckErrors(
+      [
+        etlError('No ISP for gasolina', { check: 'missing_product_isp' }),
+        etlError('Station 1 / gasoleo', { check: 'missing_product_cost' }),
+        etlError('Station 1 / gasolina', { check: 'missing_product_cost' }),
+      ],
+      checks,
+      tKnown,
+    )
+
+    const costHeading = html.indexOf('<strong>Missing park cost</strong> (2)')
+    const ispHeading = html.indexOf('<strong>No ISP value</strong> (1)')
+    expect(costHeading).toBeGreaterThan(-1)
+    expect(ispHeading).toBeGreaterThan(costHeading)
+    // Each error sits under its own check.
+    const costList = html.slice(costHeading, ispHeading)
+    expect(costList).toContain('<li>Station 1 / gasoleo</li>')
+    expect(costList).toContain('<li>Station 1 / gasolina</li>')
+    expect(costList).not.toContain('No ISP for gasolina')
+    expect(html.slice(ispHeading)).toContain('<li>No ISP for gasolina</li>')
+  })
+
+  it('keeps the total count of checks even when only some errors are passed', () => {
+    const html = formatEtlCheckErrors(
+      [etlError('first', { check: 'missing_product_cost' })],
+      checks,
+      tKnown,
+    )
+    expect(html).toContain('<strong>Missing park cost</strong> (2)')
+    // A check with none of the errors passed is left out.
+    expect(html).not.toContain('No ISP value')
+  })
+
+  it('heads a check missing from checks with its name and the errors it has', () => {
+    const html = formatEtlCheckErrors(
+      [etlError('a', { check: 'other' }), etlError('b', { check: 'other' })],
+      checks,
+      tKnown,
+    )
+    expect(html).toContain('<strong>other</strong> (2)')
+  })
+
+  it('lists errors without a check in a generic group with no heading', () => {
+    const html = formatEtlCheckErrors(
+      [etlError('grouped', { check: 'missing_product_isp' }), etlError('loose')],
+      checks,
+      tKnown,
+    )
+    expect(html.endsWith('<ul><li>loose</li></ul>')).toBe(true)
+    expect(html.indexOf('loose')).toBeGreaterThan(html.indexOf('grouped'))
+  })
+
+  it('renders errors with no checks as a simple list', () => {
+    const html = formatEtlCheckErrors(
+      [etlError('one'), etlError('two')],
+      null,
+      tKnown,
+    )
+    expect(html).toBe(
+      '<p><strong>projectExecution.steps.step3.loadInstance.etlChecksFailed:</strong></p>' +
+        '<ul><li>one</li><li>two</li></ul>',
+    )
+  })
+
+  it('styles warnings apart from errors', () => {
+    const html = formatEtlCheckErrors(
+      [
+        etlError('an error', { level: 'ERROR' }),
+        etlError('a warning', { level: 'WARNING' }),
+      ],
+      null,
+      tKnown,
+    )
+    expect(html).toContain('<li>an error</li>')
+    expect(html).toContain(
+      '<li style="color: var(--warning);">a warning</li>',
+    )
+  })
+
+  it('escapes the HTML of everything the backend sends', () => {
+    const html = formatEtlCheckErrors(
+      [
+        etlError('<script>alert("message")</script>', {
+          check: '<img src=x onerror=alert(1)>',
+          params: { product_name: '<script>alert("params")</script>' },
+        }),
+      ],
+      {
+        '<img src=x onerror=alert(1)>': {
+          count: 1,
+          message: '<b onclick="x">heading</b>',
+        },
+      },
+      tKnown,
+    )
+    expect(html).not.toContain('<script>')
+    expect(html).not.toContain('<img')
+    expect(html).not.toContain('<b ')
+    expect(html).toContain('&lt;script&gt;alert(&quot;message&quot;)&lt;/script&gt;')
+    expect(html).toContain('&lt;b onclick=&quot;x&quot;&gt;heading&lt;/b&gt;')
+    // params are not rendered at all: the message already names what failed.
+    expect(html).not.toContain('params')
   })
 })

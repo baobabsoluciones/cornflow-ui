@@ -113,6 +113,8 @@ vi.mock('@cornflow-ui/core/utils/errorFormatting', () => ({
   formatValidationErrorsWithTitle: (title: string) => `VALIDATION:${title}`,
   formatErrorDetails: (title: string, _details: any, message: string) =>
     `DETAILS:${title}:${message}`,
+  formatEtlCheckErrors: (errors: any[], checks: any) =>
+    `ETL:${errors.length}:${Object.keys(checks ?? {}).join(',')}`,
   ValidationError: class ValidationError {},
 }))
 
@@ -645,5 +647,257 @@ describe('useInstanceProcessing - processFromDb', () => {
 
     expect(result.success).toBe(false)
     expect(result.errors).toContain('VALIDATION:')
+  })
+})
+
+// ─── composable: ETL pre-check errors (400 from /external/etl/) ──────────────────
+
+describe('useInstanceProcessing - ETL pre-check errors', () => {
+  // The body the backend answers with when the pre-checks fail (contract agreed with backend).
+  const checksBody = {
+    message:
+      'Missing park cost for these station-product pairs (2)\n• ...\n\nNo ISP value for these products (1)\n• ...',
+    total: 3,
+    errors: [
+      {
+        instancePath: '/stations_products',
+        schemaPath: '#/checks/missing_product_cost',
+        keyword: 'missing_product_cost',
+        params: {
+          station_id: 14496,
+          product_name: 'gasoleo_simples',
+          park_id: null,
+          reason: 'station has no park',
+        },
+        message: 'Station 14496 / gasoleo_simples: station has no park',
+        check: 'missing_product_cost',
+        level: 'ERROR',
+      },
+      {
+        instancePath: '/stations_products',
+        schemaPath: '#/checks/missing_product_cost',
+        keyword: 'missing_product_cost',
+        params: {
+          station_id: 14496,
+          product_name: 'gasolina_simples_95',
+          park_id: null,
+          reason: 'station has no park',
+        },
+        message: 'Station 14496 / gasolina_simples_95: station has no park',
+        check: 'missing_product_cost',
+        level: 'ERROR',
+      },
+      {
+        instancePath: '/products_isp',
+        schemaPath: '#/checks/missing_product_isp',
+        keyword: 'missing_product_isp',
+        params: { product_name: 'gasolina_simples_95' },
+        message: 'No ISP value for product gasolina_simples_95',
+        check: 'missing_product_isp',
+        level: 'ERROR',
+      },
+    ],
+    warning: '',
+    warnings: [],
+    checks: {
+      missing_product_cost: {
+        count: 2,
+        message: 'Missing park cost for these station-product pairs',
+      },
+      missing_product_isp: {
+        count: 1,
+        message: 'No ISP value for these products',
+      },
+    },
+  }
+
+  /** What an `etlBackend` implementation throws on a non-2xx answer. */
+  const etlError = (message: string, details?: any, body?: any) =>
+    Object.assign(new Error(message), { details, body })
+
+  beforeEach(() => {
+    storeState = makeStore({
+      parameters: {
+        etl: {
+          enableEtlMetadataAndReview: false,
+          useEtlBackend: true,
+          enableLoadFromDb: true,
+        },
+        fileProcessors: {},
+      },
+    })
+  })
+
+  test('turns the failed checks into raw errors, grouped by the body checks', async () => {
+    mockUseEtlBackend.mockRejectedValue(
+      etlError(checksBody.message, checksBody.errors, checksBody),
+    )
+
+    const { processFiles } = useInstanceProcessing()
+    const result = await processFiles([makeFile('a.xlsx')])
+
+    expect(result.success).toBe(false)
+    expect(result.errorSource).toBe('etl')
+    expect(result.etlChecks).toEqual(checksBody.checks)
+    expect(result.errors).toBe('ETL:3:missing_product_cost,missing_product_isp')
+    expect(result.rawErrors).toHaveLength(3)
+    expect(result.rawErrors![0]).toMatchObject({
+      instancePath: '/stations_products',
+      keyword: 'missing_product_cost',
+      check: 'missing_product_cost',
+      level: 'ERROR',
+      message: 'Station 14496 / gasoleo_simples: station has no park',
+    })
+    expect(result.rawErrors!.map((e: any) => e.check)).toEqual([
+      'missing_product_cost',
+      'missing_product_cost',
+      'missing_product_isp',
+    ])
+  })
+
+  test('fills in the fields an error lacks and drops those without a message', async () => {
+    const checks = { some_check: { count: 1, message: 'Some check' } }
+    mockUseEtlBackend.mockRejectedValue(
+      etlError(
+        'failed',
+        [
+          { message: 'only a check', check: 'some_check' },
+          { message: 'nothing else' },
+          { check: 'no_message' },
+          null,
+        ],
+        { checks },
+      ),
+    )
+
+    const { processFiles } = useInstanceProcessing()
+    const result = await processFiles([makeFile('a.xlsx')])
+
+    expect(result.rawErrors).toEqual([
+      {
+        message: 'only a check',
+        check: 'some_check',
+        instancePath: '',
+        schemaPath: '',
+        keyword: 'some_check',
+        params: {},
+      },
+      {
+        message: 'nothing else',
+        instancePath: '',
+        schemaPath: '',
+        keyword: '',
+        params: {},
+      },
+    ])
+    expect(result.etlChecks).toEqual(checks)
+  })
+
+  test('keeps showing just the message for the older flat list of messages', async () => {
+    const flat = [{ message: 'first problem' }, { message: 'second problem' }]
+    mockUseEtlBackend.mockRejectedValue(etlError('failed', flat, flat))
+
+    const { processFiles } = useInstanceProcessing()
+    const result = await processFiles([makeFile('a.xlsx')])
+
+    expect(result.success).toBe(false)
+    expect(result.errors).toBe('DETAILS:Error:failed')
+    expect(result.rawErrors).toBeNull()
+    expect(result.errorSource).toBeUndefined()
+  })
+
+  test('keeps showing just the message when the body is not a pre-check report', async () => {
+    // Another ETL backend: its `errors` carry messages, but its own message may say
+    // something they do not, so the core does not swap one for the other.
+    const body = {
+      message: 'Sheet "products" is missing',
+      errors: [{ instancePath: '/products', message: 'required' }],
+    }
+    mockUseEtlBackend.mockRejectedValue(etlError(body.message, body.errors, body))
+
+    const { processFiles } = useInstanceProcessing()
+    const result = await processFiles([makeFile('a.xlsx')])
+
+    expect(result.errors).toBe('DETAILS:Error:Sheet "products" is missing')
+    expect(result.rawErrors).toBeNull()
+    expect(result.errorSource).toBeUndefined()
+  })
+
+  test('keeps showing just the message when the implementation did not pass the body on', async () => {
+    mockUseEtlBackend.mockRejectedValue(
+      etlError(checksBody.message, checksBody.errors),
+    )
+
+    const { processFiles } = useInstanceProcessing()
+    const result = await processFiles([makeFile('a.xlsx')])
+
+    expect(result.errors).toBe(`DETAILS:Error:${checksBody.message}`)
+    expect(result.rawErrors).toBeNull()
+  })
+
+  test('keeps showing just the message when the error has no details', async () => {
+    mockUseEtlBackend.mockRejectedValue(etlError('gateway timeout'))
+
+    const { processFiles } = useInstanceProcessing()
+    const result = await processFiles([makeFile('a.xlsx')])
+
+    expect(result.success).toBe(false)
+    expect(result.errors).toBe('DETAILS:Error:gateway timeout')
+    expect(result.rawErrors).toBeNull()
+    expect(result.errorSource).toBeUndefined()
+    expect(result.etlChecks).toBeUndefined()
+  })
+
+  test('keeps showing just the message when no detail has a message', async () => {
+    mockUseEtlBackend.mockRejectedValue(etlError('bad request', [{ code: 1 }]))
+
+    const { processFiles } = useInstanceProcessing()
+    const result = await processFiles([makeFile('a.xlsx')])
+
+    expect(result.errors).toBe('DETAILS:Error:bad request')
+    expect(result.rawErrors).toBeNull()
+    expect(result.errorSource).toBeUndefined()
+  })
+
+  test('processFromDb lists the failed checks the same way', async () => {
+    mockUseEtlBackendFromDb.mockRejectedValue(
+      etlError(checksBody.message, checksBody.errors, checksBody),
+    )
+
+    const { processFromDb } = useInstanceProcessing()
+    const result = await processFromDb()
+
+    expect(result.success).toBe(false)
+    expect(result.errorSource).toBe('etl')
+    expect(result.etlChecks).toEqual(checksBody.checks)
+    expect(result.rawErrors).toHaveLength(3)
+    expect(result.rawErrors![2]).toMatchObject({
+      check: 'missing_product_isp',
+      level: 'ERROR',
+    })
+  })
+
+  test('processFromDb without details keeps showing just the message', async () => {
+    mockUseEtlBackendFromDb.mockRejectedValue(etlError('db-down'))
+
+    const { processFromDb } = useInstanceProcessing()
+    const result = await processFromDb()
+
+    expect(result.errors).toBe('DETAILS:Error:db-down')
+    expect(result.rawErrors).toBeNull()
+    expect(result.errorSource).toBeUndefined()
+  })
+
+  test('processInstanceData lists the failed checks the same way', async () => {
+    mockUseEtlBackend.mockRejectedValue(
+      etlError(checksBody.message, checksBody.errors, checksBody),
+    )
+
+    const { processInstanceData } = useInstanceProcessing()
+    const result = await processInstanceData({ table_a: [{ id: 1 }] })
+
+    expect(result.success).toBe(false)
+    expect(result.errorSource).toBe('etl')
+    expect(result.rawErrors).toHaveLength(3)
   })
 })

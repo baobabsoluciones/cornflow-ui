@@ -34,6 +34,7 @@ export type {
   PremiumViewSlot,
   TableEditStrategy,
   EtlBackendOperations,
+  EtlBackendError,
   PremiumCapabilities,
   PremiumModule,
 } from '@cornflow-ui/core/types/extension'

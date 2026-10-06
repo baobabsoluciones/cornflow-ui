@@ -12,6 +12,17 @@ const DISPLAY_ERROR_LIMIT = 150
 const MAX_DOWNLOAD_ERRORS = 50000
 const DOWNLOAD_BUTTON_ID = 'download-errors-btn'
 
+/**
+ * Columns only some errors have (the ETL backend's checks carry them, schema errors do
+ * not). Each is added to the file only when at least one error has a value for it.
+ */
+const OPTIONAL_COLUMNS = [
+  { key: 'check', header: 'Check', width: 25 },
+  { key: 'level', header: 'Level', width: 10 },
+] as const
+
+type OptionalColumn = (typeof OPTIONAL_COLUMNS)[number]
+
 export interface ErrorDownloadOptions {
   maxErrors?: number
   displayLimit?: number
@@ -34,12 +45,15 @@ export function useErrorDownload(options: ErrorDownloadOptions = {}) {
     const worksheet = workbook.addWorksheet('Validation Errors')
 
     const errorsToFormat = errors.slice(0, maxErrors)
+    const optionalColumns = OPTIONAL_COLUMNS.filter((column) =>
+      errorsToFormat.some((error) => (error as Record<string, any>)[column.key]),
+    )
 
-    addWorkbookHeader(worksheet)
-    addWorkbookSummary(worksheet, errors.length, maxErrors)
-    addErrorRows(worksheet, errorsToFormat)
-    addRemainingErrorsNote(worksheet, errors.length, maxErrors)
-    configureColumnWidths(worksheet)
+    addWorkbookHeader(worksheet, optionalColumns)
+    addWorkbookSummary(worksheet, errors.length, maxErrors, optionalColumns)
+    addErrorRows(worksheet, errorsToFormat, optionalColumns)
+    addRemainingErrorsNote(worksheet, errors.length, maxErrors, optionalColumns)
+    configureColumnWidths(worksheet, optionalColumns)
 
     return workbook
   }
@@ -47,7 +61,10 @@ export function useErrorDownload(options: ErrorDownloadOptions = {}) {
   /**
    * Add header row to worksheet
    */
-  const addWorkbookHeader = (worksheet: ExcelJS.Worksheet) => {
+  const addWorkbookHeader = (
+    worksheet: ExcelJS.Worksheet,
+    optionalColumns: readonly OptionalColumn[],
+  ) => {
     const headerRow = worksheet.addRow([
       'Error #',
       'Path',
@@ -55,6 +72,7 @@ export function useErrorDownload(options: ErrorDownloadOptions = {}) {
       'Keyword',
       'Parameters',
       'Schema Path',
+      ...optionalColumns.map((column) => column.header),
     ])
 
     headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
@@ -73,6 +91,7 @@ export function useErrorDownload(options: ErrorDownloadOptions = {}) {
     worksheet: ExcelJS.Worksheet,
     totalErrors: number,
     maxErrors: number,
+    optionalColumns: readonly OptionalColumn[],
   ) => {
     const summaryRow = worksheet.addRow([
       `Total errors: ${totalErrors}`,
@@ -83,6 +102,7 @@ export function useErrorDownload(options: ErrorDownloadOptions = {}) {
       '',
       '',
       '',
+      ...optionalColumns.map(() => ''),
     ])
     summaryRow.font = { bold: true }
     summaryRow.getCell(1).fill = {
@@ -100,6 +120,7 @@ export function useErrorDownload(options: ErrorDownloadOptions = {}) {
   const addErrorRows = (
     worksheet: ExcelJS.Worksheet,
     errors: ErrorObject[],
+    optionalColumns: readonly OptionalColumn[],
   ) => {
     errors.forEach((error, index) => {
       const paramsStr = formatErrorParams(error.params || {})
@@ -110,6 +131,9 @@ export function useErrorDownload(options: ErrorDownloadOptions = {}) {
         error.keyword || '',
         paramsStr,
         error.schemaPath || '',
+        ...optionalColumns.map(
+          (column) => (error as Record<string, any>)[column.key] || '',
+        ),
       ])
     })
   }
@@ -120,7 +144,10 @@ export function useErrorDownload(options: ErrorDownloadOptions = {}) {
   const formatErrorParams = (params: Record<string, any>): string => {
     if (Object.keys(params).length === 0) return ''
     return Object.entries(params)
-      .map(([key, value]) => `${key}: ${value}`)
+      .map(
+        ([key, value]) =>
+          `${key}: ${value !== null && typeof value === 'object' ? JSON.stringify(value) : value}`,
+      )
       .join(', ')
   }
 
@@ -131,6 +158,7 @@ export function useErrorDownload(options: ErrorDownloadOptions = {}) {
     worksheet: ExcelJS.Worksheet,
     totalErrors: number,
     maxErrors: number,
+    optionalColumns: readonly OptionalColumn[],
   ) => {
     if (totalErrors > maxErrors) {
       const remainingCount = totalErrors - maxErrors
@@ -141,6 +169,7 @@ export function useErrorDownload(options: ErrorDownloadOptions = {}) {
         '',
         '',
         '',
+        ...optionalColumns.map(() => ''),
       ])
       noteRow.font = { italic: true, color: { argb: 'FF666666' } }
     }
@@ -149,8 +178,19 @@ export function useErrorDownload(options: ErrorDownloadOptions = {}) {
   /**
    * Configure column widths and text wrapping
    */
-  const configureColumnWidths = (worksheet: ExcelJS.Worksheet) => {
-    const columnWidths = [10, 30, 50, 20, 40, 30]
+  const configureColumnWidths = (
+    worksheet: ExcelJS.Worksheet,
+    optionalColumns: readonly OptionalColumn[],
+  ) => {
+    const columnWidths = [
+      10,
+      30,
+      50,
+      20,
+      40,
+      30,
+      ...optionalColumns.map((column) => column.width),
+    ]
     columnWidths.forEach((width, index) => {
       worksheet.getColumn(index + 1).width = width
     })

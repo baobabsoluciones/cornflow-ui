@@ -3,6 +3,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import { nextTick } from 'vue'
 import CreateExecutionLoadInstance from '@cornflow-ui/core/components/project-execution/CreateExecutionLoadInstance.vue'
+import { formatEtlCheckErrors } from '@cornflow-ui/core/utils/errorFormatting'
 
 // Mock Instance model using vi.hoisted
 const { mockInstanceClass, mockInstance } = vi.hoisted(() => {
@@ -21,6 +22,39 @@ const { mockInstanceClass, mockInstance } = vi.hoisted(() => {
 vi.mock('@/app/models/Instance', () => ({
   Instance: mockInstanceClass,
 }))
+
+// ExcelJS fake that keeps the workbooks the error download builds, so a test can read
+// the rows that would end up in the file.
+const { createdWorkbooks } = vi.hoisted(() => ({ createdWorkbooks: [] as any[] }))
+
+vi.mock('exceljs', () => {
+  class FakeWorksheet {
+    rows: any[] = []
+    columns: Record<number, any> = {}
+    addRow(values: any) {
+      const row: any = { values, getCell: () => ({}) }
+      this.rows.push(row)
+      return row
+    }
+    getColumn(i: number) {
+      this.columns[i] = this.columns[i] || {}
+      return this.columns[i]
+    }
+  }
+  class FakeWorkbook {
+    worksheets: FakeWorksheet[] = []
+    xlsx = { writeBuffer: async () => new ArrayBuffer(8) }
+    constructor() {
+      createdWorkbooks.push(this)
+    }
+    addWorksheet() {
+      const ws = new FakeWorksheet()
+      this.worksheets.push(ws)
+      return ws
+    }
+  }
+  return { Workbook: FakeWorkbook, default: { Workbook: FakeWorkbook } }
+})
 
 // Mock useInstanceProcessing composable
 const mockInstanceProcessing = {
@@ -196,7 +230,7 @@ describe('CreateExecutionLoadInstance', () => {
     }
   })
 
-  const createWrapper = (props = {}) => {
+  const createWrapper = (props = {}, mountOptions = {}) => {
     const defaultProps = {
       instance: null,
       selectedFiles: [],
@@ -205,6 +239,7 @@ describe('CreateExecutionLoadInstance', () => {
     }
 
     return mount(CreateExecutionLoadInstance, {
+      ...mountOptions,
       props: { ...defaultProps, ...props },
       global: {
         plugins: [vuetify],
@@ -1172,6 +1207,186 @@ describe('CreateExecutionLoadInstance', () => {
       const html = wrapper.vm.displayedErrors
       expect(html).toContain('andMoreErrors')
       expect(html).toContain('download-errors-btn')
+    })
+  })
+
+  describe('ETL pre-check errors', () => {
+    const checks = {
+      missing_product_cost: {
+        count: 2,
+        message: 'Missing park cost for these station-product pairs',
+      },
+      missing_product_isp: {
+        count: 1,
+        message: 'No ISP value for these products',
+      },
+    }
+
+    const checkError = (check: string, message: string) => ({
+      instancePath: '/stations_products',
+      schemaPath: `#/checks/${check}`,
+      keyword: check,
+      params: { station_id: 14496 },
+      message,
+      check,
+      level: 'ERROR',
+    })
+
+    const sampleErrors = [
+      checkError('missing_product_cost', 'Station 14496 / gasoleo_simples: station has no park'),
+      checkError('missing_product_cost', 'Station 14496 / gasolina_simples_95: station has no park'),
+      checkError('missing_product_isp', 'No ISP value for product gasolina_simples_95'),
+    ]
+
+    /** What useInstanceProcessing returns when the ETL answers 400 with failed checks. */
+    const etlFailure = (rawErrors: any[], etlChecks: any) => ({
+      success: false,
+      instance: null,
+      errors: formatEtlCheckErrors(rawErrors, etlChecks, mockT),
+      rawErrors,
+      errorSource: 'etl',
+      etlChecks,
+    })
+
+    const xlsx = () =>
+      new File(['x'], 'inst.xlsx', {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      })
+
+    let baseTranslate: any
+    let originalAnchorClick: any
+
+    beforeEach(() => {
+      createdWorkbooks.length = 0
+      baseTranslate = mockT.getMockImplementation()
+      mockT.mockImplementation((key: string, params?: any) =>
+        key === 'projectExecution.steps.step3.loadInstance.totalErrors'
+          ? `There are ${params.total} errors`
+          : baseTranslate(key),
+      )
+      window.URL.createObjectURL = vi.fn(() => 'blob:fake')
+      window.URL.revokeObjectURL = vi.fn()
+      originalAnchorClick = HTMLAnchorElement.prototype.click
+      // jsdom anchors navigate on click; neutralize it.
+      HTMLAnchorElement.prototype.click = vi.fn()
+    })
+
+    afterEach(() => {
+      mockT.mockImplementation(baseTranslate)
+      HTMLAnchorElement.prototype.click = originalAnchorClick
+      vi.useRealTimers()
+    })
+
+    const loadWith = async (result: any) => {
+      mockInstanceProcessing.processFiles.mockResolvedValueOnce(result)
+      wrapper = createWrapper({}, { attachTo: document.body })
+      await wrapper.vm.onFileSelected([xlsx()])
+      await wrapper.vm.processFiles()
+      await nextTick()
+      await nextTick() // the download button listener is wired on the next tick
+    }
+
+    test('shows the count, the groups and the download button', async () => {
+      await loadWith(etlFailure(sampleErrors, checks))
+
+      const errorsHtml = wrapper.find('.errors').html()
+      expect(wrapper.find('.errors').text()).toContain('There are 3 errors')
+      expect(errorsHtml).toContain(
+        '<strong>Missing park cost for these station-product pairs</strong> (2)',
+      )
+      expect(errorsHtml).toContain(
+        '<strong>No ISP value for these products</strong> (1)',
+      )
+      expect(errorsHtml).toContain(
+        '<li>No ISP value for product gasolina_simples_95</li>',
+      )
+      expect(wrapper.find('#download-errors-btn').exists()).toBe(true)
+      expect(wrapper.find('#download-errors-btn').text()).toContain('(3 ')
+    })
+
+    test('keeps the groups when there are more errors than are shown', async () => {
+      const many = [
+        ...Array.from({ length: 100 }, (_, i) =>
+          checkError('missing_product_cost', `cost ${i}`),
+        ),
+        ...Array.from({ length: 100 }, (_, i) =>
+          checkError('missing_product_isp', `isp ${i}`),
+        ),
+      ]
+      const manyChecks = {
+        missing_product_cost: { count: 100, message: 'Missing park cost' },
+        missing_product_isp: { count: 100, message: 'No ISP value' },
+      }
+      await loadWith(etlFailure(many, manyChecks))
+
+      const html = wrapper.vm.displayedErrors
+      expect(html).toContain('There are 200 errors')
+      expect(html).toContain('etlChecksFailed')
+      // The headings keep the check's full count although only the first 150 are listed.
+      expect(html).toContain('<strong>Missing park cost</strong> (100)')
+      expect(html).toContain('<strong>No ISP value</strong> (100)')
+      expect(html.match(/<li>/g)).toHaveLength(150)
+      expect(html).toContain('<li>isp 49</li>')
+      expect(html).not.toContain('<li>isp 50</li>')
+      expect(html).toContain('andMoreErrors')
+      expect(wrapper.find('#download-errors-btn').exists()).toBe(true)
+    })
+
+    test('the download button builds the Excel with one row per error', async () => {
+      await loadWith(etlFailure(sampleErrors, checks))
+
+      // The download removes its temporary link on a timer; run it inside the test, or it
+      // fires after the environment is torn down (`document is not defined`).
+      vi.useFakeTimers({ toFake: ['setTimeout'] })
+      ;(document.getElementById('download-errors-btn') as HTMLElement).click()
+      await flushPromises()
+      vi.runAllTimers()
+      expect(window.URL.revokeObjectURL).toHaveBeenCalled()
+      expect(vi.getTimerCount()).toBe(0)
+
+      expect(createdWorkbooks).toHaveLength(1)
+      const rows = createdWorkbooks[0].worksheets[0].rows
+      expect(rows[0].values).toContain('Check')
+      expect(rows[0].values).toContain('Level')
+      // header + summary + spacer, then the errors
+      const errorRows = rows.slice(3)
+      expect(errorRows).toHaveLength(3)
+      expect(errorRows.map((row: any) => row.values[2])).toEqual(
+        sampleErrors.map((error) => error.message),
+      )
+      expect(errorRows[2].values.slice(6)).toEqual(['missing_product_isp', 'ERROR'])
+      expect(mockShowSnackbar).toHaveBeenCalledWith(
+        'projectExecution.steps.step3.loadInstance.errorsDownloadStarted',
+        'success',
+      )
+    })
+
+    test('schema errors after an ETL failure go back to the schema formatting', async () => {
+      await loadWith(etlFailure(sampleErrors, checks))
+      expect(wrapper.vm.errorSource).toBe('etl')
+
+      const schemaErrors = Array.from({ length: 200 }, (_, i) => ({
+        instancePath: `/p${i}`,
+        message: 'bad',
+        keyword: 'type',
+        schemaPath: '#/x',
+        params: {},
+      }))
+      mockInstanceProcessing.processFiles.mockResolvedValueOnce({
+        success: false,
+        instance: null,
+        errors: '<p><strong>Instance errors</strong></p>',
+        rawErrors: schemaErrors,
+      })
+      await wrapper.vm.processFiles()
+      await nextTick()
+
+      expect(wrapper.vm.errorSource).toBeNull()
+      expect(wrapper.vm.etlChecks).toBeNull()
+      expect(wrapper.vm.displayedErrors).toContain(
+        '<p><strong>Instance errors:</strong></p>',
+      )
+      expect(wrapper.vm.displayedErrors).not.toContain('etlChecksFailed')
     })
   })
 })

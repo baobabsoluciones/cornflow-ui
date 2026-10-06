@@ -200,7 +200,14 @@ import {
   buildInstanceDataFromAlternativeFields,
 } from '@cornflow-ui/core/composables/useInstanceProcessing'
 import { useErrorDownload } from '@cornflow-ui/core/composables/useErrorDownload'
-import { formatValidationErrors } from '@cornflow-ui/core/utils/errorFormatting'
+import {
+  formatValidationErrors,
+  formatEtlCheckErrors,
+} from '@cornflow-ui/core/utils/errorFormatting'
+import type {
+  EtlCheckError,
+  EtlChecksSummary,
+} from '@cornflow-ui/core/utils/errorFormatting'
 import type { ErrorObject } from 'ajv'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { pickPreEtlConfigValues } from '@cornflow-ui/core/utils/schemaUtils'
@@ -247,6 +254,9 @@ const emit = defineEmits<{
 const selectedFiles = ref<File[]>(props.selectedFiles || [])
 const instanceErrors = ref<string | null>(props.existingInstanceErrors)
 const rawErrors = ref<ErrorObject[] | null>(null)
+/** 'etl' when `rawErrors` are the ETL backend's failed checks rather than schema errors. */
+const errorSource = ref<'etl' | null>(null)
+const etlChecks = ref<EtlChecksSummary | null>(null)
 const dragDropFileRef = ref<any>(null)
 const paramValues = ref<Record<string, unknown>>({})
 const warningMessage = ref<string | null>(null)
@@ -433,15 +443,14 @@ const createLimitedErrorsHtml = (
   totalErrorsMessage: string,
 ): string => {
   const limitedErrors = errors.slice(0, errorDownload.DISPLAY_ERROR_LIMIT)
-  const limitedHtml = formatValidationErrors(limitedErrors, t)
-
-  // Extract title from original errors
-  const titleMatch = originalErrors.match(/<p><strong>(.*?)<\/strong><\/p>/)
-  const title = titleMatch ? titleMatch[1] : 'Errors'
-
-  const titleHtml = `<p><strong>${title}:</strong></p>`
   const limitedHtmlWithTitle =
-    titleHtml + (limitedHtml ? `<ul>${limitedHtml}</ul>` : '')
+    errorSource.value === 'etl'
+      ? formatEtlCheckErrors(
+          limitedErrors as unknown as EtlCheckError[],
+          etlChecks.value,
+          t,
+        )
+      : formatSchemaErrorsWithTitle(limitedErrors, originalErrors)
 
   // Add message about remaining errors
   const remainingCount = errors.length - errorDownload.DISPLAY_ERROR_LIMIT
@@ -459,6 +468,20 @@ const createLimitedErrorsHtml = (
     remainingMessage +
     downloadButtonHtml
   )
+}
+
+const formatSchemaErrorsWithTitle = (
+  errors: ErrorObject[],
+  originalErrors: string,
+): string => {
+  const limitedHtml = formatValidationErrors(errors, t)
+
+  // Extract title from original errors
+  const titleMatch = originalErrors.match(/<p><strong>(.*?)<\/strong><\/p>/)
+  const title = titleMatch ? titleMatch[1] : 'Errors'
+
+  const titleHtml = `<p><strong>${title}:</strong></p>`
+  return titleHtml + (limitedHtml ? `<ul>${limitedHtml}</ul>` : '')
 }
 
 // Download handler
@@ -546,6 +569,8 @@ watch(
     instanceErrors.value = newErrors
     if (!newErrors) {
       rawErrors.value = null
+      errorSource.value = null
+      etlChecks.value = null
     }
   },
   { immediate: true },
@@ -578,7 +603,7 @@ const processFiles = async () => {
         emit('externalEtlData', result.rawData)
       }
     } else if (result.errors) {
-      handleProcessingError(result.errors, result.rawErrors)
+      handleProcessingError(result.errors, result.rawErrors, result)
     }
   } catch (error) {
     console.error('Error in processFiles:', error)
@@ -601,7 +626,7 @@ const processFromDb = async () => {
         emit('externalEtlData', result.rawData)
       }
     } else if (result.errors) {
-      handleProcessingError(result.errors, result.rawErrors)
+      handleProcessingError(result.errors, result.rawErrors, result)
     }
   } catch (error) {
     console.error('Error in processFromDb:', error)
@@ -636,7 +661,7 @@ const processParameters = async () => {
         emit('externalEtlData', result.rawData)
       }
     } else if (result.errors) {
-      handleProcessingError(result.errors, result.rawErrors)
+      handleProcessingError(result.errors, result.rawErrors, result)
     }
   } catch (error) {
     console.error('Error in processParameters:', error)
@@ -661,9 +686,12 @@ const handleProcessingSuccess = (
 const handleProcessingError = (
   errorMessage: string,
   rawErrorsData: ErrorObject[] | null = null,
+  source: { errorSource?: 'etl'; etlChecks?: EtlChecksSummary | null } = {},
 ) => {
   instanceErrors.value = errorMessage
   rawErrors.value = rawErrorsData
+  errorSource.value = source.errorSource ?? null
+  etlChecks.value = source.etlChecks ?? null
   emit('update:existingInstanceErrors', instanceErrors.value)
 
   if (showSnackbar) {
@@ -677,6 +705,8 @@ const handleProcessingError = (
 const resetErrors = () => {
   instanceErrors.value = null
   rawErrors.value = null
+  errorSource.value = null
+  etlChecks.value = null
   warningMessage.value = null
   emit('update:existingInstanceErrors', instanceErrors.value)
 }

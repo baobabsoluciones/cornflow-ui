@@ -386,3 +386,91 @@ export function formatErrorDetails(
   // If it's not an array, treat it as a single message
   return formatSingleErrorWithTitle(title, String(errorDetails))
 }
+
+/**
+ * An error from the ETL backend's pre-checks, once normalized: every field the error
+ * views and the download read is present.
+ */
+export interface EtlCheckError {
+  instancePath: string
+  schemaPath: string
+  keyword: string
+  params: Record<string, any>
+  message: string
+  /** The check that failed; errors sharing it are listed together. */
+  check?: string
+  /** `'ERROR'` or `'WARNING'`. */
+  level?: string
+}
+
+/** The `checks` of the ETL error body: what each check means and how many errors it raised. */
+export type EtlChecksSummary = Record<string, { count?: number; message?: string }>
+
+/**
+ * Escapes text so it renders as text when injected with innerHTML. Everything in an ETL
+ * error comes from the backend, and the drop zone renders the error HTML as is.
+ */
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+
+function formatEtlCheckErrorItems(errors: EtlCheckError[]): string {
+  return errors
+    .map((error) =>
+      error.level === 'WARNING'
+        ? `<li style="color: var(--warning);">${escapeHtml(error.message)}</li>`
+        : `<li>${escapeHtml(error.message)}</li>`,
+    )
+    .join('')
+}
+
+/**
+ * Formats the errors of a failed ETL pre-check as HTML. Errors are listed under the check
+ * that raised them, in the order of `checks`, each group headed by the check's message and
+ * its error count; errors with no check go in a final list with no heading. Not meant for
+ * schema errors: those go through `formatValidationErrors`.
+ * @param errors Normalized ETL errors (possibly only the first ones of a longer list)
+ * @param checks The body's `checks`, if any; a check missing from it is headed by its name
+ * @param t Translation function
+ * @returns HTML string with title and grouped error lists
+ */
+export function formatEtlCheckErrors(
+  errors: EtlCheckError[],
+  checks: EtlChecksSummary | null | undefined,
+  t: TranslateFunction,
+): string {
+  const title = t('projectExecution.steps.step3.loadInstance.etlChecksFailed')
+  const groups = new Map<string, EtlCheckError[]>()
+  for (const name of Object.keys(checks ?? {})) {
+    groups.set(name, [])
+  }
+  const ungrouped: EtlCheckError[] = []
+  for (const error of errors) {
+    if (!error.check) {
+      ungrouped.push(error)
+      continue
+    }
+    if (!groups.has(error.check)) groups.set(error.check, [])
+    groups.get(error.check).push(error)
+  }
+
+  let html = `<p><strong>${escapeHtml(title)}:</strong></p>`
+  for (const [name, groupErrors] of groups.entries()) {
+    if (groupErrors.length === 0) continue
+    const summary = checks?.[name]
+    const heading = summary?.message || name
+    const count = summary?.count ?? groupErrors.length
+    html +=
+      `<p style="margin-top: 8px;"><strong>${escapeHtml(heading)}</strong> (${escapeHtml(count)})</p>` +
+      `<ul>${formatEtlCheckErrorItems(groupErrors)}</ul>`
+  }
+  if (ungrouped.length > 0) {
+    html += `<ul>${formatEtlCheckErrorItems(ungrouped)}</ul>`
+  }
+  return html
+}

@@ -249,6 +249,7 @@ export default {
             'Mostrando los primeros {displayed} de {total} errores. Descarga la lista completa de errores para ver todos los errores.',
           totalErrors: 'Hay {total} errores',
           andMoreErrors: 'y {count} más',
+          etlChecksFailed: 'Los datos no han pasado las comprobaciones del backend',
           errorsDownloadStarted: 'Descarga del archivo de errores iniciada',
           errorsDownloadError: 'Error al descargar el archivo de errores',
           noFilesSelectedError: 'Selecciona al menos un archivo',

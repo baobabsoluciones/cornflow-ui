@@ -231,6 +231,7 @@ export default {
             'A mostrar os primeiros {displayed} de {total} erros. Transfira a lista completa de erros para ver todos.',
           totalErrors: 'Existem {total} erros',
           andMoreErrors: 'e mais {count}',
+          etlChecksFailed: 'Os dados não passaram nas verificações do backend',
           errorsDownloadStarted: 'Transferência do ficheiro de erros iniciada',
           errorsDownloadError: 'Erro ao transferir o ficheiro de erros',
           noFilesSelectedError: 'Selecione pelo menos um ficheiro',

@@ -243,6 +243,7 @@ export default {
             'Showing first {displayed} of {total} errors. Download the complete error list to see all errors.',
           totalErrors: 'There are {total} errors',
           andMoreErrors: 'and {count} more',
+          etlChecksFailed: 'The data did not pass the backend checks',
           errorsDownloadStarted: 'Error file download started',
           errorsDownloadError: 'Error downloading error file',
           noFilesSelectedError: 'Please select at least one file',
