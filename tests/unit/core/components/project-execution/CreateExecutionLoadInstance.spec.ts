@@ -1274,6 +1274,7 @@ describe('CreateExecutionLoadInstance', () => {
     afterEach(() => {
       mockT.mockImplementation(baseTranslate)
       HTMLAnchorElement.prototype.click = originalAnchorClick
+      vi.useRealTimers()
     })
 
     const loadWith = async (result: any) => {
@@ -1334,8 +1335,14 @@ describe('CreateExecutionLoadInstance', () => {
     test('the download button builds the Excel with one row per error', async () => {
       await loadWith(etlFailure(sampleErrors, checks))
 
+      // The download removes its temporary link on a timer; run it inside the test, or it
+      // fires after the environment is torn down (`document is not defined`).
+      vi.useFakeTimers({ toFake: ['setTimeout'] })
       ;(document.getElementById('download-errors-btn') as HTMLElement).click()
       await flushPromises()
+      vi.runAllTimers()
+      expect(window.URL.revokeObjectURL).toHaveBeenCalled()
+      expect(vi.getTimerCount()).toBe(0)
 
       expect(createdWorkbooks).toHaveLength(1)
       const rows = createdWorkbooks[0].worksheets[0].rows
