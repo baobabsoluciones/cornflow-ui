@@ -20,6 +20,7 @@ import {
   normalizeGetListResponseToRows,
   isAllowLoadFromDbDisabled,
   isParameterPropertySchemaVisible,
+  isTableSchemaVisible,
   normalizeJsonSchemaPropertyTypeForUi,
   getInstanceSchemaRootForTables,
   normalizeTableNameForEtlLookup,
@@ -961,6 +962,39 @@ describe('transformJsonSchemaToAutomationFormat', () => {
     expect(result.chk.group).toBe('validations')
     expect(result.chk.is_warning).toBe(true)
     expect(result.chk.isPrimitiveArray).toBe(true)
+  })
+  test('leaves out array and parameter tables declared visible: false', () => {
+    const schema = {
+      properties: {
+        shown: { type: 'array', items: { properties: { a: { type: 'string' } } } },
+        explicitlyShown: {
+          type: 'array',
+          visible: true,
+          items: { properties: { a: { type: 'string' } } },
+        },
+        hiddenRows: {
+          type: 'array',
+          visible: false,
+          items: { properties: { a: { type: 'string' } } },
+        },
+        hiddenParams: {
+          type: 'object',
+          visible: false,
+          properties: { p: { type: 'integer' } },
+        },
+      },
+    }
+    const result = transformJsonSchemaToAutomationFormat(schema, null, 'solution')
+    expect(Object.keys(result).sort()).toEqual(['explicitlyShown', 'shown'])
+  })
+})
+
+describe('isTableSchemaVisible', () => {
+  test('is false only for an explicit visible: false', () => {
+    expect(isTableSchemaVisible({ type: 'array', visible: false })).toBe(false)
+    expect(isTableSchemaVisible({ type: 'array', visible: true })).toBe(true)
+    expect(isTableSchemaVisible({ type: 'array' })).toBe(true)
+    expect(isTableSchemaVisible(undefined)).toBe(true)
   })
 })
 

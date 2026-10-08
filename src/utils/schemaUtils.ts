@@ -634,6 +634,16 @@ export function isParameterPropertySchemaVisible(prop: unknown): boolean {
   return (prop as any).visible !== false
 }
 
+/**
+ * Same `visible` rule applied to a whole table (a top-level property of the instance or
+ * solution schema): a table declared `visible: false` gets no drawer entry and no data tab.
+ * Its data is still part of the instance/solution and still reaches dashboards.
+ */
+export function isTableSchemaVisible(tableSchema: unknown): boolean {
+  if (!tableSchema || typeof tableSchema !== 'object') return true
+  return (tableSchema as any).visible !== false
+}
+
 /** Single type string for table headers / CoreModal (matches `FieldConfig.type` primitives). */
 export type JsonSchemaNormalizedUiType =
   | 'string'
@@ -1404,6 +1414,40 @@ const TYPE_TO_GROUP_KEY: Record<string, string> = {
   solution: 'output-tables',
 }
 
+/**
+ * Automation config entry for an array (rows) table of the instance or solution schema.
+ * `group` is the default group key (`input-tables` / `output-tables`); the store resolves
+ * it to the localized label held in `_originalGroup`.
+ */
+export function buildArrayTableAutomationConfig(
+  tableKey: string,
+  tableSchema: any,
+  type: string,
+): any {
+  const defaultGroup = DEFAULT_GROUPS[type] ?? null
+  return {
+    group: defaultGroup ? TYPE_TO_GROUP_KEY[type] || null : null,
+    title: formatTitle(tableKey),
+    icon: 'mdi-table',
+    _originalTitle: formatTitle(tableKey),
+    _originalGroup: defaultGroup,
+    get_list: {
+      url: '',
+      http_method: 'GET',
+      request_schema: null,
+      response_schema: {
+        type: 'array',
+        items: convertJsonSchemaItemToSchema(tableSchema.items),
+        // `order` written beside `description`, on the table rather than on its
+        // items, would otherwise be lost here: the converter only ever sees `items`.
+        ...(readDeclaredColumnOrder(tableSchema)
+          ? { order: readDeclaredColumnOrder(tableSchema) }
+          : {}),
+      },
+    },
+  }
+}
+
 export function transformJsonSchemaToAutomationFormat(
   schema: any,
   checksSchema: any,
@@ -1416,29 +1460,15 @@ export function transformJsonSchemaToAutomationFormat(
 
   Object.entries(schema.properties).forEach(
     ([tableKey, tableSchema]: [string, any]) => {
+      if (!isTableSchemaVisible(tableSchema)) return
+
       // Array tables (rows)
       if (tableSchema.type === 'array' && tableSchema.items) {
-        result[tableKey] = {
-          group: defaultGroup ? TYPE_TO_GROUP_KEY[type] || null : null,
-          title: formatTitle(tableKey),
-          icon: 'mdi-table',
-          _originalTitle: formatTitle(tableKey),
-          _originalGroup: defaultGroup,
-          get_list: {
-            url: '',
-            http_method: 'GET',
-            request_schema: null,
-            response_schema: {
-              type: 'array',
-              items: convertJsonSchemaItemToSchema(tableSchema.items),
-              // `order` written beside `description`, on the table rather than on its
-              // items, would otherwise be lost here: the converter only ever sees `items`.
-              ...(readDeclaredColumnOrder(tableSchema)
-                ? { order: readDeclaredColumnOrder(tableSchema) }
-                : {}),
-            },
-          },
-        }
+        result[tableKey] = buildArrayTableAutomationConfig(
+          tableKey,
+          tableSchema,
+          type,
+        )
         return
       }
 

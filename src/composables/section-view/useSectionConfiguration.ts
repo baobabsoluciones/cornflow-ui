@@ -7,6 +7,7 @@ import {
   getConfigurationBySection,
   filterValidationTablesWithData,
   enrichConfigWithChecksData,
+  enrichConfigWithTablesWithoutSchema,
 } from '@cornflow-ui/core/services/FrontendAutomationService'
 import { applyKpiDisplayMode } from '@cornflow-ui/core/utils/kpiTableUtils'
 
@@ -51,6 +52,14 @@ export function useSectionConfiguration() {
       if (dataSource) {
         config = enrichConfigWithChecksData(config, dataSource, locale.value)
         config = filterValidationTablesWithData(config, dataSource)
+        if (generalStore.appConfig?.parameters?.showTablesWithoutSchema === true) {
+          config = enrichConfigWithTablesWithoutSchema(
+            config,
+            dataSource,
+            sectionType.value === 'input-data' ? 'instance' : 'solution',
+            locale.value,
+          )
+        }
       }
 
       if (sectionType.value === 'results') {

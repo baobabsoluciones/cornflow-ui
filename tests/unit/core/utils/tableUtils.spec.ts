@@ -4,17 +4,8 @@ vi.mock('@cornflow-ui/core/plugins/i18n', () => ({
   default: { global: { t: (key: string) => key } },
 }))
 
-let showTablesWithoutSchema = false
-vi.mock('@/app/config', () => ({
-  default: {
-    getCore: () => ({ parameters: { get showTablesWithoutSchema() { return showTablesWithoutSchema } } }),
-  },
-}))
-
 import {
   getTableDataKeys,
-  getTableVisible,
-  getTableDataNames,
   getTableDataName,
   getTableJsonSchema,
   getTableOption,
@@ -72,19 +63,12 @@ const schemaConfig: any = {
   },
 }
 
-describe('tableUtils - schema key/visibility helpers', () => {
+describe('tableUtils - schema key and name helpers', () => {
   test('getTableDataKeys merges schema property keys with data keys (deduped)', () => {
     const data = { orders: [], extra: [] }
     expect(getTableDataKeys(schemaConfig, 'instance', data).sort()).toEqual(
       ['extra', 'hidden', 'orders'].sort(),
     )
-  })
-
-  test('getTableVisible returns the explicit flag, defaulting to true when undefined', () => {
-    expect(getTableVisible(schemaConfig, 'instance', 'orders')).toBe(true)
-    expect(getTableVisible(schemaConfig, 'instance', 'hidden')).toBe(false)
-    // table not present -> tableSchema undefined -> default true
-    expect(getTableVisible(schemaConfig, 'instance', 'missing')).toBe(true)
   })
 
   test('getTableDataName resolves string, localized object and fallback titles', () => {
@@ -95,19 +79,6 @@ describe('tableUtils - schema key/visibility helpers', () => {
     expect(getTableDataName({ c: { properties: { t: { title: { en: 'E' } } } } }, 'c', 't', 'fr')).toBe('E')
     // no schema entry -> returns the key itself
     expect(getTableDataName(schemaConfig, 'instance', 'unknown')).toBe('unknown')
-  })
-
-  test('getTableDataNames filters by visibility and schema presence', () => {
-    showTablesWithoutSchema = false
-    const data = { orders: [], notInSchema: [] }
-    const names = getTableDataNames(schemaConfig, 'instance', data)
-    // orders is in schema and visible; notInSchema excluded when flag is off
-    expect(names.map((n: any) => n.value)).toEqual(['orders'])
-
-    showTablesWithoutSchema = true
-    const names2 = getTableDataNames(schemaConfig, 'instance', data)
-    expect(names2.map((n: any) => n.value).sort()).toEqual(['notInSchema', 'orders'])
-    showTablesWithoutSchema = false
   })
 })
 

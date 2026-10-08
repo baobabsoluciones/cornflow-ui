@@ -6,8 +6,14 @@ import {
   type DateRangeFilterConfig,
 } from '@cornflow-ui/core/types/frontendAutomation'
 import { TableOperation } from '@cornflow-ui/core/types/table'
-import { formatTitle } from '@cornflow-ui/core/utils/schemaUtils'
+import {
+  formatTitle,
+  buildArrayTableAutomationConfig,
+  getInstanceSchemaRootForTables,
+  getSolutionSchemaRootForTables,
+} from '@cornflow-ui/core/utils/schemaUtils'
 import { resolveTitleWithLocale } from '@cornflow-ui/core/utils/i18nUtils'
+import { generateHeadersFromData } from '@cornflow-ui/core/utils/tableFilterUtils'
 
 // Helper function to convert text to URL-friendly format
 export function toUrlFriendly(text: string): string {
@@ -850,6 +856,54 @@ export function enrichConfigWithChecksData(
         resolvedGroup,
         VALIDATION_GROUP,
       )
+    }
+  })
+
+  return enriched ?? configuration
+}
+
+/**
+ * Adds an entry for every array table in the execution data that the schema does not
+ * declare, for deployments with `showTablesWithoutSchema`. Such tables join the default
+ * input/solution group and take their columns and types from their first row.
+ */
+export function enrichConfigWithTablesWithoutSchema(
+  configuration: any,
+  executionData: any,
+  type: 'instance' | 'solution',
+  locale: string = 'en',
+): any {
+  const data = executionData?.data
+  if (!configuration || !data || typeof data !== 'object') return configuration
+
+  const schemaRoot =
+    type === 'instance'
+      ? getInstanceSchemaRootForTables(executionData.schema)
+      : getSolutionSchemaRootForTables(executionData.schema)
+  const declaredTables = schemaRoot?.properties ?? {}
+
+  let enriched: any = null
+
+  Object.entries(data).forEach(([tableKey, rows]: [string, any]) => {
+    if (declaredTables[tableKey] || configuration[tableKey]) return
+    if (!Array.isArray(rows)) return
+
+    if (!enriched) enriched = { ...configuration }
+
+    const properties = Object.fromEntries(
+      generateHeadersFromData(rows).map((header) => [
+        header.key,
+        { type: header.type },
+      ]),
+    )
+    const entry = buildArrayTableAutomationConfig(
+      tableKey,
+      { type: 'array', items: { type: 'object', properties } },
+      type,
+    )
+    enriched[tableKey] = {
+      ...entry,
+      group: resolveTitleWithLocale(entry._originalGroup, locale, entry.group),
     }
   })
 

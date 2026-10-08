@@ -5,6 +5,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
 import { nextTick } from 'vue'
 import ExecutionDataView from '@cornflow-ui/core/components/project-execution/ExecutionDataView.vue'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 
 // Controllable mock holder for the useTableChanges composable so individual
 // tests can override return values while keeping a stable object across the
@@ -269,6 +270,61 @@ describe('ExecutionDataView', () => {
       expect(keys).toContain('parameters')
       // selectedTableKey set by the immediate watcher
       expect(wrapper.vm.selectedTableKey).toBe(keys[0])
+    })
+
+    test('builds no tab for tables declared visible: false', async () => {
+      const execution: any = buildExecution()
+      execution.instance.data.audit_log = [{ id: 1, event: 'x' }]
+      execution.instance.schema.properties.audit_log = {
+        type: 'array',
+        visible: false,
+        items: { type: 'object', properties: { event: { type: 'string' } } },
+      }
+      execution.instance.schema.properties.parameters.visible = false
+      const wrapper = createWrapper({ execution })
+      await nextTick()
+      const keys = wrapper.vm.instanceTables.map((t: any) => t.key)
+      expect(keys).toEqual(['products'])
+    })
+
+    describe('tables the schema does not declare', () => {
+      const executionWithUndeclaredTable = () => {
+        const execution: any = buildExecution()
+        execution.instance.data.extra = [{ id: 1, note: 'x' }]
+        return execution
+      }
+
+      test('get no tab by default', async () => {
+        const wrapper = createWrapper({ execution: executionWithUndeclaredTable() })
+        await nextTick()
+        const keys = wrapper.vm.instanceTables.map((t: any) => t.key)
+        expect(keys).toEqual(['products', 'parameters'])
+      })
+
+      test('get a tab with showTablesWithoutSchema', async () => {
+        const wrapper = createWrapper({ execution: executionWithUndeclaredTable() })
+        const generalStore = useGeneralStore()
+        generalStore.appConfig = {
+          ...generalStore.appConfig,
+          parameters: {
+            ...generalStore.appConfig.parameters,
+            showTablesWithoutSchema: true,
+          },
+        }
+        await nextTick()
+        const keys = wrapper.vm.instanceTables.map((t: any) => t.key)
+        expect(keys).toEqual(['products', 'parameters', 'extra'])
+      })
+
+      test('get a tab when matched to a master table', async () => {
+        const wrapper = createWrapper({
+          execution: executionWithUndeclaredTable(),
+          masterTableMatches: [{ tableKey: 'extra', masterTableConfig: {} }],
+        })
+        await nextTick()
+        const keys = wrapper.vm.instanceTables.map((t: any) => t.key)
+        expect(keys).toContain('extra')
+      })
     })
 
     test('returns empty when no instance data', () => {
