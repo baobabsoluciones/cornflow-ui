@@ -1,5 +1,32 @@
 # Changelog
 
+## [3.5.0] - 08-10-2026
+
+### Fixed
+- **Tables declared `"visible": false` are hidden**  
+  - The table-level flag was only applied by the tab view that #186 removed, so hidden tables kept their drawer entry and tab in the input data and results sections and in the instance review
+  - The drawer configuration and the review tabs now leave them out; their data stays in the instance or solution, so custom dashboards that read it keep working
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #234
+
+- **`showTablesWithoutSchema` decides whether undeclared tables are listed**  
+  - The flag had no effect since #186: the drawer never listed a data table the schema does not declare, and the instance review always did
+  - With `true`, the input data and results sections list undeclared array tables in the default group, with columns and types from their first row
+  - With `false` (the default), the instance review gives them no tab; a table matched to a master table counts as declared
+  - The Excel download is unchanged and includes them either way
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #234
+
+### Removed
+- **`getTableVisible` and `getTableDataNames`**  
+  - Removed from `utils/tableUtils`; nothing called them
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #234
+
+### Changed
+- **`sonar.projectVersion`**  
+  - Had been left at 3.2.9 and is now kept in step with `package.json`
+
 ## [3.4.1] - 02-10-2026
 
 ### Fixed
