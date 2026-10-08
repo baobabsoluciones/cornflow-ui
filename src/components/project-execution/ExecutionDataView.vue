@@ -512,6 +512,7 @@ import {
 import {
   transformJsonSchemaToAutomationFormat,
   stripInvisibleParameterPropertiesFromInstanceData,
+  isTableSchemaVisible,
 } from '@cornflow-ui/core/utils/schemaUtils'
 import { resolveTitle } from '@cornflow-ui/core/utils/i18nUtils'
 import {
@@ -767,6 +768,7 @@ const instanceTables = computed(() => {
   orderedKeys.forEach((tableKey) => {
     const baseData = instanceData[tableKey]
     const objectSchema = instanceSchemaRoot?.properties?.[tableKey]
+    if (!isTableSchemaVisible(objectSchema)) return
     const hasObjectSchema =
       objectSchema?.properties && typeof objectSchema.properties === 'object'
     const isSchemaObjectKey = schemaObjectKeys.includes(tableKey)

@@ -271,6 +271,21 @@ describe('ExecutionDataView', () => {
       expect(wrapper.vm.selectedTableKey).toBe(keys[0])
     })
 
+    test('builds no tab for tables declared visible: false', async () => {
+      const execution: any = buildExecution()
+      execution.instance.data.audit_log = [{ id: 1, event: 'x' }]
+      execution.instance.schema.properties.audit_log = {
+        type: 'array',
+        visible: false,
+        items: { type: 'object', properties: { event: { type: 'string' } } },
+      }
+      execution.instance.schema.properties.parameters.visible = false
+      const wrapper = createWrapper({ execution })
+      await nextTick()
+      const keys = wrapper.vm.instanceTables.map((t: any) => t.key)
+      expect(keys).toEqual(['products'])
+    })
+
     test('returns empty when no instance data', () => {
       const wrapper = createWrapper({
         execution: { instance: { data: null, schema: {} } },

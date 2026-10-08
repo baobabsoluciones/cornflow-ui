@@ -497,6 +497,7 @@ Instance tables are organized based on schema definitions:
 1. **Default grouping**: If no specific groups are defined, all tables are grouped under "Input tables"
 2. **Custom grouping**: Tables can be organized into logical groups as defined in the schema
 3. **Individual tables**: Each table can have its own dedicated view
+4. **Hidden tables**: A table declared `"visible": false` in the schema gets no drawer entry and no tab, and is left out of the Excel download. Its data stays in the instance or solution, so custom dashboards can still read it — the usual case for tables that only feed a dashboard
 
 ### Validation tables
 
@@ -548,6 +549,7 @@ Solution tables follow the same organization principles as input data:
 1. **Default grouping**: If no specific groups are defined, all tables are grouped under "Output tables"
 2. **Custom grouping**: Tables can be organized into logical groups as defined in the schema
 3. **Individual tables**: Each table can have its own dedicated view
+4. **Hidden tables**: `"visible": false` hides a solution table the same way it hides an input table
 
 ### Validation tables
 

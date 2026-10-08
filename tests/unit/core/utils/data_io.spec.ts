@@ -91,7 +91,6 @@ vi.mock('@cornflow-ui/core/plugins/i18n', () => ({
   },
 }))
 vi.mock('@cornflow-ui/core/utils/tableUtils', () => ({
-  getTableVisible: vi.fn().mockReturnValue(true),
   getTablePropertyVisible: vi.fn().mockReturnValue(true),
 }))
 

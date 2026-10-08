@@ -634,6 +634,16 @@ export function isParameterPropertySchemaVisible(prop: unknown): boolean {
   return (prop as any).visible !== false
 }
 
+/**
+ * Same `visible` rule applied to a whole table (a top-level property of the instance or
+ * solution schema): a table declared `visible: false` gets no drawer entry and no data tab.
+ * Its data is still part of the instance/solution and still reaches dashboards.
+ */
+export function isTableSchemaVisible(tableSchema: unknown): boolean {
+  if (!tableSchema || typeof tableSchema !== 'object') return true
+  return (tableSchema as any).visible !== false
+}
+
 /** Single type string for table headers / CoreModal (matches `FieldConfig.type` primitives). */
 export type JsonSchemaNormalizedUiType =
   | 'string'
@@ -1416,6 +1426,8 @@ export function transformJsonSchemaToAutomationFormat(
 
   Object.entries(schema.properties).forEach(
     ([tableKey, tableSchema]: [string, any]) => {
+      if (!isTableSchemaVisible(tableSchema)) return
+
       // Array tables (rows)
       if (tableSchema.type === 'array' && tableSchema.items) {
         result[tableKey] = {
