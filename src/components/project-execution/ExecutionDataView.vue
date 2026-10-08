@@ -765,10 +765,19 @@ const instanceTables = computed(() => {
     }
   })
 
+  const showTablesWithoutSchema =
+    generalStore.appConfig?.parameters?.showTablesWithoutSchema === true
+
   orderedKeys.forEach((tableKey) => {
     const baseData = instanceData[tableKey]
     const objectSchema = instanceSchemaRoot?.properties?.[tableKey]
     if (!isTableSchemaVisible(objectSchema)) return
+    // A table matched to a master table is defined by the master config even when the
+    // instance schema does not declare it.
+    const isDeclared =
+      objectSchema != null ||
+      !!props.masterTableMatches?.some((m: any) => m.tableKey === tableKey)
+    if (!isDeclared && !showTablesWithoutSchema) return
     const hasObjectSchema =
       objectSchema?.properties && typeof objectSchema.properties === 'object'
     const isSchemaObjectKey = schemaObjectKeys.includes(tableKey)

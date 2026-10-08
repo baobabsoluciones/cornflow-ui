@@ -25,6 +25,7 @@ import {
   hasValidationTableData,
   filterValidationTablesWithData,
   enrichConfigWithChecksData,
+  enrichConfigWithTablesWithoutSchema,
   isValidationGroup,
   isValidationLikeGroup,
   getConfigurationBySection,
@@ -893,6 +894,56 @@ describe('enrichConfigWithChecksData', () => {
     })
     expect(result.chk.isPrimitiveArray).toBe(true)
     expect(result.chk.get_list.response_schema.items.type).toBe('string')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// enrichConfigWithTablesWithoutSchema
+// ---------------------------------------------------------------------------
+describe('enrichConfigWithTablesWithoutSchema', () => {
+  const solution = {
+    schema: {
+      properties: {
+        declared: { type: 'array', items: { properties: { a: { type: 'string' } } } },
+        hidden: { type: 'array', visible: false, items: { properties: {} } },
+      },
+    },
+    data: {
+      declared: [{ a: 'x' }],
+      hidden: [{ b: 1 }],
+      extra: [{ name: 'n', count: 3, ratio: 1.5, flag: true }],
+      metadata: { run: 1 },
+    },
+  }
+
+  it('adds an entry for each undeclared array table, with columns from its first row', () => {
+    const cfg: any = { declared: {} }
+    const result = enrichConfigWithTablesWithoutSchema(cfg, solution, 'solution', 'es')
+    expect(Object.keys(result).sort()).toEqual(['declared', 'extra'])
+    expect(result.extra.group).toBe('Datos de la solución')
+    expect(result.extra.title).toBe('Extra')
+    const props = result.extra.get_list.response_schema.items.properties
+    expect(Object.keys(props)).toEqual(['name', 'count', 'ratio', 'flag'])
+    expect(props.name.type).toBe('string')
+    expect(props.count.type).toBe('number')
+    expect(props.flag.type).toBe('boolean')
+  })
+
+  it('reads the instance root of a full-format schema', () => {
+    const execution = {
+      schema: { instance: { properties: { declared: { type: 'array', items: {} } } } },
+      data: { declared: [{ a: 1 }], extra: [] },
+    }
+    const result = enrichConfigWithTablesWithoutSchema({}, execution, 'instance')
+    expect(Object.keys(result)).toEqual(['extra'])
+    expect(result.extra.group).toBe('Input data')
+  })
+
+  it('returns the same config when every table is declared or already listed', () => {
+    const cfg: any = { extra: {} }
+    expect(enrichConfigWithTablesWithoutSchema(cfg, solution, 'solution')).toBe(cfg)
+    expect(enrichConfigWithTablesWithoutSchema(cfg, { schema: null }, 'solution')).toBe(cfg)
+    expect(enrichConfigWithTablesWithoutSchema(null, solution, 'solution')).toBeNull()
   })
 })
 

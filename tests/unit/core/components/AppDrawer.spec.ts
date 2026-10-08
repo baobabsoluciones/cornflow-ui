@@ -787,6 +787,31 @@ describe('AppDrawer.vue', () => {
       mockStore.selectedExecution = null
     })
 
+    test('resultsSection lists undeclared solution tables only with showTablesWithoutSchema', async () => {
+      const solution = { schema: { properties: {} }, data: { extra: [{ a: 1 }] } }
+      mockStore.selectedExecution = {
+        ...baseExecution,
+        experiment: { ...baseExecution.experiment, solution },
+      }
+      mockStore.getConfigurations = { masterData: {}, inputData: {}, resultsData: {} }
+      mockStore.appDashboardPages = []
+      const tableKeys = (section: any) =>
+        section.subPages.flatMap((page: any) =>
+          (page.subPages ?? []).map((sub: any) => sub.key),
+        )
+
+      wrapper = await createWrapper()
+      await wrapper.vm.$nextTick()
+      expect(tableKeys(wrapper.vm.resultsSection)).toEqual([])
+
+      mockAppConfig.getCore.mockReturnValue({
+        parameters: { showDashboardMainView: true, showTablesWithoutSchema: true },
+      })
+      wrapper = await createWrapper()
+      await wrapper.vm.$nextTick()
+      expect(tableKeys(wrapper.vm.resultsSection)).toEqual(['extra'])
+    })
+
     test('inputDataSection null without selected execution', async () => {
       mockStore.selectedExecution = null
       wrapper = await createWrapper()

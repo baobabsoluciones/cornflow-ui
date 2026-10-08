@@ -498,6 +498,7 @@ Instance tables are organized based on schema definitions:
 2. **Custom grouping**: Tables can be organized into logical groups as defined in the schema
 3. **Individual tables**: Each table can have its own dedicated view
 4. **Hidden tables**: A table declared `"visible": false` in the schema gets no drawer entry and no tab, and is left out of the Excel download. Its data stays in the instance or solution, so custom dashboards can still read it — the usual case for tables that only feed a dashboard
+5. **Tables without schema**: An array table present in the data but not declared in the schema is listed only when `showTablesWithoutSchema` is `true`. It joins the default group and takes its columns and their types from its first row. In the instance review tabs, a table matched to a master table counts as declared. The Excel download includes these tables either way
 
 ### Validation tables
 
@@ -550,6 +551,7 @@ Solution tables follow the same organization principles as input data:
 2. **Custom grouping**: Tables can be organized into logical groups as defined in the schema
 3. **Individual tables**: Each table can have its own dedicated view
 4. **Hidden tables**: `"visible": false` hides a solution table the same way it hides an input table
+5. **Tables without schema**: `showTablesWithoutSchema` applies to solution tables the same way it applies to input tables
 
 ### Validation tables
 
@@ -810,7 +812,7 @@ This file contains **internal application-specific configuration** that is part 
 | `valuesJsonPath`              | `string`   | Path to the external JSON configuration file          |
 | `useEtlBackend`               | `boolean`  | Enable ETL backend integration                        |
 | `showOpenIdUsername`          | `boolean`  | Display user full name and email from openId login    |
-| `showTablesWithoutSchema`     | `boolean`  | Display tables that don't have a defined schema       |
+| `showTablesWithoutSchema`     | `boolean`  | List data tables the schema does not declare          |
 | `allowEditInstance`           | `boolean`  | Allow users to edit instances from input data section |
 | `enableAutoInstanceDashboard` | `boolean`  | Auto-generate dashboards for instance tables          |
 | `enableAutoSolutionDashboard` | `boolean`  | Auto-generate dashboards for solution tables          |

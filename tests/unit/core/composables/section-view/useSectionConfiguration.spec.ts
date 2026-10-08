@@ -29,6 +29,10 @@ const mockFilterValidationTables = vi.fn((config: any) => ({
   __filtered: true,
 }))
 const mockEnrichConfig = vi.fn((config: any) => ({ ...config, __enriched: true }))
+const mockEnrichWithoutSchema = vi.fn((config: any) => ({
+  ...config,
+  __withoutSchema: true,
+}))
 vi.mock('@cornflow-ui/core/services/FrontendAutomationService', () => ({
   getSectionType: (p: string) => mockGetSectionType(p),
   getConfigurationBySection: (c: any, s: string) =>
@@ -37,6 +41,8 @@ vi.mock('@cornflow-ui/core/services/FrontendAutomationService', () => ({
     mockFilterValidationTables(c, d),
   enrichConfigWithChecksData: (c: any, d: any, l: any) =>
     mockEnrichConfig(c, d, l),
+  enrichConfigWithTablesWithoutSchema: (c: any, d: any, t: any, l: any) =>
+    mockEnrichWithoutSchema(c, d, t, l),
 }))
 
 const mockApplyKpi = vi.fn((config: any) => ({ ...config, __kpi: true }))
@@ -88,6 +94,39 @@ describe('useSectionConfiguration', () => {
     expect(mockEnrichConfig).toHaveBeenCalled()
     expect(mockFilterValidationTables).toHaveBeenCalled()
     expect(cfg.__filtered).toBe(true)
+  })
+
+  test('lists undeclared instance tables only with showTablesWithoutSchema', () => {
+    route.path = '/input-data'
+    const instance = { id: 'inst-1' }
+    storeState.selectedExecution = { experiment: { instance } }
+
+    useSectionConfiguration().currentConfiguration.value
+    expect(mockEnrichWithoutSchema).not.toHaveBeenCalled()
+
+    storeState.appConfig = { parameters: { showTablesWithoutSchema: true } }
+    const cfg = useSectionConfiguration().currentConfiguration.value
+    expect(mockEnrichWithoutSchema).toHaveBeenCalledWith(
+      expect.any(Object),
+      instance,
+      'instance',
+      'en',
+    )
+    expect(cfg.__withoutSchema).toBe(true)
+  })
+
+  test('lists undeclared solution tables in the results section', () => {
+    route.path = '/results'
+    const solution = { rawKpis: null }
+    storeState.selectedExecution = { solution }
+    storeState.appConfig = { parameters: { showTablesWithoutSchema: true } }
+    useSectionConfiguration().currentConfiguration.value
+    expect(mockEnrichWithoutSchema).toHaveBeenCalledWith(
+      expect.any(Object),
+      solution,
+      'solution',
+      'en',
+    )
   })
 
   test('input-data without dataSource skips enrichment', () => {

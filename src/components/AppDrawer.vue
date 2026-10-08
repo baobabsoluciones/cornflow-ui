@@ -176,6 +176,7 @@ import {
   getMasterDataNavigationWithSections,
   filterValidationTablesWithData,
   enrichConfigWithChecksData,
+  enrichConfigWithTablesWithoutSchema,
 } from '@cornflow-ui/core/services/FrontendAutomationService'
 import { applyKpiDisplayMode } from '@cornflow-ui/core/utils/kpiTableUtils'
 import { resolveTitleWithLocale } from '@cornflow-ui/core/utils/i18nUtils'
@@ -341,6 +342,14 @@ export default defineComponent({
           inputDataConfig,
           instanceData,
         )
+        if (appConfig.getCore().parameters.showTablesWithoutSchema === true) {
+          inputDataConfig = enrichConfigWithTablesWithoutSchema(
+            inputDataConfig,
+            instanceData,
+            'instance',
+            locale,
+          )
+        }
       }
 
       const navigationItems = getNavigationItemsFromConfig(
@@ -397,6 +406,14 @@ export default defineComponent({
           resultsDataConfig,
           solutionData,
         )
+        if (appConfig.getCore().parameters.showTablesWithoutSchema === true) {
+          resultsDataConfig = enrichConfigWithTablesWithoutSchema(
+            resultsDataConfig,
+            solutionData,
+            'solution',
+            locale,
+          )
+        }
 
         const kpiMode =
           appConfig.getCore().parameters?.kpiTablesDisplayMode ?? 'disabled'
