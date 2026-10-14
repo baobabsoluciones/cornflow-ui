@@ -1,5 +1,20 @@
 # Changelog
 
+## [3.5.1] - 14-10-2026
+
+### Fixed
+- **Config fields the app declares with a `source` or a `default` are kept**  
+  - `applySchemaConfigToAppConfig` replaced `configFields` with the fields derived from the schema whenever its config has `properties`, so a field that reads its value from an instance table, or sends a default, never reached `loadConfigFieldValues` and the execution config went out with the solver only
+  - `mergeAppConfigFields` keeps those fields on top of the schema's: their properties win over those of the schema field with the same key, and they are kept when the schema has no such property. The rest of the app fields still give way to the schema
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #236
+
+### Added
+- **Console warning for a config field whose `source` has no value**  
+  - `ProjectExecutionView` warns when a field with a `source` finds nothing in the loaded instance, because the table is missing or no row matches; the solver would otherwise run on its own defaults without a trace
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #236
+
 ## [3.5.0] - 08-10-2026
 
 ### Fixed
