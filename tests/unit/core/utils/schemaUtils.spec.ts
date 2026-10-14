@@ -47,6 +47,7 @@ import {
   displayValueMatchesValueNone,
   resolveDisplayValuesToFkIds,
   getExecutionConfigFromSchemaConfig,
+  mergeAppConfigFields,
   getPreEtlConfigFields,
   pickPreEtlConfigValues,
   coerceValueToJsonSchemaField,
@@ -1133,6 +1134,104 @@ describe('getExecutionConfigFromSchemaConfig', () => {
     expect(byKey.date.type).toBe('date')
     expect(byKey.date.icon).toBe('mdi-calendar')
     expect(byKey.plain.type).toBe('text')
+  })
+})
+
+// ─── mergeAppConfigFields ────────────────────────────────────────────────────
+
+describe('mergeAppConfigFields', () => {
+  const schemaFields = getExecutionConfigFromSchemaConfig({
+    properties: {
+      solver: { enum: ['mip.gurobi'] },
+      timeLimit: { type: 'number' },
+      gapRel: { type: 'number' },
+      cornflow: { type: 'boolean' },
+      region: { type: 'string', pre_etl: true },
+    },
+    required: ['region'],
+  })!.configFields
+
+  const gapRelFromInstance = {
+    key: 'gapRel',
+    title: 'configParams.gapRel',
+    type: 'float',
+    source: 'eParametros',
+    param: 'gap',
+    lookupType: 'arrayByValue',
+    lookupParam: 'PARAMETRO_ID',
+    lookupValue: 'VALOR',
+  }
+
+  test('an app field with a source wins over the schema field with the same key', () => {
+    const merged = mergeAppConfigFields(schemaFields, [gapRelFromInstance])
+
+    expect(merged.find((f) => f.key === 'gapRel')).toMatchObject(
+      gapRelFromInstance,
+    )
+  })
+
+  test('an app field with a default wins over the schema field with the same key', () => {
+    const merged = mergeAppConfigFields(schemaFields, [
+      {
+        key: 'cornflow',
+        title: 'configParams.cornflow',
+        type: 'boolean',
+        default: true,
+      },
+    ])
+
+    expect(merged.find((f) => f.key === 'cornflow')!.default).toBe(true)
+  })
+
+  test('keeps the schema properties the app field does not set', () => {
+    const merged = mergeAppConfigFields(schemaFields, [
+      {
+        key: 'region',
+        title: 'configParams.region',
+        type: 'text',
+        default: 'north',
+      },
+    ])
+
+    expect(merged.find((f) => f.key === 'region')).toMatchObject({
+      default: 'north',
+      preEtl: true,
+      required: true,
+    })
+  })
+
+  test('keeps an app field with a source the schema has no property for', () => {
+    const timeLimit3 = {
+      key: 'timeLimit_3',
+      title: 'configParams.timeLimit_3',
+      type: 'number',
+      source: 'eParametros',
+      param: 'minutos_modelo_3',
+    }
+
+    const merged = mergeAppConfigFields(schemaFields, [timeLimit3])
+
+    expect(merged.map((f) => f.key)).toEqual([
+      'timeLimit',
+      'gapRel',
+      'cornflow',
+      'region',
+      'timeLimit_3',
+    ])
+    expect(merged.at(-1)).toEqual(timeLimit3)
+  })
+
+  test('app fields without a source or a default give way to the schema', () => {
+    const merged = mergeAppConfigFields(schemaFields, [
+      { key: 'timeLimit', title: 'app.timeLimit', type: 'number' },
+      { key: 'onlyInApp', title: 'app.onlyInApp', type: 'text' },
+    ])
+
+    expect(merged).toEqual(schemaFields)
+  })
+
+  test('returns the schema fields when the app declares none', () => {
+    expect(mergeAppConfigFields(schemaFields, undefined)).toEqual(schemaFields)
   })
 })
 

@@ -471,11 +471,23 @@ export default {
 
     extractFieldValue(field) {
       if (!this.hasValidDataSource(field)) {
+        this.warnUnresolvedSourceField(field)
         return field.default
       }
 
       const sourceData = this.newExecution.instance.data[field.source]
-      return this.getValueFromSource(field, sourceData)
+      const value = this.getValueFromSource(field, sourceData)
+      if (value === undefined) this.warnUnresolvedSourceField(field)
+      return value
+    },
+
+    // A field with a `source` that finds nothing in the loaded instance is left out of the
+    // config (or gets its default), and the solver then runs on its own defaults; say so.
+    warnUnresolvedSourceField(field) {
+      if (!field.source || !this.newExecution.instance?.data) return
+      console.warn(
+        `Config field "${field.key}" found no value for "${field.param}" in instance table "${field.source}".`,
+      )
     },
 
     hasValidDataSource(field) {

@@ -714,6 +714,80 @@ describe('ProjectExecutionView', () => {
 
       expect(wrapper.vm.newExecution.config.field1).toBe('found-value')
     })
+
+    describe('warning about a field whose source has no value', () => {
+      const timeLimitField = {
+        key: 'timeLimit_3',
+        source: 'eParametros',
+        lookupType: 'arrayByValue',
+        lookupParam: 'PARAMETRO_ID',
+        param: 'minutos_modelo_3',
+        lookupValue: 'VALOR',
+        type: 'number',
+      }
+      let warn: ReturnType<typeof vi.spyOn>
+      // Mounting the view logs Vue warnings of its own; keep only the config-field ones.
+      const configFieldWarnings = () =>
+        warn.mock.calls.filter(([message]) =>
+          String(message).startsWith('Config field'),
+        )
+
+      beforeEach(() => {
+        warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      })
+
+      afterEach(() => {
+        warn.mockRestore()
+      })
+
+      test('warns when no row of the source table matches', async () => {
+        const { wrapper } = createWrapper({ configFields: [timeLimitField] })
+        wrapper.vm.newExecution.instance = {
+          data: { eParametros: [{ ID: 'minutos_modelo_3', VALOR: 30 }] },
+        }
+
+        await wrapper.vm.loadConfigFieldValues()
+
+        expect(wrapper.vm.newExecution.config.timeLimit_3).toBeUndefined()
+        expect(configFieldWarnings()).toEqual([
+          [
+            'Config field "timeLimit_3" found no value for "minutos_modelo_3" in instance table "eParametros".',
+          ],
+        ])
+      })
+
+      test('warns when the instance has no such table', async () => {
+        const { wrapper } = createWrapper({ configFields: [timeLimitField] })
+        wrapper.vm.newExecution.instance = { data: { otherTable: [] } }
+
+        await wrapper.vm.loadConfigFieldValues()
+
+        expect(configFieldWarnings()).toHaveLength(1)
+      })
+
+      test('does not warn when the value is found', async () => {
+        const { wrapper } = createWrapper({ configFields: [timeLimitField] })
+        wrapper.vm.newExecution.instance = {
+          data: {
+            eParametros: [{ PARAMETRO_ID: 'minutos_modelo_3', VALOR: 30 }],
+          },
+        }
+
+        await wrapper.vm.loadConfigFieldValues()
+
+        expect(wrapper.vm.newExecution.config.timeLimit_3).toBe(30)
+        expect(configFieldWarnings()).toEqual([])
+      })
+
+      test('does not warn before an instance is loaded', async () => {
+        const { wrapper } = createWrapper({ configFields: [timeLimitField] })
+        wrapper.vm.newExecution.instance = null
+
+        await wrapper.vm.loadConfigFieldValues()
+
+        expect(configFieldWarnings()).toEqual([])
+      })
+    })
   })
 
   describe('Edge Cases', () => {

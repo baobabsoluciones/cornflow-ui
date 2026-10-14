@@ -1532,6 +1532,55 @@ describe('General Store', () => {
       store.applySchemaConfigToAppConfig()
       expect(store.appConfig.parameters.executionSolvers).toBe(before)
     })
+
+    describe('with app config fields that read from the instance', () => {
+      const timeLimitFromInstance = {
+        key: 'timeLimit_3',
+        title: 'configParams.timeLimit_3',
+        type: 'number',
+        source: 'eParametros',
+        param: 'minutos_modelo_3',
+        lookupType: 'arrayByValue',
+        lookupParam: 'PARAMETRO_ID',
+        lookupValue: 'VALOR',
+      }
+      const schemaConfig = {
+        config: {
+          properties: {
+            solver: { enum: ['mip.gurobi'] },
+            timeLimit: { type: 'number' },
+            cornflow: { type: 'boolean' },
+          },
+        },
+      } as any
+
+      test('keeps them next to the schema fields', () => {
+        const store = useGeneralStore()
+        store.appConfigFields = [timeLimitFromInstance]
+        store.schemaConfig = schemaConfig
+
+        store.applySchemaConfigToAppConfig()
+
+        expect(
+          store.appConfig.parameters.configFields.map((f: any) => f.key),
+        ).toEqual(['timeLimit', 'cornflow', 'timeLimit_3'])
+        expect(store.appConfig.parameters.configFields[2]).toEqual(
+          timeLimitFromInstance,
+        )
+      })
+
+      test('gives the same fields when the schema is applied again', () => {
+        const store = useGeneralStore()
+        store.appConfigFields = [timeLimitFromInstance]
+        store.schemaConfig = schemaConfig
+
+        store.applySchemaConfigToAppConfig()
+        const firstFields = store.appConfig.parameters.configFields
+        store.applySchemaConfigToAppConfig()
+
+        expect(store.appConfig.parameters.configFields).toEqual(firstFields)
+      })
+    })
   })
 
   describe('setConfigurations', () => {

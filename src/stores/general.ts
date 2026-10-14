@@ -37,6 +37,8 @@ import { showSnackbar } from '@cornflow-ui/core/services/SnackbarService'
 import {
   resolveTableConfigTitles,
   getExecutionConfigFromSchemaConfig,
+  mergeAppConfigFields,
+  type ExecutionConfigField,
 } from '@cornflow-ui/core/utils/schemaUtils'
 import {
   filterTablesByUserSchemas,
@@ -122,6 +124,12 @@ export const useGeneralStore = defineStore('general', {
     schema: '',
     schemaConfig: {} as SchemaConfig,
     appConfig: appConfig.getCore(),
+    /**
+     * `configFields` as `src/app/config.ts` declares them. `applySchemaConfigToAppConfig` merges
+     * them with the schema's, so they are kept apart from `appConfig.parameters.configFields`.
+     */
+    appConfigFields: (appConfig.getCore().parameters.configFields ??
+      []) as ExecutionConfigField[],
     appDashboardRoutes: appConfig.getDashboardRoutes(),
     appDashboardPages: appConfig.getDashboardPages(),
     appDashboardLayout: appConfig.getDashboardLayout(),
@@ -261,6 +269,8 @@ export const useGeneralStore = defineStore('general', {
     /**
      * Updates app config parameters (solverConfig, executionSolvers, configFields) from the
      * schema's config when available, so the UI uses the backend schema as source of truth.
+     * The app's config fields with a `source` or a `default` are kept on top of the schema's
+     * (see `mergeAppConfigFields`).
      */
     applySchemaConfigToAppConfig() {
       const derived = getExecutionConfigFromSchemaConfig(
@@ -273,7 +283,10 @@ export const useGeneralStore = defineStore('general', {
         defaultSolver: derived.solverConfig.defaultSolver,
       }
       this.appConfig.parameters.executionSolvers = derived.executionSolvers
-      this.appConfig.parameters.configFields = derived.configFields
+      this.appConfig.parameters.configFields = mergeAppConfigFields(
+        derived.configFields,
+        this.appConfigFields,
+      )
     },
 
     async setConfigurations() {

@@ -1785,6 +1785,15 @@ export interface ExecutionConfigField {
   preEtl?: boolean
   /** True when the key is listed in the config schema's root `required`. */
   required?: boolean
+  /** Instance table the value is read from (app-defined; see README "configFields"). */
+  source?: string
+  /** Key, or row id with `lookupType: 'arrayByValue'`, to read in `source`. */
+  param?: string
+  lookupType?: string
+  /** Column matched against `param` with `lookupType: 'arrayByValue'`. */
+  lookupParam?: string
+  /** Column returned from the matched row with `lookupType: 'arrayByValue'`. */
+  lookupValue?: string
 }
 
 /** Resolves solver list and default from the `solver` schema property. */
@@ -1912,6 +1921,33 @@ export function getExecutionConfigFromSchemaConfig(schemaConfig: any): {
     executionSolvers,
     configFields,
   }
+}
+
+/**
+ * Combines the config fields derived from the schema with the ones the app declares.
+ *
+ * An app field with a `source` (where its value is read from in the instance) or a `default`
+ * (what to send when nothing else gives a value) carries something the schema does not say for
+ * this app, so its properties win over those of the schema field with the same key, and it is
+ * kept even when the schema has no property for it. Every other app field gives way to the schema.
+ */
+export function mergeAppConfigFields(
+  schemaFields: ExecutionConfigField[],
+  appFields: ExecutionConfigField[] | null | undefined,
+): ExecutionConfigField[] {
+  const ownFields = (appFields ?? []).filter(
+    (field) => field.source !== undefined || field.default !== undefined,
+  )
+  const ownFieldsByKey = new Map(ownFields.map((field) => [field.key, field]))
+  const schemaKeys = new Set(schemaFields.map((field) => field.key))
+
+  return [
+    ...schemaFields.map((field) => ({
+      ...field,
+      ...ownFieldsByKey.get(field.key),
+    })),
+    ...ownFields.filter((field) => !schemaKeys.has(field.key)),
+  ]
 }
 
 /** The config fields the schema marked with `pre_etl: true`, in schema order. */
