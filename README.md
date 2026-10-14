@@ -1340,7 +1340,7 @@ Defines the configuration fields for execution parameters. Each field can have:
 - `preEtl` (boolean, from the schema): Set from `"pre_etl": true`. See [Pre-ETL parameters](#pre-etl-parameters-pre_etl).
 - `required` (boolean, from the schema): Set when the config schema's root `required` lists the key. Only the pre-ETL step reads it, to decide what blocks **Continue**.
 
-**Fields derived from the backend schema.** Once the app has the schema from `GET /schema/<name>/`, `getExecutionConfigFromSchemaConfig` (in `schemaUtils.ts`) rebuilds `configFields` from `schema.config.properties` and replaces whatever `src/app/config.ts` declared, so the backend schema is the source of truth. The mapping:
+**Fields derived from the backend schema.** Once the app has the schema from `GET /schema/<name>/`, `getExecutionConfigFromSchemaConfig` (in `schemaUtils.ts`) rebuilds `configFields` from `schema.config.properties`, so the backend schema is the source of truth for which fields exist and how they look. The fields `src/app/config.ts` declares with a `source` or a `default` say something the schema cannot (where this app reads the value, or what it sends when nothing else does), so `mergeAppConfigFields` keeps them on top: their properties win over those of the schema field with the same key, and they are kept even when the schema has no such property. The rest of the fields declared in `src/app/config.ts` give way to the schema. When a field with a `source` finds no value in the loaded instance, the browser console says so. The mapping:
 
 | In the schema | Becomes |
 | --- | --- |
