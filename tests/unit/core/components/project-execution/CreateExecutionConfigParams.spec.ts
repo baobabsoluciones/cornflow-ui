@@ -550,6 +550,55 @@ describe('CreateExecutionConfigParams', () => {
     })
   })
 
+  describe('Options from a frontend-automation table', () => {
+    const originalFields = mockGeneralStore.appConfig.parameters.configFields
+    const plantField = {
+      key: 'plant_id',
+      type: 'select',
+      title: 'Plant',
+      preEtl: true,
+      joinFrom: 'plants.name',
+    }
+    const store = mockGeneralStore as typeof mockGeneralStore & {
+      fetchTableOptions?: ReturnType<typeof vi.fn>
+    }
+
+    beforeEach(() => {
+      mockGeneralStore.appConfig.parameters.configFields = [plantField] as any
+      store.fetchTableOptions = vi.fn().mockResolvedValue([
+        { value: 1, title: 'North' },
+        { value: 2, title: 'South' },
+      ])
+    })
+
+    afterEach(() => {
+      mockGeneralStore.appConfig.parameters.configFields = originalFields
+      delete store.fetchTableOptions
+    })
+
+    const settle = async () => {
+      await nextTick()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      await nextTick()
+    }
+
+    test('offers the rows of the table its join_from names', async () => {
+      wrapper = createWrapper()
+      await settle()
+
+      expect(store.fetchTableOptions).toHaveBeenCalledWith('plants.name')
+      const options = wrapper.findAll('.v-select option')
+      expect(options.map((option: any) => option.text())).toEqual(['North', 'South'])
+    })
+
+    test('asks only for the options of the fields on screen', async () => {
+      wrapper = createWrapper({ scope: 'standard' })
+      await settle()
+
+      expect(store.fetchTableOptions).not.toHaveBeenCalled()
+    })
+  })
+
   describe('Component Structure and Styling', () => {
     test('applies correct CSS classes to fields', () => {
       wrapper = createWrapper()

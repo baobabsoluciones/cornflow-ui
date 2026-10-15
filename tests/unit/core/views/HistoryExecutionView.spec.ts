@@ -5,6 +5,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
 import HistoryExecutionView from '@cornflow-ui/core/views/HistoryExecutionView.vue'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import appConfig from '@/app/config'
 
 // Mock components
 vi.mock('@cornflow-ui/core/components/project-execution/ProjectExecutionsTable.vue', () => ({
@@ -31,6 +32,7 @@ vi.mock('@cornflow-ui/core/components/core/CorePanelData.vue', () => ({
     name: 'CorePanelData',
     template:
       '<div data-testid="m-panel-data" class="mt-5">' +
+      '<slot name="filters" />' +
       '<slot name="extra-filters" />' +
       '<slot name="custom-checkbox" />' +
       '<slot name="table" :itemData="[]" :showHeaders="true" />' +
@@ -60,7 +62,8 @@ const createWrapper = () => {
           yesterday: 'Yesterday',
           last7days: 'Last 7 days',
           lastMonth: 'Last month',
-          custom: 'Custom'
+          custom: 'Custom',
+          filterAll: 'All'
         },
         projectExecution: {
           snackbar: {
@@ -112,6 +115,12 @@ const createWrapper = () => {
         'v-checkbox': {
           template: '<label class="v-checkbox-stub"><slot /></label>',
           props: ['modelValue', 'label', 'color'],
+        },
+        'v-select': {
+          name: 'VSelect',
+          template: '<div class="v-select-stub">{{ label }}</div>',
+          props: ['modelValue', 'items', 'label'],
+          emits: ['update:modelValue'],
         },
       }
     }
@@ -539,6 +548,93 @@ describe('HistoryExecutionView', () => {
       })
       
       expect(fetchDataSpy).toHaveBeenCalled()
+    })
+  })
+
+  describe('Executions history filters', () => {
+    const PLANT = { key: 'plant_id', labelKey: 'Plant', joinFrom: 'plants.name' }
+    const PROGRAM = { key: 'program_id', labelKey: 'Program', joinFrom: 'programs.name' }
+    const plants = [
+      { value: 1, title: 'North' },
+      { value: 2, title: 'South' },
+    ]
+    const parameters = appConfig.getCore().parameters as Record<string, unknown>
+
+    const selectOf = (wrapper: any, key: string) =>
+      wrapper
+        .findAllComponents({ name: 'VSelect' })
+        .find((select: any) => select.attributes('data-testid') === `history-filter-${key}`)
+
+    afterEach(() => {
+      parameters.executionFilters = []
+    })
+
+    test('shows no filter when the app declares none', () => {
+      const { wrapper } = createWrapper()
+
+      expect(wrapper.findAllComponents({ name: 'VSelect' })).toHaveLength(0)
+    })
+
+    test('offers "All" and the rows of the filter table, and sends the pick to the store', async () => {
+      parameters.executionFilters = [PLANT]
+      const { wrapper, generalStore } = createWrapper()
+      generalStore.executionFilterOptions = { plant_id: plants }
+      generalStore.executionFilterValues = { plant_id: null }
+      generalStore.setExecutionFilterValue = vi.fn()
+      await wrapper.vm.$nextTick()
+
+      const select = selectOf(wrapper, 'plant_id')
+      expect(select.text()).toBe('Plant')
+      const items = select.props('items')
+      expect(items.map((item: { title: string }) => item.title)).toEqual([
+        'All',
+        'North',
+        'South',
+      ])
+      expect(select.props('modelValue')).toBe(items[0].value)
+
+      select.vm.$emit('update:modelValue', 2)
+      expect(generalStore.setExecutionFilterValue).toHaveBeenCalledWith('plant_id', 2)
+
+      select.vm.$emit('update:modelValue', items[0].value)
+      expect(generalStore.setExecutionFilterValue).toHaveBeenLastCalledWith('plant_id', null)
+    })
+
+    test('shows the picked value', async () => {
+      parameters.executionFilters = [PLANT]
+      const { wrapper, generalStore } = createWrapper()
+      generalStore.executionFilterOptions = { plant_id: plants }
+      generalStore.executionFilterValues = { plant_id: 2 }
+      await wrapper.vm.$nextTick()
+
+      expect(selectOf(wrapper, 'plant_id').props('modelValue')).toBe(2)
+    })
+
+    test('hides a filter without options, as when the app has no frontend automation for its table', async () => {
+      parameters.executionFilters = [PLANT, PROGRAM]
+      const { wrapper, generalStore } = createWrapper()
+      generalStore.executionFilterOptions = { plant_id: plants, program_id: [] }
+      generalStore.executionFilterValues = { plant_id: null, program_id: null }
+      await wrapper.vm.$nextTick()
+
+      expect(selectOf(wrapper, 'plant_id')).toBeDefined()
+      expect(selectOf(wrapper, 'program_id')).toBeUndefined()
+    })
+
+    test('lists the executions again when the picked filters change', async () => {
+      parameters.executionFilters = [PLANT]
+      const { wrapper, generalStore } = createWrapper()
+      generalStore.executionFilterOptions = { plant_id: plants }
+      generalStore.executionFilterValues = { plant_id: null }
+      await wrapper.vm.$nextTick()
+      const fetchDataSpy = vi
+        .spyOn(wrapper.vm, 'fetchData')
+        .mockImplementation(() => Promise.resolve())
+
+      generalStore.executionFilterValues = { plant_id: 2 }
+      await wrapper.vm.$nextTick()
+
+      expect(fetchDataSpy).toHaveBeenCalledTimes(1)
     })
   })
 

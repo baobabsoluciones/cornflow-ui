@@ -442,6 +442,7 @@ export default {
     password_match: 'Passwords do not match',
   },
   versionHistory: {
+    filterAll: 'All',
     title: 'Version history',
     description:
       'In this section, you will find a summary of all the versions you have completed for the different executed projects. You can load as many executions as you want from the actions column. Each execution will open in a new tab at the bottom of the screen, and the most recently loaded execution will be selected by default.',

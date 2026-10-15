@@ -33,7 +33,7 @@
           :class="fieldSpacing"
           v-model="fieldValues[field.key]"
           :label="$t(field.title || '')"
-          :items="field.options || []"
+          :items="optionsOf(field)"
           item-title="label"
           item-value="value"
           :prepend-inner-icon="field.icon || defaultIcon"
@@ -58,7 +58,7 @@
 </template>
 
 <script>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 
 export default {
@@ -120,6 +120,29 @@ export default {
       }
       return configFields.value
     })
+
+    // Options of the fields fed by a frontend-automation table (`joinFrom`), by field key.
+    const tableOptions = ref({})
+
+    const optionsOf = (field) =>
+      field.joinFrom ? tableOptions.value[field.key] || [] : field.options || []
+
+    /** Loads the options of the fields on screen fed by a frontend-automation table. */
+    const loadTableOptions = async () => {
+      const fields = visibleFields.value.filter((field) => field.joinFrom)
+      await Promise.all(
+        fields.map(async (field) => {
+          const options = await generalStore.fetchTableOptions(field.joinFrom)
+          tableOptions.value = {
+            ...tableOptions.value,
+            [field.key]: options.map((option) => ({
+              value: option.value,
+              label: option.title,
+            })),
+          }
+        }),
+      )
+    }
 
     const fieldValues = computed({
       get: () => props.modelValue.config || {},
@@ -208,6 +231,8 @@ export default {
         ...props.modelValue,
         config: initialValues,
       })
+
+      await loadTableOptions()
     })
 
     return {
@@ -215,6 +240,7 @@ export default {
       visibleFields,
       fieldSpacing,
       fieldValues,
+      optionsOf,
       handleFieldUpdate,
       defaultIcon,
       getFieldPlaceholder,

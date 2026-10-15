@@ -20,6 +20,40 @@ The execution management section handles the complete lifecycle of optimization 
   - Execution metadata display (creation date, solver used, status, etc.)
 - **Location**: `HistoryExecutionView.vue`
 
+### Execution history filters (optional)
+
+Selectors next to the date filters of the history (e.g. plant, program). They decide which
+executions the history lists, and nothing else: a loaded execution shows as it is, and the
+master-data tables keep their own column filters.
+
+Their options come from a frontend-automation table (see
+[Selectors fed by frontend-automation tables](#selectors-fed-by-frontend-automation-tables)):
+
+```ts
+// src/app/config.ts, core.parameters
+executionFilters: [
+  { key: 'plant_id', labelKey: 'filters.plant', icon: 'mdi-factory', joinFrom: 'plants.name' },
+  { key: 'program_id', labelKey: 'filters.program', joinFrom: 'programs.name' },
+],
+executionsListEndpoint: { path: '/executions/', isExternal: true },
+```
+
+- `key`: query parameter of the executions list that carries the picked value.
+- `labelKey`: i18n key or literal text of the selector label. `icon`: optional Material Design icon.
+- `joinFrom`: `<table>.<column>` of the frontend-automation table the options come from.
+
+Each selector offers "All" (no parameter) and one option per row of its table. A filter whose table
+gives no options (or that the application has no frontend automation for) is not shown. The filters
+are independent of each other.
+
+**Executions list.** Cornflow's `GET /execution/` ignores query parameters it does not know, so the
+picked values only filter the list when `executionsListEndpoint` points it at an endpoint that does.
+That endpoint receives the same query parameters as `GET /execution/` plus the picked values (the
+row `id`s), and returns the same shape.
+
+⚠️ The backend decides which rows each user may see: the frontend-automation table and the
+executions list have to leave out what the user may not use.
+
 ### Project execution
 
 - **Purpose**: Step-by-step execution creation workflow
@@ -467,6 +501,29 @@ When a user logs in, the backend returns user information through the `/user/{id
 - Groups are still shown even if some tables within them are hidden (only visible tables appear as tabs)
 - This filtering happens in the frontend based on the user's permissions returned by the backend
 
+#### Selectors fed by frontend-automation tables
+
+When a selector offers values that live in the database (an [execution history filter](#execution-history-filters-optional),
+a [pre-ETL parameter](#pre-etl-parameters-pre_etl)), its options **always come from a
+frontend-automation table**. The selector names the table and the column it shows with
+`join_from`, in the same `<table>.<column>` format frontend automation uses for foreign keys:
+
+```text
+join_from: "plants.name"
+            │       └── column shown as the option text
+            └────────── frontend-automation table whose list gives the options
+```
+
+- The options are the rows of the table's `get_list` (e.g. `GET /plants/`), as the backend returns
+  them for the user.
+- The value of each option is the row's `id`; that is what the filter sends and what the execution
+  config stores.
+- The text is the row's value in the named column.
+
+⚠️ **It needs frontend automation.** The table has to be one of the application's
+frontend-automation tables. In a project without frontend automation these selectors cannot be
+used for now: they get no options, and the browser console says which table is missing.
+
 #### Implementation details
 
 - **Repository**: `SchemaRepository.ts` fetches the schema and returns both table config and `available_automations.sections`; the store keeps sections in `masterDataSections`.
@@ -819,6 +876,8 @@ This file contains **internal application-specific configuration** that is part 
 | `enableMasterTableMatching`   | `boolean`  | Enable master table matching during instance review   |
 | `executionSolvers`            | `string[]` | List of available solvers for execution               |
 | `instanceFileFormats`         | `string[]` | File extensions the instance upload accepts. Empty or absent means the default (`json`, `xlsx`, `csv`). |
+| `executionFilters`            | `ExecutionFilter[]` | Filters of the execution history, fed by frontend-automation tables. Empty means date filters only. See [Execution history filters](#execution-history-filters-optional) |
+| `executionsListEndpoint`      | `{ path, isExternal }` \| `null` | Endpoint of the executions list; `null` means Cornflow's `GET /execution/` |
 
 #### showExtraProjectExecutionColumns
 
@@ -1337,6 +1396,7 @@ Defines the configuration fields for execution parameters. Each field can have:
 - `lookupValue` (string, optional, for arrayByValue): The property to return from the found object (e.g., 'VALOR').
 - `default` (any, optional): Default value if not found in the instance. It only fills a key that has no value yet, so it never overwrites an answer the user already gave or the config of the execution being edited.
 - `options` (Array<{label: string, value: any}>, for select type): Options for select fields.
+- `joinFrom` (string, from the schema): Set from `"join_from": "<table>.<column>"`. The field is a select whose options are the rows of that frontend-automation table. See [Selectors fed by frontend-automation tables](#selectors-fed-by-frontend-automation-tables).
 - `preEtl` (boolean, from the schema): Set from `"pre_etl": true`. See [Pre-ETL parameters](#pre-etl-parameters-pre_etl).
 - `required` (boolean, from the schema): Set when the config schema's root `required` lists the key. Only the pre-ETL step reads it, to decide what blocks **Continue**.
 
@@ -1349,6 +1409,7 @@ Defines the configuration fields for execution parameters. Each field can have:
 | `type: 'string'` | `type: 'text'` |
 | `type: 'string'` + `format: 'date'` | `type: 'date'` (date input; the value stays a `YYYY-MM-DD` string, as the schema's `pattern` expects) |
 | a non-empty `enum` | `type: 'select'` with its options |
+| `join_from: '<table>.<column>'` | `type: 'select'` with the rows of that frontend-automation table as options |
 | `default` | `default` |
 | `pre_etl: true` | `preEtl: true` |
 | listed in the root `required` | `required: true` |
@@ -1371,6 +1432,24 @@ Some execution-config parameters decide **which data the ETL brings in**, not ho
   "required": ["n_scenarios"]
 }
 ```
+
+**Options from the database.** A pre-ETL parameter whose values live in a database table (e.g. the
+plant whose data the ETL loads) declares where its options come from with `join_from`, in the same
+config JSON schema:
+
+```json
+{
+  "properties": {
+    "plant_id": { "type": "integer", "pre_etl": true, "join_from": "plants.name" }
+  },
+  "required": ["plant_id"]
+}
+```
+
+The wizard shows it as a select with one option per row of the `plants` frontend-automation table:
+the text is the row's `name`, and the value it stores in the config (and sends to the ETL) is the
+row's `id`. See [Selectors fed by frontend-automation tables](#selectors-fed-by-frontend-automation-tables);
+without frontend automation the select has no options.
 
 **Where they are asked.** In the load-instance step itself, in the left column under the dropzone, so they read as part of loading rather than as a separate stage. They are not a third alternative next to `alternativeParameterFields`: that column is an **either/or** with the upload, while these travel with whichever way the data is loaded.
 

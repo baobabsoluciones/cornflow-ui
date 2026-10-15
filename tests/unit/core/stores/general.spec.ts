@@ -331,6 +331,7 @@ describe('General Store', () => {
         'test_dag',
         '2023-01-01T00:00:00.000Z',
         '2023-01-01T23:59:59.999Z',
+        {},
       )
     })
 
@@ -349,6 +350,7 @@ describe('General Store', () => {
         'test_dag',
         null,
         null,
+        {},
       )
     })
 

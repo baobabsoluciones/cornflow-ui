@@ -1135,6 +1135,30 @@ describe('getExecutionConfigFromSchemaConfig', () => {
     expect(byKey.date.icon).toBe('mdi-calendar')
     expect(byKey.plain.type).toBe('text')
   })
+  test('join_from makes the field a select fed by that frontend-automation table', () => {
+    const fields = getExecutionConfigFromSchemaConfig({
+      properties: {
+        plant_id: { type: 'integer', pre_etl: true, join_from: 'plants.name' },
+      },
+      required: ['plant_id'],
+    })!.configFields
+
+    expect(fields[0]).toMatchObject({
+      key: 'plant_id',
+      type: 'select',
+      joinFrom: 'plants.name',
+      preEtl: true,
+      required: true,
+    })
+  })
+  test('ignores a join_from that is not <table>.<column>', () => {
+    const fields = getExecutionConfigFromSchemaConfig({
+      properties: { plant_id: { type: 'integer', join_from: 'plants' } },
+    })!.configFields
+
+    expect(fields[0].type).toBe('number')
+    expect(fields[0].joinFrom).toBeUndefined()
+  })
 })
 
 // ─── mergeAppConfigFields ────────────────────────────────────────────────────
