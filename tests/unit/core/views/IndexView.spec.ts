@@ -7,6 +7,10 @@ import { createI18n } from 'vue-i18n'
 import { createRouter, createWebHistory } from 'vue-router'
 import IndexView from '@cornflow-ui/core/views/IndexView.vue'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import {
+  setTopBannerOffset,
+  resetTopBannerOffsets,
+} from '@cornflow-ui/core/plugins/layoutOffsets'
 
 // Mock AuthService
 const mockAuthService = vi.hoisted(() => ({
@@ -468,6 +472,7 @@ describe('IndexView', () => {
   describe('Context bar', () => {
     afterEach(() => {
       mockConfig.schemas = []
+      resetTopBannerOffsets()
     })
 
     test('is not rendered, and leaves no top offset, when there is nothing to show', async () => {
@@ -490,6 +495,36 @@ describe('IndexView', () => {
       expect(wrapper.find('[data-testid="context-bar"]').exists()).toBe(true)
       expect(wrapper.find('.main-content').attributes('style')).toContain(
         '--app-top-offset: 56px',
+      )
+    })
+
+    test('goes first in the fixed top stack, above the staging notice and the banners', async () => {
+      mockConfig.schemas = ['planning_dag', 'stock_dag']
+      setTopBannerOffset('some-banner', 48)
+      const { wrapper, generalStore } = await createWrapper(true, true)
+
+      generalStore.availableSchemas = ['planning_dag']
+      await wrapper.vm.$nextTick()
+
+      const stack = wrapper.find('[data-testid="app-top-stack"]')
+      const parts = stack.element.children
+      expect(parts[0].getAttribute('data-testid')).toBe('app-top-bar')
+      expect(parts[1].classList.contains('marquee-container')).toBe(true)
+      expect(parts[2].classList.contains('app-top-stack__banners')).toBe(true)
+      expect((parts[2] as HTMLElement).style.height).toBe('48px')
+      // 56 (bar) + 40 (staging notice) + 48 (banner)
+      const style = wrapper.find('.main-content').attributes('style')
+      expect(style).toContain('padding-top: 144px')
+      expect(style).toContain('--app-top-offset: 144px')
+    })
+
+    test('without a context bar, the staging notice and the banners still reserve their height', async () => {
+      setTopBannerOffset('some-banner', 48)
+      const { wrapper } = await createWrapper(true, true)
+
+      expect(wrapper.find('[data-testid="app-top-bar"]').exists()).toBe(false)
+      expect(wrapper.find('.main-content').attributes('style')).toContain(
+        '--app-top-offset: 88px',
       )
     })
 

@@ -267,10 +267,20 @@ async function confirmChange() {
 </script>
 
 <style scoped>
+/*
+  The bar is a band in the app's primary colour (IndexView `.app-top-bar`): the controls are light
+  surfaces on it, and the picked module is the one in white.
+*/
 .context-bar {
+  --ctx-text: #fff;
+  --ctx-muted: rgba(255, 255, 255, 0.7);
+  --ctx-surface: rgba(255, 255, 255, 0.12);
+  --ctx-surface-hover: rgba(255, 255, 255, 0.2);
+  --ctx-border: rgba(255, 255, 255, 0.22);
+
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 18px;
   min-width: 0;
   height: 100%;
 }
@@ -285,16 +295,16 @@ async function confirmChange() {
 .context-bar__caption {
   font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--subtitle);
+  color: var(--ctx-muted);
   white-space: nowrap;
 }
 
 .context-bar__divider {
   width: 1px;
-  height: 24px;
-  background-color: rgba(0, 0, 0, 0.1);
+  height: 26px;
+  background-color: var(--ctx-border);
   flex: none;
 }
 
@@ -304,17 +314,18 @@ async function confirmChange() {
   padding: 3px;
   gap: 2px;
   border-radius: 10px;
-  background-color: color-mix(in srgb, var(--primary) 9%, #fff);
+  background-color: rgba(0, 0, 0, 0.18);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .context-bar__segment {
   height: 30px;
-  padding: 0 16px;
+  padding: 0 18px;
   border-radius: 7px;
   font-size: 0.8125rem;
   font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--primary);
+  letter-spacing: 0.03em;
+  color: var(--ctx-muted);
   white-space: nowrap;
   transition:
     background-color 0.15s ease,
@@ -323,18 +334,19 @@ async function confirmChange() {
 }
 
 .context-bar__segment:hover:not(.is-active) {
-  background-color: color-mix(in srgb, var(--primary) 16%, #fff);
+  color: var(--ctx-text);
+  background-color: var(--ctx-surface);
 }
 
 .context-bar__segment.is-active {
-  background-color: var(--primary);
-  color: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  background-color: #fff;
+  color: var(--primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
 }
 
 .context-bar__segment:focus-visible,
 .context-bar__pill:focus-visible {
-  outline: 2px solid var(--primary);
+  outline: 2px solid #fff;
   outline-offset: 2px;
 }
 
@@ -346,10 +358,10 @@ async function confirmChange() {
   height: 36px;
   max-width: 320px;
   padding: 0 10px 0 12px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--ctx-border);
   border-radius: 10px;
-  background-color: #fff;
-  color: var(--title);
+  background-color: var(--ctx-surface);
+  color: var(--ctx-text);
   font-size: 0.875rem;
   white-space: nowrap;
   transition:
@@ -360,33 +372,33 @@ async function confirmChange() {
 
 button.context-bar__pill:hover,
 .context-bar__pill.is-open {
-  border-color: var(--primary);
-  background-color: color-mix(in srgb, var(--primary) 4%, #fff);
+  border-color: rgba(255, 255, 255, 0.45);
+  background-color: var(--ctx-surface-hover);
 }
 
 .context-bar__pill.is-open {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.18);
 }
 
 .context-bar__pill.is-static {
   padding-right: 14px;
   border-color: transparent;
-  background-color: color-mix(in srgb, var(--primary) 6%, #fff);
 }
 
 .context-bar__pill-icon {
-  color: var(--primary);
+  color: var(--ctx-text);
+  opacity: 0.9;
 }
 
 .context-bar__pill-value {
   overflow: hidden;
   text-overflow: ellipsis;
   font-weight: 600;
-  color: var(--title);
+  color: var(--ctx-text);
 }
 
 .context-bar__pill-chevron {
-  color: var(--subtitle);
+  color: var(--ctx-muted);
   transition: transform 0.15s ease;
 }
 
@@ -394,6 +406,7 @@ button.context-bar__pill:hover,
   transform: rotate(180deg);
 }
 
+/* The menu opens on the page, outside the bar: light, as the rest of the app */
 .context-bar__menu {
   min-width: 220px;
   padding: 4px;

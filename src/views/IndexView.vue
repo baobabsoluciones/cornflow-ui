@@ -12,30 +12,14 @@
       </div>
     </div>
 
-    <div class="marquee-container" v-if="showStagingWarning">
-      <Vue3Marquee :pause-on-hover="true">
-        🚧 {{ $t('projectExecution.stagingWarning') }} 🚧
-      </Vue3Marquee>
-    </div>
-
     <!--
-      Premium modules (enterprise) inject global banners here. Empty when none
-      registered. Includes the latest-plan "no current plan" banner and the
-      recalculation strip (both self-gate via their own stores).
+      Top of the layout, fixed, in this order: the context bar, the staging notice and the global
+      banners of premium modules. The views start below its height (`--app-top-offset`).
     -->
-    <component
-      v-for="(banner, i) in premiumBanners"
-      :key="`premium-banner-${i}`"
-      :is="banner.component"
-      v-bind="banner.props"
-    />
-
-    <core-app-drawer class="app-drawer" />
-
     <div
-      class="main-content"
+      class="app-top-stack"
       :class="{ 'drawer-pinned': isDrawerPinned }"
-      :style="mainContentStyle"
+      data-testid="app-top-stack"
     >
       <!--
         Context bar: the core's module and global-context selectors, plus whatever premium modules
@@ -50,6 +34,40 @@
           v-bind="item.props"
         />
       </div>
+
+      <div class="marquee-container" v-if="showStagingWarning">
+        <Vue3Marquee :pause-on-hover="true">
+          🚧 {{ $t('projectExecution.stagingWarning') }} 🚧
+        </Vue3Marquee>
+      </div>
+
+      <!--
+        Premium modules (enterprise) inject global banners here: the latest-plan "no current plan"
+        banner and the recalculation strip (both self-gate via their own stores). They are
+        `position: fixed; top: 0`, sized to the viewport; this box is their containing block (it has
+        a transform), so they land right below the bar and the staging notice. Its height is the
+        one they report on the layout channel.
+      -->
+      <div
+        class="app-top-stack__banners"
+        :style="{ height: `${totalTopBannerOffset}px` }"
+      >
+        <component
+          v-for="(banner, i) in premiumBanners"
+          :key="`premium-banner-${i}`"
+          :is="banner.component"
+          v-bind="banner.props"
+        />
+      </div>
+    </div>
+
+    <core-app-drawer class="app-drawer" />
+
+    <div
+      class="main-content"
+      :class="{ 'drawer-pinned': isDrawerPinned }"
+      :style="mainContentStyle"
+    >
       <div
         v-if="noSchemaAccess"
         class="no-schema-access"
@@ -119,8 +137,9 @@ import {
 import { totalTopBannerOffset } from '@cornflow-ui/core/plugins/layoutOffsets'
 import { isOnInstanceDependentRoute } from '@cornflow-ui/core/utils/instanceDependentRoutes'
 
-/** Height (px) of the context bar; it sits in the flow, above the views. */
+/** Heights (px) of the fixed top stack's own parts (premium banners report theirs). */
 const APP_TOP_BAR_HEIGHT = 56
+const STAGING_NOTICE_HEIGHT = 40
 
 const generalStore = useGeneralStore()
 const router = useRouter()
@@ -143,19 +162,25 @@ const showTopBar = computed(
 const noSchemaAccess = computed(() => generalStore.noSchemaAccess)
 
 /**
- * Padding-top reserved for the fixed banners that premium modules report on the layout channel
- * (`@/plugins/layoutOffsets`); the core doesn't know which banners exist, it just leaves the gap.
- * `--app-top-offset` adds the context bar to that height, so the views (`main.css`) fit below.
+ * Height of the fixed top stack: the context bar, the staging notice and the banners premium
+ * modules report on the layout channel (`@/plugins/layoutOffsets`; the core doesn't know which
+ * banners exist, it just leaves the gap). The views start below it: `.main-content` gets it as
+ * padding-top and `--app-top-offset` lets the views (`main.css`) fit the viewport.
  */
-const mainContentStyle = computed(() => {
-  const banners = totalTopBannerOffset.value
-  const offset = banners + (showTopBar.value ? APP_TOP_BAR_HEIGHT : 0)
-  if (!offset) return undefined
-  return {
-    ...(banners ? { paddingTop: `${banners}px` } : {}),
-    '--app-top-offset': `${offset}px`,
-  }
-})
+const topStackHeight = computed(
+  () =>
+    (showTopBar.value ? APP_TOP_BAR_HEIGHT : 0) +
+    (showStagingWarning.value ? STAGING_NOTICE_HEIGHT : 0) +
+    totalTopBannerOffset.value,
+)
+const mainContentStyle = computed(() =>
+  topStackHeight.value
+    ? {
+        paddingTop: `${topStackHeight.value}px`,
+        '--app-top-offset': `${topStackHeight.value}px`,
+      }
+    : undefined,
+)
 
 // Get the currently selected execution ID
 const selectedExecutionId = computed(
@@ -255,23 +280,54 @@ if (AuthService.isAuthenticated()) {
   flex-direction: column;
 }
 
-/* Context bar: in the flow, so it follows the drawer and sits below the fixed banners */
+/*
+  Fixed top stack: full width under the drawer (which stays on top of it), so the staging notice
+  and the premium banners keep spanning the window as they always have.
+*/
+.app-top-stack {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 850;
+}
+
+/* Containing block of the premium banners' `position: fixed` (see the template) */
+.app-top-stack__banners {
+  position: relative;
+  transform: translateZ(0);
+}
+
+/* Context bar: a band in the app's primary colour, its content clear of the drawer */
 .app-top-bar {
   position: relative;
   z-index: 1;
+  box-sizing: border-box;
   height: 56px;
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 0 40px;
-  background-color: #fff;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
+  padding: 0 40px 0 96px; /* 56px mini drawer + the views' 40px gutter */
   overflow: hidden;
+  color: #fff;
+  background:
+    radial-gradient(
+      120% 220% at 100% 0%,
+      color-mix(in srgb, var(--primary) 70%, #fff) 0%,
+      transparent 55%
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--primary) 82%, #000) 0%,
+      var(--primary) 100%
+    );
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 4px 12px rgba(16, 24, 40, 0.18);
 }
 
-.main-content:not(.drawer-pinned) .app-top-bar {
-  margin-left: 56px; /* Width of the mini drawer, as .main-container */
+.app-top-stack.drawer-pinned .app-top-bar {
+  padding-left: 290px; /* 250px pinned drawer + 40px */
 }
 
 .no-schema-access {
@@ -333,12 +389,20 @@ body {
     width: calc(100% - 200px);
     max-width: calc(100% - 200px);
   }
+
+  .app-top-stack.drawer-pinned .app-top-bar {
+    padding-left: 240px;
+  }
 }
 
 @media (max-width: 768px) {
   .main-content.drawer-pinned {
     margin-left: 0; /* No margin on mobile - drawer should overlay */
     width: 100%;
+  }
+
+  .app-top-stack.drawer-pinned .app-top-bar {
+    padding-left: 96px;
   }
 }
 

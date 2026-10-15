@@ -701,9 +701,11 @@ not access control.
 
 ### Context bar and modules
 
-The context bar sits above the views, below the fixed banners, and only shows while it has
-something in it. Premium modules can mount components in it with the `app-top-bar` slot of
-`globalComponents`. They also get:
+The top of the layout is a fixed stack, in this order: the context bar, the staging notice and the
+global banners of premium modules (`app-banners`), which keep their own `position: fixed` and land
+below the other two. The views start below the whole stack. The context bar is a band in the app's
+primary colour and only shows while it has something in it. Premium modules can mount components
+in it with the `app-top-bar` slot of `globalComponents`. They also get:
 
 - `onActiveSchemaChanged(schema, ctx)` and `onGlobalContextChanged(values, ctx)` hooks, to reset what
   they keep per DAG or per context value;
