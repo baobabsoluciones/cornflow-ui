@@ -413,6 +413,22 @@ describe('useInstanceProcessing - processFiles (ETL backend)', () => {
     expect(mockUseEtlBackend).toHaveBeenCalledWith(expect.any(Array), {})
   })
 
+  test('adds the picked global-context values, which decide the data the instance is built from', async () => {
+    etlStore({
+      configFields: [{ key: 'horizon_days', title: '', type: 'number', preEtl: true }],
+    })
+    storeState.getGlobalContextConfig = { plant_id: '101' }
+    mockUseEtlBackend.mockResolvedValue({ data: { table_a: [] } })
+
+    const { processFiles } = useInstanceProcessing()
+    await processFiles([makeFile('a.xlsx')], { horizon_days: 3 })
+
+    expect(mockUseEtlBackend).toHaveBeenCalledWith(expect.any(Array), {
+      horizon_days: 3,
+      plant_id: '101',
+    })
+  })
+
   test('strips __metadata__ and exposes rawData when review enabled', async () => {
     etlStore({
       etl: {

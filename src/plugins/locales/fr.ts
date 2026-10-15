@@ -747,6 +747,23 @@ export default {
     hideWarnings: 'Masquer les détails des avertissements',
     viewingHistoricalData: 'Affichage des données historiques',
   },
+  contextBar: {
+    module: 'Module',
+    all: 'Tous',
+    noOptions: 'Aucune option disponible',
+    confirm: 'Changer',
+    cancel: 'Annuler',
+    switchModuleTitle: 'Changer de module ?',
+    switchModuleMessage:
+      "Les exécutions ouvertes dans des onglets seront fermées et l'exécution en cours de création sera abandonnée.",
+    changeContextTitle: 'Changer la sélection ?',
+    changeContextMessage:
+      "Les exécutions ouvertes d'une autre sélection seront fermées et l'exécution en cours de création sera abandonnée.",
+    contextRequiredToCreate:
+      'Choisissez une valeur dans chaque sélecteur de la barre supérieure pour créer une exécution.',
+    noSchemaAccessTitle: "Vous n'avez accès à aucun module",
+    noSchemaAccessMessage: 'Demandez à un administrateur de vous donner accès.',
+  },
   notFound: {
     title: 'Page introuvable',
     message: 'La page que vous cherchez n\'existe pas.',

@@ -12,8 +12,10 @@
  * will be guaranteed by the bootstrap refactor (createCornflowApp) in a later step.
  */
 import type { RouteRecordRaw, Router } from 'vue-router'
+import { getActivePinia } from 'pinia'
 import appConfig from '@/app/config'
 import { isViewAllowed as appIsViewAllowed } from '@/app/rolesConfig'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import type {
   PremiumModule,
   ExtensionContext,
@@ -75,7 +77,21 @@ function buildConfigAccessor(): ConfigAccessor {
   }
 }
 
+/** The session store, or `null` before Pinia is installed (e.g. while the router is built). */
+function getSessionStore(): ReturnType<typeof useGeneralStore> | null {
+  return getActivePinia() ? useGeneralStore() : null
+}
+
+/**
+ * Role names of the logged-in user. They are read from the store, so a `computed` that gates on
+ * them (banners, drawer entries) re-evaluates once the login has loaded the user; before that,
+ * from the copy `fetchUser` keeps in sessionStorage.
+ */
 function getRoleNames(): string[] {
+  const roles = getSessionStore()?.getUser?.roles
+  if (Array.isArray(roles) && roles.length > 0) {
+    return roles.map((role: { name: string }) => role.name)
+  }
   try {
     const stored = sessionStorage.getItem('userRoles')
     if (stored) return JSON.parse(stored)
@@ -101,6 +117,9 @@ export function getExtensionContext(): ExtensionContext {
     },
     isViewAllowed: (viewId: string): boolean =>
       appIsViewAllowed(getRoleNames(), viewId),
+    getActiveSchema: (): string => getSessionStore()?.getSchemaName ?? '',
+    getGlobalContext: (): Record<string, unknown> =>
+      getSessionStore()?.getGlobalContextConfig ?? {},
   }
 }
 
@@ -187,6 +206,36 @@ export async function runPremiumInitialDataHooks(): Promise<void> {
   await Promise.all(
     enabledModules(ctx).map((m) =>
       m.onInitialDataLoaded ? m.onInitialDataLoaded(ctx) : undefined,
+    ),
+  )
+}
+
+/**
+ * Runs the `onActiveSchemaChanged` hooks of the enabled modules and awaits them all. The core
+ * calls it from `setActiveSchema`, once the session already works on the new DAG.
+ */
+export async function runPremiumActiveSchemaChangedHooks(
+  schema: string,
+): Promise<void> {
+  const ctx = getExtensionContext()
+  await Promise.all(
+    enabledModules(ctx).map((m) =>
+      m.onActiveSchemaChanged ? m.onActiveSchemaChanged(schema, ctx) : undefined,
+    ),
+  )
+}
+
+/**
+ * Runs the `onGlobalContextChanged` hooks of the enabled modules and awaits them all. The core
+ * calls it from `setGlobalContextValue` with the picked values.
+ */
+export async function runPremiumGlobalContextChangedHooks(
+  values: Record<string, unknown>,
+): Promise<void> {
+  const ctx = getExtensionContext()
+  await Promise.all(
+    enabledModules(ctx).map((m) =>
+      m.onGlobalContextChanged ? m.onGlobalContextChanged(values, ctx) : undefined,
     ),
   )
 }

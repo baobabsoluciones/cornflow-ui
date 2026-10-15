@@ -166,6 +166,43 @@ export function useTableData(
   // raw shape reaches the backend on the async route and the standard reader on the other.
   const { preProcessFile } = useFilePreProcessing()
 
+  /**
+   * Picked global-context values (e.g. the plant) that a master-data `get_list` declares as query
+   * parameters, by parameter name. Only master-data tables have a `get_list`, so the views of a
+   * loaded execution never receive them.
+   */
+  const contextParamsForGetList = (getList: any): Record<string, string> => {
+    if (!getList) return {}
+    const declared = new Set(
+      getGetListQueryParameters(getList).map((p) => p.name),
+    )
+    return Object.fromEntries(
+      Object.entries(generalStore.getGlobalContextParams ?? {}).filter(
+        ([name]) => declared.has(name),
+      ),
+    )
+  }
+
+  /** Global-context query parameters of the table on screen. */
+  const contextQueryParams = computed<Record<string, string>>(() =>
+    sectionType.value === 'configuration'
+      ? contextParamsForGetList(tableConfig.value?.get_list)
+      : {},
+  )
+
+  /** Columns the global context already filters (`filters_on`); their own filter is not offered. */
+  const contextFilteredFields = computed(() => {
+    const getList = tableConfig.value?.get_list
+    const contextNames = Object.keys(contextQueryParams.value)
+    if (!getList || contextNames.length === 0) return new Set<string>()
+    return new Set(
+      getGetListQueryParameters(getList)
+        .filter((p) => contextNames.includes(p.name))
+        .map((p) => (p.filter_info as { filters_on?: string } | undefined)?.filters_on)
+        .filter((field): field is string => typeof field === 'string'),
+    )
+  })
+
   /** After master-data bulk/overwrite: POST `/update-plan-data/` then pending replan only if plan is outdated. */
   const maybeRequestMasterRecalculationPending = async () => {
     if (sectionType.value !== 'configuration') return
@@ -360,7 +397,9 @@ export function useTableData(
 
       // Create repository and load data
       const repository = new TableRepository(tableConfigFound, t)
-      const data = await repository.getList()
+      const data = await repository.getList(
+        contextParamsForGetList(tableConfigFound.get_list),
+      )
       const resultData = normalizeGetListResponseToRows(data, tableConfigFound)
 
       // Cache the data
@@ -512,7 +551,8 @@ export function useTableData(
 
   // Filter fields must match table-visible columns (same rules as CoreTable safeHeaders).
   // Filters for fields with get_list.parameters (is_filter + filters_on) are sent to the backend;
-  // the rest are applied client-side on loaded data.
+  // the rest are applied client-side on loaded data. A column the global context filters is left
+  // out: its value comes from the context selector.
   const availableFilterFields = computed(() => {
     return headers.value
       .filter(
@@ -525,7 +565,8 @@ export function useTableData(
             'columnsToJoin' in header &&
             header.columnsToJoin &&
             Array.isArray(header.columnsToJoin)
-          ),
+          ) &&
+          !contextFilteredFields.value.has(header.key || header.value),
       )
       .map((header) => ({
         key: header.key || header.value,
@@ -1109,12 +1150,16 @@ export function useTableData(
     // Column filters: map activeFilters (field) to param name via get_list.parameters (filters_on)
     applyActiveFiltersToQuery(query, getList)
 
+    // Global context (e.g. the plant), for the parameters this table declares
+    Object.assign(query, contextQueryParams.value)
+
     return query
   }
 
   /**
    * Fetch list from repository and enrich with joined columns (frontend join).
-   * Optionally passes queryParams to getList for server-side filtering (limit, offset, date range, etc.).
+   * Optionally passes queryParams to getList for server-side filtering (limit, offset, date range, etc.);
+   * without them, the table's global-context parameters still apply.
    */
   const fetchListEnriched = async (
     repository: {
@@ -1123,7 +1168,9 @@ export function useTableData(
     config: any,
     queryParams?: Record<string, PlainCellValue>,
   ): Promise<any[]> => {
-    const data = await repository.getList(queryParams ?? {})
+    const data = await repository.getList(
+      queryParams ?? contextParamsForGetList(config?.get_list),
+    )
     const rawItems = normalizeGetListResponseToRows(data, config)
     const properties = getListResponseRowProperties(config)?.properties
     if (!properties || rawItems.length === 0) return rawItems
@@ -2073,7 +2120,7 @@ export function useTableData(
     const changes = tableChanges.getChangesForTable(storageKey)
     if (!config?.put_item || !changes || Object.keys(changes).length === 0) return
     const currentItems = normalizeGetListResponseToRows(
-      await repository.getList(),
+      await repository.getList(contextParamsForGetList(config.get_list)),
       tableConfig.value,
     )
     const CONCURRENT_PUTS = 10

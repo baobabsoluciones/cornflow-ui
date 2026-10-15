@@ -855,6 +855,74 @@ describe('AppDrawer.vue', () => {
     })
   })
 
+  describe('Gating by role and DAG', () => {
+    const store = mockStore as Record<string, any>
+
+    afterEach(() => {
+      delete store.getSchemaName
+      delete store.isMultiSchemaDeployment
+      delete store.noSchemaAccess
+      store.appDashboardPages = [
+        { title: 'Custom Dashboard', icon: 'mdi-chart-line', to: '/custom-dashboard' },
+      ]
+    })
+
+    test('app sections declared for some roles or DAGs show only to them', async () => {
+      store.getUser = { ...mockUser, roles: [{ id: 2, name: 'planner' }] }
+      store.getSchemaName = 'planning_dag'
+      mockAppConfig.getAppSections.mockReturnValue([
+        { titleKey: 'everyone', icon: 'mdi-a', to: '/everyone' },
+        { titleKey: 'admins', icon: 'mdi-b', to: '/admins', roles: ['admin'] },
+        { titleKey: 'planning', icon: 'mdi-c', to: '/planning', schemas: ['planning_dag'] },
+        { titleKey: 'stock', icon: 'mdi-d', to: '/stock', schemas: ['stock_dag'] },
+      ])
+
+      wrapper = await createWrapper()
+
+      expect(wrapper.vm.appSections.map((s: any) => s.to)).toEqual([
+        '/everyone',
+        '/planning',
+      ])
+    })
+
+    test('dashboard pages declared for other DAGs are left out of the results section', async () => {
+      store.getSchemaName = 'planning_dag'
+      store.selectedExecution = {
+        experiment: { instance: { data: {} }, solution: { data: {} } },
+        state: 1,
+      }
+      store.getConfigurations = { masterData: {}, inputData: {}, resultsData: {} }
+      store.appDashboardPages = [
+        { title: 'Planning board', icon: 'mdi-a', to: '/planning-board', schemas: ['planning_dag'] },
+        { title: 'Stock levels', icon: 'mdi-b', to: '/stock-levels', schemas: ['stock_dag'] },
+      ]
+
+      wrapper = await createWrapper()
+
+      const destinations = wrapper.vm.resultsSection.subPages.map((p: any) => p.to)
+      expect(destinations).toContain('/planning-board')
+      expect(destinations).not.toContain('/stock-levels')
+    })
+
+    test('with several DAGs the app name says which one the session is on', async () => {
+      store.isMultiSchemaDeployment = true
+      store.getSchemaName = 'stock_dag'
+      mockAppConfig.getCore.mockReturnValue({
+        parameters: { showOpenIdUsername: true, schemaLabels: { stock_dag: 'Stock' } },
+      })
+
+      wrapper = await createWrapper()
+
+      expect(wrapper.vm.appName).toMatch(/ · Stock$/)
+    })
+
+    test('with a single DAG the app name is the configured one', async () => {
+      wrapper = await createWrapper()
+
+      expect(wrapper.vm.appName).not.toContain(' · ')
+    })
+  })
+
   describe('Edge Cases', () => {
     test('should handle missing user data gracefully', async () => {
       wrapper = await createWrapper()

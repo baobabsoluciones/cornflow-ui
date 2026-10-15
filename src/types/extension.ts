@@ -47,6 +47,13 @@ export interface ExtensionContext {
    * module does NOT import `@/app/rolesConfig` to gate its routes/menus.
    */
   isViewAllowed: (viewId: string) => boolean
+  /** DAG (schema) the session is working on. Optional so hand-built contexts keep compiling. */
+  getActiveSchema?: () => string
+  /**
+   * Picked global-context values (e.g. `{ plant_id: '101' }`), leaving out the dimensions set to
+   * "All". Empty when the app declares no global context.
+   */
+  getGlobalContext?: () => Record<string, unknown>
 }
 
 /** §3.1 Route contributed by a premium module (added as a child of the root route '/'). */
@@ -102,8 +109,16 @@ export interface ExecutionTabDecoratorContext extends ExtensionContext {
   routeName?: string
 }
 
-/** Layout zones where premium global components can be mounted. */
-export type PremiumGlobalComponentSlot = 'app-banners' | 'app-fabs' | 'app-modals'
+/**
+ * Layout zones where premium global components can be mounted. `app-top-bar` is the context bar
+ * above the views (next to the core's module and context selectors); it is only shown while
+ * something in it is visible.
+ */
+export type PremiumGlobalComponentSlot =
+  | 'app-banners'
+  | 'app-fabs'
+  | 'app-modals'
+  | 'app-top-bar'
 
 /** §3.3 Global component (banner/FAB/modal) mounted in the core's layout. */
 export interface PremiumGlobalComponent {
@@ -250,6 +265,23 @@ export interface PremiumModule {
    * until they finish. E.g.: latest-plan preloads the latest plan here.
    */
   onInitialDataLoaded?: (ctx: ExtensionContext) => void | Promise<void>
+  /**
+   * Hook after the session switched to another DAG (schema). The core has already closed the
+   * loaded executions and reloaded the schema; the module resets whatever it keeps per DAG
+   * (e.g. a pinned plan). Awaited by `setActiveSchema`.
+   */
+  onActiveSchemaChanged?: (
+    schema: string,
+    ctx: ExtensionContext,
+  ) => void | Promise<void>
+  /**
+   * Hook after a global-context value changed (e.g. another plant). Receives the picked values,
+   * without the dimensions set to "All". Awaited by `setGlobalContextValue`.
+   */
+  onGlobalContextChanged?: (
+    values: Record<string, unknown>,
+    ctx: ExtensionContext,
+  ) => void | Promise<void>
   /** Escape hatch: free registration on the Vue instance (plugins, provide/inject…). */
   setup?: (app: App, ctx: ExtensionContext) => void
 }

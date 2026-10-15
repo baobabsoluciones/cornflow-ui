@@ -1016,6 +1016,23 @@ export default {
     hideWarnings: 'Ocultar detalhes dos avisos',
     viewingHistoricalData: 'A visualizar dados históricos',
   },
+  contextBar: {
+    module: 'Módulo',
+    all: 'Todos',
+    noOptions: 'Nenhuma disponível',
+    confirm: 'Alterar',
+    cancel: 'Cancelar',
+    switchModuleTitle: 'Mudar de módulo?',
+    switchModuleMessage:
+      'As execuções abertas em separadores serão fechadas e a execução que está a criar será descartada.',
+    changeContextTitle: 'Alterar a seleção?',
+    changeContextMessage:
+      'As execuções abertas de outra seleção serão fechadas e a execução que está a criar será descartada.',
+    contextRequiredToCreate:
+      'Escolha um valor em cada seletor da barra superior para criar uma execução.',
+    noSchemaAccessTitle: 'Não tem acesso a nenhum módulo',
+    noSchemaAccessMessage: 'Peça a um administrador que lhe dê acesso.',
+  },
   notFound: {
     title: 'Página não encontrada',
     message: 'A página que procura não existe.',

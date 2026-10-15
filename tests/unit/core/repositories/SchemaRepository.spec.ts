@@ -32,6 +32,28 @@ describe('SchemaRepository', () => {
     vi.restoreAllMocks()
   })
 
+  describe('getAvailableSchemaNames', () => {
+    test("returns the names of the user's DAGs from GET /schema/", async () => {
+      mockClient.get.mockResolvedValue({
+        status: 200,
+        content: [{ name: 'planning_dag' }, { name: 'stock_dag' }, {}],
+      })
+
+      const names = await repository.getAvailableSchemaNames()
+
+      expect(mockClient.get).toHaveBeenCalledWith('/schema/')
+      expect(names).toEqual(['planning_dag', 'stock_dag'])
+    })
+
+    test('throws when Cornflow does not answer with a list', async () => {
+      mockClient.get.mockResolvedValue({ status: 500, content: {} })
+
+      await expect(repository.getAvailableSchemaNames()).rejects.toThrow(
+        'Error getting available schemas',
+      )
+    })
+  })
+
   describe('getSchema', () => {
     const mockSchemaData = {
       config: {

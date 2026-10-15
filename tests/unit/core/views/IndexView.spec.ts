@@ -20,6 +20,7 @@ vi.mock('@cornflow-ui/core/services/AuthService', () => ({
 // Mock config
 const mockConfig = vi.hoisted(() => ({
   isStagingEnvironment: false,
+  schemas: [] as string[],
   initConfig: vi.fn().mockResolvedValue(undefined)
 }))
 
@@ -47,6 +48,13 @@ vi.mock('@cornflow-ui/core/components/AppView.vue', () => ({
   default: {
     name: 'CoreAppView',
     setup: () => () => h('div', { 'data-testid': 'app-view' }, 'AppView')
+  }
+}))
+
+vi.mock('@cornflow-ui/core/components/core/ContextBar.vue', () => ({
+  default: {
+    name: 'CoreContextBar',
+    setup: () => () => h('div', { 'data-testid': 'context-bar' })
   }
 }))
 
@@ -454,6 +462,44 @@ describe('IndexView', () => {
       await expect(async () => {
         await wrapper.vm.selectTab(executionTab)
       }).not.toThrow()
+    })
+  })
+
+  describe('Context bar', () => {
+    afterEach(() => {
+      mockConfig.schemas = []
+    })
+
+    test('is not rendered, and leaves no top offset, when there is nothing to show', async () => {
+      const { wrapper } = await createWrapper()
+
+      expect(wrapper.find('[data-testid="app-top-bar"]').exists()).toBe(false)
+      expect(wrapper.find('.main-content').attributes('style') ?? '').not.toContain(
+        '--app-top-offset',
+      )
+    })
+
+    test('in a multi-DAG deployment it renders and reserves its height for the views', async () => {
+      mockConfig.schemas = ['planning_dag', 'stock_dag']
+      const { wrapper, generalStore } = await createWrapper()
+
+      generalStore.availableSchemas = ['planning_dag']
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('[data-testid="app-top-bar"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="context-bar"]').exists()).toBe(true)
+      expect(wrapper.find('.main-content').attributes('style')).toContain(
+        '--app-top-offset: 44px',
+      )
+    })
+
+    test('shows the no-access message when the user has no DAG', async () => {
+      const { wrapper, generalStore } = await createWrapper()
+
+      generalStore.noSchemaAccess = true
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('[data-testid="no-schema-access"]').exists()).toBe(true)
     })
   })
 

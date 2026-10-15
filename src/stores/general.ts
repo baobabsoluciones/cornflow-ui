@@ -17,11 +17,26 @@ import LicenceRepository from '@cornflow-ui/core/repositories/LicenceRepository'
 import VersionRepository from '@cornflow-ui/core/repositories/VersionRepository'
 import {
   runPremiumInitialDataHooks,
+  runPremiumActiveSchemaChangedHooks,
+  runPremiumGlobalContextChangedHooks,
   loadPremiumMasterDataConfig,
 } from '@cornflow-ui/core/plugins/extensions'
 import RoleRepository from '@cornflow-ui/core/repositories/RoleRepository'
 import WarningsRepository from '@cornflow-ui/core/repositories/WarningsRepository'
 import type { Warning } from '@cornflow-ui/core/repositories/WarningsRepository'
+import GlobalContextRepository from '@cornflow-ui/core/repositories/GlobalContextRepository'
+import type {
+  GlobalContextDimension,
+  GlobalContextOption,
+  GlobalContextValues,
+} from '@cornflow-ui/core/types/globalContext'
+import {
+  readGlobalContextDimensions,
+  hasContextValue,
+  isSameContextValue,
+  toContextConfig,
+  toContextQueryParams,
+} from '@cornflow-ui/core/utils/globalContext'
 
 import { toUTCDayBoundary } from '@cornflow-ui/core/utils/date'
 
@@ -102,6 +117,87 @@ function clearHistoricalPollTimer() {
   }
 }
 
+/** sessionStorage key of the DAG the session works on (only with several DAGs). */
+const ACTIVE_SCHEMA_STORAGE_KEY = 'activeSchema'
+/** sessionStorage key prefix of the picked global-context values, one entry per DAG. */
+const GLOBAL_CONTEXT_STORAGE_PREFIX = 'globalContext:'
+
+function readStoredActiveSchema(): string | null {
+  try {
+    return sessionStorage.getItem(ACTIVE_SCHEMA_STORAGE_KEY)
+  } catch {
+    return null
+  }
+}
+
+function storeActiveSchema(schema: string): void {
+  try {
+    sessionStorage.setItem(ACTIVE_SCHEMA_STORAGE_KEY, schema)
+  } catch {
+    /* storage unavailable: the choice lasts until the page is reloaded */
+  }
+}
+
+function readStoredContext(schema: string): GlobalContextValues {
+  try {
+    const stored = sessionStorage.getItem(GLOBAL_CONTEXT_STORAGE_PREFIX + schema)
+    const parsed = stored ? JSON.parse(stored) : {}
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function storeContext(schema: string, values: GlobalContextValues): void {
+  try {
+    sessionStorage.setItem(
+      GLOBAL_CONTEXT_STORAGE_PREFIX + schema,
+      JSON.stringify(values),
+    )
+  } catch {
+    /* storage unavailable: the choice lasts until the page is reloaded */
+  }
+}
+
+function clearStoredSessionChoices(): void {
+  try {
+    sessionStorage.removeItem(ACTIVE_SCHEMA_STORAGE_KEY)
+    const contextKeys: string[] = []
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i)
+      if (key?.startsWith(GLOBAL_CONTEXT_STORAGE_PREFIX)) contextKeys.push(key)
+    }
+    contextKeys.forEach((key) => sessionStorage.removeItem(key))
+  } catch {
+    /* storage unavailable: nothing was kept */
+  }
+}
+
+/**
+ * Value a dimension starts with: the previous one while the user may still pick it; otherwise
+ * "All" when the dimension allows it, or the first option.
+ */
+function pickContextValue(
+  dimension: GlobalContextDimension,
+  options: GlobalContextOption[],
+  previous: unknown,
+): unknown {
+  if (hasContextValue(previous)) {
+    const kept = options.find((option) => isSameContextValue(option.value, previous))
+    if (kept) return kept.value
+  }
+  if (dimension.allowEmpty) return null
+  return options[0]?.value ?? null
+}
+
+/** Settings the schema config overrides, as the app declares them (see `restoreAppSolverDefaults`). */
+function snapshotAppSolverDefaults(parameters: Record<string, any>) {
+  return {
+    defaultSolver: parameters?.solverConfig?.defaultSolver as string | undefined,
+    executionSolvers: [...((parameters?.executionSolvers as string[]) ?? [])],
+  }
+}
+
 export const useGeneralStore = defineStore('general', {
   state: () => ({
     schemaRepository: new SchemaRepository(),
@@ -112,6 +208,7 @@ export const useGeneralStore = defineStore('general', {
     versionRepository: new VersionRepository(),
     roleRepository: new RoleRepository(),
     warningsRepository: new WarningsRepository(),
+    globalContextRepository: new GlobalContextRepository(),
     warnings: [] as Warning[],
     notifications: [] as {
       message: string
@@ -121,7 +218,17 @@ export const useGeneralStore = defineStore('general', {
     user: {},
     logo: logo,
     fullLogo: fullLogo,
+    /** DAG the session works on; empty means `config.schema`. */
     schema: '',
+    /** DAG the deployment opens with (`config.schema` before any switch). */
+    defaultSchema: config.schema,
+    /**
+     * DAGs of `config.schemas` the user may switch between. Empty unless the deployment lists
+     * several DAGs.
+     */
+    availableSchemas: [] as string[],
+    /** True when the deployment lists several DAGs and Cornflow grants the user none of them. */
+    noSchemaAccess: false,
     schemaConfig: {} as SchemaConfig,
     appConfig: appConfig.getCore(),
     /**
@@ -130,6 +237,12 @@ export const useGeneralStore = defineStore('general', {
      */
     appConfigFields: (appConfig.getCore().parameters.configFields ??
       []) as ExecutionConfigField[],
+    /** Solver settings as `src/app/config.ts` declares them (see `restoreAppSolverDefaults`). */
+    appSolverDefaults: snapshotAppSolverDefaults(appConfig.getCore().parameters),
+    /** Picked value per global-context dimension; `null` is "All". Empty without a global context. */
+    globalContext: {} as GlobalContextValues,
+    /** Options the user may pick, per global-context dimension. */
+    globalContextOptions: {} as Record<string, GlobalContextOption[]>,
     appDashboardRoutes: appConfig.getDashboardRoutes(),
     appDashboardPages: appConfig.getDashboardPages(),
     appDashboardLayout: appConfig.getDashboardLayout(),
@@ -180,8 +293,12 @@ export const useGeneralStore = defineStore('general', {
 
         await this.fetchUser()
         await this.fetchCornflowVersion()
-        await this.setSchema()
-        await this.setConfigurations()
+        await this.resolveActiveSchema()
+        if (!this.noSchemaAccess) {
+          await this.setSchema()
+          await this.setConfigurations()
+          await this.loadGlobalContext()
+        }
         await this.fetchLicences()
         await this.fetchWarnings()
 
@@ -233,6 +350,298 @@ export const useGeneralStore = defineStore('general', {
       } catch (error) {
         console.error('Error getting cornflow version', error)
       }
+    },
+
+    /**
+     * Decides the DAG the session starts on. Only when the deployment lists several DAGs
+     * (`schema` with several names, see `config.schemas`): asks Cornflow which ones the user may
+     * use (`GET /schema/`) and enters
+     * the one kept from earlier in the session, else `config.schema`, else the first granted.
+     * With a single DAG it does nothing and makes no request.
+     */
+    async resolveActiveSchema() {
+      this.noSchemaAccess = false
+      if (!this.isMultiSchemaDeployment) {
+        this.availableSchemas = []
+        return
+      }
+
+      let granted: string[]
+      try {
+        granted = await this.schemaRepository.getAvailableSchemaNames()
+      } catch (error) {
+        // Without an answer from Cornflow the session stays on the default DAG, with no switcher;
+        // the backend still decides what the user may do there.
+        console.error('Error getting the schemas of the user', error)
+        this.availableSchemas = this.defaultSchema ? [this.defaultSchema] : []
+        this.applyActiveSchema(this.defaultSchema)
+        return
+      }
+
+      if (this.user && typeof this.user === 'object') {
+        ;(this.user as { schemas?: string[] }).schemas = granted
+      }
+      this.availableSchemas = (config.schemas ?? []).filter((schema) =>
+        granted.includes(schema),
+      )
+      if (this.availableSchemas.length === 0) {
+        this.noSchemaAccess = true
+        return
+      }
+
+      const initial =
+        [readStoredActiveSchema(), this.defaultSchema].find(
+          (schema) => schema && this.availableSchemas.includes(schema),
+        ) ?? this.availableSchemas[0]
+      this.applyActiveSchema(initial)
+    },
+
+    /**
+     * Points the session at `schema`. `config.schema` follows it because premium modules read it
+     * (e.g. the ETL `?schema=` parameter).
+     */
+    applyActiveSchema(schema: string) {
+      this.schema = schema
+      config.schema = schema
+      if (schema) storeActiveSchema(schema)
+    },
+
+    /**
+     * Switches the session to another DAG without reloading the page: closes the loaded
+     * executions, reloads the schema and its instance/solution tables, the global-context options
+     * and the views, and lets premium modules reset what they keep per DAG. Navigation is up to
+     * the caller (see `ContextBar`). Returns false when `schema` is not one the user may switch to.
+     */
+    async setActiveSchema(schema: string): Promise<boolean> {
+      if (schema === this.getSchemaName || !this.availableSchemas.includes(schema)) {
+        return false
+      }
+
+      this.closeExecutionSession()
+      this.applyActiveSchema(schema)
+      this.schemaConfig = {} as SchemaConfig
+      this.restoreAppSolverDefaults()
+      await this.setSchema()
+      const { inputData, resultsData } = await this.fetchSchemaTables()
+      this.rawConfigurations = {
+        masterData: this.rawConfigurations?.masterData ?? ({} as TableSchema),
+        inputData,
+        resultsData,
+      }
+      this.updateLocalizedConfigurations()
+      await this.loadGlobalContext()
+      this.incrementUploadComponentKey()
+      await runPremiumActiveSchemaChangedHooks(schema)
+      return true
+    },
+
+    /** Closes the loaded executions, the selection, the pollers and the historical KPIs. */
+    closeExecutionSession() {
+      this.stopAutoLoadExecutions()
+      this.resetLoadedExecutions()
+      this.setSelectedExecution(null)
+      this.lastExecutions = []
+      this.clearHistoricalExecution()
+      this.incrementTabBarKey()
+    },
+
+    /**
+     * Puts back the solver settings and config fields of `src/app/config.ts`, so a schema without
+     * config does not inherit those of the schema loaded before it.
+     */
+    restoreAppSolverDefaults() {
+      const parameters = this.appConfig.parameters
+      if (this.appSolverDefaults.defaultSolver !== undefined) {
+        parameters.solverConfig = {
+          ...parameters.solverConfig,
+          defaultSolver: this.appSolverDefaults.defaultSolver,
+        }
+      }
+      parameters.executionSolvers = [...this.appSolverDefaults.executionSolvers]
+      parameters.configFields = [...this.appConfigFields]
+    },
+
+    /**
+     * Loads the options of every global-context dimension for the active DAG and picks a value for
+     * each: the one kept from earlier in the session if the user may still pick it, else "All"
+     * (`allowEmpty`) or the first option. Without a global context it does nothing.
+     */
+    async loadGlobalContext() {
+      const dimensions = readGlobalContextDimensions()
+      if (dimensions.length === 0) return
+
+      const { values, options } = await this.resolveGlobalContextDimensions(
+        dimensions,
+        {},
+        readStoredContext(this.getSchemaName),
+      )
+      this.globalContextOptions = options
+      this.globalContext = values
+      storeContext(this.getSchemaName, values)
+    },
+
+    /**
+     * Fetches the options of `dimensions` and picks a value for each, starting from `previous`.
+     * A dimension waits only for the dimension it depends on, taken from `fixed` or resolved here;
+     * the others are requested at the same time.
+     */
+    async resolveGlobalContextDimensions(
+      dimensions: GlobalContextDimension[],
+      fixed: GlobalContextValues,
+      previous: GlobalContextValues,
+    ): Promise<{
+      values: GlobalContextValues
+      options: Record<string, GlobalContextOption[]>
+    }> {
+      const valueOf = new Map<string, Promise<unknown>>(
+        Object.entries(fixed).map(([key, value]) => [key, Promise.resolve(value)]),
+      )
+      const resolved = dimensions.map((dimension) => {
+        const parentValue =
+          (dimension.dependsOn && valueOf.get(dimension.dependsOn)) ||
+          Promise.resolve(undefined)
+        const result = parentValue.then(async (parent) => {
+          const options = await this.fetchGlobalContextOptions(dimension, parent)
+          const value = pickContextValue(dimension, options, previous[dimension.key])
+          return { key: dimension.key, options, value }
+        })
+        valueOf.set(
+          dimension.key,
+          result.then(({ value }) => value),
+        )
+        return result
+      })
+
+      const values: GlobalContextValues = { ...fixed }
+      const options: Record<string, GlobalContextOption[]> = {}
+      for (const result of await Promise.all(resolved)) {
+        values[result.key] = result.value
+        options[result.key] = result.options
+      }
+      return { values, options }
+    },
+
+    async fetchGlobalContextOptions(
+      dimension: GlobalContextDimension,
+      parentValue: unknown,
+    ): Promise<GlobalContextOption[]> {
+      const params: Record<string, string> = { schema: this.getSchemaName }
+      if (dimension.dependsOn && hasContextValue(parentValue)) {
+        params[dimension.dependsOn] = String(parentValue)
+      }
+      try {
+        return await this.globalContextRepository.getOptions(dimension, params)
+      } catch (error) {
+        console.error(`Error getting the options of ${dimension.key}`, error)
+        return []
+      }
+    },
+
+    /**
+     * Picks another value for a global-context dimension (`null` is "All", only with
+     * `allowEmpty`). Reloads the options of the dimensions that depend on it, closes the loaded
+     * executions of another value, reloads the views (executions list, master data) and notifies
+     * premium modules. Returns false when the value is not one the user may pick.
+     */
+    async setGlobalContextValue(key: string, value: unknown): Promise<boolean> {
+      const dimensions = readGlobalContextDimensions()
+      const index = dimensions.findIndex((dimension) => dimension.key === key)
+      if (index === -1) return false
+      const dimension = dimensions[index]
+      const isAllowed =
+        value === null
+          ? dimension.allowEmpty === true
+          : (this.globalContextOptions[key] ?? []).some((option) =>
+              isSameContextValue(option.value, value),
+            )
+      if (!isAllowed) return false
+
+      // The dimensions that depend on this one, directly or through another, get new options.
+      const changed = new Set([key])
+      const dependents: GlobalContextDimension[] = []
+      for (const candidate of dimensions.slice(index + 1)) {
+        if (candidate.dependsOn && changed.has(candidate.dependsOn)) {
+          dependents.push(candidate)
+          changed.add(candidate.key)
+        }
+      }
+      const fixed = Object.fromEntries(
+        Object.entries({ ...this.globalContext, [key]: value }).filter(
+          ([dimensionKey]) => !dependents.some((d) => d.key === dimensionKey),
+        ),
+      )
+      const resolved = await this.resolveGlobalContextDimensions(
+        dependents,
+        fixed,
+        this.globalContext,
+      )
+      const values = resolved.values
+
+      this.globalContextOptions = {
+        ...this.globalContextOptions,
+        ...resolved.options,
+      }
+      this.globalContext = values
+      storeContext(this.getSchemaName, values)
+      this.closeExecutionsOutsideContext()
+      this.lastExecutions = []
+      this.incrementUploadComponentKey()
+      await runPremiumGlobalContextChangedHooks(this.getGlobalContextConfig)
+      return true
+    },
+
+    /**
+     * Closes the loaded executions whose config holds another value of a picked dimension, so the
+     * tabs never show an execution the selector does not describe. Executions that carry no value
+     * for a dimension stay open.
+     */
+    closeExecutionsOutsideContext() {
+      const picked = Object.entries(this.getGlobalContextConfig)
+      const kept = this.loadedExecutions.filter((execution) =>
+        picked.every(([key, value]) => {
+          const executionValue = (execution.config as Record<string, unknown>)?.[key]
+          return (
+            !hasContextValue(executionValue) ||
+            isSameContextValue(executionValue, value)
+          )
+        }),
+      )
+      if (kept.length === this.loadedExecutions.length) return
+
+      this.loadedExecutions = kept
+      const selectedId = this.selectedExecution?.executionId
+      if (selectedId && !kept.some((execution) => execution.executionId === selectedId)) {
+        this.setSelectedExecution(null)
+      }
+      if (kept.length === 0) this.stopAutoLoadExecutions()
+      this.incrementTabBarKey()
+    },
+
+    /**
+     * Empties everything that belongs to the logged-in user, so the next login in the same tab
+     * loads its own user, roles, DAG and configurations. Called from the sign-in page, where every
+     * way out of a session (logout, expired token, 401) ends.
+     */
+    resetSessionState() {
+      this.closeExecutionSession()
+      this.user = {}
+      this.licences = []
+      this.warnings = []
+      this.schema = ''
+      config.schema = this.defaultSchema
+      this.schemaConfig = {} as SchemaConfig
+      this.restoreAppSolverDefaults()
+      this.configurations = null
+      this.rawConfigurations = null
+      this.masterDataSections = null
+      this.masterDataGroups = null
+      this.availableSchemas = []
+      this.noSchemaAccess = false
+      this.globalContext = {}
+      this.globalContextOptions = {}
+      this.initialDataLoading = false
+      this.dataInitialized = false
+      clearStoredSessionChoices()
     },
 
     async fetchLicences() {
@@ -314,26 +723,7 @@ export const useGeneralStore = defineStore('general', {
         }
 
         // Get instance and solution data from schema (may be empty if not available)
-        let inputData = {}
-        let resultsData = {}
-
-        try {
-          inputData = await this.schemaRepository.getInstanceTables(
-            this.getSchemaName,
-          )
-        } catch (error) {
-          console.warn('Instance tables not available:', error)
-          inputData = {}
-        }
-
-        try {
-          resultsData = await this.schemaRepository.getSolutionTables(
-            this.getSchemaName,
-          )
-        } catch (error) {
-          console.warn('Solution tables not available:', error)
-          resultsData = {}
-        }
+        const { inputData, resultsData } = await this.fetchSchemaTables()
 
         // Store raw configurations with original multilingual data and section definitions
         this.rawConfigurations = {
@@ -358,6 +748,33 @@ export const useGeneralStore = defineStore('general', {
         this.masterDataGroups = null
         this.updateLocalizedConfigurations()
       }
+    },
+
+    /** Instance and solution tables of the active schema; each is empty when it is not available. */
+    async fetchSchemaTables(): Promise<{
+      inputData: TableSchema
+      resultsData: TableSchema
+    }> {
+      let inputData = {} as TableSchema
+      let resultsData = {} as TableSchema
+
+      try {
+        inputData =
+          (await this.schemaRepository.getInstanceTables(this.getSchemaName)) ||
+          {}
+      } catch (error) {
+        console.warn('Instance tables not available:', error)
+      }
+
+      try {
+        resultsData =
+          (await this.schemaRepository.getSolutionTables(this.getSchemaName)) ||
+          {}
+      } catch (error) {
+        console.warn('Solution tables not available:', error)
+      }
+
+      return { inputData, resultsData }
     },
 
     // Update configurations with current locale and apply user schema filtering
@@ -433,12 +850,14 @@ export const useGeneralStore = defineStore('general', {
             this.getSchemaName,
             null,
             null,
+            this.getGlobalContextParams,
           )
         } else {
           executions = await this.executionRepository.getExecutions(
             this.getSchemaName,
             toUTCDayBoundary(fromDate),
             toUTCDayBoundary(toDate, true),
+            this.getGlobalContextParams,
           )
         }
 
@@ -644,6 +1063,12 @@ export const useGeneralStore = defineStore('general', {
     },
 
     async createExecution(execution: Execution, params: string = '') {
+      if (!this.isGlobalContextComplete) {
+        console.error(
+          'Error creating execution: a global-context dimension has no value',
+        )
+        return false
+      }
       try {
         const newExecution = await this.executionRepository.createExecution(
           execution,
@@ -925,7 +1350,52 @@ export const useGeneralStore = defineStore('general', {
     },
 
     getSchemaName(): string {
-      return config.schema
+      return this.schema || config.schema
+    },
+
+    /** True when the deployment lists several DAGs in `config.schemas`. */
+    isMultiSchemaDeployment(): boolean {
+      return (config.schemas?.length ?? 0) > 1
+    },
+
+    /** True when the user may switch between more than one DAG. */
+    canSwitchSchema(): boolean {
+      return this.availableSchemas.length > 1
+    },
+
+    /** Global-context dimensions the app declares (`globalContext`). Empty when none. */
+    getGlobalContextDimensions(): GlobalContextDimension[] {
+      return readGlobalContextDimensions()
+    },
+
+    /** Picked global-context values as query parameters, without the dimensions set to "All". */
+    getGlobalContextParams(): Record<string, string> {
+      return toContextQueryParams(this.globalContext)
+    },
+
+    /** Picked global-context values with their raw type, without the dimensions set to "All". */
+    getGlobalContextConfig(): Record<string, unknown> {
+      return toContextConfig(this.globalContext)
+    },
+
+    /**
+     * True when the context bar has something to show: the module of a multi-DAG deployment, or
+     * the global-context dimensions once their options are loaded.
+     */
+    isContextBarVisible(): boolean {
+      const showsModule =
+        this.isMultiSchemaDeployment && this.availableSchemas.length > 0
+      const showsContext =
+        readGlobalContextDimensions().length > 0 &&
+        Object.keys(this.globalContextOptions).length > 0
+      return showsModule || showsContext
+    },
+
+    /** True when every global-context dimension has a value, as launching an execution needs. */
+    isGlobalContextComplete(): boolean {
+      return readGlobalContextDimensions().every((dimension) =>
+        hasContextValue(this.globalContext[dimension.key]),
+      )
     },
 
     getSchemaConfig(): SchemaConfig {

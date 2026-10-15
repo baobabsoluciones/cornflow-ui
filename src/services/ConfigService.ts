@@ -3,7 +3,8 @@ import appConfig from "@/app/config";
 interface ConfigValues {
     backend_url: string;
     auth_type: string;
-    schema: string;
+    /** The deployment's DAG, or several: comma-separated, or an array. */
+    schema: string | string[];
     name: string;
     hasExternalApp?: boolean;
     isStagingEnvironment?: boolean;

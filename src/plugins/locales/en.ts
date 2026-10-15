@@ -1021,6 +1021,23 @@ export default {
     hideWarnings: 'Hide warning details',
     viewingHistoricalData: 'Viewing historical data',
   },
+  contextBar: {
+    module: 'Module',
+    all: 'All',
+    noOptions: 'None available',
+    confirm: 'Change',
+    cancel: 'Cancel',
+    switchModuleTitle: 'Change module?',
+    switchModuleMessage:
+      'The executions open in tabs will be closed, and an execution you are creating will be discarded.',
+    changeContextTitle: 'Change selection?',
+    changeContextMessage:
+      'Open executions of another selection will be closed, and an execution you are creating will be discarded.',
+    contextRequiredToCreate:
+      'Pick a value in every selector of the top bar to create an execution.',
+    noSchemaAccessTitle: 'You have no access to any module',
+    noSchemaAccessMessage: 'Ask an administrator to give you access.',
+  },
   notFound: {
     title: 'Page not found',
     message: 'The page you are looking for does not exist.',

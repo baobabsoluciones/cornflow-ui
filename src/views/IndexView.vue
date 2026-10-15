@@ -37,7 +37,29 @@
       :class="{ 'drawer-pinned': isDrawerPinned }"
       :style="mainContentStyle"
     >
-      <core-app-view />
+      <!--
+        Context bar: the core's module and global-context selectors, plus whatever premium modules
+        mount in `app-top-bar`. Only rendered while something in it is visible.
+      -->
+      <div v-if="showTopBar" class="app-top-bar" data-testid="app-top-bar">
+        <core-context-bar v-if="showContextBar" />
+        <component
+          v-for="(item, i) in premiumTopBar"
+          :key="`premium-top-bar-${i}`"
+          :is="item.component"
+          v-bind="item.props"
+        />
+      </div>
+      <div
+        v-if="noSchemaAccess"
+        class="no-schema-access"
+        data-testid="no-schema-access"
+      >
+        <v-icon size="48" color="var(--subtitle)">mdi-lock-outline</v-icon>
+        <h3>{{ $t('contextBar.noSchemaAccessTitle') }}</h3>
+        <p>{{ $t('contextBar.noSchemaAccessMessage') }}</p>
+      </div>
+      <core-app-view v-else />
       <div class="tab-container">
         <MAppBarTab
           :key="tabsKey"
@@ -84,17 +106,21 @@ import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import AuthService from '@cornflow-ui/core/services/AuthService'
 import CoreAppDrawer from '@cornflow-ui/core/components/AppDrawer.vue'
 import CoreAppView from '@cornflow-ui/core/components/AppView.vue'
+import CoreContextBar from '@cornflow-ui/core/components/core/ContextBar.vue'
 import { useRouter, useRoute } from 'vue-router'
 import { computed } from 'vue'
 import { Vue3Marquee } from 'vue3-marquee'
 import config from '@cornflow-ui/core/config'
-import appConfig from '@/app/config'
 import { baobabLogoSmall } from '@cornflow-ui/core/utils/assets'
 import {
   getPremiumGlobalComponents,
   applyPremiumExecutionTabDecorators,
 } from '@cornflow-ui/core/plugins/extensions'
 import { totalTopBannerOffset } from '@cornflow-ui/core/plugins/layoutOffsets'
+import { isOnInstanceDependentRoute } from '@cornflow-ui/core/utils/instanceDependentRoutes'
+
+/** Height (px) of the context bar; it sits in the flow, above the views. */
+const APP_TOP_BAR_HEIGHT = 44
 
 const generalStore = useGeneralStore()
 const router = useRouter()
@@ -108,16 +134,28 @@ let showInitialLoading = computed(() => generalStore.initialDataLoading)
 // Premium modules (enterprise) global banners/FABs. Empty when none registered.
 const premiumBanners = computed(() => getPremiumGlobalComponents('app-banners'))
 const premiumFabs = computed(() => getPremiumGlobalComponents('app-fabs'))
+const premiumTopBar = computed(() => getPremiumGlobalComponents('app-top-bar'))
+
+const showContextBar = computed(() => generalStore.isContextBarVisible)
+const showTopBar = computed(
+  () => showContextBar.value || premiumTopBar.value.length > 0,
+)
+const noSchemaAccess = computed(() => generalStore.noSchemaAccess)
 
 /**
  * Padding-top reserved for the fixed banners that premium modules report on the layout channel
- * (`@/plugins/layoutOffsets`). The core doesn't know which banners exist: it just leaves the gap.
+ * (`@/plugins/layoutOffsets`); the core doesn't know which banners exist, it just leaves the gap.
+ * `--app-top-offset` adds the context bar to that height, so the views (`main.css`) fit below.
  */
-const mainContentStyle = computed(() =>
-  totalTopBannerOffset.value
-    ? { paddingTop: `${totalTopBannerOffset.value}px` }
-    : undefined,
-)
+const mainContentStyle = computed(() => {
+  const banners = totalTopBannerOffset.value
+  const offset = banners + (showTopBar.value ? APP_TOP_BAR_HEIGHT : 0)
+  if (!offset) return undefined
+  return {
+    ...(banners ? { paddingTop: `${banners}px` } : {}),
+    '--app-top-offset': `${offset}px`,
+  }
+})
 
 // Get the currently selected execution ID
 const selectedExecutionId = computed(
@@ -142,25 +180,6 @@ const enhancedTabsData = computed(() => {
 const hasSelectedExecution = computed(
   () => generalStore.selectedExecution != null,
 )
-
-const CORE_INSTANCE_DEPENDENT_ROUTE_PREFIXES = [
-  '/input-data',
-  '/output-data',
-  '/results',
-  '/dashboard',
-]
-const isOnInstanceDependentRoute = (path) => {
-  if (
-    CORE_INSTANCE_DEPENDENT_ROUTE_PREFIXES.some((prefix) =>
-      path.startsWith(prefix),
-    )
-  ) {
-    return true
-  }
-  return appConfig
-    .getInstanceDependentAppRoutePrefixes()
-    .some((prefix) => path.startsWith(prefix))
-}
 
 defineExpose({
   tabsData,
@@ -234,6 +253,38 @@ if (AuthService.isAuthenticated()) {
   width: 100%;
   display: flex;
   flex-direction: column;
+}
+
+/* Context bar: in the flow, so it follows the drawer and sits below the fixed banners */
+.app-top-bar {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 40px;
+  background-color: #fff;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.main-content:not(.drawer-pinned) .app-top-bar {
+  margin-left: 56px; /* Width of the mini drawer, as .main-container */
+}
+
+.no-schema-access {
+  min-height: calc(100vh - 40px - var(--app-top-offset, 0px));
+  margin-left: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--subtitle);
+  text-align: center;
+}
+
+.main-content.drawer-pinned .no-schema-access {
+  margin-left: 0;
 }
 
 .marquee-container {
