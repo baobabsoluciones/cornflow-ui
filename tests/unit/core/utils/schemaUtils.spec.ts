@@ -1183,27 +1183,6 @@ describe('mergeAppConfigFields', () => {
     expect(merged.find((f) => f.key === 'cornflow')!.default).toBe(true)
   })
 
-  test('an app field with an options endpoint wins over the schema field with the same key', () => {
-    const merged = mergeAppConfigFields(schemaFields, [
-      {
-        key: 'region',
-        title: 'configParams.region',
-        type: 'select',
-        optionsEndpoint: '/user/regions/',
-        isExternal: true,
-        valueField: 'region_id',
-      },
-    ])
-
-    expect(merged.find((f) => f.key === 'region')).toMatchObject({
-      type: 'select',
-      optionsEndpoint: '/user/regions/',
-      valueField: 'region_id',
-      preEtl: true,
-      required: true,
-    })
-  })
-
   test('keeps the schema properties the app field does not set', () => {
     const merged = mergeAppConfigFields(schemaFields, [
       {

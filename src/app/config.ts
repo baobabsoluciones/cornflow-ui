@@ -2,10 +2,6 @@ import { Instance } from '@/app/models/Instance.ts'
 import { Solution } from '@/app/models/Solution.ts'
 import { Experiment } from '@/app/models/Experiment.ts'
 import type { RouteRecordRaw } from 'vue-router'
-import type {
-  ExecutionFilter,
-  ExecutionsListEndpoint,
-} from '@cornflow-ui/core/types/executionFilters'
 
 /**
  * Definition for an app-specific section (top-level or subsection).
@@ -294,20 +290,6 @@ const createAppConfig = () => ({
        * when `schema` (external config) lists several DAGs. A DAG without an entry shows its name.
        */
       schemaLabels: {} as Record<string, string>,
-
-      /**
-       * Filters of the executions history (e.g. the plant), next to its date filters. Each one
-       * offers "All" and the options its endpoint returns, and sends the picked value to the
-       * executions list. Empty means date filters only. See README "Executions history filters".
-       */
-      executionFilters: [] as ExecutionFilter[],
-
-      /**
-       * Where the executions list is requested, e.g. `{ path: '/executions/', isExternal: true }`
-       * for a backend that filters it by the executions history filters. `null` means Cornflow's
-       * `GET /execution/`.
-       */
-      executionsListEndpoint: null as ExecutionsListEndpoint | null,
 
       /**
        * Default landing view after login (route path segment, e.g. 'history-execution').

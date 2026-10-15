@@ -14,12 +14,11 @@ const mockConfig = vi.hoisted(() => ({
 }))
 vi.mock('@cornflow-ui/core/config', () => ({ default: mockConfig }))
 
-// App config: a test fills `executionFilters`.
+// App config: the solver settings a DAG switch puts back.
 const mockParameters = vi.hoisted(() => ({
   executionSolvers: ['solver_a'],
   solverConfig: { defaultSolver: 'solver_a' },
   configFields: [] as unknown[],
-  executionFilters: [] as unknown[],
 }))
 vi.mock('@/app/config', () => ({
   default: {
@@ -68,7 +67,6 @@ const mockSchemaRepository = vi.hoisted(() => ({
   getInstanceTables: vi.fn(),
   getSolutionTables: vi.fn(),
 }))
-const mockOptionsRepository = vi.hoisted(() => ({ getOptions: vi.fn() }))
 const mockUserRepository = vi.hoisted(() => ({ getUserById: vi.fn() }))
 const mockRoleRepository = vi.hoisted(() => ({
   getAllUserRoleAssignments: vi.fn(),
@@ -81,11 +79,6 @@ const mockExecutionRepository = vi.hoisted(() => ({
 vi.mock('@cornflow-ui/core/repositories/SchemaRepository', () => ({
   default: vi.fn(function () {
     return mockSchemaRepository
-  }),
-}))
-vi.mock('@cornflow-ui/core/repositories/EndpointOptionsRepository', () => ({
-  default: vi.fn(function () {
-    return mockOptionsRepository
   }),
 }))
 vi.mock('@cornflow-ui/core/repositories/UserRepository', () => ({
@@ -114,40 +107,17 @@ vi.mock('@cornflow-ui/core/repositories/LicenceRepository', () => ({
   }),
 }))
 
-const PLANT = {
-  key: 'plant_id',
-  labelKey: 'plant',
-  optionsEndpoint: '/user/plants/',
-  isExternal: true,
-  valueField: 'plant_id',
-  labelField: 'name',
-}
-const PROGRAM = {
-  key: 'program_id',
-  labelKey: 'program',
-  optionsEndpoint: '/user/programs/',
-  isExternal: true,
-  valueField: 'program_id',
-  dependsOn: 'plant_id',
-}
-
-const plantOptions = [
-  { value: '102', title: 'North' },
-  { value: '103', title: 'South' },
-]
-
 function loadedExecution(executionId: string, config: Record<string, unknown>) {
   return { executionId, name: executionId, state: 1, config } as any
 }
 
-describe('General store — several DAGs and executions history filters', () => {
+describe('General store — several DAGs', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
     sessionStorage.clear()
     mockConfig.schema = 'planning_dag'
     mockConfig.schemas = []
-    mockParameters.executionFilters = []
     mockParameters.executionSolvers = ['solver_a']
     mockParameters.solverConfig = { defaultSolver: 'solver_a' }
     mockUserRepository.getUserById.mockResolvedValue({
@@ -323,207 +293,13 @@ describe('General store — several DAGs and executions history filters', () => 
     })
   })
 
-  describe('executions history filters', () => {
-    test('without filters it requests no options and sends no parameters', async () => {
-      const store = useGeneralStore()
-
-      await store.initializeData()
-
-      expect(mockOptionsRepository.getOptions).not.toHaveBeenCalled()
-      expect(store.getExecutionFilterParams).toEqual({})
-    })
-
-    test('loads the options for the active DAG and starts on "All"', async () => {
-      mockParameters.executionFilters = [PLANT]
-      mockOptionsRepository.getOptions.mockResolvedValue(plantOptions)
-      const store = useGeneralStore()
-
-      await store.initializeData()
-
-      expect(mockOptionsRepository.getOptions).toHaveBeenCalledWith(PLANT, {
-        schema: 'planning_dag',
-      })
-      expect(store.executionFilterOptions).toEqual({ plant_id: plantOptions })
-      expect(store.executionFilterValues).toEqual({ plant_id: null })
-      expect(store.getExecutionFilterParams).toEqual({})
-    })
-
-    test('a filter with a single option takes it', async () => {
-      mockParameters.executionFilters = [PLANT]
-      mockOptionsRepository.getOptions.mockResolvedValue([plantOptions[0]])
-      const store = useGeneralStore()
-
-      await store.loadExecutionFilters()
-
-      expect(store.getExecutionFilterParams).toEqual({ plant_id: '102' })
-    })
-
-    test('keeps a picked value while it is still offered', async () => {
-      mockParameters.executionFilters = [PLANT]
-      mockOptionsRepository.getOptions.mockResolvedValue(plantOptions)
-      const store = useGeneralStore()
-      await store.loadExecutionFilters()
-      await store.setExecutionFilterValue('plant_id', '103')
-
-      await store.loadExecutionFilters()
-
-      expect(store.executionFilterValues).toEqual({ plant_id: '103' })
-    })
-
-    test('a dependent filter gets no options while its parent is on "All"', async () => {
-      mockParameters.executionFilters = [PLANT, PROGRAM]
-      mockOptionsRepository.getOptions.mockResolvedValue(plantOptions)
-      const store = useGeneralStore()
-
-      await store.loadExecutionFilters()
-
-      expect(mockOptionsRepository.getOptions).toHaveBeenCalledTimes(1)
-      expect(store.executionFilterOptions.program_id).toEqual([])
-      expect(store.executionFilterValues).toEqual({
-        plant_id: null,
-        program_id: null,
-      })
-    })
-
-    test('picking a value reloads the options of the filters that depend on it', async () => {
-      mockParameters.executionFilters = [PLANT, PROGRAM]
-      mockOptionsRepository.getOptions.mockImplementation(
-        async (
-          filter: { optionsEndpoint: string },
-          params: Record<string, string>,
-        ) =>
-          filter.optionsEndpoint === PLANT.optionsEndpoint
-            ? plantOptions
-            : [
-                { value: `${params.plant_id}-a`, title: 'Program A' },
-                { value: `${params.plant_id}-b`, title: 'Program B' },
-              ],
-      )
-      const store = useGeneralStore()
-      await store.loadExecutionFilters()
-
-      const changed = await store.setExecutionFilterValue('plant_id', '103')
-
-      expect(changed).toBe(true)
-      expect(mockOptionsRepository.getOptions).toHaveBeenCalledWith(PROGRAM, {
-        schema: 'planning_dag',
-        plant_id: '103',
-      })
-      expect(
-        store.executionFilterOptions.program_id.map((o) => o.value),
-      ).toEqual(['103-a', '103-b'])
-      expect(store.getExecutionFilterParams).toEqual({ plant_id: '103' })
-    })
-
-    test('going back to "All" clears the filters that depend on it', async () => {
-      mockParameters.executionFilters = [PLANT, PROGRAM]
-      mockOptionsRepository.getOptions.mockImplementation(
-        async (filter: { optionsEndpoint: string }) =>
-          filter.optionsEndpoint === PLANT.optionsEndpoint
-            ? plantOptions
-            : [
-                { value: 1, title: 'Program A' },
-                { value: 2, title: 'Program B' },
-              ],
-      )
-      const store = useGeneralStore()
-      await store.loadExecutionFilters()
-      await store.setExecutionFilterValue('plant_id', '103')
-      await store.setExecutionFilterValue('program_id', 2)
-
-      await store.setExecutionFilterValue('plant_id', null)
-
-      expect(store.executionFilterValues).toEqual({
-        plant_id: null,
-        program_id: null,
-      })
-      expect(store.executionFilterOptions.program_id).toEqual([])
-    })
-
-    test('refuses a value that is not offered, and one already picked', async () => {
-      mockParameters.executionFilters = [PLANT]
-      mockOptionsRepository.getOptions.mockResolvedValue(plantOptions)
-      const store = useGeneralStore()
-      await store.loadExecutionFilters()
-
-      expect(await store.setExecutionFilterValue('plant_id', '9999')).toBe(
-        false,
-      )
-      expect(await store.setExecutionFilterValue('plant_id', null)).toBe(false)
-      expect(await store.setExecutionFilterValue('other', '102')).toBe(false)
-      expect(store.executionFilterValues).toEqual({ plant_id: null })
-    })
-
-    test('the executions list receives the picked values', async () => {
-      mockParameters.executionFilters = [PLANT]
-      mockOptionsRepository.getOptions.mockResolvedValue(plantOptions)
-      mockExecutionRepository.getExecutions.mockResolvedValue([])
-      const store = useGeneralStore()
-      await store.loadExecutionFilters()
-      await store.setExecutionFilterValue('plant_id', '103')
-
-      await store.fetchExecutionsByDateRange(null as any, null as any)
-
-      expect(mockExecutionRepository.getExecutions).toHaveBeenCalledWith(
-        'planning_dag',
-        null,
-        null,
-        { plant_id: '103' },
-      )
-    })
-
-    test('switching DAG reloads the options for the new DAG', async () => {
-      mockConfig.schemas = ['planning_dag', 'stock_dag']
-      mockParameters.executionFilters = [PLANT]
-      mockSchemaRepository.getAvailableSchemaNames.mockResolvedValue([
-        'planning_dag',
-        'stock_dag',
-      ])
-      mockOptionsRepository.getOptions.mockResolvedValue(plantOptions)
-      const store = useGeneralStore()
-      await store.initializeData()
-
-      await store.setActiveSchema('stock_dag')
-
-      expect(mockOptionsRepository.getOptions).toHaveBeenLastCalledWith(PLANT, {
-        schema: 'stock_dag',
-      })
-    })
-  })
-
-  describe('fetchEndpointOptions', () => {
-    test('asks the endpoint for the active DAG, plus the given parameters', async () => {
-      mockOptionsRepository.getOptions.mockResolvedValue(plantOptions)
-      const store = useGeneralStore()
-
-      const options = await store.fetchEndpointOptions(PLANT, {
-        region: 'east',
-      })
-
-      expect(options).toEqual(plantOptions)
-      expect(mockOptionsRepository.getOptions).toHaveBeenCalledWith(PLANT, {
-        schema: 'planning_dag',
-        region: 'east',
-      })
-    })
-
-    test('gives no options when the request fails', async () => {
-      mockOptionsRepository.getOptions.mockRejectedValue(new Error('down'))
-      const store = useGeneralStore()
-
-      expect(await store.fetchEndpointOptions(PLANT)).toEqual([])
-    })
-  })
-
   describe('resetSessionState', () => {
     test('empties the session so the next login starts from scratch', async () => {
       mockConfig.schemas = ['planning_dag', 'stock_dag']
-      mockParameters.executionFilters = [PLANT]
       mockSchemaRepository.getAvailableSchemaNames.mockResolvedValue([
         'planning_dag',
         'stock_dag',
       ])
-      mockOptionsRepository.getOptions.mockResolvedValue(plantOptions)
       const store = useGeneralStore()
       await store.initializeData()
       await store.setActiveSchema('stock_dag')
@@ -536,8 +312,6 @@ describe('General store — several DAGs and executions history filters', () => 
       expect(store.schema).toBe('')
       expect(mockConfig.schema).toBe('planning_dag')
       expect(store.availableSchemas).toEqual([])
-      expect(store.executionFilterValues).toEqual({})
-      expect(store.executionFilterOptions).toEqual({})
       expect(store.configurations).toBeNull()
       expect(store.loadedExecutions).toEqual([])
       expect(sessionStorage.getItem('activeSchema')).toBeNull()

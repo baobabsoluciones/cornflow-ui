@@ -23,21 +23,6 @@ import {
 import RoleRepository from '@cornflow-ui/core/repositories/RoleRepository'
 import WarningsRepository from '@cornflow-ui/core/repositories/WarningsRepository'
 import type { Warning } from '@cornflow-ui/core/repositories/WarningsRepository'
-import EndpointOptionsRepository from '@cornflow-ui/core/repositories/EndpointOptionsRepository'
-import type {
-  EndpointOption,
-  EndpointOptionsSource,
-} from '@cornflow-ui/core/types/endpointOptions'
-import type {
-  ExecutionFilter,
-  ExecutionFilterValues,
-} from '@cornflow-ui/core/types/executionFilters'
-import {
-  readExecutionFilters,
-  hasFilterValue,
-  isSameOptionValue,
-  toFilterQueryParams,
-} from '@cornflow-ui/core/utils/executionFilters'
 
 import { toUTCDayBoundary } from '@cornflow-ui/core/utils/date'
 
@@ -145,17 +130,6 @@ function clearStoredActiveSchema(): void {
   }
 }
 
-/**
- * Value a filter starts with: its only option when there is just one (the filter has nothing to
- * pick, and the filters that depend on it get their options); else the previous value while it is
- * still offered; else "All" (`null`).
- */
-function keepOfferedValue(options: EndpointOption[], previous: unknown): unknown {
-  if (options.length === 1) return options[0].value
-  if (!hasFilterValue(previous)) return null
-  return options.find((option) => isSameOptionValue(option.value, previous))?.value ?? null
-}
-
 /** Settings the schema config overrides, as the app declares them (see `restoreAppSolverDefaults`). */
 function snapshotAppSolverDefaults(parameters: Record<string, any>) {
   return {
@@ -174,7 +148,6 @@ export const useGeneralStore = defineStore('general', {
     versionRepository: new VersionRepository(),
     roleRepository: new RoleRepository(),
     warningsRepository: new WarningsRepository(),
-    endpointOptionsRepository: new EndpointOptionsRepository(),
     warnings: [] as Warning[],
     notifications: [] as {
       message: string
@@ -205,10 +178,6 @@ export const useGeneralStore = defineStore('general', {
       []) as ExecutionConfigField[],
     /** Solver settings as `src/app/config.ts` declares them (see `restoreAppSolverDefaults`). */
     appSolverDefaults: snapshotAppSolverDefaults(appConfig.getCore().parameters),
-    /** Picked value per executions history filter; `null` is "All". Empty without filters. */
-    executionFilterValues: {} as ExecutionFilterValues,
-    /** Options the user may pick, per executions history filter. */
-    executionFilterOptions: {} as Record<string, EndpointOption[]>,
     appDashboardRoutes: appConfig.getDashboardRoutes(),
     appDashboardPages: appConfig.getDashboardPages(),
     appDashboardLayout: appConfig.getDashboardLayout(),
@@ -263,7 +232,6 @@ export const useGeneralStore = defineStore('general', {
         if (!this.noSchemaAccess) {
           await this.setSchema()
           await this.setConfigurations()
-          await this.loadExecutionFilters()
         }
         await this.fetchLicences()
         await this.fetchWarnings()
@@ -321,8 +289,8 @@ export const useGeneralStore = defineStore('general', {
     /**
      * Decides the DAG the session starts on. Only when the deployment lists several DAGs
      * (`schema` with several names, see `config.schemas`): asks Cornflow which ones the user may
-     * use (`GET /schema/`) and enters
-     * the one kept from earlier in the session, else `config.schema`, else the first granted.
+     * use (`GET /schema/`) and enters the one kept from earlier in the session, else
+     * `config.schema`, else the first granted.
      * With a single DAG it does nothing and makes no request.
      */
     async resolveActiveSchema() {
@@ -374,10 +342,9 @@ export const useGeneralStore = defineStore('general', {
 
     /**
      * Switches the session to another DAG without reloading the page: closes the loaded
-     * executions, reloads the schema and its instance/solution tables, the options of the
-     * executions history filters and the views, and lets premium modules reset what they keep per
-     * DAG. Navigation is up to the caller (see `ModuleSwitcher`). Returns false when `schema` is
-     * not one the user may switch to.
+     * executions, reloads the schema, its instance/solution tables and the views, and lets premium
+     * modules reset what they keep per DAG. Navigation is up to the caller (see `ModuleSwitcher`).
+     * Returns false when `schema` is not one the user may switch to.
      */
     async setActiveSchema(schema: string): Promise<boolean> {
       if (schema === this.getSchemaName || !this.availableSchemas.includes(schema)) {
@@ -396,7 +363,6 @@ export const useGeneralStore = defineStore('general', {
         resultsData,
       }
       this.updateLocalizedConfigurations()
-      await this.loadExecutionFilters()
       this.incrementUploadComponentKey()
       await runPremiumActiveSchemaChangedHooks(schema)
       return true
@@ -429,145 +395,6 @@ export const useGeneralStore = defineStore('general', {
     },
 
     /**
-     * Loads the options of the executions history filters for the active DAG. A filter keeps its
-     * value while it is still offered, and goes back to "All" otherwise; one with a single option
-     * takes it. Without filters it does nothing and makes no request.
-     */
-    async loadExecutionFilters() {
-      const filters = readExecutionFilters()
-      if (filters.length === 0) return
-
-      const { values, options } = await this.resolveExecutionFilters(
-        filters,
-        {},
-        this.executionFilterValues,
-      )
-      this.executionFilterOptions = options
-      this.executionFilterValues = values
-    },
-
-    /**
-     * Fetches the options of `filters` and keeps each value from `previous` while it is still
-     * offered. A filter waits only for the filter it depends on, taken from `fixed` or resolved
-     * here; the others are requested at the same time. A filter whose parent is on "All" gets no
-     * options and stays on "All".
-     */
-    async resolveExecutionFilters(
-      filters: ExecutionFilter[],
-      fixed: ExecutionFilterValues,
-      previous: ExecutionFilterValues,
-    ): Promise<{
-      values: ExecutionFilterValues
-      options: Record<string, EndpointOption[]>
-    }> {
-      const valueOf = new Map<string, Promise<unknown>>(
-        Object.entries(fixed).map(([key, value]) => [key, Promise.resolve(value)]),
-      )
-      const resolved = filters.map((filter) => {
-        const parentValue =
-          (filter.dependsOn && valueOf.get(filter.dependsOn)) ||
-          Promise.resolve(undefined)
-        const result = parentValue.then(async (parent) => {
-          if (filter.dependsOn && !hasFilterValue(parent)) {
-            return { key: filter.key, options: [] as EndpointOption[], value: null }
-          }
-          const options = await this.fetchEndpointOptions(
-            filter,
-            filter.dependsOn ? { [filter.dependsOn]: String(parent) } : {},
-          )
-          const value = keepOfferedValue(options, previous[filter.key])
-          return { key: filter.key, options, value }
-        })
-        valueOf.set(
-          filter.key,
-          result.then(({ value }) => value),
-        )
-        return result
-      })
-
-      const values: ExecutionFilterValues = { ...fixed }
-      const options: Record<string, EndpointOption[]> = {}
-      for (const result of await Promise.all(resolved)) {
-        values[result.key] = result.value
-        options[result.key] = result.options
-      }
-      return { values, options }
-    },
-
-    /**
-     * Options of a selector backed by an endpoint (an executions history filter, a config field)
-     * for the active DAG, with `extraParams` as further query parameters. Empty when the request
-     * fails.
-     */
-    async fetchEndpointOptions(
-      source: EndpointOptionsSource,
-      extraParams: Record<string, string> = {},
-    ): Promise<EndpointOption[]> {
-      try {
-        return await this.endpointOptionsRepository.getOptions(source, {
-          schema: this.getSchemaName,
-          ...extraParams,
-        })
-      } catch (error) {
-        console.error(`Error getting the options of ${source.optionsEndpoint}`, error)
-        return []
-      }
-    },
-
-    /**
-     * Picks a value for an executions history filter (`null` is "All") and reloads the options
-     * of the filters that depend on it. The history lists the executions again when the values
-     * change. Returns false when nothing changes or the value is not one the user may pick.
-     */
-    async setExecutionFilterValue(key: string, value: unknown): Promise<boolean> {
-      const filters = readExecutionFilters()
-      const index = filters.findIndex((filter) => filter.key === key)
-      if (index === -1) return false
-      const current = this.executionFilterValues[key]
-      if (
-        hasFilterValue(value)
-          ? hasFilterValue(current) && isSameOptionValue(current, value)
-          : !hasFilterValue(current)
-      ) {
-        return false
-      }
-      const isAllowed =
-        !hasFilterValue(value) ||
-        (this.executionFilterOptions[key] ?? []).some((option) =>
-          isSameOptionValue(option.value, value),
-        )
-      if (!isAllowed) return false
-
-      // The filters that depend on this one, directly or through another, get new options.
-      const changed = new Set([key])
-      const dependents: ExecutionFilter[] = []
-      for (const candidate of filters.slice(index + 1)) {
-        if (candidate.dependsOn && changed.has(candidate.dependsOn)) {
-          dependents.push(candidate)
-          changed.add(candidate.key)
-        }
-      }
-      const fixed = Object.fromEntries(
-        Object.entries({
-          ...this.executionFilterValues,
-          [key]: hasFilterValue(value) ? value : null,
-        }).filter(([filterKey]) => !dependents.some((d) => d.key === filterKey)),
-      )
-      const resolved = await this.resolveExecutionFilters(
-        dependents,
-        fixed,
-        this.executionFilterValues,
-      )
-
-      this.executionFilterOptions = {
-        ...this.executionFilterOptions,
-        ...resolved.options,
-      }
-      this.executionFilterValues = resolved.values
-      return true
-    },
-
-    /**
      * Empties everything that belongs to the logged-in user, so the next login in the same tab
      * loads its own user, roles, DAG and configurations. Called from the sign-in page, where every
      * way out of a session (logout, expired token, 401) ends.
@@ -587,8 +414,6 @@ export const useGeneralStore = defineStore('general', {
       this.masterDataGroups = null
       this.availableSchemas = []
       this.noSchemaAccess = false
-      this.executionFilterValues = {}
-      this.executionFilterOptions = {}
       this.initialDataLoading = false
       this.dataInitialized = false
       clearStoredActiveSchema()
@@ -800,14 +625,12 @@ export const useGeneralStore = defineStore('general', {
             this.getSchemaName,
             null,
             null,
-            this.getExecutionFilterParams,
           )
         } else {
           executions = await this.executionRepository.getExecutions(
             this.getSchemaName,
             toUTCDayBoundary(fromDate),
             toUTCDayBoundary(toDate, true),
-            this.getExecutionFilterParams,
           )
         }
 
@@ -1305,16 +1128,6 @@ export const useGeneralStore = defineStore('general', {
     /** True when the user may switch between more than one DAG. */
     canSwitchSchema(): boolean {
       return this.availableSchemas.length > 1
-    },
-
-    /** Filters of the executions history the app declares (`executionFilters`). Empty when none. */
-    getExecutionFilters(): ExecutionFilter[] {
-      return readExecutionFilters()
-    },
-
-    /** Picked executions history filters as query parameters, without the ones set to "All". */
-    getExecutionFilterParams(): Record<string, string> {
-      return toFilterQueryParams(this.executionFilterValues)
     },
 
     getSchemaConfig(): SchemaConfig {

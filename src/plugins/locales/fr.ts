@@ -331,7 +331,6 @@ export default {
     password_match: 'Les mots de passe ne correspondent pas',
   },
   versionHistory: {
-    filterAll: 'Tous',
     title: 'Historique des versions',
     description:
       'Dans cette section, vous trouverez un résumé de toutes les versions que vous avez réalisées pour les différents projets exécutés. Vous pouvez charger autant d´exécutions que vous le souhaitez à partir de la colonne des actions. Chaque exécution s´ouvrira dans un nouvel onglet en bas de l´écran, et la dernière exécution chargée sera sélectionnée par défaut.',

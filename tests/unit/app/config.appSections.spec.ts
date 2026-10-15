@@ -84,11 +84,7 @@ describe('appSections config collectors', () => {
     expect(open.meta).toEqual({ showsLoadingOnEnter: false })
   })
 
-  test('multi-DAG and executions history settings default to none', () => {
-    const parameters = appConfig.getCore().parameters
-
-    expect(parameters.schemaLabels).toEqual({})
-    expect(parameters.executionFilters).toEqual([])
-    expect(parameters.executionsListEndpoint).toBeNull()
+  test('declares no DAG labels by default', () => {
+    expect(appConfig.getCore().parameters.schemaLabels).toEqual({})
   })
 })

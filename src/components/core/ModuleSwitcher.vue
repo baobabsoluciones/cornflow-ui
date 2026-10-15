@@ -93,7 +93,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
-import { readSchemaLabels } from '@cornflow-ui/core/utils/executionFilters'
+import { readSchemaLabels } from '@cornflow-ui/core/utils/schemaLabels'
 
 defineOptions({ name: 'CoreModuleSwitcher' })
 

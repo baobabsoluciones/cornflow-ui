@@ -1794,17 +1794,6 @@ export interface ExecutionConfigField {
   lookupParam?: string
   /** Column returned from the matched row with `lookupType: 'arrayByValue'`. */
   lookupValue?: string
-  /**
-   * Endpoint the options of the field come from (e.g. the plants the user may pick), shown as a
-   * select. It receives `schema` (the active DAG). App-defined; see README "configFields".
-   */
-  optionsEndpoint?: string
-  /** When true `optionsEndpoint` is requested under `/external`. */
-  isExternal?: boolean
-  /** Field of each object `optionsEndpoint` returns holding the value. */
-  valueField?: string
-  /** Field of each object `optionsEndpoint` returns holding the text shown. Defaults to `valueField`. */
-  labelField?: string
 }
 
 /** Resolves solver list and default from the `solver` schema property. */
@@ -1937,21 +1926,17 @@ export function getExecutionConfigFromSchemaConfig(schemaConfig: any): {
 /**
  * Combines the config fields derived from the schema with the ones the app declares.
  *
- * An app field with a `source` (where its value is read from in the instance), a `default`
- * (what to send when nothing else gives a value) or an `optionsEndpoint` (where its options come
- * from) carries something the schema does not say for this app, so its properties win over those
- * of the schema field with the same key, and it is kept even when the schema has no property for
- * it. Every other app field gives way to the schema.
+ * An app field with a `source` (where its value is read from in the instance) or a `default`
+ * (what to send when nothing else gives a value) carries something the schema does not say for
+ * this app, so its properties win over those of the schema field with the same key, and it is
+ * kept even when the schema has no property for it. Every other app field gives way to the schema.
  */
 export function mergeAppConfigFields(
   schemaFields: ExecutionConfigField[],
   appFields: ExecutionConfigField[] | null | undefined,
 ): ExecutionConfigField[] {
   const ownFields = (appFields ?? []).filter(
-    (field) =>
-      field.source !== undefined ||
-      field.default !== undefined ||
-      field.optionsEndpoint !== undefined,
+    (field) => field.source !== undefined || field.default !== undefined,
   )
   const ownFieldsByKey = new Map(ownFields.map((field) => [field.key, field]))
   const schemaKeys = new Set(schemaFields.map((field) => field.key))

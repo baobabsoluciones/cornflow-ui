@@ -434,7 +434,6 @@ export default {
     password_match: 'As palavras-passe não coincidem',
   },
   versionHistory: {
-    filterAll: 'Todos',
     title: 'Histórico de versões',
     description:
       'Nesta secção, encontrará um resumo de todas as versões concluídas para os diferentes projetos executados. Pode carregar quantas execuções quiser a partir da coluna de ações. Cada execução será aberta num novo separador na parte inferior do ecrã, e a execução carregada mais recentemente será selecionada por predefinição.',
