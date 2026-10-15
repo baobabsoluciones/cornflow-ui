@@ -816,6 +816,18 @@ describe('global context in master-data requests', () => {
     expect(fields).toContain('name')
   })
 
+  test('a table of a loaded execution is read from it, with no request carrying the value', async () => {
+    route.path = '/input-data'
+    storeState.selectedExecution = {
+      experiment: { instance: { data: { table_a: [{ id: 1, plant_id: '101' }] } } },
+    }
+    const { api } = mountTableData(plantTableConfig, { executionType: 'instance' })
+
+    await api.loadData()
+
+    expect(repoCtrl.calls.get).toBeUndefined()
+  })
+
   test('with the dimension on "All" the column can be filtered again', async () => {
     storeState.getGlobalContextParams = {}
     const { api } = mountTableData(plantTableConfig)
