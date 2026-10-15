@@ -489,7 +489,7 @@ describe('IndexView', () => {
       expect(wrapper.find('[data-testid="app-top-bar"]').exists()).toBe(true)
       expect(wrapper.find('[data-testid="context-bar"]').exists()).toBe(true)
       expect(wrapper.find('.main-content').attributes('style')).toContain(
-        '--app-top-offset: 44px',
+        '--app-top-offset: 56px',
       )
     })
 

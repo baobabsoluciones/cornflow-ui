@@ -2,56 +2,102 @@
   <div class="context-bar" data-testid="context-bar">
     <div
       v-if="showModule"
-      class="context-bar__item"
+      class="context-bar__group"
       data-testid="context-bar-module"
     >
-      <span class="context-bar__label">{{ t('contextBar.module') }}</span>
-      <v-btn-toggle
+      <span class="context-bar__caption">{{ t('contextBar.module') }}</span>
+      <div
         v-if="store.canSwitchSchema"
-        :model-value="store.getSchemaName"
-        mandatory
-        divided
-        density="compact"
-        variant="outlined"
-        color="primary"
-        class="context-bar__toggle"
-        @update:model-value="requestSchema"
+        class="context-bar__segmented"
+        role="radiogroup"
+        :aria-label="t('contextBar.module')"
       >
-        <v-btn
+        <button
           v-for="schema in store.availableSchemas"
           :key="schema"
-          :value="schema"
-          size="small"
+          type="button"
+          role="radio"
+          class="context-bar__segment"
+          :class="{ 'is-active': schema === store.getSchemaName }"
+          :aria-checked="schema === store.getSchemaName"
           :data-testid="`context-bar-schema-${schema}`"
+          @click="requestSchema(schema)"
         >
           {{ schemaLabel(schema) }}
-        </v-btn>
-      </v-btn-toggle>
-      <span v-else class="context-bar__value">
-        {{ schemaLabel(store.getSchemaName) }}
+        </button>
+      </div>
+      <span v-else class="context-bar__pill is-static">
+        <span class="context-bar__pill-value">{{
+          schemaLabel(store.getSchemaName)
+        }}</span>
       </span>
     </div>
 
-    <div
-      v-for="dimension in dimensions"
-      :key="dimension.key"
-      class="context-bar__item"
-      :data-testid="`context-bar-dimension-${dimension.key}`"
-    >
-      <span class="context-bar__label">{{ text(dimension.labelKey) }}</span>
-      <v-select
-        v-if="isSelectable(dimension)"
-        :model-value="selectValue(dimension)"
-        :items="selectItems(dimension)"
-        density="compact"
-        variant="outlined"
-        hide-details
-        class="context-bar__select"
-        :data-testid="`context-bar-select-${dimension.key}`"
-        @update:model-value="(value) => requestContext(dimension, value)"
+    <template v-for="dimension in dimensions" :key="dimension.key">
+      <span
+        v-if="showModule || dimensions[0] !== dimension"
+        class="context-bar__divider"
+        aria-hidden="true"
       />
-      <span v-else class="context-bar__value">{{ fixedLabel(dimension) }}</span>
-    </div>
+      <div
+        class="context-bar__group"
+        :data-testid="`context-bar-dimension-${dimension.key}`"
+      >
+        <span class="context-bar__caption">{{ text(dimension.labelKey) }}</span>
+        <v-menu
+          v-if="isSelectable(dimension)"
+          location="bottom start"
+          offset="6"
+        >
+          <template #activator="{ props: activator, isActive }">
+            <button
+              type="button"
+              class="context-bar__pill"
+              :class="{ 'is-open': isActive }"
+              v-bind="activator"
+              :data-testid="`context-bar-trigger-${dimension.key}`"
+            >
+              <v-icon size="18" class="context-bar__pill-icon">{{
+                iconOf(dimension)
+              }}</v-icon>
+              <span class="context-bar__pill-value">{{
+                selectedTitle(dimension)
+              }}</span>
+              <v-icon size="18" class="context-bar__pill-chevron">
+                mdi-chevron-down
+              </v-icon>
+            </button>
+          </template>
+          <v-list density="compact" class="context-bar__menu" nav>
+            <v-list-item
+              v-for="item in menuItems(dimension)"
+              :key="String(item.value)"
+              :active="isSelected(dimension, item.value)"
+              color="primary"
+              :data-testid="`context-bar-option-${dimension.key}-${String(item.value)}`"
+              @click="requestContext(dimension, item.value)"
+            >
+              <v-list-item-title>{{ item.title }}</v-list-item-title>
+              <template #append>
+                <v-icon
+                  v-if="isSelected(dimension, item.value)"
+                  size="18"
+                  color="primary"
+                >
+                  mdi-check
+                </v-icon>
+              </template>
+            </v-list-item>
+          </v-list>
+        </v-menu>
+        <span v-else class="context-bar__pill is-static">
+          <v-icon size="18" class="context-bar__pill-icon">{{
+            iconOf(dimension)
+          }}</v-icon>
+          <span class="context-bar__pill-value">{{ fixedLabel(dimension) }}</span>
+        </span>
+      </div>
+    </template>
 
     <MBaseModal
       v-model="confirmOpen"
@@ -79,14 +125,17 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
-import { readSchemaLabels } from '@cornflow-ui/core/utils/globalContext'
+import {
+  readSchemaLabels,
+  isSameContextValue,
+} from '@cornflow-ui/core/utils/globalContext'
 import { isOnInstanceDependentRoute } from '@cornflow-ui/core/utils/instanceDependentRoutes'
 import type { GlobalContextDimension } from '@cornflow-ui/core/types/globalContext'
 
 defineOptions({ name: 'CoreContextBar' })
 
-/** Value the selector uses for "All"; the store keeps `null`. */
-const ALL = '__all__'
+/** Icon of a dimension that declares none. */
+const DEFAULT_DIMENSION_ICON = 'mdi-tune-variant'
 
 /** Views that do not depend on the DAG: a module switch keeps the user on them. */
 const SCHEMA_INDEPENDENT_ROUTES = [
@@ -121,6 +170,9 @@ const text = (keyOrText: string): string =>
 const schemaLabel = (schema: string): string =>
   schemaLabels[schema] ? text(schemaLabels[schema]) : schema
 
+const iconOf = (dimension: GlobalContextDimension): string =>
+  dimension.icon || DEFAULT_DIMENSION_ICON
+
 const options = (dimension: GlobalContextDimension) =>
   store.globalContextOptions[dimension.key] ?? []
 
@@ -128,18 +180,25 @@ const isSelectable = (dimension: GlobalContextDimension): boolean =>
   options(dimension).length > 1 ||
   (dimension.allowEmpty === true && options(dimension).length > 0)
 
-const selectItems = (dimension: GlobalContextDimension) => [
-  ...(dimension.allowEmpty ? [{ title: t('contextBar.all'), value: ALL }] : []),
-  ...options(dimension).map((option) => ({
-    title: option.title,
-    value: option.value,
-  })),
+/** Entries of the dimension menu; "All" (value `null`) first when the dimension allows it. */
+const menuItems = (dimension: GlobalContextDimension) => [
+  ...(dimension.allowEmpty ? [{ title: t('contextBar.all'), value: null }] : []),
+  ...options(dimension),
 ]
 
-const selectValue = (dimension: GlobalContextDimension): unknown => {
-  const value = store.globalContext[dimension.key]
-  return value === null || value === undefined ? ALL : value
+const selectedValue = (dimension: GlobalContextDimension): unknown =>
+  store.globalContext[dimension.key] ?? null
+
+const isSelected = (dimension: GlobalContextDimension, value: unknown): boolean => {
+  const selected = selectedValue(dimension)
+  return value === null || selected === null
+    ? value === selected
+    : isSameContextValue(value, selected)
 }
+
+const selectedTitle = (dimension: GlobalContextDimension): string =>
+  menuItems(dimension).find((item) => isSelected(dimension, item.value))?.title ??
+  t('contextBar.all')
 
 const fixedLabel = (dimension: GlobalContextDimension): string =>
   options(dimension)[0]?.title ?? t('contextBar.noOptions')
@@ -175,9 +234,8 @@ function requestSchema(schema: string) {
   request({ kind: 'schema', schema })
 }
 
-function requestContext(dimension: GlobalContextDimension, selected: unknown) {
-  const value = selected === ALL ? null : selected
-  if (value === (store.globalContext[dimension.key] ?? null)) return
+function requestContext(dimension: GlobalContextDimension, value: unknown) {
+  if (isSelected(dimension, value)) return
   request({ kind: 'context', dimension, value })
 }
 
@@ -212,43 +270,147 @@ async function confirmChange() {
 .context-bar {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 16px;
   min-width: 0;
+  height: 100%;
 }
 
-.context-bar__item {
+.context-bar__group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
 }
 
-.context-bar__label {
-  font-size: 0.8rem;
+.context-bar__caption {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--subtitle);
   white-space: nowrap;
 }
 
-.context-bar__value {
+.context-bar__divider {
+  width: 1px;
+  height: 24px;
+  background-color: rgba(0, 0, 0, 0.1);
+  flex: none;
+}
+
+/* Module: segmented control */
+.context-bar__segmented {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border-radius: 10px;
+  background-color: color-mix(in srgb, var(--primary) 9%, #fff);
+}
+
+.context-bar__segment {
+  height: 30px;
+  padding: 0 16px;
+  border-radius: 7px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--primary);
+  white-space: nowrap;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.context-bar__segment:hover:not(.is-active) {
+  background-color: color-mix(in srgb, var(--primary) 16%, #fff);
+}
+
+.context-bar__segment.is-active {
+  background-color: var(--primary);
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+
+.context-bar__segment:focus-visible,
+.context-bar__pill:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Dimension: pill that opens the menu, or shows the only value */
+.context-bar__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  max-width: 320px;
+  padding: 0 10px 0 12px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  background-color: #fff;
+  color: var(--title);
   font-size: 0.875rem;
+  white-space: nowrap;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+button.context-bar__pill:hover,
+.context-bar__pill.is-open {
+  border-color: var(--primary);
+  background-color: color-mix(in srgb, var(--primary) 4%, #fff);
+}
+
+.context-bar__pill.is-open {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent);
+}
+
+.context-bar__pill.is-static {
+  padding-right: 14px;
+  border-color: transparent;
+  background-color: color-mix(in srgb, var(--primary) 6%, #fff);
+}
+
+.context-bar__pill-icon {
+  color: var(--primary);
+}
+
+.context-bar__pill-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-weight: 600;
   color: var(--title);
-  white-space: nowrap;
 }
 
-.context-bar__toggle {
-  height: 30px !important;
+.context-bar__pill-chevron {
+  color: var(--subtitle);
+  transition: transform 0.15s ease;
 }
 
-.context-bar__select {
-  min-width: 160px;
-  max-width: 260px;
+.context-bar__pill.is-open .context-bar__pill-chevron {
+  transform: rotate(180deg);
 }
 
-.context-bar__select :deep(.v-field__input) {
-  min-height: 30px;
-  padding-top: 2px;
-  padding-bottom: 2px;
+.context-bar__menu {
+  min-width: 220px;
+  padding: 4px;
+  border-radius: 10px;
+}
+
+.context-bar__menu :deep(.v-list-item-title) {
   font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.context-bar__menu :deep(.v-list-item--active) {
+  color: var(--primary);
+  background-color: color-mix(in srgb, var(--primary) 8%, #fff);
+}
+
+.context-bar__menu :deep(.v-list-item--active > .v-list-item__overlay) {
+  opacity: 0;
 }
 </style>

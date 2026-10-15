@@ -645,6 +645,7 @@ globalContext: [
   {
     key: 'plant_id',               // query parameter and execution config key
     labelKey: 'context.plant',     // i18n key or literal text
+    icon: 'mdi-factory',           // optional Material Design icon
     optionsEndpoint: '/user/plants/',
     isExternal: true,              // request under /external
     valueField: 'plant_id',

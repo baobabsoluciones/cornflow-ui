@@ -18,6 +18,8 @@ export interface GlobalContextDimension {
   key: string
   /** i18n key (or literal text) of the selector label. */
   labelKey: string
+  /** Material Design icon shown in the selector (e.g. 'mdi-factory'). */
+  icon?: string
   /**
    * Endpoint that returns the options the current user may pick: an array of objects. It receives
    * `schema` (the active DAG) and, when `dependsOn` is set, the parent dimension's value.

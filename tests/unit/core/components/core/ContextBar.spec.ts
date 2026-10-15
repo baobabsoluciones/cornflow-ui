@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
@@ -55,6 +55,25 @@ const MBaseModalStub = defineComponent({
   },
 })
 
+/**
+ * Stand-in for Vuetify's menu (an overlay jsdom cannot position): the activator toggles the
+ * content, rendered in place so a test can click its options.
+ */
+const VMenuStub = defineComponent({
+  name: 'VMenu',
+  setup(_, { slots }) {
+    const open = ref(false)
+    return () =>
+      h('div', [
+        slots.activator?.({
+          props: { onClick: () => (open.value = !open.value) },
+          isActive: open.value,
+        }),
+        open.value ? slots.default?.() : null,
+      ])
+  },
+})
+
 async function mountBar(path = '/history-execution') {
   const router = createRouter({
     history: createMemoryHistory(),
@@ -90,7 +109,7 @@ async function mountBar(path = '/history-execution') {
   const wrapper = mount(ContextBar, {
     global: {
       plugins: [createVuetify({ components, directives }), i18n, router],
-      stubs: { MBaseModal: MBaseModalStub },
+      stubs: { MBaseModal: MBaseModalStub, VMenu: VMenuStub },
     },
   })
   return { wrapper, pushSpy }
@@ -179,34 +198,48 @@ describe('ContextBar', () => {
   })
 
   describe('global context', () => {
+    const twoPlants = [
+      { value: '102', title: 'North' },
+      { value: '103', title: 'South' },
+    ]
+
+    /** Opens the dimension menu and clicks one of its options. */
+    async function pick(wrapper: any, optionValue: string) {
+      await wrapper.find('[data-testid="context-bar-trigger-plant_id"]').trigger('click')
+      const option = wrapper.find(`[data-testid="context-bar-option-plant_id-${optionValue}"]`)
+      await option.trigger('click')
+      await flushPromises()
+      return option
+    }
+
     beforeEach(() => {
       mockParameters.globalContext = [PLANT]
       store.availableSchemas = []
     })
 
-    test('offers a selector when the user may pick between several values', async () => {
-      store.globalContextOptions = {
-        plant_id: [
-          { value: '102', title: 'North' },
-          { value: '103', title: 'South' },
-        ],
-      }
+    test('offers a menu with the values the user may pick, showing the picked one', async () => {
+      store.globalContextOptions = { plant_id: twoPlants }
       store.globalContext = { plant_id: '102' }
       const { wrapper } = await mountBar()
 
-      const select = wrapper.findComponent({ name: 'VSelect' })
-      expect(select.props('items')).toEqual([
-        { title: 'North', value: '102' },
-        { title: 'South', value: '103' },
-      ])
-      expect(wrapper.find('[data-testid="context-bar-dimension-plant_id"]').text()).toContain(
-        'Plant',
-      )
+      const group = wrapper.find('[data-testid="context-bar-dimension-plant_id"]')
+      expect(group.text()).toContain('Plant')
+      expect(group.find('[data-testid="context-bar-trigger-plant_id"]').text()).toContain('North')
 
-      select.vm.$emit('update:modelValue', '103')
-      await flushPromises()
+      const option = await pick(wrapper, '103')
 
+      expect(option.text()).toContain('South')
       expect(store.setGlobalContextValue).toHaveBeenCalledWith('plant_id', '103')
+    })
+
+    test('picking the value already picked changes nothing', async () => {
+      store.globalContextOptions = { plant_id: twoPlants }
+      store.globalContext = { plant_id: '102' }
+      const { wrapper } = await mountBar()
+
+      await pick(wrapper, '102')
+
+      expect(store.setGlobalContextValue).not.toHaveBeenCalled()
     })
 
     test('with allowEmpty it offers "All", sent to the store as null', async () => {
@@ -215,38 +248,29 @@ describe('ContextBar', () => {
       store.globalContext = { plant_id: '102' }
       const { wrapper } = await mountBar()
 
-      const select = wrapper.findComponent({ name: 'VSelect' })
-      expect(select.props('items')[0]).toEqual({ title: 'All', value: '__all__' })
+      const option = await pick(wrapper, 'null')
 
-      select.vm.$emit('update:modelValue', '__all__')
-      await flushPromises()
-
+      expect(option.text()).toContain('All')
       expect(store.setGlobalContextValue).toHaveBeenCalledWith('plant_id', null)
     })
 
-    test('shows the only value as a label', async () => {
+    test('shows the only value as a fixed label, without a menu', async () => {
       store.globalContextOptions = { plant_id: [{ value: '101', title: 'East' }] }
       store.globalContext = { plant_id: '101' }
       const { wrapper } = await mountBar()
 
-      expect(wrapper.findComponent({ name: 'VSelect' }).exists()).toBe(false)
+      expect(wrapper.find('[data-testid="context-bar-trigger-plant_id"]').exists()).toBe(false)
       expect(wrapper.find('[data-testid="context-bar-dimension-plant_id"]').text()).toContain(
         'East',
       )
     })
 
     test('leaves a view of the loaded execution when the change closed it', async () => {
-      store.globalContextOptions = {
-        plant_id: [
-          { value: '102', title: 'North' },
-          { value: '103', title: 'South' },
-        ],
-      }
+      store.globalContextOptions = { plant_id: twoPlants }
       store.globalContext = { plant_id: '102' }
       const { wrapper, pushSpy } = await mountBar('/results/stock')
 
-      wrapper.findComponent({ name: 'VSelect' }).vm.$emit('update:modelValue', '103')
-      await flushPromises()
+      await pick(wrapper, '103')
 
       expect(pushSpy).toHaveBeenCalledWith('/')
     })

@@ -120,7 +120,7 @@ import { totalTopBannerOffset } from '@cornflow-ui/core/plugins/layoutOffsets'
 import { isOnInstanceDependentRoute } from '@cornflow-ui/core/utils/instanceDependentRoutes'
 
 /** Height (px) of the context bar; it sits in the flow, above the views. */
-const APP_TOP_BAR_HEIGHT = 44
+const APP_TOP_BAR_HEIGHT = 56
 
 const generalStore = useGeneralStore()
 const router = useRouter()
@@ -257,13 +257,16 @@ if (AuthService.isAuthenticated()) {
 
 /* Context bar: in the flow, so it follows the drawer and sits below the fixed banners */
 .app-top-bar {
-  height: 44px;
+  position: relative;
+  z-index: 1;
+  height: 56px;
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 16px;
   padding: 0 40px;
   background-color: #fff;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
   overflow: hidden;
 }
 
