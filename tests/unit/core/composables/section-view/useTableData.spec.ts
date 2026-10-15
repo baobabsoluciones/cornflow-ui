@@ -32,7 +32,7 @@ function record(method: string, url: string, data: any) {
 
 vi.mock('@cornflow-ui/core/api/Api', () => ({
   default: {
-    get: (url: string, queryParams?: any) => record('get', url, queryParams ?? null),
+    get: (url: string) => record('get', url, null),
     post: (url: string, data: any) => record('post', url, data),
     put: (url: string, data: any) => record('put', url, data),
     remove: (url: string, _h: any, _a: any, data: any) =>
@@ -752,88 +752,5 @@ describe('useTableData — Excel mode (pending changes)', () => {
   test('getRowClass returns empty when excel mode off', () => {
     const { api } = mountTableData(masterConfig)
     expect(api.getRowClass({ id: 1 })).toBe('')
-  })
-})
-
-describe('global context in master-data requests', () => {
-  const plantParameter = {
-    name: 'plant_id',
-    in: 'query',
-    is_filter: true,
-    filter_info: { filters_on: 'plant_id' },
-  }
-  const plantTableConfig = {
-    ...masterConfigNoExcel,
-    get_list: { url: '/cells', http_method: 'get', parameters: [plantParameter] },
-    __rowSchema: {
-      properties: {
-        id: { title: 'ID', type: 'number' },
-        plant_id: { title: 'Plant', type: 'string' },
-        name: { title: 'Name', type: 'string' },
-      },
-      required: ['name'],
-    },
-  }
-
-  beforeEach(async () => {
-    storeState.getGlobalContextParams = { plant_id: '102' }
-    const service = await import('@cornflow-ui/core/services/FrontendAutomationService')
-    vi.mocked(service.getGetListQueryParameters).mockImplementation(
-      (getList: any) => getList?.parameters ?? [],
-    )
-  })
-
-  afterEach(async () => {
-    const service = await import('@cornflow-ui/core/services/FrontendAutomationService')
-    vi.mocked(service.getGetListQueryParameters).mockImplementation(() => [])
-  })
-
-  test('a table that declares the parameter is requested with the picked value', async () => {
-    const { api } = mountTableData(plantTableConfig)
-
-    await api.loadData()
-
-    expect(repoCtrl.calls.get.at(-1)).toEqual({
-      url: '/cells',
-      data: { plant_id: '102' },
-    })
-  })
-
-  test('a table that does not declare it is requested without it', async () => {
-    const { api } = mountTableData(masterConfigNoExcel)
-
-    await api.loadData()
-
-    expect(repoCtrl.calls.get.at(-1)?.data).not.toHaveProperty('plant_id')
-  })
-
-  test('the column the context filters offers no filter of its own', async () => {
-    const { api } = mountTableData(plantTableConfig)
-
-    const fields = api.availableFilterFields.value.map((field: any) => field.key)
-
-    expect(fields).not.toContain('plant_id')
-    expect(fields).toContain('name')
-  })
-
-  test('a table of a loaded execution is read from it, with no request carrying the value', async () => {
-    route.path = '/input-data'
-    storeState.selectedExecution = {
-      experiment: { instance: { data: { table_a: [{ id: 1, plant_id: '101' }] } } },
-    }
-    const { api } = mountTableData(plantTableConfig, { executionType: 'instance' })
-
-    await api.loadData()
-
-    expect(repoCtrl.calls.get).toBeUndefined()
-  })
-
-  test('with the dimension on "All" the column can be filtered again', async () => {
-    storeState.getGlobalContextParams = {}
-    const { api } = mountTableData(plantTableConfig)
-
-    const fields = api.availableFilterFields.value.map((field: any) => field.key)
-
-    expect(fields).toContain('plant_id')
   })
 })

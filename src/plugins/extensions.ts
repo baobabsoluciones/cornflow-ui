@@ -118,8 +118,6 @@ export function getExtensionContext(): ExtensionContext {
     isViewAllowed: (viewId: string): boolean =>
       appIsViewAllowed(getRoleNames(), viewId),
     getActiveSchema: (): string => getSessionStore()?.getSchemaName ?? '',
-    getGlobalContext: (): Record<string, unknown> =>
-      getSessionStore()?.getGlobalContextConfig ?? {},
   }
 }
 
@@ -221,21 +219,6 @@ export async function runPremiumActiveSchemaChangedHooks(
   await Promise.all(
     enabledModules(ctx).map((m) =>
       m.onActiveSchemaChanged ? m.onActiveSchemaChanged(schema, ctx) : undefined,
-    ),
-  )
-}
-
-/**
- * Runs the `onGlobalContextChanged` hooks of the enabled modules and awaits them all. The core
- * calls it from `setGlobalContextValue` with the picked values.
- */
-export async function runPremiumGlobalContextChangedHooks(
-  values: Record<string, unknown>,
-): Promise<void> {
-  const ctx = getExtensionContext()
-  await Promise.all(
-    enabledModules(ctx).map((m) =>
-      m.onGlobalContextChanged ? m.onGlobalContextChanged(values, ctx) : undefined,
     ),
   )
 }

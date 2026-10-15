@@ -116,13 +116,6 @@ vi.mock('@cornflow-ui/core/components/project-execution/ProjectExecutionsTable.v
   },
 }))
 
-// Global-context dimensions the app declares: none unless a test declares the plant.
-const mockGlobalContextDimensions = vi.hoisted(() => vi.fn(() => [] as unknown[]))
-vi.mock('@cornflow-ui/core/utils/globalContext', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@cornflow-ui/core/utils/globalContext')>()),
-  readGlobalContextDimensions: mockGlobalContextDimensions,
-}))
-
 // Mock Mango UI components
 vi.mock('mango-ui', () => ({
   MTitleView: {
@@ -485,37 +478,6 @@ describe('ProjectExecutionView', () => {
 
       wrapper.vm.newExecution.name = 'Test Name'
       expect(wrapper.vm.disableNextButton).toBe(false)
-    })
-
-    test('a global-context dimension without value blocks the first step and says why', async () => {
-      mockGlobalContextDimensions.mockReturnValue([
-        {
-          key: 'plant_id',
-          labelKey: 'plant',
-          optionsEndpoint: '/user/plants/',
-          valueField: 'plant_id',
-        },
-      ])
-      try {
-        const { wrapper } = createWrapper()
-        const generalStore = useGeneralStore()
-        wrapper.vm.currentStep = wrapper.vm.steps.findIndex(
-          (step) => step.key === 'nameDescription',
-        )
-        wrapper.vm.newExecution.name = 'Test Name'
-        await wrapper.vm.$nextTick()
-
-        expect(wrapper.find('[data-testid="global-context-incomplete"]').exists()).toBe(true)
-        expect(wrapper.vm.disableNextButton).toBe(true)
-
-        generalStore.globalContext = { plant_id: '101' }
-        await wrapper.vm.$nextTick()
-
-        expect(wrapper.find('[data-testid="global-context-incomplete"]').exists()).toBe(false)
-        expect(wrapper.vm.disableNextButton).toBe(false)
-      } finally {
-        mockGlobalContextDimensions.mockReturnValue([])
-      }
     })
 
     test('disableNextButton works for loadInstance step', () => {

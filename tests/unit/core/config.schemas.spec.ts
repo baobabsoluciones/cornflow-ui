@@ -7,7 +7,9 @@ vi.mock('@cornflow-ui/core/services/ConfigService', () => ({
 }))
 
 vi.mock('@/app/config', () => ({
-  default: { getCore: () => ({ parameters: { valuesJsonPath: '/values.json' } }) },
+  default: {
+    getCore: () => ({ parameters: { valuesJsonPath: '/values.json' } }),
+  },
 }))
 
 describe('config: DAGs of the deployment', () => {

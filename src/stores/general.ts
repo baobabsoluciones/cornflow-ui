@@ -18,25 +18,26 @@ import VersionRepository from '@cornflow-ui/core/repositories/VersionRepository'
 import {
   runPremiumInitialDataHooks,
   runPremiumActiveSchemaChangedHooks,
-  runPremiumGlobalContextChangedHooks,
   loadPremiumMasterDataConfig,
 } from '@cornflow-ui/core/plugins/extensions'
 import RoleRepository from '@cornflow-ui/core/repositories/RoleRepository'
 import WarningsRepository from '@cornflow-ui/core/repositories/WarningsRepository'
 import type { Warning } from '@cornflow-ui/core/repositories/WarningsRepository'
-import GlobalContextRepository from '@cornflow-ui/core/repositories/GlobalContextRepository'
+import EndpointOptionsRepository from '@cornflow-ui/core/repositories/EndpointOptionsRepository'
 import type {
-  GlobalContextDimension,
-  GlobalContextOption,
-  GlobalContextValues,
-} from '@cornflow-ui/core/types/globalContext'
+  EndpointOption,
+  EndpointOptionsSource,
+} from '@cornflow-ui/core/types/endpointOptions'
+import type {
+  ExecutionFilter,
+  ExecutionFilterValues,
+} from '@cornflow-ui/core/types/executionFilters'
 import {
-  readGlobalContextDimensions,
-  hasContextValue,
-  isSameContextValue,
-  toContextConfig,
-  toContextQueryParams,
-} from '@cornflow-ui/core/utils/globalContext'
+  readExecutionFilters,
+  hasFilterValue,
+  isSameOptionValue,
+  toFilterQueryParams,
+} from '@cornflow-ui/core/utils/executionFilters'
 
 import { toUTCDayBoundary } from '@cornflow-ui/core/utils/date'
 
@@ -119,8 +120,6 @@ function clearHistoricalPollTimer() {
 
 /** sessionStorage key of the DAG the session works on (only with several DAGs). */
 const ACTIVE_SCHEMA_STORAGE_KEY = 'activeSchema'
-/** sessionStorage key prefix of the picked global-context values, one entry per DAG. */
-const GLOBAL_CONTEXT_STORAGE_PREFIX = 'globalContext:'
 
 function readStoredActiveSchema(): string | null {
   try {
@@ -138,56 +137,23 @@ function storeActiveSchema(schema: string): void {
   }
 }
 
-function readStoredContext(schema: string): GlobalContextValues {
-  try {
-    const stored = sessionStorage.getItem(GLOBAL_CONTEXT_STORAGE_PREFIX + schema)
-    const parsed = stored ? JSON.parse(stored) : {}
-    return parsed && typeof parsed === 'object' ? parsed : {}
-  } catch {
-    return {}
-  }
-}
-
-function storeContext(schema: string, values: GlobalContextValues): void {
-  try {
-    sessionStorage.setItem(
-      GLOBAL_CONTEXT_STORAGE_PREFIX + schema,
-      JSON.stringify(values),
-    )
-  } catch {
-    /* storage unavailable: the choice lasts until the page is reloaded */
-  }
-}
-
-function clearStoredSessionChoices(): void {
+function clearStoredActiveSchema(): void {
   try {
     sessionStorage.removeItem(ACTIVE_SCHEMA_STORAGE_KEY)
-    const contextKeys: string[] = []
-    for (let i = 0; i < sessionStorage.length; i++) {
-      const key = sessionStorage.key(i)
-      if (key?.startsWith(GLOBAL_CONTEXT_STORAGE_PREFIX)) contextKeys.push(key)
-    }
-    contextKeys.forEach((key) => sessionStorage.removeItem(key))
   } catch {
     /* storage unavailable: nothing was kept */
   }
 }
 
 /**
- * Value a dimension starts with: the previous one while the user may still pick it; otherwise
- * "All" when the dimension allows it, or the first option.
+ * Value a filter starts with: its only option when there is just one (the filter has nothing to
+ * pick, and the filters that depend on it get their options); else the previous value while it is
+ * still offered; else "All" (`null`).
  */
-function pickContextValue(
-  dimension: GlobalContextDimension,
-  options: GlobalContextOption[],
-  previous: unknown,
-): unknown {
-  if (hasContextValue(previous)) {
-    const kept = options.find((option) => isSameContextValue(option.value, previous))
-    if (kept) return kept.value
-  }
-  if (dimension.allowEmpty) return null
-  return options[0]?.value ?? null
+function keepOfferedValue(options: EndpointOption[], previous: unknown): unknown {
+  if (options.length === 1) return options[0].value
+  if (!hasFilterValue(previous)) return null
+  return options.find((option) => isSameOptionValue(option.value, previous))?.value ?? null
 }
 
 /** Settings the schema config overrides, as the app declares them (see `restoreAppSolverDefaults`). */
@@ -208,7 +174,7 @@ export const useGeneralStore = defineStore('general', {
     versionRepository: new VersionRepository(),
     roleRepository: new RoleRepository(),
     warningsRepository: new WarningsRepository(),
-    globalContextRepository: new GlobalContextRepository(),
+    endpointOptionsRepository: new EndpointOptionsRepository(),
     warnings: [] as Warning[],
     notifications: [] as {
       message: string
@@ -239,10 +205,10 @@ export const useGeneralStore = defineStore('general', {
       []) as ExecutionConfigField[],
     /** Solver settings as `src/app/config.ts` declares them (see `restoreAppSolverDefaults`). */
     appSolverDefaults: snapshotAppSolverDefaults(appConfig.getCore().parameters),
-    /** Picked value per global-context dimension; `null` is "All". Empty without a global context. */
-    globalContext: {} as GlobalContextValues,
-    /** Options the user may pick, per global-context dimension. */
-    globalContextOptions: {} as Record<string, GlobalContextOption[]>,
+    /** Picked value per executions history filter; `null` is "All". Empty without filters. */
+    executionFilterValues: {} as ExecutionFilterValues,
+    /** Options the user may pick, per executions history filter. */
+    executionFilterOptions: {} as Record<string, EndpointOption[]>,
     appDashboardRoutes: appConfig.getDashboardRoutes(),
     appDashboardPages: appConfig.getDashboardPages(),
     appDashboardLayout: appConfig.getDashboardLayout(),
@@ -297,7 +263,7 @@ export const useGeneralStore = defineStore('general', {
         if (!this.noSchemaAccess) {
           await this.setSchema()
           await this.setConfigurations()
-          await this.loadGlobalContext()
+          await this.loadExecutionFilters()
         }
         await this.fetchLicences()
         await this.fetchWarnings()
@@ -408,9 +374,10 @@ export const useGeneralStore = defineStore('general', {
 
     /**
      * Switches the session to another DAG without reloading the page: closes the loaded
-     * executions, reloads the schema and its instance/solution tables, the global-context options
-     * and the views, and lets premium modules reset what they keep per DAG. Navigation is up to
-     * the caller (see `ContextBar`). Returns false when `schema` is not one the user may switch to.
+     * executions, reloads the schema and its instance/solution tables, the options of the
+     * executions history filters and the views, and lets premium modules reset what they keep per
+     * DAG. Navigation is up to the caller (see `ModuleSwitcher`). Returns false when `schema` is
+     * not one the user may switch to.
      */
     async setActiveSchema(schema: string): Promise<boolean> {
       if (schema === this.getSchemaName || !this.availableSchemas.includes(schema)) {
@@ -429,7 +396,7 @@ export const useGeneralStore = defineStore('general', {
         resultsData,
       }
       this.updateLocalizedConfigurations()
-      await this.loadGlobalContext()
+      await this.loadExecutionFilters()
       this.incrementUploadComponentKey()
       await runPremiumActiveSchemaChangedHooks(schema)
       return true
@@ -462,58 +429,64 @@ export const useGeneralStore = defineStore('general', {
     },
 
     /**
-     * Loads the options of every global-context dimension for the active DAG and picks a value for
-     * each: the one kept from earlier in the session if the user may still pick it, else "All"
-     * (`allowEmpty`) or the first option. Without a global context it does nothing.
+     * Loads the options of the executions history filters for the active DAG. A filter keeps its
+     * value while it is still offered, and goes back to "All" otherwise; one with a single option
+     * takes it. Without filters it does nothing and makes no request.
      */
-    async loadGlobalContext() {
-      const dimensions = readGlobalContextDimensions()
-      if (dimensions.length === 0) return
+    async loadExecutionFilters() {
+      const filters = readExecutionFilters()
+      if (filters.length === 0) return
 
-      const { values, options } = await this.resolveGlobalContextDimensions(
-        dimensions,
+      const { values, options } = await this.resolveExecutionFilters(
+        filters,
         {},
-        readStoredContext(this.getSchemaName),
+        this.executionFilterValues,
       )
-      this.globalContextOptions = options
-      this.globalContext = values
-      storeContext(this.getSchemaName, values)
+      this.executionFilterOptions = options
+      this.executionFilterValues = values
     },
 
     /**
-     * Fetches the options of `dimensions` and picks a value for each, starting from `previous`.
-     * A dimension waits only for the dimension it depends on, taken from `fixed` or resolved here;
-     * the others are requested at the same time.
+     * Fetches the options of `filters` and keeps each value from `previous` while it is still
+     * offered. A filter waits only for the filter it depends on, taken from `fixed` or resolved
+     * here; the others are requested at the same time. A filter whose parent is on "All" gets no
+     * options and stays on "All".
      */
-    async resolveGlobalContextDimensions(
-      dimensions: GlobalContextDimension[],
-      fixed: GlobalContextValues,
-      previous: GlobalContextValues,
+    async resolveExecutionFilters(
+      filters: ExecutionFilter[],
+      fixed: ExecutionFilterValues,
+      previous: ExecutionFilterValues,
     ): Promise<{
-      values: GlobalContextValues
-      options: Record<string, GlobalContextOption[]>
+      values: ExecutionFilterValues
+      options: Record<string, EndpointOption[]>
     }> {
       const valueOf = new Map<string, Promise<unknown>>(
         Object.entries(fixed).map(([key, value]) => [key, Promise.resolve(value)]),
       )
-      const resolved = dimensions.map((dimension) => {
+      const resolved = filters.map((filter) => {
         const parentValue =
-          (dimension.dependsOn && valueOf.get(dimension.dependsOn)) ||
+          (filter.dependsOn && valueOf.get(filter.dependsOn)) ||
           Promise.resolve(undefined)
         const result = parentValue.then(async (parent) => {
-          const options = await this.fetchGlobalContextOptions(dimension, parent)
-          const value = pickContextValue(dimension, options, previous[dimension.key])
-          return { key: dimension.key, options, value }
+          if (filter.dependsOn && !hasFilterValue(parent)) {
+            return { key: filter.key, options: [] as EndpointOption[], value: null }
+          }
+          const options = await this.fetchEndpointOptions(
+            filter,
+            filter.dependsOn ? { [filter.dependsOn]: String(parent) } : {},
+          )
+          const value = keepOfferedValue(options, previous[filter.key])
+          return { key: filter.key, options, value }
         })
         valueOf.set(
-          dimension.key,
+          filter.key,
           result.then(({ value }) => value),
         )
         return result
       })
 
-      const values: GlobalContextValues = { ...fixed }
-      const options: Record<string, GlobalContextOption[]> = {}
+      const values: ExecutionFilterValues = { ...fixed }
+      const options: Record<string, EndpointOption[]> = {}
       for (const result of await Promise.all(resolved)) {
         values[result.key] = result.value
         options[result.key] = result.options
@@ -521,100 +494,77 @@ export const useGeneralStore = defineStore('general', {
       return { values, options }
     },
 
-    async fetchGlobalContextOptions(
-      dimension: GlobalContextDimension,
-      parentValue: unknown,
-    ): Promise<GlobalContextOption[]> {
-      const params: Record<string, string> = { schema: this.getSchemaName }
-      if (dimension.dependsOn && hasContextValue(parentValue)) {
-        params[dimension.dependsOn] = String(parentValue)
-      }
+    /**
+     * Options of a selector backed by an endpoint (an executions history filter, a config field)
+     * for the active DAG, with `extraParams` as further query parameters. Empty when the request
+     * fails.
+     */
+    async fetchEndpointOptions(
+      source: EndpointOptionsSource,
+      extraParams: Record<string, string> = {},
+    ): Promise<EndpointOption[]> {
       try {
-        return await this.globalContextRepository.getOptions(dimension, params)
+        return await this.endpointOptionsRepository.getOptions(source, {
+          schema: this.getSchemaName,
+          ...extraParams,
+        })
       } catch (error) {
-        console.error(`Error getting the options of ${dimension.key}`, error)
+        console.error(`Error getting the options of ${source.optionsEndpoint}`, error)
         return []
       }
     },
 
     /**
-     * Picks another value for a global-context dimension (`null` is "All", only with
-     * `allowEmpty`). Reloads the options of the dimensions that depend on it, closes the loaded
-     * executions of another value, reloads the views (executions list, master data) and notifies
-     * premium modules. Returns false when the value is not one the user may pick.
+     * Picks a value for an executions history filter (`null` is "All") and reloads the options
+     * of the filters that depend on it. The history lists the executions again when the values
+     * change. Returns false when nothing changes or the value is not one the user may pick.
      */
-    async setGlobalContextValue(key: string, value: unknown): Promise<boolean> {
-      const dimensions = readGlobalContextDimensions()
-      const index = dimensions.findIndex((dimension) => dimension.key === key)
+    async setExecutionFilterValue(key: string, value: unknown): Promise<boolean> {
+      const filters = readExecutionFilters()
+      const index = filters.findIndex((filter) => filter.key === key)
       if (index === -1) return false
-      const dimension = dimensions[index]
+      const current = this.executionFilterValues[key]
+      if (
+        hasFilterValue(value)
+          ? hasFilterValue(current) && isSameOptionValue(current, value)
+          : !hasFilterValue(current)
+      ) {
+        return false
+      }
       const isAllowed =
-        value === null
-          ? dimension.allowEmpty === true
-          : (this.globalContextOptions[key] ?? []).some((option) =>
-              isSameContextValue(option.value, value),
-            )
+        !hasFilterValue(value) ||
+        (this.executionFilterOptions[key] ?? []).some((option) =>
+          isSameOptionValue(option.value, value),
+        )
       if (!isAllowed) return false
 
-      // The dimensions that depend on this one, directly or through another, get new options.
+      // The filters that depend on this one, directly or through another, get new options.
       const changed = new Set([key])
-      const dependents: GlobalContextDimension[] = []
-      for (const candidate of dimensions.slice(index + 1)) {
+      const dependents: ExecutionFilter[] = []
+      for (const candidate of filters.slice(index + 1)) {
         if (candidate.dependsOn && changed.has(candidate.dependsOn)) {
           dependents.push(candidate)
           changed.add(candidate.key)
         }
       }
       const fixed = Object.fromEntries(
-        Object.entries({ ...this.globalContext, [key]: value }).filter(
-          ([dimensionKey]) => !dependents.some((d) => d.key === dimensionKey),
-        ),
+        Object.entries({
+          ...this.executionFilterValues,
+          [key]: hasFilterValue(value) ? value : null,
+        }).filter(([filterKey]) => !dependents.some((d) => d.key === filterKey)),
       )
-      const resolved = await this.resolveGlobalContextDimensions(
+      const resolved = await this.resolveExecutionFilters(
         dependents,
         fixed,
-        this.globalContext,
+        this.executionFilterValues,
       )
-      const values = resolved.values
 
-      this.globalContextOptions = {
-        ...this.globalContextOptions,
+      this.executionFilterOptions = {
+        ...this.executionFilterOptions,
         ...resolved.options,
       }
-      this.globalContext = values
-      storeContext(this.getSchemaName, values)
-      this.closeExecutionsOutsideContext()
-      this.lastExecutions = []
-      this.incrementUploadComponentKey()
-      await runPremiumGlobalContextChangedHooks(this.getGlobalContextConfig)
+      this.executionFilterValues = resolved.values
       return true
-    },
-
-    /**
-     * Closes the loaded executions whose config holds another value of a picked dimension, so the
-     * tabs never show an execution the selector does not describe. Executions that carry no value
-     * for a dimension stay open.
-     */
-    closeExecutionsOutsideContext() {
-      const picked = Object.entries(this.getGlobalContextConfig)
-      const kept = this.loadedExecutions.filter((execution) =>
-        picked.every(([key, value]) => {
-          const executionValue = (execution.config as Record<string, unknown>)?.[key]
-          return (
-            !hasContextValue(executionValue) ||
-            isSameContextValue(executionValue, value)
-          )
-        }),
-      )
-      if (kept.length === this.loadedExecutions.length) return
-
-      this.loadedExecutions = kept
-      const selectedId = this.selectedExecution?.executionId
-      if (selectedId && !kept.some((execution) => execution.executionId === selectedId)) {
-        this.setSelectedExecution(null)
-      }
-      if (kept.length === 0) this.stopAutoLoadExecutions()
-      this.incrementTabBarKey()
     },
 
     /**
@@ -637,11 +587,11 @@ export const useGeneralStore = defineStore('general', {
       this.masterDataGroups = null
       this.availableSchemas = []
       this.noSchemaAccess = false
-      this.globalContext = {}
-      this.globalContextOptions = {}
+      this.executionFilterValues = {}
+      this.executionFilterOptions = {}
       this.initialDataLoading = false
       this.dataInitialized = false
-      clearStoredSessionChoices()
+      clearStoredActiveSchema()
     },
 
     async fetchLicences() {
@@ -850,14 +800,14 @@ export const useGeneralStore = defineStore('general', {
             this.getSchemaName,
             null,
             null,
-            this.getGlobalContextParams,
+            this.getExecutionFilterParams,
           )
         } else {
           executions = await this.executionRepository.getExecutions(
             this.getSchemaName,
             toUTCDayBoundary(fromDate),
             toUTCDayBoundary(toDate, true),
-            this.getGlobalContextParams,
+            this.getExecutionFilterParams,
           )
         }
 
@@ -1063,12 +1013,6 @@ export const useGeneralStore = defineStore('general', {
     },
 
     async createExecution(execution: Execution, params: string = '') {
-      if (!this.isGlobalContextComplete) {
-        console.error(
-          'Error creating execution: a global-context dimension has no value',
-        )
-        return false
-      }
       try {
         const newExecution = await this.executionRepository.createExecution(
           execution,
@@ -1363,39 +1307,14 @@ export const useGeneralStore = defineStore('general', {
       return this.availableSchemas.length > 1
     },
 
-    /** Global-context dimensions the app declares (`globalContext`). Empty when none. */
-    getGlobalContextDimensions(): GlobalContextDimension[] {
-      return readGlobalContextDimensions()
+    /** Filters of the executions history the app declares (`executionFilters`). Empty when none. */
+    getExecutionFilters(): ExecutionFilter[] {
+      return readExecutionFilters()
     },
 
-    /** Picked global-context values as query parameters, without the dimensions set to "All". */
-    getGlobalContextParams(): Record<string, string> {
-      return toContextQueryParams(this.globalContext)
-    },
-
-    /** Picked global-context values with their raw type, without the dimensions set to "All". */
-    getGlobalContextConfig(): Record<string, unknown> {
-      return toContextConfig(this.globalContext)
-    },
-
-    /**
-     * True when the context bar has something to show: the module of a multi-DAG deployment, or
-     * the global-context dimensions once their options are loaded.
-     */
-    isContextBarVisible(): boolean {
-      const showsModule =
-        this.isMultiSchemaDeployment && this.availableSchemas.length > 0
-      const showsContext =
-        readGlobalContextDimensions().length > 0 &&
-        Object.keys(this.globalContextOptions).length > 0
-      return showsModule || showsContext
-    },
-
-    /** True when every global-context dimension has a value, as launching an execution needs. */
-    isGlobalContextComplete(): boolean {
-      return readGlobalContextDimensions().every((dimension) =>
-        hasContextValue(this.globalContext[dimension.key]),
-      )
+    /** Picked executions history filters as query parameters, without the ones set to "All". */
+    getExecutionFilterParams(): Record<string, string> {
+      return toFilterQueryParams(this.executionFilterValues)
     },
 
     getSchemaConfig(): SchemaConfig {

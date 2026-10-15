@@ -11,9 +11,14 @@ describe('isEntryVisibleFor', () => {
 
   test('roles: visible only to users with one of them', () => {
     expect(isEntryVisibleFor({ roles: ['admin'] }, planner)).toBe(false)
-    expect(isEntryVisibleFor({ roles: ['admin', 'planner'] }, planner)).toBe(true)
+    expect(isEntryVisibleFor({ roles: ['admin', 'planner'] }, planner)).toBe(
+      true,
+    )
     expect(
-      isEntryVisibleFor({ roles: ['admin'] }, { roleNames: [], schema: 'planning_dag' }),
+      isEntryVisibleFor(
+        { roles: ['admin'] },
+        { roleNames: [], schema: 'planning_dag' },
+      ),
     ).toBe(false)
   })
 
@@ -24,10 +29,16 @@ describe('isEntryVisibleFor', () => {
 
   test('both must hold', () => {
     expect(
-      isEntryVisibleFor({ roles: ['planner'], schemas: ['stock_dag'] }, planner),
+      isEntryVisibleFor(
+        { roles: ['planner'], schemas: ['stock_dag'] },
+        planner,
+      ),
     ).toBe(false)
     expect(
-      isEntryVisibleFor({ roles: ['planner'], schemas: ['planning_dag'] }, planner),
+      isEntryVisibleFor(
+        { roles: ['planner'], schemas: ['planning_dag'] },
+        planner,
+      ),
     ).toBe(true)
   })
 })

@@ -183,7 +183,7 @@ import { resolveTitleWithLocale } from '@cornflow-ui/core/utils/i18nUtils'
 import { useSectionTitles } from '@cornflow-ui/core/composables/useSectionTitles'
 import { isViewAllowed } from '@/app/rolesConfig'
 import { getPremiumDrawerSections } from '@cornflow-ui/core/plugins/extensions'
-import { readSchemaLabels } from '@cornflow-ui/core/utils/globalContext'
+import { readSchemaLabels } from '@cornflow-ui/core/utils/executionFilters'
 import { isEntryVisibleFor } from '@cornflow-ui/core/utils/navigationGating'
 
 export default defineComponent({

@@ -454,6 +454,7 @@ export default {
     password_match: 'Las contraseñas no coinciden',
   },
   versionHistory: {
+    filterAll: 'Todos',
     title: 'Historial de versiones',
     description:
       'En esta sección, encontrarás un resumen de todas las versiones que has realizado para los distintos proyectos ejecutados. Puedes cargar tantas ejecuciones como desees desde la columna de acciones. Cada ejecución se abrirá en una nueva pestaña en la parte inferior de la pantalla, y la última ejecución cargada será seleccionada de manera predeterminada.',
@@ -1040,22 +1041,15 @@ export default {
     hideWarnings: 'Ocultar detalle de advertencias',
     viewingHistoricalData: 'Viendo datos históricos',
   },
-  contextBar: {
-    module: 'Módulo',
-    all: 'Todas',
-    noOptions: 'Ninguna disponible',
+  modules: {
+    label: 'Módulo',
     confirm: 'Cambiar',
     cancel: 'Cancelar',
-    switchModuleTitle: '¿Cambiar de módulo?',
-    switchModuleMessage:
+    switchTitle: '¿Cambiar de módulo?',
+    switchMessage:
       'Se cerrarán las ejecuciones abiertas en pestañas y se descartará la ejecución que estés creando.',
-    changeContextTitle: '¿Cambiar la selección?',
-    changeContextMessage:
-      'Se cerrarán las ejecuciones abiertas de otra selección y se descartará la ejecución que estés creando.',
-    contextRequiredToCreate:
-      'Elige un valor en cada selector de la barra superior para crear una ejecución.',
-    noSchemaAccessTitle: 'No tienes acceso a ningún módulo',
-    noSchemaAccessMessage: 'Pide a un administrador que te dé acceso.',
+    noAccessTitle: 'No tienes acceso a ningún módulo',
+    noAccessMessage: 'Pide a un administrador que te dé acceso.',
   },
   notFound: {
     title: 'Página no encontrada',

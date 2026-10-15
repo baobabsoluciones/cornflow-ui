@@ -442,6 +442,7 @@ export default {
     password_match: 'Passwords do not match',
   },
   versionHistory: {
+    filterAll: 'All',
     title: 'Version history',
     description:
       'In this section, you will find a summary of all the versions you have completed for the different executed projects. You can load as many executions as you want from the actions column. Each execution will open in a new tab at the bottom of the screen, and the most recently loaded execution will be selected by default.',
@@ -1021,22 +1022,15 @@ export default {
     hideWarnings: 'Hide warning details',
     viewingHistoricalData: 'Viewing historical data',
   },
-  contextBar: {
-    module: 'Module',
-    all: 'All',
-    noOptions: 'None available',
+  modules: {
+    label: 'Module',
     confirm: 'Change',
     cancel: 'Cancel',
-    switchModuleTitle: 'Change module?',
-    switchModuleMessage:
+    switchTitle: 'Change module?',
+    switchMessage:
       'The executions open in tabs will be closed, and an execution you are creating will be discarded.',
-    changeContextTitle: 'Change selection?',
-    changeContextMessage:
-      'Open executions of another selection will be closed, and an execution you are creating will be discarded.',
-    contextRequiredToCreate:
-      'Pick a value in every selector of the top bar to create an execution.',
-    noSchemaAccessTitle: 'You have no access to any module',
-    noSchemaAccessMessage: 'Ask an administrator to give you access.',
+    noAccessTitle: 'You have no access to any module',
+    noAccessMessage: 'Ask an administrator to give you access.',
   },
   notFound: {
     title: 'Page not found',

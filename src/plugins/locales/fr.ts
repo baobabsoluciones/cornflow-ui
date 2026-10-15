@@ -331,6 +331,7 @@ export default {
     password_match: 'Les mots de passe ne correspondent pas',
   },
   versionHistory: {
+    filterAll: 'Tous',
     title: 'Historique des versions',
     description:
       'Dans cette section, vous trouverez un résumé de toutes les versions que vous avez réalisées pour les différents projets exécutés. Vous pouvez charger autant d´exécutions que vous le souhaitez à partir de la colonne des actions. Chaque exécution s´ouvrira dans un nouvel onglet en bas de l´écran, et la dernière exécution chargée sera sélectionnée par défaut.',
@@ -747,22 +748,15 @@ export default {
     hideWarnings: 'Masquer les détails des avertissements',
     viewingHistoricalData: 'Affichage des données historiques',
   },
-  contextBar: {
-    module: 'Module',
-    all: 'Tous',
-    noOptions: 'Aucune option disponible',
+  modules: {
+    label: 'Module',
     confirm: 'Changer',
     cancel: 'Annuler',
-    switchModuleTitle: 'Changer de module ?',
-    switchModuleMessage:
+    switchTitle: 'Changer de module ?',
+    switchMessage:
       "Les exécutions ouvertes dans des onglets seront fermées et l'exécution en cours de création sera abandonnée.",
-    changeContextTitle: 'Changer la sélection ?',
-    changeContextMessage:
-      "Les exécutions ouvertes d'une autre sélection seront fermées et l'exécution en cours de création sera abandonnée.",
-    contextRequiredToCreate:
-      'Choisissez une valeur dans chaque sélecteur de la barre supérieure pour créer une exécution.',
-    noSchemaAccessTitle: "Vous n'avez accès à aucun module",
-    noSchemaAccessMessage: 'Demandez à un administrateur de vous donner accès.',
+    noAccessTitle: "Vous n'avez accès à aucun module",
+    noAccessMessage: 'Demandez à un administrateur de vous donner accès.',
   },
   notFound: {
     title: 'Page introuvable',

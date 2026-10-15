@@ -7,14 +7,13 @@ vi.mock('@/app/config', () => ({
 }))
 
 import {
-  readGlobalContextDimensions,
+  readExecutionFilters,
   readSchemaLabels,
   resolveExecutionsListEndpoint,
-  hasContextValue,
-  toContextQueryParams,
-  toContextConfig,
-  isSameContextValue,
-} from '@cornflow-ui/core/utils/globalContext'
+  hasFilterValue,
+  toFilterQueryParams,
+  isSameOptionValue,
+} from '@cornflow-ui/core/utils/executionFilters'
 import { parseNameList } from '@cornflow-ui/core/utils/common'
 
 const PLANT = {
@@ -24,33 +23,33 @@ const PLANT = {
   valueField: 'plant_id',
 }
 
-describe('globalContext utils', () => {
+describe('executionFilters utils', () => {
   beforeEach(() => {
     for (const key of Object.keys(mockParameters)) delete mockParameters[key]
   })
 
-  describe('readGlobalContextDimensions', () => {
-    test('is empty when the app declares no global context', () => {
-      expect(readGlobalContextDimensions()).toEqual([])
+  describe('readExecutionFilters', () => {
+    test('is empty when the app declares no filters', () => {
+      expect(readExecutionFilters()).toEqual([])
     })
 
-    test('keeps the dimensions with key, options endpoint and value field, in order', () => {
-      mockParameters.globalContext = [
+    test('keeps the filters with key, options endpoint and value field, in order', () => {
+      mockParameters.executionFilters = [
         PLANT,
         { key: 'program_id', labelKey: 'program' },
         { ...PLANT, key: 'program_id', dependsOn: 'plant_id' },
-        'not a dimension',
+        'not a filter',
       ]
 
-      expect(readGlobalContextDimensions().map((d) => d.key)).toEqual([
+      expect(readExecutionFilters().map((filter) => filter.key)).toEqual([
         'plant_id',
         'program_id',
       ])
     })
 
-    test('is empty when globalContext is not a list', () => {
-      mockParameters.globalContext = { plant: PLANT }
-      expect(readGlobalContextDimensions()).toEqual([])
+    test('is empty when executionFilters is not a list', () => {
+      mockParameters.executionFilters = { plant: PLANT }
+      expect(readExecutionFilters()).toEqual([])
     })
   })
 
@@ -69,7 +68,10 @@ describe('globalContext utils', () => {
         isExternal: false,
       })
 
-      mockParameters.executionsListEndpoint = { path: '/executions/', isExternal: true }
+      mockParameters.executionsListEndpoint = {
+        path: '/executions/',
+        isExternal: true,
+      }
       expect(resolveExecutionsListEndpoint()).toEqual({
         path: '/executions/',
         isExternal: true,
@@ -84,28 +86,22 @@ describe('globalContext utils', () => {
 
   describe('values', () => {
     test('"All" and missing values are not picked values', () => {
-      expect(hasContextValue(null)).toBe(false)
-      expect(hasContextValue(undefined)).toBe(false)
-      expect(hasContextValue('')).toBe(false)
-      expect(hasContextValue(0)).toBe(true)
-      expect(hasContextValue('101')).toBe(true)
+      expect(hasFilterValue(null)).toBe(false)
+      expect(hasFilterValue(undefined)).toBe(false)
+      expect(hasFilterValue('')).toBe(false)
+      expect(hasFilterValue(0)).toBe(true)
+      expect(hasFilterValue('101')).toBe(true)
     })
 
     test('query parameters are strings and leave out "All"', () => {
-      expect(toContextQueryParams({ plant_id: 101, program_id: null })).toEqual({
+      expect(toFilterQueryParams({ plant_id: 101, program_id: null })).toEqual({
         plant_id: '101',
       })
     })
 
-    test('config values keep their type and leave out "All"', () => {
-      expect(toContextConfig({ plant_id: 101, program_id: null })).toEqual({
-        plant_id: 101,
-      })
-    })
-
     test('values compare as strings', () => {
-      expect(isSameContextValue(101, '101')).toBe(true)
-      expect(isSameContextValue('102', '103')).toBe(false)
+      expect(isSameOptionValue(101, '101')).toBe(true)
+      expect(isSameOptionValue('102', '103')).toBe(false)
     })
   })
 })

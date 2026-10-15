@@ -5,16 +5,6 @@
       :title="title"
       :description="description"
     />
-    <v-alert
-      v-if="isGlobalContextIncomplete"
-      type="warning"
-      variant="tonal"
-      density="compact"
-      class="mt-4"
-      data-testid="global-context-incomplete"
-    >
-      {{ $t('contextBar.contextRequiredToCreate') }}
-    </v-alert>
     <MFormSteps
       :key="'form-steps-' + currentStep + '-' + formStepsKey"
       :steps="steps"
@@ -718,16 +708,11 @@ export default {
     description() {
       return this.$t('projectExecution.description')
     },
-    /** A global-context dimension (e.g. the plant) has no value, so no execution can be launched. */
-    isGlobalContextIncomplete() {
-      return this.generalStore.isGlobalContextComplete === false
-    },
     disableNextButton() {
       const currentStepKey = this.steps[this.currentStep]?.key
 
       return (
-        (currentStepKey === 'nameDescription' &&
-          (!this.newExecution.name || this.isGlobalContextIncomplete)) ||
+        (currentStepKey === 'nameDescription' && !this.newExecution.name) ||
         (currentStepKey === 'loadInstance' && this.loadInstanceStepBlocked) ||
         (currentStepKey === 'reviewInstance' &&
           (!this.newExecution.instance || this.existingInstanceErrors)) ||

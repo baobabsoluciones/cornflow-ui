@@ -49,11 +49,6 @@ export interface ExtensionContext {
   isViewAllowed: (viewId: string) => boolean
   /** DAG (schema) the session is working on. Optional so hand-built contexts keep compiling. */
   getActiveSchema?: () => string
-  /**
-   * Picked global-context values (e.g. `{ plant_id: '101' }`), leaving out the dimensions set to
-   * "All". Empty when the app declares no global context.
-   */
-  getGlobalContext?: () => Record<string, unknown>
 }
 
 /** §3.1 Route contributed by a premium module (added as a child of the root route '/'). */
@@ -110,9 +105,8 @@ export interface ExecutionTabDecoratorContext extends ExtensionContext {
 }
 
 /**
- * Layout zones where premium global components can be mounted. `app-top-bar` is the context bar
- * above the views (next to the core's module and context selectors); it is only shown while
- * something in it is visible.
+ * Layout zones where premium global components can be mounted. `app-top-bar` is the bar above the
+ * views (next to the core's module selector); it is only shown while something in it is visible.
  */
 export type PremiumGlobalComponentSlot =
   | 'app-banners'
@@ -272,14 +266,6 @@ export interface PremiumModule {
    */
   onActiveSchemaChanged?: (
     schema: string,
-    ctx: ExtensionContext,
-  ) => void | Promise<void>
-  /**
-   * Hook after a global-context value changed (e.g. another plant). Receives the picked values,
-   * without the dimensions set to "All". Awaited by `setGlobalContextValue`.
-   */
-  onGlobalContextChanged?: (
-    values: Record<string, unknown>,
     ctx: ExtensionContext,
   ) => void | Promise<void>
   /** Escape hatch: free registration on the Vue instance (plugins, provide/inject…). */

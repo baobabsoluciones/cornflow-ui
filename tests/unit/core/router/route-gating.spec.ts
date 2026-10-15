@@ -10,11 +10,21 @@ vi.mock('@cornflow-ui/core/services/AuthServiceFactory', () => ({
 const page = vi.hoisted(() => ({ template: '<div />' }))
 const mockAppConfig = vi.hoisted(() => ({
   getDashboardRoutes: () => [
-    { path: 'stock-board', name: 'Stock board', component: page, meta: { schemas: ['stock_dag'] } },
+    {
+      path: 'stock-board',
+      name: 'Stock board',
+      component: page,
+      meta: { schemas: ['stock_dag'] },
+    },
   ],
   getInstanceDashboardRoutes: () => [],
   getAppSectionRoutes: () => [
-    { path: 'admin-board', name: 'Admin board', component: page, meta: { roles: ['admin'] } },
+    {
+      path: 'admin-board',
+      name: 'Admin board',
+      component: page,
+      meta: { roles: ['admin'] },
+    },
     { path: 'open-board', name: 'Open board', component: page, meta: {} },
   ],
   getCore: () => ({ parameters: { defaultView: 'history-execution' } }),
@@ -22,7 +32,10 @@ const mockAppConfig = vi.hoisted(() => ({
 vi.mock('@/app/config', () => ({ default: mockAppConfig }))
 
 vi.mock('@cornflow-ui/core/config', () => ({
-  default: { useHashMode: false, initConfig: vi.fn().mockResolvedValue(undefined) },
+  default: {
+    useHashMode: false,
+    initConfig: vi.fn().mockResolvedValue(undefined),
+  },
 }))
 
 const mockStore = vi.hoisted(() => ({

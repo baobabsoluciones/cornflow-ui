@@ -433,7 +433,7 @@ Tables can be restricted to users who have access to specific schemas (DAGs). Th
 | `[]` (empty array)         | **No one** (table hidden)                         |
 
 A table with `schemas` is also shown only while the session works on one of those DAGs: in a
-deployment with several DAGs (see [Several DAGs and global context](#several-dags-and-global-context-optional)),
+deployment with several DAGs (see [Several DAGs](#several-dags-in-one-application)),
 switching DAG switches the master-data tables with it.
 
 ##### How user schemas are determined
@@ -581,7 +581,7 @@ The application includes an automatic dashboard system that intelligently genera
 
 For detailed documentation on automatic dashboards, including configuration options, widget types, and customization, see [Automatic Dashboards Documentation](docs/AUTO_DASHBOARDS_README.md).
 
-## Several DAGs and global context (optional)
+## Several DAGs and executions history filters (optional)
 
 Two optional capabilities for applications that serve more than one model or more than one site.
 Both are off unless configured: an application that declares neither makes no extra request and
@@ -611,8 +611,8 @@ schemaLabels: { planning_dag: 'Planning', stock_dag: 'Stock' },
 
 | DAGs granted | What the user sees |
 | --- | --- |
-| One | The application on that DAG, with its name as a label in the context bar. No selector |
-| Several | A module selector in the context bar. The session starts on the DAG picked earlier in the session, else `schema`, else the first granted |
+| One | The application on that DAG, with no selector. The drawer shows the DAG next to the application name |
+| Several | A module selector in the top bar. The session starts on the DAG picked earlier in the session, else `schema`, else the first granted |
 | None | A message saying the user has no access to any module |
 
 ⚠️ **The backend decides.** Cornflow grants every DAG to every user unless the deployment runs with
@@ -633,28 +633,28 @@ and master-data tables already declare theirs. The drawer and the router follow 
 
 The drawer shows the active DAG next to the application name.
 
-### Global context
+### Executions history filters
 
-A global context is a set of selectors in the context bar (e.g. plant, then program) that decide
-which executions and which master data the user works with.
+Selectors next to the date filters of the executions history (e.g. plant, then program). They decide
+which executions the history lists; nothing else. Once an execution is loaded, its views show that
+execution as it is, and the master-data tables keep their own column filters.
 
-**Configuration** (`src/app/config.ts`, `globalContext`):
+**Configuration** (`src/app/config.ts`, `executionFilters`):
 
 ```ts
-globalContext: [
+executionFilters: [
   {
-    key: 'plant_id',               // query parameter and execution config key
-    labelKey: 'context.plant',     // i18n key or literal text
+    key: 'plant_id',               // query parameter of the executions list
+    labelKey: 'filters.plant',     // i18n key or literal text
     icon: 'mdi-factory',           // optional Material Design icon
     optionsEndpoint: '/user/plants/',
     isExternal: true,              // request under /external
     valueField: 'plant_id',
     labelField: 'name',
-    allowEmpty: false,             // true offers "All" (no value)
   },
   {
     key: 'program_id',
-    labelKey: 'context.program',
+    labelKey: 'filters.program',
     optionsEndpoint: '/user/programs/',
     isExternal: true,
     valueField: 'program_id',
@@ -664,53 +664,45 @@ globalContext: [
 ],
 ```
 
-Declare a dimension after the one it depends on.
+Declare a filter after the one it depends on.
 
 **Options.** The options endpoint returns an array of objects with **only the options the user may
-pick**; the core shows them as they come. It receives `schema` (the active DAG) and, with
-`dependsOn`, the parent dimension's value (`?schema=planning_dag&plant_id=101`). The session starts
-on the value picked earlier in the session while it is still offered; otherwise on "All"
-(`allowEmpty`) or the first option. With a single option the selector shows as a label.
+pick**; the core shows them as they come, after "All". It receives `schema` (the active DAG) and,
+with `dependsOn`, the parent filter's value (`?schema=planning_dag&plant_id=101`). A dependent filter
+is disabled while its parent is on "All". A filter with a single option takes it and is not shown,
+since there is nothing to pick. A picked value lasts while the user can still pick it, also across a
+DAG switch.
 
-**Where it applies:**
-
-| Surface | Applies | How |
-| --- | --- | --- |
-| Executions history | Yes | As query parameters of the executions list |
-| Master-data tables | Only those that declare it | As a query parameter, when the table's `get_list.parameters` declares one named `key`. The column it filters offers no filter of its own |
-| New execution | Yes | Stamped in the execution `config` (`config[key]`), and sent to the ETL backend with the pre-ETL parameters. No execution can be launched while a dimension has no value |
-| A loaded execution (input data, results, dashboards) | **No** | That execution already belongs to one value |
-
-Changing a value closes the loaded executions of another value (those whose `config` holds a
-different one), reloads the executions history and the master data, and asks first when executions
-are open or one is being created.
-
-**Executions list.** Cornflow's `GET /execution/` does not filter by the context: it ignores query
+**Executions list.** Cornflow's `GET /execution/` does not filter by these values: it ignores query
 parameters it does not know. Point the list at an endpoint that does with `executionsListEndpoint`:
 
 ```ts
 executionsListEndpoint: { path: '/executions/', isExternal: true },
 ```
 
-It receives the same query parameters as `GET /execution/` plus the context values, and returns the
-same shape.
+It receives the same query parameters as `GET /execution/` plus the picked values (none for "All"),
+and returns the same shape.
 
-⚠️ **The backend decides.** Every option endpoint, master-data table and executions list has to
-refuse the values the user may not use. A context the frontend applies on its own is a convenience,
-not access control.
+**New executions.** The site of a new execution is a config parameter like any other: declare it in
+the DAG's config schema with `"pre_etl": true` (see [Pre-ETL parameters](#pre-etl-parameters-pre_etl))
+so the wizard asks for it before the load, and give it an `optionsEndpoint` in `configFields` so it
+offers only what the user may pick (see [configFields](#configuration-parameters-step-configfields)).
 
-### Context bar and modules
+⚠️ **The backend decides.** Every options endpoint and the executions list have to refuse the values
+the user may not use. A filter the frontend applies on its own is a convenience, not access control.
 
-The top of the layout is a fixed stack, in this order: the context bar, the staging notice and the
+### Top bar and modules
+
+The top of the layout is a fixed stack, in this order: the top bar, the staging notice and the
 global banners of premium modules (`app-banners`), which keep their own `position: fixed` and land
-below the other two. The views start below the whole stack. The context bar is a light band tinted
-with the app's primary colour and only shows while it has something in it. It shows the modules the
-user may switch to side by side, up to four; with more, the module is picked from a menu. Premium
-modules can mount components in it with the `app-top-bar` slot of `globalComponents`. They also get:
+below the other two. The views start below the whole stack. The top bar is a light band tinted with
+the app's primary colour and only shows while it has something in it: the module selector, for users
+who may switch DAG, and what premium modules mount with the `app-top-bar` slot of
+`globalComponents`. The selector shows the modules side by side, up to four; with more, the module is
+picked from a menu. Premium modules also get:
 
-- `onActiveSchemaChanged(schema, ctx)` and `onGlobalContextChanged(values, ctx)` hooks, to reset what
-  they keep per DAG or per context value;
-- `ctx.getActiveSchema()` and `ctx.getGlobalContext()` in the extension context.
+- an `onActiveSchemaChanged(schema, ctx)` hook, to reset what they keep per DAG;
+- `ctx.getActiveSchema()` in the extension context.
 
 `ctx.getRoleNames()` reads the roles of the logged-in user from the store, so a component or drawer
 entry gated by role (`isVisible`) shows as soon as the login loads the user.
@@ -953,7 +945,7 @@ This file contains **internal application-specific configuration** that is part 
 | `executionSolvers`            | `string[]` | List of available solvers for execution               |
 | `instanceFileFormats`         | `string[]` | File extensions the instance upload accepts. Empty or absent means the default (`json`, `xlsx`, `csv`). |
 | `schemaLabels`                | `Record<string, string>` | Text of each DAG in the module selector, by DAG name. See [Several DAGs](#several-dags-in-one-application) |
-| `globalContext`               | `GlobalContextDimension[]` | Selectors of the context bar (e.g. plant). Empty means no global context. See [Global context](#global-context) |
+| `executionFilters`            | `ExecutionFilter[]` | Filters of the executions history (e.g. plant). Empty means date filters only. See [Executions history filters](#executions-history-filters) |
 | `executionsListEndpoint`      | `{ path, isExternal }` \| `null` | Endpoint of the executions list; `null` means Cornflow's `GET /execution/` |
 
 #### showExtraProjectExecutionColumns
@@ -1473,10 +1465,11 @@ Defines the configuration fields for execution parameters. Each field can have:
 - `lookupValue` (string, optional, for arrayByValue): The property to return from the found object (e.g., 'VALOR').
 - `default` (any, optional): Default value if not found in the instance. It only fills a key that has no value yet, so it never overwrites an answer the user already gave or the config of the execution being edited.
 - `options` (Array<{label: string, value: any}>, for select type): Options for select fields.
+- `optionsEndpoint` (string, optional): Endpoint the options come from instead (e.g. the plants the user may pick), shown as a select. It receives `schema` (the active DAG) and returns an array of objects; `valueField` names the field holding the value and `labelField` the one holding the text (it defaults to `valueField`). `isExternal: true` requests it under `/external`. When the user may pick only one option and the field has no value yet, that one is picked.
 - `preEtl` (boolean, from the schema): Set from `"pre_etl": true`. See [Pre-ETL parameters](#pre-etl-parameters-pre_etl).
 - `required` (boolean, from the schema): Set when the config schema's root `required` lists the key. Only the pre-ETL step reads it, to decide what blocks **Continue**.
 
-**Fields derived from the backend schema.** Once the app has the schema from `GET /schema/<name>/`, `getExecutionConfigFromSchemaConfig` (in `schemaUtils.ts`) rebuilds `configFields` from `schema.config.properties`, so the backend schema is the source of truth for which fields exist and how they look. The fields `src/app/config.ts` declares with a `source` or a `default` say something the schema cannot (where this app reads the value, or what it sends when nothing else does), so `mergeAppConfigFields` keeps them on top: their properties win over those of the schema field with the same key, and they are kept even when the schema has no such property. The rest of the fields declared in `src/app/config.ts` give way to the schema. When a field with a `source` finds no value in the loaded instance, the browser console says so. The mapping:
+**Fields derived from the backend schema.** Once the app has the schema from `GET /schema/<name>/`, `getExecutionConfigFromSchemaConfig` (in `schemaUtils.ts`) rebuilds `configFields` from `schema.config.properties`, so the backend schema is the source of truth for which fields exist and how they look. The fields `src/app/config.ts` declares with a `source`, a `default` or an `optionsEndpoint` say something the schema cannot (where this app reads the value, what it sends when nothing else does, or where its options come from), so `mergeAppConfigFields` keeps them on top: their properties win over those of the schema field with the same key, and they are kept even when the schema has no such property. The rest of the fields declared in `src/app/config.ts` give way to the schema. When a field with a `source` finds no value in the loaded instance, the browser console says so. The mapping:
 
 | In the schema | Becomes |
 | --- | --- |

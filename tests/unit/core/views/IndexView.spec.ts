@@ -55,10 +55,10 @@ vi.mock('@cornflow-ui/core/components/AppView.vue', () => ({
   }
 }))
 
-vi.mock('@cornflow-ui/core/components/core/ContextBar.vue', () => ({
+vi.mock('@cornflow-ui/core/components/core/ModuleSwitcher.vue', () => ({
   default: {
-    name: 'CoreContextBar',
-    setup: () => () => h('div', { 'data-testid': 'context-bar' })
+    name: 'CoreModuleSwitcher',
+    setup: () => () => h('div', { 'data-testid': 'module-switcher' })
   }
 }))
 
@@ -469,7 +469,7 @@ describe('IndexView', () => {
     })
   })
 
-  describe('Context bar', () => {
+  describe('Top bar', () => {
     afterEach(() => {
       mockConfig.schemas = []
       resetTopBannerOffsets()
@@ -484,18 +484,28 @@ describe('IndexView', () => {
       )
     })
 
-    test('in a multi-DAG deployment it renders and reserves its height for the views', async () => {
+    test('shows the module switcher to a user who may switch DAG, and reserves its height', async () => {
+      mockConfig.schemas = ['planning_dag', 'stock_dag']
+      const { wrapper, generalStore } = await createWrapper()
+
+      generalStore.availableSchemas = ['planning_dag', 'stock_dag']
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('[data-testid="app-top-bar"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="module-switcher"]').exists()).toBe(true)
+      expect(wrapper.find('.main-content').attributes('style')).toContain(
+        '--app-top-offset: 56px',
+      )
+    })
+
+    test('is not rendered for a user with a single DAG of a multi-DAG deployment', async () => {
       mockConfig.schemas = ['planning_dag', 'stock_dag']
       const { wrapper, generalStore } = await createWrapper()
 
       generalStore.availableSchemas = ['planning_dag']
       await wrapper.vm.$nextTick()
 
-      expect(wrapper.find('[data-testid="app-top-bar"]').exists()).toBe(true)
-      expect(wrapper.find('[data-testid="context-bar"]').exists()).toBe(true)
-      expect(wrapper.find('.main-content').attributes('style')).toContain(
-        '--app-top-offset: 56px',
-      )
+      expect(wrapper.find('[data-testid="app-top-bar"]').exists()).toBe(false)
     })
 
     test('goes first in the fixed top stack, above the staging notice and the banners', async () => {
@@ -503,7 +513,7 @@ describe('IndexView', () => {
       setTopBannerOffset('some-banner', 48)
       const { wrapper, generalStore } = await createWrapper(true, true)
 
-      generalStore.availableSchemas = ['planning_dag']
+      generalStore.availableSchemas = ['planning_dag', 'stock_dag']
       await wrapper.vm.$nextTick()
 
       const stack = wrapper.find('[data-testid="app-top-stack"]')
@@ -518,7 +528,7 @@ describe('IndexView', () => {
       expect(style).toContain('--app-top-offset: 144px')
     })
 
-    test('without a context bar, the staging notice and the banners still reserve their height', async () => {
+    test('without a top bar, the staging notice and the banners still reserve their height', async () => {
       setTopBannerOffset('some-banner', 48)
       const { wrapper } = await createWrapper(true, true)
 

@@ -67,8 +67,8 @@ vi.mock('@cornflow-ui/core/models/LoadedExecution', () => ({
 const mockResolveExecutionsListEndpoint = vi.hoisted(() =>
   vi.fn(() => ({ path: '/execution/', isExternal: false })),
 )
-vi.mock('@cornflow-ui/core/utils/globalContext', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@cornflow-ui/core/utils/globalContext')>()),
+vi.mock('@cornflow-ui/core/utils/executionFilters', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@cornflow-ui/core/utils/executionFilters')>()),
   resolveExecutionsListEndpoint: mockResolveExecutionsListEndpoint,
 }))
 
@@ -152,7 +152,7 @@ describe('ExecutionRepository', () => {
       )
     })
 
-    test('sends the global-context values as query parameters', async () => {
+    test('sends the picked history filters as query parameters', async () => {
       mockClient.get.mockResolvedValue({ status: 200, content: [] })
 
       await repository.getExecutions('test-schema', '', '', { plant_id: '101' })
@@ -314,27 +314,6 @@ describe('ExecutionRepository', () => {
         'Content-Type': 'application/json'
       })
       expect(result).toEqual(mockResponse.content)
-    })
-
-    test('stamps the global-context values in the execution config', async () => {
-      ;(storeState as Record<string, unknown>).getGlobalContextConfig = {
-        plant_id: '101',
-      }
-      mockClient.post.mockResolvedValue({ status: 201, content: { id: 'new-id' } })
-
-      try {
-        await repository.createExecution(mockExecutionData)
-      } finally {
-        delete (storeState as Record<string, unknown>).getGlobalContextConfig
-      }
-
-      expect(mockClient.post).toHaveBeenCalledWith(
-        '/execution/',
-        expect.objectContaining({
-          config: { test: 'config', plant_id: '101' },
-        }),
-        { 'Content-Type': 'application/json' },
-      )
     })
 
     test('should create execution with new instance', async () => {

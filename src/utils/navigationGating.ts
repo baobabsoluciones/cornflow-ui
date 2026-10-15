@@ -26,7 +26,10 @@ export function isEntryVisibleFor(
 ): boolean {
   if (!entry) return true
   const { roles, schemas } = entry
-  if (Array.isArray(roles) && !roles.some((role) => viewer.roleNames.includes(role))) {
+  if (
+    Array.isArray(roles) &&
+    !roles.some((role) => viewer.roleNames.includes(role))
+  ) {
     return false
   }
   if (Array.isArray(schemas) && !schemas.includes(viewer.schema)) {

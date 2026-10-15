@@ -17,6 +17,31 @@
       @date-range-changed="dateOptionSelected = $event"
       class="overflow-y-auto"
     >
+      <template v-if="visibleFilters.length > 0" #filters>
+        <v-col
+          v-for="filter in visibleFilters"
+          :key="filter.key"
+          cols="12"
+          sm="6"
+          md="4"
+          lg="3"
+        >
+          <v-select
+            :model-value="filterValue(filter)"
+            :items="filterItems(filter)"
+            item-title="title"
+            item-value="value"
+            :label="filterLabel(filter)"
+            :prepend-inner-icon="filter.icon || 'mdi-filter-variant'"
+            :disabled="filterOptions(filter).length === 0"
+            variant="outlined"
+            density="compact"
+            hide-details
+            :data-testid="`history-filter-${filter.key}`"
+            @update:model-value="pickFilterValue(filter, $event)"
+          />
+        </v-col>
+      </template>
       <template #extra-filters>
         <v-col v-if="showReplannedFilter" cols="auto">
           <v-checkbox
@@ -97,8 +122,12 @@ import {
   formatLocalTimeHHmm,
   parseLocalDateKey,
 } from '@cornflow-ui/core/utils/date'
+import { hasFilterValue } from '@cornflow-ui/core/utils/executionFilters'
 import { inject } from 'vue'
 import appConfig from '@/app/config'
+
+/** Item value of "All" in a filter select (the store keeps it as `null`). */
+const ALL_FILTER_VALUE = '__all__'
 
 export default {
   components: {
@@ -200,6 +229,21 @@ export default {
         },
       ]
     },
+    /**
+     * Executions history filters with something to pick: more than one option, or a filter that
+     * depends on another and waits for it (shown disabled). A filter with a single option has it
+     * picked already.
+     */
+    visibleFilters() {
+      return this.generalStore.getExecutionFilters.filter((filter) => {
+        const count = this.filterOptions(filter).length
+        return count > 1 || (Boolean(filter.dependsOn) && count === 0)
+      })
+    },
+    /** Picked filters as one value, so a change lists the executions again. */
+    filterParamsSignature() {
+      return JSON.stringify(this.generalStore.getExecutionFilterParams)
+    },
     showReplannedFilter() {
       return appConfig.getCore().parameters.enableRecalculationOnMasterEdit
     },
@@ -241,6 +285,9 @@ export default {
     // `fetchData`, while the actual completion is detected by the store poller.
     loadedExecutionsSignature() {
       this.syncExecutionStatesFromStore()
+    },
+    filterParamsSignature() {
+      this.fetchData()
     },
     dateOptionSelected(newVal, oldVal) {
       const today = new Date()
@@ -311,6 +358,28 @@ export default {
     },
   },
   methods: {
+    filterOptions(filter) {
+      return this.generalStore.executionFilterOptions[filter.key] ?? []
+    },
+    filterItems(filter) {
+      return [
+        { title: this.$t('versionHistory.filterAll'), value: ALL_FILTER_VALUE },
+        ...this.filterOptions(filter),
+      ]
+    },
+    filterValue(filter) {
+      const value = this.generalStore.executionFilterValues[filter.key]
+      return hasFilterValue(value) ? value : ALL_FILTER_VALUE
+    },
+    filterLabel(filter) {
+      return this.$te(filter.labelKey) ? this.$t(filter.labelKey) : filter.labelKey
+    },
+    pickFilterValue(filter, value) {
+      this.generalStore.setExecutionFilterValue(
+        filter.key,
+        value === ALL_FILTER_VALUE ? null : value,
+      )
+    },
     navigateToCreateExecution() {
       this.$router.push('/project-execution')
     },

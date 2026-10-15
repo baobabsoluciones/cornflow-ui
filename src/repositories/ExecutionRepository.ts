@@ -11,7 +11,7 @@ import {
   getApiErrorMessageFromContent,
   getMessageFromResponseContentOrNull,
 } from '@cornflow-ui/core/utils/i18nUtils'
-import { resolveExecutionsListEndpoint } from '@cornflow-ui/core/utils/globalContext'
+import { resolveExecutionsListEndpoint } from '@cornflow-ui/core/utils/executionFilters'
 
 function pickDownloadReturnValue(
   experiment: any,
@@ -121,24 +121,24 @@ async function pollForRegeneratedFiles(
 
 export default class ExecutionRepository {
   /**
-   * Get executions created on the given date range. `contextParams` (the picked global-context
-   * values) travel as extra query parameters; the list comes from `executionsListEndpoint` when
+   * Get executions created on the given date range. `filterParams` (the picked executions history
+   * filters) travel as extra query parameters; the list comes from `executionsListEndpoint` when
    * the app declares one, and from `GET /execution/` otherwise.
    */
   async getExecutions(
     name: string,
     dateFrom: string,
     dateTo: string,
-    contextParams: Record<string, string> = {},
+    filterParams: Record<string, string> = {},
   ): Promise<Execution[]> {
     const queryParams: {
       schema: string
       limit: number
       creation_date_lte?: string
       creation_date_gte?: string
-      [contextKey: string]: string | number | undefined
+      [filterKey: string]: string | number | undefined
     } = {
-      ...contextParams,
+      ...filterParams,
       schema: name,
       limit: 100,
     }
@@ -418,18 +418,11 @@ export default class ExecutionRepository {
     }
 
     if (instance) {
-      const store = useGeneralStore()
-      const contextConfig = store.getGlobalContextConfig ?? {}
       const json = {
         name: execution.name,
         description: execution.description ? execution.description : '',
-        // The global-context values (e.g. the plant) go in the config, which the user cannot edit
-        // afterwards, so the executions list can be filtered by them.
-        config:
-          Object.keys(contextConfig).length > 0
-            ? { ...execution.config, ...contextConfig }
-            : execution.config,
-        schema: store.getSchemaName,
+        config: execution.config,
+        schema: useGeneralStore().getSchemaName,
         instance_id: instance.id,
       }
 

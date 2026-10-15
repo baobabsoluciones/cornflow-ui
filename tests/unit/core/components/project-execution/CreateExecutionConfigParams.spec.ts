@@ -550,6 +550,81 @@ describe('CreateExecutionConfigParams', () => {
     })
   })
 
+  describe('Options from an endpoint', () => {
+    const originalFields = mockGeneralStore.appConfig.parameters.configFields
+    const plantField = {
+      key: 'plant_id',
+      type: 'text',
+      title: 'Plant',
+      preEtl: true,
+      optionsEndpoint: '/user/plants/',
+      isExternal: true,
+      valueField: 'plant_id',
+      labelField: 'name',
+    }
+    const store = mockGeneralStore as typeof mockGeneralStore & {
+      fetchEndpointOptions?: ReturnType<typeof vi.fn>
+    }
+
+    beforeEach(() => {
+      mockGeneralStore.appConfig.parameters.configFields = [plantField] as any
+      store.fetchEndpointOptions = vi.fn()
+    })
+
+    afterEach(() => {
+      mockGeneralStore.appConfig.parameters.configFields = originalFields
+      delete store.fetchEndpointOptions
+    })
+
+    const settle = async () => {
+      await nextTick()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      await nextTick()
+    }
+
+    const lastConfig = () => {
+      const emitted = wrapper.emitted('update:modelValue')
+      return (emitted![emitted!.length - 1][0] as any).config
+    }
+
+    test('shows the field as a select with the options its endpoint returns', async () => {
+      store.fetchEndpointOptions!.mockResolvedValue([
+        { value: '102', title: 'North' },
+        { value: '103', title: 'South' },
+      ])
+      wrapper = createWrapper()
+      await settle()
+
+      expect(store.fetchEndpointOptions).toHaveBeenCalledWith(plantField)
+      const options = wrapper.findAll('.v-select option')
+      expect(options.map((option: any) => option.text())).toEqual(['North', 'South'])
+      expect(lastConfig()).toEqual({})
+    })
+
+    test('picks the only option when the user may pick just one', async () => {
+      store.fetchEndpointOptions!.mockResolvedValue([{ value: '101', title: 'East' }])
+      wrapper = createWrapper()
+      await settle()
+
+      expect(lastConfig()).toEqual({ plant_id: '101' })
+    })
+
+    test('keeps a value already set', async () => {
+      store.fetchEndpointOptions!.mockResolvedValue([{ value: '101', title: 'East' }])
+      wrapper = createWrapper({ modelValue: { config: { plant_id: '102' } } })
+      await settle()
+
+      expect(lastConfig()).toEqual({ plant_id: '102' })
+    })
+
+    test('asks only for the options of the fields on screen', async () => {
+      wrapper = createWrapper({ scope: 'standard' })
+      await settle()
+
+      expect(store.fetchEndpointOptions).not.toHaveBeenCalled()
+    })
+  })
+
   describe('Component Structure and Styling', () => {
     test('applies correct CSS classes to fields', () => {
       wrapper = createWrapper()

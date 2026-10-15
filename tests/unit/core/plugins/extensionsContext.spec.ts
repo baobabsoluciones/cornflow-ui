@@ -5,7 +5,6 @@ import {
   getExtensionContext,
   getPremiumGlobalComponents,
   runPremiumActiveSchemaChangedHooks,
-  runPremiumGlobalContextChangedHooks,
 } from '@cornflow-ui/core/plugins/extensions'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import type { PremiumModule } from '@cornflow-ui/core/types/extension'
@@ -65,19 +64,14 @@ describe('extension context', () => {
     })
   })
 
-  test('exposes the active schema and the picked global-context values', () => {
+  test('exposes the active schema', () => {
     setActivePinia(createPinia())
-    const store = useGeneralStore()
-    store.schema = 'stock_dag'
-    store.globalContext = { plant_id: '102', program_id: null }
+    useGeneralStore().schema = 'stock_dag'
 
-    const ctx = getExtensionContext()
-
-    expect(ctx.getActiveSchema?.()).toBe('stock_dag')
-    expect(ctx.getGlobalContext?.()).toEqual({ plant_id: '102' })
+    expect(getExtensionContext().getActiveSchema?.()).toBe('stock_dag')
   })
 
-  test('global components can be mounted in the context bar', () => {
+  test('global components can be mounted in the top bar', () => {
     const component = {} as any
     registerPremiumModules([
       { id: 'top', globalComponents: [{ component, slot: 'app-top-bar' }] },
@@ -89,32 +83,21 @@ describe('extension context', () => {
     expect(getPremiumGlobalComponents('app-banners')).toEqual([])
   })
 
-  describe('change hooks', () => {
-    test('run the hooks of the enabled modules only', async () => {
+  describe('module switch hook', () => {
+    test('runs the hook of the enabled modules only', async () => {
       const onActiveSchemaChanged = vi.fn()
-      const onGlobalContextChanged = vi.fn()
       const disabled = vi.fn()
       const modules: PremiumModule[] = [
-        { id: 'a', onActiveSchemaChanged, onGlobalContextChanged },
-        {
-          id: 'b',
-          isEnabled: () => false,
-          onActiveSchemaChanged: disabled,
-          onGlobalContextChanged: disabled,
-        },
+        { id: 'a', onActiveSchemaChanged },
+        { id: 'b', isEnabled: () => false, onActiveSchemaChanged: disabled },
         { id: 'c' },
       ]
       registerPremiumModules(modules)
 
       await runPremiumActiveSchemaChangedHooks('stock_dag')
-      await runPremiumGlobalContextChangedHooks({ plant_id: '102' })
 
       expect(onActiveSchemaChanged).toHaveBeenCalledWith(
         'stock_dag',
-        expect.objectContaining({ getRoleNames: expect.any(Function) }),
-      )
-      expect(onGlobalContextChanged).toHaveBeenCalledWith(
-        { plant_id: '102' },
         expect.objectContaining({ getRoleNames: expect.any(Function) }),
       )
       expect(disabled).not.toHaveBeenCalled()

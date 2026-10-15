@@ -4,8 +4,9 @@ import appConfig from '@/app/config'
 const page = () => Promise.resolve({})
 
 function declareAppSections(sections: unknown[]) {
-  ;(appConfig as unknown as { config: { appSections: unknown[] } }).config.appSections =
-    sections
+  ;(
+    appConfig as unknown as { config: { appSections: unknown[] } }
+  ).config.appSections = sections
 }
 
 describe('appSections config collectors', () => {
@@ -64,7 +65,13 @@ describe('appSections config collectors', () => {
         roles: ['admin'],
         schemas: ['planning_dag'],
       },
-      { path: 'open-board', name: 'Open board', titleKey: 'open', icon: 'mdi-b', component: page },
+      {
+        path: 'open-board',
+        name: 'Open board',
+        titleKey: 'open',
+        icon: 'mdi-b',
+        component: page,
+      },
     ])
 
     const [gated, open] = appConfig.getAppSectionRoutes()
@@ -77,11 +84,11 @@ describe('appSections config collectors', () => {
     expect(open.meta).toEqual({ showsLoadingOnEnter: false })
   })
 
-  test('multi-DAG and global-context settings default to none', () => {
+  test('multi-DAG and executions history settings default to none', () => {
     const parameters = appConfig.getCore().parameters
 
     expect(parameters.schemaLabels).toEqual({})
-    expect(parameters.globalContext).toEqual([])
+    expect(parameters.executionFilters).toEqual([])
     expect(parameters.executionsListEndpoint).toBeNull()
   })
 })

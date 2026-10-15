@@ -14,6 +14,18 @@
           :class="fieldSpacing"
         />
       </template>
+      <template v-else-if="field.type === 'select' || field.optionsEndpoint">
+        <v-select
+          :class="fieldSpacing"
+          v-model="fieldValues[field.key]"
+          :label="$t(field.title || '')"
+          :items="optionsOf(field)"
+          item-title="label"
+          item-value="value"
+          :prepend-inner-icon="field.icon || defaultIcon"
+          @update:modelValue="handleFieldUpdate(field.key, $event)"
+        />
+      </template>
       <!-- A date is the same field as a text one with a native date input; sharing the
            branch keeps its label above the box like every other parameter, instead of
            notched into the border as a bare v-text-field would render it. -->
@@ -25,18 +37,6 @@
           :placeholder="field.placeholder ? $t(field.placeholder) : ''"
           :type="field.type === 'date' ? 'date' : 'text'"
           :prependInnerIcon="field.icon || defaultIcon"
-          @update:modelValue="handleFieldUpdate(field.key, $event)"
-        />
-      </template>
-      <template v-else-if="field.type === 'select'">
-        <v-select
-          :class="fieldSpacing"
-          v-model="fieldValues[field.key]"
-          :label="$t(field.title || '')"
-          :items="field.options || []"
-          item-title="label"
-          item-value="value"
-          :prepend-inner-icon="field.icon || defaultIcon"
           @update:modelValue="handleFieldUpdate(field.key, $event)"
         />
       </template>
@@ -58,7 +58,7 @@
 </template>
 
 <script>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 
 export default {
@@ -120,6 +120,38 @@ export default {
       }
       return configFields.value
     })
+
+    // Options of the fields whose options come from an endpoint, by field key.
+    const endpointOptions = ref({})
+
+    const optionsOf = (field) =>
+      field.optionsEndpoint ? endpointOptions.value[field.key] || [] : field.options || []
+
+    /**
+     * Loads the options of the fields on screen that take them from an endpoint. When the user may
+     * pick only one and the field has no value yet, that one is picked.
+     */
+    const loadEndpointOptions = async () => {
+      const fields = visibleFields.value.filter(
+        (field) => field.optionsEndpoint && field.valueField,
+      )
+      await Promise.all(
+        fields.map(async (field) => {
+          const options = await generalStore.fetchEndpointOptions(field)
+          endpointOptions.value = {
+            ...endpointOptions.value,
+            [field.key]: options.map((option) => ({
+              value: option.value,
+              label: option.title,
+            })),
+          }
+          const current = fieldValues.value[field.key]
+          if (options.length === 1 && (current === undefined || current === null)) {
+            handleFieldUpdate(field.key, options[0].value)
+          }
+        }),
+      )
+    }
 
     const fieldValues = computed({
       get: () => props.modelValue.config || {},
@@ -208,6 +240,8 @@ export default {
         ...props.modelValue,
         config: initialValues,
       })
+
+      await loadEndpointOptions()
     })
 
     return {
@@ -215,6 +249,7 @@ export default {
       visibleFields,
       fieldSpacing,
       fieldValues,
+      optionsOf,
       handleFieldUpdate,
       defaultIcon,
       getFieldPlaceholder,

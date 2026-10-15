@@ -1,20 +1,18 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
-import GlobalContextRepository from '@cornflow-ui/core/repositories/GlobalContextRepository'
+import EndpointOptionsRepository from '@cornflow-ui/core/repositories/EndpointOptionsRepository'
 
 const mockClient = vi.hoisted(() => ({ get: vi.fn() }))
 
 vi.mock('@cornflow-ui/core/api/Api', () => ({ default: mockClient }))
 
-const PLANT = {
-  key: 'plant_id',
-  labelKey: 'plant',
+const PLANTS = {
   optionsEndpoint: '/user/plants/',
   isExternal: true,
   valueField: 'plant_id',
   labelField: 'name',
 }
 
-describe('GlobalContextRepository', () => {
+describe('EndpointOptionsRepository', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -22,7 +20,9 @@ describe('GlobalContextRepository', () => {
   test('requests the options endpoint with the given parameters', async () => {
     mockClient.get.mockResolvedValue({ status: 200, content: [] })
 
-    await new GlobalContextRepository().getOptions(PLANT, { schema: 'planning_dag' })
+    await new EndpointOptionsRepository().getOptions(PLANTS, {
+      schema: 'planning_dag',
+    })
 
     expect(mockClient.get).toHaveBeenCalledWith(
       '/user/plants/',
@@ -42,7 +42,7 @@ describe('GlobalContextRepository', () => {
       ],
     })
 
-    const options = await new GlobalContextRepository().getOptions(PLANT, {})
+    const options = await new EndpointOptionsRepository().getOptions(PLANTS, {})
 
     expect(options).toEqual([
       { value: '101', title: 'East' },
@@ -50,11 +50,14 @@ describe('GlobalContextRepository', () => {
     ])
   })
 
-  test('uses the value as label when the dimension declares no label field', async () => {
-    mockClient.get.mockResolvedValue({ status: 200, content: [{ plant_id: 101 }] })
+  test('uses the value as label when the source declares no label field', async () => {
+    mockClient.get.mockResolvedValue({
+      status: 200,
+      content: [{ plant_id: 101 }],
+    })
 
-    const options = await new GlobalContextRepository().getOptions(
-      { ...PLANT, labelField: undefined },
+    const options = await new EndpointOptionsRepository().getOptions(
+      { ...PLANTS, labelField: undefined },
       {},
     )
 
@@ -65,7 +68,7 @@ describe('GlobalContextRepository', () => {
     mockClient.get.mockResolvedValue({ status: 403, content: { error: 'no' } })
 
     await expect(
-      new GlobalContextRepository().getOptions(PLANT, {}),
-    ).rejects.toThrow('Error getting the options of plant_id')
+      new EndpointOptionsRepository().getOptions(PLANTS, {}),
+    ).rejects.toThrow('Error getting the options of /user/plants/')
   })
 })

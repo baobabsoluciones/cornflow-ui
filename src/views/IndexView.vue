@@ -13,7 +13,7 @@
     </div>
 
     <!--
-      Top of the layout, fixed, in this order: the context bar, the staging notice and the global
+      Top of the layout, fixed, in this order: the top bar, the staging notice and the global
       banners of premium modules. The views start below its height (`--app-top-offset`).
     -->
     <div
@@ -22,11 +22,11 @@
       data-testid="app-top-stack"
     >
       <!--
-        Context bar: the core's module and global-context selectors, plus whatever premium modules
-        mount in `app-top-bar`. Only rendered while something in it is visible.
+        Top bar: the core's module selector (only for users who may switch DAG), plus whatever
+        premium modules mount in `app-top-bar`. Only rendered while something in it is visible.
       -->
       <div v-if="showTopBar" class="app-top-bar" data-testid="app-top-bar">
-        <core-context-bar v-if="showContextBar" />
+        <core-module-switcher v-if="showModuleSwitcher" />
         <component
           v-for="(item, i) in premiumTopBar"
           :key="`premium-top-bar-${i}`"
@@ -74,8 +74,8 @@
         data-testid="no-schema-access"
       >
         <v-icon size="48" color="var(--subtitle)">mdi-lock-outline</v-icon>
-        <h3>{{ $t('contextBar.noSchemaAccessTitle') }}</h3>
-        <p>{{ $t('contextBar.noSchemaAccessMessage') }}</p>
+        <h3>{{ $t('modules.noAccessTitle') }}</h3>
+        <p>{{ $t('modules.noAccessMessage') }}</p>
       </div>
       <core-app-view v-else />
       <div class="tab-container">
@@ -124,7 +124,7 @@ import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import AuthService from '@cornflow-ui/core/services/AuthService'
 import CoreAppDrawer from '@cornflow-ui/core/components/AppDrawer.vue'
 import CoreAppView from '@cornflow-ui/core/components/AppView.vue'
-import CoreContextBar from '@cornflow-ui/core/components/core/ContextBar.vue'
+import CoreModuleSwitcher from '@cornflow-ui/core/components/core/ModuleSwitcher.vue'
 import { useRouter, useRoute } from 'vue-router'
 import { computed } from 'vue'
 import { Vue3Marquee } from 'vue3-marquee'
@@ -155,14 +155,14 @@ const premiumBanners = computed(() => getPremiumGlobalComponents('app-banners'))
 const premiumFabs = computed(() => getPremiumGlobalComponents('app-fabs'))
 const premiumTopBar = computed(() => getPremiumGlobalComponents('app-top-bar'))
 
-const showContextBar = computed(() => generalStore.isContextBarVisible)
+const showModuleSwitcher = computed(() => generalStore.canSwitchSchema)
 const showTopBar = computed(
-  () => showContextBar.value || premiumTopBar.value.length > 0,
+  () => showModuleSwitcher.value || premiumTopBar.value.length > 0,
 )
 const noSchemaAccess = computed(() => generalStore.noSchemaAccess)
 
 /**
- * Height of the fixed top stack: the context bar, the staging notice and the banners premium
+ * Height of the fixed top stack: the top bar, the staging notice and the banners premium
  * modules report on the layout channel (`@/plugins/layoutOffsets`; the core doesn't know which
  * banners exist, it just leaves the gap). The views start below it: `.main-content` gets it as
  * padding-top and `--app-top-offset` lets the views (`main.css`) fit the viewport.
@@ -298,7 +298,7 @@ if (AuthService.isAuthenticated()) {
   transform: translateZ(0);
 }
 
-/* Context bar: a light band tinted with the app's primary colour, its content clear of the drawer */
+/* Top bar: a light band tinted with the app's primary colour, its content clear of the drawer */
 .app-top-bar {
   position: relative;
   z-index: 1;

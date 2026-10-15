@@ -114,19 +114,16 @@ export function useInstanceProcessing() {
    */
   /**
    * The values the ETL backend needs out of an execution config, i.e. the parameters the
-   * config schema marked `pre_etl: true`, plus the picked global-context values (e.g. the
-   * plant), which decide what data the instance is built from. Callers hand over the whole
-   * config and this picks the subset, so no caller has to know which parameters those are.
+   * config schema marked `pre_etl: true`. Callers hand over the whole config and this
+   * picks the subset, so no caller has to know which parameters those are.
    */
   const preEtlParamsFrom = (
     executionConfig?: Record<string, any> | null,
-  ): Record<string, unknown> => ({
-    ...pickPreEtlConfigValues(
+  ): Record<string, unknown> =>
+    pickPreEtlConfigValues(
       executionConfig,
       store.appConfig.parameters.configFields,
-    ),
-    ...(store.getGlobalContextConfig ?? {}),
-  })
+    )
 
   const processInstanceData = async (
     data: Record<string, any>,
