@@ -703,9 +703,10 @@ not access control.
 
 The top of the layout is a fixed stack, in this order: the context bar, the staging notice and the
 global banners of premium modules (`app-banners`), which keep their own `position: fixed` and land
-below the other two. The views start below the whole stack. The context bar is a band in the app's
-primary colour and only shows while it has something in it. Premium modules can mount components
-in it with the `app-top-bar` slot of `globalComponents`. They also get:
+below the other two. The views start below the whole stack. The context bar is a light band tinted
+with the app's primary colour and only shows while it has something in it. It shows the modules the
+user may switch to side by side, up to four; with more, the module is picked from a menu. Premium
+modules can mount components in it with the `app-top-bar` slot of `globalComponents`. They also get:
 
 - `onActiveSchemaChanged(schema, ctx)` and `onGlobalContextChanged(values, ctx)` hooks, to reset what
   they keep per DAG or per context value;

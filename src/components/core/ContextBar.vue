@@ -7,7 +7,7 @@
     >
       <span class="context-bar__caption">{{ t('contextBar.module') }}</span>
       <div
-        v-if="store.canSwitchSchema"
+        v-if="moduleControl === 'segmented'"
         class="context-bar__segmented"
         role="radiogroup"
         :aria-label="t('contextBar.module')"
@@ -26,6 +26,52 @@
           {{ schemaLabel(schema) }}
         </button>
       </div>
+      <v-menu
+        v-else-if="moduleControl === 'menu'"
+        location="bottom start"
+        offset="6"
+      >
+        <template #activator="{ props: activator, isActive }">
+          <button
+            type="button"
+            class="context-bar__pill"
+            :class="{ 'is-open': isActive }"
+            v-bind="activator"
+            data-testid="context-bar-trigger-module"
+          >
+            <v-icon size="18" class="context-bar__pill-icon">{{
+              MODULE_ICON
+            }}</v-icon>
+            <span class="context-bar__pill-value">{{
+              schemaLabel(store.getSchemaName)
+            }}</span>
+            <v-icon size="18" class="context-bar__pill-chevron">
+              mdi-chevron-down
+            </v-icon>
+          </button>
+        </template>
+        <v-list density="compact" class="context-bar__menu" nav>
+          <v-list-item
+            v-for="schema in store.availableSchemas"
+            :key="schema"
+            :active="schema === store.getSchemaName"
+            color="primary"
+            :data-testid="`context-bar-schema-${schema}`"
+            @click="requestSchema(schema)"
+          >
+            <v-list-item-title>{{ schemaLabel(schema) }}</v-list-item-title>
+            <template #append>
+              <v-icon
+                v-if="schema === store.getSchemaName"
+                size="18"
+                color="primary"
+              >
+                mdi-check
+              </v-icon>
+            </template>
+          </v-list-item>
+        </v-list>
+      </v-menu>
       <span v-else class="context-bar__pill is-static">
         <span class="context-bar__pill-value">{{
           schemaLabel(store.getSchemaName)
@@ -94,7 +140,9 @@
           <v-icon size="18" class="context-bar__pill-icon">{{
             iconOf(dimension)
           }}</v-icon>
-          <span class="context-bar__pill-value">{{ fixedLabel(dimension) }}</span>
+          <span class="context-bar__pill-value">{{
+            fixedLabel(dimension)
+          }}</span>
         </span>
       </div>
     </template>
@@ -105,7 +153,11 @@
       :title="confirmTitle"
       :buttons="[
         { text: t('contextBar.confirm'), action: 'save', class: 'primary-btn' },
-        { text: t('contextBar.cancel'), action: 'cancel', class: 'secondary-btn' },
+        {
+          text: t('contextBar.cancel'),
+          action: 'cancel',
+          class: 'secondary-btn',
+        },
       ]"
       @save="confirmChange"
       @cancel="cancelChange"
@@ -137,6 +189,12 @@ defineOptions({ name: 'CoreContextBar' })
 /** Icon of a dimension that declares none. */
 const DEFAULT_DIMENSION_ICON = 'mdi-tune-variant'
 
+/** Icon of the module menu. */
+const MODULE_ICON = 'mdi-view-grid-outline'
+
+/** Most modules shown side by side; with more, the module is picked from a menu. */
+const MAX_MODULE_SEGMENTS = 4
+
 /** Views that do not depend on the DAG: a module switch keeps the user on them. */
 const SCHEMA_INDEPENDENT_ROUTES = [
   '/history-execution',
@@ -163,6 +221,14 @@ const showModule = computed(
 )
 const dimensions = computed(() => store.getGlobalContextDimensions)
 
+/** How the module is shown: side by side, in a menu, or as a label when there is no choice. */
+const moduleControl = computed<'segmented' | 'menu' | 'label'>(() => {
+  if (!store.canSwitchSchema) return 'label'
+  return store.availableSchemas.length > MAX_MODULE_SEGMENTS
+    ? 'menu'
+    : 'segmented'
+})
+
 /** Literal text, or its translation when it is an i18n key. */
 const text = (keyOrText: string): string =>
   keyOrText && te(keyOrText) ? t(keyOrText) : keyOrText
@@ -182,14 +248,19 @@ const isSelectable = (dimension: GlobalContextDimension): boolean =>
 
 /** Entries of the dimension menu; "All" (value `null`) first when the dimension allows it. */
 const menuItems = (dimension: GlobalContextDimension) => [
-  ...(dimension.allowEmpty ? [{ title: t('contextBar.all'), value: null }] : []),
+  ...(dimension.allowEmpty
+    ? [{ title: t('contextBar.all'), value: null }]
+    : []),
   ...options(dimension),
 ]
 
 const selectedValue = (dimension: GlobalContextDimension): unknown =>
   store.globalContext[dimension.key] ?? null
 
-const isSelected = (dimension: GlobalContextDimension, value: unknown): boolean => {
+const isSelected = (
+  dimension: GlobalContextDimension,
+  value: unknown,
+): boolean => {
   const selected = selectedValue(dimension)
   return value === null || selected === null
     ? value === selected
@@ -197,8 +268,8 @@ const isSelected = (dimension: GlobalContextDimension, value: unknown): boolean 
 }
 
 const selectedTitle = (dimension: GlobalContextDimension): string =>
-  menuItems(dimension).find((item) => isSelected(dimension, item.value))?.title ??
-  t('contextBar.all')
+  menuItems(dimension).find((item) => isSelected(dimension, item.value))
+    ?.title ?? t('contextBar.all')
 
 const fixedLabel = (dimension: GlobalContextDimension): string =>
   options(dimension)[0]?.title ?? t('contextBar.noOptions')
@@ -252,15 +323,25 @@ async function confirmChange() {
 
   if (change.kind === 'schema') {
     const switched = await store.setActiveSchema(change.schema)
-    if (switched && !SCHEMA_INDEPENDENT_ROUTES.some((path) => route.path.startsWith(path))) {
+    if (
+      switched &&
+      !SCHEMA_INDEPENDENT_ROUTES.some((path) => route.path.startsWith(path))
+    ) {
       // The view on screen may not exist in the new DAG; '/' resolves the default view.
       await router.push('/')
     }
     return
   }
 
-  const changed = await store.setGlobalContextValue(change.dimension.key, change.value)
-  if (changed && !store.selectedExecution && isOnInstanceDependentRoute(route.path)) {
+  const changed = await store.setGlobalContextValue(
+    change.dimension.key,
+    change.value,
+  )
+  if (
+    changed &&
+    !store.selectedExecution &&
+    isOnInstanceDependentRoute(route.path)
+  ) {
     await router.push('/')
   }
 }
@@ -268,15 +349,17 @@ async function confirmChange() {
 
 <style scoped>
 /*
-  The bar is a band in the app's primary colour (IndexView `.app-top-bar`): the controls are light
-  surfaces on it, and the picked module is the one in white.
+  The bar is a light band tinted with the app's primary colour (IndexView `.app-top-bar`): the
+  controls are white surfaces on it, and the picked module is the one filled with the primary.
 */
 .context-bar {
-  --ctx-text: #fff;
-  --ctx-muted: rgba(255, 255, 255, 0.7);
-  --ctx-surface: rgba(255, 255, 255, 0.12);
-  --ctx-surface-hover: rgba(255, 255, 255, 0.2);
-  --ctx-border: rgba(255, 255, 255, 0.22);
+  --ctx-text: var(--title);
+  --ctx-muted: color-mix(in srgb, var(--primary) 65%, #fff);
+  --ctx-accent: var(--primary);
+  --ctx-surface: #fff;
+  --ctx-tint: color-mix(in srgb, var(--primary) 8%, #fff);
+  --ctx-border: color-mix(in srgb, var(--primary) 20%, #fff);
+  --ctx-border-strong: color-mix(in srgb, var(--primary) 50%, #fff);
 
   display: flex;
   align-items: center;
@@ -294,7 +377,7 @@ async function confirmChange() {
 
 .context-bar__caption {
   font-size: 0.6875rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ctx-muted);
@@ -313,19 +396,20 @@ async function confirmChange() {
   display: inline-flex;
   padding: 3px;
   gap: 2px;
+  border: 1px solid var(--ctx-border);
   border-radius: 10px;
-  background-color: rgba(0, 0, 0, 0.18);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  background-color: var(--ctx-surface);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
 }
 
 .context-bar__segment {
-  height: 30px;
-  padding: 0 18px;
+  height: 28px;
+  padding: 0 16px;
   border-radius: 7px;
   font-size: 0.8125rem;
   font-weight: 600;
-  letter-spacing: 0.03em;
-  color: var(--ctx-muted);
+  letter-spacing: 0.02em;
+  color: var(--subtitle);
   white-space: nowrap;
   transition:
     background-color 0.15s ease,
@@ -334,23 +418,23 @@ async function confirmChange() {
 }
 
 .context-bar__segment:hover:not(.is-active) {
-  color: var(--ctx-text);
-  background-color: var(--ctx-surface);
+  color: var(--ctx-accent);
+  background-color: var(--ctx-tint);
 }
 
 .context-bar__segment.is-active {
-  background-color: #fff;
-  color: var(--primary);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  background-color: var(--ctx-accent);
+  color: #fff;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--primary) 45%, transparent);
 }
 
 .context-bar__segment:focus-visible,
 .context-bar__pill:focus-visible {
-  outline: 2px solid #fff;
+  outline: 2px solid var(--ctx-accent);
   outline-offset: 2px;
 }
 
-/* Dimension: pill that opens the menu, or shows the only value */
+/* Pill: opens a menu, or shows the only value */
 .context-bar__pill {
   display: inline-flex;
   align-items: center;
@@ -361,33 +445,31 @@ async function confirmChange() {
   border: 1px solid var(--ctx-border);
   border-radius: 10px;
   background-color: var(--ctx-surface);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
   color: var(--ctx-text);
   font-size: 0.875rem;
   white-space: nowrap;
   transition:
     border-color 0.15s ease,
-    background-color 0.15s ease,
     box-shadow 0.15s ease;
 }
 
 button.context-bar__pill:hover,
 .context-bar__pill.is-open {
-  border-color: rgba(255, 255, 255, 0.45);
-  background-color: var(--ctx-surface-hover);
+  border-color: var(--ctx-border-strong);
 }
 
 .context-bar__pill.is-open {
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent);
 }
 
 .context-bar__pill.is-static {
   padding-right: 14px;
-  border-color: transparent;
+  box-shadow: none;
 }
 
 .context-bar__pill-icon {
-  color: var(--ctx-text);
-  opacity: 0.9;
+  color: var(--ctx-accent);
 }
 
 .context-bar__pill-value {
@@ -398,7 +480,7 @@ button.context-bar__pill:hover,
 }
 
 .context-bar__pill-chevron {
-  color: var(--ctx-muted);
+  color: var(--subtitle);
   transition: transform 0.15s ease;
 }
 
@@ -406,7 +488,6 @@ button.context-bar__pill:hover,
   transform: rotate(180deg);
 }
 
-/* The menu opens on the page, outside the bar: light, as the rest of the app */
 .context-bar__menu {
   min-width: 220px;
   padding: 4px;

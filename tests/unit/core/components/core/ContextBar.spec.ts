@@ -19,7 +19,10 @@ const mockConfig = vi.hoisted(() => ({
 vi.mock('@cornflow-ui/core/config', () => ({ default: mockConfig }))
 
 const mockParameters = vi.hoisted(() => ({
-  schemaLabels: { planning_dag: 'Planning', stock_dag: 'labels.stock' } as Record<string, string>,
+  schemaLabels: {
+    planning_dag: 'Planning',
+    stock_dag: 'labels.stock',
+  } as Record<string, string>,
   globalContext: [] as unknown[],
 }))
 vi.mock('@/app/config', () => ({
@@ -50,7 +53,10 @@ const MBaseModalStub = defineComponent({
   setup(props, { slots }) {
     return () =>
       props.modelValue
-        ? h('div', { 'data-testid': 'confirm-modal' }, [props.title, slots.content?.()])
+        ? h('div', { 'data-testid': 'confirm-modal' }, [
+            props.title,
+            slots.content?.(),
+          ])
         : null
   },
 })
@@ -121,6 +127,7 @@ describe('ContextBar', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     mockParameters.globalContext = []
+    mockConfig.schemas = ['planning_dag', 'stock_dag']
     store = useGeneralStore()
     store.availableSchemas = ['planning_dag', 'stock_dag']
     store.setActiveSchema = vi.fn().mockResolvedValue(true) as any
@@ -131,22 +138,32 @@ describe('ContextBar', () => {
     test('offers the DAGs the user may switch to, with their labels', async () => {
       const { wrapper } = await mountBar()
 
-      expect(wrapper.find('[data-testid="context-bar-schema-planning_dag"]').text()).toBe('Planning')
-      expect(wrapper.find('[data-testid="context-bar-schema-stock_dag"]').text()).toBe('Stock')
+      expect(
+        wrapper.find('[data-testid="context-bar-schema-planning_dag"]').text(),
+      ).toBe('Planning')
+      expect(
+        wrapper.find('[data-testid="context-bar-schema-stock_dag"]').text(),
+      ).toBe('Stock')
     })
 
     test('shows the DAG as a label when the user has only one', async () => {
       store.availableSchemas = ['planning_dag']
       const { wrapper } = await mountBar()
 
-      expect(wrapper.find('[data-testid="context-bar-schema-stock_dag"]').exists()).toBe(false)
-      expect(wrapper.find('[data-testid="context-bar-module"]').text()).toContain('Planning')
+      expect(
+        wrapper.find('[data-testid="context-bar-schema-stock_dag"]').exists(),
+      ).toBe(false)
+      expect(
+        wrapper.find('[data-testid="context-bar-module"]').text(),
+      ).toContain('Planning')
     })
 
     test('switches at once when nothing would be discarded, staying on a DAG-independent view', async () => {
       const { wrapper, pushSpy } = await mountBar('/history-execution')
 
-      await wrapper.find('[data-testid="context-bar-schema-stock_dag"]').trigger('click')
+      await wrapper
+        .find('[data-testid="context-bar-schema-stock_dag"]')
+        .trigger('click')
       await flushPromises()
 
       expect(store.setActiveSchema).toHaveBeenCalledWith('stock_dag')
@@ -156,7 +173,9 @@ describe('ContextBar', () => {
     test('after switching, leaves a view that may not exist in the new DAG', async () => {
       const { wrapper, pushSpy } = await mountBar('/my-dashboard')
 
-      await wrapper.find('[data-testid="context-bar-schema-stock_dag"]').trigger('click')
+      await wrapper
+        .find('[data-testid="context-bar-schema-stock_dag"]')
+        .trigger('click')
       await flushPromises()
 
       expect(pushSpy).toHaveBeenCalledWith('/')
@@ -166,10 +185,14 @@ describe('ContextBar', () => {
       store.loadedExecutions = [{ executionId: 'e1' }] as any
       const { wrapper } = await mountBar()
 
-      await wrapper.find('[data-testid="context-bar-schema-stock_dag"]').trigger('click')
+      await wrapper
+        .find('[data-testid="context-bar-schema-stock_dag"]')
+        .trigger('click')
       await flushPromises()
 
-      expect(wrapper.find('[data-testid="confirm-modal"]').text()).toContain('Change module?')
+      expect(wrapper.find('[data-testid="confirm-modal"]').text()).toContain(
+        'Change module?',
+      )
       expect(store.setActiveSchema).not.toHaveBeenCalled()
 
       wrapper.findComponent(MBaseModalStub).vm.$emit('cancel')
@@ -182,18 +205,41 @@ describe('ContextBar', () => {
       store.loadedExecutions = [{ executionId: 'e1' }] as any
       const { wrapper } = await mountBar()
 
-      await wrapper.find('[data-testid="context-bar-schema-stock_dag"]').trigger('click')
+      await wrapper
+        .find('[data-testid="context-bar-schema-stock_dag"]')
+        .trigger('click')
       wrapper.findComponent(MBaseModalStub).vm.$emit('save')
       await flushPromises()
 
       expect(store.setActiveSchema).toHaveBeenCalledWith('stock_dag')
     })
 
+    test('offers the DAGs in a menu when there are more than fit side by side', async () => {
+      const schemas = ['planning_dag', 'stock_dag', 'dag_3', 'dag_4', 'dag_5']
+      mockConfig.schemas = schemas
+      store.availableSchemas = schemas
+      const { wrapper } = await mountBar()
+
+      expect(wrapper.find('[role="radiogroup"]').exists()).toBe(false)
+      const trigger = wrapper.find('[data-testid="context-bar-trigger-module"]')
+      expect(trigger.text()).toContain('Planning')
+
+      await trigger.trigger('click')
+      await wrapper
+        .find('[data-testid="context-bar-schema-dag_5"]')
+        .trigger('click')
+      await flushPromises()
+
+      expect(store.setActiveSchema).toHaveBeenCalledWith('dag_5')
+    })
+
     test('is hidden in a single-DAG deployment', async () => {
       store.availableSchemas = []
       const { wrapper } = await mountBar()
 
-      expect(wrapper.find('[data-testid="context-bar-module"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="context-bar-module"]').exists()).toBe(
+        false,
+      )
     })
   })
 
@@ -205,8 +251,12 @@ describe('ContextBar', () => {
 
     /** Opens the dimension menu and clicks one of its options. */
     async function pick(wrapper: any, optionValue: string) {
-      await wrapper.find('[data-testid="context-bar-trigger-plant_id"]').trigger('click')
-      const option = wrapper.find(`[data-testid="context-bar-option-plant_id-${optionValue}"]`)
+      await wrapper
+        .find('[data-testid="context-bar-trigger-plant_id"]')
+        .trigger('click')
+      const option = wrapper.find(
+        `[data-testid="context-bar-option-plant_id-${optionValue}"]`,
+      )
       await option.trigger('click')
       await flushPromises()
       return option
@@ -222,14 +272,21 @@ describe('ContextBar', () => {
       store.globalContext = { plant_id: '102' }
       const { wrapper } = await mountBar()
 
-      const group = wrapper.find('[data-testid="context-bar-dimension-plant_id"]')
+      const group = wrapper.find(
+        '[data-testid="context-bar-dimension-plant_id"]',
+      )
       expect(group.text()).toContain('Plant')
-      expect(group.find('[data-testid="context-bar-trigger-plant_id"]').text()).toContain('North')
+      expect(
+        group.find('[data-testid="context-bar-trigger-plant_id"]').text(),
+      ).toContain('North')
 
       const option = await pick(wrapper, '103')
 
       expect(option.text()).toContain('South')
-      expect(store.setGlobalContextValue).toHaveBeenCalledWith('plant_id', '103')
+      expect(store.setGlobalContextValue).toHaveBeenCalledWith(
+        'plant_id',
+        '103',
+      )
     })
 
     test('picking the value already picked changes nothing', async () => {
@@ -244,7 +301,9 @@ describe('ContextBar', () => {
 
     test('with allowEmpty it offers "All", sent to the store as null', async () => {
       mockParameters.globalContext = [{ ...PLANT, allowEmpty: true }]
-      store.globalContextOptions = { plant_id: [{ value: '102', title: 'North' }] }
+      store.globalContextOptions = {
+        plant_id: [{ value: '102', title: 'North' }],
+      }
       store.globalContext = { plant_id: '102' }
       const { wrapper } = await mountBar()
 
@@ -255,14 +314,18 @@ describe('ContextBar', () => {
     })
 
     test('shows the only value as a fixed label, without a menu', async () => {
-      store.globalContextOptions = { plant_id: [{ value: '101', title: 'East' }] }
+      store.globalContextOptions = {
+        plant_id: [{ value: '101', title: 'East' }],
+      }
       store.globalContext = { plant_id: '101' }
       const { wrapper } = await mountBar()
 
-      expect(wrapper.find('[data-testid="context-bar-trigger-plant_id"]').exists()).toBe(false)
-      expect(wrapper.find('[data-testid="context-bar-dimension-plant_id"]').text()).toContain(
-        'East',
-      )
+      expect(
+        wrapper.find('[data-testid="context-bar-trigger-plant_id"]').exists(),
+      ).toBe(false)
+      expect(
+        wrapper.find('[data-testid="context-bar-dimension-plant_id"]').text(),
+      ).toContain('East')
     })
 
     test('leaves a view of the loaded execution when the change closed it', async () => {

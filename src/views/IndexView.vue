@@ -298,7 +298,7 @@ if (AuthService.isAuthenticated()) {
   transform: translateZ(0);
 }
 
-/* Context bar: a band in the app's primary colour, its content clear of the drawer */
+/* Context bar: a light band tinted with the app's primary colour, its content clear of the drawer */
 .app-top-bar {
   position: relative;
   z-index: 1;
@@ -309,21 +309,17 @@ if (AuthService.isAuthenticated()) {
   gap: 16px;
   padding: 0 40px 0 96px; /* 56px mini drawer + the views' 40px gutter */
   overflow: hidden;
-  color: #fff;
+  color: var(--title);
   background:
-    radial-gradient(
-      120% 220% at 100% 0%,
-      color-mix(in srgb, var(--primary) 70%, #fff) 0%,
-      transparent 55%
-    ),
     linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--primary) 82%, #000) 0%,
-      var(--primary) 100%
-    );
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.08) inset,
-    0 4px 12px rgba(16, 24, 40, 0.18);
+      180deg,
+      rgba(255, 255, 255, 0.6) 0%,
+      rgba(255, 255, 255, 0) 100%
+    ),
+    color-mix(in srgb, var(--primary) 14%, #fff);
+  border-top: 3px solid var(--primary);
+  border-bottom: 1px solid color-mix(in srgb, var(--primary) 18%, #fff);
+  box-shadow: 0 4px 14px rgba(16, 24, 40, 0.08);
 }
 
 .app-top-stack.drawer-pinned .app-top-bar {
