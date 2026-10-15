@@ -317,7 +317,6 @@ if (AuthService.isAuthenticated()) {
       rgba(255, 255, 255, 0) 100%
     ),
     color-mix(in srgb, var(--primary) 14%, #fff);
-  border-top: 3px solid var(--primary);
   border-bottom: 1px solid color-mix(in srgb, var(--primary) 18%, #fff);
   box-shadow: 0 4px 14px rgba(16, 24, 40, 0.08);
 }
