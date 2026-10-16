@@ -93,17 +93,17 @@ describe('ConfigService (real) — fetched config (no env)', () => {
     const fetchMock = vi.fn().mockResolvedValue({ json: () => Promise.resolve({}) })
     vi.stubGlobal('fetch', fetchMock)
     appParameters.valuesJsonPath = 'values.json'
-    globalThis.history.replaceState(null, '', '/grado/#/history-execution')
+    globalThis.history.replaceState(null, '', '/app/#/history-execution')
 
     await (await freshService()).getConfig()
 
-    expect(fetchMock).toHaveBeenCalledWith(`${globalThis.location.origin}/grado/values.json`)
+    expect(fetchMock).toHaveBeenCalledWith(`${globalThis.location.origin}/app/values.json`)
   })
 
   test('an absolute path points at the root of the host from a sub-path too', async () => {
     const fetchMock = vi.fn().mockResolvedValue({ json: () => Promise.resolve({}) })
     vi.stubGlobal('fetch', fetchMock)
-    globalThis.history.replaceState(null, '', '/grado/')
+    globalThis.history.replaceState(null, '', '/app/')
 
     await (await freshService()).getConfig()
 

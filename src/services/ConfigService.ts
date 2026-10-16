@@ -83,7 +83,7 @@ interface ConfigValues {
   
       this.loadPromise = new Promise<ConfigValues>((resolve, reject) => {
         // Resolved against the page, so a relative path ('values.json') finds the file next to
-        // an app served under a sub-path (/grado/ -> /grado/values.json), and an absolute one
+        // an app served under a sub-path (/app/ -> /app/values.json), and an absolute one
         // ('/values.json') keeps pointing at the root of the host.
         const valuesJsonPath = appConfig.getCore().parameters.valuesJsonPath;
         const configUrl = new URL(valuesJsonPath, globalThis.document.baseURI).href;
