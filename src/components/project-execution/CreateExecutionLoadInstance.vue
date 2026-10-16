@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="load-step">
     <v-alert
       v-if="warningMessage"
       type="warning"
@@ -14,177 +14,147 @@
       </div>
       <div class="load-instance-warning-body">{{ warningMessage }}</div>
     </v-alert>
-    <v-row class="load-instance-columns" align="stretch">
-      <v-col
-        cols="12"
-        :md="showAlternativeColumn ? 5 : 12"
-        class="load-instance-col d-flex flex-column"
-      >
-        <div class="load-instance-panel flex-grow-1 d-flex flex-column">
-          <MDragNDropFile
-            ref="dragDropFileRef"
-            class="load-instance-drop flex-grow-1"
-            multiple
-            downloadIcon="mdi-upload"
-            :description="
-              t(
-                'projectExecution.steps.step3.loadInstance.dragAndDropDescription',
-              )
-            "
-            :uploadedFiles="selectedFiles"
-            :formatsAllowed="instanceProcessing.supportedExtensions.value"
-            :errors="displayedErrors"
-            :downloadButtonTitle="
-              t('projectExecution.steps.step3.loadInstance.uploadFile')
-            "
-            :invalidFileText="
-              t('projectExecution.steps.step3.loadInstance.invalidFileFormat')
-            "
-            @files-selected="onFileSelected"
-          />
-        </div>
 
-        <div v-if="showPreEtlFields" class="load-instance-panel pre-etl-fields pa-4 mt-4">
-          <h4 class="alternative-parameters-hint mb-2">
-            {{ t('projectExecution.steps.step3.loadInstance.preEtlParamsHint') }}
-          </h4>
-          <v-alert
-            v-if="preEtlChangedAfterLoad"
-            type="warning"
-            variant="tonal"
-            density="compact"
-            class="mb-3"
-          >
-            {{
+    <div class="load-form">
+      <!-- What data: the parameters the ETL loads the data with. -->
+      <section v-if="showPreEtlFields" class="load-form__section pre-etl-fields">
+        <h4 class="load-form__heading">
+          {{ t('projectExecution.steps.step3.loadInstance.preEtlParamsHint') }}
+        </h4>
+        <CreateExecutionConfigParams
+          :model-value="newExecution"
+          scope="preEtl"
+          layout="form"
+          @update:model-value="onPreEtlUpdate"
+        />
+        <v-alert
+          v-if="preEtlChangedAfterLoad"
+          type="warning"
+          variant="tonal"
+          density="compact"
+        >
+          <div class="load-form__changed">
+            <span>{{
               t('projectExecution.steps.step3.loadInstance.preEtlChangedAfterLoad')
-            }}
-          </v-alert>
-          <CreateExecutionConfigParams
-            :model-value="newExecution"
-            scope="preEtl"
-            layout="grid"
-            @update:model-value="onPreEtlUpdate"
-          />
-        </div>
-
-        <div class="d-flex justify-center mt-4">
-          <v-btn
-            color="primary"
-            :disabled="!canProcess"
-            @click="processFiles"
-            class="load-instance-btn"
-            elevation="2"
-            large
-          >
-            <v-icon left>mdi-upload-multiple</v-icon>
-            {{ t('projectExecution.steps.step3.loadInstance.loadInstance') }}
-            <span class="ml-1" v-if="selectedFiles.length > 0">
-              ({{ selectedFiles.length }}
-              {{
-                selectedFiles.length === 1
-                  ? t('common.file')
-                  : t('common.files')
-              }})
-            </span>
-          </v-btn>
-        </div>
-
-        <template v-if="showLoadFromDbButton">
-          <div class="optional-divider load-from-db-divider my-3" aria-hidden="true">
-            <span class="optional-divider-line" />
-            <span class="optional-divider-badge">
-              {{ t('projectExecution.steps.step3.loadInstance.optionalOrDivider') }}
-            </span>
-            <span class="optional-divider-line" />
-          </div>
-          <div class="d-flex justify-center">
+            }}</span>
             <v-btn
+              variant="text"
               color="primary"
-              :disabled="isCheckingSchema || preEtlIncomplete"
-              @click="processFromDb"
-              class="load-instance-btn load-from-db-btn"
-              elevation="2"
-              large
+              class="reload-btn"
+              :disabled="!canLoad"
+              @click="loadData"
             >
-              <v-icon left>mdi-database-arrow-down</v-icon>
-              {{ t('projectExecution.steps.step3.loadInstance.loadFromDb') }}
+              {{ t('projectExecution.steps.step3.loadInstance.reload') }}
             </v-btn>
           </div>
-        </template>
-      </v-col>
+        </v-alert>
+      </section>
 
-      <v-col
-        v-if="showAlternativeColumn"
-        cols="12"
-        md="1"
-        class="optional-divider-col d-flex align-center justify-center py-4 py-md-0"
-      >
-        <span class="optional-divider-sr">
-          {{ t('projectExecution.steps.step3.loadInstance.optionalOrDivider') }}
-        </span>
-        <div class="optional-divider" aria-hidden="true">
-          <span class="optional-divider-line" />
-          <span class="optional-divider-badge">
-            {{
-              t('projectExecution.steps.step3.loadInstance.optionalOrDivider')
-            }}
-          </span>
+      <!-- Where from: master tables, a file or a few parameters. -->
+      <section class="load-form__section">
+        <div v-if="sourceOptions.length > 1" class="load-form__row">
+          <div class="load-form__label">
+            {{ t('projectExecution.steps.step3.loadInstance.source') }}
+          </div>
+          <OptionCards
+            v-model="selectedSource"
+            :options="sourceOptions"
+            :label="t('projectExecution.steps.step3.loadInstance.source')"
+          />
         </div>
-      </v-col>
 
-      <v-col
-        v-if="showAlternativeColumn"
-        cols="12"
-        md="6"
-        class="load-instance-col d-flex flex-column"
-      >
         <div
-          class="load-instance-panel parameters-fields flex-grow-1 pa-4 d-flex flex-column"
+          class="load-form__row load-form__row--top"
+          :class="{ 'load-form__row--wide': sourceOptions.length <= 1 }"
         >
-          <div class="parameters-fields-body">
-            <h4 class="alternative-parameters-hint mb-4">
-              {{
+          <div v-if="sourceOptions.length > 1" class="load-form__label" />
+          <div class="load-form__source">
+            <MDragNDropFile
+              v-if="selectedSource === 'file'"
+              ref="dragDropFileRef"
+              class="load-instance-drop"
+              multiple
+              downloadIcon="mdi-upload"
+              :description="
                 t(
-                  'projectExecution.steps.step3.loadInstance.alternativeParametersHint',
+                  'projectExecution.steps.step3.loadInstance.dragAndDropDescription',
                 )
-              }}
-            </h4>
-            <div class="parameters-fields-inner">
-              <v-text-field
-                v-for="field in alternativeFields"
-                :key="field.id"
-                v-model="paramValues[field.id]"
-                :label="t(field.titleKey)"
-                :placeholder="
-                  field.placeholderKey ? t(field.placeholderKey) : undefined
-                "
-                :type="inputTypeForField(field)"
-                density="comfortable"
-                variant="outlined"
-                hide-details="auto"
-                class="mb-3"
-              />
+              "
+              :uploadedFiles="selectedFiles"
+              :formatsAllowed="instanceProcessing.supportedExtensions.value"
+              :errors="displayedErrors"
+              :downloadButtonTitle="
+                t('projectExecution.steps.step3.loadInstance.uploadFile')
+              "
+              :invalidFileText="
+                t('projectExecution.steps.step3.loadInstance.invalidFileFormat')
+              "
+              @files-selected="onFileSelected"
+            />
+            <div
+              v-else-if="selectedSource === 'database'"
+              class="load-form__panel load-form__database"
+            >
+              <v-icon size="28" color="primary">mdi-database-arrow-down</v-icon>
+              <span>{{
+                t('projectExecution.steps.step3.loadInstance.databaseSummary')
+              }}</span>
             </div>
+            <div v-else class="load-form__panel parameters-fields">
+              <p class="load-form__hint">
+                {{
+                  t(
+                    'projectExecution.steps.step3.loadInstance.alternativeParametersHint',
+                  )
+                }}
+              </p>
+              <div class="load-form__parameters">
+                <v-text-field
+                  v-for="field in alternativeFields"
+                  :key="field.id"
+                  v-model="paramValues[field.id]"
+                  :label="t(field.titleKey)"
+                  :placeholder="
+                    field.placeholderKey ? t(field.placeholderKey) : undefined
+                  "
+                  :type="inputTypeForField(field)"
+                  density="comfortable"
+                  variant="outlined"
+                  hide-details="auto"
+                />
+              </div>
+            </div>
+            <div
+              v-if="selectedSource !== 'file' && displayedErrors"
+              class="load-form__errors"
+              v-html="displayedErrors"
+            />
           </div>
         </div>
+      </section>
 
-        <div class="d-flex justify-center mt-4">
-          <v-btn
-            color="primary"
-            :disabled="!canProcessParameters"
-            @click="processParameters"
-            class="load-instance-btn load-parameters-btn"
-            elevation="2"
-            large
-          >
-            <v-icon left>mdi-upload-multiple</v-icon>
-            {{ t('projectExecution.steps.step3.loadInstance.loadParameters') }}
-          </v-btn>
-        </div>
-      </v-col>
-    </v-row>
+      <div class="load-form__actions">
+        <span v-if="isLoaded" class="load-form__loaded" data-testid="load-instance-loaded">
+          <v-icon size="20">mdi-check-circle</v-icon>
+          {{ t('projectExecution.steps.step3.loadInstance.loaded') }}
+        </span>
+        <v-btn
+          color="primary"
+          size="large"
+          class="load-instance-btn"
+          :class="{
+            'load-from-db-btn': selectedSource === 'database',
+            'load-parameters-btn': selectedSource === 'parameters',
+          }"
+          :disabled="!canLoad"
+          @click="loadData"
+        >
+          <v-icon start>{{ loadButtonIcon }}</v-icon>
+          {{ loadButtonLabel }}
+        </v-btn>
+      </div>
+    </div>
 
-    <!-- Loading Spinner -->
     <div class="d-flex justify-center mt-2" v-if="isCheckingSchema">
       <v-progress-circular indeterminate color="primary" size="32" />
     </div>
@@ -205,6 +175,7 @@ import type { ErrorObject } from 'ajv'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { pickPreEtlConfigValues } from '@cornflow-ui/core/utils/schemaUtils'
 import CreateExecutionConfigParams from '@cornflow-ui/core/components/project-execution/CreateExecutionConfigParams.vue'
+import OptionCards from '@cornflow-ui/core/components/core/OptionCards.vue'
 import type { LoadInstanceAlternativeParamField } from '@/app/config'
 
 // Composables
@@ -269,6 +240,50 @@ const showAlternativeColumn = computed(() => alternativeFields.value.length > 0)
 const showLoadFromDbButton = computed(
   () => etlConfig.value?.useEtlBackend && etlConfig.value?.enableLoadFromDb,
 )
+
+type DataSource = 'database' | 'file' | 'parameters'
+
+/** Ways to bring the data in: a file always; master tables and parameters when configured. */
+const sourceOptions = computed(() => [
+  ...(showLoadFromDbButton.value
+    ? [
+        {
+          value: 'database',
+          title: t('projectExecution.steps.step3.loadInstance.sourceDatabase'),
+          description: t(
+            'projectExecution.steps.step3.loadInstance.sourceDatabaseDescription',
+          ),
+          icon: 'mdi-database-outline',
+        },
+      ]
+    : []),
+  {
+    value: 'file',
+    title: t('projectExecution.steps.step3.loadInstance.sourceFile'),
+    description: t('projectExecution.steps.step3.loadInstance.sourceFileDescription'),
+    icon: 'mdi-file-upload-outline',
+  },
+  ...(showAlternativeColumn.value
+    ? [
+        {
+          value: 'parameters',
+          title: t('projectExecution.steps.step3.loadInstance.sourceParameters'),
+          description: t(
+            'projectExecution.steps.step3.loadInstance.sourceParametersDescription',
+          ),
+          icon: 'mdi-form-textbox',
+        },
+      ]
+    : []),
+])
+
+const selectedSource = ref<DataSource>('file')
+
+watch(sourceOptions, (options) => {
+  if (!options.some((option) => option.value === selectedSource.value)) {
+    selectedSource.value = 'file'
+  }
+})
 
 const configFields = computed(
   () => generalStore.appConfig.parameters.configFields || [],
@@ -335,6 +350,37 @@ const canProcess = computed(
     selectedFiles.value.length > 0 &&
     instanceProcessing.canProcessFiles.value &&
     !preEtlIncomplete.value,
+)
+
+/** The load button of the picked source can run. */
+const canLoad = computed(() => {
+  if (selectedSource.value === 'database') {
+    return !isCheckingSchema.value && !preEtlIncomplete.value
+  }
+  if (selectedSource.value === 'parameters') return canProcessParameters.value
+  return canProcess.value
+})
+
+const loadButtonLabel = computed(() => {
+  if (selectedSource.value === 'database') {
+    return t('projectExecution.steps.step3.loadInstance.loadFromDb')
+  }
+  if (selectedSource.value === 'parameters') {
+    return t('projectExecution.steps.step3.loadInstance.loadParameters')
+  }
+  const label = t('projectExecution.steps.step3.loadInstance.loadInstance')
+  const count = selectedFiles.value.length
+  if (count === 0) return label
+  return `${label} (${count} ${count === 1 ? t('common.file') : t('common.files')})`
+})
+
+const loadButtonIcon = computed(() =>
+  selectedSource.value === 'database' ? 'mdi-database-arrow-down' : 'mdi-upload-multiple',
+)
+
+/** An instance is loaded and the last load left no errors. */
+const isLoaded = computed(
+  () => Boolean(props.newExecution?.instance) && !instanceErrors.value,
 )
 
 const canProcessParameters = computed(() => {
@@ -559,6 +605,13 @@ const onFileSelected = (files: File[]) => {
   emit('filesSelected', selectedFiles.value)
 }
 
+/** Loads the data from the picked source. */
+const loadData = () => {
+  if (selectedSource.value === 'database') return processFromDb()
+  if (selectedSource.value === 'parameters') return processParameters()
+  return processFiles()
+}
+
 const processFiles = async () => {
   if (selectedFiles.value.length === 0) {
     return
@@ -683,167 +736,124 @@ const resetErrors = () => {
 </script>
 
 <style scoped>
-/* Match load-zone copy: color + margin-top (inline) and h4 { font-weight: 500 } */
-.alternative-parameters-hint {
-  margin-top: -10px;
-  color: var(--title);
-  font-weight: 500;
-}
-
-.optional-divider-col {
-  position: relative;
-  min-width: 0;
-}
-
-@media (min-width: 960px) {
-  .optional-divider-col.d-flex {
-    align-self: stretch;
-  }
-}
-
-.optional-divider-sr {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-.optional-divider {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 48px;
-}
-
-.optional-divider-line {
-  position: absolute;
-  background: rgba(var(--v-theme-on-surface), 0.14);
-  pointer-events: none;
-}
-
-.optional-divider-badge {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: rgb(var(--v-theme-surface));
-  color: rgba(var(--v-theme-on-surface), 0.42);
-  font-weight: 700;
-  font-size: 0.65rem;
-  line-height: 1;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  box-shadow: 0 0 0 1px rgba(var(--v-theme-on-surface), 0.1);
-}
-
-@media (min-width: 960px) {
-  .optional-divider {
-    flex: 1 1 auto;
-    width: 100%;
-    min-height: 260px;
-  }
-
-  .optional-divider-line {
-    left: 50%;
-    top: 0;
-    bottom: 0;
-    width: 1px;
-    transform: translateX(-50%);
-  }
-}
-
-@media (max-width: 959.98px) {
-  .optional-divider-line {
-    left: 0;
-    right: 0;
-    top: 50%;
-    height: 1px;
-    transform: translateY(-50%);
-  }
-}
-
-/* Horizontal "— o —" divider between the two buttons in the same column */
-.load-from-db-divider {
-  display: flex;
-  align-items: center;
-  min-height: unset;
-  gap: 8px;
-}
-
-.load-from-db-divider .optional-divider-line {
-  position: static;
-  flex: 1 1 auto;
-  height: 1px;
-  width: auto;
-  transform: none;
-}
-
-.load-from-db-divider .optional-divider-badge {
-  position: static;
-  box-shadow: none;
-}
-
-.load-instance-col {
-  min-width: 0;
-}
-
 .load-instance-warning-body {
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-.load-instance-panel {
-  border: 1px dashed rgba(var(--v-theme-on-surface), 0.22);
-  border-radius: 8px;
-  min-height: 260px;
-  overflow: hidden;
-}
-
-.parameters-fields {
-  min-height: 0;
-}
-
-/* This panel is as tall as its fields. Without this it inherits the 260px the dropzone
-   needs, leaving a large empty band under the last row. */
-.pre-etl-fields {
-  min-height: 0;
-}
-
-.parameters-fields-body {
-  flex: 1 1 auto;
+.load-form {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  min-height: 0;
+  gap: 28px;
 }
 
-/* Stretch built-in dropzone to fill the dashed panel (mango-vue root). */
+.load-form__section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.load-form__heading {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--subtitle);
+}
+
+/* Same columns as the parameters (CreateExecutionConfigParams, layout "form"). */
+.load-form__row {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+}
+
+.load-form__row--top {
+  align-items: start;
+}
+
+.load-form__row--wide {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.load-form__label {
+  font-size: 0.9375rem;
+  color: var(--subtitle);
+}
+
+.load-form__source {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
 .load-instance-drop {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
+  min-height: 220px;
 }
 
-@media (min-width: 960px) {
-  .load-instance-columns {
-    flex-wrap: nowrap;
+.load-form__panel {
+  padding: 18px 20px;
+  border: 1px dashed #cfd6e0;
+  border-radius: 12px;
+  background-color: #fafbfc;
+}
+
+.load-form__database {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--title);
+}
+
+.load-form__hint {
+  margin-bottom: 12px;
+  color: var(--subtitle);
+}
+
+.load-form__parameters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+.load-form__errors {
+  padding: 12px 16px;
+  border-radius: 10px;
+  background-color: color-mix(in srgb, var(--danger) 6%, #fff);
+}
+
+.load-form__changed {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.load-form__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+.load-form__loaded {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--success);
+}
+
+@media (max-width: 700px) {
+  .load-form__row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
   }
 
-  .load-instance-col {
-    align-items: stretch;
+  .load-form__parameters {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

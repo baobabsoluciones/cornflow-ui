@@ -11,6 +11,7 @@ import {
   getApiErrorMessageFromContent,
   getMessageFromResponseContentOrNull,
 } from '@cornflow-ui/core/utils/i18nUtils'
+import { resolveExecutionsListEndpoint } from '@cornflow-ui/core/utils/executionFilters'
 
 function pickDownloadReturnValue(
   experiment: any,
@@ -118,21 +119,31 @@ async function pollForRegeneratedFiles(
   return null
 }
 
+/** Most executions a list with a date range brings (the newest first). */
+export const EXECUTIONS_LIST_LIMIT = 100
+
 export default class ExecutionRepository {
-  // Get executions created on the given date range
+  /**
+   * Get executions created on the given date range. `filterParams` (the picked executions history
+   * filters) travel as extra query parameters; the list comes from `executionsListEndpoint` when
+   * the app declares one, and from `GET /execution/` otherwise.
+   */
   async getExecutions(
     name: string,
     dateFrom: string,
     dateTo: string,
+    filterParams: Record<string, string> = {},
   ): Promise<Execution[]> {
     const queryParams: {
       schema: string
       limit: number
       creation_date_lte?: string
       creation_date_gte?: string
+      [filterKey: string]: string | number | undefined
     } = {
+      ...filterParams,
       schema: name,
-      limit: 100,
+      limit: EXECUTIONS_LIST_LIMIT,
     }
 
     if (dateTo) {
@@ -147,7 +158,13 @@ export default class ExecutionRepository {
       queryParams.limit = 15
     }
 
-    const response = await client.get('/execution/', queryParams)
+    const endpoint = resolveExecutionsListEndpoint()
+    const response = await client.get(
+      endpoint.path,
+      queryParams,
+      {},
+      endpoint.isExternal === true,
+    )
 
     if (response.status === 200) {
       const executions = response.content

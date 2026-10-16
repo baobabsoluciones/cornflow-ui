@@ -63,6 +63,15 @@ vi.mock('@cornflow-ui/core/models/LoadedExecution', () => ({
   LoadedExecution: vi.fn()
 }))
 
+// Executions list source: Cornflow's GET /execution/ unless a test points it elsewhere.
+const mockResolveExecutionsListEndpoint = vi.hoisted(() =>
+  vi.fn(() => ({ path: '/execution/', isExternal: false })),
+)
+vi.mock('@cornflow-ui/core/utils/executionFilters', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@cornflow-ui/core/utils/executionFilters')>()),
+  resolveExecutionsListEndpoint: mockResolveExecutionsListEndpoint,
+}))
+
 describe('ExecutionRepository', () => {
   let repository: ExecutionRepository
   let mockClient: any
@@ -112,12 +121,17 @@ describe('ExecutionRepository', () => {
 
       const result = await repository.getExecutions('test-schema', '2023-01-01', '2023-01-31')
 
-      expect(mockClient.get).toHaveBeenCalledWith('/execution/', {
-        schema: 'test-schema',
-        limit: 100,
-        creation_date_gte: '2023-01-01',
-        creation_date_lte: '2023-01-31'
-      })
+      expect(mockClient.get).toHaveBeenCalledWith(
+        '/execution/',
+        {
+          schema: 'test-schema',
+          limit: 100,
+          creation_date_gte: '2023-01-01',
+          creation_date_lte: '2023-01-31',
+        },
+        {},
+        false,
+      )
       expect(result).toBeDefined()
     })
 
@@ -130,10 +144,42 @@ describe('ExecutionRepository', () => {
 
       await repository.getExecutions('test-schema', '', '')
 
-      expect(mockClient.get).toHaveBeenCalledWith('/execution/', {
-        schema: 'test-schema',
-        limit: 15
+      expect(mockClient.get).toHaveBeenCalledWith(
+        '/execution/',
+        { schema: 'test-schema', limit: 15 },
+        {},
+        false,
+      )
+    })
+
+    test('sends the picked history filters as query parameters', async () => {
+      mockClient.get.mockResolvedValue({ status: 200, content: [] })
+
+      await repository.getExecutions('test-schema', '', '', { plant_id: '101' })
+
+      expect(mockClient.get).toHaveBeenCalledWith(
+        '/execution/',
+        { plant_id: '101', schema: 'test-schema', limit: 15 },
+        {},
+        false,
+      )
+    })
+
+    test('requests the list from executionsListEndpoint when the app declares one', async () => {
+      mockResolveExecutionsListEndpoint.mockReturnValueOnce({
+        path: '/executions/',
+        isExternal: true,
       })
+      mockClient.get.mockResolvedValue({ status: 200, content: [] })
+
+      await repository.getExecutions('test-schema', '', '', { plant_id: '101' })
+
+      expect(mockClient.get).toHaveBeenCalledWith(
+        '/executions/',
+        { plant_id: '101', schema: 'test-schema', limit: 15 },
+        {},
+        true,
+      )
     })
 
     test('should handle missing log data', async () => {

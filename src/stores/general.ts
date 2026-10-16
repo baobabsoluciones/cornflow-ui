@@ -21,6 +21,7 @@ import {
 } from '@cornflow-ui/core/plugins/extensions'
 import RoleRepository from '@cornflow-ui/core/repositories/RoleRepository'
 import WarningsRepository from '@cornflow-ui/core/repositories/WarningsRepository'
+import TableRepository from '@cornflow-ui/core/repositories/TableRepository'
 import type { Warning } from '@cornflow-ui/core/repositories/WarningsRepository'
 
 import { toUTCDayBoundary } from '@cornflow-ui/core/utils/date'
@@ -38,8 +39,20 @@ import {
   resolveTableConfigTitles,
   getExecutionConfigFromSchemaConfig,
   mergeAppConfigFields,
+  normalizeGetListResponseToRows,
+  parseJoinFrom,
   type ExecutionConfigField,
 } from '@cornflow-ui/core/utils/schemaUtils'
+import type {
+  ExecutionFilter,
+  ExecutionFilterValues,
+  TableOption,
+} from '@cornflow-ui/core/types/executionFilters'
+import {
+  readExecutionFilters,
+  hasFilterValue,
+  toFilterQueryParams,
+} from '@cornflow-ui/core/utils/executionFilters'
 import {
   filterTablesByUserSchemas,
   filterTablesByCurrentSchema,
@@ -130,6 +143,10 @@ export const useGeneralStore = defineStore('general', {
      */
     appConfigFields: (appConfig.getCore().parameters.configFields ??
       []) as ExecutionConfigField[],
+    /** Picked value per executions history filter; `null` is "All". Empty without filters. */
+    executionFilterValues: {} as ExecutionFilterValues,
+    /** Options of each executions history filter, from its frontend-automation table. */
+    executionFilterOptions: {} as Record<string, TableOption[]>,
     appDashboardRoutes: appConfig.getDashboardRoutes(),
     appDashboardPages: appConfig.getDashboardPages(),
     appDashboardLayout: appConfig.getDashboardLayout(),
@@ -182,6 +199,7 @@ export const useGeneralStore = defineStore('general', {
         await this.fetchCornflowVersion()
         await this.setSchema()
         await this.setConfigurations()
+        await this.loadExecutionFilters()
         await this.fetchLicences()
         await this.fetchWarnings()
 
@@ -233,6 +251,89 @@ export const useGeneralStore = defineStore('general', {
       } catch (error) {
         console.error('Error getting cornflow version', error)
       }
+    },
+
+    /**
+     * Options of a selector fed by a frontend-automation table. `joinFrom` is
+     * `<table>.<column>` (e.g. 'plants.name'): each row of the table's list is one option, with
+     * the row's `id` as the value and the column as the text. Empty, with a warning, when the
+     * application has no such frontend-automation table (or no frontend automation at all).
+     */
+    async fetchTableOptions(joinFrom: string): Promise<TableOption[]> {
+      const source = parseJoinFrom(joinFrom)
+      const tableConfig = source
+        ? this.configurations?.masterData?.[source.table]
+        : null
+      if (!source || !tableConfig?.get_list) {
+        console.warn(
+          `No frontend-automation table for "${joinFrom}": its options come from one`,
+        )
+        return []
+      }
+      try {
+        const repository = new TableRepository(tableConfig, i18n.global.t)
+        const rows = normalizeGetListResponseToRows(
+          await repository.getList(),
+          tableConfig,
+        )
+        return rows
+          .filter((row) => row?.id != null)
+          .map((row) => ({
+            value: row.id,
+            title: String(row[source.field] ?? row.id),
+          }))
+      } catch (error) {
+        console.error(`Error getting the options of ${joinFrom}`, error)
+        return []
+      }
+    },
+
+    /**
+     * Loads the options of the executions history filters. A filter keeps its value while it is
+     * still offered, and goes back to "All" otherwise. Without filters it does nothing.
+     */
+    async loadExecutionFilters() {
+      const filters = readExecutionFilters()
+      if (filters.length === 0) return
+
+      const loaded = await Promise.all(
+        filters.map(async (filter) => ({
+          key: filter.key,
+          options: await this.fetchTableOptions(filter.joinFrom),
+        })),
+      )
+      const options: Record<string, TableOption[]> = {}
+      const values: ExecutionFilterValues = {}
+      for (const { key, options: filterOptions } of loaded) {
+        const previous = this.executionFilterValues[key]
+        options[key] = filterOptions
+        values[key] = filterOptions.some((option) => option.value === previous)
+          ? previous
+          : null
+      }
+      this.executionFilterOptions = options
+      this.executionFilterValues = values
+    },
+
+    /**
+     * Picks a value for an executions history filter (`null` is "All"). The history lists the
+     * executions again when the values change. Returns false when nothing changes or the value is
+     * not one of the filter's options.
+     */
+    setExecutionFilterValue(key: string, value: unknown): boolean {
+      if (!readExecutionFilters().some((filter) => filter.key === key)) return false
+      const picked = hasFilterValue(value) ? value : null
+      if (picked === (this.executionFilterValues[key] ?? null)) return false
+      if (
+        picked !== null &&
+        !(this.executionFilterOptions[key] ?? []).some(
+          (option) => option.value === picked,
+        )
+      ) {
+        return false
+      }
+      this.executionFilterValues = { ...this.executionFilterValues, [key]: picked }
+      return true
     },
 
     async fetchLicences() {
@@ -433,12 +534,14 @@ export const useGeneralStore = defineStore('general', {
             this.getSchemaName,
             null,
             null,
+            this.getExecutionFilterParams,
           )
         } else {
           executions = await this.executionRepository.getExecutions(
             this.getSchemaName,
             toUTCDayBoundary(fromDate),
             toUTCDayBoundary(toDate, true),
+            this.getExecutionFilterParams,
           )
         }
 
@@ -926,6 +1029,16 @@ export const useGeneralStore = defineStore('general', {
 
     getSchemaName(): string {
       return config.schema
+    },
+
+    /** Filters of the executions history the app declares (`executionFilters`). Empty when none. */
+    getExecutionFilters(): ExecutionFilter[] {
+      return readExecutionFilters()
+    },
+
+    /** Picked executions history filters as query parameters, without the ones set to "All". */
+    getExecutionFilterParams(): Record<string, string> {
+      return toFilterQueryParams(this.executionFilterValues)
     },
 
     getSchemaConfig(): SchemaConfig {
