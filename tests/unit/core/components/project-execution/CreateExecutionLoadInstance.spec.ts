@@ -259,15 +259,14 @@ describe('CreateExecutionLoadInstance', () => {
       return createWrapper({ newExecution: { config } })
     }
 
-    test('renders the fields next to the upload, only for the pre-ETL ones', () => {
+    test('renders the pre-ETL fields above the data source, one row each', () => {
       wrapper = withPreEtl({ horizon_days: 1 })
 
       const panel = wrapper.find('.pre-etl-fields')
       expect(panel.exists()).toBe(true)
       const fields = panel.find('.config-params')
       expect(fields.attributes('data-scope')).toBe('preEtl')
-      // They sit in a column of their own, so they go two per row instead of stacking.
-      expect(fields.attributes('data-layout')).toBe('grid')
+      expect(fields.attributes('data-layout')).toBe('form')
     })
 
     test('renders nothing when no config field is marked pre_etl', () => {
@@ -964,7 +963,7 @@ describe('CreateExecutionLoadInstance', () => {
       expect(wrapper.find('.load-from-db-btn').exists()).toBe(false)
     })
 
-    test('shown when useEtlBackend and enableLoadFromDb are true', async () => {
+    test('offered as a data source when useEtlBackend and enableLoadFromDb are true', async () => {
       mockGeneralStore.appConfig.parameters.etl = {
         useEtlBackend: true,
         enableLoadFromDb: true,
@@ -972,7 +971,31 @@ describe('CreateExecutionLoadInstance', () => {
       wrapper = createWrapper()
       await nextTick()
       expect(wrapper.vm.showLoadFromDbButton).toBe(true)
+      expect(wrapper.find('.load-from-db-btn').exists()).toBe(false)
+
+      await wrapper.find('[data-testid="option-card-database"]').trigger('click')
+
       expect(wrapper.find('.load-from-db-btn').exists()).toBe(true)
+      expect(wrapper.findComponent(MDragNDropFileStub).exists()).toBe(false)
+    })
+
+    test('the load button loads from the database once it is the source', async () => {
+      mockGeneralStore.appConfig.parameters.etl = {
+        useEtlBackend: true,
+        enableLoadFromDb: true,
+      }
+      mockInstanceProcessing.processFromDb.mockResolvedValueOnce({
+        success: true,
+        instance: mockInstance,
+      })
+      wrapper = createWrapper()
+      await wrapper.find('[data-testid="option-card-database"]').trigger('click')
+
+      await wrapper.find('.load-instance-btn').trigger('click')
+      await flushPromises()
+
+      expect(mockInstanceProcessing.processFromDb).toHaveBeenCalled()
+      expect(wrapper.emitted('instanceSelected')).toBeTruthy()
     })
 
     test('processFromDb success emits instanceSelected and externalEtlData', async () => {
@@ -1025,7 +1048,7 @@ describe('CreateExecutionLoadInstance', () => {
       expect(wrapper.find('.load-parameters-btn').exists()).toBe(false)
     })
 
-    test('renders the alternative column when fields are configured', async () => {
+    test('offers the parameters as a data source when fields are configured', async () => {
       withFields([
         { id: 'year', titleKey: 'fields.year', type: 'number' },
         { id: 'name', titleKey: 'fields.name', type: 'text' },
@@ -1033,6 +1056,10 @@ describe('CreateExecutionLoadInstance', () => {
       wrapper = createWrapper()
       await nextTick()
       expect(wrapper.vm.showAlternativeColumn).toBe(true)
+
+      await wrapper.find('[data-testid="option-card-parameters"]').trigger('click')
+
+      expect(wrapper.find('.parameters-fields').exists()).toBe(true)
       expect(wrapper.find('.load-parameters-btn').exists()).toBe(true)
     })
 

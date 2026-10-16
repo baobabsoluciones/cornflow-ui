@@ -20,11 +20,39 @@ The execution management section handles the complete lifecycle of optimization 
   - Execution metadata display (creation date, solver used, status, etc.)
 - **Location**: `HistoryExecutionView.vue`
 
+The history is a card with a filter bar, the number of executions and one table whose rows are
+grouped by day:
+
+```
+[🔍 Search execution…] [🏭 Plant: All ▾] [📅 Date: Last 30 days ▾] [◎ Execution state: Running ✕] [+ Add filter]
+Clear filters
+12 executions
+Time · End · User · Name · …
+Thursday, 15 October 2026 · 3 executions
+```
+
+- **Search**: keeps the executions whose name or description contains the text.
+- **Table filters** (`executionFilters`, see below): one chip each, always there.
+- **Date**: today, yesterday, last 7 days, last 30 days (the default) or a custom range.
+- **Add filter**: a searchable menu, grouped, with the filters a user can add as chips and remove
+  with their cross: execution state, user, solution state, solver and, when replanning is on
+  (`enableRecalculationOnMasterEdit`), origin (model or replanning). Their options show how many
+  executions each one leaves, given the search and the other filters.
+- **Clear filters**: back to how the history opens.
+
+The table filters and the date range go to the executions list request; the search and the added
+filters work on the list already loaded. That list brings at most 100 executions per date range;
+when it comes back full, the history says so and asks to narrow the date.
+
+The chips are generic components (`components/core/filters/`: `FilterChip`, `DateFilterChip`,
+`AddFilterMenu`); the filters on the loaded list live in
+`composables/project-execution/useExecutionHistoryFilters.ts`.
+
 ### Execution history filters (optional)
 
-Selectors next to the date filters of the history (e.g. plant, program). They decide which
-executions the history lists, and nothing else: a loaded execution shows as it is, and the
-master-data tables keep their own column filters.
+Chips of the history filter bar (e.g. plant, program). They decide which executions the history
+lists, and nothing else: a loaded execution shows as it is, and the master-data tables keep their
+own column filters.
 
 Their options come from a frontend-automation table (see
 [Selectors fed by frontend-automation tables](#selectors-fed-by-frontend-automation-tables)):
@@ -1377,6 +1405,10 @@ Controls the config fields step and value loading for execution parameters.
   - If true, loads config field values from the instance (or default) when the step is skipped.
   - Used in ProjectExecutionView.vue to call value loading after the instance is loaded or before steps that need config values.
 
+With the step shown, loading the data fills the fields that declare a `source` with the value the
+loaded file has for them, and the user can still change it. The step tags those fields "From the
+file". A field the file does not have keeps its value (its default, until the user types one).
+
 #### Configuration parameters step: configFields
 
 Defines the configuration fields for execution parameters. Each field can have:
@@ -1451,32 +1483,35 @@ the text is the row's `name`, and the value it stores in the config (and sends t
 row's `id`. See [Selectors fed by frontend-automation tables](#selectors-fed-by-frontend-automation-tables);
 without frontend automation the select has no options.
 
-**Where they are asked.** In the load-instance step itself, in the left column under the dropzone, so they read as part of loading rather than as a separate stage. They are not a third alternative next to `alternativeParameterFields`: that column is an **either/or** with the upload, while these travel with whichever way the data is loaded.
+**Where they are asked.** In the load-instance step itself, before choosing where the data comes
+from, so they read as part of loading rather than as a separate stage:
 
 ```
-┌───────────────────────────┐  │  ┌────────────────────┐
-│    drop your files        │  │  │ From: ___________  │
-│                           │ ─O─ │ To:   ___________  │
-├───────────────────────────┤  │  └────────────────────┘
-│ Days           Date       │  │
-│ [3        ]    [01/09/26] │  │
-│ Seed                      │  │
-│ [         ]               │  │
-└───────────────────────────┘  │
-  [Load files]                      [Load parameters]
+DATA THE INSTANCE WILL BE LOADED WITH
+Plant         [Štip ▾]                      ← join_from
+Mode          [ Operative ][ Strategic ]    ← a select with up to 3 options shows them as cards
+Date          [01/09/2026]
+Data source   [ Master tables ][ File ][ Parameters ]
+              (the dropzone, the master-tables summary or the parameters form)
+                                              ✓ Data loaded   [ Load instance ]
 ```
 
-The fields go two per row, wrapping as needed: three of them give a row of two and a row
-of one. On a narrow screen they fall back to a single column. Elsewhere the component
-keeps its historical stacked layout, so no other step changes.
+- **Data source**: the file is always offered; master tables when `etl.useEtlBackend` and
+  `etl.enableLoadFromDb` are set, and the parameters form when `etl.alternativeParameterFields` has
+  fields. With only the file there is nothing to pick and the dropzone takes the row.
+- **One button** loads from the picked source.
 
-The panel is shown whenever the config schema marks at least one parameter with `pre_etl: true`. In edit mode there is no load step at all -- the instance already exists and no ETL call is made -- so those parameters go back to the regular parameters step.
+Each parameter takes a row, with its name on the left; the parameters step uses the same rows.
 
-**Nothing is asked twice.** While the load step is asking for them, they are removed from the regular parameters step. Offering them again there would mislead: by then the ETL has already filtered the data, and a new value would not reload it. If every config parameter is pre-ETL, the regular step is dropped rather than shown empty.
+The section is shown whenever the config schema marks at least one parameter with `pre_etl: true`. In
+edit mode there is no load step at all -- the instance already exists -- so those parameters go back
+to the regular parameters step.
 
-**What blocks what.** A missing required pre-ETL value disables the **load** buttons (files, load from DB and load parameters), not **Continue**. Loading is the point of no return: once the data is in, filtering it differently means loading it again. **Continue** keeps its usual condition, an instance being loaded.
+**Nothing is asked twice.** While the load step is asking for them, they are removed from the regular parameters step. Offering them again there would mislead: by then the data has already been loaded with them, and a new value would not reload it. If every config parameter is pre-ETL, the regular step is dropped rather than shown empty.
 
-**Changing one after loading.** The loaded instance is kept -- throwing away a load over a keystroke would be worse -- but a warning appears in the panel saying the loaded data was not filtered with the new value and the data has to be loaded again. The new value still reaches the data checks and the execution.
+**What blocks what.** A missing required pre-ETL value disables the **load** button, not **Continue**. Loading is the point of no return: once the data is in, filtering it differently means loading it again. **Continue** keeps its usual condition, an instance being loaded.
+
+**Changing one after loading.** The loaded instance is kept -- throwing away a load over a keystroke would be worse -- but a warning appears under the parameters saying the loaded data was not filtered with the new value, with a **Load again** button. The new value still reaches the data checks and the execution.
 
 **Required vs optional.** A parameter is mandatory only when the config schema's root `required` lists it. A nullable one such as `date` can be left blank on purpose - that is how the backend is told to resolve it itself. For the same reason an empty value is never appended to the ETL form: a loose form field cannot carry `null`, so leaving the key out is what says "not given".
 
@@ -1490,7 +1525,7 @@ The panel is shown whenever the config schema marks at least one parameter with 
 
 **Labels.** The fields use the `configParams.<key>` translation keys like any other config parameter, so a new pre-ETL parameter needs its label added in `src/app/plugins/locales/`.
 
-Implementation: `CreateExecutionLoadInstance.vue` (the panel, the button gating and the changed-after-load warning), `CreateExecutionConfigParams.vue` (`scope` prop: `'preEtl' | 'standard' | 'all'`, and `layout`: `'stack' | 'grid'`), `ProjectExecutionView.vue` (`preEtlAskedInLoadStep`, `configParamsScope`), `schemaUtils.ts` (`getPreEtlConfigFields`, `pickPreEtlConfigValues`), `useInstanceProcessing.ts`, `InstanceRepository.ts`.
+Implementation: `CreateExecutionLoadInstance.vue` (the parameters, the data source, the load button and the changed-after-load warning), `CreateExecutionConfigParams.vue` (`scope` prop: `'preEtl' | 'standard' | 'all'`, and `layout`: `'stack' | 'grid' | 'form'`), `components/core/OptionCards.vue`, `ProjectExecutionView.vue` (`preEtlAskedInLoadStep`, `configParamsScope`), `schemaUtils.ts` (`getPreEtlConfigFields`, `pickPreEtlConfigValues`), `useInstanceProcessing.ts`, `InstanceRepository.ts`.
 
 #### Instance editing: allowEditInstance
 

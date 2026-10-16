@@ -1,9 +1,6 @@
 <template>
   <v-card class="rounded-lg pa-10" style="background-color: white !important">
-    <v-row v-if="$slots.filters" class="core-panel-data__filters">
-      <slot name="filters"></slot>
-    </v-row>
-    <v-row :style="{ marginTop: $slots.filters ? '-8px' : '-30px' }">
+    <v-row style="margin-top: -30px">
       <v-col v-for="option in regularOptions" :key="option.value" cols="auto">
         <v-checkbox
           v-model="selectedDateRange"
@@ -118,11 +115,6 @@ export default {
 </script>
 
 <style scoped>
-/* Filters above the date options (e.g. the plant), pulled up into the card padding like them */
-.core-panel-data__filters {
-  margin-top: -24px;
-}
-
 .v-expansion-panel-title {
   background-color: #f2f4f8 !important;
   font-weight: 500 !important;

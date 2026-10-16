@@ -9,95 +9,123 @@
       @dropdown-item-click="handleDropdownItemClick"
     />
 
-    <CorePanelData
-      :data="filteredData"
-      :checkboxOptions="labels"
-      :language="locale"
-      :noDataMessage="$t('versionHistory.noData')"
-      @date-range-changed="dateOptionSelected = $event"
-      class="overflow-y-auto"
-    >
-      <template v-if="visibleFilters.length > 0" #filters>
-        <v-col
-          v-for="filter in visibleFilters"
-          :key="filter.key"
-          cols="12"
-          sm="6"
-          md="4"
-          lg="3"
-        >
-          <v-select
-            :model-value="filterValue(filter)"
-            :items="filterItems(filter)"
-            item-title="title"
-            item-value="value"
-            :label="filterLabel(filter)"
-            :prepend-inner-icon="filter.icon || 'mdi-filter-variant'"
+    <section class="history-card">
+      <div class="history-filters">
+        <div class="history-filters__row">
+          <v-text-field
+            v-model="historyFilters.state.search"
+            class="history-filters__search"
+            prepend-inner-icon="mdi-magnify"
+            :placeholder="$t('versionHistory.filterBar.search')"
             variant="outlined"
             density="compact"
             hide-details
+            clearable
+            data-testid="history-search"
+          />
+          <FilterChip
+            v-for="filter in visibleFilters"
+            :key="filter.key"
+            :label="filterLabel(filter)"
+            :icon="filter.icon || 'mdi-filter-variant'"
+            :value="generalStore.executionFilterValues[filter.key] ?? null"
+            :options="filterOptions(filter)"
+            :all-label="$t('versionHistory.filterAll')"
             :data-testid="`history-filter-${filter.key}`"
-            @update:model-value="pickFilterValue(filter, $event)"
+            @pick="pickFilterValue(filter, $event)"
           />
-        </v-col>
-      </template>
-      <template #extra-filters>
-        <v-col v-if="showReplannedFilter" cols="auto">
-          <v-checkbox
-            v-model="hideReplanned"
-            :label="$t('versionHistory.hideReplanned')"
-            color="primary"
-            class="custom-checkbox"
+          <DateFilterChip
+            v-model="dateOptionSelected"
+            v-model:from="customSelectedDates.startDate"
+            v-model:to="customSelectedDates.endDate"
+            :label="$t('versionHistory.filterBar.date')"
+            :presets="datePresets"
+            :from-label="$t('versionHistory.from')"
+            :to-label="$t('versionHistory.to')"
+            data-testid="history-filter-date"
           />
-        </v-col>
-      </template>
-      <template #custom-checkbox>
-        <div style="margin-top: -10px !important; display: flex">
-          <v-col class="v-col-s-6 v-col-md-6 v-col-xl-3">
-            <v-text-field
-              :label="$t('versionHistory.from')"
-              type="date"
-              v-model="customSelectedDates.startDate"
-            ></v-text-field>
-          </v-col>
-          <v-col class="v-col-s-6 v-col-md-6 v-col-xl-3">
-            <v-text-field
-              :label="$t('versionHistory.to')"
-              type="date"
-              v-model="customSelectedDates.endDate"
-            ></v-text-field>
-          </v-col>
+          <FilterChip
+            v-for="definition in historyFilters.addedDefinitions"
+            :key="definition.key"
+            :label="$t(definition.labelKey)"
+            :icon="definition.icon"
+            :value="historyFilters.state.picked[definition.key] ?? null"
+            :options="historyFilters.optionsOf(definition.key, rows)"
+            :all-label="$t('versionHistory.filterAll')"
+            show-counts
+            removable
+            :remove-label="$t('versionHistory.filterBar.remove')"
+            :auto-open="definition.key === justAddedFilter"
+            :data-testid="`history-filter-${definition.key}`"
+            @pick="historyFilters.pick(definition.key, $event)"
+            @remove="historyFilters.remove(definition.key)"
+          />
+          <AddFilterMenu
+            v-if="addFilterGroups.length > 0"
+            :label="$t('versionHistory.filterBar.addFilter')"
+            :search-placeholder="$t('versionHistory.filterBar.searchField')"
+            :no-matches-text="$t('versionHistory.filterBar.noFields')"
+            :groups="addFilterGroups"
+            data-testid="history-add-filter"
+            @add="addHistoryFilter"
+          />
         </div>
-      </template>
-      <template v-slot:table="slotProps">
-        <div class="history-execution-table-scroll">
+        <button
+          v-if="anyFilterActive"
+          type="button"
+          class="history-filters__clear"
+          data-testid="history-clear-filters"
+          @click="clearFilters"
+        >
+          {{ $t('versionHistory.filterBar.clear') }}
+        </button>
+      </div>
+
+      <div class="history-summary" data-testid="history-summary">
+        <span>{{ $t('versionHistory.filterBar.count', executionCount) }}</span>
+        <span v-if="limitReached" class="history-summary__notice">
+          · {{ $t('versionHistory.filterBar.limitNotice', { limit: listLimit }) }}
+        </span>
+      </div>
+
+      <div v-if="filteredData.length > 0" class="history-table">
+        <!-- One header for every day: the day tables below share its column widths. -->
+        <div class="history-table__head">
           <ProjectExecutionsTable
-            :executionsByDate="slotProps.itemData"
+            :executionsByDate="[]"
             :showFooter="false"
-            :showHeaders="slotProps.showHeaders"
+            :showHeaders="true"
+            :formatDateByTime="true"
+            :useFixedWidth="true"
+          />
+        </div>
+        <template v-for="group in filteredData" :key="group.date">
+          <div class="history-table__day" data-testid="history-day">
+            <span class="history-table__day-date">{{ dayTitle(group.date) }}</span>
+            <span class="history-table__day-count">{{
+              $t('versionHistory.filterBar.count', group.data.length)
+            }}</span>
+          </div>
+          <ProjectExecutionsTable
+            :executionsByDate="group.data"
+            :showFooter="false"
+            :showHeaders="false"
             :formatDateByTime="true"
             :useFixedWidth="true"
             :loadingExecutions="loadingExecutions"
             :deletingExecutions="deletingExecutions"
             @loadExecution="loadExecution"
             @deleteExecution="deleteExecution"
-          ></ProjectExecutionsTable>
-        </div>
-      </template>
+          />
+        </template>
+      </div>
       <!--
-        Override the default "no data" slot so we never show the empty-state
-        message while a fetch is still in flight. Two reasons:
-          1. UX: right after login `fetchData` runs once before any data has
-             arrived; without this, users saw "no hay datos" for a fraction
-             of a second and assumed there were no executions.
-          2. Token race: if the API call beats the token being written to
-             sessionStorage, the backend returns 401 ("signature"); the store
-             catches it silently and returns undefined, which used to render
-             as "no data" forever (until reload). We now retry once
-             transparently in `fetchData`, and keep the spinner visible until
-             it succeeds.
+        Never show the empty-state message while a fetch is still in flight:
+        right after login `fetchData` runs once before any data has arrived,
+        and a token race can make the first request fail; `fetchData` retries
+        once and the spinner stays until it succeeds.
       -->
-      <template v-slot:no-data>
+      <div v-else class="history-empty">
         <output v-if="loadingData" class="history-loading" aria-live="polite">
           <v-progress-circular indeterminate color="primary" size="32" width="3" />
           <span class="history-loading__text">
@@ -105,35 +133,41 @@
           </span>
         </output>
         <span v-else>{{ $t('versionHistory.noData') }}</span>
-      </template>
-    </CorePanelData>
+      </div>
+    </section>
   </div>
 </template>
 
 <script>
 import ProjectExecutionsTable from '@cornflow-ui/core/components/project-execution/ProjectExecutionsTable.vue'
-import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
 import CoreTitleView from '@cornflow-ui/core/components/core/CoreTitleView.vue'
-import CorePanelData from '@cornflow-ui/core/components/core/CorePanelData.vue'
+import FilterChip from '@cornflow-ui/core/components/core/filters/FilterChip.vue'
+import DateFilterChip from '@cornflow-ui/core/components/core/filters/DateFilterChip.vue'
+import AddFilterMenu from '@cornflow-ui/core/components/core/filters/AddFilterMenu.vue'
+import { useExecutionHistoryFilters } from '@cornflow-ui/core/composables/project-execution/useExecutionHistoryFilters'
+import { EXECUTIONS_LIST_LIMIT } from '@cornflow-ui/core/repositories/ExecutionRepository'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import {
   formatLocalDateKey,
   formatLocalTimeHHmm,
   parseLocalDateKey,
 } from '@cornflow-ui/core/utils/date'
-import { hasFilterValue } from '@cornflow-ui/core/utils/executionFilters'
+import { formatDateForHeaders } from '@cornflow-ui/core/utils/data_io'
 import { inject } from 'vue'
-import appConfig from '@/app/config'
 
-/** Item value of "All" in a filter select (the store keeps it as `null`). */
-const ALL_FILTER_VALUE = '__all__'
+/** Date range the history opens with. */
+const DEFAULT_DATE_OPTION = 'lastMonth'
 
 export default {
   components: {
     ProjectExecutionsTable,
-    CoreButton,
     CoreTitleView,
-    CorePanelData,
+    FilterChip,
+    DateFilterChip,
+    AddFilterMenu,
+  },
+  setup() {
+    return { historyFilters: useExecutionHistoryFilters() }
   },
   data() {
     return {
@@ -157,7 +191,9 @@ export default {
       // Pending id of the fetchData retry timer, cleared on unmount/deactivate so a
       // late retry can't run on a torn-down component (would call `$t` on nothing).
       fetchRetryTimer: null,
-      hideReplanned: false,
+      // Filter added last, whose menu opens as it appears.
+      justAddedFilter: null,
+      listLimit: EXECUTIONS_LIST_LIMIT,
       // Start `true` so the spinner is visible from the very first paint,
       // before `activated()` fires `fetchData`. Avoids the flash where
       // "no hay datos" briefly renders for users who just logged in.
@@ -168,7 +204,7 @@ export default {
     this.showSnackbar = inject('showSnackbar')
   },
   mounted() {
-    this.dateOptionSelected = null
+    this.dateOptionSelected = DEFAULT_DATE_OPTION
   },
   activated() {
     this.fetchData()
@@ -193,6 +229,9 @@ export default {
     },
     locale() {
       return this.$i18n.locale
+    },
+    datePresets() {
+      return this.labels.map(({ label, value }) => ({ label, value }))
     },
     labels() {
       return [
@@ -238,17 +277,49 @@ export default {
     filterParamsSignature() {
       return JSON.stringify(this.generalStore.getExecutionFilterParams)
     },
-    showReplannedFilter() {
-      return appConfig.getCore().parameters.enableRecalculationOnMasterEdit
+    /** Every loaded execution, across days. */
+    rows() {
+      return this.data.flatMap((group) => group.data)
     },
+    /** The days with the executions that pass the search and the added filters. */
     filteredData() {
-      if (!this.hideReplanned) return this.data
       return this.data
         .map((group) => ({
           ...group,
-          data: group.data.filter((item) => !item.config?.replanning),
+          data: this.historyFilters.filterRows(group.data),
         }))
         .filter((group) => group.data.length > 0)
+    },
+    executionCount() {
+      return this.filteredData.reduce((total, group) => total + group.data.length, 0)
+    },
+    /** The list came back full: older executions in the range are not loaded. */
+    limitReached() {
+      return Boolean(this.selectedDates.startDate) && this.rows.length >= EXECUTIONS_LIST_LIMIT
+    },
+    /** Filters the user can still add, by group. */
+    addFilterGroups() {
+      return ['execution', 'solution']
+        .map((group) => ({
+          key: group,
+          title: this.$t(`versionHistory.filterBar.groups.${group}`),
+          fields: this.historyFilters.availableDefinitions
+            .filter((definition) => definition.group === group)
+            .map((definition) => ({
+              key: definition.key,
+              title: this.$t(definition.labelKey),
+              icon: definition.icon,
+            })),
+        }))
+        .filter((group) => group.fields.length > 0)
+    },
+    /** Anything away from how the history opens: search, filters or another date range. */
+    anyFilterActive() {
+      return (
+        this.historyFilters.isActive ||
+        this.dateOptionSelected !== DEFAULT_DATE_OPTION ||
+        Object.keys(this.generalStore.getExecutionFilterParams).length > 0
+      )
     },
     dropdownMenuItems() {
       return [
@@ -355,24 +426,27 @@ export default {
     filterOptions(filter) {
       return this.generalStore.executionFilterOptions[filter.key] ?? []
     },
-    filterItems(filter) {
-      return [
-        { title: this.$t('versionHistory.filterAll'), value: ALL_FILTER_VALUE },
-        ...this.filterOptions(filter),
-      ]
-    },
-    filterValue(filter) {
-      const value = this.generalStore.executionFilterValues[filter.key]
-      return hasFilterValue(value) ? value : ALL_FILTER_VALUE
-    },
     filterLabel(filter) {
       return this.$te(filter.labelKey) ? this.$t(filter.labelKey) : filter.labelKey
     },
     pickFilterValue(filter, value) {
-      this.generalStore.setExecutionFilterValue(
-        filter.key,
-        value === ALL_FILTER_VALUE ? null : value,
-      )
+      this.generalStore.setExecutionFilterValue(filter.key, value)
+    },
+    addHistoryFilter(key) {
+      this.historyFilters.add(key)
+      this.justAddedFilter = key
+    },
+    /** Back to how the history opens: no search, no filters, the default date range. */
+    clearFilters() {
+      this.historyFilters.clear()
+      this.justAddedFilter = null
+      for (const key of Object.keys(this.generalStore.getExecutionFilterParams)) {
+        this.generalStore.setExecutionFilterValue(key, null)
+      }
+      this.dateOptionSelected = DEFAULT_DATE_OPTION
+    },
+    dayTitle(date) {
+      return formatDateForHeaders(date, this.locale)
     },
     navigateToCreateExecution() {
       this.$router.push('/project-execution')
@@ -598,20 +672,115 @@ export default {
 
 <style>
 .history-execution-view {
-  /* The table now fits its container (table-layout: fixed + width: 100%),
-     so the view no longer needs to scroll horizontally. */
+  /* The table fits its container (table-layout: fixed + width: 100%), so the
+     view does not need to scroll horizontally. */
   overflow-x: hidden;
 }
 
-.history-execution-table-scroll {
-  width: 100%;
-  box-sizing: border-box;
+.history-card {
+  border-radius: 16px;
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
+  overflow: hidden;
 }
 
-.history-execution-view :deep(.v-expansion-panel-text),
-.history-execution-view :deep(.v-expansion-panel-text__wrapper) {
-  overflow: visible !important;
-  padding-right: 0 !important;
+.history-filters {
+  padding: 20px 28px 16px;
+}
+
+.history-filters__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.history-filters__search {
+  flex: 0 1 320px;
+  min-width: 220px;
+}
+
+.history-filters__search .v-field {
+  border-radius: 10px;
+}
+
+.history-filters__search .v-field__input {
+  min-height: 44px;
+}
+
+.history-filters__clear {
+  margin-top: 12px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.history-filters__clear:hover {
+  text-decoration: underline;
+}
+
+.history-summary {
+  padding: 12px 28px;
+  border-top: 1px solid #eceef2;
+  border-bottom: 1px solid #eceef2;
+  background-color: #f8f9fb;
+  font-size: 0.875rem;
+  color: var(--subtitle);
+}
+
+.history-summary__notice {
+  color: var(--warning, #b26a00);
+}
+
+.history-table {
+  padding: 0 8px 8px;
+}
+
+/* The header-only table shows its column titles and nothing else. */
+.history-table__head .v-data-table-rows-no-data {
+  display: none;
+}
+
+.history-table .v-table thead th {
+  border-left: none !important;
+  border-right: none !important;
+  background-color: #fff !important;
+  font-weight: 600 !important;
+  color: var(--title) !important;
+}
+
+/* Spacer rows of the virtual table take no room, so the days follow each other closely. */
+.history-table tbody > tr[style*='height: 0px'] > td {
+  padding: 0 !important;
+  border: 0 !important;
+  line-height: 0 !important;
+}
+
+.history-table__day {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid #eceef2;
+  border-bottom: 1px solid #eceef2;
+  background-color: #f8f9fb;
+}
+
+.history-table__day-date {
+  font-weight: 700;
+  color: var(--title);
+}
+
+.history-table__day-count {
+  font-size: 0.8125rem;
+  color: var(--subtitle);
+}
+
+.history-empty {
+  display: flex;
+  justify-content: center;
+  padding: 32px;
+  color: var(--subtitle);
 }
 
 .history-loading {

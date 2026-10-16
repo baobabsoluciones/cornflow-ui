@@ -119,6 +119,9 @@ async function pollForRegeneratedFiles(
   return null
 }
 
+/** Most executions a list with a date range brings (the newest first). */
+export const EXECUTIONS_LIST_LIMIT = 100
+
 export default class ExecutionRepository {
   /**
    * Get executions created on the given date range. `filterParams` (the picked executions history
@@ -140,7 +143,7 @@ export default class ExecutionRepository {
     } = {
       ...filterParams,
       schema: name,
-      limit: 100,
+      limit: EXECUTIONS_LIST_LIMIT,
     }
 
     if (dateTo) {

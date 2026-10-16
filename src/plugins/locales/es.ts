@@ -258,6 +258,16 @@ export default {
           alternativeParametersHint:
             'Introduce los siguientes parámetros y cárgalos como datos de instancia',
           preEtlParamsHint: 'Datos con los que se cargará la instancia',
+          source: 'Origen de los datos',
+          sourceDatabase: 'Tablas maestras',
+          sourceDatabaseDescription: 'Datos actuales de las tablas maestras',
+          sourceFile: 'Archivo',
+          sourceFileDescription: 'Sube un archivo con los datos',
+          sourceParameters: 'Parámetros',
+          sourceParametersDescription: 'Crea la instancia a partir de unos pocos datos',
+          databaseSummary: 'Se cargarán los datos actuales de las tablas maestras.',
+          reload: 'Volver a cargar',
+          loaded: 'Datos cargados',
           preEtlChangedAfterLoad:
             'Has cambiado estos datos después de cargar. Vuelve a cargar para que se apliquen a la instancia.',
           noParametersDataError: 'No hay datos de parámetros para enviar',
@@ -454,6 +464,32 @@ export default {
     password_match: 'Las contraseñas no coinciden',
   },
   versionHistory: {
+    filterBar: {
+      search: 'Buscar ejecución…',
+      addFilter: 'Añadir filtro',
+      searchField: 'Buscar campo…',
+      noFields: 'Ningún campo coincide',
+      clear: 'Limpiar filtros',
+      remove: 'Quitar filtro',
+      date: 'Fecha',
+      count: '{n} ejecución | {n} ejecuciones',
+      limitNotice: 'Se muestran las {limit} más recientes: acota la fecha para ver el resto.',
+      groups: {
+        execution: 'Ejecución',
+        solution: 'Solución',
+      },
+      fields: {
+        state: 'Estado ejecución',
+        solutionState: 'Estado solución',
+        user: 'Usuario',
+        solver: 'Solver',
+        origin: 'Origen',
+      },
+      origin: {
+        model: 'Modelo',
+        replanning: 'Replanificación',
+      },
+    },
     filterAll: 'Todos',
     title: 'Historial de versiones',
     description:
@@ -468,7 +504,6 @@ export default {
     noData: 'No se encontraron datos para el rango de fechas seleccionado',
     loading: 'Cargando ejecuciones...',
     createNewExecution: 'Crear nueva ejecución',
-    hideReplanned: 'Mostrar solo ejecuciones del modelo',
   },
   inputOutputData: {
     title: 'Gestión del proyecto',
@@ -1005,6 +1040,7 @@ export default {
     errors: 'errores',
   },
   configParams: {
+    fromFile: 'Del archivo',
     msg: 'Mensajes',
     msgPlaceholder: 'Activar o desactivar mensajes',
     timeLimit: 'Límite de tiempo',

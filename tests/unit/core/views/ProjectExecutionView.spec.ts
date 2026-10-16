@@ -685,6 +685,38 @@ describe('ProjectExecutionView', () => {
       expect(wrapper.vm.newExecution.config.field3).toBe('default-value')
     })
 
+    test('with the parameters step shown, loading data fills the fields read from the file', async () => {
+      const { wrapper } = createWrapper({
+        configFieldsConfig: { showConfigFieldsStep: true, autoLoadValues: false },
+        configFields: [
+          { key: 'gap', source: 'parameters', param: 'gap_rel', type: 'float', default: 0.01 },
+          { key: 'timeLimit', type: 'number', default: 600 },
+        ],
+      })
+      wrapper.vm.newExecution.config = { gap: 0.01, timeLimit: 300 }
+
+      await wrapper.vm.handleInstanceSelected({
+        data: { parameters: { gap_rel: '0.05' } },
+      })
+
+      expect(wrapper.vm.newExecution.config.gap).toBe(0.05)
+      expect(wrapper.vm.newExecution.config.timeLimit).toBe(300)
+    })
+
+    test('a field the file does not have keeps its value', async () => {
+      const { wrapper } = createWrapper({
+        configFieldsConfig: { showConfigFieldsStep: true, autoLoadValues: false },
+        configFields: [
+          { key: 'gap', source: 'parameters', param: 'gap_rel', type: 'float', default: 0.01 },
+        ],
+      })
+      wrapper.vm.newExecution.config = { gap: 0.02 }
+
+      await wrapper.vm.handleInstanceSelected({ data: { parameters: {} } })
+
+      expect(wrapper.vm.newExecution.config.gap).toBe(0.02)
+    })
+
     test('loadConfigFieldValues handles arrayByValue lookup type', async () => {
       const { wrapper } = createWrapper({
         configFields: [
@@ -1079,11 +1111,10 @@ describe('ProjectExecutionView', () => {
       )
     })
 
-    test('the load step does not own them when the deployment runs no ETL', () => {
+    test('the load step asks for them whatever the data source, so they are asked once', () => {
       const { wrapper } = withPreEtl({ etl: {} })
-      expect(wrapper.vm.preEtlAskedInLoadStep).toBe(false)
-      // Nothing is taken away from the regular parameters step.
-      expect(wrapper.vm.configParamsScope).toBe('all')
+      expect(wrapper.vm.preEtlAskedInLoadStep).toBe(true)
+      expect(wrapper.vm.configParamsScope).toBe('standard')
     })
 
     test('the load step does not own them when no field is marked pre_etl', () => {

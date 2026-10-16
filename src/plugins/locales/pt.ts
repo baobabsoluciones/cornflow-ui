@@ -240,6 +240,16 @@ export default {
           alternativeParametersHint:
             'Introduza os valores abaixo e carregue-os como dados da instância',
           preEtlParamsHint: 'Dados com os quais a instância será carregada',
+          source: 'Origem dos dados',
+          sourceDatabase: 'Tabelas mestras',
+          sourceDatabaseDescription: 'Dados atuais das tabelas mestras',
+          sourceFile: 'Ficheiro',
+          sourceFileDescription: 'Carregue um ficheiro com os dados',
+          sourceParameters: 'Parâmetros',
+          sourceParametersDescription: 'Criar a instância a partir de alguns valores',
+          databaseSummary: 'Serão carregados os dados atuais das tabelas mestras.',
+          reload: 'Carregar novamente',
+          loaded: 'Dados carregados',
           preEtlChangedAfterLoad:
             'Alterou estes valores depois do carregamento. Carregue novamente para que sejam aplicados à instância.',
           noParametersDataError: 'Não existem dados de parâmetros para enviar',
@@ -434,6 +444,32 @@ export default {
     password_match: 'As palavras-passe não coincidem',
   },
   versionHistory: {
+    filterBar: {
+      search: 'Procurar execução…',
+      addFilter: 'Adicionar filtro',
+      searchField: 'Procurar campo…',
+      noFields: 'Nenhum campo corresponde',
+      clear: 'Limpar filtros',
+      remove: 'Remover filtro',
+      date: 'Data',
+      count: '{n} execução | {n} execuções',
+      limitNotice: 'A mostrar as {limit} mais recentes: reduza a data para ver o resto.',
+      groups: {
+        execution: 'Execução',
+        solution: 'Solução',
+      },
+      fields: {
+        state: 'Estado da execução',
+        solutionState: 'Estado da solução',
+        user: 'Utilizador',
+        solver: 'Solver',
+        origin: 'Origem',
+      },
+      origin: {
+        model: 'Modelo',
+        replanning: 'Replaneamento',
+      },
+    },
     filterAll: 'Todos',
     title: 'Histórico de versões',
     description:
@@ -448,7 +484,6 @@ export default {
     noData: ' Não foram encontrados dados para o intervalo de datas selecionado',
     loading: 'A carregar execuções...',
     createNewExecution: 'Criar nova execução',
-    hideReplanned: 'Mostrar apenas execuções do modelo',
   },
   inputOutputData: {
     title: 'Gestão do projeto',
@@ -981,6 +1016,7 @@ export default {
     errors: 'erros',
   },
   configParams: {
+    fromFile: 'Do ficheiro',
     msg: 'Mensagens',
     msgPlaceholder: 'Ativar ou desativar mensagens',
     timeLimit: 'Limite de tempo',

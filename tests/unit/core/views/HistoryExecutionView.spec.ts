@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
@@ -26,19 +26,41 @@ vi.mock('@cornflow-ui/core/components/core/CoreTitleView.vue', () => ({
   }
 }))
 
-// HistoryExecutionView uses CorePanelData 
-vi.mock('@cornflow-ui/core/components/core/CorePanelData.vue', () => ({
+// The filter chips and the "Add filter" menu open Vuetify menus (overlays jsdom cannot
+// position); here they only show what the view hands them and emit what a user would pick.
+vi.mock('@cornflow-ui/core/components/core/filters/FilterChip.vue', () => ({
   default: {
-    name: 'CorePanelData',
-    template:
-      '<div data-testid="m-panel-data" class="mt-5">' +
-      '<slot name="filters" />' +
-      '<slot name="extra-filters" />' +
-      '<slot name="custom-checkbox" />' +
-      '<slot name="table" :itemData="[]" :showHeaders="true" />' +
-      '</div>',
-    props: ['data', 'checkboxOptions', 'language', 'noDataMessage'],
-    emits: ['date-range-changed'],
+    name: 'CoreFilterChip',
+    template: '<div class="filter-chip-stub">{{ label }}</div>',
+    props: {
+      label: String,
+      icon: String,
+      value: { default: null },
+      options: Array,
+      allLabel: String,
+      showCounts: Boolean,
+      removable: Boolean,
+      removeLabel: String,
+      autoOpen: Boolean,
+      keepOpenValue: { default: undefined },
+    },
+    emits: ['pick', 'remove'],
+  },
+}))
+vi.mock('@cornflow-ui/core/components/core/filters/DateFilterChip.vue', () => ({
+  default: {
+    name: 'CoreDateFilterChip',
+    template: '<div class="date-filter-stub">{{ label }}</div>',
+    props: ['label', 'modelValue', 'presets', 'from', 'to', 'fromLabel', 'toLabel'],
+    emits: ['update:modelValue', 'update:from', 'update:to'],
+  },
+}))
+vi.mock('@cornflow-ui/core/components/core/filters/AddFilterMenu.vue', () => ({
+  default: {
+    name: 'CoreAddFilterMenu',
+    template: '<div class="add-filter-stub">{{ label }}</div>',
+    props: ['label', 'searchPlaceholder', 'noMatchesText', 'groups'],
+    emits: ['add'],
   },
 }))
 
@@ -63,7 +85,27 @@ const createWrapper = () => {
           last7days: 'Last 7 days',
           lastMonth: 'Last month',
           custom: 'Custom',
-          filterAll: 'All'
+          filterAll: 'All',
+          filterBar: {
+            search: 'Search execution…',
+            addFilter: 'Add filter',
+            searchField: 'Search field…',
+            noFields: 'No field matches',
+            clear: 'Clear filters',
+            remove: 'Remove filter',
+            date: 'Date',
+            count: '{n} execution | {n} executions',
+            limitNotice: 'Showing the {limit} most recent',
+            groups: { execution: 'Execution', solution: 'Solution' },
+            fields: {
+              state: 'Execution state',
+              solutionState: 'Solution state',
+              user: 'User',
+              solver: 'Solver',
+              origin: 'Origin',
+            },
+            origin: { model: 'Model', replanning: 'Replanning' },
+          },
         },
         projectExecution: {
           snackbar: {
@@ -104,7 +146,6 @@ const createWrapper = () => {
           template: '<div data-testid="core-title-view"></div>',
           props: ['icon', 'title', 'description', 'dropdownItems']
         },
-        CorePanelData: false,
         ProjectExecutionsTable: true,
         'v-col': { template: '<div><slot /></div>' },
         'v-text-field': {
@@ -144,14 +185,24 @@ describe('HistoryExecutionView', () => {
 
       expect(wrapper.find('.view-container').exists()).toBe(true)
       expect(wrapper.find('[data-testid="core-title-view"]').exists()).toBe(true)
-      expect(wrapper.find('[data-testid="m-panel-data"]').exists()).toBe(true)
+      expect(wrapper.find('.history-card').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="history-search"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="history-summary"]').exists()).toBe(true)
     })
 
-    test('renders custom date range picker in CorePanelData slot', () => {
+    test('hands the date chip its presets and the custom range labels', () => {
       const { wrapper } = createWrapper()
+      const dateChip = wrapper.findComponent({ name: 'CoreDateFilterChip' })
 
-      expect(wrapper.text()).toContain('From')
-      expect(wrapper.text()).toContain('To')
+      expect(dateChip.props('presets').map((preset: any) => preset.value)).toEqual([
+        'today',
+        'yesterday',
+        'last7days',
+        'lastMonth',
+        'custom',
+      ])
+      expect(dateChip.props('fromLabel')).toBe('From')
+      expect(dateChip.props('toLabel')).toBe('To')
     })
   })
 
@@ -165,14 +216,12 @@ describe('HistoryExecutionView', () => {
       expect(titleView.props('description')).toBe('View past executions')
     })
 
-    test('passes correct props to CorePanelData', () => {
-      const { wrapper } = createWrapper()
-      const panelData = wrapper.findComponent({ name: 'CorePanelData' })
+    test('shows the no-data message once nothing is loading', async () => {
+      const { wrapper, generalStore } = createWrapper()
+      generalStore.fetchExecutionsByDateRange.mockResolvedValue([])
+      await flushPromises()
 
-      expect(Array.isArray(panelData.props('data'))).toBe(true)
-      expect(Array.isArray(panelData.props('checkboxOptions'))).toBe(true)
-      expect(panelData.props('language')).toBe('en')
-      expect(panelData.props('noDataMessage')).toBe('No data available')
+      expect(wrapper.find('.history-empty').text()).toBe('No data available')
     })
   })
 
@@ -181,9 +230,6 @@ describe('HistoryExecutionView', () => {
       const { wrapper } = createWrapper()
       
       expect(Array.isArray(wrapper.vm.data)).toBe(true)
-      expect(wrapper.vm.dateOptionSelected).toBeNull()
-      expect(wrapper.vm.selectedDates.startDate).toBeNull()
-      expect(wrapper.vm.selectedDates.endDate).toBeNull()
       expect(wrapper.vm.customSelectedDates.startDate).toBeNull()
       expect(wrapper.vm.customSelectedDates.endDate).toBeNull()
       expect(wrapper.vm.loadingExecutions instanceof Set).toBe(true)
@@ -230,10 +276,16 @@ describe('HistoryExecutionView', () => {
       expect(wrapper.vm.showSnackbar).toBe(mockShowSnackbar)
     })
 
-    test('sets dateOptionSelected to null on mounted', () => {
+    test('opens on the last 30 days', async () => {
       const { wrapper } = createWrapper()
-      
-      expect(wrapper.vm.dateOptionSelected).toBeNull()
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.vm.dateOptionSelected).toBe('lastMonth')
+      const monthAgo = new Date()
+      monthAgo.setMonth(monthAgo.getMonth() - 1)
+      expect(wrapper.vm.selectedDates.startDate.toDateString()).toBe(
+        monthAgo.toDateString(),
+      )
     })
 
     test('calls fetchData on activated', async () => {
@@ -560,19 +612,19 @@ describe('HistoryExecutionView', () => {
     ]
     const parameters = appConfig.getCore().parameters as Record<string, unknown>
 
-    const selectOf = (wrapper: any, key: string) =>
+    const chipOf = (wrapper: any, key: string) =>
       wrapper
-        .findAllComponents({ name: 'VSelect' })
-        .find((select: any) => select.attributes('data-testid') === `history-filter-${key}`)
+        .findAllComponents({ name: 'CoreFilterChip' })
+        .find((chip: any) => chip.attributes('data-testid') === `history-filter-${key}`)
 
     afterEach(() => {
       parameters.executionFilters = []
     })
 
-    test('shows no filter when the app declares none', () => {
+    test('shows no table filter when the app declares none', () => {
       const { wrapper } = createWrapper()
 
-      expect(wrapper.findAllComponents({ name: 'VSelect' })).toHaveLength(0)
+      expect(chipOf(wrapper, 'plant_id')).toBeUndefined()
     })
 
     test('offers "All" and the rows of the filter table, and sends the pick to the store', async () => {
@@ -583,21 +635,15 @@ describe('HistoryExecutionView', () => {
       generalStore.setExecutionFilterValue = vi.fn()
       await wrapper.vm.$nextTick()
 
-      const select = selectOf(wrapper, 'plant_id')
-      expect(select.text()).toBe('Plant')
-      const items = select.props('items')
-      expect(items.map((item: { title: string }) => item.title)).toEqual([
-        'All',
-        'North',
-        'South',
-      ])
-      expect(select.props('modelValue')).toBe(items[0].value)
+      const chip = chipOf(wrapper, 'plant_id')
+      expect(chip.props('label')).toBe('Plant')
+      expect(chip.props('allLabel')).toBe('All')
+      expect(chip.props('options')).toEqual(plants)
+      expect(chip.props('value')).toBeNull()
+      expect(chip.props('removable')).toBeFalsy()
 
-      select.vm.$emit('update:modelValue', 2)
+      chip.vm.$emit('pick', 2)
       expect(generalStore.setExecutionFilterValue).toHaveBeenCalledWith('plant_id', 2)
-
-      select.vm.$emit('update:modelValue', items[0].value)
-      expect(generalStore.setExecutionFilterValue).toHaveBeenLastCalledWith('plant_id', null)
     })
 
     test('shows the picked value', async () => {
@@ -607,7 +653,7 @@ describe('HistoryExecutionView', () => {
       generalStore.executionFilterValues = { plant_id: 2 }
       await wrapper.vm.$nextTick()
 
-      expect(selectOf(wrapper, 'plant_id').props('modelValue')).toBe(2)
+      expect(chipOf(wrapper, 'plant_id').props('value')).toBe(2)
     })
 
     test('hides a filter without options, as when the app has no frontend automation for its table', async () => {
@@ -617,8 +663,8 @@ describe('HistoryExecutionView', () => {
       generalStore.executionFilterValues = { plant_id: null, program_id: null }
       await wrapper.vm.$nextTick()
 
-      expect(selectOf(wrapper, 'plant_id')).toBeDefined()
-      expect(selectOf(wrapper, 'program_id')).toBeUndefined()
+      expect(chipOf(wrapper, 'plant_id')).toBeDefined()
+      expect(chipOf(wrapper, 'program_id')).toBeUndefined()
     })
 
     test('lists the executions again when the picked filters change', async () => {
@@ -638,14 +684,156 @@ describe('HistoryExecutionView', () => {
     })
   })
 
+  describe('Filters on the loaded list', () => {
+    const day = (date: string, rows: any[]) => ({ date, data: rows })
+    const rowA = { id: 'a', name: 'North week 42', state: 1, config: { solver: 'gurobi' } }
+    const rowB = { id: 'b', name: 'South week 42', state: 0, config: { solver: 'cbc' } }
+    const rowC = {
+      id: 'c',
+      name: 'North replanned',
+      state: 1,
+      config: { solver: 'gurobi', replanning: true },
+    }
+
+    /** The history once its first list (the last 30 days) is in, with three executions. */
+    const loaded = async () => {
+      const result = createWrapper()
+      result.generalStore.fetchExecutionsByDateRange.mockResolvedValue([])
+      await flushPromises()
+      result.wrapper.vm.data = [day('2026-10-14', [rowA, rowB]), day('2026-10-13', [rowC])]
+      await result.wrapper.vm.$nextTick()
+      return result
+    }
+
+    const addedChip = (wrapper: any, key: string) =>
+      wrapper
+        .findAllComponents({ name: 'CoreFilterChip' })
+        .find((chip: any) => chip.attributes('data-testid') === `history-filter-${key}`)
+
+    test('the search keeps the executions whose name matches', async () => {
+      const { wrapper } = await loaded()
+
+      wrapper.vm.historyFilters.state.search = 'south'
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.vm.filteredData).toEqual([day('2026-10-14', [rowB])])
+      expect(wrapper.find('[data-testid="history-summary"]').text()).toContain(
+        '1 execution',
+      )
+    })
+
+    test('offers the filters that can be added, by group', async () => {
+      const { wrapper } = await loaded()
+      const menu = wrapper.findComponent({ name: 'CoreAddFilterMenu' })
+
+      expect(
+        menu.props('groups').map((group: any) => [
+          group.key,
+          group.fields.map((field: any) => field.key),
+        ]),
+      ).toEqual([
+        ['execution', ['state', 'user', 'origin']],
+        ['solution', ['solutionState', 'solver']],
+      ])
+    })
+
+    test('an added filter shows its values with counts and filters the list', async () => {
+      const { wrapper } = await loaded()
+
+      wrapper.findComponent({ name: 'CoreAddFilterMenu' }).vm.$emit('add', 'solver')
+      await wrapper.vm.$nextTick()
+
+      const chip = addedChip(wrapper, 'solver')
+      expect(chip.props('removable')).toBe(true)
+      expect(chip.props('showCounts')).toBe(true)
+      expect(chip.props('autoOpen')).toBe(true)
+      expect(chip.props('options')).toEqual([
+        { value: 'cbc', title: 'cbc', count: 1 },
+        { value: 'gurobi', title: 'gurobi', count: 2 },
+      ])
+
+      chip.vm.$emit('pick', 'gurobi')
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.vm.filteredData).toEqual([
+        day('2026-10-14', [rowA]),
+        day('2026-10-13', [rowC]),
+      ])
+    })
+
+    test('the counts of a filter follow the other filters', async () => {
+      const { wrapper } = await loaded()
+      wrapper.vm.historyFilters.add('solver')
+      wrapper.vm.historyFilters.add('origin')
+      wrapper.vm.historyFilters.pick('origin', 'model')
+      await wrapper.vm.$nextTick()
+
+      expect(addedChip(wrapper, 'solver').props('options')).toEqual([
+        { value: 'cbc', title: 'cbc', count: 1 },
+        { value: 'gurobi', title: 'gurobi', count: 1 },
+      ])
+    })
+
+    test('removing an added filter lists every row again', async () => {
+      const { wrapper } = await loaded()
+      wrapper.vm.historyFilters.add('solver')
+      wrapper.vm.historyFilters.pick('solver', 'cbc')
+      await wrapper.vm.$nextTick()
+
+      addedChip(wrapper, 'solver').vm.$emit('remove')
+      await wrapper.vm.$nextTick()
+
+      expect(addedChip(wrapper, 'solver')).toBeUndefined()
+      expect(wrapper.vm.executionCount).toBe(3)
+    })
+
+    test('"Clear filters" goes back to how the history opens', async () => {
+      const { wrapper, generalStore } = await loaded()
+      generalStore.executionFilterValues = { plant_id: 2 }
+      generalStore.setExecutionFilterValue = vi.fn()
+      wrapper.vm.historyFilters.state.search = 'north'
+      wrapper.vm.historyFilters.add('solver')
+      wrapper.vm.dateOptionSelected = 'today'
+      await wrapper.vm.$nextTick()
+
+      await wrapper.find('[data-testid="history-clear-filters"]').trigger('click')
+
+      expect(wrapper.vm.historyFilters.state.search).toBe('')
+      expect(wrapper.vm.historyFilters.addedDefinitions).toEqual([])
+      expect(wrapper.vm.dateOptionSelected).toBe('lastMonth')
+      expect(generalStore.setExecutionFilterValue).toHaveBeenCalledWith('plant_id', null)
+    })
+
+    test('"Clear filters" is not offered while the history is as it opens', async () => {
+      const { wrapper } = await loaded()
+
+      expect(wrapper.find('[data-testid="history-clear-filters"]').exists()).toBe(false)
+    })
+
+    test('says when the list came back full', async () => {
+      const { wrapper } = await loaded()
+      wrapper.vm.selectedDates.startDate = new Date()
+      wrapper.vm.data = [
+        day(
+          '2026-10-14',
+          Array.from({ length: 100 }, (_, index) => ({ ...rowA, id: `r${index}` })),
+        ),
+      ]
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('[data-testid="history-summary"]').text()).toContain(
+        'Showing the 100 most recent',
+      )
+    })
+  })
+
   describe('Component Structure', () => {
     test('has correct CSS classes and structure', () => {
       const { wrapper } = createWrapper()
       
       expect(wrapper.find('.view-container').exists()).toBe(true)
-      const panelData = wrapper.find('[data-testid="m-panel-data"]')
-      expect(panelData.exists()).toBe(true)
-      expect(panelData.classes()).toContain('mt-5')
+      expect(wrapper.find('.history-card .history-filters').exists()).toBe(true)
+      expect(wrapper.find('.history-card .history-summary').exists()).toBe(true)
     })
   })
 

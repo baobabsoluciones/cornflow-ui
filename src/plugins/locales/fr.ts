@@ -171,6 +171,16 @@ export default {
           optionalOrDivider: 'ou',
           loadParameters: 'Charger les paramètres',
           preEtlParamsHint: "Données avec lesquelles l'instance sera chargée",
+          source: 'Origine des données',
+          sourceDatabase: 'Tables maîtres',
+          sourceDatabaseDescription: 'Données actuelles des tables maîtres',
+          sourceFile: 'Fichier',
+          sourceFileDescription: 'Téléversez un fichier avec les données',
+          sourceParameters: 'Paramètres',
+          sourceParametersDescription: "Construire l'instance à partir de quelques valeurs",
+          databaseSummary: 'Les données actuelles des tables maîtres seront chargées.',
+          reload: 'Recharger',
+          loaded: 'Données chargées',
           preEtlChangedAfterLoad:
             "Vous avez modifié ces données après le chargement. Rechargez pour qu'elles s'appliquent à l'instance.",
           alternativeParametersHint:
@@ -331,6 +341,32 @@ export default {
     password_match: 'Les mots de passe ne correspondent pas',
   },
   versionHistory: {
+    filterBar: {
+      search: 'Rechercher une exécution…',
+      addFilter: 'Ajouter un filtre',
+      searchField: 'Rechercher un champ…',
+      noFields: 'Aucun champ ne correspond',
+      clear: 'Effacer les filtres',
+      remove: 'Retirer le filtre',
+      date: 'Date',
+      count: '{n} exécution | {n} exécutions',
+      limitNotice: 'Affichage des {limit} plus récentes : réduisez la période pour voir le reste.',
+      groups: {
+        execution: 'Exécution',
+        solution: 'Solution',
+      },
+      fields: {
+        state: "État de l'exécution",
+        solutionState: 'État de la solution',
+        user: 'Utilisateur',
+        solver: 'Solveur',
+        origin: 'Origine',
+      },
+      origin: {
+        model: 'Modèle',
+        replanning: 'Replanification',
+      },
+    },
     filterAll: 'Tous',
     title: 'Historique des versions',
     description:
@@ -345,7 +381,6 @@ export default {
     noData: 'Aucune donnée trouvée pour la plage de dates sélectionnée',
     loading: 'Chargement des exécutions...',
     createNewExecution: 'créer une nouvelle exécution',
-    hideReplanned: 'Afficher uniquement les exécutions du modèle',
   },
   inputOutputData: {
     inputTitle: "Données d'entrée",
@@ -712,6 +747,7 @@ export default {
     errors: 'erreurs',
   },
   configParams: {
+    fromFile: 'Du fichier',
     msg: 'Messages',
     msgPlaceholder: 'Activer ou désactiver les messages',
     timeLimit: 'Limite de temps',
