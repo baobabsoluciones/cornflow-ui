@@ -17,8 +17,8 @@
      content. A flex column collapses those cards. The container is still the
      scroller, so sticky children below pin correctly. */
   display: block;
-  height: calc(100vh - 40px);
-  max-height: calc(100vh - 40px);
+  height: calc(100vh - 40px - var(--app-top-offset, 0px));
+  max-height: calc(100vh - 40px - var(--app-top-offset, 0px));
   overflow-y: auto;
   overflow-x: hidden;
 }

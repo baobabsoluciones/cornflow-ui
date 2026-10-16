@@ -747,6 +747,16 @@ export default {
     hideWarnings: 'Masquer les détails des avertissements',
     viewingHistoricalData: 'Affichage des données historiques',
   },
+  modules: {
+    label: 'Module',
+    confirm: 'Changer',
+    cancel: 'Annuler',
+    switchTitle: 'Changer de module ?',
+    switchMessage:
+      "Les exécutions ouvertes dans des onglets seront fermées et l'exécution en cours de création sera abandonnée.",
+    noAccessTitle: "Vous n'avez accès à aucun module",
+    noAccessMessage: 'Demandez à un administrateur de vous donner accès.',
+  },
   notFound: {
     title: 'Page introuvable',
     message: 'La page que vous cherchez n\'existe pas.',

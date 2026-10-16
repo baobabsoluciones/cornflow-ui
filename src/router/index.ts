@@ -31,6 +31,10 @@ import config from '@cornflow-ui/core/config'
 import appConfig from '@/app/config'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { isViewAllowed, getRoleDefaultView } from '@/app/rolesConfig'
+import {
+  isEntryVisibleFor,
+  type NavigationGating,
+} from '@cornflow-ui/core/utils/navigationGating'
 
 let authService = null
 
@@ -154,6 +158,23 @@ const isViewForbidden = (to: { path: string }, isAuthenticated: boolean, roleNam
   if (!isAuthenticated || roleNames.length === 0 || to.path === '/not-found') return false
   const viewId = routeViewId(to.path)
   return Boolean(viewId) && !isViewAllowed(roleNames, viewId)
+}
+
+// Returns true if a matched route declares `roles` or `schemas` in its meta that leave the user out
+// (app sections and dashboards gated by role or by DAG).
+const isRouteGatedOut = (
+  to: { matched?: Array<{ meta?: Record<string, unknown> }> },
+  isAuthenticated: boolean,
+  roleNames: string[],
+): boolean => {
+  const gated = (to.matched ?? []).filter(
+    (record) => record.meta?.roles || record.meta?.schemas,
+  )
+  if (!isAuthenticated || gated.length === 0) return false
+  const viewer = { roleNames, schema: useGeneralStore().getSchemaName }
+  return gated.some(
+    (record) => !isEntryVisibleFor(record.meta as NavigationGating, viewer),
+  )
 }
 
 // Factory for the repeated keep-alive child route shape (path + name + component + keepAlive,
@@ -287,8 +308,12 @@ export function createAppRouter(): Router {
         return
       }
 
-      // If the role forbids this view, show the forbidden/not-found page
-      if (isViewForbidden(to, isAuthenticated, roleNames)) {
+      // If the role forbids this view, or the route is gated to other roles or DAGs, show the
+      // forbidden/not-found page
+      if (
+        isViewForbidden(to, isAuthenticated, roleNames) ||
+        isRouteGatedOut(to, isAuthenticated, roleNames)
+      ) {
         next({ path: '/not-found', query: { reason: 'forbidden' } })
         return
       }
