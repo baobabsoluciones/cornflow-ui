@@ -707,7 +707,7 @@ VITE_APP_AUTH_PROVIDERS=google,microsoft   # For Cognito: comma-separated list
 
 #### Method 2: JSON configuration
 
-Copy `public/values.template.json` to `public/values.json` and configure your values (for local development only). For production, configure this json in an accesible path. Defined path by default is `/values.json` but this can be overwritten in `app/config.ts` with `valuesJsonPath`. Used automatically when no environment variables are detected.
+Copy `public/values.template.json` to `public/values.json` and configure your values (for local development only). For production, configure this json in an accesible path. Defined path by default is `/values.json` but this can be overwritten in `app/config.ts` with `valuesJsonPath`. The path is resolved against the page: `/values.json` points at the root of the host, and a relative `values.json` finds the file next to an app served under a sub-path (an app at `/app/` reads `/app/values.json`). Used automatically when no environment variables are detected.
 
 ```json
 {
@@ -809,7 +809,7 @@ This file contains **internal application-specific configuration** that is part 
 
 | Parameter                     | Type       | Description                                           |
 | ----------------------------- | ---------- | ----------------------------------------------------- |
-| `valuesJsonPath`              | `string`   | Path to the external JSON configuration file          |
+| `valuesJsonPath`              | `string`   | Path to the external JSON configuration file, resolved against the page (relative for apps under a sub-path) |
 | `useEtlBackend`               | `boolean`  | Enable ETL backend integration                        |
 | `showOpenIdUsername`          | `boolean`  | Display user full name and email from openId login    |
 | `showTablesWithoutSchema`     | `boolean`  | List data tables the schema does not declare          |
@@ -1328,13 +1328,13 @@ Defines the configuration fields for execution parameters. Each field can have:
 - `suffix` (string): Translation key for the field suffix (e.g., units).
 - `icon` (string): Material Design icon name.
 - `type` ('number' | 'float' | 'boolean' | 'text' | 'date' | 'select'): Field type.
-- `source` (string, optional): Table name in instance.data to get the value from (e.g., 'eParametros').
+- `source` (string, optional): Table name in instance.data to get the value from (e.g., 'parameters').
 - `param` (string, optional): Key or ID to look up in the source table/array.
 - `lookupType` (string, optional): How to look up the value in the source. Supported:
   - 'arrayByValue': Looks for an object in the array where [lookupParam] === param, returns [lookupValue].
   - If null, searches directly as key[value] for source[param].
 - `lookupParam` (string, optional, for arrayByValue): The property to match in the array (e.g., 'ID').
-- `lookupValue` (string, optional, for arrayByValue): The property to return from the found object (e.g., 'VALOR').
+- `lookupValue` (string, optional, for arrayByValue): The property to return from the found object (e.g., 'value').
 - `default` (any, optional): Default value if not found in the instance. It only fills a key that has no value yet, so it never overwrites an answer the user already gave or the config of the execution being edited.
 - `options` (Array<{label: string, value: any}>, for select type): Options for select fields.
 - `preEtl` (boolean, from the schema): Set from `"pre_etl": true`. See [Pre-ETL parameters](#pre-etl-parameters-pre_etl).

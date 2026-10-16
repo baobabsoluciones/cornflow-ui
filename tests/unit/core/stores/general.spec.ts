@@ -1535,14 +1535,14 @@ describe('General Store', () => {
 
     describe('with app config fields that read from the instance', () => {
       const timeLimitFromInstance = {
-        key: 'timeLimit_3',
-        title: 'configParams.timeLimit_3',
+        key: 'phaseTimeLimit',
+        title: 'configParams.phaseTimeLimit',
         type: 'number',
-        source: 'eParametros',
-        param: 'minutos_modelo_3',
+        source: 'parameters',
+        param: 'time_limit',
         lookupType: 'arrayByValue',
-        lookupParam: 'PARAMETRO_ID',
-        lookupValue: 'VALOR',
+        lookupParam: 'PARAM_ID',
+        lookupValue: 'VALUE',
       }
       const schemaConfig = {
         config: {
@@ -1563,7 +1563,7 @@ describe('General Store', () => {
 
         expect(
           store.appConfig.parameters.configFields.map((f: any) => f.key),
-        ).toEqual(['timeLimit', 'cornflow', 'timeLimit_3'])
+        ).toEqual(['timeLimit', 'cornflow', 'phaseTimeLimit'])
         expect(store.appConfig.parameters.configFields[2]).toEqual(
           timeLimitFromInstance,
         )

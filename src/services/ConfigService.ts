@@ -82,9 +82,11 @@ interface ConfigValues {
       if (this.loadPromise !== null) return this.loadPromise;
   
       this.loadPromise = new Promise<ConfigValues>((resolve, reject) => {
-        const isLocalhost = globalThis.window.location.hostname === 'localhost' || globalThis.window.location.hostname === '127.0.0.1';
+        // Resolved against the page, so a relative path ('values.json') finds the file next to
+        // an app served under a sub-path (/app/ -> /app/values.json), and an absolute one
+        // ('/values.json') keeps pointing at the root of the host.
         const valuesJsonPath = appConfig.getCore().parameters.valuesJsonPath;
-        const configUrl = isLocalhost ? valuesJsonPath : `https://${globalThis.window.location.hostname}${valuesJsonPath}`;
+        const configUrl = new URL(valuesJsonPath, globalThis.document.baseURI).href;
         
         fetch(configUrl)
           .then(response => response.json())
