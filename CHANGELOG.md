@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.5.2] - 16-10-2026
+
+### Fixed
+- **`values.json` found for apps served under a sub-path**  
+  - The URL was built from the hostname alone, so an app served under a sub-path requested `values.json` at the root of the host, got a 404 and fell back to the build-time variables: no backend URL, and the cornflow login instead of the deployment's Azure or Cognito one
+  - `valuesJsonPath` is now resolved against the page: a relative `values.json` finds the file next to the app, and the default `/values.json` keeps pointing at the root of the host
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #240
+
 ## [3.5.1] - 14-10-2026
 
 ### Fixed
