@@ -1,6 +1,6 @@
 import configService from '@cornflow-ui/core/services/ConfigService';
 import appConfig from '@/app/config';
-import { parseBoolean } from '@cornflow-ui/core/utils/common';
+import { parseBoolean, parseNameList } from '@cornflow-ui/core/utils/common';
 
 // Builds the auth object from VITE_APP_AUTH_* environment variables.
 // Shared by the env-vars branch and the error fallback in initConfig().
@@ -17,9 +17,20 @@ function buildAuthFromEnv() {
   };
 }
 
+// `schema` (VITE_APP_SCHEMA / values.json) names the deployment's DAG, or lists several separated
+// by commas (an array in values.json). The first is the DAG the deployment opens with.
+function readSchemaSetting(value: unknown): { schema: string; schemas: string[] } {
+  const names = parseNameList(value);
+  return { schema: names[0] ?? '', schemas: names.length > 1 ? names : [] };
+}
+
 const config = {
   backend: '',
+  // DAG the deployment opens with.
   schema: '',
+  // Every DAG of the deployment when `schema` lists several; empty when it names a single one.
+  // With several, each user enters the one(s) Cornflow grants them.
+  schemas: [] as string[],
   name: '',
   hasExternalApp: false,
   isStagingEnvironment: false,
@@ -56,7 +67,7 @@ const config = {
         const values = await configService.getConfig();
         
         this.backend = values.backend_url;
-        this.schema = values.schema;
+        Object.assign(this, readSchemaSetting(values.schema));
         this.name = values.name;
         this.hasExternalApp = parseBoolean(values.hasExternalApp) ?? config.hasExternalApp;
         this.isStagingEnvironment = parseBoolean(values.isStagingEnvironment) ?? config.isStagingEnvironment;
@@ -90,7 +101,7 @@ const config = {
       } else {
         // Use environment variables
         this.backend = import.meta.env.VITE_APP_BACKEND_URL || '';
-        this.schema = import.meta.env.VITE_APP_SCHEMA || '';
+        Object.assign(this, readSchemaSetting(import.meta.env.VITE_APP_SCHEMA));
         this.name = import.meta.env.VITE_APP_NAME || '';
         this.hasExternalApp = parseBoolean(import.meta.env.VITE_APP_EXTERNAL_APP) ?? config.hasExternalApp;
         this.isStagingEnvironment = parseBoolean(import.meta.env.VITE_APP_IS_STAGING_ENVIRONMENT) ?? config.isStagingEnvironment;
@@ -106,7 +117,7 @@ const config = {
       
       // Fallback to environment variables if values.json fails
       this.backend = import.meta.env.VITE_APP_BACKEND_URL || '';
-      this.schema = import.meta.env.VITE_APP_SCHEMA || '';
+      Object.assign(this, readSchemaSetting(import.meta.env.VITE_APP_SCHEMA));
       this.name = import.meta.env.VITE_APP_NAME || '';
       this.hasExternalApp = parseBoolean(import.meta.env.VITE_APP_EXTERNAL_APP) ?? false;
       this.isStagingEnvironment = parseBoolean(import.meta.env.VITE_APP_IS_STAGING_ENVIRONMENT) ?? false;

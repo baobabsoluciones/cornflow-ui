@@ -7,6 +7,10 @@ import { createI18n } from 'vue-i18n'
 import { createRouter, createWebHistory } from 'vue-router'
 import IndexView from '@cornflow-ui/core/views/IndexView.vue'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import {
+  setTopBannerOffset,
+  resetTopBannerOffsets,
+} from '@cornflow-ui/core/plugins/layoutOffsets'
 
 // Mock AuthService
 const mockAuthService = vi.hoisted(() => ({
@@ -20,6 +24,7 @@ vi.mock('@cornflow-ui/core/services/AuthService', () => ({
 // Mock config
 const mockConfig = vi.hoisted(() => ({
   isStagingEnvironment: false,
+  schemas: [] as string[],
   initConfig: vi.fn().mockResolvedValue(undefined)
 }))
 
@@ -47,6 +52,13 @@ vi.mock('@cornflow-ui/core/components/AppView.vue', () => ({
   default: {
     name: 'CoreAppView',
     setup: () => () => h('div', { 'data-testid': 'app-view' }, 'AppView')
+  }
+}))
+
+vi.mock('@cornflow-ui/core/components/core/ModuleSwitcher.vue', () => ({
+  default: {
+    name: 'CoreModuleSwitcher',
+    setup: () => () => h('div', { 'data-testid': 'module-switcher' })
   }
 }))
 
@@ -454,6 +466,85 @@ describe('IndexView', () => {
       await expect(async () => {
         await wrapper.vm.selectTab(executionTab)
       }).not.toThrow()
+    })
+  })
+
+  describe('Top bar', () => {
+    afterEach(() => {
+      mockConfig.schemas = []
+      resetTopBannerOffsets()
+    })
+
+    test('is not rendered, and leaves no top offset, when there is nothing to show', async () => {
+      const { wrapper } = await createWrapper()
+
+      expect(wrapper.find('[data-testid="app-top-bar"]').exists()).toBe(false)
+      expect(wrapper.find('.main-content').attributes('style') ?? '').not.toContain(
+        '--app-top-offset',
+      )
+    })
+
+    test('shows the module switcher to a user who may switch DAG, and reserves its height', async () => {
+      mockConfig.schemas = ['planning_dag', 'stock_dag']
+      const { wrapper, generalStore } = await createWrapper()
+
+      generalStore.availableSchemas = ['planning_dag', 'stock_dag']
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('[data-testid="app-top-bar"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="module-switcher"]').exists()).toBe(true)
+      expect(wrapper.find('.main-content').attributes('style')).toContain(
+        '--app-top-offset: 56px',
+      )
+    })
+
+    test('is not rendered for a user with a single DAG of a multi-DAG deployment', async () => {
+      mockConfig.schemas = ['planning_dag', 'stock_dag']
+      const { wrapper, generalStore } = await createWrapper()
+
+      generalStore.availableSchemas = ['planning_dag']
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('[data-testid="app-top-bar"]').exists()).toBe(false)
+    })
+
+    test('goes first in the fixed top stack, above the staging notice and the banners', async () => {
+      mockConfig.schemas = ['planning_dag', 'stock_dag']
+      setTopBannerOffset('some-banner', 48)
+      const { wrapper, generalStore } = await createWrapper(true, true)
+
+      generalStore.availableSchemas = ['planning_dag', 'stock_dag']
+      await wrapper.vm.$nextTick()
+
+      const stack = wrapper.find('[data-testid="app-top-stack"]')
+      const parts = stack.element.children
+      expect(parts[0].getAttribute('data-testid')).toBe('app-top-bar')
+      expect(parts[1].classList.contains('marquee-container')).toBe(true)
+      expect(parts[2].classList.contains('app-top-stack__banners')).toBe(true)
+      expect((parts[2] as HTMLElement).style.height).toBe('48px')
+      // 56 (bar) + 40 (staging notice) + 48 (banner)
+      const style = wrapper.find('.main-content').attributes('style')
+      expect(style).toContain('padding-top: 144px')
+      expect(style).toContain('--app-top-offset: 144px')
+    })
+
+    test('without a top bar, the staging notice and the banners still reserve their height', async () => {
+      setTopBannerOffset('some-banner', 48)
+      const { wrapper } = await createWrapper(true, true)
+
+      expect(wrapper.find('[data-testid="app-top-bar"]').exists()).toBe(false)
+      expect(wrapper.find('.main-content').attributes('style')).toContain(
+        '--app-top-offset: 88px',
+      )
+    })
+
+    test('shows the no-access message when the user has no DAG', async () => {
+      const { wrapper, generalStore } = await createWrapper()
+
+      generalStore.noSchemaAccess = true
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('[data-testid="no-schema-access"]').exists()).toBe(true)
     })
   })
 

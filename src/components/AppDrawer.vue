@@ -183,6 +183,8 @@ import { resolveTitleWithLocale } from '@cornflow-ui/core/utils/i18nUtils'
 import { useSectionTitles } from '@cornflow-ui/core/composables/useSectionTitles'
 import { isViewAllowed } from '@/app/rolesConfig'
 import { getPremiumDrawerSections } from '@cornflow-ui/core/plugins/extensions'
+import { readSchemaLabels } from '@cornflow-ui/core/utils/schemaLabels'
+import { isEntryVisibleFor } from '@cornflow-ui/core/utils/navigationGating'
 
 export default defineComponent({
   name: 'CoreAppDrawer',
@@ -190,9 +192,9 @@ export default defineComponent({
   props: {},
   inheritAttrs: false,
   setup() {
-    const { t } = useI18n()
+    const { t, te } = useI18n()
     const { getSectionTitle } = useSectionTitles()
-    return { t, getSectionTitle }
+    return { t, te, getSectionTitle }
   },
   data: () => ({
     model: 1,
@@ -212,7 +214,22 @@ export default defineComponent({
   },
   computed: {
     appName() {
-      return config.name || 'Application'
+      const name = config.name || 'Application'
+      if (!this.store.isMultiSchemaDeployment || this.store.noSchemaAccess) {
+        return name
+      }
+      // With several DAGs, say which one the session is on.
+      const schema = this.store.getSchemaName
+      const label = readSchemaLabels()[schema]
+      const moduleName = label && this.te(label) ? this.t(label) : label || schema
+      return `${name} · ${moduleName}`
+    },
+    /** Who is looking and on which DAG, to gate app sections and dashboard pages. */
+    navigationViewer() {
+      return {
+        roleNames: this.currentUserRoleNames,
+        schema: this.store.getSchemaName,
+      }
     },
     isAdmin() {
       const user = this.store.getUser
@@ -374,9 +391,11 @@ export default defineComponent({
 
       // Add instance dashboard pages if available
       if (this.store.appInstanceDashboardPages.length > 0) {
-        this.store.appInstanceDashboardPages.forEach((page) => {
-          subPages.push(page)
-        })
+        this.store.appInstanceDashboardPages
+          .filter((page) => isEntryVisibleFor(page, this.navigationViewer))
+          .forEach((page) => {
+            subPages.push(page)
+          })
       }
 
       return {
@@ -458,9 +477,11 @@ export default defineComponent({
 
       // Add dashboard pages if available
       if (this.store.appDashboardPages.length > 0) {
-        this.store.appDashboardPages.forEach((page) => {
-          subPages.push(page)
-        })
+        this.store.appDashboardPages
+          .filter((page) => isEntryVisibleFor(page, this.navigationViewer))
+          .forEach((page) => {
+            subPages.push(page)
+          })
       }
 
       return {
@@ -472,17 +493,18 @@ export default defineComponent({
     // App-specific sections (from config: e.g. Agent). Built dynamically like dashboard/instanceDashboard.
     appSections() {
       const items = appConfig.getAppSections()
-      const visibleWhenExecutionSelected = (entry) =>
-        !entry.requiresSelectedExecution || this.hasSelectedExecution
+      const isVisible = (entry) =>
+        (!entry.requiresSelectedExecution || this.hasSelectedExecution) &&
+        isEntryVisibleFor(entry, this.navigationViewer)
 
       return items
-        .filter(visibleWhenExecutionSelected)
+        .filter(isVisible)
         .map((s) => ({
           title: this.$t(s.titleKey),
           icon: s.icon,
           to: s.to,
           subPages: s.subPages
-            ?.filter(visibleWhenExecutionSelected)
+            ?.filter(isVisible)
             .map((sub) => ({
               title: this.$t(sub.titleKey),
               icon: sub.icon,
