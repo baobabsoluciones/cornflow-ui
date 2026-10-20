@@ -1,0 +1,181 @@
+/* CoreMultiSelect Component Styles */
+
+.core-multi-select {
+  position: relative;
+  width: 100%;
+}
+
+/* Trigger: same box as CoreSearchInput, left-aligned summary on one line */
+.core-multi-select__trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 40px;
+  padding: 0 8px 0 12px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--title);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.core-multi-select__trigger:hover:not(:disabled) {
+  border-color: #bdbdbd;
+}
+
+.core-multi-select__trigger:focus-visible,
+.core-multi-select__trigger[aria-expanded='true'] {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(9, 132, 198, 0.1);
+}
+
+.core-multi-select__trigger--has-value {
+  font-weight: 600;
+}
+
+/* Nothing to pick yet: the button just reads "all" */
+.core-multi-select__trigger:disabled {
+  background: var(--disabled);
+  color: var(--subtitle);
+  cursor: not-allowed;
+}
+
+.core-multi-select__summary {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.core-multi-select__chevron {
+  flex-shrink: 0;
+  color: var(--subtitle);
+  transition: transform 0.2s ease;
+}
+
+.core-multi-select__trigger[aria-expanded='true'] .core-multi-select__chevron {
+  transform: rotate(180deg);
+}
+
+/* Panel: same card as CoreDropdownMenu, above the content that follows it */
+.core-multi-select__panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  padding: 8px;
+  background: white;
+  border: 1px solid #6e6e6e33;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.core-multi-select__search {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 8px;
+  margin-bottom: 4px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.core-multi-select__search:focus-within {
+  border-color: var(--primary);
+}
+
+.core-multi-select__search-icon {
+  flex-shrink: 0;
+  margin-right: 6px;
+  color: var(--subtitle);
+}
+
+.core-multi-select__search-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  color: var(--title);
+}
+
+.core-multi-select__search-input::placeholder {
+  color: var(--subtitle);
+}
+
+.core-multi-select__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 8px 4px;
+  font-size: 12px;
+  color: var(--subtitle);
+}
+
+.core-multi-select__clear {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.core-multi-select__clear:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.core-multi-select__list {
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.core-multi-select__list:focus {
+  outline: none;
+}
+
+/* Long titles wrap rather than widen the panel past its field */
+.core-multi-select__option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--title);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+/* Keyboard / mousemove highlight */
+.core-multi-select__option--active {
+  background: var(--primary-light-variant);
+}
+
+.core-multi-select__check {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.core-multi-select__empty {
+  padding: 8px;
+  font-size: 12px;
+  color: var(--subtitle);
+}

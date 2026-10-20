@@ -710,6 +710,10 @@ export default {
     error: 'erreur',
     errors: 'erreurs',
   },
+  multiSelect: {
+    all: 'Tous',
+    noResults: 'Aucun résultat',
+  },
   configParams: {
     msg: 'Messages',
     msgPlaceholder: 'Activer ou désactiver les messages',
