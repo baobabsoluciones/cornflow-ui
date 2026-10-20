@@ -1497,6 +1497,56 @@ Controls whether users can edit existing instances from the input data section.
 - a `preEtl` flag on a config field moves it into the load step, next to the upload, and sends it to the ETL - see [Pre-ETL parameters](#pre-etl-parameters-pre_etl).
 - `allowEditInstance` enables instance editing functionality in SectionView.vue for input data sections.
 
+### Multi-select dropdown (CoreMultiSelect)
+
+`CoreMultiSelect` picks several values from a list, e.g. for the filters of a custom view. The button summarises the selection (`All`, `Lisbon`, `Lisbon +2`, with every selected title in its tooltip) and opens a checkbox list with a search box for long lists and a "Clear selection" action. An empty selection means "all".
+
+#### Props
+
+| Prop              | Type                      | Default       | Description                                                          |
+| ----------------- | ------------------------- | ------------- | -------------------------------------------------------------------- |
+| `modelValue`      | `string[]`                | (required)    | Selected values (`v-model`), always a new array in item order        |
+| `items`           | `CoreMultiSelectOption[]` | (required)    | Items to pick from, as `{ title, value }`                            |
+| `allLabel`        | `string`                  | "All" (i18n)  | Summary shown with nothing selected                                  |
+| `searchThreshold` | `number`                  | `8`           | Lists with more items than this get a search box (`0` = always)      |
+| `disabled`        | `boolean`                 | `false`       | Disabled state; the button is also disabled when there are no items  |
+| `id`              | `string`                  | -             | The button's id, so a `<label for>` names it                         |
+
+#### Usage
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import CoreMultiSelect, {
+  type CoreMultiSelectOption,
+} from '@cornflow-ui/core/components/core/CoreMultiSelect.vue'
+
+const stations: CoreMultiSelectOption[] = [
+  { title: 'Lisbon', value: 'lis' },
+  { title: 'Porto', value: 'opo' },
+]
+const selectedStations = ref<string[]>([])
+</script>
+
+<template>
+  <label for="station-filter">Station</label>
+  <CoreMultiSelect
+    id="station-filter"
+    v-model="selectedStations"
+    :items="stations"
+    all-label="All stations"
+  />
+</template>
+```
+
+#### Behavior
+
+- **Inside popovers**: the list is rendered inline, not teleported like a Vuetify menu, so it can live inside a popover that closes on a click outside it without that popover closing mid-pick. The same click-outside handling is available to apps as `useClickOutside` (`@cornflow-ui/core/composables/useClickOutside`).
+- **Model**: always replaced with a new array, never mutated in place, and kept in item order whatever the order of the picks.
+- **Keyboard**: Enter / Space / ArrowDown open it, the arrows move, Enter (or Space outside the search box) toggles, Esc closes back to the button without reaching the popover around it, and Tab closes it.
+- **Accessibility**: listbox ARIA (`aria-multiselectable`, `aria-activedescendant`).
+- **Texts**: `multiSelect.all` and `multiSelect.noResults`, plus `table.searchPlaceholder`, `table.selectedItems` and `table.clearSelection`, in the four core languages.
+
 ## Router configuration
 
 The application supports two routing modes controlled by the `useHashMode` configuration parameter:

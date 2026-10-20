@@ -984,6 +984,10 @@ export default {
     error: 'error',
     errors: 'errors',
   },
+  multiSelect: {
+    all: 'All',
+    noResults: 'No results',
+  },
   configParams: {
     msg: 'Messages',
     msgPlaceholder: 'Enable or disable messages',
