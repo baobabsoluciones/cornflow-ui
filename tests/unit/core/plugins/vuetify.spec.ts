@@ -7,7 +7,7 @@ vi.mock('vuetify', () => ({
       themes: {
         light: {
           colors: {
-            primary: '#213c52',
+            primary: '#1b5e8a',
             secondary: '#5CBBF6',
           },
         },
@@ -46,7 +46,7 @@ describe('plugins/vuetify', () => {
         themes: {
           light: {
             colors: {
-              primary: '#213c52',
+              primary: '#1b5e8a',
               secondary: '#5CBBF6',
             },
           },
@@ -91,5 +91,64 @@ describe('plugins/vuetify', () => {
       vi.resetModules()
       await import('@cornflow-ui/core/plugins/vuetify')
     }).rejects.toThrow('Vuetify creation failed')
+  })
+
+  describe('design tokens', () => {
+    // A test above leaves the module failed in the cache: load it again.
+    beforeEach(() => {
+      vi.resetModules()
+    })
+
+    function lightTheme() {
+      return {
+        themes: {
+          value: { light: { colors: { primary: '#1b5e8a', secondary: '#5CBBF6' } } },
+        },
+      }
+    }
+
+    test("sets the primary colour to the app's --color-primary", async () => {
+      const { applyTokensToTheme } = await import('@cornflow-ui/core/plugins/vuetify')
+      const theme = lightTheme()
+      const read = vi.fn((name: string) => (name === '--color-primary' ? '#ff6600' : ''))
+
+      applyTokensToTheme(theme as any, read)
+
+      expect(read).toHaveBeenCalledWith('--color-primary')
+      expect(theme.themes.value.light.colors).toEqual({
+        primary: '#ff6600',
+        secondary: '#5CBBF6',
+      })
+    })
+
+    test('keeps the theme colour when the token is unset', async () => {
+      const { applyTokensToTheme } = await import('@cornflow-ui/core/plugins/vuetify')
+      const theme = lightTheme()
+
+      applyTokensToTheme(theme as any, () => '')
+
+      expect(theme.themes.value.light.colors.primary).toBe('#1b5e8a')
+    })
+
+    test('keeps the theme colour, with a warning, when the token is not a hex colour', async () => {
+      const { applyTokensToTheme } = await import('@cornflow-ui/core/plugins/vuetify')
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const theme = lightTheme()
+
+      applyTokensToTheme(theme as any, () => 'rgb(255, 102, 0)')
+
+      expect(theme.themes.value.light.colors.primary).toBe('#1b5e8a')
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('--color-primary'))
+      warn.mockRestore()
+    })
+
+    test('readCssToken reads a custom property set on body', async () => {
+      const { readCssToken } = await import('@cornflow-ui/core/plugins/vuetify')
+      document.body.style.setProperty('--color-primary', '#034c5e')
+
+      expect(readCssToken('--color-primary')).toBe('#034c5e')
+
+      document.body.style.removeProperty('--color-primary')
+    })
   })
 })

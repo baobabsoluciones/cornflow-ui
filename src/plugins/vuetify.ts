@@ -16,8 +16,20 @@ import { useI18n } from 'vue-i18n'
 import { i18n } from './i18n'
 import { CORE_LANGUAGES } from './languages'
 
+/** Vuetify theme colours that follow a design token (`src/assets/styles/tokens.css`). */
+const THEME_COLOR_TOKENS: Record<string, string> = {
+  primary: '--color-primary',
+}
+
+const HEX_COLOR = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i
+
+/** Resolved value of a CSS custom property on `element` (by default `body`, where tokens live). */
+export function readCssToken(name: string, element: Element = document.body): string {
+  return getComputedStyle(element).getPropertyValue(name).trim()
+}
+
 // https://vuetifyjs.com/en/introduction/why-vuetify/#feature-guides
-export default createVuetify({
+const vuetify = createVuetify({
   components: {
     ...labs,
   },
@@ -36,10 +48,34 @@ export default createVuetify({
     themes: {
       light: {
         colors: {
-          primary: '#213c52',
+          // Replaced by the app's `--color-primary` when the app starts (`applyTokensToTheme`).
+          primary: '#1b5e8a',
           secondary: '#5CBBF6',
         },
       },
     },
   },
 })
+
+/**
+ * Sets the theme colours listed in `THEME_COLOR_TOKENS` to the app's tokens, so Vuetify components
+ * (`color="primary"`) paint with the same colour as the core's own components. Runs once the app's
+ * stylesheets are loaded; a token that is unset or not a hex colour leaves the theme colour as it is.
+ */
+export function applyTokensToTheme(
+  theme = vuetify.theme,
+  read: (name: string) => string = readCssToken,
+): void {
+  const colors = theme.themes.value.light.colors
+  for (const [color, token] of Object.entries(THEME_COLOR_TOKENS)) {
+    const value = read(token)
+    if (!value) continue
+    if (!HEX_COLOR.test(value)) {
+      console.warn(`${token} is not a hex colour (${value}): the theme keeps ${colors[color]}`)
+      continue
+    }
+    colors[color] = value
+  }
+}
+
+export default vuetify
