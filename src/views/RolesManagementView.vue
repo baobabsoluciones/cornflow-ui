@@ -73,7 +73,7 @@ import type {
   UserRow,
   UserProfileValue,
 } from '@cornflow-ui/core/composables/roles-management/types'
-import appConfig from '@/app/config'
+import { getAppParameters } from '@cornflow-ui/core/utils/appParameters'
 
 const {
   roles,
@@ -94,7 +94,7 @@ const {
 } = useRolesManagement()
 
 const allowEditRoles = computed(
-  () => appConfig.getCore().parameters.allowEditRoles,
+  () => getAppParameters().allowEditRoles,
 )
 
 const usersSearch = ref('')

@@ -29,6 +29,7 @@ import NotFoundView from '@cornflow-ui/core/views/NotFoundView.vue'
 import getAuthService from '@cornflow-ui/core/services/AuthServiceFactory'
 import config from '@cornflow-ui/core/config'
 import appConfig from '@/app/config'
+import { getAppParameters } from '@cornflow-ui/core/utils/appParameters'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { isViewAllowed, getRoleDefaultView } from '@/app/rolesConfig'
 import {
@@ -83,7 +84,7 @@ const ensureConfigurationsLoaded = async () => {
 // Helper function to get the default view from app config
 const getDefaultView = (): string => {
   try {
-    return appConfig.getCore()?.parameters?.defaultView || 'history-execution'
+    return getAppParameters()?.defaultView || 'history-execution'
   } catch {
     return 'history-execution'
   }
@@ -302,7 +303,7 @@ export function createAppRouter(): Router {
         (isAuthenticated && isSignInPage) ||
         (isAuthenticated && to.path === '/') ||
         (requiresAdmin && sessionStorage.getItem('isAdmin') !== 'true') ||
-        (requiresAdmin && !appConfig.getCore().parameters.enableRolesManagement)
+        (requiresAdmin && !getAppParameters().enableRolesManagement)
       if (redirectToDefault) {
         next(defaultView)
         return

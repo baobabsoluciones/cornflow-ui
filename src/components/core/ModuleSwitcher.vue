@@ -94,6 +94,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { readSchemaLabels } from '@cornflow-ui/core/utils/schemaLabels'
+import { isRouteAvailableAfterSchemaSwitch } from '@cornflow-ui/core/utils/schemaSwitchNavigation'
 
 defineOptions({ name: 'CoreModuleSwitcher' })
 
@@ -102,14 +103,6 @@ const MODULE_ICON = 'mdi-view-grid-outline'
 
 /** Most modules shown side by side; with more, the module is picked from a menu. */
 const MAX_MODULE_SEGMENTS = 4
-
-/** Views that do not depend on the DAG: a module switch keeps the user on them. */
-const SCHEMA_INDEPENDENT_ROUTES = [
-  '/history-execution',
-  '/project-execution',
-  '/user-settings',
-  '/roles-management',
-]
 
 const { t, te } = useI18n()
 const store = useGeneralStore()
@@ -158,11 +151,14 @@ async function confirmSwitch() {
   if (!schema) return
 
   const switched = await store.setActiveSchema(schema)
-  if (
-    switched &&
-    !SCHEMA_INDEPENDENT_ROUTES.some((path) => route.path.startsWith(path))
-  ) {
-    // The view on screen may not exist in the new DAG; '/' resolves the default view.
+  if (!switched) return
+  const viewer = {
+    roleNames: store.getUser?.roles?.map((role: { name: string }) => role.name) ?? [],
+    schema: store.getSchemaName,
+  }
+  const masterData = store.configurations?.masterData ?? {}
+  if (!isRouteAvailableAfterSchemaSwitch(route, masterData, viewer)) {
+    // '/' resolves the default view, the new DAG's `defaultView`.
     await router.push('/')
   }
 }

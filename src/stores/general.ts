@@ -46,6 +46,11 @@ import {
   filterTablesByCurrentSchema,
 } from '@cornflow-ui/core/services/FrontendAutomationService'
 import { hasAnyChecksData } from '@cornflow-ui/core/utils/dataChecks'
+import {
+  cloneConfigValue,
+  resolveSchemaParameters,
+  type SchemaOverrides,
+} from '@cornflow-ui/core/utils/schemaOverrides'
 
 export type HistoricalBannerMode =
   | 'idle'
@@ -130,12 +135,11 @@ function clearStoredActiveSchema(): void {
   }
 }
 
-/** Settings the schema config overrides, as the app declares them (see `restoreAppSolverDefaults`). */
-function snapshotAppSolverDefaults(parameters: Record<string, any>) {
-  return {
-    defaultSolver: parameters?.solverConfig?.defaultSolver as string | undefined,
-    executionSolvers: [...((parameters?.executionSolvers as string[]) ?? [])],
-  }
+/** `core.schemaOverrides` of the app config; an app config without it has no per-DAG settings. */
+function readSchemaOverrides(): SchemaOverrides {
+  return (
+    (appConfig.getCore() as { schemaOverrides?: SchemaOverrides }).schemaOverrides ?? {}
+  )
 }
 
 export const useGeneralStore = defineStore('general', {
@@ -169,15 +173,21 @@ export const useGeneralStore = defineStore('general', {
     /** True when the deployment lists several DAGs and Cornflow grants the user none of them. */
     noSchemaAccess: false,
     schemaConfig: {} as SchemaConfig,
+    /** `core` of `src/app/config.ts`; `parameters` holds the active DAG's settings (`applyAppConfigForSchema`). */
     appConfig: appConfig.getCore(),
     /**
-     * `configFields` as `src/app/config.ts` declares them. `applySchemaConfigToAppConfig` merges
-     * them with the schema's, so they are kept apart from `appConfig.parameters.configFields`.
+     * `parameters` as `src/app/config.ts` declares them, the base every DAG's settings are built on.
+     * Kept raw: it holds functions and classes, and nothing renders from it.
+     */
+    appParametersBase: markRaw(
+      cloneConfigValue(appConfig.getCore().parameters),
+    ) as Record<string, any>,
+    /**
+     * `configFields` of the active DAG's settings. `applySchemaConfigToAppConfig` merges them with
+     * the schema's, so they are kept apart from `appConfig.parameters.configFields`.
      */
     appConfigFields: (appConfig.getCore().parameters.configFields ??
       []) as ExecutionConfigField[],
-    /** Solver settings as `src/app/config.ts` declares them (see `restoreAppSolverDefaults`). */
-    appSolverDefaults: snapshotAppSolverDefaults(appConfig.getCore().parameters),
     appDashboardRoutes: appConfig.getDashboardRoutes(),
     appDashboardPages: appConfig.getDashboardPages(),
     appDashboardLayout: appConfig.getDashboardLayout(),
@@ -229,6 +239,7 @@ export const useGeneralStore = defineStore('general', {
         await this.fetchUser()
         await this.fetchCornflowVersion()
         await this.resolveActiveSchema()
+        this.applyAppConfigForSchema()
         if (!this.noSchemaAccess) {
           await this.setSchema()
           await this.setConfigurations()
@@ -354,7 +365,7 @@ export const useGeneralStore = defineStore('general', {
       this.closeExecutionSession()
       this.applyActiveSchema(schema)
       this.schemaConfig = {} as SchemaConfig
-      this.restoreAppSolverDefaults()
+      this.applyAppConfigForSchema()
       await this.setSchema()
       const { inputData, resultsData } = await this.fetchSchemaTables()
       this.rawConfigurations = {
@@ -379,19 +390,26 @@ export const useGeneralStore = defineStore('general', {
     },
 
     /**
-     * Puts back the solver settings and config fields of `src/app/config.ts`, so a schema without
-     * config does not inherit those of the schema loaded before it.
+     * Sets `appConfig.parameters` and the dashboard layouts to the active DAG's settings: the app's
+     * `parameters` with the DAG's `core.schemaOverrides` entry on top. Built from the app's every
+     * time, so nothing of the DAG loaded before carries over; the schema's solver settings are
+     * applied on top afterwards (`setSchema`). `parameters` keeps its identity, so whoever holds it
+     * reads the new values.
      */
-    restoreAppSolverDefaults() {
-      const parameters = this.appConfig.parameters
-      if (this.appSolverDefaults.defaultSolver !== undefined) {
-        parameters.solverConfig = {
-          ...parameters.solverConfig,
-          defaultSolver: this.appSolverDefaults.defaultSolver,
-        }
-      }
-      parameters.executionSolvers = [...this.appSolverDefaults.executionSolvers]
-      parameters.configFields = [...this.appConfigFields]
+    applyAppConfigForSchema() {
+      const schema = this.getSchemaName
+      const override = readSchemaOverrides()[schema]
+      const resolved = resolveSchemaParameters(
+        this.appParametersBase,
+        schema,
+        override?.parameters,
+      )
+      Object.assign(this.appConfig.parameters, resolved)
+      this.appConfigFields = (resolved.configFields ?? []) as ExecutionConfigField[]
+      this.appDashboardLayout =
+        override?.dashboardLayout ?? appConfig.getDashboardLayout()
+      this.appInstanceDashboardLayout =
+        override?.instanceDashboardLayout ?? appConfig.getInstanceDashboardLayout()
     },
 
     /**
@@ -407,7 +425,7 @@ export const useGeneralStore = defineStore('general', {
       this.schema = ''
       config.schema = this.defaultSchema
       this.schemaConfig = {} as SchemaConfig
-      this.restoreAppSolverDefaults()
+      this.applyAppConfigForSchema()
       this.configurations = null
       this.rawConfigurations = null
       this.masterDataSections = null

@@ -275,6 +275,9 @@ const mockCoreParams: any = {
 vi.mock('@/app/config', () => ({
   default: { getCore: () => ({ parameters: mockCoreParams }) },
 }))
+vi.mock('@cornflow-ui/core/utils/appParameters', () => ({
+  getAppParameters: () => mockCoreParams,
+}))
 
 // SectionView must be imported AFTER mocks are declared.
 import SectionView from '@cornflow-ui/core/views/SectionView.vue'

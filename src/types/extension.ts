@@ -27,7 +27,10 @@ import type { LatestPlanController } from '@cornflow-ui/core/types/latestPlan'
  * couple to the entire config shape. Will be refined when wiring createCornflowApp.
  */
 export interface ConfigAccessor {
-  /** Returns the `core` block of the internal config (parameters, etc.). */
+  /**
+   * Returns the `core` block of the internal config, with the active DAG's `parameters` (see
+   * `core.schemaOverrides`). Reads are reactive: a `computed` follows a DAG switch.
+   */
   getCore: () => { parameters: Record<string, unknown> } & Record<string, unknown>
   /** Generic read-only access for cases not covered above. */
   get: <T = unknown>(path: string) => T | undefined

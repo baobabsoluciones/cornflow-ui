@@ -362,7 +362,7 @@ So you can have: (a) only groups and tables (one "Master data" block), or (b) se
 You can add **custom sub-sections** (e.g. dashboards or custom views) inside any section that comes from the schema (`available_automations.sections`). Those sub-sections are configured in `src/app/config.ts` and appear in the drawer under that section, alongside the section’s tables.
 
 - **Configuration**: In `createAppConfig()`, set `frontendAutomationSectionSubsections`: a map from **section id** (same as in the schema, e.g. `planificaciones-atenea`) to an array of sub-section definitions.
-- **Each sub-section** has: `path` (URL segment, e.g. `dashboard`), `name`, `titleKey` (i18n), `icon`, and `component` (lazy-loaded Vue component).
+- **Each sub-section** has: `path` (URL segment, e.g. `dashboard`), `name`, `titleKey` (i18n), `icon`, and `component` (lazy-loaded Vue component), and optionally `roles` and `schemas` to show it only to some roles or on some DAGs.
 - **Route**: Sub-sections are served under `/configuration/section/{sectionId}/{path}` (e.g. `/configuration/section/planificaciones-atenea/dashboard`).
 - **Drawer**: The app merges these entries into the master data navigation: for each schema section, the drawer shows the section’s tables plus the configured sub-sections. All configuration for this feature lives under `src/app/` (config, views, locales).
 
@@ -620,15 +620,55 @@ users apart, and only then does Cornflow refuse to create instances or execution
 does not have. The interface follows what the backend says; it is not what keeps users out.
 
 **Switching.** Picking another DAG does not reload the page. The core closes the loaded executions,
-the selection and the historical KPIs, reloads the schema and its instance and solution tables,
-puts back the solver settings of `src/app/config.ts`, and reloads the views. If executions are open,
-or an execution is being created, it asks first. Leaving a view that may not exist in the new DAG
-(anything but the executions history and creation, user settings and roles management) goes back to
-the default view.
+the selection and the historical KPIs, applies the settings of the new DAG (see below), reloads the
+schema and its instance and solution tables, and reloads the views. If executions are open, or an
+execution is being created, it asks first. The user stays on the view on screen when the new DAG has
+it, and goes to the default view (the new DAG's `defaultView`) when it does not: views of the
+selected execution (input data, results, dashboards and app sections with
+`requiresSelectedExecution`), routes gated to other DAGs, and master-data tables, groups or section
+sub-sections the new DAG lacks.
 
-**Per-DAG navigation.** App sections, dashboard pages and their routes may declare `schemas` (see
-[App-specific sections](#app-specific-sections-appsections) and [Custom dashboards](#custom-dashboards)),
+**Per-DAG navigation.** App sections, dashboard pages, frontend-automation section sub-sections and
+their routes may declare `schemas` (see [App-specific sections](#app-specific-sections-appsections),
+[Custom dashboards](#custom-dashboards) and
+[Frontend-automation section subsections](#frontend-automation-section-subsections-frontendautomationsectionsubsections)),
 and master-data tables already declare theirs. The drawer and the router follow the active DAG.
+
+**Settings per DAG.** By default every DAG works with the `parameters` of `src/app/config.ts`. When
+the DAGs do not all work the same way (one replans after master-data edits and another does not, one
+loads its instance through the ETL backend…), give each one its own settings in
+`core.schemaOverrides`, by DAG name:
+
+```ts
+core: {
+  parameters: { /* the settings of every DAG */ },
+  schemaOverrides: {
+    stock_dag: {
+      parameters: {
+        enableRecalculationOnMasterEdit: false,
+        etl: { useEtlBackend: true },
+        defaultView: 'project-execution',
+      },
+      dashboardLayout: [ /* the custom dashboards of this DAG */ ],
+    },
+  },
+},
+```
+
+- The settings of a DAG are the app's `parameters` with its `parameters` on top. Plain objects merge
+  key by key (`etl: { useEtlBackend: true }` keeps the rest of `etl`); arrays and any other value
+  replace the app's. A DAG without an entry works with the app's `parameters`.
+- `dashboardLayout` and `instanceDashboardLayout` replace the app's layouts on that DAG.
+- `valuesJsonPath`, `schemaLabels`, `enableRolesManagement`, `allowEditRoles` and
+  `showOpenIdUsername` apply to the whole application: a DAG entry cannot set them. A key the app's
+  `parameters` does not declare is ignored too. Both log a console warning naming the DAG.
+- The schema config in Cornflow still sets the solver and the config fields on top of the DAG's
+  settings, as it does for a single DAG.
+- The settings apply when the session enters a DAG: after the login and on every switch. The core
+  reads them through the store, so the drawer, the views and the premium modules
+  (`ctx.getConfig()`) follow a switch.
+- The Instance, Solution and Experiment classes are shared by every DAG. Logic that differs per DAG
+  in them reads the active DAG (`useGeneralStore().getSchemaName`).
 
 The drawer shows the active DAG next to the application name.
 
@@ -643,7 +683,11 @@ who may switch DAG, and what premium modules mount with the `app-top-bar` slot o
 picked from a menu. Premium modules also get:
 
 - an `onActiveSchemaChanged(schema, ctx)` hook, to reset what they keep per DAG;
-- `ctx.getActiveSchema()` in the extension context.
+- `ctx.getActiveSchema()` in the extension context;
+- the active DAG's settings in `ctx.getConfig()` and `ctx.isFeatureEnabled()` (see
+  [Settings per DAG](#several-dags-in-one-application)). Reads through the context are reactive, so
+  a `computed` follows a switch; a module that reads `@/app/config` directly gets the app's
+  settings, not the DAG's.
 
 `ctx.getRoleNames()` reads the roles of the logged-in user from the store, so a component or drawer
 entry gated by role (`isVisible`) shows as soon as the login loads the user.
@@ -692,6 +736,8 @@ Custom sub-sections (e.g. dashboards) can be added **inside** a frontend-automat
 | `titleKey`  | `string` | i18n key for the drawer label                                                          |
 | `icon`      | `string` | Material Design icon (e.g. `mdi-view-dashboard`)                                       |
 | `component` | function | Lazy-loaded Vue component: `() => import('@/app/views/...')`                           |
+| `roles`     | `string[]` | Optional. Shown (drawer and view) only to users with one of these role names         |
+| `schemas`   | `string[]` | Optional. Shown (drawer and view) only while the session works on one of these DAGs  |
 
 See [Sub-sections within frontend-automation sections](#sub-sections-within-frontend-automation-sections) for a full example.
 
@@ -858,7 +904,8 @@ This file contains **internal application-specific configuration** that is part 
       tableDashboards: { ... },
       executionStates: { ... },
       solutionStates: { ... },
-    }
+    },
+    schemaOverrides: {}, // Settings of each DAG when the app serves several (see "Settings per DAG")
   },
   dashboardPages: [],
   dashboardRoutes: [],

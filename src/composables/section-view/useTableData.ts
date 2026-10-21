@@ -48,7 +48,7 @@ import {
   detectDelimiter,
   parseCsvContent as parseCsvWithDelimiter,
 } from '@cornflow-ui/core/utils/csvUtils'
-import appConfig from '@/app/config'
+import { getAppParameters } from '@cornflow-ui/core/utils/appParameters'
 import { useFilePreProcessing } from '@cornflow-ui/core/composables/useFilePreProcessing'
 import { resolveTableColumnOrder } from '@cornflow-ui/core/utils/tableColumnOrder'
 
@@ -169,7 +169,7 @@ export function useTableData(
   /** After master-data bulk/overwrite: POST `/update-plan-data/` then pending replan only if plan is outdated. */
   const maybeRequestMasterRecalculationPending = async () => {
     if (sectionType.value !== 'configuration') return
-    if (appConfig.getCore().parameters.enableRecalculationOnMasterEdit !== true)
+    if (getAppParameters().enableRecalculationOnMasterEdit !== true)
       return
     await recalculation.checkPlanDataAfterMasterDataChange()
   }
@@ -234,7 +234,7 @@ export function useTableData(
    * tables are never editable — only instance/solution data tables.
    */
   const isRecalculationEditMode = computed(() => {
-    const coreParams = appConfig.getCore().parameters
+    const coreParams = getAppParameters()
     if (coreParams?.enableSolutionRecalculation !== true) return false
     if (!shouldUseExecutionData.value) return false
 

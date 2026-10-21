@@ -22,11 +22,14 @@
 import { defineComponent, computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import appConfig from '@/app/config'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import { isEntryVisibleFor } from '@cornflow-ui/core/utils/navigationGating'
 
 export default defineComponent({
   name: 'ConfigurationSectionSubsectionView',
   setup() {
     const route = useRoute()
+    const store = useGeneralStore()
     const resolvedComponent = ref<unknown>(null)
     const error = ref(false)
 
@@ -41,7 +44,12 @@ export default defineComponent({
         return
       }
       const def = appConfig.getFrontendAutomationSubsectionDef(sid, skey)
-      if (!def) {
+      const viewer = {
+        roleNames:
+          store.getUser?.roles?.map((role: { name: string }) => role.name) ?? [],
+        schema: store.getSchemaName,
+      }
+      if (!def || !isEntryVisibleFor(def, viewer)) {
         error.value = true
         return
       }
@@ -54,7 +62,9 @@ export default defineComponent({
       }
     }
 
-    watch([sectionId, subsectionKey], loadComponent, { immediate: true })
+    watch([sectionId, subsectionKey, () => store.getSchemaName], loadComponent, {
+      immediate: true,
+    })
 
     return { resolvedComponent, error, subsectionKey }
   },

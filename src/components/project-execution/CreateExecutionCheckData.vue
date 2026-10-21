@@ -24,7 +24,7 @@
 import { inject, nextTick } from 'vue'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import ExecutionDataView from '@cornflow-ui/core/components/project-execution/ExecutionDataView.vue'
-import appConfig from '@/app/config.ts'
+import { getAppParameters } from '@cornflow-ui/core/utils/appParameters'
 
 export default {
   components: { ExecutionDataView },
@@ -86,7 +86,7 @@ export default {
       return Promise.resolve()
     },
     computeHasBlockingErrors(instance) {
-      if (!appConfig.getCore().parameters.enableBlockAdvanceOnCheckErrors)
+      if (!getAppParameters().enableBlockAdvanceOnCheckErrors)
         return false
       const schema = this.checksSchema
       if (!schema?.properties) return false
