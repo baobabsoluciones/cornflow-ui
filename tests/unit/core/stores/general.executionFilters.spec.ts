@@ -5,6 +5,7 @@ import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 const mockConfig = vi.hoisted(() => ({
   backend: 'https://test-backend.com',
   schema: 'planning_dag',
+  schemas: [] as string[],
   name: 'Test App',
   hasExternalApp: true,
   auth: { type: 'cornflow' },
@@ -82,6 +83,7 @@ vi.mock('@cornflow-ui/core/repositories/TableRepository', () => ({
 
 const mockSchemaRepository = vi.hoisted(() => ({
   getSchema: vi.fn(),
+  getAvailableSchemaNames: vi.fn(),
   getInstanceTables: vi.fn(),
   getSolutionTables: vi.fn(),
 }))
@@ -134,6 +136,9 @@ describe('General store — executions history filters', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    mockConfig.schema = 'planning_dag'
+    mockConfig.schemas = []
+    sessionStorage.clear()
     mockParameters.executionFilters = []
     mockMasterData.config = { plants: plantsTable, programs: programsTable }
     mockRows.byUrl = {
@@ -265,6 +270,63 @@ describe('General store — executions history filters', () => {
       mockRows.byUrl['/plants/'] = [plantRows[0]]
       await store.loadExecutionFilters()
       expect(store.executionFilterValues).toEqual({ plant_id: null })
+    })
+  })
+
+  describe('several DAGs', () => {
+    /** Two DAGs: `plants` belongs to the first one only, `programs` to both. */
+    async function storeOnPlanningDag() {
+      mockConfig.schemas = ['planning_dag', 'stock_dag']
+      mockSchemaRepository.getAvailableSchemaNames.mockResolvedValue([
+        'planning_dag',
+        'stock_dag',
+      ])
+      mockMasterData.config = {
+        plants: { ...plantsTable, schemas: ['planning_dag'] },
+        programs: programsTable,
+      }
+      mockParameters.executionFilters = [PLANT, PROGRAM]
+      return loadedStore()
+    }
+
+    test('a switch loads the options of the new DAG, and a filter whose table it lacks goes back to "All"', async () => {
+      const store = await storeOnPlanningDag()
+      store.setExecutionFilterValue('plant_id', 2)
+      store.setExecutionFilterValue('program_id', 7)
+
+      await store.setActiveSchema('stock_dag')
+
+      expect(store.executionFilterOptions).toEqual({
+        plant_id: [],
+        program_id: [{ value: 7, title: 'Program A' }],
+      })
+      expect(store.executionFilterValues).toEqual({
+        plant_id: null,
+        program_id: 7,
+      })
+      expect(store.getExecutionFilterParams).toEqual({ program_id: '7' })
+    })
+
+    test('a switch to a DAG without filters leaves none', async () => {
+      const store = await storeOnPlanningDag()
+      store.setExecutionFilterValue('plant_id', 2)
+      mockParameters.executionFilters = []
+
+      await store.setActiveSchema('stock_dag')
+
+      expect(store.executionFilterOptions).toEqual({})
+      expect(store.executionFilterValues).toEqual({})
+      expect(store.getExecutionFilterParams).toEqual({})
+    })
+
+    test('the sign-in page empties the filters for the next user', async () => {
+      const store = await storeOnPlanningDag()
+      store.setExecutionFilterValue('plant_id', 2)
+
+      store.resetSessionState()
+
+      expect(store.executionFilterOptions).toEqual({})
+      expect(store.executionFilterValues).toEqual({})
     })
   })
 })

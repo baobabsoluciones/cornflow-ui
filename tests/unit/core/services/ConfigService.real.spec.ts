@@ -5,8 +5,10 @@ import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 // file). Here we control import.meta.env via vi.stubEnv and reset modules to
 // get a fresh singleton per test.
 
+const appParameters = vi.hoisted(() => ({ valuesJsonPath: '/values.json' }))
+
 vi.mock('@/app/config', () => ({
-  default: { getCore: () => ({ parameters: { valuesJsonPath: '/values.json' } }) },
+  default: { getCore: () => ({ parameters: appParameters }) },
 }))
 
 async function freshService() {
@@ -67,7 +69,12 @@ describe('ConfigService (real) — fetched config (no env)', () => {
     vi.stubEnv('VITE_APP_BACKEND_URL', '')
   })
 
-  test('fetches values.json from the local path on localhost', async () => {
+  afterEach(() => {
+    appParameters.valuesJsonPath = '/values.json'
+    globalThis.history.replaceState(null, '', '/')
+  })
+
+  test('fetches values.json from the root of the host', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       json: () =>
         Promise.resolve({ schema: 'fetched', backend_url: 'x', auth_type: 'cornflow', name: 'n' }),
@@ -76,10 +83,31 @@ describe('ConfigService (real) — fetched config (no env)', () => {
     const svc = await freshService()
     const cfg = await svc.getConfig()
     expect(cfg.schema).toBe('fetched')
-    expect(fetchMock).toHaveBeenCalledWith('/values.json')
+    expect(fetchMock).toHaveBeenCalledWith(`${globalThis.location.origin}/values.json`)
     // cached: a second call does not re-fetch
     await svc.getConfig()
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  test('a relative path finds values.json next to an app served under a sub-path', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ json: () => Promise.resolve({}) })
+    vi.stubGlobal('fetch', fetchMock)
+    appParameters.valuesJsonPath = 'values.json'
+    globalThis.history.replaceState(null, '', '/app/#/history-execution')
+
+    await (await freshService()).getConfig()
+
+    expect(fetchMock).toHaveBeenCalledWith(`${globalThis.location.origin}/app/values.json`)
+  })
+
+  test('an absolute path points at the root of the host from a sub-path too', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ json: () => Promise.resolve({}) })
+    vi.stubGlobal('fetch', fetchMock)
+    globalThis.history.replaceState(null, '', '/app/')
+
+    await (await freshService()).getConfig()
+
+    expect(fetchMock).toHaveBeenCalledWith(`${globalThis.location.origin}/values.json`)
   })
 
   test('rejects when the fetch fails', async () => {

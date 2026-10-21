@@ -1,6 +1,14 @@
 import { describe, test, expect, beforeEach } from 'vitest'
 import appConfig from '@/app/config'
 
+const page = () => Promise.resolve({})
+
+function declareAppSections(sections: unknown[]) {
+  ;(
+    appConfig as unknown as { config: { appSections: unknown[] } }
+  ).config.appSections = sections
+}
+
 describe('appSections config collectors', () => {
   beforeEach(() => {
     appConfig.updateConfig()
@@ -23,5 +31,67 @@ describe('appSections config collectors', () => {
 
     expect(parameters.executionFilters).toEqual([])
     expect(parameters.executionsListEndpoint).toBeNull()
+  })
+
+  test('drawer items keep the roles and DAGs a section is declared for', () => {
+    declareAppSections([
+      {
+        path: 'admin-board',
+        name: 'Admin board',
+        titleKey: 'admin',
+        icon: 'mdi-a',
+        component: page,
+        roles: ['admin'],
+        subPages: [
+          {
+            path: 'stock-board',
+            name: 'Stock board',
+            titleKey: 'stock',
+            icon: 'mdi-b',
+            component: page,
+            schemas: ['stock_dag'],
+          },
+        ],
+      },
+    ])
+
+    const [section] = appConfig.getAppSections()
+
+    expect(section.roles).toEqual(['admin'])
+    expect(section.subPages?.[0].schemas).toEqual(['stock_dag'])
+  })
+
+  test('routes carry the roles and DAGs in their meta, for the router guard', () => {
+    declareAppSections([
+      {
+        path: 'admin-board',
+        name: 'Admin board',
+        titleKey: 'admin',
+        icon: 'mdi-a',
+        component: page,
+        roles: ['admin'],
+        schemas: ['planning_dag'],
+      },
+      {
+        path: 'open-board',
+        name: 'Open board',
+        titleKey: 'open',
+        icon: 'mdi-b',
+        component: page,
+      },
+    ])
+
+    const [gated, open] = appConfig.getAppSectionRoutes()
+
+    expect(gated.meta).toEqual({
+      showsLoadingOnEnter: false,
+      roles: ['admin'],
+      schemas: ['planning_dag'],
+    })
+    expect(open.meta).toEqual({ showsLoadingOnEnter: false })
+  })
+
+  test('declares no DAG labels by default', () => {
+    expect(appConfig.getCore().parameters.schemaLabels).toEqual({})
   })
 })

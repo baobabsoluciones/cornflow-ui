@@ -1179,11 +1179,11 @@ describe('mergeAppConfigFields', () => {
     key: 'gapRel',
     title: 'configParams.gapRel',
     type: 'float',
-    source: 'eParametros',
+    source: 'parameters',
     param: 'gap',
     lookupType: 'arrayByValue',
-    lookupParam: 'PARAMETRO_ID',
-    lookupValue: 'VALOR',
+    lookupParam: 'PARAM_ID',
+    lookupValue: 'VALUE',
   }
 
   test('an app field with a source wins over the schema field with the same key', () => {
@@ -1226,11 +1226,11 @@ describe('mergeAppConfigFields', () => {
 
   test('keeps an app field with a source the schema has no property for', () => {
     const timeLimit3 = {
-      key: 'timeLimit_3',
-      title: 'configParams.timeLimit_3',
+      key: 'phaseTimeLimit',
+      title: 'configParams.phaseTimeLimit',
       type: 'number',
-      source: 'eParametros',
-      param: 'minutos_modelo_3',
+      source: 'parameters',
+      param: 'time_limit',
     }
 
     const merged = mergeAppConfigFields(schemaFields, [timeLimit3])
@@ -1240,7 +1240,7 @@ describe('mergeAppConfigFields', () => {
       'gapRel',
       'cornflow',
       'region',
-      'timeLimit_3',
+      'phaseTimeLimit',
     ])
     expect(merged.at(-1)).toEqual(timeLimit3)
   })

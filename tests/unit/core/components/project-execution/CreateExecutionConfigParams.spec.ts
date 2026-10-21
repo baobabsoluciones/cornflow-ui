@@ -46,10 +46,10 @@ const mockGeneralStore = {
           ]
         },
         {
-          key: 'eParametroField',
+          key: 'sourcedField',
           type: 'number',
-          title: 'config.eParametro.title',
-          source: 'eParametros',
+          title: 'config.sourcedField.title',
+          source: 'parameters',
           param: 'test_param'
         }
       ]
@@ -73,7 +73,7 @@ const mockT = vi.fn((key) => {
     'config.description.title': 'Description',
     'config.description.placeholder': 'Enter description',
     'config.solver.title': 'Solver',
-    'config.eParametro.title': 'E-Parameter Field'
+    'config.sourcedField.title': 'Sourced Field'
   }
   return translations[key] || key
 })
@@ -163,7 +163,7 @@ describe('CreateExecutionConfigParams', () => {
       wrapper = createWrapper()
       
       // Should render all 6 fields from mock config
-      expect(wrapper.findAll('[data-testid="input-field"]')).toHaveLength(4) // number, float, text, eParametro fields
+      expect(wrapper.findAll('[data-testid="input-field"]')).toHaveLength(4) // number, float, text, sourced fields
       expect(wrapper.findAll('.v-switch')).toHaveLength(1) // boolean field
       expect(wrapper.findAll('.v-select')).toHaveLength(1) // select field
     })
@@ -397,11 +397,11 @@ describe('CreateExecutionConfigParams', () => {
     })
 
     test('a field read from the file keeps the value already in the config', async () => {
-      wrapper = createWrapper({ modelValue: { config: { eParametroField: 750 } } })
+      wrapper = createWrapper({ modelValue: { config: { sourcedField: 750 } } })
       await nextTick()
 
       const finalEmit = wrapper.emitted('update:modelValue')!.at(-1)![0] as any
-      expect(finalEmit.config.eParametroField).toBe(750)
+      expect(finalEmit.config.sourcedField).toBe(750)
     })
 
     test('preserves existing config values during initialization', async () => {
@@ -534,7 +534,7 @@ describe('CreateExecutionConfigParams', () => {
       expect(timeout.find('.config-form__label').text()).toBe('Timeout')
       expect(timeout.find('.config-form__source').exists()).toBe(false)
 
-      const fromFile = wrapper.find('[data-testid="config-field-eParametroField"]')
+      const fromFile = wrapper.find('[data-testid="config-field-sourcedField"]')
       expect(fromFile.find('.config-form__source').text()).toBe('configParams.fromFile')
     })
 

@@ -82,6 +82,10 @@ row `id`s), and returns the same shape.
 ⚠️ The backend decides which rows each user may see: the frontend-automation table and the
 executions list have to leave out what the user may not use.
 
+**Several DAGs.** The options come from the frontend-automation tables of the active DAG (a table
+declared with `schemas` only offers its rows on those DAGs). A DAG switch loads the options again:
+a filter keeps its value while the new DAG still offers it, and goes back to "All" otherwise.
+
 ### Project execution
 
 - **Purpose**: Step-by-step execution creation workflow
@@ -494,23 +498,20 @@ Tables can be restricted to users who have access to specific schemas (DAGs). Th
 | `["schema_a", "schema_b"]` | Users with access to `schema_a` **OR** `schema_b` |
 | `[]` (empty array)         | **No one** (table hidden)                         |
 
+A table with `schemas` is also shown only while the session works on one of those DAGs: in a
+deployment with several DAGs (see [Several DAGs](#several-dags-in-one-application)),
+switching DAG switches the master-data tables with it.
+
 ##### How user schemas are determined
 
-When a user logs in, the backend returns user information through the `/user/{id}/` endpoint. The response may include an optional `schemas` property:
+In a deployment that lists several DAGs (`schema` with several names in the external configuration), the core asks
+Cornflow which DAGs the user may use (`GET /schema/`, from Cornflow's DAG permissions) right after
+the login, and those are the user's schemas.
 
-```json
-{
-  "id": 1,
-  "first_name": "John",
-  "last_name": "Doe",
-  "username": "johndoe",
-  "email": "john@example.com",
-  "schemas": ["schema_cliente_a", "schema_cliente_b"]
-}
-```
-
-- If `schemas` is **not present** or is **empty**: User has access to ALL frontend automation tables
-- If `schemas` **contains values**: User only sees tables that match their allowed schemas
+- With a **single DAG** the core makes no such request: the user has no schema restriction and
+  sees every table of the active DAG
+- With **several DAGs**, the user only sees tables whose `schemas` include one of the DAGs Cornflow
+  grants them
 
 ##### Use cases
 
@@ -527,7 +528,7 @@ When a user logs in, the backend returns user information through the `/user/{id
 - The `schemas` values must match the DAG names the user has access to
 - If a user has access to **any** of the listed schemas, the table is visible
 - Groups are still shown even if some tables within them are hidden (only visible tables appear as tabs)
-- This filtering happens in the frontend based on the user's permissions returned by the backend
+- This filtering happens in the frontend; the backend still has to refuse what a user may not use
 
 #### Selectors fed by frontend-automation tables
 
@@ -655,6 +656,7 @@ Applications can define custom dashboards for results visualization:
 
 - **Configuration**: Defined in `src/app/config.ts` under `dashboardPages`
 - **Purpose**: Provide visual insights into optimization results
+- **Gating**: a page may declare `roles` and `schemas` (as app sections do) to show only to some roles or on some DAGs; its route in `dashboardRoutes` declares the same in `meta: { roles, schemas }`
 
 ### Automatic dashboards
 
@@ -667,6 +669,73 @@ The application includes an automatic dashboard system that intelligently genera
 - **Configuration**: Controlled via `enableAutoSolutionDashboard` and `tableDashboards` in `src/app/config.ts`
 
 For detailed documentation on automatic dashboards, including configuration options, widget types, and customization, see [Automatic Dashboards Documentation](docs/AUTO_DASHBOARDS_README.md).
+
+## Several DAGs (optional)
+
+For applications that serve more than one model. It is off unless configured: an application with
+a single DAG in `schema` makes no extra request and shows exactly the same interface.
+
+### Several DAGs in one application
+
+**Configuration.** List the DAGs in the same `schema` setting, separated by commas; the first is
+the DAG the deployment opens with:
+
+```env
+VITE_APP_SCHEMA=planning_dag,stock_dag
+```
+
+or, in `values.json`, `"schema": "planning_dag,stock_dag"` (an array works too). A `schema` with a
+single name is a single-DAG deployment, so existing deployments need no change, and the build and
+runtime pipelines that already pass `VITE_APP_SCHEMA` / `schema` carry the list as it is. Labels for
+the module selector go in `src/app/config.ts` (`schemaLabels`, by DAG name: literal text or an i18n
+key):
+
+```ts
+schemaLabels: { planning_dag: 'Planning', stock_dag: 'Stock' },
+```
+
+**Which DAG each user enters.** After the login the core asks Cornflow which DAGs the user may use
+(`GET /schema/`, from Cornflow's DAG permissions) and keeps those listed in `schema`:
+
+| DAGs granted | What the user sees |
+| --- | --- |
+| One | The application on that DAG, with no selector. The drawer shows the DAG next to the application name |
+| Several | A module selector in the top bar. The session starts on the DAG picked earlier in the session, else `schema`, else the first granted |
+| None | A message saying the user has no access to any module |
+
+⚠️ **The backend decides.** Cornflow grants every DAG to every user unless the deployment runs with
+`OPEN_DEPLOYMENT=0` and the users have their DAG permissions; only then does `GET /schema/` tell
+users apart, and only then does Cornflow refuse to create instances or executions of a DAG the user
+does not have. The interface follows what the backend says; it is not what keeps users out.
+
+**Switching.** Picking another DAG does not reload the page. The core closes the loaded executions,
+the selection and the historical KPIs, reloads the schema and its instance and solution tables,
+puts back the solver settings of `src/app/config.ts`, and reloads the views. If executions are open,
+or an execution is being created, it asks first. Leaving a view that may not exist in the new DAG
+(anything but the executions history and creation, user settings and roles management) goes back to
+the default view.
+
+**Per-DAG navigation.** App sections, dashboard pages and their routes may declare `schemas` (see
+[App-specific sections](#app-specific-sections-appsections) and [Custom dashboards](#custom-dashboards)),
+and master-data tables already declare theirs. The drawer and the router follow the active DAG.
+
+The drawer shows the active DAG next to the application name.
+
+### Top bar and modules
+
+The top of the layout is a fixed stack, in this order: the top bar, the staging notice and the
+global banners of premium modules (`app-banners`), which keep their own `position: fixed` and land
+below the other two. The views start below the whole stack. The top bar is a light band tinted with
+the app's primary colour and only shows while it has something in it: the module selector, for users
+who may switch DAG, and what premium modules mount with the `app-top-bar` slot of
+`globalComponents`. The selector shows the modules side by side, up to four; with more, the module is
+picked from a menu. Premium modules also get:
+
+- an `onActiveSchemaChanged(schema, ctx)` hook, to reset what they keep per DAG;
+- `ctx.getActiveSchema()` in the extension context.
+
+`ctx.getRoleNames()` reads the roles of the logged-in user from the store, so a component or drawer
+entry gated by role (`isVisible`) shows as soon as the login loads the user.
 
 ## Technical implementation
 
@@ -695,6 +764,7 @@ Routes are automatically generated based on schema definitions:
 Unlike `dashboardPages` / `instanceDashboardPages` (which add subsections inside Results and Input data), **app sections** define standalone top-level sections and optional subsections in the main navigation and router. They are built dynamically from `src/app/config.ts`:
 
 - **Configuration**: In `createAppConfig()`, set the `appSections` array. Each entry has `path`, `name`, `titleKey`, `icon`, `component` (lazy import), and optional `subPages` with the same shape.
+- **Gating**: optional `roles` (role names) and `schemas` (DAG names) show an entry only to users with one of those roles, and only while the session works on one of those DAGs. They gate the drawer entry and the route (the route goes to the forbidden page).
 - **Router**: Routes are registered via `getAppSectionRoutes()` (used in `src/router/index.ts`).
 - **Drawer**: Menu items are built from `getAppSections()` in `AppDrawer.vue` (title resolved with i18n from `titleKey`).
 
@@ -768,7 +838,7 @@ Create a `.env` file (for local development only) or set environment variables o
 ```env
 # Core configuration
 VITE_APP_BACKEND_URL=https://your-backend-url
-VITE_APP_SCHEMA=rostering
+VITE_APP_SCHEMA=rostering                  # Several DAGs: comma-separated, the first is the default
 VITE_APP_NAME=Rostering
 
 # Application behavior
@@ -792,7 +862,7 @@ VITE_APP_AUTH_PROVIDERS=google,microsoft   # For Cognito: comma-separated list
 
 #### Method 2: JSON configuration
 
-Copy `public/values.template.json` to `public/values.json` and configure your values (for local development only). For production, configure this json in an accesible path. Defined path by default is `/values.json` but this can be overwritten in `app/config.ts` with `valuesJsonPath`. Used automatically when no environment variables are detected.
+Copy `public/values.template.json` to `public/values.json` and configure your values (for local development only). For production, configure this json in an accesible path. Defined path by default is `/values.json` but this can be overwritten in `app/config.ts` with `valuesJsonPath`. The path is resolved against the page: `/values.json` points at the root of the host, and a relative `values.json` finds the file next to an app served under a sub-path (an app at `/app/` reads `/app/values.json`). Used automatically when no environment variables are detected.
 
 ```json
 {
@@ -894,7 +964,7 @@ This file contains **internal application-specific configuration** that is part 
 
 | Parameter                     | Type       | Description                                           |
 | ----------------------------- | ---------- | ----------------------------------------------------- |
-| `valuesJsonPath`              | `string`   | Path to the external JSON configuration file          |
+| `valuesJsonPath`              | `string`   | Path to the external JSON configuration file, resolved against the page (relative for apps under a sub-path) |
 | `useEtlBackend`               | `boolean`  | Enable ETL backend integration                        |
 | `showOpenIdUsername`          | `boolean`  | Display user full name and email from openId login    |
 | `showTablesWithoutSchema`     | `boolean`  | List data tables the schema does not declare          |
@@ -906,6 +976,7 @@ This file contains **internal application-specific configuration** that is part 
 | `instanceFileFormats`         | `string[]` | File extensions the instance upload accepts. Empty or absent means the default (`json`, `xlsx`, `csv`). |
 | `executionFilters`            | `ExecutionFilter[]` | Filters of the execution history, fed by frontend-automation tables. Empty means date filters only. See [Execution history filters](#execution-history-filters-optional) |
 | `executionsListEndpoint`      | `{ path, isExternal }` \| `null` | Endpoint of the executions list; `null` means Cornflow's `GET /execution/` |
+| `schemaLabels`                | `Record<string, string>` | Text of each DAG in the module selector, by DAG name. See [Several DAGs](#several-dags-in-one-application) |
 
 #### showExtraProjectExecutionColumns
 
@@ -1007,7 +1078,7 @@ It's important not to edit any other file or folders. Only the folders, files an
 | Parameter               | Description                   | Environment Variable              | JSON Key               | Values                           |
 | ----------------------- | ----------------------------- | --------------------------------- | ---------------------- | -------------------------------- |
 | **Backend URL**         | API server endpoint           | `VITE_APP_BACKEND_URL`            | `backend_url`          | URL string                       |
-| **Schema**              | Application schema name       | `VITE_APP_SCHEMA`                 | `schema`               | String identifier                |
+| **Schema**              | Application schema (DAG) name, or several comma-separated (see [Several DAGs](#several-dags-in-one-application)) | `VITE_APP_SCHEMA` | `schema` | String identifier, comma-separated list or array |
 | **App Name**            | Application display name      | `VITE_APP_NAME`                   | `name`                 | String                           |
 | **Hash Mode**           | Router mode (hash vs history) | `VITE_APP_USE_HASH_MODE`          | `useHashMode`          | `true`/`false` (accepts `1`/`0`) |
 | **Default Language**    | UI language                   | `VITE_APP_DEFAULT_LANGUAGE`       | `defaultLanguage`      | A visible core language (`en`, `es`, `fr`) |
@@ -1419,13 +1490,13 @@ Defines the configuration fields for execution parameters. Each field can have:
 - `suffix` (string): Translation key for the field suffix (e.g., units).
 - `icon` (string): Material Design icon name.
 - `type` ('number' | 'float' | 'boolean' | 'text' | 'date' | 'select'): Field type.
-- `source` (string, optional): Table name in instance.data to get the value from (e.g., 'eParametros').
+- `source` (string, optional): Table name in instance.data to get the value from (e.g., 'parameters').
 - `param` (string, optional): Key or ID to look up in the source table/array.
 - `lookupType` (string, optional): How to look up the value in the source. Supported:
   - 'arrayByValue': Looks for an object in the array where [lookupParam] === param, returns [lookupValue].
   - If null, searches directly as key[value] for source[param].
 - `lookupParam` (string, optional, for arrayByValue): The property to match in the array (e.g., 'ID').
-- `lookupValue` (string, optional, for arrayByValue): The property to return from the found object (e.g., 'VALOR').
+- `lookupValue` (string, optional, for arrayByValue): The property to return from the found object (e.g., 'value').
 - `default` (any, optional): Default value if not found in the instance. It only fills a key that has no value yet, so it never overwrites an answer the user already gave or the config of the execution being edited.
 - `options` (Array<{label: string, value: any}>, for select type): Options for select fields.
 - `joinFrom` (string, from the schema): Set from `"join_from": "<table>.<column>"`. The field is a select whose options are the rows of that frontend-automation table. See [Selectors fed by frontend-automation tables](#selectors-fed-by-frontend-automation-tables).
@@ -1488,7 +1559,7 @@ from, so they read as part of loading rather than as a separate stage:
 
 ```
 DATA THE INSTANCE WILL BE LOADED WITH
-Plant         [Štip ▾]                      ← join_from
+Plant         [Plant A ▾]                   ← join_from
 Mode          [ Operative ][ Strategic ]    ← a select with up to 3 options shows them as cards
 Date          [01/09/2026]
 Data source   [ Master tables ][ File ][ Parameters ]

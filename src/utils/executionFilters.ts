@@ -36,9 +36,14 @@ function isExecutionFilter(value: unknown): value is ExecutionFilter {
   )
 }
 
-/** Filters of the executions history, in the order the app declares them. Empty when none. */
-export function readExecutionFilters(): ExecutionFilter[] {
-  const declared = readParameters().executionFilters
+/**
+ * Filters of the executions history, in the order the app declares them. Empty when none.
+ * `parameters` defaults to the app config; the store passes its own, the active DAG's.
+ */
+export function readExecutionFilters(
+  parameters: Record<string, unknown> = readParameters(),
+): ExecutionFilter[] {
+  const declared = parameters.executionFilters
   if (!Array.isArray(declared)) return []
   return declared.filter(isExecutionFilter)
 }

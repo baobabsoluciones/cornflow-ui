@@ -31,6 +31,22 @@ export function parseBoolean(value: any): boolean | null {
   if (typeof value === 'boolean') {
     return value;
   }
-  
+
   return null;
+}
+
+/**
+ * Parse a list of names given as an array (JSON) or as a comma-separated string (environment
+ * variables). Blank entries and repeats are dropped; order is kept.
+ * @param value - The list to parse
+ * @returns string[] - The names, or an empty list if there are none
+ */
+export function parseNameList(value: unknown): string[] {
+  let items: unknown[] = []
+  if (Array.isArray(value)) items = value
+  else if (typeof value === 'string') items = value.split(',')
+  const names = items
+    .map((item) => (typeof item === 'string' ? item.trim() : ''))
+    .filter((item) => item !== '')
+  return [...new Set(names)]
 }

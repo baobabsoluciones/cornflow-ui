@@ -1,5 +1,40 @@
 # Changelog
 
+## [3.6.0] - 20-10-2026
+
+### Added
+- **Several DAGs per session (opt-in)**  
+  - `schema` / `VITE_APP_SCHEMA` accepts a comma-separated list (or an array in `values.json`); the first name is the default DAG and a single name keeps a single-DAG deployment
+  - After the login, with more than one DAG configured, the store asks `GET /schema/` which DAGs the user has: one opens the app on it, several show the module selector, none shows a no-access message
+  - `setActiveSchema(name)` switches DAG without reloading the page and runs the `onActiveSchemaChanged` extension hooks; `ctx.getActiveSchema()` is available to extensions
+  - `appSections`, dashboard pages and their routes may declare `roles` and `schemas`; the drawer hides what does not apply and the router sends gated routes to `/not-found?reason=forbidden`
+  - Fixed top stack in `IndexView` (top bar, staging notice, premium banners) with an `app-top-bar` slot for premium modules
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #238
+
+### Fixed
+- **Role-gated banners and drawer entries show right after the login**  
+  - `ctx.getRoleNames()` reads the roles from the store, falling back to sessionStorage
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #238
+- **A new login starts with a clean session**  
+  - `LoginView` resets the session store, so logging out and in again in the same tab does not keep the previous user's executions and data
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #238
+- **No second scrollbar with the staging notice**  
+  - The staging notice and the premium banners live in the fixed top stack and no longer make the page taller than the window or overlap each other
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #238
+
+## [3.5.2] - 16-10-2026
+
+### Fixed
+- **`values.json` found for apps served under a sub-path**  
+  - The URL was built from the hostname alone, so an app served under a sub-path requested `values.json` at the root of the host, got a 404 and fell back to the build-time variables: no backend URL, and the cornflow login instead of the deployment's Azure or Cognito one
+  - `valuesJsonPath` is now resolved against the page: a relative `values.json` finds the file next to the app, and the default `/values.json` keeps pointing at the root of the host
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #240
+
 ## [3.5.1] - 14-10-2026
 
 ### Fixed

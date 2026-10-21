@@ -17,6 +17,7 @@ import LicenceRepository from '@cornflow-ui/core/repositories/LicenceRepository'
 import VersionRepository from '@cornflow-ui/core/repositories/VersionRepository'
 import {
   runPremiumInitialDataHooks,
+  runPremiumActiveSchemaChangedHooks,
   loadPremiumMasterDataConfig,
 } from '@cornflow-ui/core/plugins/extensions'
 import RoleRepository from '@cornflow-ui/core/repositories/RoleRepository'
@@ -115,6 +116,41 @@ function clearHistoricalPollTimer() {
   }
 }
 
+/** sessionStorage key of the DAG the session works on (only with several DAGs). */
+const ACTIVE_SCHEMA_STORAGE_KEY = 'activeSchema'
+
+function readStoredActiveSchema(): string | null {
+  try {
+    return sessionStorage.getItem(ACTIVE_SCHEMA_STORAGE_KEY)
+  } catch {
+    return null
+  }
+}
+
+function storeActiveSchema(schema: string): void {
+  try {
+    sessionStorage.setItem(ACTIVE_SCHEMA_STORAGE_KEY, schema)
+  } catch {
+    /* storage unavailable: the choice lasts until the page is reloaded */
+  }
+}
+
+function clearStoredActiveSchema(): void {
+  try {
+    sessionStorage.removeItem(ACTIVE_SCHEMA_STORAGE_KEY)
+  } catch {
+    /* storage unavailable: nothing was kept */
+  }
+}
+
+/** Settings the schema config overrides, as the app declares them (see `restoreAppSolverDefaults`). */
+function snapshotAppSolverDefaults(parameters: Record<string, any>) {
+  return {
+    defaultSolver: parameters?.solverConfig?.defaultSolver as string | undefined,
+    executionSolvers: [...((parameters?.executionSolvers as string[]) ?? [])],
+  }
+}
+
 export const useGeneralStore = defineStore('general', {
   state: () => ({
     schemaRepository: new SchemaRepository(),
@@ -134,7 +170,17 @@ export const useGeneralStore = defineStore('general', {
     user: {},
     logo: logo,
     fullLogo: fullLogo,
+    /** DAG the session works on; empty means `config.schema`. */
     schema: '',
+    /** DAG the deployment opens with (`config.schema` before any switch). */
+    defaultSchema: config.schema,
+    /**
+     * DAGs of `config.schemas` the user may switch between. Empty unless the deployment lists
+     * several DAGs.
+     */
+    availableSchemas: [] as string[],
+    /** True when the deployment lists several DAGs and Cornflow grants the user none of them. */
+    noSchemaAccess: false,
     schemaConfig: {} as SchemaConfig,
     appConfig: appConfig.getCore(),
     /**
@@ -147,6 +193,8 @@ export const useGeneralStore = defineStore('general', {
     executionFilterValues: {} as ExecutionFilterValues,
     /** Options of each executions history filter, from its frontend-automation table. */
     executionFilterOptions: {} as Record<string, TableOption[]>,
+    /** Solver settings as `src/app/config.ts` declares them (see `restoreAppSolverDefaults`). */
+    appSolverDefaults: snapshotAppSolverDefaults(appConfig.getCore().parameters),
     appDashboardRoutes: appConfig.getDashboardRoutes(),
     appDashboardPages: appConfig.getDashboardPages(),
     appDashboardLayout: appConfig.getDashboardLayout(),
@@ -197,9 +245,12 @@ export const useGeneralStore = defineStore('general', {
 
         await this.fetchUser()
         await this.fetchCornflowVersion()
-        await this.setSchema()
-        await this.setConfigurations()
-        await this.loadExecutionFilters()
+        await this.resolveActiveSchema()
+        if (!this.noSchemaAccess) {
+          await this.setSchema()
+          await this.setConfigurations()
+          await this.loadExecutionFilters()
+        }
         await this.fetchLicences()
         await this.fetchWarnings()
 
@@ -289,12 +340,17 @@ export const useGeneralStore = defineStore('general', {
     },
 
     /**
-     * Loads the options of the executions history filters. A filter keeps its value while it is
-     * still offered, and goes back to "All" otherwise. Without filters it does nothing.
+     * Loads the options of the executions history filters of the active DAG, after the login and
+     * on a DAG switch. A filter keeps its value while it is still offered, and goes back to "All"
+     * otherwise. Without filters it empties them.
      */
     async loadExecutionFilters() {
-      const filters = readExecutionFilters()
-      if (filters.length === 0) return
+      const filters = readExecutionFilters(this.appConfig.parameters)
+      if (filters.length === 0) {
+        this.executionFilterOptions = {}
+        this.executionFilterValues = {}
+        return
+      }
 
       const loaded = await Promise.all(
         filters.map(async (filter) => ({
@@ -321,7 +377,13 @@ export const useGeneralStore = defineStore('general', {
      * not one of the filter's options.
      */
     setExecutionFilterValue(key: string, value: unknown): boolean {
-      if (!readExecutionFilters().some((filter) => filter.key === key)) return false
+      if (
+        !readExecutionFilters(this.appConfig.parameters).some(
+          (filter) => filter.key === key,
+        )
+      ) {
+        return false
+      }
       const picked = hasFilterValue(value) ? value : null
       if (picked === (this.executionFilterValues[key] ?? null)) return false
       if (
@@ -334,6 +396,142 @@ export const useGeneralStore = defineStore('general', {
       }
       this.executionFilterValues = { ...this.executionFilterValues, [key]: picked }
       return true
+    },
+
+    /**
+     * Decides the DAG the session starts on. Only when the deployment lists several DAGs
+     * (`schema` with several names, see `config.schemas`): asks Cornflow which ones the user may
+     * use (`GET /schema/`) and enters the one kept from earlier in the session, else
+     * `config.schema`, else the first granted.
+     * With a single DAG it does nothing and makes no request.
+     */
+    async resolveActiveSchema() {
+      this.noSchemaAccess = false
+      if (!this.isMultiSchemaDeployment) {
+        this.availableSchemas = []
+        return
+      }
+
+      let granted: string[]
+      try {
+        granted = await this.schemaRepository.getAvailableSchemaNames()
+      } catch (error) {
+        // Without an answer from Cornflow the session stays on the default DAG, with no switcher;
+        // the backend still decides what the user may do there.
+        console.error('Error getting the schemas of the user', error)
+        this.availableSchemas = this.defaultSchema ? [this.defaultSchema] : []
+        this.applyActiveSchema(this.defaultSchema)
+        return
+      }
+
+      if (this.user && typeof this.user === 'object') {
+        ;(this.user as { schemas?: string[] }).schemas = granted
+      }
+      this.availableSchemas = (config.schemas ?? []).filter((schema) =>
+        granted.includes(schema),
+      )
+      if (this.availableSchemas.length === 0) {
+        this.noSchemaAccess = true
+        return
+      }
+
+      const initial =
+        [readStoredActiveSchema(), this.defaultSchema].find(
+          (schema) => schema && this.availableSchemas.includes(schema),
+        ) ?? this.availableSchemas[0]
+      this.applyActiveSchema(initial)
+    },
+
+    /**
+     * Points the session at `schema`. `config.schema` follows it because premium modules read it
+     * (e.g. the ETL `?schema=` parameter).
+     */
+    applyActiveSchema(schema: string) {
+      this.schema = schema
+      config.schema = schema
+      if (schema) storeActiveSchema(schema)
+    },
+
+    /**
+     * Switches the session to another DAG without reloading the page: closes the loaded
+     * executions, reloads the schema, its instance/solution tables and the views, and lets premium
+     * modules reset what they keep per DAG. Navigation is up to the caller (see `ModuleSwitcher`).
+     * Returns false when `schema` is not one the user may switch to.
+     */
+    async setActiveSchema(schema: string): Promise<boolean> {
+      if (schema === this.getSchemaName || !this.availableSchemas.includes(schema)) {
+        return false
+      }
+
+      this.closeExecutionSession()
+      this.applyActiveSchema(schema)
+      this.schemaConfig = {} as SchemaConfig
+      this.restoreAppSolverDefaults()
+      await this.setSchema()
+      const { inputData, resultsData } = await this.fetchSchemaTables()
+      this.rawConfigurations = {
+        masterData: this.rawConfigurations?.masterData ?? ({} as TableSchema),
+        inputData,
+        resultsData,
+      }
+      this.updateLocalizedConfigurations()
+      await this.loadExecutionFilters()
+      this.incrementUploadComponentKey()
+      await runPremiumActiveSchemaChangedHooks(schema)
+      return true
+    },
+
+    /** Closes the loaded executions, the selection, the pollers and the historical KPIs. */
+    closeExecutionSession() {
+      this.stopAutoLoadExecutions()
+      this.resetLoadedExecutions()
+      this.setSelectedExecution(null)
+      this.lastExecutions = []
+      this.clearHistoricalExecution()
+      this.incrementTabBarKey()
+    },
+
+    /**
+     * Puts back the solver settings and config fields of `src/app/config.ts`, so a schema without
+     * config does not inherit those of the schema loaded before it.
+     */
+    restoreAppSolverDefaults() {
+      const parameters = this.appConfig.parameters
+      if (this.appSolverDefaults.defaultSolver !== undefined) {
+        parameters.solverConfig = {
+          ...parameters.solverConfig,
+          defaultSolver: this.appSolverDefaults.defaultSolver,
+        }
+      }
+      parameters.executionSolvers = [...this.appSolverDefaults.executionSolvers]
+      parameters.configFields = [...this.appConfigFields]
+    },
+
+    /**
+     * Empties everything that belongs to the logged-in user, so the next login in the same tab
+     * loads its own user, roles, DAG and configurations. Called from the sign-in page, where every
+     * way out of a session (logout, expired token, 401) ends.
+     */
+    resetSessionState() {
+      this.closeExecutionSession()
+      this.user = {}
+      this.licences = []
+      this.warnings = []
+      this.schema = ''
+      config.schema = this.defaultSchema
+      this.schemaConfig = {} as SchemaConfig
+      this.restoreAppSolverDefaults()
+      this.configurations = null
+      this.rawConfigurations = null
+      this.masterDataSections = null
+      this.masterDataGroups = null
+      this.executionFilterOptions = {}
+      this.executionFilterValues = {}
+      this.availableSchemas = []
+      this.noSchemaAccess = false
+      this.initialDataLoading = false
+      this.dataInitialized = false
+      clearStoredActiveSchema()
     },
 
     async fetchLicences() {
@@ -415,26 +613,7 @@ export const useGeneralStore = defineStore('general', {
         }
 
         // Get instance and solution data from schema (may be empty if not available)
-        let inputData = {}
-        let resultsData = {}
-
-        try {
-          inputData = await this.schemaRepository.getInstanceTables(
-            this.getSchemaName,
-          )
-        } catch (error) {
-          console.warn('Instance tables not available:', error)
-          inputData = {}
-        }
-
-        try {
-          resultsData = await this.schemaRepository.getSolutionTables(
-            this.getSchemaName,
-          )
-        } catch (error) {
-          console.warn('Solution tables not available:', error)
-          resultsData = {}
-        }
+        const { inputData, resultsData } = await this.fetchSchemaTables()
 
         // Store raw configurations with original multilingual data and section definitions
         this.rawConfigurations = {
@@ -459,6 +638,33 @@ export const useGeneralStore = defineStore('general', {
         this.masterDataGroups = null
         this.updateLocalizedConfigurations()
       }
+    },
+
+    /** Instance and solution tables of the active schema; each is empty when it is not available. */
+    async fetchSchemaTables(): Promise<{
+      inputData: TableSchema
+      resultsData: TableSchema
+    }> {
+      let inputData = {} as TableSchema
+      let resultsData = {} as TableSchema
+
+      try {
+        inputData =
+          (await this.schemaRepository.getInstanceTables(this.getSchemaName)) ||
+          {}
+      } catch (error) {
+        console.warn('Instance tables not available:', error)
+      }
+
+      try {
+        resultsData =
+          (await this.schemaRepository.getSolutionTables(this.getSchemaName)) ||
+          {}
+      } catch (error) {
+        console.warn('Solution tables not available:', error)
+      }
+
+      return { inputData, resultsData }
     },
 
     // Update configurations with current locale and apply user schema filtering
@@ -1028,12 +1234,22 @@ export const useGeneralStore = defineStore('general', {
     },
 
     getSchemaName(): string {
-      return config.schema
+      return this.schema || config.schema
+    },
+
+    /** True when the deployment lists several DAGs in `config.schemas`. */
+    isMultiSchemaDeployment(): boolean {
+      return (config.schemas?.length ?? 0) > 1
+    },
+
+    /** True when the user may switch between more than one DAG. */
+    canSwitchSchema(): boolean {
+      return this.availableSchemas.length > 1
     },
 
     /** Filters of the executions history the app declares (`executionFilters`). Empty when none. */
     getExecutionFilters(): ExecutionFilter[] {
-      return readExecutionFilters()
+      return readExecutionFilters(this.appConfig.parameters)
     },
 
     /** Picked executions history filters as query parameters, without the ones set to "All". */

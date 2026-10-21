@@ -1053,6 +1053,16 @@ export default {
     hideWarnings: 'Ocultar detalhes dos avisos',
     viewingHistoricalData: 'A visualizar dados históricos',
   },
+  modules: {
+    label: 'Módulo',
+    confirm: 'Alterar',
+    cancel: 'Cancelar',
+    switchTitle: 'Mudar de módulo?',
+    switchMessage:
+      'As execuções abertas em separadores serão fechadas e a execução que está a criar será descartada.',
+    noAccessTitle: 'Não tem acesso a nenhum módulo',
+    noAccessMessage: 'Peça a um administrador que lhe dê acesso.',
+  },
   notFound: {
     title: 'Página não encontrada',
     message: 'A página que procura não existe.',

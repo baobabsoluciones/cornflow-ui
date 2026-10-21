@@ -749,12 +749,12 @@ describe('ProjectExecutionView', () => {
 
     describe('warning about a field whose source has no value', () => {
       const timeLimitField = {
-        key: 'timeLimit_3',
-        source: 'eParametros',
+        key: 'phaseTimeLimit',
+        source: 'parameters',
         lookupType: 'arrayByValue',
-        lookupParam: 'PARAMETRO_ID',
-        param: 'minutos_modelo_3',
-        lookupValue: 'VALOR',
+        lookupParam: 'PARAM_ID',
+        param: 'time_limit',
+        lookupValue: 'VALUE',
         type: 'number',
       }
       let warn: ReturnType<typeof vi.spyOn>
@@ -775,15 +775,15 @@ describe('ProjectExecutionView', () => {
       test('warns when no row of the source table matches', async () => {
         const { wrapper } = createWrapper({ configFields: [timeLimitField] })
         wrapper.vm.newExecution.instance = {
-          data: { eParametros: [{ ID: 'minutos_modelo_3', VALOR: 30 }] },
+          data: { parameters: [{ ID: 'time_limit', VALUE: 30 }] },
         }
 
         await wrapper.vm.loadConfigFieldValues()
 
-        expect(wrapper.vm.newExecution.config.timeLimit_3).toBeUndefined()
+        expect(wrapper.vm.newExecution.config.phaseTimeLimit).toBeUndefined()
         expect(configFieldWarnings()).toEqual([
           [
-            'Config field "timeLimit_3" found no value for "minutos_modelo_3" in instance table "eParametros".',
+            'Config field "phaseTimeLimit" found no value for "time_limit" in instance table "parameters".',
           ],
         ])
       })
@@ -801,13 +801,13 @@ describe('ProjectExecutionView', () => {
         const { wrapper } = createWrapper({ configFields: [timeLimitField] })
         wrapper.vm.newExecution.instance = {
           data: {
-            eParametros: [{ PARAMETRO_ID: 'minutos_modelo_3', VALOR: 30 }],
+            parameters: [{ PARAM_ID: 'time_limit', VALUE: 30 }],
           },
         }
 
         await wrapper.vm.loadConfigFieldValues()
 
-        expect(wrapper.vm.newExecution.config.timeLimit_3).toBe(30)
+        expect(wrapper.vm.newExecution.config.phaseTimeLimit).toBe(30)
         expect(configFieldWarnings()).toEqual([])
       })
 

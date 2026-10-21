@@ -32,6 +32,10 @@ export interface AppSectionDef {
    * `setPageReady()` from `useAppSectionPageReady()`.
    */
   showsLoadingOnEnter?: boolean
+  /** Shown (drawer and route) only to users with at least one of these role names. */
+  roles?: string[]
+  /** Shown (drawer and route) only while the session works on one of these DAGs. */
+  schemas?: string[]
 }
 
 /**
@@ -47,8 +51,12 @@ export interface AppSectionMenuItem {
     icon: string
     to: string
     requiresSelectedExecution?: boolean
+    roles?: string[]
+    schemas?: string[]
   }[]
   requiresSelectedExecution?: boolean
+  roles?: string[]
+  schemas?: string[]
 }
 
 /**
@@ -91,11 +99,15 @@ function mapAppSectionDefToMenuItem(section: AppSectionDef): AppSectionMenuItem 
     icon: section.icon,
     to: normalizeAppSectionPath(section.path),
     requiresSelectedExecution: section.requiresSelectedExecution === true,
+    roles: section.roles,
+    schemas: section.schemas,
     subPages: section.subPages?.map((sub) => ({
       titleKey: sub.titleKey,
       icon: sub.icon,
       to: normalizeAppSectionPath(sub.path)!,
       requiresSelectedExecution: sub.requiresSelectedExecution === true,
+      roles: sub.roles,
+      schemas: sub.schemas,
     })),
   }
 }
@@ -103,6 +115,8 @@ function mapAppSectionDefToMenuItem(section: AppSectionDef): AppSectionMenuItem 
 /** Route meta derived from an app section definition. */
 export interface AppSectionRouteMeta {
   showsLoadingOnEnter?: boolean
+  roles?: string[]
+  schemas?: string[]
 }
 
 function mapAppSectionDefToRouteMeta(
@@ -110,6 +124,8 @@ function mapAppSectionDefToRouteMeta(
 ): AppSectionRouteMeta {
   return {
     showsLoadingOnEnter: section.showsLoadingOnEnter === true,
+    ...(section.roles ? { roles: section.roles } : {}),
+    ...(section.schemas ? { schemas: section.schemas } : {}),
   }
 }
 
@@ -287,6 +303,12 @@ const createAppConfig = () => ({
        * `GET /execution/`.
        */
       executionsListEndpoint: null as ExecutionsListEndpoint | null,
+
+      /**
+       * Text of each DAG in the module selector, by DAG name (literal text or i18n key). Only used
+       * when `schema` (external config) lists several DAGs. A DAG without an entry shows its name.
+       */
+      schemaLabels: {} as Record<string, string>,
 
       /**
        * Default landing view after login (route path segment, e.g. 'history-execution').

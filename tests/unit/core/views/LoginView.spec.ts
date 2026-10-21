@@ -4,6 +4,7 @@ import { createVuetify } from 'vuetify'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
 import LoginView from '@cornflow-ui/core/views/LoginView.vue'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 
 // Mock components
 vi.mock('@cornflow-ui/core/components/SignInLanding.vue', () => ({
@@ -131,6 +132,24 @@ describe('LoginView', () => {
 
       expect(wrapper.exists()).toBe(true)
       expect(wrapper.vm).toBeDefined()
+    })
+
+    test('starts from an empty session, so the next login loads its own user', () => {
+      const pinia = createPinia()
+      setActivePinia(pinia)
+      const store = useGeneralStore()
+      store.user = { username: 'previous' }
+      store.dataInitialized = true
+
+      mount(LoginView, {
+        global: {
+          plugins: [createVuetify(), pinia],
+          stubs: { SignInLanding: true },
+        },
+      })
+
+      expect(store.user).toEqual({})
+      expect(store.dataInitialized).toBe(false)
     })
   })
 

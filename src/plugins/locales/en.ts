@@ -1058,6 +1058,16 @@ export default {
     hideWarnings: 'Hide warning details',
     viewingHistoricalData: 'Viewing historical data',
   },
+  modules: {
+    label: 'Module',
+    confirm: 'Change',
+    cancel: 'Cancel',
+    switchTitle: 'Change module?',
+    switchMessage:
+      'The executions open in tabs will be closed, and an execution you are creating will be discarded.',
+    noAccessTitle: 'You have no access to any module',
+    noAccessMessage: 'Ask an administrator to give you access.',
+  },
   notFound: {
     title: 'Page not found',
     message: 'The page you are looking for does not exist.',
