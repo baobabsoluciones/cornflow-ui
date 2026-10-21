@@ -28,6 +28,7 @@ import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import HelpMenu from '@cornflow-ui/core/components/core/HelpMenu.vue'
 import WarningsPanel from '@cornflow-ui/core/components/WarningsPanel.vue'
 import appConfig from '@/app/config'
+import { getAppParameters } from '@cornflow-ui/core/utils/appParameters'
 import {
   APP_SECTION_PAGE_READY_KEY,
 } from '@cornflow-ui/core/composables/useAppSectionPageReady'
@@ -40,7 +41,7 @@ const generalStore = useGeneralStore()
 const getKey = computed(() => generalStore.uploadComponentKey)
 const isDrawerPinned = computed(() => generalStore.isDrawerPinned)
 const enableWarnings = computed(
-  () => appConfig.getCore().parameters.enableWarnings,
+  () => getAppParameters().enableWarnings,
 )
 
 const showAppSectionLoading = ref(false)

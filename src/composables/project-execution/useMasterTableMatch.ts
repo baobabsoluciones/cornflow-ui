@@ -10,7 +10,7 @@ import TableRepository, {
   isForceRetryOfferError,
 } from '@cornflow-ui/core/repositories/TableRepository'
 import { useI18n } from 'vue-i18n'
-import appConfig from '@/app/config'
+import { getAppParameters } from '@cornflow-ui/core/utils/appParameters'
 import {
   parseJoinFrom,
   getForeignKeyFieldName,
@@ -192,7 +192,7 @@ function shouldUseEtlPrefilteredMasterBaseline(
   instanceKey: string,
   etlTablesFromDb: string[] | undefined,
 ): boolean {
-  if (!appConfig.getCore().parameters.etl.enableEtlMetadataAndReview) return false
+  if (!getAppParameters().etl.enableEtlMetadataAndReview) return false
   if (!etlTablesFromDb?.length) return false
   const collapsedInstance = collapseTableNameForMatch(instanceKey)
   return etlTablesFromDb.some(
@@ -202,7 +202,7 @@ function shouldUseEtlPrefilteredMasterBaseline(
 
 function getCompareStrategyForTable(tableKey: string | undefined) {
   if (!tableKey) return undefined
-  return appConfig.getCore().parameters.masterTableMatchingConfig
+  return getAppParameters().masterTableMatchingConfig
     ?.compareStrategies?.[tableKey]
 }
 

@@ -171,7 +171,7 @@ import ForceRetryConfirmDialog from '@cornflow-ui/core/components/core/table/For
 import { Instance } from '@/app/models/Instance'
 import { formatValidationErrorsWithTitle } from '@cornflow-ui/core/utils/errorFormatting'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
-import appConfig from '@/app/config'
+import { getAppParameters } from '@cornflow-ui/core/utils/appParameters'
 import { useTableChanges } from '@cornflow-ui/core/composables/useTableChanges'
 import { parameterRowsToParameterObject, buildRowMatchKey } from '@cornflow-ui/core/utils/schemaUtils'
 import type { ExternalEtlFlowState } from '@cornflow-ui/core/types/etlFlow'
@@ -212,7 +212,7 @@ const { isMaximized, toggleMaximize } = useFullscreen()
 
 // Check if master table matching feature is enabled
 const isMasterTableMatchingEnabled = computed(() => {
-  return appConfig.getCore().parameters.enableMasterTableMatching !== false
+  return getAppParameters().enableMasterTableMatching !== false
 })
 
 // Master table match composable
@@ -315,7 +315,7 @@ const masterTableMatchesWithCanReplace = computed(() => {
     return []
   }
   const enableReplace =
-    appConfig.getCore().parameters.enableReplaceMasterWithUploaded === true
+    getAppParameters().enableReplaceMasterWithUploaded === true
   return masterTableMatch.matches.value.map((match) => {
     const canReplaceMaster = masterTableMatch.canReplaceMasterTable(
       match.tableKey,

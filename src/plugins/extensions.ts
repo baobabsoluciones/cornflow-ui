@@ -13,9 +13,12 @@
  */
 import type { RouteRecordRaw, Router } from 'vue-router'
 import { getActivePinia } from 'pinia'
-import appConfig from '@/app/config'
 import { isViewAllowed as appIsViewAllowed } from '@/app/rolesConfig'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import {
+  getAppCoreConfig,
+  getAppParameters,
+} from '@cornflow-ui/core/utils/appParameters'
 import type {
   PremiumModule,
   ExtensionContext,
@@ -69,11 +72,11 @@ function deepMerge(
 
 function buildConfigAccessor(): ConfigAccessor {
   return {
-    getCore: () => appConfig.getCore() as { parameters: Record<string, unknown> } & Record<string, unknown>,
+    getCore: () => getAppCoreConfig() as { parameters: Record<string, unknown> } & Record<string, unknown>,
     get: <T = unknown>(path: string): T | undefined =>
       path
         .split('.')
-        .reduce<any>((acc, key) => (acc == null ? undefined : acc[key]), appConfig.getCore()),
+        .reduce<any>((acc, key) => (acc == null ? undefined : acc[key]), getAppCoreConfig()),
   }
 }
 
@@ -108,7 +111,7 @@ export function getExtensionContext(): ExtensionContext {
     getConfig: () => config,
     getRoleNames,
     isFeatureEnabled: (featureId: string): boolean => {
-      const params = (appConfig.getCore()?.parameters ?? {}) as Record<string, any>
+      const params = (getAppParameters() ?? {}) as Record<string, any>
       const feature = params[featureId]
       if (feature && typeof feature === 'object' && 'enabled' in feature) {
         return Boolean(feature.enabled)

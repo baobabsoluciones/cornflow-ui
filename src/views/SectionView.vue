@@ -612,7 +612,7 @@ import AutoBarChart from '@cornflow-ui/core/components/dashboard/AutoBarChart.vu
 import AutoPieChart from '@cornflow-ui/core/components/dashboard/AutoPieChart.vue'
 import AutoAreaChart from '@cornflow-ui/core/components/dashboard/AutoAreaChart.vue'
 import AutoMapChart from '@cornflow-ui/core/components/dashboard/AutoMapChart.vue'
-import appConfig from '@/app/config'
+import { getAppParameters } from '@cornflow-ui/core/utils/appParameters'
 import {
   resolveDisplayValuesToFkIds,
   normalizeGetListResponseToRows,
@@ -692,7 +692,7 @@ const executionType = computed(() => {
 })
 
 const isRecalculationEnabled = computed(
-  () => appConfig.getCore().parameters.enableSolutionRecalculation === true,
+  () => getAppParameters().enableSolutionRecalculation === true,
 )
 
 // Read-only display: input-data and results show data as plain table unless recalculation is enabled
@@ -774,7 +774,7 @@ const recalculation = useRecalculationController()
 // endpoint: the master-data upload takes the same files the instance load does.
 const { preProcessFiles } = useFilePreProcessing()
 const enableRecalculation = computed(
-  () => appConfig.getCore().parameters.enableRecalculationOnMasterEdit === true,
+  () => getAppParameters().enableRecalculationOnMasterEdit === true,
 )
 
 // Solution recalculation modal state
@@ -923,8 +923,8 @@ const handleSolutionRecalculation = async () => {
     }
 
     const passEtlEditedMetadata =
-      appConfig.getCore().parameters.enableSolutionRecalculation === true &&
-      appConfig.getCore().parameters.etl.enableEtlMetadataAndReview === true &&
+      getAppParameters().enableSolutionRecalculation === true &&
+      getAppParameters().etl.enableEtlMetadataAndReview === true &&
       Boolean(instanceData.__metadata__)
 
     const instanceBeforeEdits = JSON.parse(JSON.stringify(instanceData))
@@ -1004,7 +1004,7 @@ const editAllTablesForceContext = ref<{
 const editAllTablesForceLoading = ref(false)
 
 const canEditAllMasterTables = computed(() => {
-  if (!appConfig.getCore().parameters.enableEditAllMasterTables) return false
+  if (!getAppParameters().enableEditAllMasterTables) return false
   if (sectionType.value !== 'configuration') return false
   const cfg = currentConfiguration.value
   if (!cfg || typeof cfg !== 'object') return false
@@ -1753,7 +1753,7 @@ interface CustomWidgetConfig {
 
 // Get table dashboard configuration
 const getTableDashboardConfig = (tableKey: string) => {
-  const tableDashboards = appConfig.getCore().parameters.tableDashboards
+  const tableDashboards = getAppParameters().tableDashboards
   if (!tableDashboards) {
     return null
   }
@@ -1773,10 +1773,10 @@ const shouldShowAutoDashboards = (tableKey: string | null): boolean => {
   let globalEnabled = false
   if (sectionType.value === 'input-data') {
     globalEnabled =
-      appConfig.getCore().parameters.enableAutoInstanceDashboard === true
+      getAppParameters().enableAutoInstanceDashboard === true
   } else if (sectionType.value === 'results') {
     globalEnabled =
-      appConfig.getCore().parameters.enableAutoSolutionDashboard === true
+      getAppParameters().enableAutoSolutionDashboard === true
   }
 
   // Get table-specific setting
@@ -2146,7 +2146,7 @@ const showEtlTabOriginIndicators = computed(() => {
   if (isValidationLikeGroup(groupName.value)) return false
   if (sectionType.value !== 'input-data') return false
   if (!isGroupView.value) return false
-  if (appConfig.getCore().parameters.etl.enableEtlMetadataAndReview !== true) {
+  if (getAppParameters().etl.enableEtlMetadataAndReview !== true) {
     return false
   }
   return etlTablesFromDbNormalized.value.size > 0
@@ -2172,7 +2172,7 @@ const buildHeaderOriginIndicators = (
   }
   if (
     sectionType.value !== 'input-data' ||
-    appConfig.getCore().parameters.etl.enableEtlMetadataAndReview !== true
+    getAppParameters().etl.enableEtlMetadataAndReview !== true
   ) {
     return {}
   }
@@ -2257,7 +2257,7 @@ const tryBackendExecutionFilesDownload = async (
   exec: any,
 ): Promise<boolean> => {
   const useBackend =
-    appConfig.getCore().parameters?.useBackendExecutionFilesDownload === true
+    getAppParameters()?.useBackendExecutionFilesDownload === true
   if (!useBackend) return false
   const executionId = exec?.executionId ?? exec?.id
   if (!executionId) return false
@@ -2381,7 +2381,7 @@ function buildInputDataDropdownItems(exec: any): any[] {
   const items: any[] = []
   const hasInstance = exec?.experiment?.instance?.data ?? exec?.instance?.data
   const canEdit =
-    appConfig.getCore().parameters.allowEditInstance &&
+    getAppParameters().allowEditInstance &&
     exec &&
     (exec.instance || exec.experiment?.instance)
 

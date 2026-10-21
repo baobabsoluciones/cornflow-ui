@@ -98,7 +98,7 @@ import {
   parseLocalDateKey,
 } from '@cornflow-ui/core/utils/date'
 import { inject } from 'vue'
-import appConfig from '@/app/config'
+import { getAppParameters } from '@cornflow-ui/core/utils/appParameters'
 
 export default {
   components: {
@@ -201,7 +201,7 @@ export default {
       ]
     },
     showReplannedFilter() {
-      return appConfig.getCore().parameters.enableRecalculationOnMasterEdit
+      return getAppParameters().enableRecalculationOnMasterEdit
     },
     filteredData() {
       if (!this.hideReplanned) return this.data

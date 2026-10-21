@@ -169,6 +169,7 @@ import { useI18n } from 'vue-i18n'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import getAuthService from '@cornflow-ui/core/services/AuthServiceFactory'
 import appConfig from '@/app/config'
+import { getAppParameters } from '@cornflow-ui/core/utils/appParameters'
 import config from '@cornflow-ui/core/config'
 import { mainLogo, fullLogo } from '@cornflow-ui/core/utils/assets'
 import {
@@ -241,7 +242,7 @@ export default defineComponent({
     },
     user() {
       return {
-        name: appConfig.getCore().parameters.showOpenIdUsername
+        name: getAppParameters().showOpenIdUsername
           ? this.store.getUser.fullName
           : this.store.getUser.username,
         email: this.store.getUser.email,
@@ -294,8 +295,9 @@ export default defineComponent({
       return navWithSections.map((block) => {
         const subPages = [...(block.subPages || [])]
         if (block.sectionId) {
-          const extraSubsections =
-            appConfig.getFrontendAutomationSectionSubsections(block.sectionId)
+          const extraSubsections = appConfig
+            .getFrontendAutomationSectionSubsections(block.sectionId)
+            .filter((def) => isEntryVisibleFor(def, this.navigationViewer))
           extraSubsections.forEach((def) => {
             subPages.push({
               title: this.$t(def.titleKey),
@@ -359,7 +361,7 @@ export default defineComponent({
           inputDataConfig,
           instanceData,
         )
-        if (appConfig.getCore().parameters.showTablesWithoutSchema === true) {
+        if (getAppParameters().showTablesWithoutSchema === true) {
           inputDataConfig = enrichConfigWithTablesWithoutSchema(
             inputDataConfig,
             instanceData,
@@ -425,7 +427,7 @@ export default defineComponent({
           resultsDataConfig,
           solutionData,
         )
-        if (appConfig.getCore().parameters.showTablesWithoutSchema === true) {
+        if (getAppParameters().showTablesWithoutSchema === true) {
           resultsDataConfig = enrichConfigWithTablesWithoutSchema(
             resultsDataConfig,
             solutionData,
@@ -435,7 +437,7 @@ export default defineComponent({
         }
 
         const kpiMode =
-          appConfig.getCore().parameters?.kpiTablesDisplayMode ?? 'disabled'
+          getAppParameters()?.kpiTablesDisplayMode ?? 'disabled'
         if (kpiMode !== 'disabled' && solutionData) {
           const rawKpis = solutionData.rawKpis ?? null
           resultsDataConfig = applyKpiDisplayMode(
@@ -467,7 +469,7 @@ export default defineComponent({
       }
 
       // Add dashboard if configured
-      if (appConfig.getCore().parameters.showDashboardMainView) {
+      if (getAppParameters().showDashboardMainView) {
         subPages.push({
           title: 'Dashboard',
           icon: 'mdi-view-dashboard',
@@ -534,7 +536,7 @@ export default defineComponent({
     // Admin section (only visible to admins when enableRolesManagement is true)
     adminSection() {
       if (!this.isAdmin) return null
-      if (!appConfig.getCore().parameters.enableRolesManagement) return null
+      if (!getAppParameters().enableRolesManagement) return null
       return {
         title: this.$t('rolesManagement.adminSection'),
         icon: 'mdi-shield-account',

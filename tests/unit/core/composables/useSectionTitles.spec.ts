@@ -24,6 +24,14 @@ vi.mock('@cornflow-ui/core/app/config', () => ({
   },
 }))
 
+vi.mock('@cornflow-ui/core/utils/appParameters', () => ({
+  getAppParameters: () => ({
+    get sectionTitles() {
+      return mockSectionTitlesConfig
+    },
+  }),
+}))
+
 import { useSectionTitles } from '@cornflow-ui/core/composables/useSectionTitles'
 
 describe('useSectionTitles', () => {

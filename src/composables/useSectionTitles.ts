@@ -1,5 +1,5 @@
 import { useI18n } from 'vue-i18n'
-import appConfig from '@/app/config'
+import { getAppParameters } from '@cornflow-ui/core/utils/appParameters'
 
 /**
  * Composable for getting section titles with support for custom app-specific titles.
@@ -18,7 +18,7 @@ export function useSectionTitles() {
    * Get the section title configuration from app config
    */
   const getSectionTitlesConfig = () => {
-    return appConfig.getCore()?.parameters?.sectionTitles || {}
+    return getAppParameters()?.sectionTitles || {}
   }
 
   /**
