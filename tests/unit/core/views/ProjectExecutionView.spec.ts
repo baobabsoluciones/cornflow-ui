@@ -106,16 +106,6 @@ vi.mock('@cornflow-ui/core/components/core/DateRangePicker.vue', () => ({
   },
 }))
 
-vi.mock('@cornflow-ui/core/components/project-execution/ProjectExecutionsTable.vue', () => ({
-  default: {
-    name: 'ProjectExecutionsTable',
-    template:
-      '<div data-testid="project-executions-table">ProjectExecutionsTable</div>',
-    props: ['executionsByDate'],
-    emits: ['loadExecution', 'deleteExecution'],
-  },
-}))
-
 // Mock Mango UI components
 vi.mock('mango-ui', () => ({
   MTitleView: {
@@ -364,12 +354,6 @@ const createWrapper = (appConfig = {}, routeQuery = {}) => {
         },
         MCheckboxOptions: true,
         DateRangePicker: true,
-        ProjectExecutionsTable: {
-          name: 'ProjectExecutionsTable',
-          template:
-            '<div data-testid="project-executions-table">ProjectExecutionsTable</div>',
-          props: ['executionsByDate'],
-        },
         CreateExecutionCreateOrSearch: true,
         CreateExecutionNameDescription: true,
         CreateExecutionLoadInstance: true,

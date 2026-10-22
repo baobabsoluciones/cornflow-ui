@@ -77,7 +77,7 @@ test.describe('Loaded Executions Tab Bar', () => {
     await expect(addNewTab).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
   });
 
-  test('should display only the Actual execution tab, selected and matching the table', async ({ page }) => {
+  test('should display only the Actual execution tab, selected and matching the history', async ({ page }) => {
     // Load one execution explicitly to avoid depending on preloaded "Actual" badge state.
     const hasExecutionLoaded = await ensureExecutionLoaded(page);
     expect(hasExecutionLoaded).toBe(true);
@@ -85,8 +85,8 @@ test.describe('Loaded Executions Tab Bar', () => {
     // ensureExecutionLoaded already leaves us on /history-execution. Do NOT use page.goto here:
     // a full navigation reloads the document and resets Pinia, so loaded executions/tabs vanish.
     await expect(page).toHaveURL(/history-execution/, { timeout: TIMEOUTS.NAVIGATION });
-    const table = page.getByRole('table').first();
-    await table.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
+    const historyRows = page.locator('[data-testid="history-row"]');
+    await historyRows.first().waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
 
     const tablist = page.getByRole('tablist');
     await tablist.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
@@ -111,8 +111,7 @@ test.describe('Loaded Executions Tab Bar', () => {
 
     expect(tabName.length).toBeGreaterThan(0);
 
-    // Verify this selected tab corresponds to a row in the history table (Name column text).
-    const historyRows = page.locator('tbody tr, .v-data-table tbody tr, .execution-table tbody tr');
+    // Verify this selected tab corresponds to a row of the history (its name).
     await expect(historyRows.filter({ hasText: tabName }).first()).toBeVisible({
       timeout: TIMEOUTS.FORM_LOAD,
     });
