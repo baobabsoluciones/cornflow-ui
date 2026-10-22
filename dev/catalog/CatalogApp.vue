@@ -27,15 +27,33 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { applyTokensToTheme, readCssToken } from '@cornflow-ui/core/plugins/vuetify'
+import {
+  applyTokensToTheme,
+  readCssToken,
+} from '@cornflow-ui/core/plugins/vuetify'
+import ButtonsSection from './sections/ButtonsSection.vue'
+import DataSection from './sections/DataSection.vue'
+import HistorySection from './sections/HistorySection.vue'
+import MenusSection from './sections/MenusSection.vue'
+import OverlaysSection from './sections/OverlaysSection.vue'
+import StatusSection from './sections/StatusSection.vue'
 import TokensSection from './sections/TokensSection.vue'
 
 /** A page of the catalog. A component added to the core gets its own section here. */
-const sections = [{ id: 'tokens', title: 'Design tokens', component: TokensSection }]
+const sections = [
+  { id: 'tokens', title: 'Design tokens', component: TokensSection },
+  { id: 'buttons', title: 'Buttons and icons', component: ButtonsSection },
+  { id: 'status', title: 'Status and feedback', component: StatusSection },
+  { id: 'menus', title: 'Search, menus and filters', component: MenusSection },
+  { id: 'data', title: 'Data', component: DataSection },
+  { id: 'overlays', title: 'Dialogs and toasts', component: OverlaysSection },
+  { id: 'history', title: 'Execution history', component: HistorySection },
+]
 
 const activeId = ref(sections[0].id)
 const activeSection = computed(
-  () => sections.find((section) => section.id === activeId.value) ?? sections[0],
+  () =>
+    sections.find((section) => section.id === activeId.value) ?? sections[0],
 )
 
 function syncWithHash() {
@@ -112,5 +130,18 @@ function onPrimaryInput(event: Event) {
 .catalog__main {
   padding: calc(var(--spacing) * 8);
   overflow: auto;
+}
+
+.catalog__main :deep(.catalog-section) {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 5);
+  max-width: 1100px;
+}
+
+.catalog__main :deep(.catalog-section__title) {
+  margin: 0;
+  font-size: var(--text-2xl);
+  font-weight: var(--font-weight-bold);
 }
 </style>
