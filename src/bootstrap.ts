@@ -15,6 +15,7 @@ import { createApp, type App as VueApp, type Component } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 
 import { registerPlugins } from '@cornflow-ui/core/plugins'
+import { applyTokensToTheme } from '@cornflow-ui/core/plugins/vuetify'
 
 import {
   MAppDrawer,
@@ -119,6 +120,9 @@ export async function createCornflowApp(
   if (authService.isAuthenticated()) {
     await useGeneralStore().initializeData()
   }
+
+  // The app's stylesheets are loaded by now: Vuetify takes its colours from the design tokens.
+  applyTokensToTheme()
 
   if (options.mount !== false) {
     app.mount(options.mount ?? '#app')

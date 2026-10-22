@@ -79,6 +79,12 @@ vi.mock('@cornflow-ui/core/plugins', () => ({
   registerPlugins: mockRegisterPlugins
 }))
 
+const mockApplyTokensToTheme = vi.hoisted(() => vi.fn())
+vi.mock('@cornflow-ui/core/plugins/vuetify', () => ({
+  default: {},
+  applyTokensToTheme: mockApplyTokensToTheme,
+}))
+
 // Mock i18n
 const mockSetDefaultLanguage = vi.fn()
 vi.mock('@cornflow-ui/core/plugins/i18n', () => ({
@@ -318,6 +324,10 @@ describe('Main Module Integration', () => {
       return mockApp
     })
 
+    mockApplyTokensToTheme.mockImplementation(() => {
+      callOrder.push('applyTokensToTheme')
+    })
+
     mockApp.mount.mockImplementation(() => {
       callOrder.push('mount')
       return mockApp
@@ -335,6 +345,7 @@ describe('Main Module Integration', () => {
       'registerPlugins',
       'componentRegistration',
       'usePinia',
+      'applyTokensToTheme',
       'mount'
     ])
   })

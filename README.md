@@ -1009,7 +1009,7 @@ Maps status codes to display properties. Each state entry contains:
 Inside the app folder, there are several changes that can be done to configurate your client project. This folder is meant to be for all customizations done for the client.
 
 - `assets/logo`: This directory should contain the logo images for the application. The name should be the same as the default ones (logo.png and full_logo.png)
-- `app/assets/style/variables.css`: This file should define the main colors of the application. Mantain the variable names and only change the colors.
+- `app/assets/style/variables.css`: This file should define the main colors of the application. Mantain the variable names and only change the colors. The core's design tokens and the Vuetify theme take their colours from these variables (see [Design tokens](#design-tokens)).
 - `models`: This directory should define the instance, solution, experiment, and execution models for the application. It always extends the main classes but methods can be overwritten.
 - `views`: This directory should contain all the custom views needed for the application.
 - `components`: This directory should contain any additional components that are not in the core components.
@@ -1022,6 +1022,33 @@ Inside the app folder, there are several changes that can be done to configurate
    - `user_manual_en.pdf` for English
    - `user_manual_es.pdf` for Spanish
    - `user_manual_fr.pdf` for French
+
+## Design tokens
+
+`src/assets/styles/tokens.css` is the one source of colour, type, spacing, radii and shadows for the
+core's components, which read the tokens instead of fixed values. `src/assets/styles/main.css`
+imports it, so an application gets the tokens with the core's stylesheet.
+
+- **Colour** (`--color-primary`, `--color-success`, `--color-text`, `--color-surface`…) comes from
+  the app's `variables.css` (`--primary`, `--success`, `--title`…). An application changes its
+  palette there, as before; a variable it does not declare falls back to the core's default.
+- **Type**: `--font-sans`, `--font-mono`, sizes `--text-xs` to `--text-2xl`, and
+  `--font-weight-regular|medium|bold`.
+- **Spacing**: one base unit, `--spacing` (4px); sizes are its multiples,
+  e.g. `calc(var(--spacing) * 4)`.
+- **Radii** `--radius-sm` to `--radius-xl` and `--radius-full`; **shadows** `--shadow-sm|md|lg`.
+
+The tokens are declared on `body`, where the app variables live. Their names follow Tailwind 4's
+theme variables.
+
+**Vuetify.** When the app starts, the Vuetify theme's `primary` is set to the app's
+`--color-primary` (`applyTokensToTheme` in `src/plugins/vuetify.ts`), so Vuetify components with
+`color="primary"` paint with the same colour as the core's own components. The token has to be a
+hex colour; otherwise the theme keeps its default with a console warning.
+
+**Catalog.** `npm run catalog` opens the component catalog (`dev/catalog/`): the tokens and, as they
+are added, every core component with its variants and states. It is a development page and is not
+part of the package.
 
 ## 3. Important disclaimer
 
@@ -1765,3 +1792,4 @@ describe('YourComponent', () => {
 - Edit the `.env` file or `values.json` to add necessary configuration
 - Run `npm run dev` to start a local development server
 - A new tab will be opened in your browser
+- Run `npm run catalog` to open the component catalog (see [Design tokens](#design-tokens))
