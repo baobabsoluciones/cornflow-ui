@@ -19,13 +19,17 @@ export interface NavigationViewer {
   schema: string
 }
 
-/** True when `entry` may be shown to `viewer`. */
+/**
+ * True when `entry` may be shown to `viewer`. `entry` is any drawer item, section or route meta: the
+ * app config types of an application (`src/app/config.ts`) may not declare `roles` and `schemas`,
+ * and such an entry is visible to everyone.
+ */
 export function isEntryVisibleFor(
-  entry: NavigationGating | null | undefined,
+  entry: object | null | undefined,
   viewer: NavigationViewer,
 ): boolean {
   if (!entry) return true
-  const { roles, schemas } = entry
+  const { roles, schemas } = entry as NavigationGating
   if (
     Array.isArray(roles) &&
     !roles.some((role) => viewer.roleNames.includes(role))
