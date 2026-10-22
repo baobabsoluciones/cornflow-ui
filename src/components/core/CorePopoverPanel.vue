@@ -42,7 +42,11 @@ withDefaults(
 )
 </script>
 
-<style scoped>
+<!--
+  Not scoped: Reka renders the content inside a wrapper of its own, which gets the scope
+  attribute instead of the element with the class.
+-->
+<style>
 .core-popover-panel {
   z-index: var(--z-popover);
   box-sizing: border-box;

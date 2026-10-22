@@ -60,7 +60,11 @@ withDefaults(
 )
 </script>
 
-<style scoped>
+<!--
+  Not scoped: Reka renders the content inside a wrapper of its own, which gets the scope
+  attribute instead of the element with the class.
+-->
+<style>
 .core-hover-card {
   z-index: var(--z-popover);
   max-width: calc(100vw - 24px);

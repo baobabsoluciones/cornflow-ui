@@ -972,18 +972,18 @@ export default {
 
 <style scoped>
 .history-execution-view {
-  display: flex;
-  flex-direction: column;
   gap: calc(var(--spacing) * 4);
-  min-height: 0;
   font-family: var(--font-sans);
 }
 
+/* The list and the detail fill the height the view leaves under the title, and scroll inside. */
 .history-layout {
   display: grid;
+  flex: 1;
   grid-template-columns: 400px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: calc(var(--spacing) * 4);
-  align-items: start;
+  min-height: 420px;
 }
 
 .is-narrow .history-layout {
@@ -998,13 +998,6 @@ export default {
   border-radius: var(--radius-lg);
   background: var(--color-surface);
   box-shadow: var(--shadow-sm);
-}
-
-/* Both panels fill the window below the title and scroll inside. */
-.history-list,
-.history-detail {
-  max-height: calc(100vh - 220px);
-  min-height: 420px;
 }
 
 .history-filters {

@@ -174,9 +174,12 @@ const customColors = computed(() => {
   width: 100%;
 }
 
+/* The text box clips to cut long text with an ellipsis, so it has to be tall
+   enough for the descenders (g, p, y): the button's line-height of 1 is not. */
 .core-button__text {
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.4;
 }
 
 /* Tones */

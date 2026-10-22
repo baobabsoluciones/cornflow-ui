@@ -91,7 +91,11 @@ function onOpenChange(open: boolean) {
 }
 </script>
 
-<style scoped>
+<!--
+  Not scoped: Reka renders the content inside a wrapper of its own, which gets the scope
+  attribute instead of the element with the class.
+-->
+<style>
 .core-dialog__overlay {
   position: fixed;
   inset: 0;
