@@ -14,23 +14,39 @@ const mockConfig = vi.hoisted(() => ({
 }))
 vi.mock('@cornflow-ui/core/config', () => ({ default: mockConfig }))
 
-// App config: the solver settings a DAG switch puts back.
-const mockParameters = vi.hoisted(() => ({
-  executionSolvers: ['solver_a'],
-  solverConfig: { defaultSolver: 'solver_a' },
-  configFields: [] as unknown[],
-}))
+// App config: the settings every DAG starts from, and the per-DAG entries a test sets.
+function appParameters(): Record<string, any> {
+  return {
+    executionSolvers: ['solver_a'],
+    solverConfig: { defaultSolver: 'solver_a' },
+    configFields: [] as unknown[],
+    enableRecalculationOnMasterEdit: true,
+    etl: { useEtlBackend: false, sendSchema: false },
+  }
+}
+const mockParameters = vi.hoisted(() => ({}) as Record<string, any>)
+const mockSchemaOverrides = vi.hoisted(() => ({}) as Record<string, any>)
 vi.mock('@/app/config', () => ({
   default: {
-    getCore: () => ({ parameters: mockParameters }),
+    getCore: () => ({
+      parameters: mockParameters,
+      schemaOverrides: mockSchemaOverrides,
+    }),
     getDashboardRoutes: () => [],
     getDashboardPages: () => [],
-    getDashboardLayout: () => ({}),
+    getDashboardLayout: () => [{ id: 'app_layout' }],
     getInstanceDashboardRoutes: () => [],
     getInstanceDashboardPages: () => [],
-    getInstanceDashboardLayout: () => ({}),
+    getInstanceDashboardLayout: () => [{ id: 'app_instance_layout' }],
   },
 }))
+
+/** Puts the app config back as the app declares it (the store writes into `parameters`). */
+function resetAppConfig() {
+  for (const key of Object.keys(mockParameters)) delete mockParameters[key]
+  Object.assign(mockParameters, appParameters())
+  for (const key of Object.keys(mockSchemaOverrides)) delete mockSchemaOverrides[key]
+}
 
 vi.mock('@cornflow-ui/core/services/AuthService', () => ({
   default: { getUserId: vi.fn(() => '7') },
@@ -118,8 +134,7 @@ describe('General store — several DAGs', () => {
     sessionStorage.clear()
     mockConfig.schema = 'planning_dag'
     mockConfig.schemas = []
-    mockParameters.executionSolvers = ['solver_a']
-    mockParameters.solverConfig = { defaultSolver: 'solver_a' }
+    resetAppConfig()
     mockUserRepository.getUserById.mockResolvedValue({
       id: '7',
       username: 'ana',
@@ -290,6 +305,115 @@ describe('General store — several DAGs', () => {
       expect(await store.setActiveSchema('other_dag')).toBe(false)
       expect(await store.setActiveSchema('planning_dag')).toBe(false)
       expect(mockSchemaRepository.getSchema).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('per-DAG settings', () => {
+    function deploymentWithBothDags() {
+      mockConfig.schemas = ['planning_dag', 'stock_dag']
+      mockSchemaRepository.getAvailableSchemaNames.mockResolvedValue([
+        'planning_dag',
+        'stock_dag',
+      ])
+      mockSchemaOverrides.stock_dag = {
+        parameters: {
+          enableRecalculationOnMasterEdit: false,
+          etl: { useEtlBackend: true },
+          configFields: [{ key: 'horizon', type: 'number' }],
+        },
+        dashboardLayout: [{ id: 'stock_layout' }],
+      }
+    }
+
+    test('the login enters the DAG with its settings on top of the app ones', async () => {
+      deploymentWithBothDags()
+      sessionStorage.setItem('activeSchema', 'stock_dag')
+      const store = useGeneralStore()
+
+      await store.initializeData()
+
+      expect(store.appConfig.parameters.enableRecalculationOnMasterEdit).toBe(false)
+      expect(store.appConfig.parameters.etl).toEqual({
+        useEtlBackend: true,
+        sendSchema: false,
+      })
+      expect(store.appConfigFields).toEqual([{ key: 'horizon', type: 'number' }])
+      expect(store.appDashboardLayout).toEqual([{ id: 'stock_layout' }])
+      expect(store.appInstanceDashboardLayout).toEqual([
+        { id: 'app_instance_layout' },
+      ])
+    })
+
+    test('a DAG without an entry works with the app settings', async () => {
+      deploymentWithBothDags()
+      const store = useGeneralStore()
+
+      await store.initializeData()
+
+      expect(store.getSchemaName).toBe('planning_dag')
+      expect(store.appConfig.parameters.enableRecalculationOnMasterEdit).toBe(true)
+      expect(store.appConfig.parameters.etl.useEtlBackend).toBe(false)
+      expect(store.appDashboardLayout).toEqual([{ id: 'app_layout' }])
+    })
+
+    test('a switch replaces the settings of the previous DAG, and switching back restores them', async () => {
+      deploymentWithBothDags()
+      const store = useGeneralStore()
+      await store.initializeData()
+      const parameters = store.appConfig.parameters
+
+      await store.setActiveSchema('stock_dag')
+
+      expect(store.appConfig.parameters).toBe(parameters)
+      expect(parameters.enableRecalculationOnMasterEdit).toBe(false)
+      expect(parameters.etl.useEtlBackend).toBe(true)
+      expect(store.appDashboardLayout).toEqual([{ id: 'stock_layout' }])
+
+      await store.setActiveSchema('planning_dag')
+
+      expect(parameters.enableRecalculationOnMasterEdit).toBe(true)
+      expect(parameters.etl).toEqual({ useEtlBackend: false, sendSchema: false })
+      expect(store.appConfigFields).toEqual([])
+      expect(store.appDashboardLayout).toEqual([{ id: 'app_layout' }])
+    })
+
+    test("the schema's solver settings apply on top of the DAG's", async () => {
+      deploymentWithBothDags()
+      mockSchemaOverrides.stock_dag.parameters.executionSolvers = ['solver_dag']
+      mockSchemaRepository.getSchema.mockImplementation(async (name: string) =>
+        name === 'stock_dag'
+          ? { name, config: { properties: { solver: { enum: ['solver_schema'] } } } }
+          : { name },
+      )
+      const store = useGeneralStore()
+      await store.initializeData()
+
+      await store.setActiveSchema('stock_dag')
+
+      expect(store.appConfig.parameters.executionSolvers).toEqual(['solver_schema'])
+    })
+
+    test('a single-DAG deployment applies the entry of its DAG', async () => {
+      mockSchemaOverrides.planning_dag = {
+        parameters: { enableRecalculationOnMasterEdit: false },
+      }
+      const store = useGeneralStore()
+
+      await store.initializeData()
+
+      expect(store.appConfig.parameters.enableRecalculationOnMasterEdit).toBe(false)
+    })
+
+    test('resetSessionState goes back to the settings of the default DAG', async () => {
+      deploymentWithBothDags()
+      const store = useGeneralStore()
+      await store.initializeData()
+      await store.setActiveSchema('stock_dag')
+
+      store.resetSessionState()
+
+      expect(store.appConfig.parameters.enableRecalculationOnMasterEdit).toBe(true)
+      expect(store.appDashboardLayout).toEqual([{ id: 'app_layout' }])
     })
   })
 

@@ -904,6 +904,35 @@ describe('AppDrawer.vue', () => {
       expect(destinations).not.toContain('/stock-levels')
     })
 
+    test('section sub-sections declared for other DAGs or roles are left out of their section', async () => {
+      store.getUser = { ...mockUser, roles: [{ id: 2, name: 'planner' }] }
+      store.getSchemaName = 'planning_dag'
+      store.masterDataSections = [{ id: 'pricing', title: 'Pricing', order: 1 }]
+      store.getConfigurations = {
+        masterData: { prices: { title: 'Prices', group: null, section: 'pricing' } },
+      }
+      const view = { name: 'View', titleKey: 'view', icon: 'mdi-view', component: vi.fn() }
+      mockAppConfig.getFrontendAutomationSectionSubsections = vi.fn(() => [
+        { ...view, path: 'board' },
+        { ...view, path: 'planning-board', schemas: ['planning_dag'] },
+        { ...view, path: 'stock-board', schemas: ['stock_dag'] },
+        { ...view, path: 'admin-board', roles: ['admin'] },
+      ])
+
+      wrapper = await createWrapper()
+
+      const destinations = wrapper.vm.masterDataSectionsForDrawer[0].subPages.map(
+        (page: any) => page.to,
+      )
+      expect(destinations).toContain('/configuration/section/pricing/board')
+      expect(destinations).toContain('/configuration/section/pricing/planning-board')
+      expect(destinations).not.toContain('/configuration/section/pricing/stock-board')
+      expect(destinations).not.toContain('/configuration/section/pricing/admin-board')
+
+      store.masterDataSections = []
+      store.getUser = mockUser
+    })
+
     test('with several DAGs the app name says which one the session is on', async () => {
       store.isMultiSchemaDeployment = true
       store.getSchemaName = 'stock_dag'

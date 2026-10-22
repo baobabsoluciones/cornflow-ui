@@ -6,6 +6,7 @@ import type {
   ExecutionFilter,
   ExecutionsListEndpoint,
 } from '@cornflow-ui/core/types/executionFilters'
+import type { SchemaOverrides } from '@cornflow-ui/core/utils/schemaOverrides'
 
 /**
  * Definition for an app-specific section (top-level or subsection).
@@ -86,6 +87,10 @@ export interface FrontendAutomationSubsectionDef {
   titleKey: string
   icon: string
   component: () => Promise<unknown>
+  /** Shown (drawer and view) only to users with at least one of these role names. */
+  roles?: string[]
+  /** Shown (drawer and view) only while the session works on one of these DAGs. */
+  schemas?: string[]
 }
 
 function normalizeAppSectionPath(path: string | undefined): string | undefined {
@@ -573,6 +578,19 @@ const createAppConfig = () => ({
         },
       },
     },
+
+    /**
+     * Settings of each DAG, by DAG name, when `schema` (external config) lists several DAGs and
+     * they do not all work the same way. Each entry may set:
+     * - `parameters`: keys of `parameters` above with the DAG's value. Plain objects merge key by
+     *   key (`etl: { useEtlBackend: true }` keeps the other `etl` settings); arrays and any other
+     *   value replace the app's. `valuesJsonPath`, `schemaLabels`, `enableRolesManagement`,
+     *   `allowEditRoles` and `showOpenIdUsername` apply to the whole application and are ignored.
+     * - `dashboardLayout` / `instanceDashboardLayout`: the DAG's dashboard layouts.
+     * A DAG without an entry uses the settings above. The schema config in Cornflow still sets the
+     * solver and the config fields on top (see `solverConfig`).
+     */
+    schemaOverrides: {} as SchemaOverrides,
   },
 
   /**

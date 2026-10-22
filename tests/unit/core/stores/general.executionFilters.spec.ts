@@ -13,14 +13,18 @@ const mockConfig = vi.hoisted(() => ({
 }))
 vi.mock('@cornflow-ui/core/config', () => ({ default: mockConfig }))
 
-// App config: a test fills `executionFilters`.
+// App config: a test fills `executionFilters`, and the settings of a DAG in `schemaOverrides`.
 const mockParameters = vi.hoisted(() => ({
   configFields: [] as unknown[],
   executionFilters: [] as unknown[],
 }))
+const mockSchemaOverrides = vi.hoisted(() => ({}) as Record<string, unknown>)
 vi.mock('@/app/config', () => ({
   default: {
-    getCore: () => ({ parameters: mockParameters }),
+    getCore: () => ({
+      parameters: mockParameters,
+      schemaOverrides: mockSchemaOverrides,
+    }),
     getDashboardRoutes: () => [],
     getDashboardPages: () => [],
     getDashboardLayout: () => ({}),
@@ -140,6 +144,8 @@ describe('General store — executions history filters', () => {
     mockConfig.schemas = []
     sessionStorage.clear()
     mockParameters.executionFilters = []
+    for (const schema of Object.keys(mockSchemaOverrides))
+      delete mockSchemaOverrides[schema]
     mockMasterData.config = { plants: plantsTable, programs: programsTable }
     mockRows.byUrl = {
       '/plants/': plantRows,
@@ -310,7 +316,7 @@ describe('General store — executions history filters', () => {
     test('a switch to a DAG without filters leaves none', async () => {
       const store = await storeOnPlanningDag()
       store.setExecutionFilterValue('plant_id', 2)
-      mockParameters.executionFilters = []
+      mockSchemaOverrides.stock_dag = { parameters: { executionFilters: [] } }
 
       await store.setActiveSchema('stock_dag')
 

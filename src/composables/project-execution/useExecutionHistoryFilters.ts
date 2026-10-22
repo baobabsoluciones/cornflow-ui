@@ -6,7 +6,7 @@
  */
 import { computed, reactive } from 'vue'
 import { useI18n } from 'vue-i18n'
-import appConfig from '@/app/config'
+import { getAppParameters } from '@cornflow-ui/core/utils/appParameters'
 import { useExecutionState } from '@cornflow-ui/core/composables/project-execution-table/useExecutionState'
 
 /** One execution row of the history, as the executions list gives it. */
@@ -61,7 +61,7 @@ export function useExecutionHistoryFilters() {
       valueOf: (row) => row.userFullName || row.userName || null,
       titleOf: (value) => value,
     },
-    ...(appConfig.getCore().parameters.enableRecalculationOnMasterEdit
+    ...(getAppParameters().enableRecalculationOnMasterEdit
       ? [
           {
             key: 'origin',

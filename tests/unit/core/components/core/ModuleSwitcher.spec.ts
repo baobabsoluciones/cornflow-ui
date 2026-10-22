@@ -80,6 +80,11 @@ async function mountSwitcher(path = '/history-execution') {
       { path: '/history-execution', component: { template: '<div />' } },
       { path: '/project-execution', component: { template: '<div />' } },
       { path: '/my-dashboard', component: { template: '<div />' } },
+      {
+        path: '/planning-board',
+        component: { template: '<div />' },
+        meta: { schemas: ['planning_dag'] },
+      },
     ],
   })
   await router.push(path)
@@ -117,7 +122,10 @@ describe('ModuleSwitcher', () => {
     mockConfig.schemas = ['planning_dag', 'stock_dag']
     store = useGeneralStore()
     store.availableSchemas = ['planning_dag', 'stock_dag']
-    store.setActiveSchema = vi.fn().mockResolvedValue(true) as any
+    store.setActiveSchema = vi.fn(async (schema: string) => {
+      store.schema = schema
+      return true
+    }) as any
   })
 
   test('offers the DAGs the user may switch to, with their labels', async () => {
@@ -159,8 +167,17 @@ describe('ModuleSwitcher', () => {
     expect(store.setActiveSchema).not.toHaveBeenCalled()
   })
 
-  test('after switching, leaves a view that may not exist in the new DAG', async () => {
+  test('after switching, stays on a view the new DAG also has', async () => {
     const { wrapper, pushSpy } = await mountSwitcher('/my-dashboard')
+
+    await segment(wrapper, 'stock_dag').trigger('click')
+    await flushPromises()
+
+    expect(pushSpy).not.toHaveBeenCalled()
+  })
+
+  test("after switching, leaves a view gated to the previous DAG for the new DAG's default view", async () => {
+    const { wrapper, pushSpy } = await mountSwitcher('/planning-board')
 
     await segment(wrapper, 'stock_dag').trigger('click')
     await flushPromises()
