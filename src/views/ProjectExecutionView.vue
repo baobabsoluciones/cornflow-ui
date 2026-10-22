@@ -85,6 +85,7 @@
           <CreateExecutionConfigParams
             v-model="newExecution"
             :scope="configParamsScope"
+            layout="form"
             class="mt-4"
           />
         </template>
@@ -469,6 +470,27 @@ export default {
       this.newExecution.config = newConfig
     },
 
+    /** Fields read from the loaded file (`source`) take the value the file has for them. */
+    loadSourceConfigFieldValues() {
+      const fields = (
+        this.generalStore.appConfig.parameters.configFields || []
+      ).filter((field) => field.source)
+      if (fields.length === 0) return
+
+      const newConfig = { ...this.newExecution.config }
+      for (const field of fields) {
+        if (!this.hasValidDataSource(field)) continue
+        const value = this.getValueFromSource(
+          field,
+          this.newExecution.instance.data[field.source],
+        )
+        if (value !== undefined) {
+          newConfig[field.key] = this.convertValueByType(value, field.type)
+        }
+      }
+      this.newExecution.config = newConfig
+    },
+
     extractFieldValue(field) {
       if (!this.hasValidDataSource(field)) {
         this.warnUnresolvedSourceField(field)
@@ -614,14 +636,17 @@ export default {
     },
     handleInstanceSelected: async function (instance) {
       this.newExecution.instance = instance
-      // If config fields step is skipped, load config values now
-      if (
-        !this.generalStore.appConfig.parameters.configFieldsConfig
-          ?.showConfigFieldsStep &&
+      const configFieldsConfig =
         this.generalStore.appConfig.parameters.configFieldsConfig
-          ?.autoLoadValues
+      // With the parameters step skipped, every value is settled now; with the step
+      // shown, the fields read from the file take its values and the user can change them.
+      if (
+        !configFieldsConfig?.showConfigFieldsStep &&
+        configFieldsConfig?.autoLoadValues
       ) {
         await this.loadConfigFieldValues()
+      } else {
+        this.loadSourceConfigFieldValues()
       }
     },
     resetAndLoadNewExecution() {
@@ -786,22 +811,14 @@ export default {
       return this.allConfigFields.filter((field) => field.preEtl !== true)
     },
     /**
-     * Whether the load-instance step is the one asking for the pre-ETL parameters. That
-     * only makes sense when the deployment actually runs an ETL and the config schema
-     * marks at least one parameter with `pre_etl: true`. In edit mode there is no load
-     * step at all -- the instance already exists and no ETL call is made -- so those
-     * parameters go back to the regular parameters step.
+     * Whether the load-instance step is the one asking for the pre-ETL parameters: always
+     * when the config schema marks one with `pre_etl: true`, so they are asked once, before
+     * the data they describe is loaded. In edit mode there is no load step at all -- the
+     * instance already exists -- so those parameters go back to the regular parameters step.
      */
     preEtlAskedInLoadStep() {
       if (this.isEditMode) return false
-      if (this.preEtlConfigFields.length === 0) return false
-
-      const etl = this.generalStore.appConfig.parameters.etl
-      return Boolean(
-        etl?.useEtlBackend ||
-          etl?.enableLoadFromDb ||
-          (etl?.alternativeParameterFields?.length ?? 0) > 0,
-      )
+      return this.preEtlConfigFields.length > 0
     },
     /** What the regular parameters step renders once the load step took its share. */
     configParamsScope() {

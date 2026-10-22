@@ -252,6 +252,16 @@ export default {
           alternativeParametersHint:
             'Enter the values below and load them as instance data',
           preEtlParamsHint: 'Data the instance will be loaded with',
+          source: 'Data source',
+          sourceDatabase: 'Master tables',
+          sourceDatabaseDescription: 'Current data of the master tables',
+          sourceFile: 'File',
+          sourceFileDescription: 'Upload a file with the data',
+          sourceParameters: 'Parameters',
+          sourceParametersDescription: 'Build the instance from a few values',
+          databaseSummary: 'The current data of the master tables will be loaded.',
+          reload: 'Load again',
+          loaded: 'Data loaded',
           preEtlChangedAfterLoad:
             'You changed these after loading. Load again so they apply to the instance.',
           noParametersDataError: 'No parameter data to send',
@@ -442,6 +452,33 @@ export default {
     password_match: 'Passwords do not match',
   },
   versionHistory: {
+    filterBar: {
+      search: 'Search execution…',
+      addFilter: 'Add filter',
+      searchField: 'Search field…',
+      noFields: 'No field matches',
+      clear: 'Clear filters',
+      remove: 'Remove filter',
+      date: 'Date',
+      count: '{n} execution | {n} executions',
+      limitNotice: 'Showing the {limit} most recent: narrow the date to see the rest.',
+      groups: {
+        execution: 'Execution',
+        solution: 'Solution',
+      },
+      fields: {
+        state: 'Execution state',
+        solutionState: 'Solution state',
+        user: 'User',
+        solver: 'Solver',
+        origin: 'Origin',
+      },
+      origin: {
+        model: 'Model',
+        replanning: 'Replanning',
+      },
+    },
+    filterAll: 'All',
     title: 'Version history',
     description:
       'In this section, you will find a summary of all the versions you have completed for the different executed projects. You can load as many executions as you want from the actions column. Each execution will open in a new tab at the bottom of the screen, and the most recently loaded execution will be selected by default.',
@@ -455,7 +492,6 @@ export default {
     noData: ' No data found for the selected range dates',
     loading: 'Loading executions...',
     createNewExecution: 'Create new execution',
-    hideReplanned: 'Show model executions only',
   },
   inputOutputData: {
     title: 'Project management',
@@ -985,6 +1021,7 @@ export default {
     errors: 'errors',
   },
   configParams: {
+    fromFile: 'From the file',
     msg: 'Messages',
     msgPlaceholder: 'Enable or disable messages',
     timeLimit: 'Time limit',

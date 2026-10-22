@@ -26,6 +26,13 @@ describe('appSections config collectors', () => {
     expect(appConfig.isAppSectionShowsLoadingOnEnter('/my-page')).toBe(false)
   })
 
+  test('declares no execution history filters and lists executions from Cornflow by default', () => {
+    const parameters = appConfig.getCore().parameters
+
+    expect(parameters.executionFilters).toEqual([])
+    expect(parameters.executionsListEndpoint).toBeNull()
+  })
+
   test('drawer items keep the roles and DAGs a section is declared for', () => {
     declareAppSections([
       {
