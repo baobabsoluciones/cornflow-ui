@@ -12,6 +12,9 @@ same logic. Core ships two, and an application can replace them with its own wit
 All of them go through `useExecutionDraft`, so the calls to the backend, the states and the
 configuration flags behave the same whichever flow is on screen.
 
+In an application this guide ships with the package, at
+`node_modules/@cornflow-ui/core/docs/create-execution-flows.md`.
+
 ## Picking a flow
 
 In the application's `src/app/config.ts`, under `core.parameters`:
