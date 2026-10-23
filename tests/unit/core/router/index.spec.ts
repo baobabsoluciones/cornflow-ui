@@ -53,6 +53,12 @@ vi.mock('@cornflow-ui/core/views/ProjectExecutionView.vue', () => ({
     template: '<div>ProjectExecution</div>',
   },
 }))
+vi.mock('@cornflow-ui/core/views/CreateExecutionView.vue', () => ({
+  default: {
+    name: 'CreateExecutionView',
+    template: '<div>CreateExecution</div>',
+  },
+}))
 vi.mock('@cornflow-ui/core/views/HistoryExecutionView.vue', () => ({
   default: {
     name: 'HistoryExecutionView',
@@ -307,5 +313,31 @@ describe('Router Configuration', () => {
 
     // Verify the router was created (we can't easily test the exact history type due to internal implementation)
     expect(typeof router.push).toBe('function')
+  })
+  describe('the create-execution screen', () => {
+    async function projectExecutionComponent(createExecution?: Record<string, unknown>) {
+      vi.resetModules()
+      mockAppConfig.getCore.mockReturnValue({
+        parameters: { useHashMode: false, ...(createExecution ? { createExecution } : {}) },
+      })
+      const { default: router } = await import('@cornflow-ui/core/router/index')
+      const root = router.getRoutes().find((route) => route.path === '/')
+      return root?.children?.find((route) => route.path === 'project-execution')?.component as any
+    }
+
+    test('is the one-page flow by default', async () => {
+      expect((await projectExecutionComponent())?.name).toBe('CreateExecutionView')
+    })
+
+    test('is the wizard with flow "wizard"', async () => {
+      expect((await projectExecutionComponent({ flow: 'wizard' }))?.name).toBe(
+        'ProjectExecutionView',
+      )
+    })
+
+    test("is the app's own component when it gives one", async () => {
+      const own = () => Promise.resolve({ name: 'OwnFlow' })
+      expect(await projectExecutionComponent({ flow: 'page', component: own })).toBe(own)
+    })
   })
 })

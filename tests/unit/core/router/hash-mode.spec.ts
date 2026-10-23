@@ -62,6 +62,9 @@ vi.mock('@cornflow-ui/core/views/LoginView.vue', () => stubView('LoginView'))
 vi.mock('@cornflow-ui/core/views/ProjectExecutionView.vue', () =>
   stubView('ProjectExecutionView'),
 )
+vi.mock('@cornflow-ui/core/views/CreateExecutionView.vue', () =>
+  stubView('CreateExecutionView'),
+)
 vi.mock('@cornflow-ui/core/views/HistoryExecutionView.vue', () =>
   stubView('HistoryExecutionView'),
 )

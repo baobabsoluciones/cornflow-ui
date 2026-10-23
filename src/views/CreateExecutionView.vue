@@ -109,13 +109,14 @@ function onGo() {
 
 // ── Starting points: relaunch and saved draft ────────────────────────────────
 
-/** "Create a new execution from the current input data" opens this view with the query. */
+/**
+ * "Create a new execution from the current input data" opens this view with the query; the view
+ * is kept alive, so it starts from the selected execution each time the query turns up.
+ */
 watch(
   () => route.query.editInstance,
-  async (edit) => {
-    if (edit !== 'true') return
-    if (store.selectedExecution) draft.startFrom(store.selectedExecution)
-    await router.replace({ query: {} })
+  (edit) => {
+    if (edit === 'true' && store.selectedExecution) draft.startFrom(store.selectedExecution)
   },
   { immediate: true },
 )

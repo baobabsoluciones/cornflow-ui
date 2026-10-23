@@ -70,7 +70,7 @@ test.describe('Solution Data Page', () => {
 
     const executionTab = tablist
       .getByRole('tab')
-      .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+      .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
       .first();
 
     await expect(executionTab).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
@@ -123,7 +123,7 @@ test.describe('Solution Data Page', () => {
 
     const executionTab = tablist
       .getByRole('tab')
-      .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+      .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
       .first();
 
     await expect(executionTab).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
@@ -164,7 +164,7 @@ test.describe('Solution Data Page', () => {
 
     const selectedTabAfter = tablistAfter
       .getByRole('tab')
-      .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+      .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
       .first();
 
     await expect(selectedTabAfter).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
@@ -217,7 +217,7 @@ test.describe('Solution Data Page', () => {
 
     const executionTab = tablist
       .getByRole('tab')
-      .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+      .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
       .first();
 
     await expect(executionTab).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
@@ -307,7 +307,7 @@ test.describe('Solution Data Page', () => {
 
     const selectedTabAfter = tablist
       .getByRole('tab')
-      .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+      .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
       .first();
     await expect(selectedTabAfter).toHaveAttribute('aria-selected', 'true');
   });
@@ -322,7 +322,7 @@ test.describe('Solution Data Page', () => {
 
     const executionTab = tablist
       .getByRole('tab')
-      .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+      .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
       .first();
 
     await expect(executionTab).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
@@ -409,7 +409,7 @@ test.describe('Solution Data Page', () => {
 
     const executionTab = tablist
       .getByRole('tab')
-      .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+      .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
       .first();
 
     await expect(executionTab).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });

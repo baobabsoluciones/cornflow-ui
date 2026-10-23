@@ -52,6 +52,7 @@ for (const view of [
   'IndexView',
   'LoginView',
   'ProjectExecutionView',
+  'CreateExecutionView',
   'HistoryExecutionView',
   'DashboardView',
   'UserSettingsView',

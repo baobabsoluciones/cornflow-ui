@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 import { TIMEOUTS } from './constants';
 
 /**
- * Returns true when at least one execution tab (excluding "Add new") exists.
+ * Returns true when at least one execution tab (excluding "New execution") exists.
  */
 async function hasLoadedExecutionTab(page: Page): Promise<boolean> {
   const tablist = page.getByRole('tablist');
@@ -10,7 +10,7 @@ async function hasLoadedExecutionTab(page: Page): Promise<boolean> {
   if (!tablistVisible) return false;
 
   const executionTabs = tablist.getByRole('tab').filter({
-    hasNot: page.getByText(/Añadir nuevo|Add new/i),
+    hasNot: page.getByText(/Nueva ejecución|New execution/i),
   });
 
   return (await executionTabs.count().catch(() => 0)) > 0;
