@@ -1,7 +1,8 @@
 <!--
-  ExecutionListItem: one execution in the history list: state icon, name with its "current plan"
-  and "replanning" tags, time, description, and solution state · user. Loading it and downloading
-  its Excel are at hand on the row (on hover, or always with `actionsAlways`).
+  ExecutionListItem: one execution in the history list. First line: state icon, name, its "current
+  plan" and "replanning" tags, description and time. Second line: solution state · user · solver ·
+  duration. Loading it and downloading its Excel are at hand on the row (on hover, or always with
+  `actionsAlways`).
 -->
 <template>
   <div
@@ -24,24 +25,25 @@
         <span class="execution-row__line">
           <span class="execution-row__name">{{ execution.name }}</span>
           <CoreBadge
-            v-if="currentPlan"
-            size="sm"
-            tone="warning"
-            icon="mdi-star"
-            :label="$t('latestPlan.chip.current')"
-          />
-          <CoreBadge
             v-if="replanning"
             size="sm"
             tone="info"
             icon="mdi-calendar-sync"
             :label="$t('executionTable.replanning')"
           />
-          <span class="execution-row__spacer" />
+          <CoreBadge
+            v-if="currentPlan"
+            size="sm"
+            tone="warning"
+            icon="mdi-star"
+            :label="$t('latestPlan.chip.current')"
+          />
+          <span
+            v-if="execution.description"
+            class="execution-row__description"
+            >{{ execution.description }}</span
+          >
           <span class="execution-row__time">{{ time }}</span>
-        </span>
-        <span v-if="execution.description" class="execution-row__description">
-          {{ execution.description }}
         </span>
         <span class="execution-row__meta">
           <ExecutionStateBadge
@@ -49,9 +51,17 @@
             :code="execution.solution_state?.status_code"
             variant="text"
           />
-          <template v-if="user">
+          <template v-for="detail in details" :key="detail.key">
             <span aria-hidden="true">·</span>
-            <span class="execution-row__user">{{ user }}</span>
+            <span class="execution-row__detail">
+              <CoreIcon
+                v-if="detail.icon"
+                :name="detail.icon"
+                :size="13"
+                class="execution-row__detail-icon"
+              />
+              {{ detail.text }}
+            </span>
           </template>
         </span>
       </span>
@@ -91,8 +101,13 @@
 import { computed } from 'vue'
 import CoreBadge from '@cornflow-ui/core/components/core/CoreBadge.vue'
 import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
+import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
 import ExecutionStateBadge from '@cornflow-ui/core/components/project-execution/ExecutionStateBadge.vue'
-import type { HistoryExecution } from '@cornflow-ui/core/composables/project-execution/useExecutionDetails'
+import {
+  formatDuration,
+  type HistoryExecution,
+} from '@cornflow-ui/core/composables/project-execution/useExecutionDetails'
+import { isExecutionActive } from '@cornflow-ui/core/composables/project-execution/useExecutionStatus'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { formatLocalTimeHHmm } from '@cornflow-ui/core/utils/date'
 
@@ -107,6 +122,8 @@ const props = withDefaults(
     downloading?: boolean
     /** Shows the row actions without hovering (narrow screens, touch). */
     actionsAlways?: boolean
+    /** Current time, in ms (live duration of a running execution). */
+    now?: number
   }>(),
   {
     selected: false,
@@ -114,6 +131,7 @@ const props = withDefaults(
     loading: false,
     downloading: false,
     actionsAlways: false,
+    now: () => Date.now(),
   },
 )
 
@@ -125,15 +143,49 @@ const time = computed(() => formatLocalTimeHHmm(props.execution.createdAt))
 
 const replanning = computed(() => props.execution.config?.replanning === true)
 
+const columns = computed<{
+  showUserName?: boolean
+  showUserFullName?: boolean
+  showSolver?: boolean
+}>(
+  () =>
+    generalStore.appConfig.parameters?.showExtraProjectExecutionColumns ?? {},
+)
+
 /** The user as the app shows it (`showExtraProjectExecutionColumns`). */
 const user = computed(() => {
-  const columns: { showUserFullName?: boolean; showUserName?: boolean } =
-    generalStore.appConfig.parameters?.showExtraProjectExecutionColumns ?? {}
-  if (columns.showUserFullName)
+  if (columns.value.showUserFullName)
     return props.execution.userFullName || props.execution.userName
-  if (columns.showUserName) return props.execution.userName
+  if (columns.value.showUserName) return props.execution.userName
   return null
 })
+
+/** From creation to the end, or until now while it runs. */
+const duration = computed(() => {
+  const created = new Date(props.execution.createdAt).getTime()
+  const end = isExecutionActive(props.execution.state)
+    ? props.now
+    : new Date(props.execution.finishedAt ?? '').getTime()
+  return Number.isNaN(created) || Number.isNaN(end)
+    ? null
+    : formatDuration((end - created) / 1000)
+})
+
+/** What follows the solution state on the second line. */
+const details = computed(() =>
+  [
+    { key: 'user', text: user.value, icon: '' },
+    {
+      key: 'solver',
+      text:
+        columns.value.showSolver !== false
+          ? props.execution.config?.solver
+          : null,
+      icon: '',
+    },
+    { key: 'duration', text: duration.value, icon: 'mdi-timer-outline' },
+  ].filter((detail) => Boolean(detail.text)),
+)
 </script>
 
 <style scoped>
@@ -156,7 +208,7 @@ const user = computed(() => {
   gap: calc(var(--spacing) * 2.5);
   width: 100%;
   box-sizing: border-box;
-  padding: calc(var(--spacing) * 2.5);
+  padding: calc(var(--spacing) * 2.5) calc(var(--spacing) * 2.5);
   border: 0;
   border-radius: inherit;
   background: none;
@@ -180,7 +232,7 @@ const user = computed(() => {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 3px;
+  gap: calc(var(--spacing) * 1.5);
   min-width: 0;
 }
 
@@ -193,8 +245,8 @@ const user = computed(() => {
 }
 
 .execution-row__name {
-  flex: 0 1 auto;
-  min-width: 0;
+  flex: none;
+  max-width: 60%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -206,18 +258,13 @@ const user = computed(() => {
   color: var(--color-primary);
 }
 
-.execution-row__spacer {
-  flex: 1;
-}
-
-.execution-row__time {
+.execution-row__line :deep(.core-badge) {
   flex: none;
-  font-size: var(--text-sm);
-  color: var(--color-text-subtle);
-  font-variant-numeric: tabular-nums;
 }
 
 .execution-row__description {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -225,15 +272,29 @@ const user = computed(() => {
   color: var(--color-text-muted);
 }
 
+.execution-row__time {
+  flex: none;
+  margin-left: auto;
+  padding-left: calc(var(--spacing) * 2);
+  font-size: var(--text-sm);
+  color: var(--color-text-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
 .execution-row__meta {
   font-size: var(--text-sm);
   color: var(--color-text-subtle);
 }
 
-.execution-row__user {
+.execution-row__detail {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .execution-row__actions {

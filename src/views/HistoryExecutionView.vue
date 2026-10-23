@@ -58,8 +58,6 @@
               :data-testid="`history-filter-${filter.key}`"
               @pick="pickFilterValue(filter, $event)"
             />
-          </div>
-          <div class="history-filters__chips">
             <FilterChip
               v-for="definition in historyFilters.addedDefinitions"
               :key="definition.key"
@@ -295,7 +293,6 @@ import {
   formatLocalTimeHHmm,
   parseLocalDateKey,
 } from '@cornflow-ui/core/utils/date'
-import { formatDateForHeaders } from '@cornflow-ui/core/utils/data_io'
 import { inject } from 'vue'
 
 /** Date range the history opens with. */
@@ -666,8 +663,26 @@ export default {
       }
       this.dateOptionSelected = DEFAULT_DATE_OPTION
     },
+    /** "Today · 21 Oct", "Yesterday · 20 Oct", "Monday · 19 Oct" (with the year when not this one). */
     dayTitle(date) {
-      return formatDateForHeaders(date, this.locale)
+      const day = parseLocalDateKey(date)
+      const today = new Date()
+      const yesterday = new Date(today)
+      yesterday.setDate(today.getDate() - 1)
+      const sameDay = (a, b) => a.toDateString() === b.toDateString()
+      const name = sameDay(day, today)
+        ? this.$t('versionHistory.today')
+        : sameDay(day, yesterday)
+          ? this.$t('versionHistory.yesterday')
+          : day.toLocaleDateString(this.locale, { weekday: 'long' })
+      const short = day.toLocaleDateString(this.locale, {
+        day: 'numeric',
+        month: 'short',
+        ...(day.getFullYear() === today.getFullYear()
+          ? {}
+          : { year: 'numeric' }),
+      })
+      return `${name} · ${short}`
     },
     navigateToCreateExecution() {
       this.$router.push('/project-execution')
@@ -980,7 +995,7 @@ export default {
 .history-layout {
   display: grid;
   flex: 1;
-  grid-template-columns: 400px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 440px;
   grid-template-rows: minmax(0, 1fr);
   gap: calc(var(--spacing) * 4);
   min-height: 420px;
@@ -1087,10 +1102,6 @@ export default {
 
 .history-detail__section {
   padding: calc(var(--spacing) * 5) calc(var(--spacing) * 7);
-}
-
-.history-detail__section--head {
-  padding-top: calc(var(--spacing) * 6);
 }
 
 .history-detail__section + .history-detail__section {

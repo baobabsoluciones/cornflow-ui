@@ -30,6 +30,7 @@
             :loading="loadingIds.has(execution.id)"
             :downloading="downloadingIds.has(execution.id)"
             :actions-always="actionsAlways"
+            :now="now"
             @select="emit('select', execution.id)"
             @load="emit('load', execution)"
             @excel="emit('excel', execution)"

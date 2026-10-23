@@ -473,7 +473,7 @@ export default {
     filterAll: 'Todos',
     title: 'Histórico de versões',
     description:
-      'Um resumo de todas as versões que executou para os diferentes projetos. Selecione uma execução para ver o seu detalhe e carregá-la: cada uma abre num novo separador na parte inferior do ecrã.',
+      'Selecione uma execução para ver o seu detalhe e carregá-la num novo separador.',
     yesterday: 'Ontem',
     today: 'Hoje',
     last7days: 'Últimos 7 dias',

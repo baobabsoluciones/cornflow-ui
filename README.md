@@ -25,21 +25,22 @@ executions and the executions grouped by day; the detail shows the selected one 
 history opens):
 
 ```
-List                                    Detail
-[🔍 Search execution…]                  Plan week 42  ★ Current plan
-[📅 Date Last 30 days ▾] [Plant All ▾]   EXECUTION ✓ Success    SOLUTION ✓ Optimal
-[User: Ana ✕] [+ Add filter]            [Load execution] [Download Excel] [☆ Mark as current]  Delete
-12 executions          Clear filters    PROGRESS  ✓ Queued ── ✓ Execution ── ✓ Success
-TODAY 3                                 EXECUTION DATA  User · Created · Finished · Duration · …
-✓ Plan week 42                  09:15   EXECUTION PARAMETERS  Horizon · Plant · …
+List                                                           Detail
+[🔍 Search by name or description]                             Plan week 42 · adjustment         ☆ 🗑
+[📅 Date Last 30 days ▾] [Plant All ▾] [+ Add filter]          [Replanning]
+11 executions                                 Clear filters    EXECUTION  ✓ Success
+TODAY · 21 OCT  3                                              SOLUTION   ✓ Optimal
+✓ Plan week 42 · adjustment [Replanning] After line 2   10:48  [Load execution] [Download Excel]
+  • Optimal · admin · mip_solver · ⏱ 3 min 00 s                PROGRESS  ✓ Queued ── ✓ Execution ── ✓ Success
+                                                               EXECUTION DATA · EXECUTION PARAMETERS
 ```
 
-- **A row** shows the execution state, the name with its "current plan" and "replanning" tags, the
-  time, the description and the solution state with the user. Load and Excel are on the row when
+- **A row** shows the execution state, the name with its "replanning" and "current plan" tags, the
+  description and the time; under them, the solution state, the user, the solver and the duration. Load and Excel are on the row when
   the pointer is on it, and resting the pointer opens a summary of the execution beside the list.
-- **The detail** has the execution and solution states with their explanation, the server's message
-  when the execution failed, the actions (load, download Excel, mark as current plan when the
-  latest-plan module is on, delete after a confirmation), the progress (queued, running with the
+- **The detail** has, next to the name, "mark as current plan" (when the latest-plan module is
+  on) and delete (after a confirmation); then the execution and solution states with their
+  explanation, the server's message when the execution failed, load and download Excel, the progress (queued, running with the
   time used of its limit, and how it ended), its data and the parameters it was launched with
   (`configFields`, with their titles; a parameter fed by a frontend-automation table shows the name,
   not the id). The data rows follow `showExtraProjectExecutionColumns`: user name or full name,

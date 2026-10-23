@@ -200,7 +200,7 @@ describe('ExecutionDetailHeader', () => {
     expect(
       current.find('[data-testid="history-detail-set-current"]').exists(),
     ).toBe(false)
-    expect(current.text()).toContain('It is the current plan')
+    expect(current.text()).toContain('Current plan')
   })
 
   test('each action emits its event, and back appears on narrow screens', async () => {

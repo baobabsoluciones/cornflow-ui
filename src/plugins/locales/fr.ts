@@ -370,7 +370,7 @@ export default {
     filterAll: 'Tous',
     title: 'Historique des versions',
     description:
-      'Un résumé de toutes les versions que vous avez exécutées pour les différents projets. Sélectionnez une exécution pour voir son détail et la charger : chacune s´ouvre dans un nouvel onglet en bas de l´écran.',
+      'Sélectionnez une exécution pour voir son détail et la charger dans un nouvel onglet.',
     yesterday: 'Hier',
     today: "Aujourd'hui",
     last7days: '7 derniers jours',

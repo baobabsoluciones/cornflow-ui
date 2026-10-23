@@ -70,7 +70,7 @@ test.describe('Version History Navigation', () => {
 
     // Verify the page description is displayed
     // The description mentions a summary of all versions
-    const pageDescription = page.getByText(/resumen de todas las versiones|summary of all the versions|résumé de toutes les versions/i);
+    const pageDescription = page.getByText(/ver su detalle y cargarla|see its detail and load it|voir son détail et la charger/i);
     await expect(pageDescription.first()).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
   });
 
@@ -132,7 +132,7 @@ test.describe('Version History Navigation', () => {
     await expect(pageTitle).toBeVisible();
 
     // Verify the page description is displayed
-    const pageDescription = page.getByText(/resumen de todas las versiones|summary of all the versions|résumé de toutes les versions/i);
+    const pageDescription = page.getByText(/ver su detalle y cargarla|see its detail and load it|voir son détail et la charger/i);
     await expect(pageDescription.first()).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
   });
 

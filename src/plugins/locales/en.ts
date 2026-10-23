@@ -481,7 +481,7 @@ export default {
     filterAll: 'All',
     title: 'Version history',
     description:
-      'A summary of all the versions you have run for the different projects. Select an execution to see its detail and load it: each one opens in a new tab at the bottom of the screen.',
+      'Select an execution to see its detail and load it in a new tab.',
     yesterday: 'Yesterday',
     today: 'Today',
     last7days: 'Last 7 days',

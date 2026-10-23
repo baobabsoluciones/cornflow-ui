@@ -493,7 +493,7 @@ export default {
     filterAll: 'Todos',
     title: 'Historial de versiones',
     description:
-      'Un resumen de todas las versiones que has ejecutado para los distintos proyectos. Selecciona una ejecución para ver su detalle y cargarla: cada una se abre en una nueva pestaña en la parte inferior de la pantalla.',
+      'Selecciona una ejecución para ver su detalle y cargarla en una nueva pestaña.',
     yesterday: 'Ayer',
     today: 'Hoy',
     last7days: 'Últimos 7 días',

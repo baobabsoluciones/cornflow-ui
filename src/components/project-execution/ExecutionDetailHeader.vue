@@ -1,7 +1,7 @@
 <!--
-  ExecutionDetailHeader: the top of an execution's detail: name and description with its tags, the
-  execution and solution states with their explanation, the server's message when it failed, and
-  the actions (load, download Excel, mark as current plan, delete).
+  ExecutionDetailHeader: the top of an execution's detail: the name with its quick actions (mark as
+  current plan, delete), its tags and description, the execution and solution states with their
+  explanation, the server's message when it failed, and the main actions (load, download Excel).
 -->
 <template>
   <div class="execution-detail-header">
@@ -15,51 +15,74 @@
       {{ $t('versionHistory.detail.backToList') }}
     </button>
 
-    <div class="execution-detail-header__title-block">
-      <div class="execution-detail-header__title-row">
-        <h2 class="execution-detail-header__name">{{ execution.name }}</h2>
-        <CoreBadge
-          v-if="currentPlan"
-          tone="warning"
-          icon="mdi-star"
-          :label="$t('latestPlan.chip.current')"
-        />
-        <CoreBadge
-          v-if="replanning"
-          tone="info"
-          icon="mdi-calendar-sync"
-          :label="$t('executionTable.replanning')"
-        />
-      </div>
-      <p
-        v-if="execution.description"
-        class="execution-detail-header__description"
-      >
-        {{ execution.description }}
-      </p>
+    <div class="execution-detail-header__title-row">
+      <h2 class="execution-detail-header__name">{{ execution.name }}</h2>
+      <CoreButton
+        v-if="canSetCurrentPlan"
+        variant="icon"
+        size="small"
+        color="grey"
+        icon="mdi-star-outline"
+        :aria-label="$t('latestPlan.actions.setAsCurrent')"
+        :title="$t('latestPlan.actions.setAsCurrent')"
+        data-testid="history-detail-set-current"
+        @click="emit('set-current-plan')"
+      />
+      <CoreButton
+        variant="icon"
+        size="small"
+        color="danger"
+        icon="mdi-delete-outline"
+        :loading="deleting"
+        :aria-label="$t('executionTable.deleteExecution')"
+        :title="$t('executionTable.deleteExecution')"
+        data-testid="history-detail-delete"
+        @click="emit('delete')"
+      />
     </div>
 
-    <div class="execution-detail-header__states">
-      <div class="execution-detail-header__state">
-        <span class="execution-detail-header__caption">{{
-          $t('versionHistory.detail.executionState')
-        }}</span>
-        <ExecutionStateBadge
-          kind="execution"
-          :code="execution.state"
-          show-message
-        />
-      </div>
-      <div class="execution-detail-header__state">
-        <span class="execution-detail-header__caption">{{
-          $t('versionHistory.detail.solutionState')
-        }}</span>
-        <ExecutionStateBadge
-          kind="solution"
-          :code="execution.solution_state?.status_code"
-          show-message
-        />
-      </div>
+    <div v-if="currentPlan || replanning" class="execution-detail-header__tags">
+      <CoreBadge
+        v-if="currentPlan"
+        tone="warning"
+        icon="mdi-star"
+        :label="$t('latestPlan.chip.current')"
+        :title="$t('latestPlan.actions.isCurrentPlan')"
+      />
+      <CoreBadge
+        v-if="replanning"
+        tone="info"
+        icon="mdi-calendar-sync"
+        :label="$t('executionTable.replanning')"
+      />
+    </div>
+
+    <p
+      v-if="execution.description"
+      class="execution-detail-header__description"
+    >
+      {{ execution.description }}
+    </p>
+
+    <div class="execution-detail-header__state">
+      <span class="execution-detail-header__caption">{{
+        $t('versionHistory.detail.executionState')
+      }}</span>
+      <ExecutionStateBadge
+        kind="execution"
+        :code="execution.state"
+        show-message
+      />
+    </div>
+    <div class="execution-detail-header__state">
+      <span class="execution-detail-header__caption">{{
+        $t('versionHistory.detail.solutionState')
+      }}</span>
+      <ExecutionStateBadge
+        kind="solution"
+        :code="execution.solution_state?.status_code"
+        show-message
+      />
     </div>
 
     <CoreAlert
@@ -86,28 +109,6 @@
         :loading-text="$t('versionHistory.detail.downloading')"
         data-testid="history-detail-excel"
         @click="emit('excel')"
-      />
-      <CoreButton
-        v-if="canSetCurrentPlan"
-        variant="outlined"
-        icon="mdi-star-outline"
-        :text="$t('latestPlan.actions.setAsCurrent')"
-        data-testid="history-detail-set-current"
-        @click="emit('set-current-plan')"
-      />
-      <span v-if="currentPlan" class="execution-detail-header__is-current">
-        <CoreIcon name="mdi-star" :size="18" />
-        {{ $t('latestPlan.actions.isCurrentPlan') }}
-      </span>
-      <span class="execution-detail-header__spacer" />
-      <CoreButton
-        variant="text"
-        color="danger"
-        icon="mdi-delete-outline"
-        :text="$t('executionTable.deleteExecution')"
-        :loading="deleting"
-        data-testid="history-detail-delete"
-        @click="emit('delete')"
       />
     </div>
   </div>
@@ -169,7 +170,7 @@ const errorMessage = computed(() =>
 .execution-detail-header {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--spacing) * 3.5);
+  gap: calc(var(--spacing) * 3);
   font-family: var(--font-sans);
 }
 
@@ -194,26 +195,27 @@ const errorMessage = computed(() =>
   background: var(--color-surface-hover);
 }
 
-.execution-detail-header__title-block {
+.execution-detail-header__title-row {
   display: flex;
-  flex-direction: column;
+  align-items: flex-start;
   gap: calc(var(--spacing) * 1);
 }
 
-.execution-detail-header__title-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: calc(var(--spacing) * 2);
-}
-
 .execution-detail-header__name {
+  flex: 1;
+  min-width: 0;
   margin: 0;
   font-size: var(--text-xl);
   font-weight: var(--font-weight-medium);
-  line-height: 26px;
+  line-height: 30px;
   color: var(--color-primary);
   text-wrap: pretty;
+}
+
+.execution-detail-header__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--spacing) * 2);
 }
 
 .execution-detail-header__description {
@@ -223,19 +225,12 @@ const errorMessage = computed(() =>
   text-wrap: pretty;
 }
 
-.execution-detail-header__states {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(var(--spacing) * 3) calc(var(--spacing) * 8);
-}
-
 .execution-detail-header__state {
   display: flex;
-  flex: 1 1 200px;
   flex-direction: column;
   gap: calc(var(--spacing) * 1.5);
   min-width: 0;
-  max-width: 340px;
+  margin-top: calc(var(--spacing) * 1);
 }
 
 .execution-detail-header__caption {
@@ -243,33 +238,13 @@ const errorMessage = computed(() =>
   font-weight: var(--font-weight-medium);
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--color-text-subtle);
+  color: var(--color-text-muted);
 }
 
 .execution-detail-header__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: calc(var(--spacing) * 2);
-  margin-top: 2px;
-}
-
-.execution-detail-header__is-current {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(var(--spacing) * 1.5);
-  height: 36px;
-  padding: 0 calc(var(--spacing) * 3);
-  font-size: var(--text-md);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-warning-strong);
-}
-
-.execution-detail-header__is-current :deep(.core-icon) {
-  color: var(--color-warning);
-}
-
-.execution-detail-header__spacer {
-  flex: 1;
+  margin-top: calc(var(--spacing) * 1);
 }
 </style>
