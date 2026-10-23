@@ -133,7 +133,6 @@ export default {
       advanced: 'Advanced',
       reset: 'Reset',
       solver: 'Solver',
-      without: 'no {name}',
       choose: 'Choose…',
       yes: 'Yes',
       no: 'No',

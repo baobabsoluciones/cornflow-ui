@@ -32,6 +32,7 @@ import {
   readCssToken,
 } from '@cornflow-ui/core/plugins/vuetify'
 import ButtonsSection from './sections/ButtonsSection.vue'
+import CreateExecutionSection from './sections/CreateExecutionSection.vue'
 import DataSection from './sections/DataSection.vue'
 import HistorySection from './sections/HistorySection.vue'
 import MenusSection from './sections/MenusSection.vue'
@@ -48,6 +49,7 @@ const sections = [
   { id: 'data', title: 'Data', component: DataSection },
   { id: 'overlays', title: 'Dialogs and toasts', component: OverlaysSection },
   { id: 'history', title: 'Execution history', component: HistorySection },
+  { id: 'create-execution', title: 'Create execution', component: CreateExecutionSection },
 ]
 
 const activeId = ref(sections[0].id)

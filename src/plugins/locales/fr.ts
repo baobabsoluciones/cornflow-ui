@@ -131,7 +131,6 @@ export default {
       advanced: 'Avancé',
       reset: 'Réinitialiser',
       solver: 'Solveur',
-      without: 'sans {name}',
       choose: 'Choisir…',
       yes: 'Oui',
       no: 'Non',

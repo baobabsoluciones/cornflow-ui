@@ -161,9 +161,39 @@ export function useExecutionDraft() {
       Boolean(etlConfig.value?.useEtlBackend && etlConfig.value?.enableLoadFromDb),
   )
 
-  /** Load filters are asked before the data exists; a relaunch already has its data. */
+  /** Options of the load filters fed by a frontend-automation table (`joinFrom`), by key. */
+  const filterTableOptions = ref<Record<string, { value: unknown; label: string }[]>>({})
+
+  /**
+   * Load filters are asked before the data exists; a relaunch already has its data. A filter fed
+   * by a table carries that table's rows as its options.
+   */
   const loadFilterFields = computed(() =>
-    fromExecution.value ? [] : allConfigFields.value.filter((f) => f.preEtl === true),
+    fromExecution.value
+      ? []
+      : allConfigFields.value
+          .filter((f) => f.preEtl === true)
+          .map((f) => (f.joinFrom ? { ...f, options: filterTableOptions.value[f.key] ?? [] } : f)),
+  )
+
+  // The fields can arrive with the schema, and the frontend-automation tables after them.
+  watch(
+    () =>
+      `${allConfigFields.value
+        .filter((f) => f.preEtl === true && f.joinFrom)
+        .map((f) => `${f.key}=${f.joinFrom}`)
+        .join('|')}#${Object.keys(store.getConfigurations?.masterData ?? {}).length}`,
+    async () => {
+      const withTable = allConfigFields.value.filter((f) => f.preEtl === true && f.joinFrom)
+      for (const field of withTable) {
+        const options = (await store.fetchTableOptions(field.joinFrom)) ?? []
+        filterTableOptions.value = {
+          ...filterTableOptions.value,
+          [field.key]: options.map((o: any) => ({ value: o.value, label: String(o.title) })),
+        }
+      }
+    },
+    { immediate: true },
   )
 
   const dataSourceMode = computed<DataSourceMode>(() => {
@@ -379,7 +409,7 @@ export function useExecutionDraft() {
 
   function filterLabels(): string[] {
     return loadFilterFields.value
-      .filter((field) => field.type === 'select' || field.options?.length)
+      .filter((field: any) => field.type === 'select' || field.options?.length)
       .map((field) => {
         const value = execution.config[field.key]
         const option = (field.options ?? []).find((o: any) => o.value === value)

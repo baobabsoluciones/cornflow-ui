@@ -187,6 +187,18 @@ describe('useExecutionDraft', () => {
     expect(draft.canLoad).toBe(true)
   })
 
+  test('a load filter fed by a table takes its rows as options', async () => {
+    store.fetchTableOptions = vi.fn(async () => [{ value: 7, title: 'North plant' }])
+    store.appConfig.parameters.configFields = [
+      ...configFields,
+      { key: 'plant_id', title: 'f.plant', type: 'select', preEtl: true, joinFrom: 'plants.name' },
+    ]
+    const draft = setup()
+    await flushPromises()
+    expect(store.fetchTableOptions).toHaveBeenCalledWith('plants.name')
+    expect(draft.loadFilterFields[0].options).toEqual([{ value: 7, label: 'North plant' }])
+  })
+
   test('brings the database data without files and asks to reload when the filters change', async () => {
     extensions.etlBackend = { useEtlBackend: vi.fn(), useEtlBackendFromDb: vi.fn() }
     store.appConfig.parameters.etl = { useEtlBackend: true, enableLoadFromDb: true }

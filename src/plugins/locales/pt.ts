@@ -121,7 +121,6 @@ export default {
       advanced: 'Avançado',
       reset: 'Repor',
       solver: 'Solver',
-      without: 'sem {name}',
       choose: 'Escolha…',
       yes: 'Sim',
       no: 'Não',

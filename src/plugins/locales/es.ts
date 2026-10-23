@@ -133,7 +133,6 @@ export default {
       advanced: 'Avanzado',
       reset: 'Restablecer',
       solver: 'Solver',
-      without: 'sin {name}',
       choose: 'Elige…',
       yes: 'Sí',
       no: 'No',

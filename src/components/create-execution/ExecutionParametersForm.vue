@@ -197,7 +197,10 @@ const advancedFields = computed(() => [
 const advancedOpen = ref(false)
 
 function displayValue(field: ParameterFieldView, value: unknown): string {
-  if (field.type === 'boolean') return value ? field.label.toLowerCase() : t('createExecution.parameters.without', { name: field.label.toLowerCase() })
+  if (field.type === 'boolean') {
+    const answer = value ? t('createExecution.parameters.yes') : t('createExecution.parameters.no')
+    return `${field.label}: ${answer.toLowerCase()}`
+  }
   if (field.type === 'options') {
     return field.options.find((o) => o.value === value)?.label ?? '—'
   }

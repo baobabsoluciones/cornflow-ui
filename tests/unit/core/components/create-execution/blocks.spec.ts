@@ -136,7 +136,7 @@ describe('ExecutionParametersForm', () => {
     })
     const labels = () => wrapper.findAll('.parameters-form__label').map((l) => l.text())
     expect(labels()).toEqual(['Objective', 'Start'])
-    expect(wrapper.find('.parameters-form__advanced-summary').text()).toBe('— · 0,01 · createExecution.parameters.without')
+    expect(wrapper.find('.parameters-form__advanced-summary').text()).toBe('— · 0,01 · Overtime: createexecution.parameters.no')
 
     await wrapper.find('[data-testid="parameters-advanced"]').trigger('click')
     expect(labels()).toEqual(['Objective', 'Start', 'createExecution.parameters.solver', 'Gap', 'Overtime'])
