@@ -995,7 +995,7 @@ export default {
 .history-layout {
   display: grid;
   flex: 1;
-  grid-template-columns: minmax(0, 1fr) 440px;
+  grid-template-columns: minmax(0, 3fr) minmax(440px, 2fr);
   grid-template-rows: minmax(0, 1fr);
   gap: calc(var(--spacing) * 4);
   min-height: 420px;
