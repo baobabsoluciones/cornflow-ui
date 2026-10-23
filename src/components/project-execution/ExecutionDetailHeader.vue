@@ -64,25 +64,27 @@
       {{ execution.description }}
     </p>
 
-    <div class="execution-detail-header__state">
-      <span class="execution-detail-header__caption">{{
-        $t('versionHistory.detail.executionState')
-      }}</span>
-      <ExecutionStateBadge
-        kind="execution"
-        :code="execution.state"
-        show-message
-      />
-    </div>
-    <div class="execution-detail-header__state">
-      <span class="execution-detail-header__caption">{{
-        $t('versionHistory.detail.solutionState')
-      }}</span>
-      <ExecutionStateBadge
-        kind="solution"
-        :code="execution.solution_state?.status_code"
-        show-message
-      />
+    <div class="execution-detail-header__states">
+      <div class="execution-detail-header__state">
+        <span class="execution-detail-header__caption">{{
+          $t('versionHistory.detail.executionState')
+        }}</span>
+        <ExecutionStateBadge
+          kind="execution"
+          :code="execution.state"
+          show-message
+        />
+      </div>
+      <div class="execution-detail-header__state">
+        <span class="execution-detail-header__caption">{{
+          $t('versionHistory.detail.solutionState')
+        }}</span>
+        <ExecutionStateBadge
+          kind="solution"
+          :code="execution.solution_state?.status_code"
+          show-message
+        />
+      </div>
     </div>
 
     <CoreAlert
@@ -225,12 +227,20 @@ const errorMessage = computed(() =>
   text-wrap: pretty;
 }
 
+.execution-detail-header__states {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--spacing) * 3) calc(var(--spacing) * 6);
+  margin-top: calc(var(--spacing) * 1);
+}
+
+/* Side by side while each has room for its explanation; one under the other otherwise. */
 .execution-detail-header__state {
   display: flex;
+  flex: 1 1 200px;
   flex-direction: column;
   gap: calc(var(--spacing) * 1.5);
   min-width: 0;
-  margin-top: calc(var(--spacing) * 1);
 }
 
 .execution-detail-header__caption {
@@ -242,8 +252,8 @@ const errorMessage = computed(() =>
 }
 
 .execution-detail-header__actions {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: calc(var(--spacing) * 2);
   margin-top: calc(var(--spacing) * 1);
 }
