@@ -7,6 +7,7 @@ import type {
   ExecutionsListEndpoint,
 } from '@cornflow-ui/core/types/executionFilters'
 import type { SchemaOverrides } from '@cornflow-ui/core/utils/schemaOverrides'
+import type { ProposeExecutionName } from '@cornflow-ui/core/composables/create-execution/executionName'
 
 /**
  * Definition for an app-specific section (top-level or subsection).
@@ -184,6 +185,13 @@ function collectLoadingOnEnterAppRoutePrefixes(
   )
 }
 /** Declarative rules for master vs uploaded row matching and display normalization (per table key). */
+/**
+ * How the "create execution" screen is laid out:
+ * - `page`: one page, the data on the left and the launch panel on the right.
+ * - `wizard`: the step-by-step wizard (load, review, check, solver, parameters, name, confirm).
+ */
+export type CreateExecutionFlow = 'page' | 'wizard'
+
 export type MasterTableMatchingDictionaryRule = {
   sourceTable: string
   keyField: string
@@ -432,6 +440,27 @@ const createAppConfig = () => ({
           // },
         },
       },
+
+      /**
+       * The "create execution" screen. See docs/create-execution-flows.md.
+       * - `flow`: core's layout (`page` or `wizard`).
+       * - `component`: the app's own flow instead, e.g.
+       *   `() => import('@/app/views/MyCreateExecutionView.vue')`. It is built with
+       *   `useExecutionDraft` and the create-execution blocks, so it keeps every call to the backend.
+       * - `proposeName`: the rule that names the execution when its data is loaded; by default the
+       *   first file's name, or "Data of <date>", followed by the load filters.
+       */
+      createExecution: {
+        flow: 'page' as CreateExecutionFlow,
+        component: null as (() => Promise<unknown>) | null,
+        proposeName: null as ProposeExecutionName | null,
+      },
+
+      /**
+       * Developer tools on the "create execution" screen: creating an execution with an uploaded
+       * solution instead of running the solver.
+       */
+      isDeveloperMode: false,
 
       // Overridden from schema config when user enters the app (see general store setSchema + applySchemaConfigToAppConfig)
       solverConfig: {

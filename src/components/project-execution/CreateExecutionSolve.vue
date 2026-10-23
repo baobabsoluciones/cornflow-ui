@@ -141,7 +141,7 @@ import {
   formatValidationErrors,
   formatSingleErrorWithTitle,
 } from '@cornflow-ui/core/utils/errorFormatting'
-import { FILE_EXTENSIONS, getFileExtension } from '@cornflow-ui/core/utils/fileConstants'
+import { parseSolutionFile } from '@cornflow-ui/core/composables/create-execution/solutionFile'
 
 export default {
   components: {},
@@ -185,8 +185,7 @@ export default {
       this.solutionErrors = null
 
       try {
-        const extension = getFileExtension(file.name)
-        const solution = await this.parseSolutionFile(file, extension)
+        const solution = await parseSolutionFile(file, this.$t)
 
         // Validate solution schema
         const errors = await solution.checkSchema()
@@ -213,71 +212,6 @@ export default {
           this.showSnackbar(error.message || error, 'error')
         }
       }
-    },
-
-    async parseSolutionFile(file, extension) {
-      return new Promise((resolve, reject) => {
-        const fileReader = new FileReader()
-
-        fileReader.onload = async () => {
-          try {
-            const { Solution } = this.generalStore.appConfig
-            const schemas = this.generalStore.getSchemaConfig
-
-            if (extension === FILE_EXTENSIONS.XLSX) {
-              const solution = await Solution.fromExcel(
-                fileReader.result,
-                schemas.solutionSchema,
-                this.generalStore.appConfig.parameters.schema,
-              )
-              resolve(solution)
-            } else if (extension === FILE_EXTENSIONS.JSON) {
-              const jsonData = JSON.parse(fileReader.result)
-              const solution = new Solution(
-                null,
-                jsonData,
-                schemas.solutionSchema,
-                schemas.solutionChecksSchema,
-                this.generalStore.appConfig.parameters.schema,
-              )
-              resolve(solution)
-            } else if (extension === FILE_EXTENSIONS.CSV) {
-              const solution = await Solution.fromCsv(
-                fileReader.result,
-                file.name,
-                schemas.solutionSchema,
-                schemas.solutionChecksSchema,
-                this.generalStore.appConfig.parameters.schema,
-              )
-              resolve(solution)
-            } else {
-              throw new Error(
-                this.$t(
-                  'projectExecution.steps.step8.developerMode.unsupportedFileFormat',
-                ),
-              )
-            }
-          } catch (error) {
-            reject(error)
-          }
-        }
-
-        fileReader.onerror = () => {
-          reject(
-            new Error(
-              this.$t(
-                'projectExecution.steps.step8.developerMode.fileReadError',
-              ),
-            ),
-          )
-        }
-
-        if (extension === FILE_EXTENSIONS.XLSX) {
-          fileReader.readAsArrayBuffer(file)
-        } else {
-          fileReader.readAsText(file)
-        }
-      })
     },
 
     async createExecution() {

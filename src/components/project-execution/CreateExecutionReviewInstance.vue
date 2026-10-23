@@ -757,9 +757,20 @@ const hasPendingChanges = computed(() => {
 })
 
 // Expose methods for parent component
+/**
+ * Applies the pending edits as "Save all changes" does. Resolves false when there was nothing to
+ * apply into or the edited data breaks the schema (the edits stay pending and the error shows).
+ */
+async function applyPendingChanges(): Promise<boolean> {
+  if (!tableChanges.hasChanges.value) return true
+  const view = executionDataViewRef.value
+  return view ? view.saveAllChanges() : false
+}
+
 defineExpose({
   hasPendingChanges,
   clearPendingChanges: tableChanges.clearAllChanges,
+  applyPendingChanges,
 })
 </script>
 
