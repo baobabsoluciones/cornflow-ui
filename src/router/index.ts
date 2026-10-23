@@ -19,6 +19,7 @@ import {
 import IndexView from '@cornflow-ui/core/views/IndexView.vue'
 import LoginView from '@cornflow-ui/core/views/LoginView.vue'
 import ProjectExecutionView from '@cornflow-ui/core/views/ProjectExecutionView.vue'
+import CreateExecutionView from '@cornflow-ui/core/views/CreateExecutionView.vue'
 import HistoryExecutionView from '@cornflow-ui/core/views/HistoryExecutionView.vue'
 import DashboardView from '@cornflow-ui/core/views/DashboardView.vue'
 import UserSettingsView from '@cornflow-ui/core/views/UserSettingsView.vue'
@@ -180,6 +181,16 @@ const isRouteGatedOut = (
 
 // Factory for the repeated keep-alive child route shape (path + name + component + keepAlive,
 // with an optional meta). Keeps the route table DRY while producing identical records.
+/**
+ * The "create execution" screen the app asks for (`createExecution` in `src/app/config.ts`): its
+ * own flow, core's wizard, or core's one-page flow (the default).
+ */
+const createExecutionComponent = (): RouteRecordRaw['component'] => {
+  const options = (appConfig.getCore().parameters as any).createExecution
+  if (options?.component) return options.component
+  return options?.flow === 'wizard' ? ProjectExecutionView : CreateExecutionView
+}
+
 const keepAliveRoute = (
   path: string,
   name: string,
@@ -228,7 +239,7 @@ const buildRoutes = (): RouteRecordRaw[] => {
         keepAliveRoute('roles-management', 'Roles management', RolesManagementView, {
           requiresAdmin: true,
         }),
-        keepAliveRoute('project-execution', 'Project execution', ProjectExecutionView),
+        keepAliveRoute('project-execution', 'Project execution', createExecutionComponent()),
         keepAliveRoute('history-execution', 'Executions history', HistoryExecutionView),
         keepAliveRoute('dashboard', 'Dashboard', DashboardView),
         ...appSectionRoutes,

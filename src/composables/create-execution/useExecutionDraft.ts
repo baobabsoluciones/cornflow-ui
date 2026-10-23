@@ -7,9 +7,10 @@
  * to launch. Core's flows are built on it, and so can an app's own flow in its `src/app`
  * (see docs/create-execution-flows.md): the screen is theirs, the calls to the backend stay here.
  *
- * Call it once per flow, inside `setup`.
+ * Call it once per flow, inside `setup`. It returns a reactive object: read `draft.isLoaded`,
+ * `draft.missing`… directly, in the script and in the template.
  */
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, markRaw, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ErrorObject } from 'ajv'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
@@ -149,7 +150,7 @@ export function useExecutionDraft() {
   // ── Configuration ──────────────────────────────────────────────────────────
 
   // Read with optional chaining: an app's `src/app/config.ts` may predate some of these keys.
-  const parameters = computed(() => store.appConfig.parameters)
+  const parameters = computed<Record<string, any>>(() => store.appConfig.parameters)
   const etlConfig = computed(() => parameters.value.etl)
   const allConfigFields = computed<any[]>(() => parameters.value.configFields || [])
 
@@ -785,7 +786,20 @@ export function useExecutionDraft() {
     return state === QUEUED || state === RUNNING
   })
 
-  return {
+  // The review's origin switches changed: the backend has to hear about it before the checks
+  // and the launch, and the checks no longer describe the data.
+  watch(
+    () => [etlFlow.state.tableSwitches, etlFlow.state.parameterSwitches],
+    () => {
+      if (etlFlow.isActive.value) markEtlChanged()
+    },
+    { deep: true },
+  )
+
+  /** What the review needs to show the ETL origin switches; null without an ETL review. */
+  const etlReviewState = computed(() => (etlFlow.isActive.value ? etlFlow.state : null))
+
+  return reactive({
     // state
     execution,
     files,
@@ -801,9 +815,12 @@ export function useExecutionDraft() {
     checks,
     launch,
     solution,
-    etlFlow,
+    etlFlow: markRaw(etlFlow),
+    etlReviewState,
     etlNeedsSync,
     // configuration
+    /** File extensions the data can be loaded from (e.g. `['xlsx', 'csv']`). */
+    acceptedExtensions: instanceProcessing.supportedExtensions,
     dataSourceMode,
     canLoadFromDatabase,
     loadFilterFields,
@@ -855,7 +872,7 @@ export function useExecutionDraft() {
     readDraft,
     discardDraft,
     resumeDraft,
-  }
+  })
 }
 
 export type ExecutionDraftController = ReturnType<typeof useExecutionDraft>
