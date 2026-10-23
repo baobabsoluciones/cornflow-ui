@@ -1,3 +1,7 @@
+<!--
+  DateFilterChip: the date filter of a list, with presets (today, last 7 days…) and a custom range
+  that asks for its first and last day without closing the menu.
+-->
 <template>
   <FilterChip
     v-bind="$attrs"
@@ -6,30 +10,37 @@
     :value="modelValue"
     :options="presetOptions"
     :keep-open-value="customValue"
+    :menu-width="300"
     @pick="emit('update:modelValue', $event)"
   >
     <template #after-options>
       <div v-if="modelValue === customValue" class="date-filter__range">
-        <v-text-field
-          :model-value="from"
-          type="date"
-          :label="fromLabel"
-          variant="outlined"
-          density="compact"
-          hide-details
-          data-testid="date-filter-from"
-          @update:model-value="emit('update:from', $event)"
-        />
-        <v-text-field
-          :model-value="to"
-          type="date"
-          :label="toLabel"
-          variant="outlined"
-          density="compact"
-          hide-details
-          data-testid="date-filter-to"
-          @update:model-value="emit('update:to', $event)"
-        />
+        <label class="date-filter__field">
+          <span class="date-filter__label">{{ fromLabel }}</span>
+          <input
+            class="date-filter__input"
+            type="date"
+            :value="from ?? ''"
+            :max="to ?? undefined"
+            data-testid="date-filter-from"
+            @input="
+              emit('update:from', ($event.target as HTMLInputElement).value)
+            "
+          />
+        </label>
+        <label class="date-filter__field">
+          <span class="date-filter__label">{{ toLabel }}</span>
+          <input
+            class="date-filter__input"
+            type="date"
+            :value="to ?? ''"
+            :min="from ?? undefined"
+            data-testid="date-filter-to"
+            @input="
+              emit('update:to', ($event.target as HTMLInputElement).value)
+            "
+          />
+        </label>
       </div>
     </template>
   </FilterChip>
@@ -84,11 +95,44 @@ const presetOptions = computed(() =>
 )
 </script>
 
-<style>
+<style scoped>
 .date-filter__range {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  padding: 8px 12px 4px;
+  gap: calc(var(--spacing) * 2);
+  margin-top: calc(var(--spacing) * 1.5);
+  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 1)
+    calc(var(--spacing) * 1);
+  border-top: 1px solid var(--color-divider);
+}
+
+.date-filter__field {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 1);
+  min-width: 0;
+}
+
+.date-filter__label {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.date-filter__input {
+  height: 32px;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0 calc(var(--spacing) * 2);
+  border: 1px solid var(--color-border-input);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  color: var(--color-text);
+}
+
+.date-filter__input:focus {
+  border-color: var(--color-primary);
+  outline: none;
 }
 </style>

@@ -70,7 +70,7 @@ test.describe('Version History Navigation', () => {
 
     // Verify the page description is displayed
     // The description mentions a summary of all versions
-    const pageDescription = page.getByText(/resumen de todas las versiones|summary of all the versions|résumé de toutes les versions/i);
+    const pageDescription = page.getByText(/ver su detalle y cargarla|see its detail and load it|voir son détail et la charger/i);
     await expect(pageDescription.first()).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
   });
 
@@ -132,11 +132,11 @@ test.describe('Version History Navigation', () => {
     await expect(pageTitle).toBeVisible();
 
     // Verify the page description is displayed
-    const pageDescription = page.getByText(/resumen de todas las versiones|summary of all the versions|résumé de toutes les versions/i);
+    const pageDescription = page.getByText(/ver su detalle y cargarla|see its detail and load it|voir son détail et la charger/i);
     await expect(pageDescription.first()).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
   });
 
-  test('should navigate to execution page when clicking "Crear nueva ejecución" from three dots menu', async ({ page }) => {
+  test('should navigate to execution page when clicking "Crear nueva ejecución" in the title', async ({ page }) => {
     // First, navigate to the version history page
     // Check if we're already on history-execution (it's the default view)
     const currentHash = getHashRoute(page);
@@ -160,52 +160,18 @@ test.describe('Version History Navigation', () => {
     const hash = getHashRoute(page);
     expect(hash).toContain('/history-execution');
 
-    // Find the three dots menu button (mdi-dots-vertical icon)
-    // The button is in the CoreTitleView component, rendered by CoreDropdownMenu
-    // It's a v-btn with icon="mdi-dots-vertical"
-    const threeDotsButton = page.locator('button:has([class*="mdi-dots-vertical"])').first();
-    
-    // Wait for the button to be visible
-    await threeDotsButton.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
-    await expect(threeDotsButton).toBeVisible();
-
-    // Click on the three dots button to open the dropdown menu
-    await threeDotsButton.click();
-
-    // Wait for the dropdown menu to appear
-    // The menu is a v-menu that contains a v-list
-    const dropdownMenu = page.locator('.v-menu .v-list, .v-overlay__content .v-list').first();
-    await dropdownMenu.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
-    await expect(dropdownMenu).toBeVisible();
-
-    // Find the "Crear nueva ejecución" menu item
-    // The text can be in different languages:
+    // The "create new execution" button sits in the title of the history.
+    // Its text can be in different languages:
     // - "Crear nueva ejecución" (ES)
     // - "Create new execution" (EN)
     // - "Créer une nouvelle exécution" (FR)
-    // The item has an icon mdi-plus and is a v-list-item
-    const createExecutionMenuItem = page.locator('.v-list-item').filter({
-      hasText: /Crear nueva ejecución|Create new execution|Créer une nouvelle exécution/i
-    }).first();
+    const createExecutionButton = page.locator('[data-testid="history-create-execution"]');
+    await createExecutionButton.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
+    await expect(createExecutionButton).toHaveText(
+      /Crear nueva ejecución|Create new execution|Créer une nouvelle exécution/i
+    );
 
-    // Alternative: Find by icon if text search doesn't work
-    // The item should have mdi-plus icon
-    let menuItem = createExecutionMenuItem;
-    const isMenuItemVisible = await createExecutionMenuItem.isVisible().catch(() => false);
-    
-    if (!isMenuItemVisible) {
-      // Try to find by icon (mdi-plus) within the menu
-      menuItem = dropdownMenu.locator('.v-list-item').filter({
-        has: page.locator('[class*="mdi-plus"]')
-      }).first();
-    }
-
-    // Wait for the menu item to be visible
-    await menuItem.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
-    await expect(menuItem).toBeVisible();
-
-    // Click on the "Crear nueva ejecución" menu item
-    await menuItem.click();
+    await createExecutionButton.click();
 
     // Wait for navigation to project-execution route
     await page.waitForURL(

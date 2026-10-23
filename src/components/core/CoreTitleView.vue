@@ -3,17 +3,17 @@
     <div class="core-title-view__header">
       <div class="core-title-view__left">
         <div class="core-title-view__icon-title-row">
-          <div class="core-title-view__icon">
-            <v-icon>{{ icon }}</v-icon>
-          </div>
+          <CoreIcon :name="icon" :size="22" class="core-title-view__icon" />
           <h4 class="core-title-view__title">{{ title }}</h4>
         </div>
         <div class="core-title-view__description">
           <p v-if="description">{{ description }}</p>
         </div>
       </div>
-      <div v-if="hasDropdownActions" class="core-title-view__actions">
+      <div v-if="hasDropdownActions || $slots.actions" class="core-title-view__actions">
+        <slot name="actions" />
         <CoreDropdownMenu
+          v-if="hasDropdownActions"
           :items="dropdownItems"
           :sections="dropdownSections"
           @item-click="handleDropdownItemClick"
@@ -26,6 +26,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import CoreDropdownMenu from './CoreDropdownMenu.vue'
+import CoreIcon from './CoreIcon.vue'
 
 // Types
 interface DropdownItem {

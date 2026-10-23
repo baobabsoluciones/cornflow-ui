@@ -20,16 +20,33 @@ The execution management section handles the complete lifecycle of optimization 
   - Execution metadata display (creation date, solver used, status, etc.)
 - **Location**: `HistoryExecutionView.vue`
 
-The history is a card with a filter bar, the number of executions and one table whose rows are
-grouped by day:
+The history is a list and a detail side by side. The list has the filters, the number of
+executions and the executions grouped by day; the detail shows the selected one (the newest when the
+history opens):
 
 ```
-[🔍 Search execution…] [🏭 Plant: All ▾] [📅 Date: Last 30 days ▾] [◎ Execution state: Running ✕] [+ Add filter]
-Clear filters
-12 executions
-Time · End · User · Name · …
-Thursday, 15 October 2026 · 3 executions
+List                                                           Detail
+[🔍 Search by name or description]                             Plan week 42 · adjustment         ☆ 🗑
+[📅 Date Last 30 days ▾] [Plant All ▾] [+ Add filter]          [Replanning]
+11 executions                                 Clear filters    EXECUTION  ✓ Success
+TODAY · 21 OCT  3                                              SOLUTION   ✓ Optimal
+✓ Plan week 42 · adjustment [Replanning] After line 2   10:48  [Load execution] [Download Excel]
+  • Optimal · admin · mip_solver · ⏱ 3 min 00 s                PROGRESS  ✓ Queued ── ✓ Execution ── ✓ Success
+                                                               EXECUTION DATA · EXECUTION PARAMETERS
 ```
+
+- **A row** shows the execution state, the name with its "replanning" and "current plan" tags, the
+  description and the time; under them, the solution state, the user, the solver and the duration. Load and Excel are on the row when
+  the pointer is on it, and resting the pointer opens a summary of the execution beside the list.
+- **The detail** has, next to the name, "mark as current plan" (when the latest-plan module is
+  on) and delete (after a confirmation); then the execution and solution states with their
+  explanation, the server's message when the execution failed, load and download Excel, the progress (queued, running with the
+  time used of its limit, and how it ended), its data and the parameters it was launched with
+  (`configFields`, with their titles; a parameter fed by a frontend-automation table shows the name,
+  not the id). The data rows follow `showExtraProjectExecutionColumns`: user name or full name,
+  finish time, solver and time limit appear only where the app shows them.
+- **Narrow screens** (under 860px): the list takes the whole width, and selecting an execution
+  replaces it with the detail and a "Back to the list".
 
 - **Search**: keeps the executions whose name or description contains the text.
 - **Table filters** (`executionFilters`, see below): one chip each, always there.
@@ -46,7 +63,10 @@ when it comes back full, the history says so and asks to narrow the date.
 
 The chips are generic components (`components/core/filters/`: `FilterChip`, `DateFilterChip`,
 `AddFilterMenu`); the filters on the loaded list live in
-`composables/project-execution/useExecutionHistoryFilters.ts`.
+`composables/project-execution/useExecutionHistoryFilters.ts`. The list and the detail are
+`components/project-execution/` (`ExecutionList`, `ExecutionListItem`, `ExecutionDetailHeader`,
+`ExecutionStateBadge`), and what they show of an execution comes from
+`composables/project-execution/useExecutionDetails.ts`.
 
 ### Execution history filters (optional)
 
@@ -1095,6 +1115,11 @@ Maps status codes to display properties. Each state entry contains:
 | `color`      | `string` | Color identifier for the status chip |
 | `messageKey` | `string` | i18n key for the tooltip message     |
 | `codeKey`    | `string` | i18n key for the status label        |
+| `icon`       | `string` | Optional `mdi-*` icon of the state   |
+
+The colour gives the tone: `green` success, `orange` warning, `red` danger, `purple` primary,
+`blue` info and `grey` neutral. Without `icon` each tone has its own. Running (`0`) and queued
+(`-7`) executions look the same in every app, a spinner and a clock, whatever their colour.
 
 ## 2.2. App folder configuration
 
@@ -1138,9 +1163,37 @@ theme variables.
 `color="primary"` paint with the same colour as the core's own components. The token has to be a
 hex colour; otherwise the theme keeps its default with a console warning.
 
-**Catalog.** `npm run catalog` opens the component catalog (`dev/catalog/`): the tokens and, as they
-are added, every core component with its variants and states. It is a development page and is not
-part of the package.
+**Catalog.** `npm run catalog` opens the component catalog (`dev/catalog/`): the tokens and every
+core component with its variants and states. It is a development page and is not part of the
+package.
+
+### Core components
+
+The core's own components live in `src/components/core/` and are written without Vuetify: they
+take their look from the tokens, with the styles inside each component.
+
+| Component | What it is |
+| --- | --- |
+| `CoreIcon`, `CoreSpinner` | A Material Design Icons glyph (`mdi-*`); a loading ring |
+| `CoreButton` | Filled, outlined, text and icon buttons, in five sizes, with `loading` |
+| `CoreBadge` | A short status or tag, as a pill or a dot, in a tone |
+| `CoreAlert` | A message inside the page (error, warning, info, success) with an optional action |
+| `CoreEmptyState`, `CoreSkeleton`, `CoreProgressBar` | Empty and loading states, progress |
+| `CoreDescriptionList`, `CoreTimeline` | Label/value pairs; the steps of a process |
+| `CorePopover`, `CorePopoverPanel`, `CoreMenu` | A floating panel and the list inside it |
+| `CoreDialog`, `table/CoreConfirmDialog` | A modal dialog; a confirmation |
+| `CoreHoverCard` | A preview that opens when the pointer rests on its trigger |
+| `CoreSnackbar` | The app's toast (`showSnackbar`) |
+| `table/CoreSearchInput`, `filters/*` | The search box and the filter chips |
+| `CoreTitleView` | The title of a view, with an `actions` slot |
+
+Overlays (popover, menu, dialog, hover card) are built on [Reka UI](https://reka-ui.com), which
+gives focus handling, keyboard and ARIA without styles. The views use the `Core*` components, not
+Reka directly.
+
+Tones (`neutral`, `primary`, `info`, `success`, `warning`, `danger`) have four tokens each:
+`--color-<tone>` and its `-soft`, `-border` and `-strong` variants (see `tokens.css`). Overlays sit
+above Vuetify's with `--z-popover`, `--z-dialog` and `--z-toast`.
 
 ## 3. Important disclaimer
 

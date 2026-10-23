@@ -1,16 +1,18 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { createVuetify } from 'vuetify'
-import * as components from 'vuetify/components'
-import * as directives from 'vuetify/directives'
+import { createI18n } from 'vue-i18n'
 import CoreSearchInput from '@cornflow-ui/core/components/core/table/CoreSearchInput.vue'
 
 describe('CoreSearchInput', () => {
-  let vuetify: any
   let wrapper: any
 
+  const i18n = createI18n({
+    legacy: false,
+    locale: 'en',
+    messages: { en: { common: { clear: 'Clear' } } },
+  })
+
   beforeEach(() => {
-    vuetify = createVuetify({ components, directives })
     vi.useFakeTimers()
   })
 
@@ -23,10 +25,7 @@ describe('CoreSearchInput', () => {
   const createWrapper = (props = {}) =>
     mount(CoreSearchInput, {
       props,
-      global: {
-        plugins: [vuetify],
-        stubs: { 'v-icon': true, 'v-btn': true },
-      },
+      global: { plugins: [i18n] },
     })
 
   test('renders input with default placeholder', () => {
@@ -110,17 +109,19 @@ describe('CoreSearchInput', () => {
 
   test('clear button shown only when clearable and value present', () => {
     wrapper = createWrapper({ clearable: true, modelValue: 'x' })
-    expect(wrapper.find('v-btn-stub').exists()).toBe(true)
+    const clear = wrapper.find('.core-search-input__clear')
+    expect(clear.exists()).toBe(true)
+    expect(clear.attributes('aria-label')).toBe('Clear')
   })
 
   test('clear button hidden when not clearable', () => {
     wrapper = createWrapper({ clearable: false, modelValue: 'x' })
-    expect(wrapper.find('v-btn-stub').exists()).toBe(false)
+    expect(wrapper.find('.core-search-input__clear').exists()).toBe(false)
   })
 
   test('handleClear via clear button emits clear/search/update', async () => {
     wrapper = createWrapper({ clearable: true, modelValue: 'x' })
-    await wrapper.find('v-btn-stub').trigger('click')
+    await wrapper.find('.core-search-input__clear').trigger('click')
     expect(wrapper.emitted('clear')).toBeTruthy()
   })
 

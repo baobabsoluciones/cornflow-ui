@@ -15,17 +15,49 @@ body {
   --color-primary-light: var(--primary-light, #77afdd);
   --color-primary-soft: var(--primary-light-variant, #cbebf5);
   --color-on-primary: #ffffff;
+  /* Tint of the primary for selected rows, open chips and active filters. */
+  --color-primary-subtle: color-mix(in srgb, var(--color-primary) 10%, #ffffff);
   --color-secondary: var(--secondary, #f7be68);
-  --color-success: var(--success, #3b7b5e);
-  --color-warning: var(--warning, #dea727);
-  --color-danger: var(--danger, #f44336);
-  --color-danger-strong: var(--danger-variant, #b43c31);
   --color-text: var(--title, #404040);
   --color-text-muted: var(--subtitle, #6e6e6e);
+  --color-text-subtle: #8a949c;
   --color-background: var(--background, #e6e7e8);
   --color-surface: #ffffff;
+  --color-surface-muted: #f5f6f7;
+  --color-surface-hover: #f2f4f7;
+  --color-inverse: #263238;
+  --color-on-inverse: #ffffff;
   --color-border: #dcdfe4;
+  --color-border-subtle: rgba(0, 0, 0, 0.08);
+  --color-border-input: #e0e0e0;
+  --color-border-strong: #bdbdbd;
+  --color-divider: #ededed;
   --color-disabled: var(--disabled, #f2f4f7);
+
+  /*
+    Tones: each has a base colour, a soft background, a border for that background and the text
+    that reads on it. Soft and border mix the base with white, so they follow the app's palette.
+  */
+  --color-success: var(--success, #3b7b5e);
+  --color-success-soft: color-mix(in srgb, var(--color-success) 12%, #ffffff);
+  --color-success-border: color-mix(in srgb, var(--color-success) 35%, #ffffff);
+  --color-success-strong: color-mix(in srgb, var(--color-success) 85%, #000000);
+  --color-warning: var(--warning, #dea727);
+  --color-warning-soft: color-mix(in srgb, var(--color-warning) 16%, #ffffff);
+  --color-warning-border: color-mix(in srgb, var(--color-warning) 50%, #ffffff);
+  --color-warning-strong: color-mix(in srgb, var(--color-warning) 55%, #000000);
+  --color-danger: var(--danger, #f44336);
+  --color-danger-soft: color-mix(in srgb, var(--color-danger) 12%, #ffffff);
+  --color-danger-border: color-mix(in srgb, var(--color-danger) 40%, #ffffff);
+  --color-danger-strong: var(--danger-variant, #b43c31);
+  --color-info: var(--info, var(--color-primary));
+  --color-info-soft: color-mix(in srgb, var(--color-info) 10%, #ffffff);
+  --color-info-border: color-mix(in srgb, var(--color-info) 30%, #ffffff);
+  --color-info-strong: color-mix(in srgb, var(--color-info) 85%, #000000);
+  --color-neutral: #5c6670;
+  --color-neutral-soft: #eef0f2;
+  --color-neutral-border: #d9dde1;
+  --color-neutral-strong: #4a535b;
 
   /* Type */
   --font-sans: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -57,4 +89,16 @@ body {
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 16px 40px rgba(15, 23, 32, 0.18);
+
+  /* Layers of what opens over the page; above Vuetify's overlays while both live together. */
+  --z-popover: 2500;
+  --z-dialog: 2600;
+  --z-toast: 2700;
+  --color-scrim: rgba(15, 23, 32, 0.5);
+
+  /* Motion */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
 }
