@@ -409,6 +409,22 @@ export default {
     microsoft_not_available:
       'O serviço de autenticação da Microsoft não está disponível',
   },
+  drawer: {
+    label: 'Menu principal',
+    pin: 'Afixar o menu',
+    unpin: 'Desafixar o menu',
+    close: 'Fechar o menu',
+    loadedExecution: 'Execução carregada',
+    noExecution: 'Nenhuma execução carregada',
+    pickExecution: 'Escolha uma das últimas',
+    executionHint: 'Carregue uma para ver aqui os seus dados de entrada, resultados e dashboards.',
+    latestExecutions: 'Últimas execuções',
+    noExecutions: 'Ainda não há execuções',
+    seeHistory: 'Ver histórico completo',
+    containsCurrent: 'A página atual está neste grupo',
+    userSettings: 'Definições do utilizador',
+    logout: 'Terminar sessão',
+  },
   logOut: {
     title: 'Terminar sessão',
     message: 'Tem a certeza de que pretende terminar sessão?',

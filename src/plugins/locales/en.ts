@@ -419,6 +419,22 @@ export default {
     microsoft_not_available:
       'Microsoft authentication service is not available',
   },
+  drawer: {
+    label: 'Main menu',
+    pin: 'Pin the menu open',
+    unpin: 'Unpin the menu',
+    close: 'Close the menu',
+    loadedExecution: 'Loaded execution',
+    noExecution: 'No execution loaded',
+    pickExecution: 'Pick one of the latest',
+    executionHint: 'Load one to see its input data, results and dashboards here.',
+    latestExecutions: 'Latest executions',
+    noExecutions: 'No executions yet',
+    seeHistory: 'See full history',
+    containsCurrent: 'The current page is in this group',
+    userSettings: 'User settings',
+    logout: 'Log out',
+  },
   logOut: {
     title: 'Log out',
     message: 'Are you sure you want to log out?',
