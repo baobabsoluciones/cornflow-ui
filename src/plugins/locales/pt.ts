@@ -67,6 +67,8 @@ export default {
       optional: 'opcional',
       choose: 'Escolha…',
       notSet: 'Sem indicar',
+      yes: 'Sim',
+      no: 'Não',
       loadingFiles: 'A carregar os ficheiros…',
       loadingDatabase: 'A trazer os dados…',
       loadingHint: 'Pode demorar alguns segundos.',
@@ -80,8 +82,6 @@ export default {
       databaseHint: 'Serão trazidos os dados atuais. Também pode carregar um ou vários Excel: as suas folhas substituem as tabelas com o mesmo nome.',
       databaseFilteredTitle: 'Traga os dados da base de dados',
       databaseFilteredHint: 'Indique que dados trazer. Também pode carregar um ou vários Excel: as suas folhas substituem as tabelas com o mesmo nome.',
-      fromParameters: 'Ou crie os dados a partir de alguns valores',
-      loadParameters: 'Criar com estes valores',
     },
     loadErrors: {
       general: 'Dados',
@@ -112,7 +112,13 @@ export default {
       checkedAt: 'Verificado às {time}',
       notBlocking: 'Não impedem o lançamento',
       fixBeforeLaunch: 'Corrija-os antes de lançar',
-      moreRows: 'e mais {count}',
+      seeDetail: 'Ver detalhe',
+      detailTitle: 'Verificações dos dados',
+      moreChecks: 'e mais {count} verificação | e mais {count} verificações',
+      search: 'Pesquisar',
+      noMatches: 'Nenhuma linha corresponde à pesquisa',
+      showing: 'A mostrar {shown} de {total}',
+      showMore: 'Mostrar mais',
     },
     parameters: {
       required: 'Obrigatório',
@@ -299,12 +305,6 @@ export default {
           noFilesSelectedError: 'Selecione pelo menos um ficheiro',
           optionalOrDivider: 'ou',
           loadFromDb: 'Obter todos os dados da base de dados',
-          loadParameters: 'Carregar parâmetros',
-          alternativeParametersHint:
-            'Introduza os valores abaixo e carregue-os como dados da instância',
-          noParametersDataError: 'Não existem dados de parâmetros para enviar',
-          noParametersSheetsError:
-            'Não foi possível criar um ficheiro a partir dos parâmetros (verifique os nomes das tabelas na configuração)',
         },
       },
       reviewInstance: {
@@ -403,25 +403,17 @@ export default {
           noFilesSelectedError: 'Selecione pelo menos um ficheiro',
           optionalOrDivider: 'ou',
           loadFromDb: 'Obter todos os dados da base de dados',
-          loadParameters: 'Carregar parâmetros',
-          alternativeParametersHint:
-            'Introduza os valores abaixo e carregue-os como dados da instância',
           preEtlParamsHint: 'Dados com os quais a instância será carregada',
           source: 'Origem dos dados',
           sourceDatabase: 'Tabelas mestras',
           sourceDatabaseDescription: 'Dados atuais das tabelas mestras',
           sourceFile: 'Ficheiro',
           sourceFileDescription: 'Carregue um ficheiro com os dados',
-          sourceParameters: 'Parâmetros',
-          sourceParametersDescription: 'Criar a instância a partir de alguns valores',
           databaseSummary: 'Serão carregados os dados atuais das tabelas mestras.',
           reload: 'Carregar novamente',
           loaded: 'Dados carregados',
           preEtlChangedAfterLoad:
             'Alterou estes valores depois do carregamento. Carregue novamente para que sejam aplicados à instância.',
-          noParametersDataError: 'Não existem dados de parâmetros para enviar',
-          noParametersSheetsError:
-            'Não foi possível criar um ficheiro a partir dos parâmetros (verifique os nomes das tabelas na configuração)',
         },
       },
       step4: {

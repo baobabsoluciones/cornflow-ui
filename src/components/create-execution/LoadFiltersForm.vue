@@ -63,6 +63,12 @@ function labelOf(field: any) {
 }
 
 function optionsOf(field: any): { value: unknown; label: string }[] {
+  if (field.type === 'boolean') {
+    return [
+      { value: true, label: t('createExecution.data.yes') },
+      { value: false, label: t('createExecution.data.no') },
+    ]
+  }
   return field.options ?? []
 }
 

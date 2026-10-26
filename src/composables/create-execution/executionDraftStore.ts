@@ -26,6 +26,15 @@ export interface ExecutionDraft {
   /** Unapplied table edits (`useTableChanges().snapshotState()`). */
   pendingChanges: unknown
   pendingChangesCount: number
+  /**
+   * The ETL review not yet sent to the backend: the data the ETL returned (with its
+   * `__metadata__`) and the origin switches as the user left them. Null without one.
+   */
+  etlReview?: {
+    initialData: Record<string, any>
+    tableSwitches: Record<string, any>
+    parameterSwitches: Record<string, any>
+  } | null
 }
 
 function openDb(): Promise<IDBDatabase | null> {

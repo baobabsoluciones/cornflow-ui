@@ -1,8 +1,8 @@
 /**
  * useExecutionDraft — everything a "create execution" flow does, without any UI.
  *
- * It holds the execution being prepared (data, parameters, name), brings the data in (files,
- * database through the ETL, or the parameters form), runs the data checks, syncs the ETL review,
+ * It holds the execution being prepared (data, parameters, name), brings the data in (files, or
+ * the database through the ETL), runs the data checks, syncs the ETL review,
  * launches the execution (or creates it with an uploaded solution) and says what is still missing
  * to launch. Core's flows are built on it, and so can an app's own flow in its `src/app`
  * (see docs/create-execution-flows.md): the screen is theirs, the calls to the backend stay here.
@@ -15,7 +15,6 @@ import { useI18n } from 'vue-i18n'
 import type { ErrorObject } from 'ajv'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import {
-  buildInstanceDataFromAlternativeFields,
   useInstanceProcessing,
   type ProcessingResult,
 } from '@cornflow-ui/core/composables/useInstanceProcessing'
@@ -59,12 +58,21 @@ export type DataSourceMode =
   /** As `database`, with the load filters (`pre_etl` parameters) to fill first. */
   | 'database-filtered'
 
-export interface CheckResult {
+export interface CheckColumn {
   key: string
   title: string
+}
+
+export interface CheckResult {
+  key: string
+  /** The check table's `title` in the checks schema, or its key in words. */
+  title: string
+  description: string
   kind: 'error' | 'warning'
-  /** One line per row of the check table. */
-  rows: string[]
+  /** The columns of the check table, titled as the checks schema says. */
+  columns: CheckColumn[]
+  /** What the check found, one record per row of the check table. */
+  records: Record<string, unknown>[]
 }
 
 export type MissingTarget = 'data' | 'checks' | 'name' | `param:${string}`
@@ -85,10 +93,25 @@ export interface DraftExecution {
 const QUEUED = -7
 const RUNNING = 0
 
-function cellText(value: unknown): string {
-  if (value === null || value === undefined || value === '') return ''
-  if (typeof value === 'number') return String(value).replace('.', ',')
-  return String(value)
+/** `capacity_by_line` → "Capacity by line": the name of a check table or column without a title. */
+function keyInWords(key: string): string {
+  const words = key.replaceAll('_', ' ').trim()
+  return words.charAt(0).toUpperCase() + words.slice(1)
+}
+
+/** The rows of a check table as records, and its columns: the schema's, then any others found. */
+function checkTable(rows: unknown[], itemProperties: Record<string, any>) {
+  const records = rows.map((row) =>
+    row && typeof row === 'object' ? (row as Record<string, unknown>) : { value: row },
+  )
+  const keys = [...Object.keys(itemProperties)]
+  for (const record of records) {
+    for (const key of Object.keys(record)) if (!keys.includes(key)) keys.push(key)
+  }
+  const columns = keys
+    .filter((key) => records.some((r) => key in r))
+    .map((key) => ({ key, title: itemProperties[key]?.title || keyInWords(key) }))
+  return { columns, records }
 }
 
 export function useExecutionDraft() {
@@ -201,10 +224,6 @@ export function useExecutionDraft() {
     return loadFilterFields.value.length > 0 ? 'database-filtered' : 'database'
   })
 
-  const alternativeFields = computed<any[]>(
-    () => etlConfig.value?.alternativeParameterFields ?? [],
-  )
-
   const showParameters = computed(
     () => parameters.value.configFieldsConfig?.showConfigFieldsStep !== false,
   )
@@ -279,10 +298,10 @@ export function useExecutionDraft() {
   })
 
   const errorCount = computed(() =>
-    checks.results.filter((r) => r.kind === 'error').reduce((n, r) => n + r.rows.length, 0),
+    checks.results.filter((r) => r.kind === 'error').reduce((n, r) => n + r.records.length, 0),
   )
   const warningCount = computed(() =>
-    checks.results.filter((r) => r.kind === 'warning').reduce((n, r) => n + r.rows.length, 0),
+    checks.results.filter((r) => r.kind === 'warning').reduce((n, r) => n + r.records.length, 0),
   )
 
   const missingParameters = computed(() =>
@@ -311,7 +330,7 @@ export function useExecutionDraft() {
     } else if (dataErrors.value) {
       items.push({ key: 'data', text: t('createExecution.missing.fixData'), target: 'data' })
     }
-    if (blockOnCheckErrors.value && checks.status === 'running') {
+    if (checks.status === 'running') {
       items.push({ key: 'checks', text: t('createExecution.missing.checksRunning'), target: 'checks' })
     }
     if (blockOnCheckErrors.value && checks.status === 'errors') {
@@ -504,25 +523,6 @@ export function useExecutionDraft() {
     }
   }
 
-  /** Brings the data in from the short parameters form (`etl.alternativeParameterFields`). */
-  async function loadFromParameters(values: Record<string, unknown>) {
-    loadStatus.value = 'loading'
-    const payload = buildInstanceDataFromAlternativeFields(alternativeFields.value, values, {
-      instanceSchema: store.getSchemaConfig.instanceSchema,
-      masterDataTables: store.rawConfigurations?.masterData ?? null,
-    })
-    try {
-      onLoaded(await instanceProcessing.processInstanceData(payload, execution.config))
-    } catch (error) {
-      onLoaded({
-        success: false,
-        instance: null,
-        errors: error instanceof Error ? error.message : String(error),
-        rawErrors: null,
-      })
-    }
-  }
-
   /** The review replaced the instance (edits saved, Excel uploaded). */
   function setInstance(instance: any) {
     execution.instance = instance
@@ -602,20 +602,22 @@ export function useExecutionDraft() {
     const properties = store.schemaConfig?.instanceChecksSchema?.properties ?? {}
     const dataChecks = instance?.dataChecks ?? {}
     return Object.entries<any>(properties)
-      .map(([key, prop]) => {
+      .map(([key, prop]): CheckResult => {
         const rows = Array.isArray(dataChecks[key]) ? dataChecks[key] : []
         return {
           key,
-          title: prop?.title || key,
+          title: prop?.title || keyInWords(key),
+          description: prop?.description ?? '',
           kind: prop?.is_warning === false ? 'error' : 'warning',
-          rows: rows.map((row: any) =>
-            row && typeof row === 'object'
-              ? Object.values(row).map(cellText).filter(Boolean).join(' · ')
-              : cellText(row),
-          ),
-        } as CheckResult
+          ...checkTable(rows, prop?.items?.properties ?? {}),
+        }
       })
-      .filter((result) => result.rows.length > 0)
+      .filter((result) => result.records.length > 0)
+      // Errors first, then the checks that found the most.
+      .sort((a, b) => {
+        if (a.kind !== b.kind) return a.kind === 'error' ? -1 : 1
+        return b.records.length - a.records.length
+      })
   }
 
   async function runChecks() {
@@ -745,6 +747,8 @@ export function useExecutionDraft() {
     execution.instance = instance
     execution.description = loaded.description ?? ''
     execution.config = { ...execution.config, ...(loaded.config ?? {}) }
+    // Without a solver to pick, the execution runs with the app's default one.
+    if (!parameters.value.solverConfig?.showSolverStep) execution.config.solver = defaultSolver.value
     loadStatus.value = 'loaded'
     proposeNameNow()
   }
@@ -768,6 +772,16 @@ export function useExecutionDraft() {
       fromExecution: fromExecution.value,
       pendingChanges: tableChanges.snapshotState(),
       pendingChangesCount: pendingChangesCount.value,
+      etlReview:
+        etlFlow.isActive.value && etlFlow.state.initialData
+          ? JSON.parse(
+              JSON.stringify({
+                initialData: etlFlow.state.initialData,
+                tableSwitches: etlFlow.state.tableSwitches,
+                parameterSwitches: etlFlow.state.parameterSwitches,
+              }),
+            )
+          : null,
     }
     return writeExecutionDraft(key.value, draft)
   }
@@ -780,7 +794,7 @@ export function useExecutionDraft() {
     return deleteExecutionDraft(key.value)
   }
 
-  /** Puts a saved draft back on screen; the ETL review switches are not kept. */
+  /** Puts a saved draft back on screen, ETL review included. */
   async function resumeDraft(draft: ExecutionDraft) {
     reset()
     execution.name = draft.name
@@ -803,6 +817,12 @@ export function useExecutionDraft() {
       loadedFilters.value = draft.loadedFilters ? JSON.stringify(draft.loadedFilters) : null
       loadStatus.value = 'loaded'
       tableChanges.restoreState(draft.pendingChanges as any)
+      if (draft.etlReview) {
+        etlFlow.initializeFromEtlResponse(draft.etlReview.initialData)
+        Object.assign(etlFlow.state.tableSwitches, draft.etlReview.tableSwitches)
+        Object.assign(etlFlow.state.parameterSwitches, draft.etlReview.parameterSwitches)
+        etlNeedsSync.value = etlFlow.isActive.value
+      }
     }
     await discardDraft()
   }
@@ -854,7 +874,6 @@ export function useExecutionDraft() {
     dataSourceMode,
     canLoadFromDatabase,
     loadFilterFields,
-    alternativeFields,
     parameterFields,
     showParameters,
     showSolver,
@@ -883,7 +902,6 @@ export function useExecutionDraft() {
     removeFile,
     setFilter,
     load,
-    loadFromParameters,
     setInstance,
     setDataErrors,
     registerPendingChangesApplier,

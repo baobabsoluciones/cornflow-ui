@@ -79,6 +79,8 @@ export default {
       optional: 'optional',
       choose: 'Choose…',
       notSet: 'Not set',
+      yes: 'Yes',
+      no: 'No',
       loadingFiles: 'Loading the files…',
       loadingDatabase: 'Getting the data…',
       loadingHint: 'It may take a few seconds.',
@@ -92,8 +94,6 @@ export default {
       databaseHint: 'The current data will be brought in. You can also upload one or several Excel files: their sheets replace the tables with the same name.',
       databaseFilteredTitle: 'Get the data from the database',
       databaseFilteredHint: 'Say which data to bring. You can also upload one or several Excel files: their sheets replace the tables with the same name.',
-      fromParameters: 'Or create the data from a few values',
-      loadParameters: 'Create with these values',
     },
     loadErrors: {
       general: 'Data',
@@ -124,7 +124,13 @@ export default {
       checkedAt: 'Checked at {time}',
       notBlocking: 'They do not stop the launch',
       fixBeforeLaunch: 'Fix them before launching',
-      moreRows: 'and {count} more',
+      seeDetail: 'See detail',
+      detailTitle: 'Data checks',
+      moreChecks: 'and {count} more check | and {count} more checks',
+      search: 'Search',
+      noMatches: 'No rows match the search',
+      showing: 'Showing {shown} of {total}',
+      showMore: 'Show more',
     },
     parameters: {
       required: 'Required',
@@ -311,12 +317,6 @@ export default {
           noFilesSelectedError: 'Please select at least one file',
           optionalOrDivider: 'or',
           loadFromDb: 'Get all data from database',
-          loadParameters: 'Load parameters',
-          alternativeParametersHint:
-            'Enter the values below and load them as instance data',
-          noParametersDataError: 'No parameter data to send',
-          noParametersSheetsError:
-            'Could not build a file from the parameters (check table names in config)',
         },
       },
       reviewInstance: {
@@ -415,25 +415,17 @@ export default {
           noFilesSelectedError: 'Please select at least one file',
           optionalOrDivider: 'or',
           loadFromDb: 'Get all data from database',
-          loadParameters: 'Load parameters',
-          alternativeParametersHint:
-            'Enter the values below and load them as instance data',
           preEtlParamsHint: 'Data the instance will be loaded with',
           source: 'Data source',
           sourceDatabase: 'Master tables',
           sourceDatabaseDescription: 'Current data of the master tables',
           sourceFile: 'File',
           sourceFileDescription: 'Upload a file with the data',
-          sourceParameters: 'Parameters',
-          sourceParametersDescription: 'Build the instance from a few values',
           databaseSummary: 'The current data of the master tables will be loaded.',
           reload: 'Load again',
           loaded: 'Data loaded',
           preEtlChangedAfterLoad:
             'You changed these after loading. Load again so they apply to the instance.',
-          noParametersDataError: 'No parameter data to send',
-          noParametersSheetsError:
-            'Could not build a file from the parameters (check table names in config)',
         },
       },
       step4: {

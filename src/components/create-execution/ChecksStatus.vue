@@ -1,7 +1,8 @@
 <!--
   ChecksStatus: where the data checks of a new execution stand (not run, running, fine, with
-  warnings, with errors, out of date) with the button that runs them, and what they found, one
-  collapsible group per check table.
+  warnings, with errors, out of date) with the button that runs them, and what they found: one line
+  per check with how many rows it found, errors first. Any of them opens the detail
+  (ChecksDetailDialog), with each check as a table.
 
   <ChecksStatus
     :status="draft.checks.status"
@@ -26,29 +27,19 @@
         <span class="checks-status__title" :class="`is-${tone}`">{{ title }}</span>
         <span class="checks-status__subtitle">{{ subtitle }}</span>
       </div>
-      <CoreButton
-        v-if="status !== 'running'"
-        :variant="status === 'none' || status === 'stale' ? 'outlined' : 'text'"
-        size="small"
-        icon="mdi-play-outline"
-        :text="status === 'none' ? $t('createExecution.checks.run') : $t('createExecution.checks.runAgain')"
-        :disabled="disabled"
-        data-testid="checks-run"
-        @click="$emit('run')"
-      />
     </div>
 
-    <div
+    <ul
       v-if="results.length > 0 && status !== 'running'"
       class="checks-status__results"
       :class="{ 'is-stale': status === 'stale' }"
     >
-      <div v-for="result in results" :key="result.key" class="checks-status__result">
+      <li v-for="result in listed" :key="result.key">
         <button
           type="button"
-          class="checks-status__result-head"
-          :aria-expanded="isOpen(result)"
-          @click="toggle(result)"
+          class="checks-status__result"
+          :title="result.title"
+          @click="openDetail(result.key)"
         >
           <CoreIcon
             :name="result.kind === 'error' ? 'mdi-alert-circle' : 'mdi-alert'"
@@ -56,17 +47,39 @@
             :class="`is-${result.kind === 'error' ? 'danger' : 'warning'}`"
           />
           <span class="checks-status__result-title">{{ result.title }}</span>
-          <span class="checks-status__result-count">{{ result.rows.length }}</span>
-          <CoreIcon :name="isOpen(result) ? 'mdi-chevron-up' : 'mdi-chevron-down'" :size="18" />
+          <span class="checks-status__result-count">{{ result.records.length }}</span>
         </button>
-        <ul v-if="isOpen(result)" class="checks-status__rows">
-          <li v-for="(row, index) in visibleRows(result)" :key="index">{{ row }}</li>
-          <li v-if="result.rows.length > MAX_ROWS" class="checks-status__more">
-            {{ $t('createExecution.checks.moreRows', { count: result.rows.length - MAX_ROWS }) }}
-          </li>
-        </ul>
-      </div>
+      </li>
+      <li v-if="results.length > MAX_LISTED">
+        <button type="button" class="checks-status__result is-more" @click="openDetail(null)">
+          {{ $t('createExecution.checks.moreChecks', { count: results.length - MAX_LISTED }, results.length - MAX_LISTED) }}
+        </button>
+      </li>
+    </ul>
+
+    <div v-if="status !== 'running'" class="checks-status__actions">
+      <CoreButton
+        v-if="results.length > 0"
+        variant="text"
+        size="small"
+        icon="mdi-table-eye"
+        :text="$t('createExecution.checks.seeDetail')"
+        data-testid="checks-detail-open"
+        @click="openDetail(null)"
+      />
+      <span class="checks-status__spacer" />
+      <CoreButton
+        :variant="status === 'none' || status === 'stale' ? 'outlined' : 'text'"
+        size="small"
+        :icon="status === 'none' ? 'mdi-play-outline' : 'mdi-refresh'"
+        :text="status === 'none' ? $t('createExecution.checks.run') : $t('createExecution.checks.runAgain')"
+        :disabled="disabled"
+        data-testid="checks-run"
+        @click="$emit('run')"
+      />
     </div>
+
+    <ChecksDetailDialog v-model="detailOpen" :results="results" :initial-key="detailKey" />
   </div>
 </template>
 
@@ -76,6 +89,7 @@ import { useI18n } from 'vue-i18n'
 import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
 import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
 import CoreSpinner from '@cornflow-ui/core/components/core/CoreSpinner.vue'
+import ChecksDetailDialog from '@cornflow-ui/core/components/create-execution/ChecksDetailDialog.vue'
 import type {
   CheckResult,
   ChecksStatus,
@@ -99,12 +113,13 @@ const props = withDefaults(
 
 defineEmits<{ run: [] }>()
 
-const MAX_ROWS = 20
+/** Checks listed in the panel; the rest are in the detail. */
+const MAX_LISTED = 6
 
 const { t } = useI18n()
 
 const count = (kind: CheckResult['kind']) =>
-  props.results.filter((r) => r.kind === kind).reduce((n, r) => n + r.rows.length, 0)
+  props.results.filter((r) => r.kind === kind).reduce((n, r) => n + r.records.length, 0)
 
 const tone = computed(() => {
   switch (props.status) {
@@ -182,18 +197,14 @@ const subtitle = computed(() => {
   }
 })
 
-const opened = ref<Record<string, boolean>>({})
+const listed = computed(() => props.results.slice(0, MAX_LISTED))
 
-function isOpen(result: CheckResult): boolean {
-  return opened.value[result.key] ?? (result.kind === 'error' || props.results.length === 1)
-}
+const detailOpen = ref(false)
+const detailKey = ref<string | null>(null)
 
-function toggle(result: CheckResult) {
-  opened.value = { ...opened.value, [result.key]: !isOpen(result) }
-}
-
-function visibleRows(result: CheckResult): string[] {
-  return result.rows.slice(0, MAX_ROWS)
+function openDetail(key: string | null) {
+  detailKey.value = key
+  detailOpen.value = true
 }
 </script>
 
@@ -294,6 +305,9 @@ function visibleRows(result: CheckResult): string[] {
 .checks-status__results {
   display: flex;
   flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
   overflow: hidden;
@@ -303,61 +317,74 @@ function visibleRows(result: CheckResult): string[] {
   opacity: 0.6;
 }
 
-.checks-status__result + .checks-status__result {
+.checks-status__results li + li {
   border-top: 1px solid var(--color-divider);
 }
 
-.checks-status__result-head {
+.checks-status__result {
   display: flex;
   align-items: center;
   gap: calc(var(--spacing) * 2);
   width: 100%;
-  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 2.5);
+  min-height: 34px;
+  padding: calc(var(--spacing) * 1.5) calc(var(--spacing) * 2.5);
   border: 0;
   background: none;
   font: inherit;
+  font-size: var(--text-sm);
   color: inherit;
   text-align: left;
   cursor: pointer;
 }
 
-.checks-status__result-head:hover {
+.checks-status__result:hover {
   background: var(--color-surface-hover);
 }
 
-.checks-status__result-head .is-danger {
+.checks-status__result.is-more {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.checks-status__result .is-danger {
+  flex: none;
   color: var(--color-danger);
 }
 
-.checks-status__result-head .is-warning {
+.checks-status__result .is-warning {
+  flex: none;
   color: var(--color-warning);
 }
 
 .checks-status__result-title {
   flex: 1;
   min-width: 0;
-  font-size: var(--text-md);
-  font-weight: var(--font-weight-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .checks-status__result-count {
-  font-size: var(--text-sm);
+  flex: none;
+  min-width: 24px;
+  padding: 0 calc(var(--spacing) * 1.5);
+  border-radius: var(--radius-full);
+  background: var(--color-neutral-soft);
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-medium);
   font-variant-numeric: tabular-nums;
-  color: var(--color-text-muted);
-}
-
-.checks-status__rows {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--spacing) * 1);
-  margin: 0;
-  padding: 0 calc(var(--spacing) * 2.5) calc(var(--spacing) * 2.5) calc(var(--spacing) * 8.5);
-  list-style: none;
-  font-size: var(--text-sm);
+  line-height: 20px;
+  text-align: center;
   color: var(--color-text);
 }
 
-.checks-status__more {
-  color: var(--color-text-muted);
+.checks-status__actions {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+}
+
+.checks-status__spacer {
+  flex: 1;
 }
 </style>

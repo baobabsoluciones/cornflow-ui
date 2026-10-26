@@ -7,7 +7,10 @@
   - `database`: "Upload Excel" and "Get data"; the files' sheets replace the tables with the same
     name and the database fills in the rest.
   - `database-filtered`: the same, after the load filters.
-  Loaded, the header sums the data up and keeps "Load filters", "Upload Excel" and "Reload".
+  The load filters (`pre_etl` parameters) are asked in every mode that has them: the ETL gets them
+  with the files too.
+  Loaded, the header sums the data up and keeps "Load filters", the Excel menu (download the data,
+  or overwrite it with a workbook), "Reload" and "Maximize"; the table fills the rest of the card.
 
   <ExecutionDataCard :draft="draft" :highlight="flashData" />
 -->
@@ -71,6 +74,19 @@
               </div>
             </div>
           </CorePopover>
+          <CorePopover v-if="draft.isLoaded" v-model:open="excelOpen" align="end">
+            <template #trigger>
+              <CoreButton variant="outlined" icon="mdi-microsoft-excel" text="Excel" data-testid="data-card-excel" />
+            </template>
+            <button type="button" class="data-card__menu-item" @click="excelAction('download')">
+              <CoreIcon name="mdi-download" :size="18" />
+              {{ $t('projectExecution.downloadExcel') }}
+            </button>
+            <button type="button" class="data-card__menu-item" @click="excelAction('upload')">
+              <CoreIcon name="mdi-file-arrow-up-down" :size="18" />
+              {{ $t('projectExecution.uploadExcel') }}
+            </button>
+          </CorePopover>
           <CoreButton
             v-if="showUploadButton"
             :variant="uploadPrimary ? 'filled' : 'outlined'"
@@ -91,6 +107,14 @@
             :title="draft.missingRequiredFilters.length ? $t('createExecution.data.fillFilters') : ''"
             data-testid="data-card-load"
             @click="load"
+          />
+          <CoreButton
+            v-if="draft.isLoaded"
+            variant="icon"
+            icon="mdi-window-maximize"
+            :aria-label="$t('projectExecution.maximize')"
+            :title="$t('projectExecution.maximize')"
+            @click="review?.toggleMaximize()"
           />
         </div>
       </div>
@@ -191,35 +215,13 @@
             @click="load"
           />
         </div>
-
-        <div v-if="showParametersForm" class="data-card__parameters">
-          <span class="data-card__parameters-title">{{ $t('createExecution.data.fromParameters') }}</span>
-          <div class="data-card__parameters-fields">
-            <label v-for="field in draft.alternativeFields" :key="field.id" class="data-card__parameters-field">
-              <span>{{ $t(field.titleKey) }}</span>
-              <input
-                class="data-card__parameters-input"
-                :type="field.type === 'date' ? 'date' : field.type === 'number' ? 'number' : 'text'"
-                :placeholder="field.placeholderKey ? $t(field.placeholderKey) : ''"
-                :value="parameterValues[field.id] ?? ''"
-                @input="parameterValues = { ...parameterValues, [field.id]: ($event.target as HTMLInputElement).value || null }"
-              />
-            </label>
-          </div>
-          <CoreButton
-            variant="outlined"
-            icon="mdi-form-textbox"
-            :text="$t('createExecution.data.loadParameters')"
-            :disabled="!canLoadParameters"
-            @click="draft.loadFromParameters(parameterValues)"
-          />
-        </div>
       </div>
     </div>
 
-    <div v-else class="data-card__review">
+    <div v-else class="data-card__review" data-table-bounds>
       <CreateExecutionReviewInstance
         ref="review"
+        :show-toolbar="false"
         :new-execution="draft.execution"
         :instance-errors="draft.dataErrors"
         :is-edit-mode="Boolean(draft.fromExecution)"
@@ -266,8 +268,8 @@ const review = ref<InstanceType<typeof CreateExecutionReviewInstance> | null>(nu
 const dragging = ref(false)
 const triedToLoad = ref(false)
 const filtersOpen = ref(false)
+const excelOpen = ref(false)
 const filterEdit = ref<Record<string, unknown>>({})
-const parameterValues = ref<Record<string, unknown>>({})
 
 const mode = computed(() => props.draft.dataSourceMode)
 const usesDatabase = computed(() => mode.value !== 'files')
@@ -292,6 +294,10 @@ function filterSummary(): string[] {
       if (field.type === 'date') {
         return t('createExecution.data.since', { date: String(value).split('-').reverse().join('/') })
       }
+      if (field.type === 'boolean') {
+        const label = field.title ? t(field.title) : field.key
+        return `${label}: ${value ? t('createExecution.data.yes') : t('createExecution.data.no')}`
+      }
       const option = (field.options ?? []).find((o: any) => o.value === value)
       return option ? String(option.label) : String(value)
     })
@@ -305,17 +311,14 @@ const meta = computed(() => {
   if (props.draft.fromExecution) {
     return `${t('createExecution.data.copyOf', { name: props.draft.fromExecution })} · ${size}`
   }
-  return [...(usesDatabase.value ? filterSummary() : []), size].join(' · ')
+  return [...filterSummary(), size].join(' · ')
 })
 
-const showUploadButton = computed(() => props.draft.isLoaded || mode.value === 'files')
-const uploadPrimary = computed(
-  () => !props.draft.isLoaded && mode.value === 'files' && props.draft.files.length === 0,
-)
+/** Picking files is part of loading; once loaded, the Excel menu works on the data on screen. */
+const showUploadButton = computed(() => !props.draft.isLoaded && mode.value === 'files')
+const uploadPrimary = computed(() => props.draft.files.length === 0)
 const uploadLabel = computed(() =>
-  mode.value === 'files' && props.draft.files.length > 0 && !props.draft.isLoaded
-    ? t('createExecution.data.addExcel')
-    : t('createExecution.data.uploadExcel'),
+  props.draft.files.length > 0 ? t('createExecution.data.addExcel') : t('createExecution.data.uploadExcel'),
 )
 
 const showHeaderLoad = computed(
@@ -333,14 +336,11 @@ const loadLabel = computed(() => {
 
 const showFiltersForm = computed(
   () =>
-    mode.value === 'database-filtered' &&
+    props.draft.loadFilterFields.length > 0 &&
     props.draft.loadStatus !== 'loading' &&
     !props.draft.loadErrors,
 )
 const showEmptyActions = computed(() => usesDatabase.value && props.draft.loadStatus !== 'loading')
-const showParametersForm = computed(
-  () => props.draft.alternativeFields.length > 0 && props.draft.loadStatus !== 'loading',
-)
 
 const emptyIcon = computed(() => {
   if (props.draft.loadErrors) return 'mdi-file-alert-outline'
@@ -377,17 +377,14 @@ const emptyText = computed(() => {
     : t('createExecution.data.databaseHint')
 })
 
-const canLoadParameters = computed(() =>
-  props.draft.alternativeFields.every(
-    (field: any) =>
-      field.required === false ||
-      (parameterValues.value[field.id] !== null &&
-        parameterValues.value[field.id] !== undefined &&
-        parameterValues.value[field.id] !== ''),
-  ),
-)
-
 // ── Actions ──────────────────────────────────────────────────────────────────
+
+/** The review's Excel actions: download the data, or overwrite it with a workbook. */
+function excelAction(action: 'download' | 'upload') {
+  excelOpen.value = false
+  if (action === 'download') void review.value?.downloadExcel()
+  else review.value?.uploadExcel()
+}
 
 function browse() {
   fileInput.value?.click()
@@ -723,53 +720,36 @@ onBeforeUnmount(() => props.draft.registerPendingChangesApplier(null))
   margin-top: calc(var(--spacing) * 2.5);
 }
 
-.data-card__parameters {
+.data-card__menu-item {
   display: flex;
-  flex-direction: column;
   align-items: center;
   gap: calc(var(--spacing) * 2.5);
   width: 100%;
-  margin-top: calc(var(--spacing) * 4);
-  padding-top: calc(var(--spacing) * 4);
-  border-top: 1px solid var(--color-divider);
-}
-
-.data-card__parameters-title {
+  min-width: 220px;
+  min-height: 40px;
+  padding: calc(var(--spacing) * 1.5) calc(var(--spacing) * 2.5);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  font: inherit;
   font-size: var(--text-md);
-  color: var(--color-text-muted);
-}
-
-.data-card__parameters-fields {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: calc(var(--spacing) * 3) calc(var(--spacing) * 4);
-  width: 100%;
-}
-
-.data-card__parameters-field {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  font-size: var(--text-sm);
-  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
   text-align: left;
+  cursor: pointer;
 }
 
-.data-card__parameters-input {
-  box-sizing: border-box;
-  height: 36px;
-  padding: 0 calc(var(--spacing) * 2);
-  border: 1px solid var(--color-border-input);
-  border-radius: var(--radius-md);
-  font-family: var(--font-sans);
-  font-size: var(--text-md);
-  font-weight: var(--font-weight-regular);
+.data-card__menu-item:hover {
+  background: var(--color-surface-hover);
 }
 
 .data-card__review {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 0 calc(var(--spacing) * 2) calc(var(--spacing) * 2);
+  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 2) calc(var(--spacing) * 1);
+}
+
+.data-card__review :deep(.review-instance-container) {
+  margin-top: 0;
 }
 </style>

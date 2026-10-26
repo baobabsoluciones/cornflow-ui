@@ -79,6 +79,8 @@ export default {
       optional: 'opcional',
       choose: 'Elige…',
       notSet: 'Sin indicar',
+      yes: 'Sí',
+      no: 'No',
       loadingFiles: 'Cargando los archivos…',
       loadingDatabase: 'Trayendo los datos…',
       loadingHint: 'Puede tardar unos segundos.',
@@ -92,8 +94,6 @@ export default {
       databaseHint: 'Se traerán los datos actuales. También puedes subir uno o varios Excel: sus hojas sustituirán a las tablas con el mismo nombre.',
       databaseFilteredTitle: 'Trae los datos de la base de datos',
       databaseFilteredHint: 'Indica qué datos traer. También puedes subir uno o varios Excel: sus hojas sustituirán a las tablas con el mismo nombre.',
-      fromParameters: 'O crea los datos a partir de unos pocos valores',
-      loadParameters: 'Crear con estos valores',
     },
     loadErrors: {
       general: 'Datos',
@@ -124,7 +124,13 @@ export default {
       checkedAt: 'Comprobado a las {time}',
       notBlocking: 'No impiden lanzar',
       fixBeforeLaunch: 'Corrígelos antes de lanzar',
-      moreRows: 'y {count} más',
+      seeDetail: 'Ver detalle',
+      detailTitle: 'Comprobaciones de los datos',
+      moreChecks: 'y {count} comprobación más | y {count} comprobaciones más',
+      search: 'Buscar',
+      noMatches: 'Ninguna fila coincide con la búsqueda',
+      showing: 'Mostrando {shown} de {total}',
+      showMore: 'Mostrar más',
     },
     parameters: {
       required: 'Obligatorio',
@@ -315,12 +321,6 @@ export default {
           noFilesSelectedError: 'Selecciona al menos un archivo',
           optionalOrDivider: 'o',
           loadFromDb: 'Obtener todos los datos de base de datos',
-          loadParameters: 'Cargar parámetros',
-          alternativeParametersHint:
-            'Introduce los siguientes parámetros y cárgalos como datos de instancia',
-          noParametersDataError: 'No hay datos de parámetros para enviar',
-          noParametersSheetsError:
-            'No se pudo generar el archivo a partir de los parámetros (revisa los nombres de tabla en la configuración)',
         },
       },
       reviewInstance: {
@@ -421,25 +421,17 @@ export default {
           noFilesSelectedError: 'Selecciona al menos un archivo',
           optionalOrDivider: 'o',
           loadFromDb: 'Obtener todos los datos de base de datos',
-          loadParameters: 'Cargar parámetros',
-          alternativeParametersHint:
-            'Introduce los siguientes parámetros y cárgalos como datos de instancia',
           preEtlParamsHint: 'Datos con los que se cargará la instancia',
           source: 'Origen de los datos',
           sourceDatabase: 'Tablas maestras',
           sourceDatabaseDescription: 'Datos actuales de las tablas maestras',
           sourceFile: 'Archivo',
           sourceFileDescription: 'Sube un archivo con los datos',
-          sourceParameters: 'Parámetros',
-          sourceParametersDescription: 'Crea la instancia a partir de unos pocos datos',
           databaseSummary: 'Se cargarán los datos actuales de las tablas maestras.',
           reload: 'Volver a cargar',
           loaded: 'Datos cargados',
           preEtlChangedAfterLoad:
             'Has cambiado estos datos después de cargar. Vuelve a cargar para que se apliquen a la instancia.',
-          noParametersDataError: 'No hay datos de parámetros para enviar',
-          noParametersSheetsError:
-            'No se pudo generar el archivo a partir de los parámetros (revisa los nombres de tabla en la configuración)',
         },
       },
       step4: {

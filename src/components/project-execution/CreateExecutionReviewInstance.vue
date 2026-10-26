@@ -13,7 +13,7 @@
 
     <!-- Normal view with maximize button -->
     <div class="review-instance-container">
-      <div v-if="!isMaximized" class="review-instance-header">
+      <div v-if="!isMaximized && showToolbar" class="review-instance-header">
         <div class="header-buttons">
           <CoreDropdownMenu :items="excelActionItems" />
           <input
@@ -183,6 +183,11 @@ interface Props {
   externalEtlFlow?: ExternalEtlFlowState | null
   /** When true, we are on the review-instance step (used to clear stale force-retry dialog when entering the step). */
   isStepActive?: boolean
+  /**
+   * Show the floating Excel menu and maximize button. A screen that offers them in its own header
+   * turns it off and calls the exposed `downloadExcel`, `uploadExcel` and `toggleMaximize`.
+   */
+  showToolbar?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -190,6 +195,7 @@ const props = withDefaults(defineProps<Props>(), {
   isEditMode: false,
   externalEtlFlow: null,
   isStepActive: false,
+  showToolbar: true,
 })
 
 const emit = defineEmits<{
@@ -666,12 +672,7 @@ const excelActionItems = computed(() => [
     id: 'upload-excel',
     title: t('projectExecution.uploadExcel'),
     icon: 'mdi-file-arrow-up-down',
-    action: () => {
-      const activeInput = getActiveFileInput()
-      if (activeInput) {
-        activeInput.click()
-      }
-    },
+    action: uploadExcel,
   },
 ])
 
@@ -767,10 +768,18 @@ async function applyPendingChanges(): Promise<boolean> {
   return view ? view.saveAllChanges() : false
 }
 
+/** Opens the file picker of "Upload Excel": the picked workbook replaces the data. */
+function uploadExcel() {
+  getActiveFileInput()?.click()
+}
+
 defineExpose({
   hasPendingChanges,
   clearPendingChanges: tableChanges.clearAllChanges,
   applyPendingChanges,
+  downloadExcel,
+  uploadExcel,
+  toggleMaximize,
 })
 </script>
 

@@ -209,28 +209,6 @@ export type MasterTableMatchingConfig = {
 }
 
 /**
- * A parameter field shown in the ETL “alternative parameters” column of the load instance step.
- * Each field maps to a cell in instance.data via `instancePath` (`tableName.column`).
- * Used in `etl.alternativeParameterFields` in `src/app/config.ts`.
- */
-export interface LoadInstanceAlternativeParamField {
-  /** Stable id for the form model (unique within the list). */
-  id: string
-  /** i18n key for the field label. */
-  titleKey: string
-  /** Optional i18n key for placeholder text. */
-  placeholderKey?: string
-  type: 'date' | 'text' | 'number'
-  /**
-   * Target location in instance.data: `tableName.column`, e.g. `parameters.start_date`.
-   * Multiple fields with the same table name are merged into one row (first row per table).
-   */
-  instancePath: string
-  /** When true, “Load parameters” is disabled until the value is set. Default true. */
-  required?: boolean
-}
-
-/**
  * Application configuration factory.
  * See README.md section "Internal app configuration" for detailed documentation.
  */
@@ -251,9 +229,6 @@ const createAppConfig = () => ({
        * - enableLoadFromDb: show “Obtener todos los datos de base de datos” button alongside
        *   “Cargar archivos”. Clicking it calls POST /etl/ with no files (just schema if sendSchema).
        *   Continue is always blocked until the user loads data via either button.
-       * - alternativeParameterFields: show a form column next to the dropzone so users can
-       *   fill in parameters that are sent as an XLSX to the ETL endpoint instead of uploading.
-       *   See README “ETL — load instance step” for full details.
        */
       etl: {
         useEtlBackend: false,
@@ -261,7 +236,6 @@ const createAppConfig = () => ({
         enableEtlMetadataAndReview: false,
         sendSchema: false,
         enableLoadFromDb: false,
-        alternativeParameterFields: [] as LoadInstanceAlternativeParamField[],
       },
       showTablesWithoutSchema: false,
       showOpenIdUsername: true,

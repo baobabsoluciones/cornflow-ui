@@ -707,20 +707,8 @@ export default {
 
       if (this.existingInstanceErrors) return true
 
-      const etl = this.generalStore.appConfig.parameters.etl
-
-      // When ETL is active (useEtlBackend, enableLoadFromDb or alternativeParameterFields),
-      // the user must always load data via one of the available buttons before continuing.
-      const isEtlMode =
-        etl?.useEtlBackend ||
-        etl?.enableLoadFromDb ||
-        (etl?.alternativeParameterFields?.length ?? 0) > 0
-
-      if (isEtlMode) {
-        return !this.newExecution.instance
-      }
-
-      // Default: file upload required
+      // Whatever the source (files, or the database through the ETL), the data has to be
+      // loaded with the load button before continuing.
       return !this.newExecution.instance
     },
     allConfigFields() {

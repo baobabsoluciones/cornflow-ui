@@ -25,7 +25,6 @@ vi.mock('@/app/models/Instance', () => ({
 // Mock useInstanceProcessing composable
 const mockInstanceProcessing = {
   processFiles: vi.fn(),
-  processInstanceData: vi.fn(),
   processFromDb: vi.fn(),
   supportedExtensions: { value: ['json', 'xlsx', 'csv'] },
   state: { value: { isProcessing: false } },
@@ -33,12 +32,8 @@ const mockInstanceProcessing = {
   resetState: vi.fn(),
 }
 
-const mockBuildInstanceDataFromAlternativeFields = vi.fn(() => ({ built: true }))
-
 vi.mock('@cornflow-ui/core/composables/useInstanceProcessing', () => ({
   useInstanceProcessing: vi.fn(() => mockInstanceProcessing),
-  buildInstanceDataFromAlternativeFields: (...args: any[]) =>
-    mockBuildInstanceDataFromAlternativeFields(...args),
 }))
 
 // Mock useFileProcessors composable
@@ -93,10 +88,6 @@ const mockT = vi.fn((key) => {
     'projectExecution.steps.step3.loadInstance.unsupportedFileFormat':
       'Unsupported file format',
     'projectExecution.steps.step3.loadInstance.optionalOrDivider': 'or',
-    'projectExecution.steps.step3.loadInstance.alternativeParametersHint':
-      'Hint',
-    'projectExecution.steps.step3.loadInstance.loadParameters':
-      'Load parameters',
     'projectExecution.steps.step3.loadInstance.warningTitle': 'Warning',
     'common.file': 'file',
     'common.files': 'files',
@@ -171,10 +162,6 @@ describe('CreateExecutionLoadInstance', () => {
 
     // Reset instanceProcessing mock
     mockInstanceProcessing.processFiles.mockResolvedValue({
-      success: true,
-      instance: mockInstance,
-    })
-    mockInstanceProcessing.processInstanceData.mockResolvedValue({
       success: true,
       instance: mockInstance,
     })
@@ -1032,129 +1019,6 @@ describe('CreateExecutionLoadInstance', () => {
       await wrapper.vm.processFromDb()
       await nextTick()
       expect(wrapper.vm.instanceErrors).toContain('boom')
-    })
-  })
-
-  describe('Alternative parameter fields', () => {
-    const withFields = (fields: any[]) => {
-      mockGeneralStore.appConfig.parameters.etl = {
-        alternativeParameterFields: fields,
-      }
-    }
-
-    test('showAlternativeColumn is false with no fields', () => {
-      wrapper = createWrapper()
-      expect(wrapper.vm.showAlternativeColumn).toBe(false)
-      expect(wrapper.find('.load-parameters-btn').exists()).toBe(false)
-    })
-
-    test('offers the parameters as a data source when fields are configured', async () => {
-      withFields([
-        { id: 'year', titleKey: 'fields.year', type: 'number' },
-        { id: 'name', titleKey: 'fields.name', type: 'text' },
-      ])
-      wrapper = createWrapper()
-      await nextTick()
-      expect(wrapper.vm.showAlternativeColumn).toBe(true)
-
-      await wrapper.find('[data-testid="option-card-parameters"]').trigger('click')
-
-      expect(wrapper.find('.parameters-fields').exists()).toBe(true)
-      expect(wrapper.find('.load-parameters-btn').exists()).toBe(true)
-    })
-
-    test('initializes paramValues from configured fields', async () => {
-      withFields([{ id: 'year', titleKey: 'fields.year' }])
-      wrapper = createWrapper()
-      await nextTick()
-      expect(wrapper.vm.paramValues).toHaveProperty('year')
-      expect(wrapper.vm.paramValues.year).toBeNull()
-    })
-
-    test('inputTypeForField maps field types', async () => {
-      withFields([{ id: 'a', titleKey: 'k' }])
-      wrapper = createWrapper()
-      await nextTick()
-      expect(wrapper.vm.inputTypeForField({ type: 'date' })).toBe('date')
-      expect(wrapper.vm.inputTypeForField({ type: 'number' })).toBe('number')
-      expect(wrapper.vm.inputTypeForField({ type: 'text' })).toBe('text')
-      expect(wrapper.vm.inputTypeForField({ type: undefined })).toBe('text')
-    })
-
-    test('canProcessParameters is false when a required field is empty', async () => {
-      withFields([{ id: 'year', titleKey: 'k', required: true }])
-      wrapper = createWrapper()
-      await nextTick()
-      expect(wrapper.vm.canProcessParameters).toBe(false)
-    })
-
-    test('canProcessParameters is true when required fields are filled', async () => {
-      withFields([
-        { id: 'year', titleKey: 'k', required: true },
-        { id: 'opt', titleKey: 'k2', required: false },
-      ])
-      wrapper = createWrapper()
-      await nextTick()
-      wrapper.vm.paramValues.year = '2024'
-      await nextTick()
-      expect(wrapper.vm.canProcessParameters).toBe(true)
-    })
-
-    test('processParameters returns early when not processable', async () => {
-      withFields([{ id: 'year', titleKey: 'k', required: true }])
-      wrapper = createWrapper()
-      await nextTick()
-      await wrapper.vm.processParameters()
-      expect(mockInstanceProcessing.processInstanceData).not.toHaveBeenCalled()
-    })
-
-    test('processParameters builds payload and processes when valid', async () => {
-      withFields([{ id: 'year', titleKey: 'k', required: true }])
-      mockInstanceProcessing.processInstanceData.mockResolvedValueOnce({
-        success: true,
-        instance: mockInstance,
-        rawData: { tables: {} },
-      })
-      wrapper = createWrapper()
-      await nextTick()
-      wrapper.vm.paramValues.year = '2024'
-      await nextTick()
-      await wrapper.vm.processParameters()
-      await nextTick()
-      expect(mockBuildInstanceDataFromAlternativeFields).toHaveBeenCalled()
-      expect(mockInstanceProcessing.processInstanceData).toHaveBeenCalled()
-      expect(wrapper.emitted('instanceSelected')).toBeTruthy()
-      expect(wrapper.emitted('externalEtlData')).toBeTruthy()
-    })
-
-    test('processParameters handles processing errors', async () => {
-      withFields([{ id: 'year', titleKey: 'k', required: true }])
-      mockInstanceProcessing.processInstanceData.mockResolvedValueOnce({
-        success: false,
-        errors: 'param error',
-        rawErrors: null,
-      })
-      wrapper = createWrapper()
-      await nextTick()
-      wrapper.vm.paramValues.year = '2024'
-      await nextTick()
-      await wrapper.vm.processParameters()
-      await nextTick()
-      expect(wrapper.vm.instanceErrors).toContain('param error')
-    })
-
-    test('processParameters handles thrown exceptions', async () => {
-      withFields([{ id: 'year', titleKey: 'k', required: true }])
-      mockInstanceProcessing.processInstanceData.mockRejectedValueOnce(
-        new Error('explode'),
-      )
-      wrapper = createWrapper()
-      await nextTick()
-      wrapper.vm.paramValues.year = '2024'
-      await nextTick()
-      await wrapper.vm.processParameters()
-      await nextTick()
-      expect(wrapper.vm.instanceErrors).toContain('explode')
     })
   })
 

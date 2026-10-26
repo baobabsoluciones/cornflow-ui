@@ -232,7 +232,6 @@ function stay() {
   min-height: 0;
   display: grid;
   gap: calc(var(--spacing) * 4);
-  padding-bottom: calc(var(--spacing) * 4);
   transition: grid-template-columns var(--duration-base) var(--ease-standard);
 }
 

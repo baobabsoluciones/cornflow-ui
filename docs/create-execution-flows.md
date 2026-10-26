@@ -100,7 +100,7 @@ reactive object (read `draft.isLoaded`, not `draft.isLoaded.value`).
 | `fromExecution` | Name of the execution the data was copied from (relaunch), or null. |
 | `nameProposed` | The name was proposed, not typed. |
 | `fromDataKeys` | Parameters whose value was read from the loaded data. |
-| `checks` | `{ status, results, checkedAt }`; `status` is `'none' \| 'running' \| 'ok' \| 'warnings' \| 'errors' \| 'stale'`, `results` one entry per check table with rows (`{ key, title, kind: 'error' \| 'warning', rows: string[] }`). |
+| `checks` | `{ status, results, checkedAt }`; `status` is `'none' \| 'running' \| 'ok' \| 'warnings' \| 'errors' \| 'stale'`, `results` one entry per check table that found rows, errors first (`{ key, title, description, kind: 'error' \| 'warning', columns: { key, title }[], records }`). |
 | `launch` | `{ running, step, executionId }`; `step` is `'sync' \| 'execution' \| 'solution'` while it runs. |
 | `solution` | Developer mode: `{ enabled, file, data, errors }` of the solution to upload instead of solving. |
 
@@ -110,7 +110,6 @@ reactive object (read `draft.isLoaded`, not `draft.isLoaded.value`).
 | --- | --- |
 | `dataSourceMode` | `'files'` (the files are read, or sent to the ETL), `'database'` (the ETL brings the data; files replace the tables with the same name), `'database-filtered'` (the same, after the load filters). |
 | `loadFilterFields` | The `pre_etl` parameters, asked before loading. |
-| `alternativeFields` | `etl.alternativeParameterFields`: a short form the data can be created from. |
 | `parameterFields` | The parameters the user sets (every config field but the load filters). Empty when `configFieldsConfig.showConfigFieldsStep` is false. |
 | `showSolver`, `solvers`, `defaultSolver` | The solver is asked only with `solverConfig.showSolverStep` and more than one solver. |
 | `developerMode`, `blockOnCheckErrors`, `hasChecks`, `acceptedExtensions` | `isDeveloperMode`, `enableBlockAdvanceOnCheckErrors`, whether the DAG has instance checks, and the file extensions the data loads from. |
@@ -134,7 +133,6 @@ reactive object (read `draft.isLoaded`, not `draft.isLoaded.value`).
 | `addFiles(files)`, `removeFile(index)` | Pick and drop files. |
 | `setFilter(key, value)` | Set a load filter. |
 | `load()` | Bring the data in: the picked files (read in the browser, or sent to the ETL with the load filters), or the database when there are none. Proposes a name and takes the parameter values the data has. |
-| `loadFromParameters(values)` | Create the data from the short parameters form. |
 | `setInstance(instance)`, `setDataErrors(html)` | The review replaced the data / found schema errors in an edit; the checks become out of date. |
 | `registerPendingChangesApplier(fn)`, `applyPendingChanges()` | Whatever shows the tables registers how to apply the pending edits; checks and launch apply them first. |
 | `markEtlChanged()` | An origin switch of the ETL review changed (also detected on its own). |
@@ -144,7 +142,7 @@ reactive object (read `draft.isLoaded`, not `draft.isLoaded.value`).
 | `launchExecution()` | Apply pending edits, sync the ETL review, create the execution (or create it without running and upload the solution) and start following it. |
 | `reset()` | Back to an empty execution ("Launch another"). |
 | `startFrom(loadedExecution)` | An editable copy of a loaded execution: its data, parameters, description and name ("relaunch"). |
-| `saveDraft()`, `readDraft()`, `discardDraft()`, `resumeDraft(draft)` | Keep the unfinished execution in the browser (IndexedDB, one per DAG and user). |
+| `saveDraft()`, `readDraft()`, `discardDraft()`, `resumeDraft(draft)` | Keep the unfinished execution in the browser (IndexedDB, one per DAG and user): data, unapplied edits and the ETL review not yet sent. |
 
 ## Blocks
 
@@ -153,10 +151,11 @@ plain props, so they also fit a flow that keeps its own state.
 
 | Block | Props | What it shows |
 | --- | --- | --- |
-| `ExecutionDataCard` | `draft`, `highlight` | Where the data comes from (files, database with or without load filters, the parameters form), the load errors and warning, and once loaded the tables to review and edit (`CreateExecutionReviewInstance`), with "Load filters", "Upload Excel" and "Reload". |
+| `ExecutionDataCard` | `draft`, `highlight` | Where the data comes from (files, or the database with or without load filters), the load errors and warning, and once loaded the tables to review and edit (`CreateExecutionReviewInstance`), with "Load filters", the Excel menu (download the data, or overwrite it with a workbook), "Reload" and "Maximize". The table fills the card: the card's table area is marked `data-table-bounds`, so the table takes its height from it instead of from the window. |
 | `LaunchPanel` | `draft`, `v-model:collapsed`; emits `go`, `view`, `history` | Name, checks, parameters, what is missing, the note about unapplied edits or unchecked data, the developer menu, Resolve; folded, a strip; launched, `LaunchResult`. |
 | `LoadFiltersForm` | `fields`, `values`, `showErrors`; emits `change` | The load filters in a grid. |
-| `ChecksStatus` | `status`, `results`, `checkedAt`, `blocking`, `disabled`, `highlight`; emits `run` | Where the checks stand and what they found. |
+| `ChecksStatus` | `status`, `results`, `checkedAt`, `blocking`, `disabled`, `highlight`; emits `run` | Where the checks stand and what they found: one line per check with its count, errors first; any of them opens `ChecksDetailDialog`. |
+| `ChecksDetailDialog` | `v-model`, `results`, `initialKey` | Every check as a table with the columns of the checks schema, with a search over its rows. |
 | `ExecutionParametersForm` | `fields`, `values`, `solvers`, `defaultSolver`, `fromData`, `highlight`, `showErrors`; emits `change` | Parameters to decide on first, the ones with a default under "Advanced". |
 | `ParameterInput` | `field`, `value`, `invalid`; emits `change` | One parameter's control. |
 | `LaunchResult` | `name`, `execution`; emits `view`, `another`, `history` | The launched execution followed live. |

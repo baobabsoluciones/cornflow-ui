@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
-import { defineComponent, h, ref } from 'vue'
+import { computed, defineComponent, h, reactive, ref } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
 
@@ -14,28 +14,36 @@ class FakeInstance {
   }
 }
 
-const { store, processing, extensions, snackbar } = vi.hoisted(() => ({
+const { store, processing, extensions, snackbar, drafts } = vi.hoisted(() => ({
   store: {} as Record<string, any>,
   processing: {
     processFiles: vi.fn(),
     processFromDb: vi.fn(),
-    processInstanceData: vi.fn(),
   },
-  extensions: { etlBackend: null as any },
+  extensions: { etlBackend: null as any, etlFlow: null as any },
   snackbar: vi.fn(),
+  drafts: new Map<string, any>(),
 }))
 
 vi.mock('@cornflow-ui/core/stores/general', () => ({ useGeneralStore: () => store }))
 vi.mock('@cornflow-ui/core/composables/useInstanceProcessing', () => ({
   useInstanceProcessing: () => ({ ...processing, supportedExtensions: ref(['json', 'xlsx']) }),
-  buildInstanceDataFromAlternativeFields: vi.fn(() => ({ parameters: { horizon: 4 } })),
 }))
 vi.mock('@cornflow-ui/core/plugins/extensions', () => ({
   getPremiumEtlBackend: () => extensions.etlBackend,
-  getPremiumExternalEtlFlow: () => null,
+  getPremiumExternalEtlFlow: () => extensions.etlFlow,
 }))
 vi.mock('@cornflow-ui/core/services/SnackbarService', () => ({ showSnackbar: snackbar }))
 vi.mock('@cornflow-ui/core/services/AuthService', () => ({ default: { getUserId: () => '1' } }))
+vi.mock('@cornflow-ui/core/composables/create-execution/executionDraftStore', () => ({
+  draftKey: (schema: string, user: string) => `${schema}:${user}`,
+  readExecutionDraft: async (key: string) => drafts.get(key) ?? null,
+  writeExecutionDraft: async (key: string, draft: any) => {
+    drafts.set(key, structuredClone(draft))
+    return true
+  },
+  deleteExecutionDraft: async (key: string) => drafts.delete(key),
+}))
 vi.mock('@cornflow-ui/core/composables/create-execution/solutionFile', () => ({
   parseSolutionFile: vi.fn(async () => ({ data: { plan: [] }, checkSchema: async () => [] })),
 }))
@@ -49,6 +57,40 @@ const configFields = [
   { key: 'start', title: 'f.start', type: 'date', source: 'parameters', param: 'start' },
 ]
 
+/** The ETL review as the ETL module keeps it: switches per table, sent with `/etl/update/`. */
+function fakeEtlFlow() {
+  const state = reactive<any>({
+    initialData: null,
+    currentData: null,
+    metadata: null,
+    tableSwitches: {},
+    parameterSwitches: {},
+    parameterTableNames: new Set(),
+  })
+  return {
+    state,
+    isActive: computed(() => state.metadata !== null),
+    initializeFromEtlResponse(data: any) {
+      const { __metadata__, ...rest } = data
+      state.initialData = structuredClone(data)
+      state.currentData = rest
+      state.metadata = __metadata__ ?? null
+      state.tableSwitches = Object.fromEntries(
+        (__metadata__?.tables_from_db ?? []).map((t: string) => [t, { variant: 'from_db', fixed: false }]),
+      )
+      state.parameterSwitches = {}
+    },
+    submitUpdate: vi.fn(async (data: any) => ({ data: { ...data, synced: true }, warning: null })),
+    reset() {
+      state.initialData = null
+      state.currentData = null
+      state.metadata = null
+      state.tableSwitches = {}
+      state.parameterSwitches = {}
+    },
+  }
+}
+
 function resetStore() {
   Object.assign(store, {
     appConfig: {
@@ -57,7 +99,7 @@ function resetStore() {
         configFields: [...configFields],
         configFieldsConfig: { showConfigFieldsStep: true, autoLoadValues: false },
         solverConfig: { showSolverStep: true, defaultSolver: 'mip' },
-        etl: { useEtlBackend: false, enableLoadFromDb: false, alternativeParameterFields: [] },
+        etl: { useEtlBackend: false, enableLoadFromDb: false },
         enableBlockAdvanceOnCheckErrors: false,
       },
     },
@@ -65,7 +107,7 @@ function resetStore() {
       instanceSchema: { properties: { lines: { title: 'Lines', items: { properties: { cap: { title: 'Capacity' } } } } } },
       instanceChecksSchema: {
         properties: {
-          missing: { title: 'Missing', is_warning: false },
+          missing: { title: 'Missing', is_warning: false, items: { properties: { product: { title: 'Product' } } } },
           tight: { title: 'Tight', is_warning: true },
         },
       },
@@ -108,6 +150,11 @@ const loadedOk = (data: any = { lines: [], parameters: { start: '2026-10-26' } }
   rawErrors: null,
 })
 
+const etlLoaded = () => ({
+  ...loadedOk({ lines: [] }),
+  rawData: { lines: [], __metadata__: { tables_from_db: ['lines'] } },
+})
+
 const file = (name: string) => new File(['{}'], name)
 
 describe('useExecutionDraft', () => {
@@ -115,6 +162,8 @@ describe('useExecutionDraft', () => {
     vi.clearAllMocks()
     resetStore()
     extensions.etlBackend = null
+    extensions.etlFlow = null
+    drafts.clear()
     useTableChanges().clearAllChanges()
   })
 
@@ -236,7 +285,14 @@ describe('useExecutionDraft', () => {
     expect(store.getInstanceDataChecksById).toHaveBeenCalledWith('i1', expect.any(Object))
     expect(draft.checks.status).toBe('errors')
     expect(draft.checks.results).toEqual([
-      { key: 'missing', title: 'Missing', kind: 'error', rows: ['P-1 · 43'] },
+      {
+        key: 'missing',
+        title: 'Missing',
+        description: '',
+        kind: 'error',
+        columns: [{ key: 'product', title: 'Product' }, { key: 'week', title: 'Week' }],
+        records: [{ product: 'P-1', week: 43 }],
+      },
     ])
     expect(draft.execution.instance.id).toBe('i1')
     expect(draft.missing.map((m) => m.key)).not.toContain('checks')
@@ -333,5 +389,129 @@ describe('useExecutionDraft', () => {
     draft.addFiles([file('a.json')])
     await draft.load()
     expect(draft.execution.config).toMatchObject({ timeLimit: 300, start: '2026-10-26' })
+  })
+
+  test('pre-ETL filters are asked with files too, and sent with them to the ETL', async () => {
+    store.appConfig.parameters.configFields = [
+      ...configFields,
+      { key: 'full', title: 'f.full', type: 'boolean', preEtl: true, required: true },
+    ]
+    processing.processFiles.mockResolvedValue(loadedOk())
+    const draft = setup()
+    expect(draft.dataSourceMode).toBe('files')
+    expect(draft.loadFilterFields.map((f) => f.key)).toEqual(['full'])
+    draft.addFiles([file('a.xlsx')])
+    expect(draft.canLoad).toBe(false)
+    draft.setFilter('full', false)
+    expect(draft.canLoad).toBe(true)
+    await draft.load()
+    expect(processing.processFiles).toHaveBeenCalledWith(
+      [expect.any(File)],
+      expect.objectContaining({ full: false }),
+    )
+  })
+
+  test('the ETL review is sent to the backend before the checks, and its result is what runs', async () => {
+    extensions.etlFlow = fakeEtlFlow()
+    processing.processFiles.mockResolvedValue(etlLoaded())
+    store.getInstanceDataChecksById.mockResolvedValue(new FakeInstance('i1', { lines: [], synced: true }))
+    const draft = setup()
+    draft.addFiles([file('a.xlsx')])
+    await draft.load()
+    expect(draft.etlReviewState?.tableSwitches).toEqual({ lines: { variant: 'from_db', fixed: false } })
+    expect(draft.etlNeedsSync).toBe(true)
+
+    await draft.runChecks()
+    expect(extensions.etlFlow.submitUpdate).toHaveBeenCalledWith({ lines: [] })
+    expect(store.createInstance).toHaveBeenCalledWith(
+      expect.objectContaining({ instance: expect.objectContaining({ data: { lines: [], synced: true } }) }),
+    )
+    expect(draft.etlNeedsSync).toBe(false)
+
+    draft.setParameter('objective', 'cost')
+    await draft.launchExecution()
+    expect(extensions.etlFlow.submitUpdate).toHaveBeenCalledTimes(1)
+  })
+
+  test('the launch sends the ETL review first when the checks did not', async () => {
+    extensions.etlFlow = fakeEtlFlow()
+    processing.processFiles.mockResolvedValue(etlLoaded())
+    const draft = setup()
+    draft.addFiles([file('a.xlsx')])
+    await draft.load()
+    draft.setParameter('objective', 'cost')
+    extensions.etlFlow.state.tableSwitches.lines.fixed = true
+    await flushPromises()
+
+    expect(await draft.launchExecution()).toBe(true)
+    expect(extensions.etlFlow.submitUpdate).toHaveBeenCalledWith({ lines: [] })
+    expect(store.createExecution).toHaveBeenCalledWith(
+      expect.objectContaining({ instance: expect.objectContaining({ data: { lines: [], synced: true } }) }),
+      '',
+    )
+  })
+
+  test('a failed ETL sync stops the launch', async () => {
+    extensions.etlFlow = fakeEtlFlow()
+    extensions.etlFlow.submitUpdate.mockRejectedValue(new Error('ETL down'))
+    processing.processFiles.mockResolvedValue(etlLoaded())
+    const draft = setup()
+    draft.addFiles([file('a.xlsx')])
+    await draft.load()
+    draft.setParameter('objective', 'cost')
+
+    expect(await draft.launchExecution()).toBe(false)
+    expect(store.createExecution).not.toHaveBeenCalled()
+    expect(snackbar).toHaveBeenCalledWith('ETL down', 'error')
+  })
+
+  test('a draft keeps the ETL review and its switches, still to be sent', async () => {
+    extensions.etlFlow = fakeEtlFlow()
+    processing.processFiles.mockResolvedValue(etlLoaded())
+    let draft = setup()
+    draft.addFiles([file('a.xlsx')])
+    await draft.load()
+    extensions.etlFlow.state.tableSwitches.lines.fixed = true
+    await draft.saveDraft()
+
+    extensions.etlFlow = fakeEtlFlow()
+    draft = setup()
+    const saved = await draft.readDraft()
+    await draft.resumeDraft(saved!)
+    expect(draft.etlReviewState?.tableSwitches).toEqual({ lines: { variant: 'from_db', fixed: true } })
+    expect(draft.etlNeedsSync).toBe(true)
+
+    draft.setParameter('objective', 'cost')
+    await draft.launchExecution()
+    expect(extensions.etlFlow.submitUpdate).toHaveBeenCalledWith({ lines: [] })
+  })
+
+  test('the launch waits while the checks run', async () => {
+    processing.processFiles.mockResolvedValue(loadedOk())
+    let finish: (value: any) => void = () => {}
+    store.getInstanceDataChecksById.mockReturnValue(new Promise((resolve) => (finish = resolve)))
+    const draft = setup()
+    draft.addFiles([file('a.json')])
+    await draft.load()
+    draft.setParameter('objective', 'cost')
+
+    const running = draft.runChecks()
+    await flushPromises()
+    expect(draft.missing.map((m) => m.key)).toContain('checks')
+    expect(draft.canLaunch).toBe(false)
+    finish(new FakeInstance('i1', {}))
+    await running
+    expect(draft.canLaunch).toBe(true)
+  })
+
+  test('a relaunch runs with the default solver when the app does not let the user pick one', () => {
+    store.appConfig.parameters.solverConfig = { showSolverStep: false, defaultSolver: 'mip' }
+    const draft = setup()
+    draft.startFrom({
+      name: 'Plan 42',
+      config: { solver: 'heuristic' },
+      experiment: { instance: new FakeInstance('i9', { lines: [] }) },
+    })
+    expect(draft.execution.config.solver).toBe('mip')
   })
 })

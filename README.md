@@ -117,13 +117,17 @@ can declare its own filters, or none, in `schemaOverrides` (see [Several DAGs in
   - **Wizard**: the step-by-step wizard (`flow: 'wizard'`).
   - **The app's own** (`component`), built with the same logic (`useExecutionDraft`) and blocks.
 - **Features**:
-  - Data from one or several files, from the database through the ETL (files replace the tables
-    with the same name), or from a short parameters form
+  - Data from one or several files, or from the database through the ETL (files replace the
+    tables with the same name)
   - Load filters (pre-ETL parameters) asked before the data is brought - see
     [Pre-ETL parameters](#pre-etl-parameters-pre_etl)
   - Schema errors grouped by table in plain words, with a download of all of them
-  - Review and edit of the tables, comparison with master tables, ETL origin switches
-  - Data checks, out of date as soon as the data changes; optionally blocking
+  - Review and edit of the tables, comparison with master tables, ETL origin switches; on the page
+    the table fills the data card, and the card's header has the Excel menu (download the data, or
+    overwrite it with a workbook) and "Maximize"
+  - Data checks, out of date as soon as the data changes; optionally blocking. Each check reads as
+    one line with what it found, and its detail is a table titled from the checks schema (a check
+    or column without `title` shows its key in words)
   - Parameters: the ones to decide on first, the ones with a default under "Advanced"
   - What is still missing to launch, each item taking the user to it
   - A proposed name, the launched execution followed live, a draft kept when leaving half done,
@@ -1728,8 +1732,9 @@ without frontend automation the select has no options.
 **Where they are asked.** Before the data is brought, so they read as part of loading rather than
 as a separate stage:
 
-- **Page**: the data card, while empty, shows them in a grid above "Upload Excel" and "Get data".
-  Once loaded they become text in the card's header ("North plant · since 01/10/2026 · 4 tables ·
+- **Page**: the data card, while empty, shows them in a grid, above "Upload Excel" and "Get data"
+  when the database is offered, and in the drop zone otherwise (the ETL gets them with the
+  files too). Once loaded they become text in the card's header ("North plant · since 01/10/2026 · 4 tables ·
   58 rows") and are changed with **Load filters**, which brings the data again.
 - **Wizard**: the load-instance step, above the choice of where the data comes from:
 
@@ -1738,15 +1743,15 @@ DATA THE INSTANCE WILL BE LOADED WITH
 Plant         [Plant A ▾]                   ← join_from
 Mode          [ Operative ][ Strategic ]    ← a select with up to 3 options shows them as cards
 Date          [01/09/2026]
-Data source   [ Master tables ][ File ][ Parameters ]
-              (the dropzone, the master-tables summary or the parameters form)
+Data source   [ Master tables ][ File ]
+              (the dropzone or the master-tables summary)
                                               ✓ Data loaded   [ Load instance ]
 ```
 
-Where the data comes from: files are always offered; the database when `etl.useEtlBackend` and
-`etl.enableLoadFromDb` are set (and the ETL module is enabled), and the parameters form when
-`etl.alternativeParameterFields` has fields. On the page, files picked together with the database
-replace the tables with the same name and the database fills in the rest.
+Where the data comes from: files are always offered, and the database when `etl.useEtlBackend`
+and `etl.enableLoadFromDb` are set (and the ETL module is enabled). On the page, files picked
+together with the database replace the tables with the same name and the database fills in the
+rest.
 
 A relaunch has no load at all -- the instance already exists -- so those parameters go back to the
 regular parameters.
@@ -1805,7 +1810,8 @@ XLSX or CSV), checked against the solution schema.
 
 Leaving the page with something loaded or typed asks first: save a draft and leave, leave without
 saving, or stay. The draft is kept in the browser (IndexedDB, one per DAG and user) and offered
-when the user comes back.
+when the user comes back. It keeps the data, the unapplied edits and, after an ETL load, the ETL
+review with its origin switches, still to be sent to the backend.
 
 ## Router configuration
 

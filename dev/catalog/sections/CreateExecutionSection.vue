@@ -147,7 +147,6 @@ function sampleDraft(overrides: Record<string, any> = {}) {
     acceptedExtensions: ['xlsx', 'csv', 'json'],
     dataSourceMode: 'files',
     loadFilterFields: [],
-    alternativeFields: [],
     parameterFields: [],
     showParameters: true,
     showSolver: false,
@@ -170,7 +169,6 @@ function sampleDraft(overrides: Record<string, any> = {}) {
     removeFile: noop,
     setFilter: noop,
     load: asyncNoop,
-    loadFromParameters: asyncNoop,
     setInstance: noop,
     setDataErrors: noop,
     registerPendingChangesApplier: noop,
@@ -227,8 +225,22 @@ const dataSamples = [
   },
 ]
 
-const warning: CheckResult = { key: 'tight', title: 'Tight capacity', kind: 'warning', rows: ['L2 · 97,5 % · week 43'] }
-const error: CheckResult = { key: 'missing', title: 'Products not defined', kind: 'error', rows: ['P-199 · week 43', 'P-207 · week 44'] }
+const warning: CheckResult = {
+  key: 'tight',
+  title: 'Tight capacity',
+  description: 'Lines used above 95 % of their capacity',
+  kind: 'warning',
+  columns: [{ key: 'line', title: 'Line' }, { key: 'use', title: 'Use (%)' }, { key: 'week', title: 'Week' }],
+  records: [{ line: 'L2', use: 97.5, week: 43 }],
+}
+const error: CheckResult = {
+  key: 'missing',
+  title: 'Products not defined',
+  description: '',
+  kind: 'error',
+  columns: [{ key: 'product', title: 'Product' }, { key: 'week', title: 'Week' }],
+  records: [{ product: 'P-199', week: 43 }, { product: 'P-207', week: 44 }],
+}
 const checkSamples: { status: Status; results: CheckResult[] }[] = [
   { status: 'none', results: [] },
   { status: 'running', results: [] },

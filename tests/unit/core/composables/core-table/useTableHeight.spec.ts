@@ -116,6 +116,48 @@ describe('useTableHeight - fullscreen calculation', () => {
   })
 })
 
+describe('useTableHeight - inside a box of its own height', () => {
+  test('fits down to the bottom of the closest data-table-bounds, less its padding and the table padding', () => {
+    const { api, wrapper } = withTableHeight()
+    const bounds = document.createElement('div')
+    bounds.setAttribute('data-table-bounds', '')
+    bounds.style.paddingBottom = '8px'
+    const container = document.createElement('div')
+    const table = document.createElement('div')
+    table.className = 'v-table'
+    table.style.paddingTop = '8px'
+    container.appendChild(table)
+    bounds.appendChild(container)
+    document.body.appendChild(bounds)
+
+    rect(container, { top: 300 })
+    rect(bounds, { bottom: 700 })
+    api.tableContainer.value = container
+    api.calculateTableHeight()
+
+    // 700 - 8 - 8 - 300; the viewport (768) is not what limits it
+    expect(api.tableHeight.value).toBe(384)
+    wrapper.unmount()
+  })
+
+  test('a small box gets a small table rather than one that spills out of it', () => {
+    const { api, wrapper } = withTableHeight()
+    const bounds = document.createElement('div')
+    bounds.setAttribute('data-table-bounds', '')
+    const container = document.createElement('div')
+    bounds.appendChild(container)
+    document.body.appendChild(bounds)
+
+    rect(container, { top: 300 })
+    rect(bounds, { bottom: 520 })
+    api.tableContainer.value = container
+    api.calculateTableHeight()
+
+    expect(api.tableHeight.value).toBe(220)
+    wrapper.unmount()
+  })
+})
+
 describe('useTableHeight - panel/searchbar height helpers via calculation paths', () => {
   test('reads filters panel and search bar heights through container chain', () => {
     const { api, wrapper } = withTableHeight()

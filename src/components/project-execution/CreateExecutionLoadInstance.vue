@@ -50,7 +50,7 @@
         </v-alert>
       </section>
 
-      <!-- Where from: master tables, a file or a few parameters. -->
+      <!-- Where from: master tables or a file. -->
       <section class="load-form__section">
         <div v-if="sourceOptions.length > 1" class="load-form__row">
           <div class="load-form__label">
@@ -92,37 +92,13 @@
               @files-selected="onFileSelected"
             />
             <div
-              v-else-if="selectedSource === 'database'"
+              v-else
               class="load-form__panel load-form__database"
             >
               <v-icon size="28" color="primary">mdi-database-arrow-down</v-icon>
               <span>{{
                 t('projectExecution.steps.step3.loadInstance.databaseSummary')
               }}</span>
-            </div>
-            <div v-else class="load-form__panel parameters-fields">
-              <p class="load-form__hint">
-                {{
-                  t(
-                    'projectExecution.steps.step3.loadInstance.alternativeParametersHint',
-                  )
-                }}
-              </p>
-              <div class="load-form__parameters">
-                <v-text-field
-                  v-for="field in alternativeFields"
-                  :key="field.id"
-                  v-model="paramValues[field.id]"
-                  :label="t(field.titleKey)"
-                  :placeholder="
-                    field.placeholderKey ? t(field.placeholderKey) : undefined
-                  "
-                  :type="inputTypeForField(field)"
-                  density="comfortable"
-                  variant="outlined"
-                  hide-details="auto"
-                />
-              </div>
             </div>
             <div
               v-if="selectedSource !== 'file' && displayedErrors"
@@ -142,10 +118,7 @@
           color="primary"
           size="large"
           class="load-instance-btn"
-          :class="{
-            'load-from-db-btn': selectedSource === 'database',
-            'load-parameters-btn': selectedSource === 'parameters',
-          }"
+          :class="{ 'load-from-db-btn': selectedSource === 'database' }"
           :disabled="!canLoad"
           @click="loadData"
         >
@@ -165,10 +138,7 @@
 import { ref, watch, inject, onMounted, onUnmounted, computed } from 'vue'
 import { Instance } from '@/app/models/Instance'
 import { useI18n } from 'vue-i18n'
-import {
-  useInstanceProcessing,
-  buildInstanceDataFromAlternativeFields,
-} from '@cornflow-ui/core/composables/useInstanceProcessing'
+import { useInstanceProcessing } from '@cornflow-ui/core/composables/useInstanceProcessing'
 import { useErrorDownload } from '@cornflow-ui/core/composables/useErrorDownload'
 import { formatValidationErrors } from '@cornflow-ui/core/utils/errorFormatting'
 import type { ErrorObject } from 'ajv'
@@ -176,7 +146,6 @@ import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { pickPreEtlConfigValues } from '@cornflow-ui/core/utils/schemaUtils'
 import CreateExecutionConfigParams from '@cornflow-ui/core/components/project-execution/CreateExecutionConfigParams.vue'
 import OptionCards from '@cornflow-ui/core/components/core/OptionCards.vue'
-import type { LoadInstanceAlternativeParamField } from '@/app/config'
 
 // Composables
 const { t } = useI18n()
@@ -219,7 +188,6 @@ const selectedFiles = ref<File[]>(props.selectedFiles || [])
 const instanceErrors = ref<string | null>(props.existingInstanceErrors)
 const rawErrors = ref<ErrorObject[] | null>(null)
 const dragDropFileRef = ref<any>(null)
-const paramValues = ref<Record<string, unknown>>({})
 const warningMessage = ref<string | null>(null)
 
 /**
@@ -231,19 +199,13 @@ const loadedPreEtlValues = ref<string | null>(null)
 
 const etlConfig = computed(() => generalStore.appConfig.parameters.etl)
 
-const alternativeFields = computed(
-  () => etlConfig.value?.alternativeParameterFields ?? [],
-)
-
-const showAlternativeColumn = computed(() => alternativeFields.value.length > 0)
-
 const showLoadFromDbButton = computed(
   () => etlConfig.value?.useEtlBackend && etlConfig.value?.enableLoadFromDb,
 )
 
-type DataSource = 'database' | 'file' | 'parameters'
+type DataSource = 'database' | 'file'
 
-/** Ways to bring the data in: a file always; master tables and parameters when configured. */
+/** Ways to bring the data in: a file always; master tables when configured. */
 const sourceOptions = computed(() => [
   ...(showLoadFromDbButton.value
     ? [
@@ -263,18 +225,6 @@ const sourceOptions = computed(() => [
     description: t('projectExecution.steps.step3.loadInstance.sourceFileDescription'),
     icon: 'mdi-file-upload-outline',
   },
-  ...(showAlternativeColumn.value
-    ? [
-        {
-          value: 'parameters',
-          title: t('projectExecution.steps.step3.loadInstance.sourceParameters'),
-          description: t(
-            'projectExecution.steps.step3.loadInstance.sourceParametersDescription',
-          ),
-          icon: 'mdi-form-textbox',
-        },
-      ]
-    : []),
 ])
 
 const selectedSource = ref<DataSource>('file')
@@ -357,16 +307,12 @@ const canLoad = computed(() => {
   if (selectedSource.value === 'database') {
     return !isCheckingSchema.value && !preEtlIncomplete.value
   }
-  if (selectedSource.value === 'parameters') return canProcessParameters.value
   return canProcess.value
 })
 
 const loadButtonLabel = computed(() => {
   if (selectedSource.value === 'database') {
     return t('projectExecution.steps.step3.loadInstance.loadFromDb')
-  }
-  if (selectedSource.value === 'parameters') {
-    return t('projectExecution.steps.step3.loadInstance.loadParameters')
   }
   const label = t('projectExecution.steps.step3.loadInstance.loadInstance')
   const count = selectedFiles.value.length
@@ -382,25 +328,6 @@ const loadButtonIcon = computed(() =>
 const isLoaded = computed(
   () => Boolean(props.newExecution?.instance) && !instanceErrors.value,
 )
-
-const canProcessParameters = computed(() => {
-  if (
-    !showAlternativeColumn.value ||
-    !instanceProcessing.canProcessFiles.value ||
-    preEtlIncomplete.value
-  ) {
-    return false
-  }
-  for (const field of alternativeFields.value) {
-    const required = field.required !== false
-    if (!required) continue
-    const v = paramValues.value[field.id]
-    if (v === null || v === undefined || v === '') {
-      return false
-    }
-  }
-  return true
-})
 
 const displayedErrors = computed(() => {
   if (!instanceErrors.value) return null
@@ -425,12 +352,6 @@ const displayedErrors = computed(() => {
     totalErrorsMessage,
   )
 })
-
-function inputTypeForField(field: LoadInstanceAlternativeParamField) {
-  if (field.type === 'date') return 'date'
-  if (field.type === 'number') return 'number'
-  return 'text'
-}
 
 // Utility functions for error display
 const createTotalErrorsMessage = (total: number): string => {
@@ -537,22 +458,6 @@ watch(
   },
 )
 
-function initParamValuesFromFields() {
-  const next: Record<string, unknown> = {}
-  for (const f of alternativeFields.value) {
-    next[f.id] = paramValues.value[f.id] ?? null
-  }
-  paramValues.value = next
-}
-
-watch(
-  alternativeFields,
-  () => {
-    initParamValuesFromFields()
-  },
-  { immediate: true },
-)
-
 onUnmounted(() => {
   errorDownload.cleanupDownloadButton(handleDownloadErrors)
 })
@@ -608,7 +513,6 @@ const onFileSelected = (files: File[]) => {
 /** Loads the data from the picked source. */
 const loadData = () => {
   if (selectedSource.value === 'database') return processFromDb()
-  if (selectedSource.value === 'parameters') return processParameters()
   return processFiles()
 }
 
@@ -658,41 +562,6 @@ const processFromDb = async () => {
     }
   } catch (error) {
     console.error('Error in processFromDb:', error)
-    const errorMessage = error instanceof Error ? error.message : String(error)
-    handleProcessingError(errorMessage, null)
-  }
-}
-
-const processParameters = async () => {
-  if (!canProcessParameters.value) return
-
-  resetErrors()
-
-  const payload = buildInstanceDataFromAlternativeFields(
-    alternativeFields.value,
-    paramValues.value as Record<string, unknown>,
-    {
-      instanceSchema: generalStore.getSchemaConfig.instanceSchema,
-      masterDataTables: generalStore.rawConfigurations?.masterData ?? null,
-    },
-  )
-
-  try {
-    const result = await instanceProcessing.processInstanceData(
-      payload,
-      props.newExecution?.config,
-    )
-
-    if (result.success && result.instance) {
-      handleProcessingSuccess(result.instance, result.warning)
-      if (result.rawData) {
-        emit('externalEtlData', result.rawData)
-      }
-    } else if (result.errors) {
-      handleProcessingError(result.errors, result.rawErrors)
-    }
-  } catch (error) {
-    console.error('Error in processParameters:', error)
     const errorMessage = error instanceof Error ? error.message : String(error)
     handleProcessingError(errorMessage, null)
   }
@@ -807,17 +676,6 @@ const resetErrors = () => {
   color: var(--title);
 }
 
-.load-form__hint {
-  margin-bottom: 12px;
-  color: var(--subtitle);
-}
-
-.load-form__parameters {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px 16px;
-}
-
 .load-form__errors {
   padding: 12px 16px;
   border-radius: 10px;
@@ -850,10 +708,6 @@ const resetErrors = () => {
   .load-form__row {
     grid-template-columns: minmax(0, 1fr);
     gap: 6px;
-  }
-
-  .load-form__parameters {
-    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

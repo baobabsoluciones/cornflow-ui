@@ -3,7 +3,8 @@ import { reactive } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
 
-const { store } = vi.hoisted(() => ({
+const { store, review } = vi.hoisted(() => ({
+  review: { downloadExcel: vi.fn(), uploadExcel: vi.fn(), toggleMaximize: vi.fn() },
   store: {
     fetchTableOptions: vi.fn(async () => [{ value: 7, title: 'North plant' }]),
     getConfigurations: { masterData: {} },
@@ -14,9 +15,14 @@ vi.mock('@cornflow-ui/core/stores/general', () => ({ useGeneralStore: () => stor
 vi.mock('@cornflow-ui/core/components/project-execution/CreateExecutionReviewInstance.vue', () => ({
   default: {
     name: 'CreateExecutionReviewInstance',
-    props: ['newExecution', 'instanceErrors', 'isEditMode', 'externalEtlFlow', 'isStepActive'],
-    template: '<div data-testid="review" />',
-    methods: { applyPendingChanges: () => Promise.resolve(true) },
+    props: ['newExecution', 'instanceErrors', 'isEditMode', 'externalEtlFlow', 'isStepActive', 'showToolbar'],
+    template: '<div data-testid="review" :data-toolbar="String(showToolbar)" />',
+    methods: {
+      applyPendingChanges: () => Promise.resolve(true),
+      downloadExcel: () => review.downloadExcel(),
+      uploadExcel: () => review.uploadExcel(),
+      toggleMaximize: () => review.toggleMaximize(),
+    },
   },
 }))
 
@@ -49,7 +55,6 @@ function makeDraft(overrides: Record<string, any> = {}) {
     acceptedExtensions: ['json', 'xlsx'],
     dataSourceMode: 'files',
     loadFilterFields: [],
-    alternativeFields: [],
     parameterFields: [],
     showParameters: true,
     showSolver: false,
@@ -72,7 +77,6 @@ function makeDraft(overrides: Record<string, any> = {}) {
     removeFile: vi.fn(),
     setFilter: vi.fn(),
     load: vi.fn(),
-    loadFromParameters: vi.fn(),
     setInstance: vi.fn(),
     setDataErrors: vi.fn(),
     registerPendingChangesApplier: vi.fn(),
@@ -102,22 +106,59 @@ describe('ChecksStatus', () => {
     expect(wrapper.text()).toContain('createExecution.checks.running')
   })
 
-  test('lists what the checks found, errors open', () => {
+  const checkResults = [
+    {
+      key: 'a',
+      title: 'Missing products',
+      description: '',
+      kind: 'error',
+      columns: [{ key: 'product', title: 'Product' }, { key: 'week', title: 'Week' }],
+      records: [{ product: 'P-1', week: 43 }, { product: 'P-2', week: 44 }],
+    },
+    {
+      key: 'b',
+      title: 'Tight capacity',
+      description: 'Lines above 95 %',
+      kind: 'warning',
+      columns: [{ key: 'line', title: 'Line' }],
+      records: [{ line: 'L2' }],
+    },
+  ]
+
+  test('lists each check on one line with how many rows it found', () => {
     const wrapper = mount(ChecksStatus, {
-      props: {
-        status: 'errors',
-        blocking: true,
-        results: [
-          { key: 'a', title: 'Missing products', kind: 'error', rows: ['P-1 · 43', 'P-2 · 44'] },
-          { key: 'b', title: 'Tight capacity', kind: 'warning', rows: ['L2 · 97,5'] },
-        ],
-      },
+      props: { status: 'errors', blocking: true, results: checkResults },
       global: global(),
     })
-    expect(wrapper.text()).toContain('Missing products')
-    expect(wrapper.text()).toContain('P-1 · 43')
-    expect(wrapper.text()).not.toContain('L2 · 97,5')
+    const lines = wrapper.findAll('.checks-status__result')
+    expect(lines.map((l) => l.find('.checks-status__result-title').text())).toEqual(['Missing products', 'Tight capacity'])
+    expect(lines.map((l) => l.find('.checks-status__result-count').text())).toEqual(['2', '1'])
+    expect(wrapper.text()).not.toContain('P-1')
     expect(wrapper.text()).toContain('createExecution.checks.fixBeforeLaunch')
+  })
+
+  test('a check opens the detail on its table, which can be searched', async () => {
+    const wrapper = mount(ChecksStatus, {
+      props: { status: 'errors', results: checkResults },
+      // The dialog is portalled to the body, as on screen.
+      global: { plugins: [i18n()] },
+      attachTo: document.body,
+    })
+    await wrapper.findAll('.checks-status__result')[1].trigger('click')
+    await flushPromises()
+    const detail = document.body.querySelector('[data-testid="checks-detail"]')!
+    expect(detail.querySelector('.checks-detail__title')?.textContent).toBe('Tight capacity')
+    expect([...detail.querySelectorAll('th')].map((th) => th.textContent)).toEqual(['Line'])
+
+    detail.querySelectorAll<HTMLButtonElement>('.checks-detail__check')[0].click()
+    await flushPromises()
+    expect([...detail.querySelectorAll('tbody tr')].map((tr) => tr.textContent)).toEqual(['P-143', 'P-244'])
+    const search = detail.querySelector<HTMLInputElement>('.checks-detail__search input')!
+    search.value = 'p-2'
+    search.dispatchEvent(new Event('input'))
+    await flushPromises()
+    expect([...detail.querySelectorAll('tbody tr')].map((tr) => tr.textContent)).toEqual(['P-244'])
+    wrapper.unmount()
   })
 })
 
@@ -229,6 +270,22 @@ describe('ExecutionDataCard', () => {
     expect(draft.load).toHaveBeenCalled()
   })
 
+  test('with files only, it still asks for the load filters the ETL gets with them', async () => {
+    const draft = makeDraft({
+      files: [new File(['{}'], 'a.xlsx')],
+      loadFilterFields: [{ key: 'full', title: 'Full', type: 'boolean', required: true }],
+    })
+    const wrapper = mount(ExecutionDataCard, { props: { draft }, global: global() })
+    const select = wrapper.find('[data-testid="load-filters"] select')
+    expect(select.findAll('option').map((o) => o.text())).toEqual([
+      'createExecution.data.choose',
+      'createExecution.data.yes',
+      'createExecution.data.no',
+    ])
+    await select.setValue('1')
+    expect(draft.setFilter).toHaveBeenCalledWith('full', false)
+  })
+
   test('shows the load errors grouped by table', () => {
     const draft = makeDraft({
       loadStatus: 'error',
@@ -252,5 +309,30 @@ describe('ExecutionDataCard', () => {
     expect(wrapper.find('[data-testid="review"]').exists()).toBe(true)
     expect(wrapper.find('.data-card__meta').text()).toBe('createExecution.data.size')
     expect(draft.registerPendingChangesApplier).toHaveBeenCalledWith(expect.any(Function))
+  })
+
+  test('once loaded, the header holds the Excel actions of the review and maximize', async () => {
+    const draft = makeDraft({
+      isLoaded: true,
+      loadStatus: 'loaded',
+      execution: { instance: { data: { a: [1] } }, config: {}, name: '', description: '' },
+    })
+    const popover = { name: 'CorePopover', template: '<div><slot name="trigger" /><slot /></div>' }
+    const wrapper = mount(ExecutionDataCard, {
+      props: { draft },
+      global: { ...global(), stubs: { teleport: true, CorePopover: popover } },
+    })
+    await flushPromises()
+    expect(wrapper.find('[data-testid="review"]').attributes('data-toolbar')).toBe('false')
+    expect(wrapper.find('[data-testid="data-card-upload"]').exists()).toBe(false)
+    expect(wrapper.find('.data-card__review').attributes('data-table-bounds')).toBeDefined()
+
+    await wrapper.find('[aria-label="projectExecution.maximize"]').trigger('click')
+    expect(review.toggleMaximize).toHaveBeenCalled()
+
+    const items = wrapper.findAll('.data-card__menu-item')
+    expect(items.map((i) => i.text())).toEqual(['projectExecution.downloadExcel', 'projectExecution.uploadExcel'])
+    await items[1].trigger('click')
+    expect(review.uploadExcel).toHaveBeenCalled()
   })
 })
