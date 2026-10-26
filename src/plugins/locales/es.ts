@@ -435,6 +435,8 @@ export default {
     pin: 'Fijar el menú',
     unpin: 'Desfijar el menú',
     close: 'Cerrar el menú',
+    history: 'Historial',
+    newExecution: 'Nueva ejecución',
     loadedExecution: 'Ejecución cargada',
     noExecution: 'Ninguna ejecución cargada',
     pickExecution: 'Elige una de las últimas',

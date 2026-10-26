@@ -311,6 +311,8 @@ export default {
     pin: 'Épingler le menu',
     unpin: 'Détacher le menu',
     close: 'Fermer le menu',
+    history: 'Historique',
+    newExecution: 'Nouvelle exécution',
     loadedExecution: 'Exécution chargée',
     noExecution: 'Aucune exécution chargée',
     pickExecution: 'Choisissez une des dernières',

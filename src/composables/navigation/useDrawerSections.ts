@@ -73,8 +73,8 @@ export function useDrawerSections() {
 
   const executions = computed<DrawerSection | null>(() => {
     const subPages = [
-      { title: t('versionHistory.title'), icon: 'mdi-history', to: '/history-execution', view: 'history-execution' },
-      { title: t('projectExecution.title'), icon: 'mdi-play-circle-outline', to: '/project-execution', view: 'project-execution' },
+      { title: t('drawer.history'), icon: 'mdi-history', to: '/history-execution', view: 'history-execution' },
+      { title: t('drawer.newExecution'), icon: 'mdi-plus', to: '/project-execution', view: 'project-execution' },
     ]
       .filter((page) => allowed(page.view))
       .map(({ view: _view, ...page }) => page)

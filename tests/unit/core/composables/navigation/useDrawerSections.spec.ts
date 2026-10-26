@@ -67,9 +67,9 @@ describe('useDrawerSections', () => {
     store.getConfigurations = { masterData: { tableA: { title: 'Table A', icon: 'mdi-table', group: null } } }
     const api = setup()
     expect(keys(api)).toEqual(['executions', 'master-data'])
-    expect(section(api, 'executions').subPages!.map((p) => p.to)).toEqual([
-      '/history-execution',
-      '/project-execution',
+    expect(section(api, 'executions').subPages!.map((p) => [p.title, p.icon, p.to])).toEqual([
+      ['drawer.history', 'mdi-history', '/history-execution'],
+      ['drawer.newExecution', 'mdi-plus', '/project-execution'],
     ])
   })
 

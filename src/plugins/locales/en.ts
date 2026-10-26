@@ -424,6 +424,8 @@ export default {
     pin: 'Pin the menu open',
     unpin: 'Unpin the menu',
     close: 'Close the menu',
+    history: 'History',
+    newExecution: 'New execution',
     loadedExecution: 'Loaded execution',
     noExecution: 'No execution loaded',
     pickExecution: 'Pick one of the latest',
