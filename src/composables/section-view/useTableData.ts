@@ -3139,8 +3139,13 @@ export function useTableData(
   return {
     ...api,
     sort,
-    /** A master table of a single record (parameters): shown as a list of its fields. */
-    isParameterObjectTable,
+    /** A table of a single record (parameters): shown as a list of its fields. */
+    isSingleRecord: computed(
+      () =>
+        isParameterObjectTable.value ||
+        tableConfig.value?.isParameterTable === true ||
+        tableConfig.value?.get_list?.response_schema?.type === 'object',
+    ),
     /** Takes back the pending change of one cell. */
     revertCell: (rowId: string | number, fieldKey: string) =>
       tableChanges.revertChange(normalizeTableKeyForStorage(tableKey.value), rowId, fieldKey),

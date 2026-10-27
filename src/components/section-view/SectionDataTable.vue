@@ -270,7 +270,7 @@ async function loadOptions(column: DataColumn) {
 
 // ── A table of one record, as a list of its fields ──────────────────────────
 
-const isRecord = computed(() => !!props.tableData.isParameterObjectTable?.value)
+const isRecord = computed(() => !!props.tableData.isSingleRecord?.value && rows.value.length <= 1)
 const recordRow = computed<DataRow | undefined>(() => rows.value[0])
 
 const recordRows = computed<ParameterRow[]>(() => {
