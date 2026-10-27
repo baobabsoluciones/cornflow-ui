@@ -19,7 +19,6 @@
     "Discard" and "Review changes".
 -->
 <template>
-  <div v-if="fullscreen" class="data-table__scrim" @click="fullscreen = false" />
   <section
     ref="card"
     class="data-table"
@@ -29,6 +28,9 @@
     data-testid="data-table"
     @keydown.esc="adding = false"
   >
+    <Teleport to="body">
+      <div v-if="fullscreen" class="data-table__scrim" @click="fullscreen = false" />
+    </Teleport>
     <slot name="tabs" />
     <slot name="strip" />
 

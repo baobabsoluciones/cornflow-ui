@@ -22,6 +22,7 @@
 -->
 <template>
   <aside
+    v-bind="$attrs"
     v-if="open && !expanded"
     class="pending-panel"
     :aria-label="$t('dataTable.pending.title')"
@@ -537,7 +538,7 @@ import {
   toEditText,
 } from '@cornflow-ui/core/utils/dataTable'
 
-defineOptions({ name: 'PendingChangesPanel' })
+defineOptions({ name: 'PendingChangesPanel', inheritAttrs: false })
 
 export type PendingChangeKind = 'modified' | 'new' | 'deleted'
 

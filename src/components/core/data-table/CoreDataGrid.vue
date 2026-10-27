@@ -116,6 +116,7 @@
                 @click.stop
               />
             </th>
+            <th class="data-grid__cell data-grid__filler" aria-hidden="true" />
           </tr>
         </thead>
 
@@ -170,6 +171,7 @@
                 @cancel="emit('add-cancel')"
               />
             </td>
+            <td class="data-grid__cell data-grid__filler" aria-hidden="true" />
           </tr>
         </tbody>
 
@@ -253,6 +255,7 @@
                 >{{ displayOf(row, column) }}</span
               >
             </td>
+            <td class="data-grid__cell data-grid__filler" aria-hidden="true" />
           </tr>
         </tbody>
 
@@ -281,6 +284,7 @@
                 :height="10"
               />
             </td>
+            <td class="data-grid__cell data-grid__filler" aria-hidden="true" />
           </tr>
         </tbody>
       </table>
@@ -435,9 +439,9 @@ const gridTemplate = computed(() =>
   [
     props.selectable ? `${selectWidth.value}px` : '',
     `${MARK_WIDTH}px`,
-    ...props.columns.map((column, index) =>
-      index === props.columns.length - 1 ? `minmax(${widthOf(column)}px, 1fr)` : `${widthOf(column)}px`,
-    ),
+    ...props.columns.map((column) => `${widthOf(column)}px`),
+    // An empty column takes the width left, so the grid fills its card.
+    'minmax(0, 1fr)',
   ]
     .filter(Boolean)
     .join(' '),
@@ -1152,6 +1156,11 @@ defineExpose({ commitAdd, focusCell })
 }
 
 .data-grid__cell--mark {
+  border-right: 0;
+}
+
+.data-grid__filler {
+  padding: 0;
   border-right: 0;
 }
 
