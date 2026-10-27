@@ -165,7 +165,7 @@ describe('SignInLanding', () => {
       ;({ wrapper } = await mountPage())
       const input = () => wrapper.find('[data-testid="sign-in-password"]')
       expect(input().attributes('type')).toBe('password')
-      await wrapper.find('.sign-in-form__eye').trigger('click')
+      await wrapper.find('[data-testid="sign-in-show-password"]').trigger('click')
       expect(input().attributes('type')).toBe('text')
     })
   })

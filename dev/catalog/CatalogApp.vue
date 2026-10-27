@@ -37,6 +37,7 @@ import FormsSection from './sections/FormsSection.vue'
 import HistorySection from './sections/HistorySection.vue'
 import MenusSection from './sections/MenusSection.vue'
 import OverlaysSection from './sections/OverlaysSection.vue'
+import SignInSection from './sections/SignInSection.vue'
 import StatusSection from './sections/StatusSection.vue'
 import TokensSection from './sections/TokensSection.vue'
 
@@ -50,6 +51,7 @@ const sections = [
   { id: 'data', title: 'Data', component: DataSection },
   { id: 'overlays', title: 'Dialogs and toasts', component: OverlaysSection },
   { id: 'history', title: 'Execution history', component: HistorySection },
+  { id: 'sign-in', title: 'Sign-in', component: SignInSection },
 ]
 
 const activeId = ref(sections[0].id)

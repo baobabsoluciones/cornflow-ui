@@ -12,14 +12,12 @@
     <form class="sign-in-form__fields" novalidate @submit.prevent="submit">
       <label class="sign-in-form__field">
         <span class="sign-in-form__label">{{ $t('logIn.username_textfield_label') }}</span>
-        <input
+        <CoreTextField
           v-model="username"
-          class="sign-in-form__input"
-          :class="{ 'is-invalid': missingUsername }"
-          type="text"
+          size="large"
           name="username"
           autocomplete="username"
-          :aria-invalid="missingUsername || undefined"
+          :invalid="missingUsername"
           data-testid="sign-in-username"
         />
         <span v-if="missingUsername" class="sign-in-form__error">{{ $t('rules.required') }}</span>
@@ -27,26 +25,28 @@
 
       <label class="sign-in-form__field">
         <span class="sign-in-form__label">{{ $t('logIn.password_textfield_label') }}</span>
-        <span class="sign-in-form__input is-password" :class="{ 'is-invalid': missingPassword }">
-          <input
-            v-model="password"
-            :type="showPassword ? 'text' : 'password'"
-            name="password"
-            autocomplete="current-password"
-            :aria-invalid="missingPassword || undefined"
-            data-testid="sign-in-password"
-          />
-          <button
-            type="button"
-            class="sign-in-form__eye"
-            :aria-label="showPassword ? $t('logIn.hide_password') : $t('logIn.show_password')"
-            :title="showPassword ? $t('logIn.hide_password') : $t('logIn.show_password')"
-            :aria-pressed="showPassword"
-            @click="showPassword = !showPassword"
-          >
-            <CoreIcon :name="showPassword ? 'mdi-eye-off-outline' : 'mdi-eye-outline'" :size="18" />
-          </button>
-        </span>
+        <CoreTextField
+          v-model="password"
+          size="large"
+          :type="showPassword ? 'text' : 'password'"
+          name="password"
+          autocomplete="current-password"
+          :invalid="missingPassword"
+          data-testid="sign-in-password"
+        >
+          <template #append>
+            <CoreButton
+              variant="icon"
+              size="small"
+              data-testid="sign-in-show-password"
+              :icon="showPassword ? 'mdi-eye-off-outline' : 'mdi-eye-outline'"
+              :aria-label="showPassword ? $t('logIn.hide_password') : $t('logIn.show_password')"
+              :title="showPassword ? $t('logIn.hide_password') : $t('logIn.show_password')"
+              :aria-pressed="showPassword"
+              @click="showPassword = !showPassword"
+            />
+          </template>
+        </CoreTextField>
         <span v-if="missingPassword" class="sign-in-form__error">{{ $t('rules.required') }}</span>
       </label>
 
@@ -81,7 +81,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
-import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
+import CoreTextField from '@cornflow-ui/core/components/core/CoreTextField.vue'
 import { useSignIn } from '@cornflow-ui/core/composables/sign-in/useSignIn'
 
 defineOptions({ name: 'SignInForm' })
@@ -118,68 +118,6 @@ const showPassword = ref(false)
 .sign-in-form__label {
   font-size: var(--text-md);
   font-weight: var(--font-weight-medium);
-}
-
-.sign-in-form__input {
-  box-sizing: border-box;
-  height: 44px;
-  padding: 0 calc(var(--spacing) * 3);
-  border: 1px solid var(--color-border-input);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  font: inherit;
-  font-size: var(--text-base);
-  color: var(--color-text);
-  outline: 0;
-  transition:
-    border-color var(--duration-fast) var(--ease-standard),
-    box-shadow var(--duration-fast) var(--ease-standard);
-}
-
-.sign-in-form__input:focus,
-.sign-in-form__input:focus-within {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
-}
-
-.sign-in-form__input.is-invalid {
-  border-color: var(--color-danger);
-}
-
-.sign-in-form__input.is-password {
-  display: flex;
-  align-items: center;
-  padding: 0 calc(var(--spacing) * 1) 0 calc(var(--spacing) * 3);
-}
-
-.sign-in-form__input.is-password input {
-  flex: 1;
-  min-width: 0;
-  height: 100%;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  font: inherit;
-  color: inherit;
-  outline: 0;
-}
-
-.sign-in-form__eye {
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-
-.sign-in-form__eye:hover {
-  background: var(--color-surface-hover);
 }
 
 .sign-in-form__error {
