@@ -13,8 +13,8 @@ const VALIDATION_MESSAGE_FIELD = 'message'
 
 /**
  * Ensures every row has an `id` property using a deterministic index-based scheme.
- * Execution data often lacks explicit IDs; without them CoreTable editing,
- * selection, and row identification break.
+ * Execution data often lacks explicit IDs; without them editing, selection
+ * and row identification break.
  * The same function is exported so `applyPendingChangesToData` can assign
  * matching IDs before reconciling staged changes.
  */
@@ -64,12 +64,12 @@ export function useExecutionTableData(
     return validationGroups.includes(group)
   })
 
-  // Validation messages (array of strings): we show as alert list, so report false to use CoreTable in list mode
+  // Validation messages (array of strings): shown as a list of messages
   const isValidationMessageList = computed(
     () => isValidationTable.value && !!tableConfig.value?.isPrimitiveArray,
   )
 
-  // For validation message list we use CoreTable in alert-list mode; for other primitives keep SimpleList
+  // Other arrays of plain values: shown as a one-column table
   const isPrimitiveArray = computed(() => {
     if (isValidationMessageList.value) return false
     return tableConfig.value?.isPrimitiveArray || false

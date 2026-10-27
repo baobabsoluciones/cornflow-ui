@@ -490,7 +490,7 @@ const {
 } = useGroupTables(currentConfiguration, sectionType)
 
 /**
- * Loading signal handed to CoreTable. Combines the existing data-loading
+ * Loading signal handed to the table. Combines the existing data-loading
  * state from each `useTableData` instance with `tableSwitching` (true while a
  * group-tab change is in flight) so the centered overlay shows up the moment
  * the user clicks a tab — before the heavy reactivity work fires.

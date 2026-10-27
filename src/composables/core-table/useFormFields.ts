@@ -1,9 +1,8 @@
 /**
  * useFormFields composable
  *
- * Shared composable for managing form field logic across CoreModal and CoreTable.
- * Provides consistent field type handling, validation, and data loading for both
- * create (modal) and edit (inline) operations.
+ * Form field logic of the tables: field types, validation, the options of the
+ * references and preparing a row for the backend.
  *
  * Features:
  * - Field type checking and validation

@@ -565,12 +565,10 @@ const currentTable = computed(() => {
 
 /**
  * Client-side windowing for the visible table. `currentTable.items` can be
- * hundreds of thousands of rows on heavy ETL uploads; even though `CoreTable`
- * virtualizes the DOM via `v-data-table-virtual`, Vuetify's internal
- * sort/filter pipeline iterates the full array on mount and freezes the UI.
- * We slice to a small initial window and grow it via `@load-more` (reusing
- * the infinite-scroll wiring already in `CoreTable`). Same pattern as
- * `useTableData` for SectionView instance/solution tables.
+ * hundreds of thousands of rows on heavy ETL uploads: the table gets a first
+ * window of them and asks for the next one (`load-more`) when scrolled near
+ * the end. Same pattern as `useTableData` for SectionView instance/solution
+ * tables.
  */
 const EXECUTION_WINDOW_PAGE_SIZE = 200
 const executionWindowSize = ref(EXECUTION_WINDOW_PAGE_SIZE)
@@ -759,8 +757,6 @@ watch(
 )
 
 
-// Event handlers for CoreTable
-//
 // Search input flow:
 //   - `state.searchValue` updates synchronously so the textbox stays
 //     responsive (controlled input).

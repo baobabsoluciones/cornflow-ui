@@ -474,7 +474,7 @@ export function useTableData(
   })
 
   /**
-   * Headers that are visible in the table (same filter as CoreTable safeHeaders).
+   * Headers that are visible in the table (without the selection, hidden and foreign-key ones).
    * Used for Excel export so the file has the same columns as the UI, including
    * joined columns (columns to join).
    */
@@ -550,7 +550,7 @@ export function useTableData(
     return dataHeaders
   })
 
-  // Filter fields must match table-visible columns (same rules as CoreTable safeHeaders).
+  // Filter fields must match the columns the table shows.
   // Filters for fields with get_list.parameters (is_filter + filters_on) are sent to the backend;
   // the rest are applied client-side on loaded data.
   const availableFilterFields = computed(() => {
@@ -1029,12 +1029,9 @@ export function useTableData(
    *   1. Execution data (instance/solution in `selectedExecution`).
    *   2. Master tables whose `get_list` does **not** declare `limit`/`offset`
    *      — the backend dumps the whole table in one response.
-   * In both cases we slice the array so Vuetify only processes a small window
-   * on mount; the window grows on `loadMore`, reusing the same `@load-more`
-   * infra that drives true server-paginated infinite scroll. Without this,
-   * handing 500k rows to `v-data-table-virtual` at once froze the UI even
-   * though row rendering itself is virtualized, because Vuetify's internal
-   * sort/filter pipeline iterates the full array.
+   * In both cases the table gets a window of the rows that grows on
+   * `loadMore`, the same `load-more` that drives true server-paginated
+   * infinite scroll, so a 500k-row table is not handed over at once.
    */
   const IN_MEMORY_WINDOW_PAGE_SIZE = 200
   const inMemoryWindowSize = ref(IN_MEMORY_WINDOW_PAGE_SIZE)
