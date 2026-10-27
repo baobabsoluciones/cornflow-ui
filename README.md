@@ -1183,7 +1183,8 @@ hex colour; otherwise the theme keeps its default with a console warning.
 
 **Catalog.** `npm run catalog` opens the component catalog (`dev/catalog/`): the tokens and every
 core component with its variants and states. It is a development page and is not part of the
-package.
+package. Every component styled with the tokens has a block there that names it
+(`tests/unit/core/catalog.spec.ts` checks it), so a new component comes with its block.
 
 ### Core components
 
@@ -1194,6 +1195,7 @@ take their look from the tokens, with the styles inside each component.
 | --- | --- |
 | `CoreIcon`, `CoreSpinner` | A Material Design Icons glyph (`mdi-*`); a loading ring |
 | `CoreButton` | Filled, outlined, text and icon buttons, in five sizes, with `loading` |
+| `CoreTextField`, `CoreSelect` | A text box (text, numbers, dates, passwords, several lines) and a dropdown, in three sizes |
 | `CoreBadge` | A short status or tag, as a pill or a dot, in a tone |
 | `CoreAlert` | A message inside the page (error, warning, info, success) with an optional action |
 | `CoreEmptyState`, `CoreSkeleton`, `CoreProgressBar` | Empty and loading states, progress |
