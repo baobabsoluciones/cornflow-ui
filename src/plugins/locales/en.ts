@@ -1579,6 +1579,7 @@ export default {
       desc: 'Sorted by {column}, descending',
     },
     pending: {
+      save: 'Save changes',
       discard: 'Discard',
       review: 'Review changes',
       summary: '1 pending change | {count} pending changes',
@@ -1638,6 +1639,9 @@ export default {
       overwriteConfirm: 'Overwrite anyway',
     },
     filters: {
+      dateRange: 'Dates',
+      anyDate: 'Any date',
+      reset: 'Reset',
       add: 'Add filter',
       searchField: 'Search field…',
       noField: 'No field matches',
@@ -1750,6 +1754,9 @@ export default {
       },
     },
     relaunch: {
+      changesIn: '1 change in {tables} | {count} changes in {tables}',
+      action: 'Relaunch',
+      review: 'Review and relaunch',
       title: 'Launch a new execution',
       name: 'Name of the new execution',
       nameRequired: 'Give the execution a name.',

@@ -1311,6 +1311,7 @@ export default {
       desc: 'Triée par {column}, décroissant',
     },
     pending: {
+      save: 'Enregistrer les modifications',
       discard: 'Abandonner',
       review: 'Revoir les modifications',
       summary: '1 modification en attente | {count} modifications en attente',
@@ -1370,6 +1371,9 @@ export default {
       overwriteConfirm: 'Écraser quand même',
     },
     filters: {
+      dateRange: 'Dates',
+      anyDate: 'Toutes les dates',
+      reset: 'Réinitialiser',
       add: 'Ajouter un filtre',
       searchField: 'Rechercher un champ…',
       noField: 'Aucun champ ne correspond',
@@ -1482,6 +1486,9 @@ export default {
       },
     },
     relaunch: {
+      changesIn: '1 modification dans {tables} | {count} modifications dans {tables}',
+      action: 'Relancer',
+      review: 'Revoir et relancer',
       title: 'Lancer une nouvelle exécution',
       name: 'Nom de la nouvelle exécution',
       nameRequired: "Donnez un nom à l'exécution.",

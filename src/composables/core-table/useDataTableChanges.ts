@@ -7,7 +7,7 @@
  * an added row change that row, so they are saved with it.
  *
  *   const changes = useDataTableChanges(tableKey, title, rows, columns)
- *   <CoreDataTable :rows="changes.rows.value" :value-of="changes.valueOf"
+ *   <CoreDataTable :rows="changes.rows.value" :cell-value="changes.cellValue"
  *     :row-state="changes.rowState" :cell-modified="changes.cellModified"
  *     @cell-change="changes.setCell" @add-row="changes.addRow" … />
  */
@@ -52,7 +52,7 @@ export function useDataTableChanges(
 
   const deletedIds = computed(() => new Set(changes.getPendingDeletes(tableKey.value)))
 
-  function valueOf(row: DataRow, key: string): unknown {
+  function cellValue(row: DataRow, key: string): unknown {
     return changes.getCurrentValue(tableKey.value, row.id, key, row[key])
   }
 
@@ -100,7 +100,7 @@ export function useDataTableChanges(
 
   return {
     rows,
-    valueOf,
+    cellValue,
     rowState,
     cellModified,
     setCell,

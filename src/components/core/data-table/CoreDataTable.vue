@@ -42,7 +42,17 @@
         clearable
         @update:model-value="search = $event"
       />
-      <div v-if="filterable" class="data-table__filters">
+      <div v-if="filterable || dateRanges.length" class="data-table__filters">
+        <ConditionFilterChip
+          v-for="range in dateRanges"
+          :key="`range-${range.key}`"
+          :filter="dateRangeFilter(range.key)"
+          :column="{ key: range.key, title: range.label, type: 'date' }"
+          fixed
+          @apply="(filter) => emit('date-range', range.key, { from: filter.value, to: filter.value2 ?? '' })"
+          @remove="emit('date-range', range.key, null)"
+        />
+        <template v-if="filterable">
         <ConditionFilterChip
           v-for="filter in filters"
           :key="filter.id"
@@ -63,6 +73,7 @@
           data-testid="data-table-add-filter"
           @add="addFilter"
         />
+        </template>
       </div>
 
       <div class="data-table__actions">
@@ -135,7 +146,11 @@
       <CoreButton size="small" :text="$t('dataTable.addRow')" data-testid="data-table-add-confirm" @click="grid?.commitAdd()" />
     </div>
 
+    <div v-if="$slots.body" class="data-table__body">
+      <slot name="body" />
+    </div>
     <CoreDataGrid
+      v-else
       ref="grid"
       v-model:sort="sort"
       v-model:selected="selected"
@@ -143,7 +158,7 @@
       class="data-table__grid"
       :columns="columns"
       :rows="rows"
-      :value-of="valueOf"
+      :cell-value="cellValue"
       :status="status"
       :loading-more="loadingMore"
       :has-more="hasMore"
@@ -312,7 +327,7 @@ const props = withDefaults(
     rows: DataRow[]
     /** Every loaded row, before filtering: the list filters count their values in it. */
     sourceRows?: DataRow[]
-    valueOf?: (row: DataRow, key: string) => unknown
+    cellValue?: (row: DataRow, key: string) => unknown
     status?: DataTableStatus
     loadingMore?: boolean
     hasMore?: boolean
@@ -353,10 +368,13 @@ const props = withDefaults(
     actions?: DataTableAction[]
     /** Takes the height left down to the bottom of the window (or of `data-table-bounds`). */
     fill?: boolean
+    /** Fixed date ranges the data is loaded with, each a chip before the filters. */
+    dateRanges?: Array<{ key: string; label: string }>
+    dateRangeValues?: Record<string, { from: string; to: string }>
   }>(),
   {
     sourceRows: undefined,
-    valueOf: undefined,
+    cellValue: undefined,
     status: 'ready',
     loadingMore: false,
     hasMore: false,
@@ -390,6 +408,8 @@ const props = withDefaults(
     reviewLabel: '',
     actions: () => [],
     fill: false,
+    dateRanges: () => [],
+    dateRangeValues: () => ({}),
   },
 )
 
@@ -407,6 +427,8 @@ const emit = defineEmits<{
   review: []
   discard: []
   action: [key: string]
+  /** A date range applied (`null`: reset). */
+  'date-range': [key: string, range: { from: string; to: string } | null]
 }>()
 
 const search = defineModel<string>('search', { default: '' })
@@ -416,6 +438,7 @@ const selected = defineModel<Array<string | number>>('selected', { default: () =
 const density = defineModel<DataDensity>('density', { default: 'default' })
 const widths = defineModel<Record<string, number>>('widths', { default: () => ({}) })
 const fullscreen = defineModel<boolean>('fullscreen', { default: false })
+const uploadOpen = defineModel<boolean>('uploadOpen', { default: false })
 
 const { t, locale } = useI18n()
 
@@ -423,7 +446,7 @@ const card = ref<HTMLElement>()
 const grid = ref<InstanceType<typeof CoreDataGrid>>()
 const fillHeight = useFillHeight(card, { min: 360 })
 
-const valueOf = (row: DataRow, key: string) => (props.valueOf ? props.valueOf(row, key) : row[key])
+const cellValue = (row: DataRow, key: string) => (props.cellValue ? props.cellValue(row, key) : row[key])
 
 const columnByKey = computed<Record<string, DataColumn>>(() =>
   Object.fromEntries(props.columns.map((column) => [column.key, column])),
@@ -481,7 +504,7 @@ function choicesFor(field: string) {
   if (!column || filterKindOf(column.type) !== 'list') return []
   const counts = new Map<string, { value: unknown; count: number }>()
   for (const row of countRows.value) {
-    const value = valueOf(row, field)
+    const value = cellValue(row, field)
     const key = cellText(value)
     if (!key) continue
     const entry = counts.get(key) ?? { value, count: 0 }
@@ -505,8 +528,13 @@ function choicesFor(field: string) {
 function booleanCountsFor(field: string) {
   const column = columnByKey.value[field]
   if (!column || filterKindOf(column.type) !== 'boolean') return undefined
-  const yes = countRows.value.filter((row) => isTruthy(valueOf(row, field))).length
+  const yes = countRows.value.filter((row) => isTruthy(cellValue(row, field))).length
   return { yes, no: countRows.value.length - yes }
+}
+
+function dateRangeFilter(key: string): DataFilter {
+  const range = props.dateRangeValues[key]
+  return { id: `range-${key}`, field: key, operator: 'is_between', value: range?.from ?? '', value2: range?.to ?? '' }
 }
 
 const isFiltered = computed(() => filters.value.length > 0 || search.value.trim() !== '')
@@ -538,8 +566,6 @@ const actionItems = computed<CoreMenuItem[]>(() => [
     : []),
   ...props.actions.map((action) => ({ ...action })),
 ])
-
-const uploadOpen = ref(false)
 
 function runAction(key: string) {
   actionsOpen.value = false
@@ -773,6 +799,12 @@ defineExpose({
 .data-table__grid {
   flex: 1;
   min-height: 200px;
+}
+
+.data-table__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 .data-table__selection {

@@ -10,7 +10,8 @@
 
   "Apply" stays disabled until the filter is complete and valid; the editor says what is wrong
   ("From" above "To"). A new filter (`isNew`) opens by itself, and closing it without applying
-  removes it.
+  removes it. A `fixed` filter (the date range a table is loaded with) has no cross: it shows
+  "Any date" while empty and its editor offers "Reset" instead of "Remove".
 
   <ConditionFilterChip :filter="filter" :column="column" :counts="counts" is-new
     @apply="replace" @remove="remove" />
@@ -21,8 +22,8 @@
     :label="column.title"
     :icon="undefined"
     :options="[]"
-    :value-text="draftIsEmpty ? '…' : chipValue"
-    removable
+    :value-text="chipText"
+    :removable="!fixed"
     :remove-label="$t('dataTable.filters.remove')"
     :menu-width="kind === 'list' ? 280 : 300"
     :auto-open="isNew"
@@ -100,8 +101,8 @@
           <CoreButton
             variant="text"
             size="small"
-            :text="$t('dataTable.filters.remove')"
-            @click="emit('remove', filter.id)"
+            :text="fixed ? $t('dataTable.filters.reset') : $t('dataTable.filters.remove')"
+            @click="removeOrReset"
           />
           <CoreButton
             size="small"
@@ -149,8 +150,10 @@ const props = withDefaults(
     /** Row counts of yes and no, for a yes/no filter. */
     booleanCounts?: { yes: number; no: number }
     isNew?: boolean
+    /** Always there: it resets instead of being removed. */
+    fixed?: boolean
   }>(),
-  { choices: () => [], booleanCounts: undefined, isNew: false },
+  { choices: () => [], booleanCounts: undefined, isNew: false, fixed: false },
 )
 
 const emit = defineEmits<{
@@ -179,6 +182,15 @@ const check = computed(() => checkFilter(draft.value, kind.value))
 const needsValue = computed(() => operatorNeedsValue(draft.value.operator))
 const draftIsEmpty = computed(() => !applied.value)
 const chipValue = computed(() => filterChipValue(props.filter, props.column, locale.value, t))
+const chipText = computed(() => {
+  if (props.fixed) return props.filter.value || props.filter.value2 ? chipValue.value : t('dataTable.filters.anyDate')
+  return draftIsEmpty.value ? '…' : chipValue.value
+})
+
+function removeOrReset() {
+  open.value = false
+  emit('remove', props.filter.id)
+}
 
 const TYPE_ICONS: Record<string, string> = {
   text: 'mdi-format-text',

@@ -10,7 +10,7 @@
 
     <CatalogBlock
       name="CoreDataTable · CoreDataGrid · DataGridEditor · DataTableTabs · ConditionFilterChip · PendingChangesPanel"
-      api="title · columns · rows · valueOf · status · v-model:search/filters/sort/selected/density · editable · selectable · canAdd/canDelete/canBulkEdit/canBulkUpload · rowState · cellModified · pendingCount → cell-change, add-row, delete-rows, bulk-edit, upload, review"
+      api="title · columns · rows · cellValue · status · v-model:search/filters/sort/selected/density · editable · selectable · canAdd/canDelete/canBulkEdit/canBulkUpload · rowState · cellModified · pendingCount → cell-change, add-row, delete-rows, bulk-edit, upload, review"
       note="Click a cell and use the arrows; Enter, F2 or typing edits, Delete empties, Escape cancels. Edit a few cells, add a row, select rows, then Review changes."
     >
       <div class="stack">
@@ -34,7 +34,7 @@
               :columns="current.columns"
               :rows="shownRows"
               :source-rows="changes.rows.value"
-              :value-of="changes.valueOf"
+              :cell-value="changes.cellValue"
               :status="status"
               :total-count="changes.rows.value.length"
               :filtered-count="filteredCount"
@@ -48,7 +48,7 @@
               :upload-operations="['post_update_bulk', 'post_bulk', 'overwrite_all']"
               :row-state="changes.rowState"
               :cell-modified="changes.cellModified"
-              :row-pinned="(row) => !!changes.valueOf(row, 'pinned')"
+              :row-pinned="(row) => !!changes.cellValue(row, 'pinned')"
               :options-for="optionsFor"
               :pending-count="store.totalChangesCount.value"
               :pending-tables="store.modifiedTableKeys.value.length"
@@ -330,7 +330,7 @@ const { rows: shownRows, filteredCount } = useDataTableRows(
     search: computed(() => view.value.search),
     filters: computed(() => view.value.filters),
     sort: computed(() => view.value.sort),
-    valueOf: changes.valueOf,
+    cellValue: changes.cellValue,
   },
 )
 

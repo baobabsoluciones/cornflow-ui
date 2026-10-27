@@ -227,7 +227,7 @@
             >
               <CoreSwitch
                 v-if="column.type === 'switch'"
-                :model-value="isTruthy(valueOf(row, column.key))"
+                :model-value="isTruthy(cellValue(row, column.key))"
                 :disabled="
                   !canEditCell(row, column) || isCellDisabled(row, column)
                 "
@@ -334,7 +334,7 @@ const props = withDefaults(
     columns: DataColumn[]
     rows: DataRow[]
     /** A cell's value; the table gives the pending one when the cell was edited. */
-    valueOf?: (row: DataRow, key: string) => unknown
+    cellValue?: (row: DataRow, key: string) => unknown
     status?: DataTableStatus
     loadingMore?: boolean
     hasMore?: boolean
@@ -355,7 +355,7 @@ const props = withDefaults(
     adding?: boolean
   }>(),
   {
-    valueOf: (row: DataRow, key: string) => row[key],
+    cellValue: (row: DataRow, key: string) => row[key],
     status: 'ready',
     loadingMore: false,
     hasMore: false,
@@ -520,14 +520,14 @@ const showMessage = computed(
 
 // ── Values and states ───────────────────────────────────────────────────────
 
-const valueOf = (row: DataRow, key: string) => props.valueOf(row, key)
+const cellValue = (row: DataRow, key: string) => props.cellValue(row, key)
 
 const isEmpty = (row: DataRow, column: DataColumn) =>
-  isEmptyValue(valueOf(row, column.key))
+  isEmptyValue(cellValue(row, column.key))
 
 function displayOf(row: DataRow, column: DataColumn): string {
   return (
-    formatCellValue(valueOf(row, column.key), column, locale.value, t) ?? '—'
+    formatCellValue(cellValue(row, column.key), column, locale.value, t) ?? '—'
   )
 }
 
@@ -750,7 +750,7 @@ function focusGrid() {
 function setValue(row: DataRow, column: DataColumn, value: unknown) {
   active.value = { rowId: row.id, key: column.key }
   if (!canEditCell(row, column) || isCellDisabled(row, column)) return
-  if (value === valueOf(row, column.key)) return
+  if (value === cellValue(row, column.key)) return
   emit('cell-change', row, column.key, value)
 }
 
@@ -772,7 +772,7 @@ function startEdit(initial?: string) {
     return
   }
   if (column.type === 'switch') {
-    setValue(row, column, !isTruthy(valueOf(row, column.key)))
+    setValue(row, column, !isTruthy(cellValue(row, column.key)))
     return
   }
   if (column.type === 'reference') emit('need-options', column)
@@ -792,7 +792,7 @@ function initialEditValue(
     (column.type === 'text' || column.type === 'number')
   )
     return typed
-  const current = valueOf(row, column.key)
+  const current = cellValue(row, column.key)
   const selects =
     column.type === 'list' ||
     column.type === 'reference' ||
@@ -835,7 +835,7 @@ function commitEdit(move: GridMove = STAY) {
   }
   delete errors[id]
   editing.value = false
-  if (!sameValue(parsed.value, valueOf(row, column.key))) {
+  if (!sameValue(parsed.value, cellValue(row, column.key))) {
     emit('cell-change', row, column.key, parsed.value)
   }
   moveActive(move)

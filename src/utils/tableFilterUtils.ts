@@ -2,6 +2,8 @@
  * Utility functions for table filtering and searching
  * Shared between ExecutionDataView and other table components
  */
+import type { DataFilter } from '@cornflow-ui/core/components/core/data-table/types'
+import { valuePassesFilter } from '@cornflow-ui/core/utils/dataTable'
 
 /**
  * Generate a cryptographically secure unique ID
@@ -38,13 +40,8 @@ export const isFrontendRowId = (value: unknown, tableKey: string): boolean => {
   )
 }
 
-export interface FilterCondition {
-  id: string
-  field: string
-  operator: string
-  value: string
-  value2?: string
-}
+/** A column filter: see `DataFilter`. */
+export type FilterCondition = DataFilter
 
 /**
  * Column type for filter UI: JSON Schema often uses `type: string` with `format: date` or `date-time`.
@@ -130,55 +127,11 @@ export const generateFilterId = (): string => {
   return generateSecureId('filter')
 }
 
-const applyIsBetweenFilter = (
-  raw: any,
-  a: any,
-  b: any,
-): boolean => {
-  const n = Number(raw)
-  const n1 = Number(a)
-  const n2 = Number(b)
-  if (!Number.isNaN(n) && !Number.isNaN(n1) && !Number.isNaN(n2) && String(raw).trim() !== '') {
-    return n >= n1 && n <= n2
-  }
-  const sv = String(raw ?? '')
-  const s1 = String(a ?? '').trim()
-  const s2 = String(b ?? '').trim()
-  if (!s1 && !s2) return true
-  if (s1 && s2) return sv >= s1 && sv <= s2
-  return s1 ? sv >= s1 : sv <= s2
-}
-
 /**
  * Apply a single filter to an item
  */
-export const applyFilterToItem = (
-  item: any,
-  filter: FilterCondition,
-): boolean => {
-  const fieldValue = item[filter.field]
-  const filterValue = filter.value
-  const filterValue2 = filter.value2
-
-  switch (filter.operator) {
-    case 'is':
-      return String(fieldValue) === String(filterValue)
-    case 'is_not':
-      return String(fieldValue) !== String(filterValue)
-    case 'contains':
-      return String(fieldValue)
-        .toLowerCase()
-        .includes(String(filterValue).toLowerCase())
-    case 'is_between':
-      return applyIsBetweenFilter(fieldValue, filterValue, filterValue2)
-    case 'has_any_value':
-      return (
-        fieldValue !== null && fieldValue !== undefined && fieldValue !== ''
-      )
-    default:
-      return true
-  }
-}
+export const applyFilterToItem = (item: any, filter: FilterCondition): boolean =>
+  valuePassesFilter(item[filter.field], filter)
 
 /**
  * Apply search term to an item

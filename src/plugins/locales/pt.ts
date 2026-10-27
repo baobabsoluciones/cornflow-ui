@@ -1575,6 +1575,7 @@ export default {
       desc: 'Ordenada por {column}, descendente',
     },
     pending: {
+      save: 'Guardar alterações',
       discard: 'Descartar',
       review: 'Rever alterações',
       summary: '1 alteração pendente | {count} alterações pendentes',
@@ -1634,6 +1635,9 @@ export default {
       overwriteConfirm: 'Substituir mesmo assim',
     },
     filters: {
+      dateRange: 'Datas',
+      anyDate: 'Qualquer data',
+      reset: 'Repor',
       add: 'Adicionar filtro',
       searchField: 'Pesquisar campo…',
       noField: 'Nenhum campo coincide',
@@ -1746,6 +1750,9 @@ export default {
       },
     },
     relaunch: {
+      changesIn: '1 alteração em {tables} | {count} alterações em {tables}',
+      action: 'Relançar',
+      review: 'Rever e relançar',
       title: 'Lançar uma nova execução',
       name: 'Nome da nova execução',
       nameRequired: 'Dê um nome à execução.',

@@ -28,15 +28,15 @@ export function useDataTableRows(
     filters: Ref<DataFilter[]>
     sort: Ref<DataSort | null>
     /** A cell's value; the pending one when the cell was edited. */
-    valueOf?: (row: DataRow, key: string) => unknown
+    cellValue?: (row: DataRow, key: string) => unknown
   },
 ) {
   const { t, locale } = useI18n()
-  const valueOf = state.valueOf ?? ((row: DataRow, key: string) => row[key])
+  const cellValue = state.cellValue ?? ((row: DataRow, key: string) => row[key])
 
   function matchesSearch(row: DataRow, text: string): boolean {
     return columns.value.some((column) => {
-      const shown = formatCellValue(valueOf(row, column.key), column, locale.value, t)
+      const shown = formatCellValue(cellValue(row, column.key), column, locale.value, t)
       return shown?.toLowerCase().includes(text) ?? false
     })
   }
@@ -48,14 +48,14 @@ export function useDataTableRows(
     return rows.value.filter(
       (row) =>
         (!text || matchesSearch(row, text)) &&
-        filters.every((filter) => valuePassesFilter(valueOf(row, filter.field), filter)),
+        filters.every((filter) => valuePassesFilter(cellValue(row, filter.field), filter)),
     )
   })
 
   const sorted = computed(() => {
     const sort = state.sort.value
     const column = sort ? columns.value.find((c) => c.key === sort.key) : undefined
-    return sortRows(filtered.value, sort, column, valueOf)
+    return sortRows(filtered.value, sort, column, cellValue)
   })
 
   return {

@@ -51,6 +51,12 @@ import {
 import { getAppParameters } from '@cornflow-ui/core/utils/appParameters'
 import { useFilePreProcessing } from '@cornflow-ui/core/composables/useFilePreProcessing'
 import { resolveTableColumnOrder } from '@cornflow-ui/core/utils/tableColumnOrder'
+import { cellText, columnsFromHeaders, sortRows } from '@cornflow-ui/core/utils/dataTable'
+import type {
+  DataFilter,
+  DataRowState,
+  DataSort,
+} from '@cornflow-ui/core/components/core/data-table/types'
 
 /** Plain (non-object) cell value produced when flattening spreadsheet cells. */
 type PlainCellValue = string | number | boolean
@@ -262,6 +268,8 @@ export function useTableData(
   const debouncedSearchValue = ref('')
   let clientSearchDebounceTimer: ReturnType<typeof setTimeout> | null = null
   const activeFilters = ref<any[]>([])
+  /** Column order picked in the table; applied to the whole filtered set before windowing. */
+  const sort = ref<DataSort | null>(null)
   /** Date range filter configs from get_list.parameters (datetime_gte + datetime_lte with symmetric). */
   const apiDateRangeFilterConfigs = computed(() => {
     if (!tableConfig.value?.get_list) return []
@@ -409,6 +417,42 @@ export function useTableData(
     )
   })
 
+  /** A list filter with a single value is sent as "is" that value. */
+  const asServerFilter = (filter: DataFilter): DataFilter =>
+    filter.operator === 'is_any_of' && (filter.values ?? []).length === 1
+      ? { ...filter, operator: 'is', value: cellText(filter.values?.[0]) }
+      : filter
+
+  /**
+   * Whether the API filters this condition: a get_list param filters its column and takes its
+   * operator. The rest are applied to the loaded rows.
+   */
+  const isFilterSentToServer = (filter: DataFilter): boolean => {
+    if (!serverFilteredFields.value.has(filter.field)) return false
+    const getList = tableConfig.value?.get_list
+    if (!getList) return false
+    const condition = asServerFilter(filter)
+    return getGetListQueryParameters(getList).some((p) => {
+      const info = p.filter_info as { filters_on?: string; filter_type?: string } | undefined
+      if (!p.is_filter || info?.filters_on !== filter.field) return false
+      const ft = (info.filter_type ?? '').toLowerCase()
+      let role: 'single' | 'range_gte' | 'range_lte' = 'single'
+      if (ft.endsWith('_gte')) role = 'range_gte'
+      else if (ft.endsWith('_lte')) role = 'range_lte'
+      return filterTypeMatchesUiOperator(ft, condition.operator, role)
+    })
+  }
+
+  /** The columns of the table, for sorting by type. */
+  const sortColumn = computed(() => {
+    const current = sort.value
+    if (!current) return undefined
+    return columnsFromHeaders(dynamicHeaders.value).find((c) => c.key === current.key)
+  })
+
+  const sortedRows = <T extends Record<string, any>>(rows: T[]): T[] =>
+    sortRows(rows, sort.value, sortColumn.value, (row, key) => row[key])
+
   /** When set, search text is sent as a get_list query param (not applied client-side). */
   const globalSearchParamName = computed(() => {
     const getList = tableConfig.value?.get_list
@@ -419,18 +463,14 @@ export function useTableData(
   // Filtered items: apply only client-side search and filters for fields not sent to the API
   const filteredItems = computed(() => {
     const clientFilters = (activeFilters.value as FilterCondition[]).filter(
-      (f) => !serverFilteredFields.value.has(f.field),
+      (f) => !isFilterSentToServer(f),
     )
     // Read the debounced search value so each keystroke doesn't re-filter
     // the whole `items` array (O(n*m) over filters per keystroke).
     const clientSearch = globalSearchParamName.value
       ? ''
       : debouncedSearchValue.value
-    return applyFiltersAndSearchUtil(
-      items.value,
-      clientSearch,
-      clientFilters,
-    )
+    return sortedRows(applyFiltersAndSearchUtil(items.value, clientSearch, clientFilters))
   })
 
   /**
@@ -1026,10 +1066,11 @@ export function useTableData(
     const filtersOn = filterInfo?.filters_on
     if (!p.is_filter || filtersOn == null) return
 
-    const filter = activeFilters.value.find(
-      (f: FilterCondition) => f.field === filtersOn,
+    const active = activeFilters.value.find(
+      (f: FilterCondition) => f.field === filtersOn && isFilterSentToServer(f),
     )
-    if (!filter) return
+    if (!active) return
+    const filter = asServerFilter(active)
 
     const filterType = filterInfo?.filter_type ?? ''
     const ft = filterType.toLowerCase()
@@ -1628,10 +1669,12 @@ export function useTableData(
       return []
     }
 
-    return applyFiltersAndSearchUtil(
-      baseItems,
-      debouncedSearchValue.value,
-      activeFilters.value as FilterCondition[],
+    return sortedRows(
+      applyFiltersAndSearchUtil(
+        baseItems,
+        debouncedSearchValue.value,
+        activeFilters.value as FilterCondition[],
+      ),
     )
   })
 
@@ -2218,7 +2261,7 @@ export function useTableData(
     return false
   }
 
-  return {
+  const api = {
     // Dynamic data that switches automatically
     items: dynamicItems,
     headers: dynamicHeaders,
@@ -2364,6 +2407,13 @@ export function useTableData(
       const tableTitle = tableConfig.value?.title || rawKey
 
       tableChanges.setTableTitle(keyToUse, tableTitle)
+      if (cellText(rowId).startsWith('create-')) {
+        tableChanges.updateCreateField(keyToUse, cellText(rowId), fieldKey, newValue)
+        items.value = items.value.map((item: any) =>
+          item.id === rowId ? { ...item, [fieldKey]: newValue } : item,
+        )
+        return
+      }
       tableChanges.recordChange(
         keyToUse,
         rowId,
@@ -3082,5 +3132,53 @@ export function useTableData(
       await loadData()
     },
     cancelLoadData,
+  }
+
+  const selectRows = (ids: Array<string | number>) => {
+    const wanted = new Set(ids.map((id) => cellText(id)))
+    selectedItems.value = dynamicItems.value.filter((item: any) => wanted.has(cellText(item.id)))
+  }
+
+  return {
+    ...api,
+    sort,
+    /** The filters of the table; reloads when the ones the API applies change. */
+    setFilters: (next: DataFilter[]) => {
+      const sent = (filters: DataFilter[]) =>
+        JSON.stringify(filters.filter(isFilterSentToServer).map(asServerFilter))
+      const reload = sent(activeFilters.value) !== sent(next)
+      activeFilters.value = next
+      if (reload) loadData()
+    },
+    /** The pending state of a row: added, deleted or with edited cells. */
+    getRowState: (item: any): DataRowState | undefined => {
+      if (!enableExcelMode.value || !item) return undefined
+      const storageKey = normalizeTableKeyForStorage(tableKey.value)
+      const rowClass = tableChanges.getRowClass(storageKey, item)
+      if (rowClass === 'row-deleted') return 'deleted'
+      if (rowClass === 'row-new') return 'new'
+      return tableChanges.isRowModified(storageKey, item.id) ? 'modified' : undefined
+    },
+    /** Adds a row: staged as a pending change in Excel mode, created at once otherwise. */
+    addRow: (values: Record<string, unknown>) => {
+      formData.value = { ...values }
+      isEditing.value = false
+      return api.handleSaveItem()
+    },
+    /** Deletes rows: marked as pending deletes in Excel mode, deleted at once otherwise. */
+    deleteRows: (ids: Array<string | number>) => {
+      selectRows(ids)
+      return api.handleConfirmBulkDelete()
+    },
+    /** Takes back the pending deletion of rows. */
+    restoreRows: (ids: Array<string | number>) => {
+      const storageKey = normalizeTableKeyForStorage(tableKey.value)
+      ids.forEach((id) => tableChanges.revertDelete(storageKey, id))
+    },
+    /** Sets the same values in several rows, as pending changes. */
+    bulkEditRows: (ids: Array<string | number>, values: Record<string, unknown>) => {
+      selectRows(ids)
+      api.handleBulkEdit(values)
+    },
   }
 }
