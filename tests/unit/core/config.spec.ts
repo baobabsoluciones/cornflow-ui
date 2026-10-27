@@ -32,7 +32,6 @@ const resetConfig = (config: any) => {
   config.useHashMode = false
   config.defaultLanguage = ''
   config.isDeveloperMode = false
-  config.enableSignup = false
   config.valuesJsonPath = '/values.json'
   config.auth = {
     type: 'cornflow',
@@ -109,7 +108,6 @@ describe('Config Module Integration', () => {
       expect(typeof config.useHashMode).toBe('boolean')
       expect(typeof config.defaultLanguage).toBe('string')
       expect(typeof config.isDeveloperMode).toBe('boolean')
-      expect(typeof config.enableSignup).toBe('boolean')
       
       // Test auth structure
       expect(config.auth).toHaveProperty('type')
@@ -165,7 +163,6 @@ describe('Config Module Integration', () => {
       expect(typeof config.isStagingEnvironment).toBe('boolean')
       expect(typeof config.useHashMode).toBe('boolean')
       expect(typeof config.isDeveloperMode).toBe('boolean')
-      expect(typeof config.enableSignup).toBe('boolean')
     })
   })
 

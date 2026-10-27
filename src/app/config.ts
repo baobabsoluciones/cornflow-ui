@@ -205,6 +205,9 @@ export type MasterTableMatchingConfig = {
  * Each field maps to a cell in instance.data via `instancePath` (`tableName.column`).
  * Used in `etl.alternativeParameterFields` in `src/app/config.ts`.
  */
+/** Layout of the sign-in page: the login background behind a card, or a brand panel beside the form. */
+export type LoginLayout = 'photo' | 'brand'
+
 export interface LoadInstanceAlternativeParamField {
   /** Stable id for the form model (unique within the list). */
   id: string
@@ -257,6 +260,17 @@ const createAppConfig = () => ({
       },
       showTablesWithoutSchema: false,
       showOpenIdUsername: true,
+      /**
+       * Sign-in page. `layout`: 'photo' (the app's login background, the form on a card) or
+       * 'brand' (a panel in the primary colour, with the company logo, the app name and
+       * `description`, beside the form). `subtitle` goes under the title; without it the page
+       * shows a generic one. Both are texts or i18n keys.
+       */
+      login: {
+        layout: 'photo' as LoginLayout,
+        subtitle: '',
+        description: '',
+      },
       /**
        * Optional columns of the project executions table. `showSolver` is the odd one out:
        * the solver column is shown unless it is explicitly set to false, so deployments with

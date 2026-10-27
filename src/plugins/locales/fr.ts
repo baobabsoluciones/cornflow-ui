@@ -290,21 +290,19 @@ export default {
     deleteExecution: 'Delete execution',
   },
   logIn: {
-    subtitle: 'Connectez-vous pour commencer !',
-    azure_button: 'Se connecter avec Azure',
-    cognito_button: 'Se connecter avec AWS',
     username_textfield_label: "Nom d'utilisateur",
     password_textfield_label: 'Mot de passe',
     button_label: 'Se connecter',
-    question: 'Nouveau sur Cornflow ?',
-    alternative: "S'inscrire",
     snackbar_message_success: 'Connexion réussie',
     snackbar_message_error_server: 'Erreur du serveur',
     snackbar_message_error_auth: 'Identifiants incorrects',
-    processing_auth: "Traitement de l'authentification...",
-    redirecting:
-      "Redirection vers l'authentification externe... Si la redirection ne se produit pas automatiquement, veuillez contacter le support technique pour obtenir de l'aide.",
-    session_expired: 'Votre session a expiré. Veuillez vous reconnecter.',
+    default_subtitle: 'Connectez-vous pour continuer.',
+    powered_by: 'Développé par baobab soluciones',
+    show_password: 'Afficher le mot de passe',
+    hide_password: 'Masquer le mot de passe',
+    language: 'Langue',
+    google_not_configured: "L'authentification Google n'est pas configurée",
+    microsoft_not_configured: "L'authentification Microsoft n'est pas configurée",
   },
   logOut: {
     title: 'Déconnexion',
@@ -312,33 +310,8 @@ export default {
     accept: 'Déconnectez-moi',
     cancel: 'Annuler',
   },
-  signUp: {
-    subtitle: 'Entrez vos informations pour vous inscrire',
-    username_textfield_label: "Nom d'utilisateur",
-    email_textfield_label: 'Adresse e-mail',
-    password_textfield_label: 'Mot de passe',
-    password_confirmation_textfield_label: 'Confirmez votre mot de passe',
-    button_label: "S'inscrire",
-    question: 'Déjà membre ?',
-    alternative: 'Se connecter',
-    snackbar_message_success:
-      'Inscription réussie. Vous pouvez maintenant vous connecter.',
-    snackbar_message_error: "Une erreur s'est produite, veuillez réessayer.",
-  },
   rules: {
     required: 'Obligatoire',
-    valid_email: 'Veuillez entrer une adresse e-mail valide.',
-    password_length:
-      'Le mot de passe doit contenir au moins {length} caractères.',
-    password_capital_letters:
-      'Le mot de passe doit contenir au moins 1 lettre majuscule',
-    password_lower_case_letters:
-      'Le mot de passe doit contenir au moins 1 lettre minuscule',
-    password_numbers: 'Le mot de passe doit contenir au moins 1 chiffre',
-    password_special_characters:
-      "Le mot de passe doit contenir au moins 1 caractère spécial (!?@#$%^&*)(+=.<>{}[],/¿¡:;'|~`_-)",
-    password_no_space: "Le mot de passe ne peut pas contenir d'espaces",
-    password_match: 'Les mots de passe ne correspondent pas',
   },
   versionHistory: {
     filterBar: {

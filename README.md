@@ -914,7 +914,6 @@ VITE_APP_IS_STAGING_ENVIRONMENT=false      # true/false (also accepts 1/0)
 VITE_APP_USE_HASH_MODE=false               # true/false (also accepts 1/0)
 VITE_APP_DEFAULT_LANGUAGE=en               # en, es, fr
 VITE_APP_IS_DEVELOPER_MODE=false           # true/false (also accepts 1/0)
-VITE_APP_ENABLE_SIGNUP=false               # true/false (also accepts 1/0)
 
 # Authentication configuration
 VITE_APP_AUTH_TYPE=cornflow                # Options: cornflow, azure, cognito
@@ -941,7 +940,6 @@ Copy `public/values.template.json` to `public/values.json` and configure your va
   "useHashMode": false,
   "defaultLanguage": "en",
   "isDeveloperMode": false,
-  "enableSignup": false,
   "auth_type": "cornflow",
   "cognito": {
     "region": "your-region",
@@ -1045,6 +1043,7 @@ This file contains **internal application-specific configuration** that is part 
 | `executionFilters`            | `ExecutionFilter[]` | Filters of the execution history, fed by frontend-automation tables. Empty means date filters only. See [Execution history filters](#execution-history-filters-optional) |
 | `executionsListEndpoint`      | `{ path, isExternal }` \| `null` | Endpoint of the executions list; `null` means Cornflow's `GET /execution/` |
 | `schemaLabels`                | `Record<string, string>` | Text of each DAG in the module selector, by DAG name. See [Several DAGs](#several-dags-in-one-application) |
+| `login`                       | `{ layout, subtitle, description }` | Sign-in page: `layout` is `'photo'` (default) or `'brand'`. See [Sign-in page](#sign-in-page) |
 
 #### showExtraProjectExecutionColumns
 
@@ -1125,7 +1124,8 @@ The colour gives the tone: `green` success, `orange` warning, `red` danger, `pur
 
 Inside the app folder, there are several changes that can be done to configurate your client project. This folder is meant to be for all customizations done for the client.
 
-- `assets/logo`: This directory should contain the logo images for the application. The name should be the same as the default ones (logo.png and full_logo.png)
+- `assets/logo`: This directory should contain the logo images for the application. The name should be the same as the default ones (logo.png and full_logo.png; company_logo.png, light on dark, for the `brand` sign-in page)
+- `assets/login_background.png`: the background of the `photo` sign-in page (see [Sign-in page](#sign-in-page)).
 - `app/assets/style/variables.css`: This file should define the main colors of the application. Mantain the variable names and only change the colors. The core's design tokens and the Vuetify theme take their colours from these variables (see [Design tokens](#design-tokens)).
 - `models`: This directory should define the instance, solution, experiment, and execution models for the application. It always extends the main classes but methods can be overwritten.
 - `views`: This directory should contain all the custom views needed for the application.
@@ -1211,7 +1211,6 @@ It's important not to edit any other file or folders. Only the folders, files an
 | **Hash Mode**           | Router mode (hash vs history) | `VITE_APP_USE_HASH_MODE`          | `useHashMode`          | `true`/`false` (accepts `1`/`0`) |
 | **Default Language**    | UI language                   | `VITE_APP_DEFAULT_LANGUAGE`       | `defaultLanguage`      | A visible core language (`en`, `es`, `fr`) |
 | **Developer Mode**      | Enable dev features           | `VITE_APP_IS_DEVELOPER_MODE`      | `isDeveloperMode`      | `true`/`false` (accepts `1`/`0`) |
-| **Enable Signup**       | Show registration option      | `VITE_APP_ENABLE_SIGNUP`          | `enableSignup`         | `true`/`false` (accepts `1`/`0`) |
 | **External App**        | API URL prefix mode           | `VITE_APP_EXTERNAL_APP`           | `hasExternalApp`       | `true`/`false` (accepts `1`/`0`) |
 | **Staging Environment** | Show staging banner           | `VITE_APP_IS_STAGING_ENVIRONMENT` | `isStagingEnvironment` | `true`/`false` (accepts `1`/`0`) |
 
@@ -1297,6 +1296,35 @@ VITE_APP_AUTH_USER_POOL_ID=your_cognito_user_pool_id
 VITE_APP_AUTH_DOMAIN=your_cognito_domain
 VITE_APP_AUTH_PROVIDERS=google,microsoft
 ```
+
+#### Sign-in page
+
+The sign-in page has two layouts, picked with `login.layout` in the app config (`core.parameters`):
+
+| `layout` | What it shows |
+| --- | --- |
+| `photo` (default) | `assets/login_background.png` fills the window. The form sits on a white card on the right; the app's full logo (`full_logo.png`) and the product mark sit on a small card at the bottom left |
+| `brand` | A panel in the app's primary colour on the left, with the company logo (`company_logo.png`, shown in white), the app name and `login.description`; the form on the right |
+
+```ts
+parameters: {
+  login: {
+    layout: 'brand',
+    subtitle: 'login.subtitle', // under the title; an i18n key or the text itself
+    description: 'login.description', // brand layout only; an i18n key or the text itself
+  },
+}
+```
+
+- The title is the app name (`VITE_APP_NAME` / `name`), its first word in bold.
+- Without `subtitle` the page says "Sign in to continue."; without `description` the brand panel
+  shows none.
+- The form always signs in against Cornflow. The Microsoft and Google buttons are always there and
+  go through the deployment's external auth (Azure, or Cognito with `VITE_APP_AUTH_PROVIDERS`); on a
+  deployment without them configured, picking one says so.
+- The footer offers the app's languages (`languages` in the app config) when it has more than one.
+- **Location**: `components/SignInLanding.vue` (the layouts), `components/sign-in/SignInForm.vue`,
+  `components/sign-in/SignInLanguages.vue` and `composables/sign-in/useSignIn.ts`.
 
 ### Dashboard preferences
 
