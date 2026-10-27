@@ -10,6 +10,8 @@ import CoreEmptyState from '@cornflow-ui/core/components/core/CoreEmptyState.vue
 import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
 import CoreMenu from '@cornflow-ui/core/components/core/CoreMenu.vue'
 import CoreProgressBar from '@cornflow-ui/core/components/core/CoreProgressBar.vue'
+import CoreSelect from '@cornflow-ui/core/components/core/CoreSelect.vue'
+import CoreTextField from '@cornflow-ui/core/components/core/CoreTextField.vue'
 import CoreTimeline from '@cornflow-ui/core/components/core/CoreTimeline.vue'
 import CoreConfirmDialog from '@cornflow-ui/core/components/core/table/CoreConfirmDialog.vue'
 
@@ -433,5 +435,95 @@ describe('CoreConfirmDialog', () => {
       document.body.querySelector('.core-confirm-dialog__loading-message')
         ?.textContent,
     ).toContain('Deleting…')
+  })
+})
+
+describe('CoreTextField', () => {
+  test('gives the text as it is typed, and the attributes go to the input', async () => {
+    const wrapper = mount(CoreTextField, {
+      props: { modelValue: 'Plan', placeholder: 'Name' },
+      attrs: { id: 'name', class: 'wide', 'data-testid': 'name-field' },
+    })
+    const input = wrapper.find('input')
+
+    expect(input.element.value).toBe('Plan')
+    expect(input.attributes()).toMatchObject({ id: 'name', placeholder: 'Name', 'data-testid': 'name-field' })
+    expect(wrapper.classes()).toEqual(expect.arrayContaining(['core-text-field', 'wide']))
+
+    await input.setValue('Plan B')
+    expect(wrapper.emitted('update:modelValue')).toEqual([['Plan B']])
+  })
+
+  test('a number field gives numbers, whole ones with integer, and null when emptied', async () => {
+    const decimal = mount(CoreTextField, { props: { type: 'number' } })
+    await decimal.find('input').setValue('2.5')
+    await decimal.find('input').setValue('')
+    expect(decimal.emitted('update:modelValue')).toEqual([[2.5], [null]])
+
+    const whole = mount(CoreTextField, { props: { type: 'number', integer: true } })
+    expect(whole.find('input').attributes('step')).toBe('1')
+    await whole.find('input').setValue('7')
+    expect(whole.emitted('update:modelValue')).toEqual([[7]])
+  })
+
+  test('with lazy it gives the value when the field changes, not on every keystroke', async () => {
+    const wrapper = mount(CoreTextField, { props: { lazy: true } })
+    const input = wrapper.find('input')
+
+    input.element.value = 'abc'
+    await input.trigger('input')
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+
+    await input.trigger('change')
+    expect(wrapper.emitted('update:modelValue')).toEqual([['abc']])
+  })
+
+  test('shows its suffix and the append slot, marks itself invalid and can be several lines', () => {
+    const field = mount(CoreTextField, {
+      props: { suffix: 'sec', invalid: true, size: 'large' },
+      slots: { append: '<button class="eye">Show</button>' },
+    })
+    expect(field.find('.core-text-field__suffix').text()).toBe('sec')
+    expect(field.find('.eye').exists()).toBe(true)
+    expect(field.classes()).toEqual(expect.arrayContaining(['is-invalid', 'core-text-field--large']))
+    expect(field.find('input').attributes('aria-invalid')).toBe('true')
+
+    const multiline = mount(CoreTextField, { props: { multiline: true, rows: 3, modelValue: 'Notes' } })
+    expect(multiline.find('textarea').element.value).toBe('Notes')
+    expect(multiline.find('textarea').attributes('rows')).toBe('3')
+  })
+})
+
+describe('CoreSelect', () => {
+  const options = [
+    { value: 1, label: 'One' },
+    { value: true, label: 'Yes' },
+    { value: 'mip', label: 'MIP' },
+  ]
+
+  test('shows the picked option and gives the value of the one picked, of any type', async () => {
+    const wrapper = mount(CoreSelect, { props: { modelValue: true, options } })
+    const select = wrapper.find('select')
+
+    expect(select.element.value).toBe('1')
+    expect(wrapper.classes()).not.toContain('is-empty')
+
+    await select.setValue('0')
+    await select.setValue('2')
+    expect(wrapper.emitted('update:modelValue')).toEqual([[1], ['mip']])
+  })
+
+  test('shows the placeholder while nothing is picked; clearable lets it be picked back', async () => {
+    const fixed = mount(CoreSelect, { props: { options, placeholder: 'Choose…' } })
+    expect(fixed.classes()).toContain('is-empty')
+    expect(fixed.find('option').text()).toBe('Choose…')
+    expect(fixed.find('option').attributes('disabled')).toBeDefined()
+
+    const clearable = mount(CoreSelect, {
+      props: { options, modelValue: 1, placeholder: 'Not set', clearable: true },
+    })
+    expect(clearable.find('option').attributes('disabled')).toBeUndefined()
+    await clearable.find('select').setValue('')
+    expect(clearable.emitted('update:modelValue')).toEqual([[null]])
   })
 })
