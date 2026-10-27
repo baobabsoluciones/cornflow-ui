@@ -51,8 +51,9 @@
     </CatalogBlock>
 
     <CatalogBlock
-      name="ExecutionList · ExecutionListItem"
+      name="ExecutionList · ExecutionListItem · ExecutionPreview"
       api="groups · selectedId · isCurrentPlan · loadingIds · downloadingIds · preview → select, load, excel"
+      note="Rest the pointer on a row that is not selected: its ExecutionPreview opens beside the list."
     >
       <div class="list-frame">
         <ExecutionList
