@@ -112,6 +112,10 @@ async function pointer(wrapper: any, type: 'pointerenter' | 'pointerleave', poin
   await pause(250)
 }
 
+/** The confirm button of one of the menu's confirmation dialogs, which open on the body. */
+const confirmButton = (testId: string) =>
+  document.body.querySelector<HTMLButtonElement>(`[data-testid="${testId}"] .core-dialog__actions button:last-child`)!
+
 async function mountDrawer(path = '/history-execution') {
   const router = makeRouter()
   await router.push(path)
@@ -245,7 +249,7 @@ describe('AppDrawer', () => {
     await flushPromises()
     expect(state.store.setActiveSchema).not.toHaveBeenCalled()
 
-    document.body.querySelector<HTMLButtonElement>('[data-testid="app-drawer-module-confirm"]')!.click()
+    confirmButton('app-drawer-module-dialog').click()
     await flushPromises()
     expect(state.store.setActiveSchema).toHaveBeenCalledWith('stock_dag')
   })
@@ -372,7 +376,7 @@ describe('AppDrawer', () => {
     ;({ wrapper, router } = await mountDrawer())
     await wrapper.find('[data-testid="app-drawer-logout"]').trigger('click')
     await flushPromises()
-    document.body.querySelector<HTMLButtonElement>('[data-testid="app-drawer-logout-confirm"]')!.click()
+    confirmButton('app-drawer-logout-dialog').click()
     await flushPromises()
     expect(auth.logout).toHaveBeenCalled()
     expect(router.currentRoute.value.path).toBe('/sign-in')
@@ -386,7 +390,7 @@ describe('AppDrawer', () => {
     ;({ wrapper } = await mountDrawer())
     await wrapper.find('[data-testid="app-drawer-logout"]').trigger('click')
     await flushPromises()
-    document.body.querySelector<HTMLButtonElement>('[data-testid="app-drawer-logout-confirm"]')!.click()
+    confirmButton('app-drawer-logout-dialog').click()
     await flushPromises()
     expect(snackbar).toHaveBeenCalledWith('logOut.snackbar_message_error', 'error')
   })
