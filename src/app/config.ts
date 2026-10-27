@@ -2,6 +2,10 @@ import { Instance } from '@/app/models/Instance.ts'
 import { Solution } from '@/app/models/Solution.ts'
 import { Experiment } from '@/app/models/Experiment.ts'
 import type { RouteRecordRaw } from 'vue-router'
+import type {
+  ExecutionFilter,
+  ExecutionsListEndpoint,
+} from '@cornflow-ui/core/types/executionFilters'
 import type { SchemaOverrides } from '@cornflow-ui/core/utils/schemaOverrides'
 
 /**
@@ -289,6 +293,21 @@ const createAppConfig = () => ({
       useBackendExecutionFilesDownload: false,
 
       showDashboardMainView: false,
+
+      /**
+       * Filters of the executions history (e.g. the plant), next to its date filters. Each one
+       * offers "All" and the rows of a frontend-automation table (`joinFrom: 'plants.name'`), and
+       * sends the picked row's `id` to the executions list. Needs frontend automation. Empty means
+       * date filters only. See README "Executions history filters".
+       */
+      executionFilters: [] as ExecutionFilter[],
+
+      /**
+       * Where the executions list is requested, e.g. `{ path: '/executions/', isExternal: true }`
+       * for a backend that filters it by the executions history filters. `null` means Cornflow's
+       * `GET /execution/`.
+       */
+      executionsListEndpoint: null as ExecutionsListEndpoint | null,
 
       /**
        * Text of each DAG in the module selector, by DAG name (literal text or i18n key). Only used

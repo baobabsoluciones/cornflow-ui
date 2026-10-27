@@ -46,16 +46,15 @@ const mockGeneralStore = {
           ]
         },
         {
-          key: 'eParametroField',
+          key: 'sourcedField',
           type: 'number',
-          title: 'config.eParametro.title',
-          source: 'eParametros',
+          title: 'config.sourcedField.title',
+          source: 'parameters',
           param: 'test_param'
         }
       ]
     }
   },
-  fetchParametro: vi.fn()
 }
 
 vi.mock('@cornflow-ui/core/stores/general', () => ({
@@ -74,7 +73,7 @@ const mockT = vi.fn((key) => {
     'config.description.title': 'Description',
     'config.description.placeholder': 'Enter description',
     'config.solver.title': 'Solver',
-    'config.eParametro.title': 'E-Parameter Field'
+    'config.sourcedField.title': 'Sourced Field'
   }
   return translations[key] || key
 })
@@ -108,7 +107,6 @@ describe('CreateExecutionConfigParams', () => {
   beforeEach(() => {
     vuetify = createVuetify()
     vi.clearAllMocks()
-    mockGeneralStore.fetchParametro.mockResolvedValue('500')
   })
 
   afterEach(() => {
@@ -165,7 +163,7 @@ describe('CreateExecutionConfigParams', () => {
       wrapper = createWrapper()
       
       // Should render all 6 fields from mock config
-      expect(wrapper.findAll('[data-testid="input-field"]')).toHaveLength(4) // number, float, text, eParametro fields
+      expect(wrapper.findAll('[data-testid="input-field"]')).toHaveLength(4) // number, float, text, sourced fields
       expect(wrapper.findAll('.v-switch')).toHaveLength(1) // boolean field
       expect(wrapper.findAll('.v-select')).toHaveLength(1) // select field
     })
@@ -269,7 +267,7 @@ describe('CreateExecutionConfigParams', () => {
       
       const emittedEvents = wrapper.emitted('update:modelValue')
       expect(emittedEvents).toBeTruthy()
-      expect(emittedEvents![0][0]).toEqual({
+      expect(emittedEvents!.at(-1)![0]).toEqual({
         config: { description: 'New description' }
       })
     })
@@ -282,7 +280,7 @@ describe('CreateExecutionConfigParams', () => {
       
       const emittedEvents = wrapper.emitted('update:modelValue')
       expect(emittedEvents).toBeTruthy()
-      expect(emittedEvents![0][0]).toEqual({
+      expect(emittedEvents!.at(-1)![0]).toEqual({
         config: { timeout: 300 }
       })
     })
@@ -294,7 +292,7 @@ describe('CreateExecutionConfigParams', () => {
       
       const emittedEvents = wrapper.emitted('update:modelValue')
       expect(emittedEvents).toBeTruthy()
-      expect(emittedEvents![0][0]).toEqual({
+      expect(emittedEvents!.at(-1)![0]).toEqual({
         config: { maxIterations: 1500.25 }
       })
     })
@@ -308,7 +306,7 @@ describe('CreateExecutionConfigParams', () => {
       
       const emittedEvents = wrapper.emitted('update:modelValue')
       expect(emittedEvents).toBeTruthy()
-      expect(emittedEvents![0][0]).toEqual({
+      expect(emittedEvents!.at(-1)![0]).toEqual({
         config: { solver: 'gurobi' }
       })
     })
@@ -319,34 +317,34 @@ describe('CreateExecutionConfigParams', () => {
       wrapper = createWrapper()
       
       wrapper.vm.handleFieldUpdate('timeout', '500')
-      expect(wrapper.emitted('update:modelValue')![0][0].config.timeout).toBe(500)
+      expect(wrapper.emitted('update:modelValue')!.at(-1)![0].config.timeout).toBe(500)
       
       wrapper.vm.handleFieldUpdate('timeout', '')
-      expect(wrapper.emitted('update:modelValue')![1][0].config.timeout).toBe(null)
+      expect(wrapper.emitted('update:modelValue')!.at(-1)![0].config.timeout).toBe(null)
     })
 
     test('parses float values correctly', () => {
       wrapper = createWrapper()
       
       wrapper.vm.handleFieldUpdate('maxIterations', '1000.75')
-      expect(wrapper.emitted('update:modelValue')![0][0].config.maxIterations).toBe(1000.75)
+      expect(wrapper.emitted('update:modelValue')!.at(-1)![0].config.maxIterations).toBe(1000.75)
       
       wrapper.vm.handleFieldUpdate('maxIterations', '')
-      expect(wrapper.emitted('update:modelValue')![1][0].config.maxIterations).toBe(null)
+      expect(wrapper.emitted('update:modelValue')!.at(-1)![0].config.maxIterations).toBe(null)
     })
 
     test('handles non-numeric field values as strings', () => {
       wrapper = createWrapper()
       
       wrapper.vm.handleFieldUpdate('description', 'Test value')
-      expect(wrapper.emitted('update:modelValue')![0][0].config.description).toBe('Test value')
+      expect(wrapper.emitted('update:modelValue')!.at(-1)![0].config.description).toBe('Test value')
     })
 
     test('handles unknown field types gracefully', () => {
       wrapper = createWrapper()
       
       wrapper.vm.handleFieldUpdate('unknownField', 'some value')
-      expect(wrapper.emitted('update:modelValue')![0][0].config.unknownField).toBe('some value')
+      expect(wrapper.emitted('update:modelValue')!.at(-1)![0].config.unknownField).toBe('some value')
     })
   })
 
@@ -374,7 +372,7 @@ describe('CreateExecutionConfigParams', () => {
       wrapper.vm.fieldValues = { timeout: 600 }
       
       expect(wrapper.emitted('update:modelValue')).toBeTruthy()
-      expect(wrapper.emitted('update:modelValue')![0][0]).toEqual({
+      expect(wrapper.emitted('update:modelValue')!.at(-1)![0]).toEqual({
         config: { timeout: 600 }
       })
     })
@@ -398,39 +396,12 @@ describe('CreateExecutionConfigParams', () => {
       )
     })
 
-    test('fetches eParametros values on mount', async () => {
-      mockGeneralStore.fetchParametro.mockResolvedValue('750')
-      wrapper = createWrapper()
+    test('a field read from the file keeps the value already in the config', async () => {
+      wrapper = createWrapper({ modelValue: { config: { sourcedField: 750 } } })
       await nextTick()
-      
-      expect(mockGeneralStore.fetchParametro).toHaveBeenCalledWith('test_param')
-      
-      // Wait for async initialization
-      await new Promise(resolve => setTimeout(resolve, 0))
-      
-      const emittedEvents = wrapper.emitted('update:modelValue')
-      expect(emittedEvents).toBeTruthy()
-      
-      const finalEmit = emittedEvents![emittedEvents!.length - 1][0]
-      expect(finalEmit.config.eParametroField).toBe(750)
-    })
 
-    test('handles eParametros fetch errors gracefully', async () => {
-      mockGeneralStore.fetchParametro.mockRejectedValue(new Error('Fetch failed'))
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      
-      wrapper = createWrapper()
-      await nextTick()
-      
-      // Wait for async initialization
-      await new Promise(resolve => setTimeout(resolve, 0))
-      
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Error fetching parameter test_param:',
-        expect.any(Error)
-      )
-      
-      consoleErrorSpy.mockRestore()
+      const finalEmit = wrapper.emitted('update:modelValue')!.at(-1)![0] as any
+      expect(finalEmit.config.sourcedField).toBe(750)
     })
 
     test('preserves existing config values during initialization', async () => {
@@ -550,6 +521,104 @@ describe('CreateExecutionConfigParams', () => {
     })
   })
 
+  describe("Layout 'form'", () => {
+    const originalFields = mockGeneralStore.appConfig.parameters.configFields
+    afterEach(() => {
+      mockGeneralStore.appConfig.parameters.configFields = originalFields
+    })
+
+    test('gives each field a row with its name, and tags the ones read from the file', () => {
+      wrapper = createWrapper({ layout: 'form' })
+
+      const timeout = wrapper.find('[data-testid="config-field-timeout"]')
+      expect(timeout.find('.config-form__label').text()).toBe('Timeout')
+      expect(timeout.find('.config-form__source').exists()).toBe(false)
+
+      const fromFile = wrapper.find('[data-testid="config-field-sourcedField"]')
+      expect(fromFile.find('.config-form__source').text()).toBe('configParams.fromFile')
+    })
+
+    test('shows a select with a few options as cards, and picking one sets the value', async () => {
+      wrapper = createWrapper({ layout: 'form' })
+
+      const solver = wrapper.find('[data-testid="config-field-solver"]')
+      expect(solver.findAll('.option-card').map((card: any) => card.text())).toEqual([
+        'CPLEX',
+        'Gurobi',
+      ])
+
+      await solver.find('[data-testid="option-card-gurobi"]').trigger('click')
+
+      const lastEmit = wrapper.emitted('update:modelValue')!.at(-1)![0] as any
+      expect(lastEmit.config.solver).toBe('gurobi')
+    })
+
+    test('shows a select with more options as a dropdown', () => {
+      mockGeneralStore.appConfig.parameters.configFields = [
+        {
+          key: 'region',
+          type: 'select',
+          title: 'Region',
+          options: ['a', 'b', 'c', 'd'].map((value) => ({ value, label: value })),
+        },
+      ] as any
+      wrapper = createWrapper({ layout: 'form' })
+
+      const region = wrapper.find('[data-testid="config-field-region"]')
+      expect(region.find('.option-card').exists()).toBe(false)
+      expect(region.find('.v-select').exists()).toBe(true)
+    })
+  })
+
+  describe('Options from a frontend-automation table', () => {
+    const originalFields = mockGeneralStore.appConfig.parameters.configFields
+    const plantField = {
+      key: 'plant_id',
+      type: 'select',
+      title: 'Plant',
+      preEtl: true,
+      joinFrom: 'plants.name',
+    }
+    const store = mockGeneralStore as typeof mockGeneralStore & {
+      fetchTableOptions?: ReturnType<typeof vi.fn>
+    }
+
+    beforeEach(() => {
+      mockGeneralStore.appConfig.parameters.configFields = [plantField] as any
+      store.fetchTableOptions = vi.fn().mockResolvedValue([
+        { value: 1, title: 'North' },
+        { value: 2, title: 'South' },
+      ])
+    })
+
+    afterEach(() => {
+      mockGeneralStore.appConfig.parameters.configFields = originalFields
+      delete store.fetchTableOptions
+    })
+
+    const settle = async () => {
+      await nextTick()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      await nextTick()
+    }
+
+    test('offers the rows of the table its join_from names', async () => {
+      wrapper = createWrapper()
+      await settle()
+
+      expect(store.fetchTableOptions).toHaveBeenCalledWith('plants.name')
+      const options = wrapper.findAll('.v-select option')
+      expect(options.map((option: any) => option.text())).toEqual(['North', 'South'])
+    })
+
+    test('asks only for the options of the fields on screen', async () => {
+      wrapper = createWrapper({ scope: 'standard' })
+      await settle()
+
+      expect(store.fetchTableOptions).not.toHaveBeenCalled()
+    })
+  })
+
   describe('Component Structure and Styling', () => {
     test('applies correct CSS classes to fields', () => {
       wrapper = createWrapper()
@@ -587,7 +656,7 @@ describe('CreateExecutionConfigParams', () => {
       wrapper.vm.handleFieldUpdate('test', 'value')
       
       expect(wrapper.emitted('update:modelValue')).toBeTruthy()
-      expect(wrapper.emitted('update:modelValue')![0][0]).toEqual({
+      expect(wrapper.emitted('update:modelValue')!.at(-1)![0]).toEqual({
         config: { test: 'value' }
       })
     })

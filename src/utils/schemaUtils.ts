@@ -1794,6 +1794,11 @@ export interface ExecutionConfigField {
   lookupParam?: string
   /** Column returned from the matched row with `lookupType: 'arrayByValue'`. */
   lookupValue?: string
+  /**
+   * Set from the schema's `"join_from": "<table>.<column>"`: the field is a select whose options
+   * are the rows of that frontend-automation table (value: the row's `id`; text: the column).
+   */
+  joinFrom?: string
 }
 
 /** Resolves solver list and default from the `solver` schema property. */
@@ -1881,6 +1886,11 @@ function buildExecutionConfigField(
 
   if (prop.default !== undefined) field.default = prop.default
   if (prop.pre_etl === true) field.preEtl = true
+  if (typeof prop.join_from === 'string' && parseJoinFrom(prop.join_from)) {
+    field.type = 'select'
+    field.joinFrom = prop.join_from
+    field.icon = DEFAULT_FIELD_ICONS.select
+  }
   applyEnumOptionsToField(field, prop)
   applyDateFieldOverrides(field, prop, fieldType)
   applyTimeFieldOverrides(field, prop, fieldType, key)
