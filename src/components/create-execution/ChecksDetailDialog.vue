@@ -48,15 +48,13 @@
               <template v-if="selected.description"> · {{ selected.description }}</template>
             </span>
           </div>
-          <label class="checks-detail__search">
-            <CoreIcon name="mdi-magnify" :size="16" />
-            <input
-              v-model="search"
-              type="search"
-              :placeholder="$t('createExecution.checks.search')"
-              :aria-label="$t('createExecution.checks.search')"
-            />
-          </label>
+          <CoreSearchInput
+            v-model="search"
+            class="checks-detail__search"
+            :placeholder="$t('createExecution.checks.search')"
+            :show-shortcut="false"
+            clearable
+          />
         </header>
 
         <div class="checks-detail__table-wrap">
@@ -96,6 +94,7 @@ import { computed, ref, watch } from 'vue'
 import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
 import CoreDialog from '@cornflow-ui/core/components/core/CoreDialog.vue'
 import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
+import CoreSearchInput from '@cornflow-ui/core/components/core/table/CoreSearchInput.vue'
 import type { CheckResult } from '@cornflow-ui/core/composables/create-execution/useExecutionDraft'
 
 defineOptions({ name: 'ChecksDetailDialog' })
@@ -260,26 +259,7 @@ const shownRecords = computed(() => filteredRecords.value.slice(0, limit.value))
 
 .checks-detail__search {
   flex: none;
-  display: flex;
-  align-items: center;
-  gap: calc(var(--spacing) * 2);
   width: 240px;
-  height: 34px;
-  padding: 0 calc(var(--spacing) * 2.5);
-  border: 1px solid var(--color-border-input);
-  border-radius: var(--radius-md);
-  color: var(--color-text-muted);
-}
-
-.checks-detail__search input {
-  flex: 1;
-  min-width: 0;
-  border: 0;
-  outline: none;
-  background: none;
-  font: inherit;
-  font-size: var(--text-md);
-  color: var(--color-text);
 }
 
 .checks-detail__table-wrap {
