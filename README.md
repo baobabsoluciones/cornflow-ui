@@ -6,6 +6,45 @@ Cornflow-UI is a Vue.js application that serves as the user interface for Cornfl
 
 Cornflow-UI follows a modular architecture organized into distinct functional areas. The application structure is designed to be flexible and adaptable to different optimization problems while maintaining consistency across implementations.
 
+## Side menu
+
+- The menu takes the full height of the window; the execution tab bar starts where it ends.
+- It keeps apart what belongs to the loaded execution from what is the same for all of them. The
+  loaded execution heads a block that holds its own groups: its input data, its results with the
+  dashboards, and the app sections that need an execution (`requiresSelectedExecution`). The
+  other groups follow, below a divider.
+- **Folded** (default): a 56 px rail with the app's icon (with several DAGs, the initial of the
+  active one on it), the loaded execution (a dot in the colour of
+  its state) boxed with the icons of its groups, one icon per shared group, and the user's
+  initial. Resting the pointer on it opens the whole menu over the content; it folds again when
+  the pointer leaves. Clicking an icon pins it open.
+- **Expanded** (250 px; pinned, the content moves aside):
+  - the full logo and the pin, which keeps the menu open or lets it fold again. Below, in one
+    line, the app name and, with several DAGs, the active one (its label from `schemaLabels`); for
+    a user who may switch DAG, that line is a pill that opens the module selector (see
+    [Module selector and top bar](#module-selector-and-top-bar));
+  - **Loaded execution**: the selected execution with its date and state. It opens the DAG's
+    five latest executions (a dot in the colour of each state) to switch to, and "See full
+    history". Picking one loads it if needed and selects its tab, as "Load" does in the history.
+    Its groups follow inside the same block; with none loaded, the block says what will show
+    there;
+  - the shared groups;
+  - the user (to the user settings) and "Log out", which asks first.
+- The groups are an accordion, one open at a time. An open group lists its pages, one level: a
+  group of tables is one page, whose tables show as its tabs. The group of the current page opens
+  on its own; closed, it shows a dot when it holds the current page, and how many pages it has.
+- **Narrow screens** (768 px or less): pinned, the menu lies over the content with a scrim, and
+  closes with the X.
+- **Groups**, in order: executions (history, new execution), the entries of premium modules, the
+  app's sections (`appSections`), master data (one group per schema section, or a single
+  "Master data"), and, with an execution selected, its input data and results with the
+  dashboards; last, administration for admins when roles management is on. Each one is gated by
+  the user's roles and the active DAG.
+- **Location**: `components/AppDrawer.vue`, `components/app-drawer/DrawerGroup.vue` (a group
+  and its pages), `components/app-drawer/DrawerExecutionList.vue`,
+  `composables/navigation/useDrawerSections.ts` (the groups and their scope) and
+  `composables/navigation/useDrawerExecutions.ts` (the loaded and latest executions).
+
 ## Execution management section
 
 The execution management section handles the complete lifecycle of optimization executions, from creation to historical tracking.
@@ -597,7 +636,7 @@ used for now: they get no options, and the browser console says which table is m
 - **Repository**: `SchemaRepository.ts` fetches the schema and returns both table config and `available_automations.sections`; the store keeps sections in `masterDataSections`.
 - **Utils**: `schemaUtils.ts` transforms the schema (including sections and per-table `section` from table/group) into the internal config format.
 - **Service**: `FrontendAutomationService.ts` provides `getMasterDataNavigationWithSections()` to build section → group → table navigation; schema-defined sections are ordered above the default "Master data" block.
-- **Drawer**: `AppDrawer.vue` uses schema sections when present (`masterDataSectionsForDrawer`) and falls back to a single "Master data" section when no schema sections exist. It merges in config-driven sub-sections from `frontendAutomationSectionSubsections` (see [Sub-sections within frontend-automation sections](#sub-sections-within-frontend-automation-sections)).
+- **Drawer**: `useDrawerSections.ts` makes one group per schema section when there are any, and a single "Master data" group otherwise. It merges in config-driven sub-sections from `frontendAutomationSectionSubsections` (see [Sub-sections within frontend-automation sections](#sub-sections-within-frontend-automation-sections)).
 - **Component**: `CoreTable.vue` renders the dynamic table interface.
 - **View**: `SectionView.vue` manages table display and navigation.
 - **Section sub-sections**: Routes for config-defined sub-sections use `configuration/section/:sectionId/:subsectionKey`; `ConfigurationSectionSubsectionView.vue` (in `src/app/views/`) loads and renders the component from config.
@@ -738,8 +777,8 @@ schemaLabels: { planning_dag: 'Planning', stock_dag: 'Stock' },
 
 | DAGs granted | What the user sees |
 | --- | --- |
-| One | The application on that DAG, with no selector. The drawer shows the DAG next to the application name |
-| Several | A module selector in the top bar. The session starts on the DAG picked earlier in the session, else `schema`, else the first granted |
+| One | The application on that DAG, with no selector |
+| Several | The header of the side menu is the module selector. The session starts on the DAG picked earlier in the session, else `schema`, else the first granted |
 | None | A message saying the user has no access to any module |
 
 ⚠️ **The backend decides.** Cornflow grants every DAG to every user unless the deployment runs with
@@ -798,17 +837,22 @@ core: {
 - The Instance, Solution and Experiment classes are shared by every DAG. Logic that differs per DAG
   in them reads the active DAG (`useGeneralStore().getSchemaName`).
 
-The drawer shows the active DAG next to the application name.
+The side menu shows the active DAG beside the application name, with its label from
+`schemaLabels`; folded, the app's icon carries its initial.
 
-### Top bar and modules
+### Module selector and top bar
+
+For a user who may switch DAG, the line under the logo in the side menu (the app name and the
+active DAG) is the module selector: it lists the DAGs, the active one checked. Picking another switches at
+once, unless the switch would discard work (executions open in tabs, or an execution being created):
+then it asks first. After the switch, a view the new DAG doesn't have is left for its default view.
+The logic is in `composables/navigation/useSchemaSwitch.ts`.
 
 The top of the layout is a fixed stack, in this order: the top bar, the staging notice and the
 global banners of premium modules (`app-banners`), which keep their own `position: fixed` and land
 below the other two. The views start below the whole stack. The top bar is a light band tinted with
-the app's primary colour and only shows while it has something in it: the module selector, for users
-who may switch DAG, and what premium modules mount with the `app-top-bar` slot of
-`globalComponents`. The selector shows the modules side by side, up to four; with more, the module is
-picked from a menu. Premium modules also get:
+the app's primary colour and only shows while it has something in it: what premium modules mount
+with the `app-top-bar` slot of `globalComponents`. Premium modules also get:
 
 - an `onActiveSchemaChanged(schema, ctx)` hook, to reset what they keep per DAG;
 - `ctx.getActiveSchema()` in the extension context;
@@ -849,7 +893,7 @@ Unlike `dashboardPages` / `instanceDashboardPages` (which add subsections inside
 - **Configuration**: In `createAppConfig()`, set the `appSections` array. Each entry has `path`, `name`, `titleKey`, `icon`, `component` (lazy import), and optional `subPages` with the same shape.
 - **Gating**: optional `roles` (role names) and `schemas` (DAG names) show an entry only to users with one of those roles, and only while the session works on one of those DAGs. They gate the drawer entry and the route (the route goes to the forbidden page).
 - **Router**: Routes are registered via `getAppSectionRoutes()` (used in `src/router/index.ts`).
-- **Drawer**: Menu items are built from `getAppSections()` in `AppDrawer.vue` (title resolved with i18n from `titleKey`).
+- **Drawer**: Menu items are built from `getAppSections()` in `useDrawerSections.ts` (title resolved with i18n from `titleKey`).
 
 Example: one section with one view (e.g. Agent), or multiple sections with subsections, without touching the router or drawer code.
 

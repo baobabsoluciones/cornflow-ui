@@ -354,6 +354,26 @@ describe('General Store', () => {
       )
     })
 
+    test('fetchRecentExecutions asks for the latest without dates nor history filters, newest first', async () => {
+      mockExecutionRepository.getExecutions.mockResolvedValue([
+        { id: 'old', createdAt: '2026-10-19T08:50:00Z' },
+        { id: 'new', createdAt: '2026-10-26T10:42:00Z' },
+      ])
+
+      const store = useGeneralStore()
+      const result = await store.fetchRecentExecutions()
+
+      expect(result.map((e: any) => e.id)).toEqual(['new', 'old'])
+      expect(mockExecutionRepository.getExecutions).toHaveBeenCalledWith('test_dag', null, null)
+    })
+
+    test('fetchRecentExecutions gives an empty list when the request fails', async () => {
+      mockExecutionRepository.getExecutions.mockRejectedValue(new Error('down'))
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      expect(await useGeneralStore().fetchRecentExecutions()).toEqual([])
+    })
+
     test('fetchLoadedExecution successfully', async () => {
       const mockLoadedExecution = { executionId: '123', name: 'Test Execution' }
       mockExecutionRepository.loadExecution.mockResolvedValue(

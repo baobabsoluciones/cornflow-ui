@@ -466,7 +466,7 @@ export const useGeneralStore = defineStore('general', {
     /**
      * Switches the session to another DAG without reloading the page: closes the loaded
      * executions, reloads the schema, its instance/solution tables and the views, and lets premium
-     * modules reset what they keep per DAG. Navigation is up to the caller (see `ModuleSwitcher`).
+     * modules reset what they keep per DAG. Navigation is up to the caller (see `useSchemaSwitch`).
      * Returns false when `schema` is not one the user may switch to.
      */
     async setActiveSchema(schema: string): Promise<boolean> {
@@ -772,6 +772,26 @@ export const useGeneralStore = defineStore('general', {
         return executions
       } catch (error) {
         console.error('Error getting executions by date range', error)
+      }
+    },
+
+    /**
+     * The DAG's latest executions, newest first, whatever the history filters say (the side
+     * menu offers them to load). The backend caps the list when no dates are given.
+     */
+    async fetchRecentExecutions(): Promise<Execution[]> {
+      try {
+        const executions = await this.executionRepository.getExecutions(
+          this.getSchemaName,
+          null,
+          null,
+        )
+        return [...executions].sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        )
+      } catch (error) {
+        console.error('Error getting the latest executions', error)
+        return []
       }
     },
 

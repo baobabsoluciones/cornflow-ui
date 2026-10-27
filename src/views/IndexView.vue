@@ -22,11 +22,10 @@
       data-testid="app-top-stack"
     >
       <!--
-        Top bar: the core's module selector (only for users who may switch DAG), plus whatever
-        premium modules mount in `app-top-bar`. Only rendered while something in it is visible.
+        Top bar: what premium modules mount in `app-top-bar`. Only rendered while something in it
+        is visible.
       -->
       <div v-if="showTopBar" class="app-top-bar" data-testid="app-top-bar">
-        <core-module-switcher v-if="showModuleSwitcher" />
         <component
           v-for="(item, i) in premiumTopBar"
           :key="`premium-top-bar-${i}`"
@@ -124,7 +123,6 @@ import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import AuthService from '@cornflow-ui/core/services/AuthService'
 import CoreAppDrawer from '@cornflow-ui/core/components/AppDrawer.vue'
 import CoreAppView from '@cornflow-ui/core/components/AppView.vue'
-import CoreModuleSwitcher from '@cornflow-ui/core/components/core/ModuleSwitcher.vue'
 import { useRouter, useRoute } from 'vue-router'
 import { computed } from 'vue'
 import { Vue3Marquee } from 'vue3-marquee'
@@ -155,10 +153,7 @@ const premiumBanners = computed(() => getPremiumGlobalComponents('app-banners'))
 const premiumFabs = computed(() => getPremiumGlobalComponents('app-fabs'))
 const premiumTopBar = computed(() => getPremiumGlobalComponents('app-top-bar'))
 
-const showModuleSwitcher = computed(() => generalStore.canSwitchSchema)
-const showTopBar = computed(
-  () => showModuleSwitcher.value || premiumTopBar.value.length > 0,
-)
+const showTopBar = computed(() => premiumTopBar.value.length > 0)
 const noSchemaAccess = computed(() => generalStore.noSchemaAccess)
 
 /**
@@ -254,11 +249,6 @@ if (AuthService.isAuthenticated()) {
 </script>
 
 <style>
-.app-drawer {
-  position: fixed !important;
-  z-index: 900 !important;
-}
-
 .main-content {
   transition: margin-left 0.3s ease;
   margin-left: 0;
@@ -278,6 +268,18 @@ if (AuthService.isAuthenticated()) {
   width: 100%;
   display: flex;
   flex-direction: column;
+}
+
+/* The execution tab bar starts where the side menu ends: the rail, or the pinned menu. */
+.tab-container .v-bottom-navigation {
+  left: 56px !important;
+  width: calc(100% - 56px) !important;
+  transition: left 0.3s ease, width 0.3s ease;
+}
+
+.main-content.drawer-pinned .tab-container .v-bottom-navigation {
+  left: 250px !important;
+  width: calc(100% - 250px) !important;
 }
 
 /*
@@ -398,6 +400,11 @@ body {
 
   .app-top-stack.drawer-pinned .app-top-bar {
     padding-left: 96px;
+  }
+
+  .main-content.drawer-pinned .tab-container .v-bottom-navigation {
+    left: 56px !important;
+    width: calc(100% - 56px) !important;
   }
 }
 

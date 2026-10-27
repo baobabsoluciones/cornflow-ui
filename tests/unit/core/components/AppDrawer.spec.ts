@@ -1,1001 +1,415 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { computed, reactive, ref } from 'vue'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
+import { createMemoryHistory, createRouter } from 'vue-router'
+
+const { state, auth, snackbar, appConfig } = vi.hoisted(() => ({
+  state: { store: null as any, sections: [] as any[], executions: null as any },
+  auth: { logout: vi.fn() },
+  snackbar: vi.fn(),
+  appConfig: {
+    getCore: vi.fn(),
+    getInstanceDependentAppRoutePrefixes: () => [],
+  },
+}))
+
+vi.mock('@cornflow-ui/core/stores/general', () => ({ useGeneralStore: () => state.store }))
+vi.mock('@cornflow-ui/core/services/AuthServiceFactory', () => ({ default: vi.fn(async () => auth) }))
+vi.mock('@cornflow-ui/core/services/SnackbarService', () => ({ showSnackbar: snackbar }))
+vi.mock('@/app/config', () => ({ default: appConfig }))
+vi.mock('@cornflow-ui/core/config', () => ({ default: { name: 'Planner' } }))
+vi.mock('@cornflow-ui/core/composables/navigation/useDrawerSections', async (importOriginal) => ({
+  ...(await importOriginal<any>()),
+  useDrawerSections: () => ({ sections: computed(() => state.sections), isAdmin: computed(() => false) }),
+}))
+vi.mock('@cornflow-ui/core/composables/navigation/useDrawerExecutions', () => ({
+  useDrawerExecutions: () => state.executions,
+}))
+
 import AppDrawer from '@cornflow-ui/core/components/AppDrawer.vue'
 
-// Properly hoist mock definitions
-const {
-  mockUser,
-  mockStore,
-  mockAuth,
-  mockAppConfig,
-  mockRouter,
-  mockRoute,
-  mockShowSnackbar,
-  mockT,
-} = vi.hoisted(() => {
-  const mockUser = {
-    fullName: 'John Doe',
-    username: 'johndoe',
-    email: 'john.doe@example.com',
-  }
-
-  const mockStore = {
-    getUser: mockUser,
-    appDashboardPages: [
-      {
-        title: 'Custom Dashboard',
-        icon: 'mdi-chart-line',
-        to: '/custom-dashboard',
-      },
+const SECTIONS = [
+  {
+    key: 'executions',
+    scope: 'general',
+    title: 'Executions',
+    icon: 'mdi-chart-timeline-variant',
+    subPages: [
+      { title: 'History', icon: 'mdi-history', to: '/history-execution' },
+      { title: 'Execution', icon: 'mdi-play-circle-outline', to: '/project-execution' },
     ],
-    getMasterDataConfig: {},
-    getInputDataConfig: {},
-    getOutputDataConfig: {},
-    getConfigurations: {},
-    masterDataSections: [],
-    masterDataGroups: undefined,
-    appInstanceDashboardPages: [],
-    setDrawerPinned: () => {},
-    selectedExecution: null,
-    appConfig: {
-      parameters: {
-        showUserFullName: true,
-        showDashboardMainView: true,
-      },
-    },
-  }
-
-  const mockAuth = {
-    logout: vi.fn().mockResolvedValue(undefined),
-  }
-
-  const mockAppConfig = {
-    getCore: vi.fn().mockReturnValue({
-      parameters: {
-        showOpenIdUsername: true,
-        showDashboardMainView: true,
-      },
-    }),
-    getAppSections: vi.fn().mockReturnValue([]),
-  }
-
-  const mockRouter = {
-    push: vi.fn(),
-  }
-
-  const mockRoute = {
-    path: '/project-execution',
-  }
-
-  const mockShowSnackbar = vi.fn()
-
-  // Mock $t function for i18n
-  const mockT = vi.fn((key) => {
-    const translations = {
-      'projectExecution.title': 'Project Execution',
-      'versionHistory.title': 'Version History',
-      'inputOutputData.title': 'Input/Output Data',
-      'inputOutputData.inputTitle': 'Input Data',
-      'inputOutputData.outputTitle': 'Output Data',
-      'navigation.executions': 'Executions',
-      'navigation.masterData': 'Master Data',
-      'logOut.title': 'Logout',
-      'logOut.accept': 'Accept',
-      'logOut.cancel': 'Cancel',
-      'logOut.message': 'Are you sure you want to logout?',
-      'logOut.snackbar_message_success': 'Logout successful',
-      'logOut.snackbar_message_error': 'Logout error',
-    }
-    return translations[key] || key
-  })
-
-  return {
-    mockUser,
-    mockStore,
-    mockAuth,
-    mockAppConfig,
-    mockRouter,
-    mockRoute,
-    mockShowSnackbar,
-    mockT,
-  }
-})
-
-// Create i18n instance for testing
-const i18n = createI18n({
-  legacy: false,
-  locale: 'en',
-  messages: {
-    en: {
-      'projectExecution.title': 'Project Execution',
-      'versionHistory.title': 'Version History',
-      'inputOutputData.title': 'Input/Output Data',
-      'inputOutputData.inputTitle': 'Input Data',
-      'inputOutputData.outputTitle': 'Output Data',
-      'navigation.executions': 'Executions',
-      'navigation.masterData': 'Master Data',
-      'navigation.inputData': 'Input Data',
-      'navigation.results': 'Results',
-      'logOut.title': 'Logout',
-      'logOut.accept': 'Accept',
-      'logOut.cancel': 'Cancel',
-      'logOut.message': 'Are you sure you want to logout?',
-      'logOut.snackbar_message_success': 'Logout successful',
-      'logOut.snackbar_message_error': 'Logout error',
-    },
   },
-})
+  {
+    key: 'master-data',
+    scope: 'general',
+    title: 'Master data',
+    icon: 'mdi-database',
+    subPages: [
+      { title: 'Plants', to: '/configuration/plants' },
+      { title: 'Group', to: '/configuration/group/group', subPages: [{ title: 'Lines', to: '/configuration/lines' }] },
+    ],
+  },
+  { key: 'app-0', scope: 'general', title: 'Agent', icon: 'mdi-robot', to: '/agent' },
+]
 
-vi.mock('@cornflow-ui/core/stores/general', () => ({
-  useGeneralStore: vi.fn(() => mockStore),
-}))
+const EXECUTION_SECTIONS = [
+  {
+    key: 'input-data',
+    scope: 'execution',
+    title: 'Input data',
+    icon: 'mdi-application-cog',
+    subPages: [{ title: 'Orders', to: '/input-data/orders' }],
+  },
+  {
+    key: 'results',
+    scope: 'execution',
+    title: 'Results',
+    icon: 'mdi-chart-box',
+    subPages: [{ title: 'Plan', to: '/results/plan' }],
+  },
+]
 
-vi.mock('@cornflow-ui/core/services/AuthServiceFactory', () => ({
-  default: vi.fn().mockResolvedValue(mockAuth),
-}))
+const latest = [
+  { id: 'e1', name: 'Plan 44', date: '26 Oct · 10:42', status: { label: 'Optimal', tone: 'success', spin: false } },
+  { id: 'e2', name: 'Plan 43', date: '19 Oct · 08:50', status: { label: 'Infeasible', tone: 'danger', spin: false } },
+]
 
-vi.mock('@/app/config', () => ({
-  default: mockAppConfig,
-}))
-
-// Mock Vuetify components
-const MockVImg = {
-  name: 'VImg',
-  props: ['src', 'height', 'position'],
-  template:
-    '<img data-testid="v-img" :src="src" :style="{ height: height }" />',
+function makeExecutions() {
+  return {
+    loaded: ref(null),
+    latest: ref(latest),
+    loadingRecent: ref(false),
+    opening: ref(null),
+    refresh: vi.fn(async () => {}),
+    open: vi.fn(async () => true),
+  }
 }
 
-const MockVIcon = {
-  name: 'VIcon',
-  props: ['left'],
-  template: '<span data-testid="v-icon"><slot /></span>',
+function makeRouter() {
+  const routes = [
+    '/history-execution',
+    '/project-execution',
+    '/configuration/plants',
+    '/configuration/lines',
+    '/configuration/group/group',
+    '/agent',
+    '/input-data/orders',
+    '/results/plan',
+    '/user-settings',
+    '/sign-in',
+  ].map((path) => ({ path, component: { template: '<div />' } }))
+  return createRouter({ history: createMemoryHistory(), routes })
 }
 
-const MockVListItem = {
-  name: 'VListItem',
-  props: ['baseColor', 'color', 'to'],
-  template: '<div data-testid="v-list-item"><slot /></div>',
-  emits: ['click'],
+const i18n = () =>
+  createI18n({ legacy: false, locale: 'en', messages: { en: {} }, missingWarn: false, fallbackWarn: false })
+
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+async function pointer(wrapper: any, type: 'pointerenter' | 'pointerleave', pointerType = 'mouse') {
+  await wrapper.find('[data-testid="app-drawer"]').trigger(type, { pointerType })
+  await pause(250)
 }
 
-const MockVDivider = {
-  name: 'VDivider',
-  template: '<hr data-testid="v-divider" />',
+async function mountDrawer(path = '/history-execution') {
+  const router = makeRouter()
+  await router.push(path)
+  await router.isReady()
+  const wrapper = mount(AppDrawer, {
+    global: { plugins: [i18n(), router] },
+    attachTo: document.body,
+  })
+  await flushPromises()
+  return { wrapper, router }
 }
 
-const MockVList = {
-  name: 'VList',
-  template: '<div data-testid="v-list"><slot /></div>',
-}
-
-const MockVRow = {
-  name: 'VRow',
-  template: '<div data-testid="v-row"><slot /></div>',
-}
-
-const MockVCol = {
-  name: 'VCol',
-  template: '<div data-testid="v-col"><slot /></div>',
-}
-
-const MockVBtn = {
-  name: 'VBtn',
-  props: ['icon', 'size', 'variant', 'title'],
-  template: '<button data-testid="v-btn"><slot /></button>',
-  emits: ['click'],
-}
-
-// Mock Mango UI components
-const MockMAppDrawer = {
-  name: 'MAppDrawer',
-  props: ['visible', 'width'],
-  emits: ['update:rail'],
-  template: `
-    <div data-testid="m-app-drawer">
-      <slot name="logo"></slot>
-      <slot name="user"></slot>
-      <slot name="menu"></slot>
-      <slot name="actions"></slot>
-    </div>
-  `,
-}
-
-const MockMBaseModal = {
-  name: 'MBaseModal',
-  props: ['modelValue', 'closeOnOutsideClick', 'title', 'buttons'],
-  emits: ['save', 'cancel', 'close'],
-  template: `
-    <div v-if="modelValue" data-testid="m-base-modal">
-      <div data-testid="modal-title">{{ title }}</div>
-      <slot name="content"></slot>
-      <div data-testid="modal-buttons">
-        <button v-for="button in buttons" :key="button.text" @click="$emit(button.action)">
-          {{ button.text }}
-        </button>
-      </div>
-    </div>
-  `,
-}
-
-describe('AppDrawer.vue', () => {
+describe('AppDrawer', () => {
   let wrapper: any
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAuth.logout.mockResolvedValue(undefined)
-
-    // Ensure appConfig mock returns the correct structure
-    mockAppConfig.getCore.mockReturnValue({
-      parameters: {
-        showOpenIdUsername: true,
-        showDashboardMainView: true,
+    auth.logout.mockResolvedValue(undefined)
+    appConfig.getCore.mockReturnValue({ parameters: { showOpenIdUsername: false } })
+    state.sections = SECTIONS
+    state.executions = makeExecutions()
+    state.store = reactive({
+      isDrawerPinned: false,
+      setDrawerPinned(value: boolean) {
+        this.isDrawerPinned = value
       },
+      getUser: { username: 'planner', fullName: 'Plan Ner', email: 'planner@example.com' },
+      getSchemaName: 'planning_dag',
+      selectedExecution: null,
+      isMultiSchemaDeployment: false,
+      noSchemaAccess: false,
+      availableSchemas: ['planning_dag'],
+      canSwitchSchema: false,
+      loadedExecutions: [],
+      setActiveSchema: vi.fn(async function (this: any, schema: string) {
+        this.getSchemaName = schema
+        return true
+      }),
     })
-    mockAppConfig.getAppSections.mockReturnValue([])
-
-    // Reset shared store state mutated by some tests
-    mockStore.selectedExecution = null
-    mockStore.getConfigurations = {}
-    mockStore.masterDataSections = []
-    mockStore.masterDataGroups = undefined
-    mockStore.appInstanceDashboardPages = []
-    mockStore.getUser = mockUser
   })
 
   afterEach(() => {
-    if (wrapper) {
-      wrapper.unmount()
-    }
-    vi.restoreAllMocks()
+    wrapper?.unmount()
+    document.body.innerHTML = ''
   })
 
-  const createWrapper = async (options = {}) => {
-    const wrapper = mount(AppDrawer, {
-      global: {
-        plugins: [i18n],
-        components: {
-          MAppDrawer: MockMAppDrawer,
-          MBaseModal: MockMBaseModal,
-          VImg: MockVImg,
-          VIcon: MockVIcon,
-          VListItem: MockVListItem,
-          VDivider: MockVDivider,
-          VList: MockVList,
-          VRow: MockVRow,
-          VCol: MockVCol,
-          VBtn: MockVBtn,
-        },
-        provide: {
-          showSnackbar: mockShowSnackbar,
-        },
-        mocks: {
-          $router: mockRouter,
-          $route: mockRoute,
-        },
-        ...options,
-      },
-    })
-
-    // Wait for component to be fully mounted
-    await wrapper.vm.$nextTick()
-
-    // Ensure auth service is properly set - component's created() might not set it properly in test environment
-    if (!wrapper.vm.auth) {
-      wrapper.vm.auth = mockAuth
-    }
-
-    await wrapper.vm.$nextTick()
-
-    return wrapper
-  }
-
-  describe('Component Rendering', () => {
-    test('should render correctly', async () => {
-      wrapper = await createWrapper()
-
-      expect(wrapper.exists()).toBe(true)
-      expect(wrapper.findComponent({ name: 'CoreAppDrawer' }).exists()).toBe(
-        true,
-      )
-      expect(wrapper.find('[data-testid="m-app-drawer"]').exists()).toBe(true)
-    })
-
-    test('should render with correct component name', async () => {
-      wrapper = await createWrapper()
-
-      expect(wrapper.vm.$options.name).toBe('CoreAppDrawer')
-    })
-
-    test('should render MAppDrawer with correct props', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      const appDrawer = wrapper.findComponent(MockMAppDrawer)
-      expect(appDrawer.props('visible')).toBe(true)
-      expect(appDrawer.props('width')).toBe(250)
-    })
+  test('folded, it is a rail with one button per group and the loaded execution', async () => {
+    ;({ wrapper } = await mountDrawer())
+    expect(wrapper.find('[data-testid="app-drawer"]').classes()).not.toContain('is-expanded')
+    const buttons = wrapper.findAll('.app-drawer__rail-block.is-general .app-drawer__rail-button')
+    expect(buttons.map((b: any) => b.attributes('aria-label'))).toEqual(['Executions', 'Master data', 'Agent'])
+    expect(buttons[0].classes()).toContain('is-active')
+    expect(wrapper.find('[data-testid="app-drawer-rail-execution"]').exists()).toBe(true)
   })
 
-  describe('User Display', () => {
-    test('should display user information when user exists', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
+  test("the loaded execution's groups go with it, apart from the shared ones", async () => {
+    state.sections = [...SECTIONS, ...EXECUTION_SECTIONS]
+    ;({ wrapper } = await mountDrawer('/results/plan'))
+    const railLabels = (block: string) =>
+      wrapper.findAll(`.app-drawer__rail-block.is-${block} .app-drawer__rail-button`).map((b: any) => b.attributes('aria-label'))
+    expect(railLabels('execution')).toEqual(['drawer.loadedExecution', 'Input data', 'Results'])
+    expect(railLabels('general')).toEqual(['Executions', 'Master data', 'Agent'])
 
-      expect(wrapper.vm.user.name).toBe('John Doe')
-      expect(wrapper.vm.user.email).toBe('john.doe@example.com')
-    })
-
-    test('should show username when showOpenIdUsername is false', async () => {
-      mockAppConfig.getCore.mockReturnValue({
-        parameters: {
-          showOpenIdUsername: false,
-          showDashboardMainView: true,
-        },
-      })
-
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.user.name).toBe('johndoe')
-    })
-
-    test('should handle user navigation on click', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      await wrapper.vm.navigateTo('user-settings')
-
-      expect(mockRouter.push).toHaveBeenCalledWith('/user-settings')
-    })
+    state.store.isDrawerPinned = true
+    await flushPromises()
+    const heads = (block: string) =>
+      wrapper.findAll(`[data-testid="app-drawer-${block}-block"] .drawer-group__head`).map((h: any) => h.text())
+    expect(heads('execution')).toEqual([expect.stringContaining('Input data'), expect.stringContaining('Results')])
+    expect(heads('general')).toEqual([
+      expect.stringContaining('Executions'),
+      expect.stringContaining('Master data'),
+      'Agent',
+    ])
+    expect(wrapper.find('[data-testid="app-drawer-execution-block"] .drawer-group__page.is-active').text()).toBe('Plan')
   })
 
-  describe('Menu Items', () => {
-    test('should generate correct executions section', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      const executionsSection = wrapper.vm.executionsSection
-
-      expect(executionsSection.subPages).toHaveLength(2)
-      expect(executionsSection.subPages[0].title).toBe('Version History')
-      expect(executionsSection.subPages[0].to).toBe('/history-execution')
-      expect(executionsSection.subPages[1].title).toBe('Project Execution')
-      expect(executionsSection.subPages[1].to).toBe('/project-execution')
-    })
-
-    test('should generate correct all sections', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      const allSections = wrapper.vm.allSections
-
-      expect(allSections).toHaveLength(1) // Only executions section since no master data or selected execution
-      expect(allSections[0].title).toBe('Executions')
-      expect(allSections[0].subPages).toHaveLength(2)
-    })
-
-    test('should handle dashboard visibility based on config', async () => {
-      mockAppConfig.getCore.mockReturnValue({
-        parameters: {
-          showOpenIdUsername: true,
-          showDashboardMainView: false,
-        },
-      })
-
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      const allSections = wrapper.vm.allSections
-      expect(allSections).toHaveLength(1) // Only executions section
-      expect(allSections[0].title).toBe('Executions')
-    })
-
-    test('should include app dashboard pages when available', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      const allSections = wrapper.vm.allSections
-      expect(allSections).toHaveLength(1) // Only executions section
-      expect(mockStore.appDashboardPages).toHaveLength(1) // Dashboard pages are available in store
-    })
+  test('with no execution loaded, its block says what will show there', async () => {
+    state.store.isDrawerPinned = true
+    ;({ wrapper } = await mountDrawer())
+    expect(wrapper.find('.app-drawer__hint').text()).toBe('drawer.executionHint')
   })
 
-  describe('Actions', () => {
-    test('should generate correct actions', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
+  test('the header shows the app name, and with several DAGs the active one', async () => {
+    state.store.isDrawerPinned = true
+    ;({ wrapper } = await mountDrawer())
+    expect(wrapper.find('.app-drawer__app-name').text()).toBe('Planner')
+    expect(wrapper.find('.app-drawer__module').exists()).toBe(false)
+    wrapper.unmount()
 
-      const actions = wrapper.vm.actions
-
-      expect(actions).toHaveLength(1)
-      expect(actions[0].title).toBe('Logout')
-      expect(actions[0].icon).toBe('mdi-logout')
-      expect(typeof actions[0].action).toBe('function')
-    })
-
-    test('should handle confirm sign out', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.confirmSignOutModal).toBe(false)
-
-      wrapper.vm.confirmSignOut()
-
-      expect(wrapper.vm.confirmSignOutModal).toBe(true)
-    })
+    state.store.isMultiSchemaDeployment = true
+    state.store.getSchemaName = 'stock_dag'
+    appConfig.getCore.mockReturnValue({ parameters: { schemaLabels: { stock_dag: 'Stock' } } })
+    ;({ wrapper } = await mountDrawer())
+    expect(wrapper.find('.app-drawer__app-name').text()).toBe('Planner')
+    expect(wrapper.find('.app-drawer__module').text()).toBe('Stock')
   })
 
-  describe('Logout Functionality', () => {
-    test('should handle successful logout', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
+  test('for a user who may switch DAG, the header is the module selector', async () => {
+    state.store.isDrawerPinned = true
+    state.store.isMultiSchemaDeployment = true
+    state.store.canSwitchSchema = true
+    state.store.availableSchemas = ['planning_dag', 'stock_dag']
+    appConfig.getCore.mockReturnValue({ parameters: { schemaLabels: { planning_dag: 'Planning', stock_dag: 'Stock' } } })
+    ;({ wrapper } = await mountDrawer())
+    const trigger = wrapper.find('[data-testid="app-drawer-module"]')
+    expect(trigger.text()).toContain('Planner')
+    expect(trigger.find('.app-drawer__module').text()).toBe('Planning')
 
-      await wrapper.vm.signOut()
-
-      expect(mockAuth.logout).toHaveBeenCalled()
-      expect(mockRouter.push).toHaveBeenCalledWith('/sign-in')
-      expect(mockShowSnackbar).toHaveBeenCalledWith(
-        'Logout successful',
-        'success',
-      )
-    })
-
-    test('should handle logout error', async () => {
-      const error = new Error('Logout failed')
-      mockAuth.logout.mockRejectedValue(error)
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      await wrapper.vm.signOut()
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Logout error:',
-        expect.any(Error),
-      )
-      expect(mockShowSnackbar).toHaveBeenCalledWith('Logout error', 'error')
-
-      consoleSpy.mockRestore()
-    })
-
-    test('should handle logout when showSnackbar is not available', async () => {
-      wrapper = mount(AppDrawer, {
-        global: {
-          plugins: [i18n],
-          components: {
-            MAppDrawer: MockMAppDrawer,
-            MBaseModal: MockMBaseModal,
-            VImg: MockVImg,
-            VIcon: MockVIcon,
-            VListItem: MockVListItem,
-            VDivider: MockVDivider,
-            VList: MockVList,
-            VRow: MockVRow,
-            VCol: MockVCol,
-            VBtn: MockVBtn,
-          },
-          provide: {
-            showSnackbar: null,
-          },
-          mocks: {
-            $router: mockRouter,
-            $route: mockRoute,
-          },
-        },
-      })
-
-      await wrapper.vm.$nextTick()
-
-      // Ensure auth service is set for this test case too
-      wrapper.vm.auth = mockAuth
-      await wrapper.vm.$nextTick()
-
-      await wrapper.vm.signOut()
-
-      expect(mockAuth.logout).toHaveBeenCalled()
-      expect(mockRouter.push).toHaveBeenCalledWith('/sign-in')
-    })
+    await trigger.trigger('click')
+    await flushPromises()
+    const options = [...document.body.querySelectorAll<HTMLButtonElement>('[data-testid^="app-drawer-module-"]')]
+    expect(options.map((o) => [o.textContent?.trim(), o.getAttribute('aria-checked')])).toEqual([
+      ['Planning', 'true'],
+      ['Stock', 'false'],
+    ])
+    options[1].click()
+    await flushPromises()
+    expect(state.store.setActiveSchema).toHaveBeenCalledWith('stock_dag')
   })
 
-  describe('Modal Interactions', () => {
-    test('should render logout confirmation modal when active', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
+  test('switching DAG with executions open asks first', async () => {
+    state.store.isDrawerPinned = true
+    state.store.isMultiSchemaDeployment = true
+    state.store.canSwitchSchema = true
+    state.store.availableSchemas = ['planning_dag', 'stock_dag']
+    state.store.loadedExecutions = [{ executionId: 'e1' }]
+    ;({ wrapper } = await mountDrawer())
+    await wrapper.find('[data-testid="app-drawer-module"]').trigger('click')
+    await flushPromises()
+    document.body.querySelector<HTMLButtonElement>('[data-testid="app-drawer-module-stock_dag"]')!.click()
+    await flushPromises()
+    expect(state.store.setActiveSchema).not.toHaveBeenCalled()
 
-      wrapper.vm.confirmSignOutModal = true
-      await wrapper.vm.$nextTick()
-
-      const modal = wrapper.find('[data-testid="m-base-modal"]')
-      expect(modal.exists()).toBe(true)
-      expect(modal.find('[data-testid="modal-title"]').text()).toBe('Logout')
-    })
-
-    test('should handle modal save action', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      wrapper.vm.confirmSignOutModal = true
-      await wrapper.vm.$nextTick()
-
-      const modal = wrapper.findComponent(MockMBaseModal)
-      await modal.vm.$emit('save')
-
-      expect(mockAuth.logout).toHaveBeenCalled()
-    })
-
-    test('should handle modal cancel action', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      wrapper.vm.confirmSignOutModal = true
-      await wrapper.vm.$nextTick()
-
-      const modal = wrapper.findComponent(MockMBaseModal)
-      await modal.vm.$emit('cancel')
-
-      expect(wrapper.vm.confirmSignOutModal).toBe(false)
-    })
-
-    test('should handle modal close action', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      wrapper.vm.confirmSignOutModal = true
-      await wrapper.vm.$nextTick()
-
-      const modal = wrapper.findComponent(MockMBaseModal)
-      await modal.vm.$emit('close')
-
-      expect(wrapper.vm.confirmSignOutModal).toBe(false)
-    })
+    document.body.querySelector<HTMLButtonElement>('[data-testid="app-drawer-module-confirm"]')!.click()
+    await flushPromises()
+    expect(state.store.setActiveSchema).toHaveBeenCalledWith('stock_dag')
   })
 
-  describe('Navigation Helpers', () => {
-    test('should check if subpage is active', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      const subPages = [{ to: '/input-data' }, { to: '/output-data' }]
-
-      expect(wrapper.vm.isSubPageActive(subPages)).toBe(false)
-
-      // Change route to match a subpage
-      wrapper.vm.$route.path = '/input-data'
-      expect(wrapper.vm.isSubPageActive(subPages)).toBe(true)
-    })
-
-    test('should handle null subpages in isSubPageActive', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.isSubPageActive(null)).toBe(false)
-      expect(wrapper.vm.isSubPageActive(undefined)).toBe(false)
-    })
+  test('folded, with several DAGs the icon carries the initial of the active one', async () => {
+    state.store.isMultiSchemaDeployment = true
+    state.store.getSchemaName = 'stock_dag'
+    appConfig.getCore.mockReturnValue({ parameters: { schemaLabels: { stock_dag: 'Stock' } } })
+    ;({ wrapper } = await mountDrawer())
+    expect(wrapper.find('.app-drawer__rail-module').text()).toBe('S')
   })
 
-  describe('Component State', () => {
-    test('should initialize with correct default state', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.model).toBe(1)
-      expect(wrapper.vm.mini).toBe(true)
-      expect(wrapper.vm.hover).toBe(true)
-      expect(wrapper.vm.confirmSignOutModal).toBe(false)
-    })
-
-    test('should handle rail update from MAppDrawer', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      const initialMini = wrapper.vm.mini
-      expect(typeof initialMini).toBe('boolean')
-
-      // Test the handleRailUpdate method directly
-      wrapper.vm.handleRailUpdate(false)
-      expect(wrapper.vm.mini).toBe(false)
-
-      wrapper.vm.handleRailUpdate(true)
-      expect(wrapper.vm.mini).toBe(true)
-    })
+  test('clicking a group of the rail pins the menu open on it', async () => {
+    ;({ wrapper } = await mountDrawer())
+    await wrapper.findAll('.app-drawer__rail-block.is-general button.app-drawer__rail-button')[1].trigger('click')
+    expect(state.store.isDrawerPinned).toBe(true)
+    const open = wrapper.findAll('.drawer-group__head[aria-expanded="true"]')
+    expect(open.map((h: any) => h.text())).toEqual(['Master data'])
   })
 
-  describe('Auth Service Integration', () => {
-    test('should initialize auth service on created', async () => {
-      const getAuthService = await import('@cornflow-ui/core/services/AuthServiceFactory')
+  test('pinned, the groups are an accordion opened on the current page', async () => {
+    state.store.isDrawerPinned = true
+    ;({ wrapper } = await mountDrawer('/configuration/lines'))
+    const heads = () => wrapper.findAll('button.drawer-group__head')
+    expect(heads().map((h: any) => h.attributes('aria-expanded'))).toEqual(['false', 'true'])
+    // A group of tables is one page: on one of its tables, the group is the current page.
+    const pages = wrapper.findAll('.drawer-group__page')
+    expect(pages.map((p: any) => p.text())).toEqual(['Plants', 'Group'])
+    expect(wrapper.find('.drawer-group__page.is-active').text()).toBe('Group')
 
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      expect(getAuthService.default).toHaveBeenCalled()
-      expect(wrapper.vm.auth).toStrictEqual(mockAuth)
-    })
-
-    test('should inject showSnackbar service', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.showSnackbar).toBe(mockShowSnackbar)
-    })
+    await heads()[0].trigger('click')
+    expect(heads().map((h: any) => h.attributes('aria-expanded'))).toEqual(['true', 'false'])
+    // The closed group still says it holds the current page.
+    expect(heads()[1].find('.drawer-group__dot').exists()).toBe(true)
+    expect(heads()[1].find('.drawer-group__count').text()).toBe('2')
   })
 
-  describe('Store Integration', () => {
-    test('should use general store', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.store).toStrictEqual(mockStore)
-    })
-
-    test('should access user data from store', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.user.name).toBe(mockUser.fullName)
-      expect(wrapper.vm.user.email).toBe(mockUser.email)
-    })
-
-    test('should access dashboard pages from store', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      // Verify that store has dashboard pages
-      expect(mockStore.appDashboardPages).toStrictEqual([
-        {
-          title: 'Custom Dashboard',
-          icon: 'mdi-chart-line',
-          to: '/custom-dashboard',
-        },
-      ])
-    })
+  test('a group that is a page of its own is a link', async () => {
+    state.store.isDrawerPinned = true
+    ;({ wrapper } = await mountDrawer('/agent'))
+    const agent = wrapper.find('a.drawer-group__head')
+    expect(agent.attributes('href')).toBe('/agent')
+    expect(agent.classes()).toContain('is-active')
   })
 
-  describe('Props and Inheritance', () => {
-    test('should have empty props', async () => {
-      wrapper = await createWrapper()
+  test('resting the pointer opens the whole menu over the content, and leaving folds it', async () => {
+    ;({ wrapper } = await mountDrawer())
+    await pointer(wrapper, 'pointerenter')
+    const drawer = wrapper.find('[data-testid="app-drawer"]')
+    expect(drawer.classes()).toEqual(expect.arrayContaining(['is-expanded', 'is-floating']))
+    expect(wrapper.find('[data-testid="app-drawer-execution"]').exists()).toBe(true)
+    expect(state.store.isDrawerPinned).toBe(false)
 
-      expect(wrapper.props()).toEqual({})
-    })
-
-    test('should not inherit attributes', async () => {
-      wrapper = await createWrapper()
-
-      expect(wrapper.vm.$options.inheritAttrs).toBe(false)
-    })
+    await pointer(wrapper, 'pointerleave')
+    expect(drawer.classes()).not.toContain('is-expanded')
+    expect(wrapper.find('[data-testid="app-drawer-rail-execution"]').exists()).toBe(true)
   })
 
-  describe('Pin and Rail behaviour (added)', () => {
-    test('togglePin pins drawer: expands, disables hover, updates store', async () => {
-      mockStore.setDrawerPinned = vi.fn()
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      wrapper.vm.togglePin()
-
-      expect(wrapper.vm.isPinned).toBe(true)
-      expect(wrapper.vm.mini).toBe(false)
-      expect(wrapper.vm.hover).toBe(false)
-      expect(mockStore.setDrawerPinned).toHaveBeenCalledWith(true)
-    })
-
-    test('togglePin twice unpins drawer: minimizes and re-enables hover', async () => {
-      mockStore.setDrawerPinned = vi.fn()
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      wrapper.vm.togglePin()
-      wrapper.vm.togglePin()
-
-      expect(wrapper.vm.isPinned).toBe(false)
-      expect(wrapper.vm.mini).toBe(true)
-      expect(wrapper.vm.hover).toBe(true)
-      expect(mockStore.setDrawerPinned).toHaveBeenLastCalledWith(false)
-    })
-
-    test('handleRailUpdate ignored while pinned', async () => {
-      mockStore.setDrawerPinned = vi.fn()
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      wrapper.vm.togglePin() // pin -> mini false
-      wrapper.vm.handleRailUpdate(true)
-
-      expect(wrapper.vm.mini).toBe(false)
-    })
+  test('a touch does not open it', async () => {
+    ;({ wrapper } = await mountDrawer())
+    await pointer(wrapper, 'pointerenter', 'touch')
+    expect(wrapper.find('[data-testid="app-drawer"]').classes()).not.toContain('is-expanded')
   })
 
-  describe('Section active helpers (added)', () => {
-    test('isSectionActive matches exact route', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
+  test('opened by the pointer, the pin keeps it open', async () => {
+    ;({ wrapper } = await mountDrawer())
+    await pointer(wrapper, 'pointerenter')
+    const pin = wrapper.find('[data-testid="app-drawer-pin"]')
+    expect(pin.attributes('aria-label')).toBe('drawer.pin')
+    await pin.trigger('click')
+    expect(state.store.isDrawerPinned).toBe(true)
 
-      wrapper.vm.$route.path = '/agent'
-      expect(wrapper.vm.isSectionActive({ to: '/agent' })).toBe(true)
-      expect(wrapper.vm.isSectionActive({ to: '/other' })).toBe(false)
-    })
-
-    test('isSectionActive false when section has no to', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-      expect(wrapper.vm.isSectionActive({ title: 'x' })).toBe(false)
-    })
-
-    test('isSubPageItemActive detects nested route prefix', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      wrapper.vm.$route.path = '/configuration/section/abc'
-      expect(
-        wrapper.vm.isSubPageItemActive({ to: '/configuration/section' }),
-      ).toBe(true)
-    })
-
-    test('isSubPageItemActive false for unrelated route', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      wrapper.vm.$route.path = '/elsewhere'
-      expect(wrapper.vm.isSubPageItemActive({ to: '/configuration' })).toBe(false)
-    })
-
-    test('isSubPageItemActive false for null subPage', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-      expect(wrapper.vm.isSubPageItemActive(null)).toBe(false)
-    })
-
-    test('navigateTo prefixes a leading slash', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      wrapper.vm.navigateTo('/already-absolute')
-      expect(mockRouter.push).toHaveBeenCalledWith('/already-absolute')
-    })
+    await pointer(wrapper, 'pointerleave')
+    expect(wrapper.find('[data-testid="app-drawer"]').classes()).toContain('is-expanded')
+    expect(wrapper.find('[data-testid="app-drawer"]').classes()).not.toContain('is-floating')
   })
 
-  describe('Data sections with selected execution (added)', () => {
-    const baseExecution = {
-      experiment: { instance: { data: {} }, solution: { data: {} } },
-      instance: { data: {} },
-      solution: { data: {} },
-      state: 1,
-    }
+  test('opened by the pointer, it stays open while its execution selector is', async () => {
+    ;({ wrapper } = await mountDrawer())
+    await pointer(wrapper, 'pointerenter')
+    await wrapper.find('[data-testid="app-drawer-execution"]').trigger('click')
+    await flushPromises()
+    await pointer(wrapper, 'pointerleave')
+    expect(wrapper.find('[data-testid="app-drawer"]').classes()).toContain('is-expanded')
 
-    test('inputDataSection and resultsSection appear when execution selected', async () => {
-      mockStore.selectedExecution = { ...baseExecution }
-      mockStore.getConfigurations = {
-        masterData: {},
-        inputData: {},
-        resultsData: {},
-      }
-      mockStore.masterDataSections = []
-      mockStore.masterDataGroups = undefined
-      mockStore.appInstanceDashboardPages = []
-      mockStore.appDashboardPages = []
-
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.inputDataSection).not.toBeNull()
-      expect(wrapper.vm.resultsSection).not.toBeNull()
-      expect(wrapper.vm.hasSelectedExecution).toBe(true)
-
-      // reset
-      mockStore.selectedExecution = null
-    })
-
-    test('resultsSection lists undeclared solution tables only with showTablesWithoutSchema', async () => {
-      const solution = { schema: { properties: {} }, data: { extra: [{ a: 1 }] } }
-      mockStore.selectedExecution = {
-        ...baseExecution,
-        experiment: { ...baseExecution.experiment, solution },
-      }
-      mockStore.getConfigurations = { masterData: {}, inputData: {}, resultsData: {} }
-      mockStore.appDashboardPages = []
-      const tableKeys = (section: any) =>
-        section.subPages.flatMap((page: any) =>
-          (page.subPages ?? []).map((sub: any) => sub.key),
-        )
-
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-      expect(tableKeys(wrapper.vm.resultsSection)).toEqual([])
-
-      mockAppConfig.getCore.mockReturnValue({
-        parameters: { showDashboardMainView: true, showTablesWithoutSchema: true },
-      })
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-      expect(tableKeys(wrapper.vm.resultsSection)).toEqual(['extra'])
-    })
-
-    test('inputDataSection null without selected execution', async () => {
-      mockStore.selectedExecution = null
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-      expect(wrapper.vm.inputDataSection).toBeNull()
-      expect(wrapper.vm.resultsSection).toBeNull()
-    })
-
-    test('masterDataSection built from configurations', async () => {
-      mockStore.selectedExecution = null
-      mockStore.masterDataSections = []
-      mockStore.getConfigurations = {
-        masterData: {
-          tableA: { title: 'Table A', icon: 'mdi-table', group: null },
-        },
-      }
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-      expect(wrapper.vm.masterDataSection).not.toBeNull()
-      expect(wrapper.vm.masterDataSection.subPages).toBeDefined()
-    })
-
-    test('isAdmin and adminSection reflect user roles + config', async () => {
-      mockStore.getUser = {
-        ...mockUser,
-        roles: [{ name: 'admin' }],
-      }
-      mockAppConfig.getCore.mockReturnValue({
-        parameters: {
-          showOpenIdUsername: true,
-          showDashboardMainView: true,
-          enableRolesManagement: true,
-        },
-      })
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
-      expect(wrapper.vm.isAdmin).toBe(true)
-      expect(wrapper.vm.adminSection).not.toBeNull()
-      // reset
-      mockStore.getUser = mockUser
-    })
+    document.body.querySelectorAll<HTMLButtonElement>('.drawer-executions__item')[1].click()
+    await flushPromises()
+    await pause(0)
+    expect(wrapper.find('[data-testid="app-drawer"]').classes()).not.toContain('is-expanded')
   })
 
-  describe('Gating by role and DAG', () => {
-    const store = mockStore as Record<string, any>
-
-    afterEach(() => {
-      delete store.getSchemaName
-      delete store.isMultiSchemaDeployment
-      delete store.noSchemaAccess
-      store.appDashboardPages = [
-        { title: 'Custom Dashboard', icon: 'mdi-chart-line', to: '/custom-dashboard' },
-      ]
-    })
-
-    test('app sections declared for some roles or DAGs show only to them', async () => {
-      store.getUser = { ...mockUser, roles: [{ id: 2, name: 'planner' }] }
-      store.getSchemaName = 'planning_dag'
-      mockAppConfig.getAppSections.mockReturnValue([
-        { titleKey: 'everyone', icon: 'mdi-a', to: '/everyone' },
-        { titleKey: 'admins', icon: 'mdi-b', to: '/admins', roles: ['admin'] },
-        { titleKey: 'planning', icon: 'mdi-c', to: '/planning', schemas: ['planning_dag'] },
-        { titleKey: 'stock', icon: 'mdi-d', to: '/stock', schemas: ['stock_dag'] },
-      ])
-
-      wrapper = await createWrapper()
-
-      expect(wrapper.vm.appSections.map((s: any) => s.to)).toEqual([
-        '/everyone',
-        '/planning',
-      ])
-    })
-
-    test('dashboard pages declared for other DAGs are left out of the results section', async () => {
-      store.getSchemaName = 'planning_dag'
-      store.selectedExecution = {
-        experiment: { instance: { data: {} }, solution: { data: {} } },
-        state: 1,
-      }
-      store.getConfigurations = { masterData: {}, inputData: {}, resultsData: {} }
-      store.appDashboardPages = [
-        { title: 'Planning board', icon: 'mdi-a', to: '/planning-board', schemas: ['planning_dag'] },
-        { title: 'Stock levels', icon: 'mdi-b', to: '/stock-levels', schemas: ['stock_dag'] },
-      ]
-
-      wrapper = await createWrapper()
-
-      const destinations = wrapper.vm.resultsSection.subPages.map((p: any) => p.to)
-      expect(destinations).toContain('/planning-board')
-      expect(destinations).not.toContain('/stock-levels')
-    })
-
-    test('section sub-sections declared for other DAGs or roles are left out of their section', async () => {
-      store.getUser = { ...mockUser, roles: [{ id: 2, name: 'planner' }] }
-      store.getSchemaName = 'planning_dag'
-      store.masterDataSections = [{ id: 'pricing', title: 'Pricing', order: 1 }]
-      store.getConfigurations = {
-        masterData: { prices: { title: 'Prices', group: null, section: 'pricing' } },
-      }
-      const view = { name: 'View', titleKey: 'view', icon: 'mdi-view', component: vi.fn() }
-      mockAppConfig.getFrontendAutomationSectionSubsections = vi.fn(() => [
-        { ...view, path: 'board' },
-        { ...view, path: 'planning-board', schemas: ['planning_dag'] },
-        { ...view, path: 'stock-board', schemas: ['stock_dag'] },
-        { ...view, path: 'admin-board', roles: ['admin'] },
-      ])
-
-      wrapper = await createWrapper()
-
-      const destinations = wrapper.vm.masterDataSectionsForDrawer[0].subPages.map(
-        (page: any) => page.to,
-      )
-      expect(destinations).toContain('/configuration/section/pricing/board')
-      expect(destinations).toContain('/configuration/section/pricing/planning-board')
-      expect(destinations).not.toContain('/configuration/section/pricing/stock-board')
-      expect(destinations).not.toContain('/configuration/section/pricing/admin-board')
-
-      store.masterDataSections = []
-      store.getUser = mockUser
-    })
-
-    test('with several DAGs the app name says which one the session is on', async () => {
-      store.isMultiSchemaDeployment = true
-      store.getSchemaName = 'stock_dag'
-      mockAppConfig.getCore.mockReturnValue({
-        parameters: { showOpenIdUsername: true, schemaLabels: { stock_dag: 'Stock' } },
-      })
-
-      wrapper = await createWrapper()
-
-      expect(wrapper.vm.appName).toMatch(/ · Stock$/)
-    })
-
-    test('with a single DAG the app name is the configured one', async () => {
-      wrapper = await createWrapper()
-
-      expect(wrapper.vm.appName).not.toContain(' · ')
-    })
+  test('the pin button unpins it', async () => {
+    state.store.isDrawerPinned = true
+    ;({ wrapper } = await mountDrawer())
+    const pin = wrapper.find('[data-testid="app-drawer-pin"]')
+    expect(pin.attributes('aria-label')).toBe('drawer.unpin')
+    await pin.trigger('click')
+    expect(state.store.isDrawerPinned).toBe(false)
+    expect(wrapper.find('[data-testid="app-drawer"]').classes()).not.toContain('is-expanded')
   })
 
-  describe('Edge Cases', () => {
-    test('should handle missing user data gracefully', async () => {
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
+  test('the execution selector refreshes the latest and opens the one picked', async () => {
+    state.store.isDrawerPinned = true
+    ;({ wrapper } = await mountDrawer())
+    expect(state.executions.refresh).toHaveBeenCalled()
+    state.executions.refresh.mockClear()
 
-      // Test with store data as provided by the mock
-      expect(wrapper.vm.user.name).toBeDefined()
-      expect(wrapper.vm.user.email).toBeDefined()
-    })
+    await wrapper.find('[data-testid="app-drawer-execution"]').trigger('click')
+    await flushPromises()
+    expect(state.executions.refresh).toHaveBeenCalled()
+    const items = document.body.querySelectorAll<HTMLButtonElement>('.drawer-executions__item')
+    expect([...items].map((i) => i.textContent?.trim())).toEqual([
+      expect.stringContaining('Plan 44'),
+      expect.stringContaining('Plan 43'),
+    ])
+    items[1].click()
+    await flushPromises()
+    expect(state.executions.open).toHaveBeenCalledWith(expect.objectContaining({ id: 'e2' }))
+  })
 
-    test('should handle empty dashboard pages', async () => {
-      // Temporarily set empty dashboard pages
-      mockStore.appDashboardPages = []
+  test('log out asks first, then logs out and goes to sign in', async () => {
+    state.store.isDrawerPinned = true
+    let router: any
+    ;({ wrapper, router } = await mountDrawer())
+    await wrapper.find('[data-testid="app-drawer-logout"]').trigger('click')
+    await flushPromises()
+    document.body.querySelector<HTMLButtonElement>('[data-testid="app-drawer-logout-confirm"]')!.click()
+    await flushPromises()
+    expect(auth.logout).toHaveBeenCalled()
+    expect(router.currentRoute.value.path).toBe('/sign-in')
+    expect(snackbar).toHaveBeenCalledWith('logOut.snackbar_message_success', 'success')
+  })
 
-      wrapper = await createWrapper()
-      await wrapper.vm.$nextTick()
+  test('a failed log out says so', async () => {
+    auth.logout.mockRejectedValue(new Error('down'))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    state.store.isDrawerPinned = true
+    ;({ wrapper } = await mountDrawer())
+    await wrapper.find('[data-testid="app-drawer-logout"]').trigger('click')
+    await flushPromises()
+    document.body.querySelector<HTMLButtonElement>('[data-testid="app-drawer-logout-confirm"]')!.click()
+    await flushPromises()
+    expect(snackbar).toHaveBeenCalledWith('logOut.snackbar_message_error', 'error')
+  })
 
-      expect(mockStore.appDashboardPages).toHaveLength(0)
+  test('the user opens the user settings', async () => {
+    state.store.isDrawerPinned = true
+    let router: any
+    ;({ wrapper, router } = await mountDrawer())
+    expect(wrapper.find('.app-drawer__user-name').text()).toBe('planner')
+    await wrapper.find('.app-drawer__user-link').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.path).toBe('/user-settings')
+  })
 
-      // Reset for other tests
-      mockStore.appDashboardPages = [
-        {
-          title: 'Custom Dashboard',
-          icon: 'mdi-chart-line',
-          to: '/custom-dashboard',
-        },
-      ]
-    })
-
-    test('should handle component lifecycle without errors', async () => {
-      let testWrapper
-
-      expect(async () => {
-        testWrapper = await createWrapper()
-      }).not.toThrow()
-
-      // Actually create the wrapper
-      testWrapper = await createWrapper()
-      expect(testWrapper.exists()).toBe(true)
-
-      // Clean up test wrapper
-      if (testWrapper) {
-        testWrapper.unmount()
-      }
-    })
+  test('on a narrow screen the pinned menu lies over the content and the scrim closes it', async () => {
+    const matchMedia = vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+    vi.stubGlobal('matchMedia', matchMedia)
+    state.store.isDrawerPinned = true
+    ;({ wrapper } = await mountDrawer())
+    expect(wrapper.find('[data-testid="app-drawer"]').classes()).toContain('is-overlay')
+    expect(wrapper.find('[data-testid="app-drawer-pin"]').attributes('aria-label')).toBe('drawer.close')
+    await wrapper.find('[data-testid="app-drawer-scrim"]').trigger('click')
+    expect(state.store.isDrawerPinned).toBe(false)
+    vi.unstubAllGlobals()
   })
 })
