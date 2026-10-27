@@ -39,6 +39,7 @@ import HistorySection from './sections/HistorySection.vue'
 import MenusSection from './sections/MenusSection.vue'
 import OverlaysSection from './sections/OverlaysSection.vue'
 import SideMenuSection from './sections/SideMenuSection.vue'
+import SignInSection from './sections/SignInSection.vue'
 import StatusSection from './sections/StatusSection.vue'
 import TokensSection from './sections/TokensSection.vue'
 
@@ -54,6 +55,7 @@ const sections = [
   { id: 'history', title: 'Execution history', component: HistorySection },
   { id: 'create-execution', title: 'Create execution', component: CreateExecutionSection },
   { id: 'side-menu', title: 'Side menu', component: SideMenuSection },
+  { id: 'sign-in', title: 'Sign-in', component: SignInSection },
 ]
 
 const activeId = ref(sections[0].id)
