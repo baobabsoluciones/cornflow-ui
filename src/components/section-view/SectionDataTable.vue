@@ -23,6 +23,8 @@
     :status="status"
     :loading-more="tableData.loadingMore.value"
     :has-more="tableData.hasMore.value"
+    :total-count="tableData.totalCount?.value"
+    :filtered-count="tableData.filteredCount?.value"
     :filterable="!isMessageList && !isRecord"
     :editable="editable"
     :selectable="editable && tableData.enableSelection.value"

@@ -3144,6 +3144,16 @@ export function useTableData(
      * With one row it shows as a list of its fields.
      */
     isSingleRecord: isParameterLikeNonDeletableTable,
+    /** Rows of the table before the search and filters; unknown while the server pages it. */
+    totalCount: computed<number | undefined>(() => {
+      if (shouldUseExecutionData.value) return executionTableData.items.value.length
+      return isUnwindowedMasterData.value ? items.value.length : undefined
+    }),
+    /** Rows that pass the search and filters, beyond the window shown. */
+    filteredCount: computed<number | undefined>(() => {
+      if (shouldUseExecutionData.value) return fullFilteredExecutionItems.value.length
+      return isUnwindowedMasterData.value ? filteredItems.value.length : undefined
+    }),
     /** Takes back the pending change of one cell. */
     revertCell: (rowId: string | number, fieldKey: string) =>
       tableChanges.revertChange(normalizeTableKeyForStorage(tableKey.value), rowId, fieldKey),

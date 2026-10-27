@@ -88,8 +88,19 @@ export function formatCellValue(
     case 'list':
       return column.options?.find((o) => o.value === value)?.label ?? cellText(value)
     default:
-      return cellText(value)
+      return formatTextValue(value, locale)
   }
+}
+
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
+const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?$/
+
+/** A text value that is a day or a moment in ISO form ("2026-10-13T18:00:00") reads as one. */
+function formatTextValue(value: unknown, locale: string): string {
+  const text = cellText(value)
+  if (ISO_DAY.test(text)) return formatDate(text, locale, false)
+  if (ISO_DATE_TIME.test(text)) return formatDate(text, locale, true)
+  return text
 }
 
 /** The decimal separator of a language: "," in Spanish, "." in English. */
