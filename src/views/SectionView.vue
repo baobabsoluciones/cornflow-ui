@@ -562,16 +562,6 @@ const recalculationModalDataCache = ref<
   >
 >({})
 
-/** In group view: modified table keys that belong to the current group. */
-const modifiedTableKeysInGroup = computed(() => {
-  if (!isGroupView.value || !groupTables.value) return []
-  const groupKeys = Object.keys(groupTables.value)
-  const normalizedGroup = new Set(groupKeys.map(normalizeTableKey))
-  return tableChanges.modifiedTableKeys.value.filter((mk) =>
-    normalizedGroup.has(mk),
-  )
-})
-
 /** Pending changes are shared across all sections/groups; show global count. */
 const hasPendingChanges = computed(() => {
   if (!isConfigurationSection.value && !isRecalculationSection.value) return false
@@ -1043,43 +1033,6 @@ const handleForceRetryConfirmFromSaveAll = async () => {
   }
 }
 
-/** Apply pending deletes for a single table in a group save operation. */
-async function applyGroupDeletes(
-  storageKey: string,
-  config: any,
-  repository: any,
-): Promise<void> {
-  const deletes = tableChanges.getPendingDeletes(storageKey)
-  if (config?.delete_item && deletes.length > 0) {
-    for (const rowId of deletes) {
-      await repository.deleteItem(rowId)
-    }
-    tableChanges.clearDeletesForTable(storageKey)
-  }
-}
-
-/** Apply pending creates for a single table in a group save operation. */
-async function applyGroupCreates(
-  storageKey: string,
-  config: any,
-  repository: any,
-  tempIdToRealId: Record<string, string | number>,
-  loadTableDataForGroup: (tableName: string) => Promise<any[]>,
-): Promise<void> {
-  const creates = tableChanges.getPendingCreates(storageKey)
-  if (config?.post_item && creates.length > 0) {
-    for (const { tempId, data } of creates) {
-      const { id: _id, ...rawPayload } = data
-      const payloadWithTempIds = resolveTempIdsInPayload(rawPayload, tempIdToRealId, config)
-      const payload = await resolveDisplayValuesToFkIds(payloadWithTempIds, config, loadTableDataForGroup)
-      const result = await repository.createItem(payload)
-      const realId = result?.id ?? result?.pk
-      if (realId != null) tempIdToRealId[tempId] = realId
-    }
-    tableChanges.clearCreatesForTable(storageKey)
-  }
-}
-
 /**
  * Build the PUT payload for one edited row: locate the row in `items` by id,
  * merge its pending field changes, then resolve temp ids. Returns `null` when
@@ -1103,85 +1056,6 @@ function buildPutPayloadWithTempIds(
     tempIdToRealId,
     config,
   )
-}
-
-/** Apply pending cell edits for a single table in a group save operation. */
-async function applyGroupEdits(
-  storageKey: string,
-  config: any,
-  repository: any,
-  tempIdToRealId: Record<string, string | number>,
-  loadTableDataForGroup: (tableName: string) => Promise<any[]>,
-): Promise<void> {
-  const changes = tableChanges.getChangesForTable(storageKey)
-  if (config?.put_item && changes) {
-    const items = normalizeGetListResponseToRows(await repository.getList(), config)
-    for (const [rowId, rowChanges] of Object.entries(changes)) {
-      const withTempIds = buildPutPayloadWithTempIds(
-        rowId,
-        rowChanges,
-        items,
-        tempIdToRealId,
-        config,
-      )
-      if (!withTempIds) continue
-      const preparedData = await resolveDisplayValuesToFkIds(withTempIds, config, loadTableDataForGroup)
-      delete preparedData.id
-      await repository.putItem(rowId, preparedData)
-    }
-    tableChanges.revertTableChanges(storageKey)
-  }
-}
-
-/** Save pending changes for all modified tables in the current group (deletes → creates → edits). */
-const saveAllGroupMasterTableChanges = async () => {
-  const keys = modifiedTableKeysInGroup.value
-  if (keys.length === 0 || !groupTables.value) return
-
-  const { default: TableRepository } = await import(
-    '@cornflow-ui/core/repositories/TableRepository'
-  )
-
-  /** Load referenced table data by table name for resolving display values to FK ids. */
-  const loadTableDataForGroup = async (tableName: string): Promise<any[]> => {
-    const refConfig = currentConfiguration.value?.[tableName]
-    if (!refConfig?.get_list) return []
-    const refRepo = new TableRepository(refConfig, t)
-    const data = await refRepo.getList()
-    return normalizeGetListResponseToRows(data, refConfig)
-  }
-
-  const getCreates = (storageKey: string) =>
-    tableChanges.getPendingCreates(storageKey)
-  const orderedKeys = sortKeysByCreateDependency(keys, getCreates)
-  const tempIdToRealId: Record<string, string | number> = {}
-
-  for (const storageKey of orderedKeys) {
-    const configKey = Object.keys(groupTables.value).find(
-      (gk) => normalizeTableKey(gk) === storageKey,
-    )
-    if (!configKey) continue
-
-    const config = groupTables.value[configKey]
-    const repository = new TableRepository(config, t)
-
-    // 1. Apply pending deletes
-    await applyGroupDeletes(storageKey, config, repository)
-
-    // 2. Apply pending creates: resolve FKs (temp id → real id), resolve display values to FK ids, then POST
-    await applyGroupCreates(storageKey, config, repository, tempIdToRealId, loadTableDataForGroup)
-
-    // 3. Apply cell edits (put): resolve display values to FK ids so API receives id_values.
-    await applyGroupEdits(storageKey, config, repository, tempIdToRealId, loadTableDataForGroup)
-  }
-
-  // Invalidate cache for each saved table so selectors in other sections see new rows
-  for (const storageKey of orderedKeys) {
-    invalidateTableDataCache(storageKey)
-  }
-
-  // Refresh current tab data so the new record appears in the table
-  await selectedTableData.loadData()
 }
 
 /** Apply pending deletes for a single table in the global save operation (bulk when supported). */
@@ -1637,33 +1511,6 @@ const saveReview = () => {
   if (isRecalculationSection.value) relaunchOpen.value = true
   else handleMasterTableSaveAll()
 }
-
-// Watch for table changes and reset inline editing state
-watch(
-  [tableKey, selectedTable],
-  ([newTableKey, newSelectedTable], [oldTableKey, oldSelectedTable]) => {
-    // Check if we're switching between different tables
-    const isTableChange =
-      newTableKey !== oldTableKey || newSelectedTable !== oldSelectedTable
-
-    if (isTableChange) {
-      // Reset inline editing state for both table instances
-      // Note: isEditingAnyRow is a computed based on editingRowId, so we only need to reset editingRowId
-      if (tableData) {
-        tableData.editingRowId.value = null
-        tableData.editingData.value = {}
-        tableData.originalData.value = {}
-      }
-
-      if (selectedTableData) {
-        selectedTableData.editingRowId.value = null
-        selectedTableData.editingData.value = {}
-        selectedTableData.originalData.value = {}
-      }
-    }
-  },
-  { immediate: false },
-)
 
 // Auto dashboard widgets logic
 const route = useRoute()

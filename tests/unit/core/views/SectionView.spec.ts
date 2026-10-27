@@ -15,104 +15,65 @@ const mockCancelLoadData = vi.fn()
 
 // ---- useTableData ----------------------------------------------------------
 const mockMakeTableDataInstance = () => ({
-  items: ref([]),
-  headers: ref([{ key: 'name', title: 'Name', type: 'string' }]),
+  items: ref<any[]>([]),
+  headers: ref<any[]>([{ key: 'name', title: 'Name', type: 'string' }]),
   loading: ref(false),
+  error: ref(null),
   tableTitle: ref(''),
-  searchValue: ref(''),
-  searchPlaceholder: ref('Search'),
-  activeFilters: ref([]),
-  selectedItems: ref([]),
-  enableExcelMode: ref(false),
-  hasPendingChanges: ref(false),
-  pendingChangesCount: ref(0),
-  enableSearch: ref(true),
-  enableFilters: ref(true),
+  isPrimitiveArray: ref(false),
+  isValidationMessageList: ref(false),
   enableSelection: ref(false),
-  enableActions: ref(true),
-  enableBulkActions: ref(false),
   canAdd: ref(false),
   canEdit: ref(false),
   canDelete: ref(false),
   canBulkUpload: ref(false),
   bulkUploadAvailableOperations: ref([]),
   canDownloadExcel: ref(false),
-  isPrimitiveArray: ref(false),
-  availableFilterFields: ref([]),
-  showAddEditModal: ref(false),
-  showDeleteDialog: ref(false),
-  showBulkDeleteDialog: ref(false),
+  enableExcelMode: ref(false),
+  isCellModified: vi.fn(() => false),
+  getModifiedValue: vi.fn(),
+  handleCellChange: vi.fn(),
+  hasPendingChanges: ref(false),
+  pendingChangesCount: ref(0),
+  rowsDataForModal: ref<Record<string, any>>({}),
+  tableHeadersForModal: ref<Record<string, any>>({}),
+  searchValue: ref(''),
+  activeFilters: ref([]),
+  selectedItems: ref([]),
   showBulkUploadModal: ref(false),
-  formFields: ref([]),
-  formData: ref({}),
-  isEditing: ref(false),
-  saving: ref(false),
-  deleting: ref(false),
-  bulkDeleting: ref(false),
+  forceRetryOffer: ref(null),
+  forceRetryLoading: ref(false),
   uploading: ref(false),
   uploadProgressMessage: ref(''),
   downloading: ref(false),
-  editingRowId: ref(null),
-  editingData: ref({}),
-  originalData: ref({}),
-  isEditingAnyRow: ref(false),
+  bulkDeleting: ref(false),
+  loadTableData: vi.fn(async () => []),
   tableData: ref({}),
-  isCellModified: vi.fn(),
-  getModifiedValue: vi.fn(),
-  getRowClass: vi.fn(() => ''),
-  handleSearch: vi.fn(),
-  getOperatorsForFieldType: vi.fn(),
-  getOperatorText: vi.fn(),
-  operatorNeedsValue: vi.fn(),
-  operatorNeedsSecondValue: vi.fn(),
-  generateFilterId: vi.fn(),
   apiDateRangeFilterConfigs: ref([]),
   dateRangeValues: ref({}),
   hasMore: ref(false),
   loadingMore: ref(false),
   loadMore: vi.fn(),
-  updateInlineField: vi.fn(),
-  forceRetryOffer: ref(null),
-  forceRetryLoading: ref(false),
-  acceptForceRetry: vi.fn(),
-  rejectForceRetry: vi.fn(),
+  handleSearch: vi.fn(),
   handleApplyDateRange: vi.fn(),
   handleResetDateRange: vi.fn(),
-  handleAddFilter: vi.fn(),
-  handleRemoveFilter: vi.fn(),
-  handleClearAllFilters: vi.fn(),
-  handleToggleFiltersPanel: vi.fn(),
-  handleSelectItem: vi.fn(),
-  handleSelectAll: vi.fn(),
-  handleClearSelection: vi.fn(),
-  handleAddItem: vi.fn(),
-  handleEditItem: vi.fn(),
-  handleDeleteItem: vi.fn(),
-  handleBulkDelete: vi.fn(),
-  handleSaveItem: vi.fn(),
   handleBulkUpload: vi.fn(),
-  handleBulkEdit: vi.fn(),
+  acceptForceRetry: vi.fn(),
+  rejectForceRetry: vi.fn(),
   handleDownloadExcel: vi.fn(),
-  handleConfirmDelete: vi.fn(),
-  handleConfirmBulkDelete: vi.fn(),
-  startInlineEdit: vi.fn(),
-  saveInlineEdit: vi.fn(),
-  cancelInlineEdit: vi.fn(),
-  handleAddClick: vi.fn(),
-  handleEditClick: vi.fn(),
-  handleDeleteClick: vi.fn(),
-  handleBulkDeleteClick: vi.fn(),
-  handleBulkUploadClick: vi.fn(),
-  handleSelectItems: vi.fn(),
-  loadTableData: vi.fn(async () => []),
   loadData: vi.fn(async () => undefined),
-  tableHeadersForModal: ref<Record<string, any>>({}),
-  rowsDataForModal: ref<Record<string, any>>({}),
   cancelLoadData: mockCancelLoadData,
-  handleCellChange: vi.fn(),
-  saveAllChanges: vi.fn(),
-  revertTableChanges: vi.fn(),
-  error: ref(null),
+  sort: ref(null),
+  setFilters: vi.fn(),
+  getRowState: vi.fn(() => undefined),
+  addRow: vi.fn(),
+  deleteRows: vi.fn(),
+  restoreRows: vi.fn(),
+  bulkEditRows: vi.fn(),
+  isSingleRecord: ref(false),
+  revertCell: vi.fn(),
+  totalCount: ref(undefined),
+  filteredCount: ref(undefined),
 })
 
 let mockTableDataInstances: any[] = []
@@ -185,6 +146,14 @@ const mockTableChangesState = {
   clearDeletesForTable: vi.fn(),
   clearCreatesForTable: vi.fn(),
   revertTableChanges: vi.fn(),
+  revertChange: vi.fn(),
+  revertRowChanges: vi.fn(),
+  revertCreate: vi.fn(),
+  revertDelete: vi.fn(),
+  recordChange: vi.fn(),
+  updateCreateField: vi.fn(),
+  getFullGroupedChanges: vi.fn(() => [] as any[]),
+  tableTitles: ref<Record<string, string>>({}),
 }
 vi.mock('@cornflow-ui/core/composables/useTableChanges', () => ({
   useTableChanges: () => mockTableChangesState,
@@ -315,6 +284,8 @@ const resetState = () => {
   mockTableChangesState.getPendingDeletes.mockReturnValue([])
   mockTableChangesState.getPendingCreates.mockReturnValue([])
   mockTableChangesState.getChangesForTable.mockReturnValue(null)
+  mockTableChangesState.getFullGroupedChanges.mockReturnValue([])
+  mockTableChangesState.tableTitles.value = {}
 
   mockGeneralStoreState.selectedExecution = null
   mockGeneralStoreState.getConfigurations = { masterData: {} }
@@ -355,6 +326,56 @@ const resetState = () => {
 const snackbarSpy = vi.fn()
 let lastRouter: any = null
 
+const viewStubs = {
+  CoreTitleView: { template: '<div class="core-title-view-stub"><slot /></div>' },
+  SectionDataTable: {
+    name: 'SectionDataTable',
+    props: [
+      'tableData',
+      'tableKey',
+      'readOnly',
+      'switching',
+      'checkLevel',
+      'columnSources',
+      'pendingCount',
+      'pendingTables',
+      'reviewLabel',
+      'highlightedRowId',
+    ],
+    emits: ['review'],
+    template: '<div class="section-data-table-stub"><slot name="tabs" /></div>',
+  },
+  DataTableTabs: {
+    name: 'DataTableTabs',
+    props: ['modelValue', 'tabs'],
+    emits: ['update:modelValue'],
+    template: '<div class="data-table-tabs-stub"></div>',
+  },
+  PendingChangesPanel: {
+    name: 'PendingChangesPanel',
+    props: ['open', 'groups', 'saving', 'saveLabel', 'banner', 'overwrite'],
+    template: '<div class="pending-panel-stub"></div>',
+  },
+  BulkUploadDialog: {
+    name: 'BulkUploadDialog',
+    props: ['open', 'tableTitle', 'accept', 'multiple', 'operations', 'phase'],
+    template: '<div class="bulk-upload-stub"></div>',
+  },
+  RelaunchDialog: {
+    name: 'RelaunchDialog',
+    props: ['open', 'name', 'summary', 'sourceName', 'busy'],
+    template: '<div class="relaunch-stub"></div>',
+  },
+  CoreConfirmDialog: { template: '<div class="confirm-stub"></div>' },
+  ForceRetryConfirmDialog: { template: '<div class="force-retry-stub"></div>' },
+  AutoKPICard: { template: '<div class="auto-kpi-stub"></div>' },
+  AutoLineChart: { template: '<div class="auto-line-stub"></div>' },
+  AutoBarChart: { template: '<div class="auto-bar-stub"></div>' },
+  AutoPieChart: { template: '<div class="auto-pie-stub"></div>' },
+  AutoAreaChart: { template: '<div class="auto-area-stub"></div>' },
+  AutoMapChart: { template: '<div class="auto-map-stub"></div>' },
+}
+
 const createWrapper = () => {
   // Pre-create two table-data instances (tableData + selectedTableData) so
   // tests can manipulate them via mockTableDataInstances[0]/[1].
@@ -389,26 +410,7 @@ const createWrapper = () => {
     global: {
       plugins: [vuetify, pinia, i18n, router],
       provide: { showSnackbar: snackbarSpy },
-      stubs: {
-        CoreTitleView: { template: '<div class="core-title-view-stub"><slot /></div>' },
-        CoreTable: { template: '<div class="core-table-stub"></div>' },
-        SimpleList: { template: '<div class="simple-list-stub"></div>' },
-        CoreTab: { template: '<div class="core-tab-stub"></div>' },
-        CoreTabs: { template: '<div class="core-tabs-stub"></div>' },
-        PendingChangesReviewModal: { template: '<div class="pending-modal-stub"></div>' },
-        CoreBulkUploadModal: { template: '<div class="bulk-upload-stub"></div>' },
-        CoreBulkEditModal: { template: '<div class="bulk-edit-stub"></div>' },
-        ForceRetryConfirmDialog: { template: '<div class="force-retry-stub"></div>' },
-        MBaseModal: { template: '<div class="m-base-modal-stub"><slot /></div>' },
-        AutoKPICard: { template: '<div class="auto-kpi-stub"></div>' },
-        AutoLineChart: { template: '<div class="auto-line-stub"></div>' },
-        AutoBarChart: { template: '<div class="auto-bar-stub"></div>' },
-        AutoPieChart: { template: '<div class="auto-pie-stub"></div>' },
-        AutoAreaChart: { template: '<div class="auto-area-stub"></div>' },
-        AutoMapChart: { template: '<div class="auto-map-stub"></div>' },
-        'v-dialog': { template: '<div class="v-dialog-stub"><slot /></div>' },
-        'v-menu': { template: '<div class="v-menu-stub"><slot /></div>' },
-      },
+      stubs: viewStubs,
     },
   })
 }
@@ -490,19 +492,7 @@ describe('SectionView', () => {
       expect(vm.pendingChangesCount).toBe(7)
     })
 
-    test('modifiedTableKeysInGroup filters to current group', () => {
-      mockGroupTablesState.isGroupView.value = true
-      mockGroupTablesState.groupTables.value = { Table_A: {}, Table_B: {} }
-      mockTableChangesState.modifiedTableKeys.value = ['table_a', 'other_table']
-      const vm = createWrapper().vm as any
-      expect(vm.modifiedTableKeysInGroup).toEqual(['table_a'])
-    })
 
-    test('modifiedTableKeysInGroup empty when not group view', () => {
-      mockGroupTablesState.isGroupView.value = false
-      const vm = createWrapper().vm as any
-      expect(vm.modifiedTableKeysInGroup).toEqual([])
-    })
   })
 
   // -------------------------------------------------------------------------
@@ -613,15 +603,6 @@ describe('SectionView', () => {
       expect(vm.recalculationValidationError).toBe('boom')
     })
 
-    test('open and close recalculation pending modal', () => {
-      const vm = createWrapper().vm as any
-      vm.openRecalculationPendingModal()
-      expect(vm.showRecalculationPendingModal).toBe(true)
-      vm.recalculationValidationError = 'err'
-      vm.handleCloseRecalculationPendingModal()
-      expect(vm.showRecalculationPendingModal).toBe(false)
-      expect(vm.recalculationValidationError).toBe(null)
-    })
   })
 
   // -------------------------------------------------------------------------
@@ -890,38 +871,6 @@ describe('SectionView', () => {
   // -------------------------------------------------------------------------
   // Bulk edit modal handlers
   // -------------------------------------------------------------------------
-  describe('bulk edit', () => {
-    test('handleBulkEditEvent opens modal with source', () => {
-      const vm = createWrapper().vm as any
-      vm.handleBulkEditEvent('group')
-      expect(vm.bulkEditSource).toBe('group')
-      expect(vm.showBulkEditModal).toBe(true)
-    })
-
-    test('handleBulkEditApply (single) calls tableData handler', () => {
-      const vm = createWrapper().vm as any
-      vm.handleBulkEditEvent('single')
-      vm.handleBulkEditApply({ field: 1 })
-      expect(mockTableDataInstances[0].handleBulkEdit).toHaveBeenCalledWith({ field: 1 })
-      expect(vm.showBulkEditModal).toBe(false)
-    })
-
-    test('handleBulkEditApply (group) calls selectedTableData handler', () => {
-      const vm = createWrapper().vm as any
-      vm.handleBulkEditEvent('group')
-      vm.handleBulkEditApply({ field: 2 })
-      expect(mockTableDataInstances[1].handleBulkEdit).toHaveBeenCalledWith({ field: 2 })
-    })
-
-    test('activeBulkEditHeaders/Count reflect source', () => {
-      mockTableDataInstances = [mockMakeTableDataInstance(), mockMakeTableDataInstance()]
-      mockTableDataInstances[1].selectedItems.value = [1, 2, 3]
-      const vm = createWrapper().vm as any
-      vm.handleBulkEditEvent('group')
-      expect(vm.activeBulkEditSelectedCount).toBe(3)
-      expect(vm.activeBulkEditHeaders.length).toBeGreaterThan(0)
-    })
-  })
 
   // -------------------------------------------------------------------------
   // Master-table save flows
@@ -930,9 +879,9 @@ describe('SectionView', () => {
     test('no-op when no modified keys, then closes modal', async () => {
       mockTableChangesState.modifiedTableKeys.value = []
       const vm = createWrapper().vm as any
-      vm.showMasterTablePendingModal = true
+      vm.masterReviewOpen = true
       await vm.handleMasterTableSaveAll()
-      expect(vm.showMasterTablePendingModal).toBe(false)
+      expect(vm.masterReviewOpen).toBe(false)
       expect(vm.masterTableSaving).toBe(false)
     })
 
@@ -975,22 +924,7 @@ describe('SectionView', () => {
       expect(vm.masterTableValidationError).toBe(null)
     })
 
-    test('openMasterTablePendingModal resets error', () => {
-      const vm = createWrapper().vm as any
-      vm.masterTableValidationError = 'old'
-      vm.openMasterTablePendingModal()
-      expect(vm.showMasterTablePendingModal).toBe(true)
-      expect(vm.masterTableValidationError).toBe(null)
-    })
 
-    test('handleCloseMasterTablePendingModal clears offer', () => {
-      const vm = createWrapper().vm as any
-      vm.showMasterTablePendingModal = true
-      vm.forceRetryOfferFromSaveAll = { message: 'm', storageKey: 'k', ids: [1] }
-      vm.handleCloseMasterTablePendingModal()
-      expect(vm.showMasterTablePendingModal).toBe(false)
-      expect(vm.forceRetryOfferFromSaveAll).toBe(null)
-    })
   })
 
   describe('handleForceRetryConfirmFromSaveAll', () => {
@@ -1111,44 +1045,6 @@ describe('SectionView', () => {
     })
   })
 
-  describe('saveAllGroupMasterTableChanges', () => {
-    test('returns early with no keys', async () => {
-      mockGroupTablesState.isGroupView.value = true
-      mockGroupTablesState.groupTables.value = { Table_A: { get_list: {} } }
-      mockTableChangesState.modifiedTableKeys.value = []
-      const vm = createWrapper().vm as any
-      await vm.saveAllGroupMasterTableChanges()
-      expect(mockTableRepositoryCtor).not.toHaveBeenCalled()
-    })
-
-    test('saves deletes/creates/edits for group tables', async () => {
-      mockGroupTablesState.isGroupView.value = true
-      mockGroupTablesState.groupTables.value = {
-        Table_A: {
-          get_list: {},
-          delete_item: {},
-          post_item: {},
-          put_item: {},
-        },
-      }
-      mockTableChangesState.modifiedTableKeys.value = ['table_a']
-      mockTableChangesState.getPendingDeletes.mockReturnValue([3])
-      mockTableChangesState.getPendingCreates.mockReturnValue([
-        { tempId: 't', data: { id: 't', name: 'n' } },
-      ])
-      mockTableChangesState.getChangesForTable.mockReturnValue({
-        '1': { name: { newValue: 'z' } },
-      })
-      mockRepoInstance.getList = vi.fn(async () => [{ id: 1, name: 'a' }])
-      const vm = createWrapper().vm as any
-      await vm.saveAllGroupMasterTableChanges()
-      await flushPromises()
-      expect(mockRepoInstance.deleteItem).toHaveBeenCalled()
-      expect(mockRepoInstance.createItem).toHaveBeenCalled()
-      expect(mockRepoInstance.putItem).toHaveBeenCalled()
-      expect(mockTableDataInstances[1].loadData).toHaveBeenCalled()
-    })
-  })
 
   // -------------------------------------------------------------------------
   // Dashboard / widgets
@@ -1592,10 +1488,6 @@ describe('SectionView', () => {
       expect(mockGeneralStoreState.incrementUploadComponentKey).toHaveBeenCalled()
     })
 
-    test('handleDropdownItemClick is a no-op', () => {
-      const vm = createWrapper().vm as any
-      expect(() => vm.handleDropdownItemClick({ id: 'x' })).not.toThrow()
-    })
 
     test('edit-all-master-tables action opens modal', () => {
       mockCoreParams.enableEditAllMasterTables = true
@@ -1668,26 +1560,9 @@ describe('SectionView', () => {
   // -------------------------------------------------------------------------
   // activeTableData + isTableUiLoading
   // -------------------------------------------------------------------------
-  describe('activeTableData + loading', () => {
-    test('activeTableData returns tableData for non-group', () => {
-      mockGroupTablesState.isGroupView.value = false
-      const vm = createWrapper().vm as any
-      expect(vm.activeTableData).toBe(mockTableDataInstances[0])
-    })
+  describe('table loading', () => {
 
-    test('activeTableData returns selectedTableData for group', () => {
-      mockGroupTablesState.isGroupView.value = true
-      const vm = createWrapper().vm as any
-      expect(vm.activeTableData).toBe(mockTableDataInstances[1])
-    })
 
-    test('table change watcher resets inline editing state', async () => {
-      const vm = createWrapper().vm as any
-      mockTableDataInstances[0].editingRowId.value = 'r1'
-      mockGroupTablesState.tableKey.value = 'table_2'
-      await nextTick()
-      expect(mockTableDataInstances[0].editingRowId.value).toBe(null)
-    })
 
     test('isTableUiLoading true when tableSwitching', () => {
       mockGroupTablesState.tableSwitching.value = true
@@ -2088,21 +1963,6 @@ describe('SectionView', () => {
       expect(mockRepoInstance.putItem).not.toHaveBeenCalled()
     })
 
-    test('group edits skip rows not found in items', async () => {
-      mockGroupTablesState.isGroupView.value = true
-      mockGroupTablesState.groupTables.value = {
-        Table_A: { get_list: {}, put_item: {} },
-      }
-      mockTableChangesState.modifiedTableKeys.value = ['table_a']
-      mockTableChangesState.getChangesForTable.mockReturnValue({
-        '999': { name: { newValue: 'z' } },
-      })
-      mockRepoInstance.getList = vi.fn(async () => [{ id: 1, name: 'a' }])
-      const vm = createWrapper().vm as any
-      await vm.saveAllGroupMasterTableChanges()
-      await flushPromises()
-      expect(mockRepoInstance.putItem).not.toHaveBeenCalled()
-    })
 
     test('saveAllMasterTableChanges reloads selectedTableData in group view', async () => {
       mockGroupTablesState.isGroupView.value = true
@@ -2256,6 +2116,224 @@ describe('SectionView', () => {
       expect(result.rows[0].name).toBe('keep')
     })
   })
+
+  // -------------------------------------------------------------------------
+  // The table, its tabs and the review of the pending changes
+  // -------------------------------------------------------------------------
+  describe('table and tabs', () => {
+    test('a single table gets its table data, key and the pending changes', () => {
+      mockSectionConfig.sectionType.value = 'configuration'
+      mockTableChangesState.hasChanges.value = true
+      mockTableChangesState.totalChangesCount.value = 3
+      mockTableChangesState.modifiedTableKeys.value = ['table_1', 'table_2']
+      const wrapper = createWrapper()
+      const table = wrapper.findComponent({ name: 'SectionDataTable' })
+      expect(table.props('tableData')).toBe(mockTableDataInstances[0])
+      expect(table.props('tableKey')).toBe('table_1')
+      expect(table.props('readOnly')).toBe(false)
+      expect(table.props('pendingCount')).toBe(3)
+      expect(table.props('pendingTables')).toBe(2)
+    })
+
+    test('execution data without recalculation is read-only', () => {
+      mockSectionConfig.sectionType.value = 'input-data'
+      const table = createWrapper().findComponent({ name: 'SectionDataTable' })
+      expect(table.props('readOnly')).toBe(true)
+    })
+
+    test('a group shows the selected table with tabs marking checks, origin and pending changes', () => {
+      mockSectionConfig.sectionType.value = 'input-data'
+      mockGroupTablesState.isGroupView.value = true
+      mockGroupTablesState.groupName.value = 'validaciones'
+      mockGroupTablesState.selectedTable.value = 'checks_a'
+      mockGroupTablesState.groupTables.value = {
+        checks_a: { is_warning: false },
+        checks_b: { is_warning: true },
+      }
+      mockGroupTablesState.tabsData.value = [
+        { value: 'checks_a', text: 'Checks A' },
+        { value: 'checks_b', text: 'Checks B' },
+      ] as any
+      mockTableChangesState.getChangesForTable.mockImplementation((k: string) =>
+        k === 'checks_b' ? { '1': { a: {}, b: {} } } : null,
+      )
+      const wrapper = createWrapper()
+      const vm = wrapper.vm as any
+      expect(vm.isValidationsGroup).toBe(true)
+      const tabs = wrapper.findComponent({ name: 'DataTableTabs' })
+      expect(tabs.props('modelValue')).toBe('checks_a')
+      expect(tabs.props('tabs')).toEqual([
+        { key: 'checks_a', label: 'Checks A', pending: 0, level: 'error', source: undefined },
+        { key: 'checks_b', label: 'Checks B', pending: 2, level: 'warning', source: undefined },
+      ])
+      const table = wrapper.findComponent({ name: 'SectionDataTable' })
+      expect(table.props('tableData')).toBe(mockTableDataInstances[1])
+      expect(table.props('checkLevel')).toBe('error')
+    })
+
+    test('picking a tab switches the group to it', async () => {
+      mockGroupTablesState.isGroupView.value = true
+      mockGroupTablesState.selectedTable.value = 'a'
+      mockGroupTablesState.tabsData.value = [
+        { value: 'a', text: 'A' },
+        { value: 'b', text: 'B' },
+      ] as any
+      const wrapper = createWrapper()
+      await wrapper.findComponent({ name: 'DataTableTabs' }).vm.$emit('update:modelValue', 'b')
+      expect(mockGroupTablesState.handleTabChange).toHaveBeenCalledWith(1)
+    })
+
+    test('the force-retry dialog follows the table shown', () => {
+      mockGroupTablesState.isGroupView.value = true
+      const vm = createWrapper().vm as any
+      expect(vm.forceRetryInstances).toEqual([{ key: 'group', data: mockTableDataInstances[1] }])
+    })
+  })
+
+  describe('review of the pending changes', () => {
+    test('the table opens the review; master data saves, recalculation relaunches', async () => {
+      mockSectionConfig.sectionType.value = 'configuration'
+      const wrapper = createWrapper()
+      const vm = wrapper.vm as any
+      vm.masterTableValidationError = 'old'
+      await wrapper.findComponent({ name: 'SectionDataTable' }).vm.$emit('review')
+      expect(vm.masterReviewOpen).toBe(true)
+      expect(vm.masterTableValidationError).toBe(null)
+      const panel = wrapper.findComponent({ name: 'PendingChangesPanel' })
+      expect(panel.props('open')).toBe(true)
+      expect(panel.props('saveLabel')).toBe('dataTable.pending.save')
+    })
+
+    test('in a recalculation the save asks for the name of the new execution', async () => {
+      mockCoreParams.enableSolutionRecalculation = true
+      mockSectionConfig.sectionType.value = 'input-data'
+      mockGeneralStoreState.selectedExecution = { name: 'Week 43' }
+      const wrapper = createWrapper()
+      const vm = wrapper.vm as any
+      expect(vm.saveButtonLabel).toBe('dataTable.relaunch.action')
+      expect(vm.reviewButtonLabel).toBe('dataTable.relaunch.review')
+      vm.saveReview()
+      await nextTick()
+      const relaunch = wrapper.findComponent({ name: 'RelaunchDialog' })
+      expect(relaunch.props('open')).toBe(true)
+      expect(relaunch.props('name')).toBe('Week 43')
+      expect(relaunch.props('sourceName')).toBe('Week 43')
+    })
+
+    test('the relaunch runs with the name picked', async () => {
+      mockCoreParams.enableSolutionRecalculation = true
+      mockSectionConfig.sectionType.value = 'input-data'
+      mockGeneralStoreState.selectedExecution = {
+        name: 'Week 43',
+        instance: { data: { rows: [{ id: 1 }] } },
+        solution: { data: { out: [{ id: 1 }] } },
+      }
+      const vm = createWrapper().vm as any
+      vm.relaunchOpen = true
+      await vm.handleSolutionRecalculation('Week 43 · v2')
+      expect(mockRecalculationController.runSolutionRecalculation).toHaveBeenCalledWith(
+        expect.objectContaining({ executionName: 'Week 43 · v2' }),
+      )
+      expect(vm.relaunchOpen).toBe(false)
+    })
+
+    test('groups come from the changes store with the columns and rows of each table', () => {
+      mockTableChangesState.modifiedTableKeys.value = ['table_1']
+      mockTableChangesState.tableTitles.value = { table_1: 'Lines' }
+      mockTableChangesState.getFullGroupedChanges.mockReturnValue([
+        {
+          tableKey: 'table_1',
+          tableTitle: 'Lines',
+          changes: [{ rowId: '1', fields: [{ fieldKey: 'name', oldValue: 'a', newValue: 'b' }] }],
+          creates: [],
+          deletes: [],
+        },
+      ])
+      mockTableDataInstances = [mockMakeTableDataInstance(), mockMakeTableDataInstance()]
+      mockTableDataInstances[0].rowsDataForModal.value = { table_1: { '1': { id: 1, name: 'a' } } }
+      mockTableDataInstances[0].tableHeadersForModal.value = {
+        table_1: [{ key: 'name', title: 'Name', type: 'string' }],
+      }
+      const vm = createWrapper().vm as any
+      expect(vm.pendingGroups).toHaveLength(1)
+      expect(vm.pendingGroups[0]).toMatchObject({ tableKey: 'table_1', title: 'Lines' })
+      expect(vm.pendingGroups[0].items[0]).toMatchObject({
+        kind: 'modified',
+        label: 'Name b',
+        changedKeys: ['name'],
+      })
+    })
+
+    test('a validation error of the save shows as the banner', () => {
+      const vm = createWrapper().vm as any
+      vm.masterTableValidationError = 'Row 3 is not valid'
+      expect(vm.reviewBanner).toEqual({ kind: 'validation', message: 'Row 3 is not valid' })
+      vm.clearReviewError()
+      expect(vm.reviewBanner).toBe(null)
+    })
+
+    test('the server asking to force a delete shows inside the review', async () => {
+      const wrapper = createWrapper()
+      const vm = wrapper.vm as any
+      vm.forceRetryOfferFromSaveAll = { message: 'Dependent rows', storageKey: 'k', ids: [1] }
+      vm.masterReviewOpen = true
+      await nextTick()
+      expect(wrapper.findComponent({ name: 'PendingChangesPanel' }).props('overwrite')).toEqual({
+        message: 'Dependent rows',
+      })
+    })
+
+    test('reverting a table, a row of each kind and a field', () => {
+      const vm = createWrapper().vm as any
+      vm.revertTable('t')
+      expect(mockTableChangesState.revertTableChanges).toHaveBeenCalledWith('t')
+      expect(mockTableChangesState.clearCreatesForTable).toHaveBeenCalledWith('t')
+      expect(mockTableChangesState.clearDeletesForTable).toHaveBeenCalledWith('t')
+      vm.revertRow('t', 'create-t-0-1', 'new')
+      expect(mockTableChangesState.revertCreate).toHaveBeenCalledWith('t', 'create-t-0-1')
+      vm.revertRow('t', 4, 'deleted')
+      expect(mockTableChangesState.revertDelete).toHaveBeenCalledWith('t', 4)
+      vm.revertRow('t', 5, 'modified')
+      expect(mockTableChangesState.revertRowChanges).toHaveBeenCalledWith('t', 5)
+    })
+
+    test('a field edited in the review is recorded from its original value', () => {
+      mockTableChangesState.modifiedTableKeys.value = ['table_1']
+      mockTableDataInstances = [mockMakeTableDataInstance(), mockMakeTableDataInstance()]
+      mockTableDataInstances[0].rowsDataForModal.value = { table_1: { '1': { id: 1, name: 'a' } } }
+      const vm = createWrapper().vm as any
+      vm.updateReviewField('table_1', 1, 'name', 'c')
+      expect(mockTableChangesState.recordChange).toHaveBeenCalledWith('table_1', 1, 'name', 'a', 'c', 'name')
+      vm.updateReviewField('table_1', 'create-table_1-0-1', 'name', 'd')
+      expect(mockTableChangesState.updateCreateField).toHaveBeenCalledWith('table_1', 'create-table_1-0-1', 'name', 'd')
+    })
+
+    test('going to a change of the table shown clears its search and filters', async () => {
+      mockGroupTablesState.resolvedTableKey.value = 'table_1'
+      const vm = createWrapper().vm as any
+      await vm.goToChange('table_1', 1, 'name')
+      expect(mockTableDataInstances[0].handleSearch).toHaveBeenCalledWith('')
+      expect(mockTableDataInstances[0].setFilters).toHaveBeenCalledWith([])
+    })
+
+    test('going to a change of a table not shown does nothing', async () => {
+      const vm = createWrapper().vm as any
+      await vm.goToChange('other', 1, 'name')
+      expect(mockTableDataInstances[0].handleSearch).not.toHaveBeenCalled()
+    })
+
+    test('going to a change of another tab of the group switches to it', async () => {
+      mockGroupTablesState.isGroupView.value = true
+      mockGroupTablesState.tabsData.value = [
+        { value: 'Table_A', text: 'A' },
+        { value: 'Table_B', text: 'B' },
+      ] as any
+      const vm = createWrapper().vm as any
+      await vm.goToChange('table_b', 1, 'name')
+      expect(mockGroupTablesState.handleTabChange).toHaveBeenCalledWith(1)
+      expect(mockTableDataInstances[1].setFilters).toHaveBeenCalledWith([])
+    })
+  })
 })
 
 // Helpers used by guard tests -------------------------------------------------
@@ -2265,26 +2343,7 @@ function tableChangesGuardSetup() {
   mockTableChangesState.modifiedTableKeys.value = ['table_1']
 }
 
-const guardStubs = {
-  CoreTitleView: { template: '<div><slot /></div>' },
-  CoreTable: { template: '<div></div>' },
-  SimpleList: { template: '<div></div>' },
-  CoreTab: { template: '<div></div>' },
-  CoreTabs: { template: '<div></div>' },
-  PendingChangesReviewModal: { template: '<div></div>' },
-  CoreBulkUploadModal: { template: '<div></div>' },
-  CoreBulkEditModal: { template: '<div></div>' },
-  ForceRetryConfirmDialog: { template: '<div></div>' },
-  MBaseModal: { template: '<div><slot /></div>' },
-  AutoKPICard: { template: '<div></div>' },
-  AutoLineChart: { template: '<div></div>' },
-  AutoBarChart: { template: '<div></div>' },
-  AutoPieChart: { template: '<div></div>' },
-  AutoAreaChart: { template: '<div></div>' },
-  AutoMapChart: { template: '<div></div>' },
-  'v-dialog': { template: '<div><slot /></div>' },
-  'v-menu': { template: '<div><slot /></div>' },
-}
+const guardStubs = viewStubs
 
 async function mountThroughRouter(startPath: string) {
   if (mockTableDataInstances.length === 0) {
