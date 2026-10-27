@@ -126,17 +126,53 @@
         </div>
       </div>
     </CatalogBlock>
+
+    <CatalogBlock name="CoreCheckbox · CoreSwitch" api="v-model · label · disabled · indeterminate (checkbox)">
+      <CoreCheckbox v-model="checked" label="Ticked" />
+      <CoreCheckbox :model-value="false" indeterminate label="Some selected" />
+      <CoreCheckbox :model-value="true" disabled label="Disabled" />
+      <CoreSwitch v-model="switched" :label="switched ? 'Yes' : 'No'" />
+      <CoreSwitch :model-value="false" disabled label="Not available" />
+    </CatalogBlock>
+
+    <CatalogBlock
+      name="CoreSegmentedControl"
+      api="v-model · options ({ value, label, count, icon, title, disabled }) · variant (solid | soft) · size"
+      column
+    >
+      <CoreSegmentedControl v-model="view" :options="views" />
+      <CoreSegmentedControl v-model="view" :options="views" size="small" />
+      <CoreSegmentedControl v-model="group" variant="soft" :options="groups" />
+    </CatalogBlock>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
+import CoreCheckbox from '@cornflow-ui/core/components/core/CoreCheckbox.vue'
+import CoreSegmentedControl from '@cornflow-ui/core/components/core/CoreSegmentedControl.vue'
 import CoreSelect from '@cornflow-ui/core/components/core/CoreSelect.vue'
+import CoreSwitch from '@cornflow-ui/core/components/core/CoreSwitch.vue'
 import CoreTextField from '@cornflow-ui/core/components/core/CoreTextField.vue'
 import CatalogBlock from '../CatalogBlock.vue'
 
 const sizes = ['small', 'default', 'large'] as const
+
+const checked = ref(true)
+const switched = ref(true)
+const view = ref('summary')
+const views = [
+  { value: 'summary', label: 'Summary' },
+  { value: 'side', label: 'Side by side' },
+  { value: 'changes', label: 'Changes', count: 6 },
+]
+const group = ref('input')
+const groups = [
+  { value: 'input', label: 'Input data', count: 4 },
+  { value: 'output', label: 'Results', count: 2 },
+  { value: 'checks', label: 'Checks', count: 4 },
+]
 
 const name = ref('Plan week 43')
 const timeLimit = ref<string | number | null>(900)

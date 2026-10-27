@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref, computed, defineComponent, h, nextTick } from 'vue'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 
 // ─── Hoisted controllable fixtures ──────────────────────────────────────────
 
@@ -32,7 +32,7 @@ function record(method: string, url: string, data: any) {
 
 vi.mock('@cornflow-ui/core/api/Api', () => ({
   default: {
-    get: (url: string) => record('get', url, null),
+    get: (url: string, params: any) => record('get', url, params),
     post: (url: string, data: any) => record('post', url, data),
     put: (url: string, data: any) => record('put', url, data),
     remove: (url: string, _h: any, _a: any, data: any) =>
@@ -71,6 +71,10 @@ vi.mock('@cornflow-ui/core/composables/section-view/useExecutionTableData', () =
   }),
 }))
 
+// get_list parameters of the table under test (filters the API applies).
+const listParams = vi.hoisted(() => ({ value: [] as any[] }))
+;(globalThis as any).__listParams = listParams
+
 vi.mock('@cornflow-ui/core/services/FrontendAutomationService', () => ({
   getSectionType: (p: string) => {
     if (p.includes('input-data')) return 'input-data'
@@ -79,12 +83,15 @@ vi.mock('@cornflow-ui/core/services/FrontendAutomationService', () => ({
   },
   getDateRangeFilterConfigs: vi.fn(() => []),
   getDefaultListQueryParams: vi.fn(() => ({})),
-  getGetListQueryParameters: vi.fn(() => []),
+  getGetListQueryParameters: vi.fn(() => (globalThis as any).__listParams.value),
   getDefaultListLimit: vi.fn(() => 50),
   getListDeclaresLimitParam: vi.fn(() => false),
   getListDeclaresOffsetParam: vi.fn(() => false),
   getGlobalSearchQueryParameterName: vi.fn(() => null),
-  filterTypeMatchesUiOperator: vi.fn(() => true),
+  // An equality param filters with "is"; the rest accept any operator.
+  filterTypeMatchesUiOperator: vi.fn((ft: string, op: string) =>
+    ft === 'value_is_equal' ? op === 'is' : true,
+  ),
   isOperationSupported: vi.fn((config: any, op: string) => !!config?.[op]),
   isValidationLikeGroup: vi.fn(
     (g: any) => typeof g === 'string' && g.toLowerCase().includes('valid'),
@@ -110,12 +117,17 @@ vi.mock('@cornflow-ui/core/composables/useTableChanges', () => ({
     return {
       isCellModified: (k: string, rowId: any, f: string) =>
         !!ensure(k).edits[String(rowId)]?.[f],
+      isRowModified: (k: string, rowId: any) =>
+        Object.keys(ensure(k).edits[String(rowId)] ?? {}).length > 0,
       getCurrentValue: (k: string, rowId: any, f: string, fallback: any) =>
         ensure(k).edits[String(rowId)]?.[f]?.newValue ?? fallback,
       recordChange: (k: string, rowId: any, f: string, _o: any, n: any) => {
         const t = ensure(k)
         t.edits[String(rowId)] = t.edits[String(rowId)] || {}
         t.edits[String(rowId)][f] = { newValue: n }
+      },
+      revertChange: (k: string, rowId: any, f: string) => {
+        delete ensure(k).edits[String(rowId)]?.[f]
       },
       setTableTitle: (k: string, title: string) => {
         ensure(k).title = title
@@ -127,24 +139,28 @@ vi.mock('@cornflow-ui/core/composables/useTableChanges', () => ({
         t.creates.push({ tempId, data: { ...data } })
         return tempId
       },
+      updateCreateField: (k: string, tempId: string, f: string, v: any) => {
+        const create = ensure(k).creates.find((c: any) => c.tempId === tempId)
+        if (create) create.data[f] = v
+      },
       recordDelete: (k: string, id: any, data: any) => {
         ensure(k).deletes.push({ rowId: id, data })
+      },
+      revertDelete: (k: string, id: any) => {
+        const t = ensure(k)
+        t.deletes = t.deletes.filter((d: any) => String(d.rowId) !== String(id))
       },
       isTableModified: (k: string) => Object.keys(ensure(k).edits).length > 0,
       getPendingCreates: (k: string) => ensure(k).creates,
       // Real getPendingDeletes returns rowIds only.
       getPendingDeletes: (k: string) => ensure(k).deletes.map((d: any) => d.rowId),
       getChangesForTable: (k: string) => ensure(k).edits,
-      clearDeletesForTable: (k: string) => {
-        ensure(k).deletes = []
+      getRowClass: (k: string, item: any) => {
+        const t = ensure(k)
+        if (t.deletes.some((d: any) => String(d.rowId) === String(item?.id))) return 'row-deleted'
+        if (t.creates.some((c: any) => c.tempId === item?.id)) return 'row-new'
+        return ''
       },
-      clearCreatesForTable: (k: string) => {
-        ensure(k).creates = []
-      },
-      revertTableChanges: (k: string) => {
-        s.map[k] = { edits: {}, creates: [], deletes: [], title: '' }
-      },
-      getRowClass: (_k: string, item: any) => (item?.__new ? 'row-new' : ''),
     }
   },
 }))
@@ -154,7 +170,6 @@ vi.mock('@cornflow-ui/core/composables/useTableChanges', () => ({
 vi.mock('@cornflow-ui/core/composables/core-table/useFormFields', () => ({
   useFormFields: () => ({
     prepareFormDataForSubmit: (data: any) => ({ ...data }),
-    updateDependentFields: (_f: string, _v: any, data: any) => data,
   }),
 }))
 
@@ -175,16 +190,6 @@ vi.mock('@cornflow-ui/core/utils/schemaUtils', () => ({
   ),
   isParameterPropertySchemaVisible: vi.fn((prop: any) => prop?.visible !== false),
   normalizeJsonSchemaPropertyTypeForUi: vi.fn((prop: any) => prop?.type ?? 'string'),
-}))
-
-vi.mock('@cornflow-ui/core/utils/tableFilterUtils', () => ({
-  getOperatorsForFieldType: vi.fn(() => ['equals']),
-  getOperatorText: vi.fn((op: string) => `OP:${op}`),
-  operatorNeedsValue: vi.fn(() => true),
-  operatorNeedsSecondValue: vi.fn(() => false),
-  generateFilterId: vi.fn(() => 'fid-1'),
-  applyFiltersAndSearch: vi.fn((items: any[]) => items),
-  getFilterFieldTypeFromSchemaProperty: vi.fn(() => 'string'),
 }))
 
 vi.mock('@cornflow-ui/core/utils/csvUtils', () => ({
@@ -278,6 +283,35 @@ const masterConfigNoExcel = {
   __rowSchema: rowSchema,
 }
 
+// 300 rows: more than one window (200). `group` is 'a' for a third of them.
+const bigRows = Array.from({ length: 300 }, (_, i) => ({
+  id: i,
+  rank: i,
+  group: i % 3 === 0 ? 'a' : 'b',
+}))
+
+const bigConfig = {
+  ...masterConfig,
+  __rowSchema: {
+    properties: {
+      id: { type: 'number' },
+      rank: { type: 'number' },
+      group: { type: 'string' },
+    },
+    required: [],
+  },
+}
+
+async function mountLoaded(config: any, rows: any[]) {
+  repoCtrl.getListResult = rows
+  const mounted = mountTableData(config)
+  await mounted.api.loadData()
+  await nextTick()
+  return mounted
+}
+
+const getCount = () => repoCtrl.calls.get?.length ?? 0
+
 beforeEach(() => {
   vi.clearAllMocks()
   route.path = '/configuration'
@@ -291,6 +325,7 @@ beforeEach(() => {
   repoCtrl.rejectStatus = 0
   repoCtrl.forceRetryContent = null
   repoCtrl.calls = {}
+  listParams.value = []
   changesStore.map = {}
   invalidateAllTableDataCaches()
 })
@@ -312,16 +347,13 @@ describe('cache invalidation helpers', () => {
 describe('useTableData — master table capabilities', () => {
   test('computed capabilities reflect master config operations', () => {
     const { api } = mountTableData(masterConfig)
-    expect(api.enableSearch.value).toBe(true)
-    expect(api.enableFilters.value).toBe(true)
     expect(api.enableSelection.value).toBe(true)
-    expect(api.enableActions.value).toBe(true)
     expect(api.canAdd.value).toBe(true)
     expect(api.canEdit.value).toBe(true)
     expect(api.canDelete.value).toBe(true)
     expect(api.canBulkUpload.value).toBe(false) // no bulk ops declared
     expect(api.canDownloadExcel.value).toBe(true)
-    expect(api.searchPlaceholder.value).toBe('table.searchPlaceholder')
+    expect(api.enableExcelMode.value).toBe(true)
   })
 
   test('headers exclude id and build selection column', () => {
@@ -389,12 +421,6 @@ describe('useTableData — master table capabilities', () => {
     ).toEqual(['c', 'a', 'b'])
   })
 
-  test('availableFilterFields and formFields derived from schema', () => {
-    const { api } = mountTableData(masterConfig)
-    expect(api.availableFilterFields.value.map((f: any) => f.key)).toContain('name')
-    expect(api.formFields.value.map((f: any) => f.key)).toEqual(['name'])
-  })
-
   test('canBulkUpload true when bulk ops supported', () => {
     const { api } = mountTableData({
       ...masterConfig,
@@ -404,32 +430,28 @@ describe('useTableData — master table capabilities', () => {
     expect(api.bulkUploadAvailableOperations.value).toContain('post_bulk')
   })
 
-  test('isParameterObjectTable disables add', () => {
-    const { api } = mountTableData({ ...masterConfig, __paramObject: true })
+  test('a parameter object table is a single record: no add, no delete', async () => {
+    const { api } = await mountLoaded({ ...masterConfig, __paramObject: true }, [
+      { id: 1, name: 'a' },
+    ])
+    expect(api.isSingleRecord.value).toBe(true)
     expect(api.canAdd.value).toBe(false)
-    // handleAddItem is a no-op for param object tables
-    api.handleAddItem()
-    expect(api.showAddEditModal.value).toBe(false)
+    expect(api.canDelete.value).toBe(false)
+
+    await api.deleteRows([1])
+    expect(repoCtrl.calls.delete).toBeUndefined()
+    expect(changesStore.map.table_a?.deletes ?? []).toHaveLength(0)
+  })
+
+  test('a table flagged as parameters is a single record', () => {
+    expect(mountTableData({ ...masterConfig, isParameterTable: true }).api.isSingleRecord.value).toBe(
+      true,
+    )
+    expect(mountTableData(masterConfig).api.isSingleRecord.value).toBe(false)
   })
 })
 
-describe('useTableData — filter / search / selection handlers', () => {
-  test('handleAddFilter / handleRemoveFilter / handleClearAllFilters', () => {
-    const { api } = mountTableData(masterConfig)
-    api.handleAddFilter({ field: 'name', operator: 'equals', value: 'x' })
-    expect(api.activeFilters.value).toHaveLength(1)
-    expect(api.activeFilters.value[0].id).toBe('fid-1')
-    // invalid filter ignored
-    api.handleAddFilter(null)
-    api.handleAddFilter({ field: '', operator: '' })
-    expect(api.activeFilters.value).toHaveLength(1)
-    api.handleRemoveFilter('fid-1')
-    expect(api.activeFilters.value).toHaveLength(0)
-    api.handleAddFilter({ field: 'name', operator: 'equals' })
-    api.handleClearAllFilters()
-    expect(api.activeFilters.value).toHaveLength(0)
-  })
-
+describe('useTableData — search, filters and sort', () => {
   test('date range handlers update dateRangeValues', () => {
     const { api } = mountTableData(masterConfig)
     api.handleApplyDateRange('created', { from: 'a', to: 'b' })
@@ -440,21 +462,6 @@ describe('useTableData — filter / search / selection handlers', () => {
     api.handleResetDateRange('') // no-op
   })
 
-  test('selection handlers', () => {
-    const { api } = mountTableData(masterConfig)
-    api.items // ensure init
-    const a = { id: 1 }
-    api.handleSelectItem(a)
-    expect(api.selectedItems.value).toHaveLength(1)
-    api.handleSelectItem(a) // toggle off
-    expect(api.selectedItems.value).toHaveLength(0)
-    api.handleSelectAll(true)
-    api.handleSelectAll(false)
-    expect(api.selectedItems.value).toHaveLength(0)
-    api.handleClearSelection()
-    expect(api.selectedItems.value).toHaveLength(0)
-  })
-
   test('handleSearch sets searchValue (client-side path)', () => {
     vi.useFakeTimers()
     const { api } = mountTableData(masterConfig)
@@ -463,187 +470,205 @@ describe('useTableData — filter / search / selection handlers', () => {
     vi.advanceTimersByTime(300)
   })
 
-  test('filter util passthroughs', () => {
-    const { api } = mountTableData(masterConfig)
-    expect(api.getOperatorsForFieldType('string')).toEqual(['equals'])
-    expect(api.getOperatorText('equals')).toBe('OP:equals')
-    expect(api.operatorNeedsValue('equals')).toBe(true)
-    expect(api.operatorNeedsSecondValue('between')).toBe(false)
-    expect(api.generateFilterId()).toBe('fid-1')
-  })
-})
+  test('a change in a filter the API applies reloads the list with it', async () => {
+    listParams.value = [
+      {
+        name: 'name_eq',
+        is_filter: true,
+        filter_info: { filters_on: 'name', filter_type: 'value_is_equal' },
+      },
+    ]
+    const { api } = await mountLoaded(masterConfig, [{ id: 1, name: 'x' }])
+    const before = getCount()
 
-describe('useTableData — modal open/close handlers', () => {
-  test('add / edit / delete / bulk delete modal toggles', () => {
-    const { api } = mountTableData(masterConfig)
-    api.handleAddItem()
-    expect(api.showAddEditModal.value).toBe(true)
-    expect(api.isEditing.value).toBe(false)
+    api.setFilters([{ id: 'f1', field: 'name', operator: 'is', value: 'x' }])
+    await flushPromises()
 
-    api.handleEditItem({ id: 5, name: 'z' })
-    expect(api.isEditing.value).toBe(true)
-    expect(api.formData.value).toEqual({ id: 5, name: 'z' })
-
-    api.handleDeleteItem({ id: 5 })
-    expect(api.showDeleteDialog.value).toBe(true)
-
-    api.selectedItems.value = [{ id: 1 }]
-    api.handleBulkDelete()
-    expect(api.showBulkDeleteDialog.value).toBe(true)
-
-    api.handleCancelDelete()
-    expect(api.showDeleteDialog.value).toBe(false)
-    api.handleCancelBulkDelete()
-    expect(api.showBulkDeleteDialog.value).toBe(false)
-    api.handleCancelBulkUpload()
-    expect(api.showBulkUploadModal.value).toBe(false)
+    expect(getCount()).toBe(before + 1)
+    expect(repoCtrl.calls.get.at(-1)?.data).toMatchObject({ name_eq: 'x' })
   })
 
-  test('inline edit lifecycle', () => {
-    const { api } = mountTableData(masterConfig)
-    api.startInlineEdit({ id: 9, name: 'n' })
-    expect(api.editingRowId.value).toBe(9)
-    expect(api.isEditingAnyRow.value).toBe(true)
-    api.updateInlineField('name', 'new')
-    expect((api.editingData.value as any).name).toBe('new')
-    api.cancelInlineEdit()
-    expect(api.editingRowId.value).toBeNull()
-  })
-})
+  test('a filter applied to the loaded rows does not reload', async () => {
+    const { api } = await mountLoaded(masterConfig, [
+      { id: 1, name: 'x' },
+      { id: 2, name: 'y' },
+    ])
+    const before = getCount()
 
-describe('useTableData — API save / delete flows', () => {
-  test('handleSaveItem (add) calls createItem and reloads (non-excel)', async () => {
-    const { api } = mountTableData(masterConfigNoExcel)
-    api.handleAddItem()
-    api.formData.value = { name: 'new' }
-    await api.handleSaveItem()
+    api.setFilters([{ id: 'f1', field: 'name', operator: 'is', value: 'y' }])
+    await flushPromises()
+
+    expect(getCount()).toBe(before)
+    expect(api.items.value.map((r: any) => r.id)).toEqual([2])
+  })
+
+  test('a list filter with one value goes to the API as "is"', async () => {
+    listParams.value = [
+      {
+        name: 'name_eq',
+        is_filter: true,
+        filter_info: { filters_on: 'name', filter_type: 'value_is_equal' },
+      },
+    ]
+    const { api } = await mountLoaded(masterConfig, [{ id: 1, name: 'x' }])
+    const before = getCount()
+
+    api.setFilters([
+      { id: 'f1', field: 'name', operator: 'is_any_of', value: '', values: ['x'] },
+    ])
+    await flushPromises()
+
+    expect(getCount()).toBe(before + 1)
+    expect(repoCtrl.calls.get.at(-1)?.data).toMatchObject({ name_eq: 'x' })
+  })
+
+  test('a list filter with several values stays on the loaded rows', async () => {
+    listParams.value = [
+      {
+        name: 'name_eq',
+        is_filter: true,
+        filter_info: { filters_on: 'name', filter_type: 'value_is_equal' },
+      },
+    ]
+    const { api } = await mountLoaded(masterConfig, [
+      { id: 1, name: 'x' },
+      { id: 2, name: 'y' },
+      { id: 3, name: 'z' },
+    ])
+    const before = getCount()
+
+    api.setFilters([
+      { id: 'f1', field: 'name', operator: 'is_any_of', value: '', values: ['x', 'z'] },
+    ])
+    await flushPromises()
+
+    expect(getCount()).toBe(before)
+    expect(api.items.value.map((r: any) => r.id)).toEqual([1, 3])
+  })
+
+  test('the sort orders the whole set before the window is cut', async () => {
+    const { api } = await mountLoaded(bigConfig, bigRows)
+
+    api.sort.value = { key: 'rank', direction: 'desc' }
     await nextTick()
-    expect(repoCtrl.calls.post).toHaveLength(1)
-    expect(api.saving.value).toBe(false)
+
+    expect(api.items.value).toHaveLength(200)
+    expect(api.items.value[0].rank).toBe(299)
+    expect(api.items.value[199].rank).toBe(100)
   })
 
-  test('handleSaveItem (excel mode add) stages a pending create', async () => {
-    const { api } = mountTableData(masterConfig) // has put_item -> excel mode
-    api.handleAddItem()
-    api.formData.value = { name: 'staged' }
-    await api.handleSaveItem()
+  test('totalCount counts every row and filteredCount the ones that pass the filters', async () => {
+    const { api } = await mountLoaded(bigConfig, bigRows)
+    expect(api.totalCount.value).toBe(300)
+    expect(api.filteredCount.value).toBe(300)
+
+    api.setFilters([{ id: 'f1', field: 'group', operator: 'is', value: 'a' }])
+    await nextTick()
+
+    expect(api.totalCount.value).toBe(300)
+    expect(api.filteredCount.value).toBe(100)
+    expect(api.items.value).toHaveLength(100)
+  })
+
+  test('totalCount and filteredCount are unknown while the server pages the list', async () => {
+    const automation = await import('@cornflow-ui/core/services/FrontendAutomationService')
+    vi.mocked(automation.getListDeclaresLimitParam).mockReturnValue(true)
+    vi.mocked(automation.getListDeclaresOffsetParam).mockReturnValue(true)
+    try {
+      const { api } = await mountLoaded(masterConfig, [{ id: 1, name: 'x' }])
+      expect(api.totalCount.value).toBeUndefined()
+      expect(api.filteredCount.value).toBeUndefined()
+    } finally {
+      vi.mocked(automation.getListDeclaresLimitParam).mockReturnValue(false)
+      vi.mocked(automation.getListDeclaresOffsetParam).mockReturnValue(false)
+    }
+  })
+})
+
+describe('useTableData — adding and deleting rows', () => {
+  test('addRow creates the row through the API and reloads (non-excel)', async () => {
+    const { api } = mountTableData(masterConfigNoExcel)
+    await api.addRow({ name: 'new' })
+    expect(repoCtrl.calls.post).toHaveLength(1)
+    expect(repoCtrl.calls.post[0].data).toEqual({ name: 'new' })
+    expect(showSnackbar).toHaveBeenCalledWith('table.messages.itemCreated', 'success')
+  })
+
+  test('addRow in excel mode stages a pending create and shows the row', async () => {
+    const { api } = mountTableData(masterConfig)
+    await api.addRow({ name: 'staged' })
     expect(repoCtrl.calls.post).toBeUndefined()
     expect(api.hasPendingChanges.value).toBe(true)
+    expect(api.items.value).toContainEqual({ id: 'create-table_a-0', name: 'staged' })
     expect(showSnackbar).toHaveBeenCalledWith('pendingChanges.changeStaged', 'success')
   })
 
-  test('handleSaveItem surfaces error on repository reject', async () => {
-    repoCtrl.rejectWith = new Error('save failed')
+  test('addRow surfaces the error when the API rejects', async () => {
     const { api } = mountTableData(masterConfigNoExcel)
-    api.handleAddItem()
-    api.formData.value = { name: 'x' }
-    await api.handleSaveItem()
+    await flushPromises()
+    repoCtrl.rejectWith = new Error('save failed')
+    await api.addRow({ name: 'x' })
+    expect(api.error.value).toBe('save failed')
     expect(showSnackbar).toHaveBeenCalledWith('save failed', 'error')
   })
 
-  test('handleConfirmDelete calls deleteItem (non-excel)', async () => {
-    const { api } = mountTableData(masterConfigNoExcel)
-    api.formData.value = { id: 3 }
-    await api.handleConfirmDelete()
+  test('deleteRows deletes the rows through the API (non-excel)', async () => {
+    const { api } = await mountLoaded(masterConfigNoExcel, [
+      { id: 1, name: 'a' },
+      { id: 2, name: 'b' },
+    ])
+    await api.deleteRows([1, 2])
     expect(repoCtrl.calls.delete).toHaveLength(1)
-    expect(api.showDeleteDialog.value).toBe(false)
+    expect(api.selectedItems.value).toEqual([])
+    expect(showSnackbar).toHaveBeenCalledWith('table.messages.itemsDeleted', 'success')
   })
 
-  test('handleConfirmDelete in excel mode stages a delete', async () => {
-    const { api } = mountTableData(masterConfig)
-    api.formData.value = { id: 3 }
-    await api.handleConfirmDelete()
-    expect(repoCtrl.calls.delete).toBeUndefined()
-    expect(api.hasPendingChanges.value).toBe(true)
-  })
-
-  test('handleConfirmDelete offers force retry on ForceRetryOfferError', async () => {
-    const ffr = Object.assign(new Error('needs force'), {
+  test('deleteRows offers a force retry when the API asks for it', async () => {
+    const { api } = await mountLoaded(masterConfigNoExcel, [
+      { id: 1, name: 'a' },
+      { id: 2, name: 'b' },
+    ])
+    repoCtrl.rejectWith = Object.assign(new Error('needs force'), {
       name: 'ForceRetryOfferError',
     })
-    repoCtrl.rejectWith = ffr
-    const { api } = mountTableData(masterConfigNoExcel)
-    api.formData.value = { id: 3 }
-    await api.handleConfirmDelete()
-    expect(api.forceRetryOffer.value?.operation).toBe('delete_item')
-  })
-
-  test('handleConfirmBulkDelete calls deleteBulk (non-excel)', async () => {
-    const { api } = mountTableData(masterConfigNoExcel)
-    api.selectedItems.value = [{ id: 1 }, { id: 2 }]
-    await api.handleConfirmBulkDelete()
-    expect(repoCtrl.calls.delete).toHaveLength(1)
-  })
-
-  test('saveInlineEdit calls putItem', async () => {
-    const { api } = mountTableData(masterConfig)
-    api.startInlineEdit({ id: 7, name: 'n' })
-    api.editingData.value = { id: 7, name: 'updated' }
-    await api.saveInlineEdit()
-    expect(repoCtrl.calls.put).toHaveLength(1)
-    expect(api.editingRowId.value).toBeNull()
-  })
-
-  test('handleConfirmBulkUpload uses createBulk and reloads', async () => {
-    const { api } = mountTableData({
-      ...masterConfig,
-      post_bulk: { url: '/postbulk', http_method: 'post' },
+    await api.deleteRows([2])
+    expect(api.forceRetryOffer.value).toEqual({
+      message: 'needs force',
+      operation: 'delete_bulk',
+      ids: [2],
     })
-    await api.handleConfirmBulkUpload([{ name: 'a' }])
-    expect(repoCtrl.calls.post).toHaveLength(1)
-    expect(repoCtrl.calls.post[0].url).toBe('/postbulk')
-    expect(api.showBulkUploadModal.value).toBe(false)
-    expect(showSnackbar).toHaveBeenCalledWith(
-      'table.messages.bulkUploadSuccess',
-      'success',
-    )
   })
 
-  test('handleConfirmBulkUpload prefers updateBulk when post_update_bulk', async () => {
-    const { api } = mountTableData({
-      ...masterConfig,
-      post_update_bulk: { url: '/u', http_method: 'post' },
-    })
-    await api.handleConfirmBulkUpload([{ name: 'a' }])
-    expect(repoCtrl.calls.post).toHaveLength(1)
-    expect(repoCtrl.calls.post[0].url).toBe('/u')
-  })
+  test('deleteRows in excel mode marks the rows and restoreRows takes them back', async () => {
+    const { api } = await mountLoaded(masterConfig, [
+      { id: 1, name: 'a' },
+      { id: 2, name: 'b' },
+    ])
+    await api.deleteRows([1])
+    expect(repoCtrl.calls.delete).toBeUndefined()
+    expect(api.pendingChangesCount.value).toBe(1)
+    expect(api.getRowState({ id: 1 })).toBe('deleted')
+    expect(api.getRowState({ id: 2 })).toBeUndefined()
 
-  test('handleConfirmBulkUpload no-op with empty data', async () => {
-    const { api } = mountTableData(masterConfig)
-    await api.handleConfirmBulkUpload([])
-    expect(repoCtrl.calls.post).toBeUndefined()
-  })
-
-  test('saveAllChanges persists staged creates/deletes/edits then reloads', async () => {
-    const { api } = mountTableData({
-      ...masterConfig,
-      post_bulk: { url: '/postbulk', http_method: 'post' },
-    })
-    // stage a create + an edit
-    api.handleAddItem()
-    api.formData.value = { name: 'c1' }
-    await api.handleSaveItem()
-    api.handleCellChange('table_a', 1, 'name', 'old', 'new')
-    repoCtrl.getListResult = [{ id: 1, name: 'old' }]
-    await api.saveAllChanges()
-    expect((repoCtrl.calls.post ?? []).length).toBeGreaterThanOrEqual(1)
-    expect(showSnackbar).toHaveBeenCalledWith('table.messages.itemUpdated', 'success')
+    api.restoreRows([1])
+    expect(api.getRowState({ id: 1 })).toBeUndefined()
+    expect(api.hasPendingChanges.value).toBe(false)
   })
 })
 
 describe('useTableData — force retry', () => {
-  test('acceptForceRetry for delete_item calls deleteItem with force', async () => {
+  test('acceptForceRetry for delete_bulk deletes the rows with force', async () => {
     const { api } = mountTableData(masterConfig)
-    api.forceRetryOffer.value = { message: 'm', operation: 'delete_item', id: 4 }
+    api.forceRetryOffer.value = { message: 'm', operation: 'delete_bulk', ids: [4, 5] }
     await api.acceptForceRetry()
     expect(repoCtrl.calls.delete).toHaveLength(1)
     expect(api.forceRetryOffer.value).toBeNull()
+    expect(showSnackbar).toHaveBeenCalledWith('table.messages.itemsDeleted', 'success')
   })
 
   test('rejectForceRetry clears offer', () => {
     const { api } = mountTableData(masterConfig)
-    api.forceRetryOffer.value = { message: 'm', operation: 'delete_item', id: 4 }
+    api.forceRetryOffer.value = { message: 'm', operation: 'delete_bulk', ids: [4] }
     api.rejectForceRetry()
     expect(api.forceRetryOffer.value).toBeNull()
   })
@@ -708,15 +733,17 @@ describe('useTableData — execution data mode', () => {
   test('uses execution data: items come from execution composable, actions disabled', () => {
     const { api } = mountTableData(masterConfig, { executionType: 'instance' })
     expect(api.items.value).toHaveLength(2)
-    expect(api.enableActions.value).toBe(false)
+    expect(api.enableSelection.value).toBe(false)
     expect(api.canAdd.value).toBe(false)
+    expect(api.canEdit.value).toBe(false)
     expect(api.canDelete.value).toBe(false)
+    expect(api.enableExcelMode.value).toBe(false)
   })
 
-  test('saveAllChanges is a no-op in execution mode', async () => {
+  test('totalCount and filteredCount come from the execution rows', () => {
     const { api } = mountTableData(masterConfig, { executionType: 'instance' })
-    await api.saveAllChanges()
-    expect(repoCtrl.calls.put).toBeUndefined()
+    expect(api.totalCount.value).toBe(2)
+    expect(api.filteredCount.value).toBe(2)
   })
 })
 
@@ -728,17 +755,59 @@ describe('useTableData — Excel mode (pending changes)', () => {
     expect(api.pendingChangesCount.value).toBe(1)
     expect(api.isCellModified(1, 'name')).toBe(true)
     expect(api.getModifiedValue(1, 'name')).toBe('new')
-    // clearPendingChanges reverts the underlying change store for this table.
-    api.clearPendingChanges()
-    expect(Object.keys(changesStore.map['table_a'].edits)).toHaveLength(0)
   })
 
-  test('handleBulkEdit records change for each selected item', () => {
+  test('revertCell takes back the change of one cell', () => {
     const { api } = mountTableData(masterConfig)
-    api.selectedItems.value = [{ id: 1, name: 'a' }, { id: 2, name: 'b' }]
-    api.handleBulkEdit({ name: 'X' })
+    api.handleCellChange('table_a', 1, 'name', 'old', 'new')
+    api.revertCell(1, 'name')
+    expect(api.isCellModified(1, 'name')).toBe(false)
+    expect(api.pendingChangesCount.value).toBe(0)
+  })
+
+  test('an edit on a created row updates the create instead of recording a change', async () => {
+    const { api } = mountTableData(masterConfig)
+    await api.addRow({ name: 'draft' })
+
+    api.handleCellChange('table_a', 'create-table_a-0', 'name', 'draft', 'final')
+
+    expect(changesStore.map.table_a.creates[0].data).toEqual({ name: 'final' })
+    expect(changesStore.map.table_a.edits).toEqual({})
+    expect(api.items.value).toContainEqual({ id: 'create-table_a-0', name: 'final' })
+    expect(api.pendingChangesCount.value).toBe(1)
+  })
+
+  test('bulkEditRows records the values in each row', async () => {
+    const { api } = await mountLoaded(masterConfig, [
+      { id: 1, name: 'a' },
+      { id: 2, name: 'b' },
+      { id: 3, name: 'c' },
+    ])
+    api.bulkEditRows([1, 2], { name: 'X' })
     expect(api.pendingChangesCount.value).toBe(2)
-    expect(showSnackbar).toHaveBeenCalled()
+    expect(api.getModifiedValue(1, 'name')).toBe('X')
+    expect(api.getModifiedValue(2, 'name')).toBe('X')
+    expect(api.isCellModified(3, 'name')).toBe(false)
+    expect(showSnackbar).toHaveBeenCalledWith('table.bulkEditApplied:{"count":2}', 'success')
+  })
+
+  test('getRowState tells a new, a modified and an untouched row apart', async () => {
+    const { api } = await mountLoaded(masterConfig, [
+      { id: 1, name: 'a' },
+      { id: 2, name: 'b' },
+    ])
+    await api.addRow({ name: 'c' })
+    api.handleCellChange('table_a', 1, 'name', 'a', 'A')
+
+    expect(api.getRowState({ id: 'create-table_a-0' })).toBe('new')
+    expect(api.getRowState({ id: 1 })).toBe('modified')
+    expect(api.getRowState({ id: 2 })).toBeUndefined()
+  })
+
+  test('getRowState is empty when the table does not stage changes', () => {
+    const { api } = mountTableData(masterConfigNoExcel)
+    api.handleCellChange('table_a', 1, 'name', 'a', 'A')
+    expect(api.getRowState({ id: 1 })).toBeUndefined()
   })
 
   test('rowsDataForModal and tableHeadersForModal keyed by storage key', () => {
@@ -747,10 +816,5 @@ describe('useTableData — Excel mode (pending changes)', () => {
     const headers = api.tableHeadersForModal.value
     expect(Object.keys(rows)).toContain('table_a')
     expect(Object.keys(headers)).toContain('table_a')
-  })
-
-  test('getRowClass returns empty when excel mode off', () => {
-    const { api } = mountTableData(masterConfig)
-    expect(api.getRowClass({ id: 1 })).toBe('')
   })
 })

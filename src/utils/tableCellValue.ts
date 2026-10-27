@@ -1,6 +1,6 @@
 /**
- * Pure cell-value resolution extracted from CoreTable.vue. The joined table
- * data is injected so this can be unit-tested without the component's props.
+ * Pure cell-value resolution of the tables. The joined table data comes as an
+ * argument.
  */
 
 import { parseJoinFrom } from '@cornflow-ui/core/utils/schemaUtils'

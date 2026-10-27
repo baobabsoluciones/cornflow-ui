@@ -107,10 +107,8 @@ test.describe('Solution Data Page', () => {
       timeout: TIMEOUTS.FORM_LOAD,
     });
 
-    const hasTable = await tableSection.count() > 0;
-    const tableCard = page.locator('.table-card');
-    const hasCard = await tableCard.count() > 0;
-    expect(hasTable || hasCard).toBe(true);
+    const dataTable = page.locator('[data-testid="data-table"]');
+    expect(await dataTable.count()).toBeGreaterThan(0);
   });
 
   test('should show solution data that belongs to the selected execution', async ({
@@ -255,11 +253,8 @@ test.describe('Solution Data Page', () => {
       console.log(
         'No solution data captured from API - verifying UI structure only.'
       );
-      const tableSection = page.locator('.table-section');
-      const tableCard = page.locator('.table-card');
-      expect(
-        (await tableSection.count()) > 0 || (await tableCard.count()) > 0
-      ).toBe(true);
+      const dataTable = page.locator('[data-testid="data-table"]');
+      expect(await dataTable.count()).toBeGreaterThan(0);
       return;
     }
 
@@ -268,11 +263,10 @@ test.describe('Solution Data Page', () => {
       `API returned ${dataKeys.length} solution tables: ${dataKeys.join(', ')}`
     );
 
-    const tableCard = page.locator('.table-card');
-    const hasGroupView = await tableCard.count() > 0;
+    const dataTabs = page.locator('[role="tab"][data-testid^="data-table-tab-"]');
+    const hasGroupView = await dataTabs.count() > 0;
 
     if (hasGroupView) {
-      const dataTabs = tableCard.locator('.m-tab, button[role="tab"]');
       const tabCount = await dataTabs.count();
       expect(tabCount).toBeGreaterThan(0);
       console.log(
@@ -295,7 +289,7 @@ test.describe('Solution Data Page', () => {
 
       if (sampleValue != null && String(sampleValue).length <= 50) {
         const cellWithValue = page
-          .locator('.v-data-table, .simple-list, .table-section')
+          .locator('[data-testid="data-table"]')
           .getByText(String(sampleValue), { exact: false });
         const valueFound = await cellWithValue.count() > 0;
         expect(valueFound).toBe(true);
@@ -354,8 +348,8 @@ test.describe('Solution Data Page', () => {
       timeout: TIMEOUTS.NAVIGATION,
     });
 
-    const tableCard = page.locator('.table-card');
-    const hasGroupView = await tableCard.count() > 0;
+    const dataTabs = page.locator('[role="tab"][data-testid^="data-table-tab-"]');
+    const hasGroupView = await dataTabs.count() > 0;
 
     if (!hasGroupView) {
       console.log(
@@ -366,7 +360,6 @@ test.describe('Solution Data Page', () => {
       return;
     }
 
-    const dataTabs = tableCard.locator('.m-tab, button[role="tab"]');
     const tabCount = await dataTabs.count();
 
     if (tabCount < 2) {
@@ -388,8 +381,8 @@ test.describe('Solution Data Page', () => {
     });
     await expect(firstTab).toHaveAttribute('aria-selected', 'false');
 
-    const tableCardContent = tableCard.locator('.table-card-content');
-    await expect(tableCardContent).toBeVisible({
+    const dataTable = page.locator('[data-testid="data-table"]');
+    await expect(dataTable.first()).toBeVisible({
       timeout: TIMEOUTS.FORM_LOAD,
     });
 
@@ -441,40 +434,24 @@ test.describe('Solution Data Page', () => {
       timeout: TIMEOUTS.NAVIGATION,
     });
 
-    const menuButton = page
-      .locator(
-        '.table-card-content .core-dropdown-menu__trigger, ' +
-          '.core-table-container .core-dropdown-menu__trigger, ' +
-          '.table-section .core-dropdown-menu__trigger'
-      )
-      .first();
+    const downloadButton = page.locator('[data-testid="data-table-excel"]').first();
 
-    const menuVisible = await menuButton
+    const buttonVisible = await downloadButton
       .isVisible({ timeout: TIMEOUTS.FORM_LOAD })
       .catch(() => false);
 
-    if (!menuVisible) {
+    if (!buttonVisible) {
       console.log(
-        'Download menu button not visible on solution data page - skipping test.'
+        'Download Excel button not visible on solution data page - skipping test.'
       );
       return;
     }
-
-    await menuButton.click();
-
-    const downloadOption = page.getByText(
-      /Descargar excel|Download excel/i
-    );
-    await downloadOption.waitFor({
-      state: 'visible',
-      timeout: TIMEOUTS.FORM_LOAD,
-    });
 
     const downloadPromise = page.waitForEvent('download', {
       timeout: TIMEOUTS.NAVIGATION,
     });
 
-    await downloadOption.click();
+    await downloadButton.click();
 
     const download = await downloadPromise;
     const suggestedFilename = download.suggestedFilename();

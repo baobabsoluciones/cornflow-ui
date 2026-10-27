@@ -305,7 +305,7 @@ export function createValidationTables(execution: any, deps: ValidationTableDeps
             sortable: false,
             filterable: false,
             type: 'string',
-            align: ' d-none',
+            hidden: true,
           },
           {
             title: formatTitle(tableKey),
@@ -333,7 +333,7 @@ export function createValidationTables(execution: any, deps: ValidationTableDeps
             sortable: false,
             filterable: false,
             type: 'string',
-            align: ' d-none',
+            hidden: true,
           },
           ...dataHeaders.filter((h: any) => h.key !== 'id' && h.key !== 'selection'),
         ]

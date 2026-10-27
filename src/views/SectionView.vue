@@ -2,8 +2,8 @@
   <div class="view-container section-view">
     <!-- Loading state while configurations are being loaded -->
     <div v-if="!configurationsReady" class="loading-container">
-      <v-progress-circular indeterminate color="primary" size="64" />
-      <p class="mt-4">{{ $t('executionTable.loading') }}</p>
+      <CoreSpinner :size="48" />
+      <p>{{ $t('executionTable.loading') }}</p>
     </div>
 
     <!-- Main content when configurations are ready -->
@@ -13,114 +13,101 @@
         :title="title"
         :description="description"
         :dropdown-items="dropdownMenuItems"
-        @dropdown-item-click="handleDropdownItemClick"
       />
 
-      <!-- Pending changes bar (master tables / configuration or solution recalculation) -->
-      <div
-        v-if="(isConfigurationSection || isRecalculationSection) && hasPendingChanges"
-        class="pending-changes-bar mt-3"
-      >
-        <v-chip color="success" variant="tonal" size="small" class="mr-2">
-          <v-icon start size="small">mdi-pencil</v-icon>
-          {{
-            $t('pendingChanges.changesIndicator', {
-              count: pendingChangesCount,
-            })
-          }}
-        </v-chip>
-        <v-btn
-          v-if="isConfigurationSection"
-          color="success"
-          variant="flat"
-          size="small"
-          @click="openMasterTablePendingModal"
-        >
-          <v-icon start size="small">mdi-eye</v-icon>
-          {{ $t('pendingChanges.reviewChanges') }}
-        </v-btn>
-        <v-btn
-          v-else-if="isRecalculationSection"
-          color="primary"
-          variant="flat"
-          size="small"
-          @click="openRecalculationPendingModal"
-        >
-          <v-icon start size="small">mdi-eye</v-icon>
-          {{ $t('pendingChanges.reviewChanges') }}
-        </v-btn>
-      </div>
-
-      <!-- Single table view (for null group or individual tables) -->
-      <!-- Check if it's a primitive array and render SimpleList -->
-      <div
-        v-if="!isGroupView && tableData.isPrimitiveArray.value"
-        class="table-section mt-5"
-      >
-        <SimpleList
-          :items="tableData.items.value"
-          :loading="tableData.loading.value"
-          :search-value="tableData.searchValue.value"
-          :enable-search="tableData.enableSearch.value"
-          :can-download-excel="tableData.canDownloadExcel.value"
-          :search-placeholder="tableData.searchPlaceholder.value"
-          @search="tableData.handleSearch"
-          @update:searchValue="tableData.handleSearch"
-          @download-excel="tableData.handleDownloadExcel"
-        />
-      </div>
-
-      <!-- Regular table view for non-primitive arrays -->
-      <div
-        v-else-if="!isGroupView"
-        class="table-section mt-5"
-        :class="{
-          'table-section--dashboard': shouldShowWidgets && hasActualWidgets,
-        }"
-      >
-        <!-- Table with widgets layout (70/30) - only if there are actual widgets -->
-        <div
-          v-if="shouldShowWidgets && hasActualWidgets"
-          class="dashboard-layout"
-        >
-          <!-- Top row: table (70%) + side widgets (30%) -->
-          <div class="table-with-widgets">
-            <div class="table-column">
-              <SectionSingleTable
-                :table-data="tableData"
-                :is-read-only-data-section="isReadOnlyDataSection"
-                :table-key="effectiveTableKey"
-                :header-origin-indicators="
-                  etlHeaderOriginIndicatorsForSingleTable
+      <div class="section-view__body">
+        <div class="section-view__main">
+          <!-- Single table -->
+          <div
+            v-if="!isGroupView"
+            class="table-section"
+            :class="{
+              'table-section--dashboard': shouldShowWidgets && hasActualWidgets,
+            }"
+          >
+            <!-- Table with widgets layout (70/30) - only if there are actual widgets -->
+            <div
+              v-if="shouldShowWidgets && hasActualWidgets"
+              class="dashboard-layout"
+            >
+              <!-- Top row: table (70%) + side widgets (30%) -->
+              <div class="table-with-widgets">
+                <div class="table-column">
+                  <SectionDataTable
+                    ref="singleTable"
+                    :table-data="tableData"
+                    :table-key="effectiveTableKey"
+                    :read-only="isReadOnlyDataSection"
+                    :column-sources="etlHeaderOriginIndicatorsForSingleTable"
+                    :pending-count="pendingChangesCount"
+                    :pending-tables="pendingTablesCount"
+                    :review-label="reviewButtonLabel"
+                    :highlighted-row-id="highlightedRowId"
+                    @review="openReview"
+                  />
+                </div>
+                <!-- Widgets column (30%) -->
+                <div class="widgets-column">
+                  <!-- KPIs section (2 per row) -->
+                  <div v-if="kpiWidgets.length > 0" class="kpis-section">
+                    <div
+                      v-for="(widget, index) in kpiWidgets"
+                      :key="`kpi-${index}`"
+                      class="kpi-item"
+                    >
+                      <component
+                        :is="getWidgetComponent(widget.type)"
+                        :title="widget.title"
+                        :config="widget.config"
+                      />
+                    </div>
+                  </div>
+                  <!-- Charts section (1 per row) -->
+                  <div v-if="sideCharts.length > 0" class="charts-section">
+                    <div
+                      v-for="(widget, index) in sideCharts"
+                      :key="`chart-${index}`"
+                      class="chart-item"
+                    >
+                      <component
+                        :is="getWidgetComponent(widget.type)"
+                        :title="widget.title"
+                        :config="widget.config"
+                      />
+                    </div>
+                  </div>
+                  <!-- Custom widgets section (side) -->
+                  <div v-if="customSideWidgets.length > 0" class="charts-section">
+                    <div
+                      v-for="(widget, index) in customSideWidgets"
+                      :key="`custom-side-${index}`"
+                      class="chart-item"
+                    >
+                      <component
+                        v-if="tableKey && executionType"
+                        :is="getWidgetComponent(widget.component)"
+                        :table-data="getTableData(tableKey)"
+                        :table-key="tableKey"
+                        :execution-data="getExecutionData()"
+                        :execution-type="executionType"
+                        v-bind="widget.props || {}"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Additional charts below table (100% width) -->
+              <div
+                v-if="
+                  shouldShowWidgets &&
+                  (bottomCharts.length > 0 || customBottomWidgets.length > 0)
                 "
-                :with-row-class="true"
-                @bulk-edit="() => handleBulkEditEvent('single')"
-              />
-            </div>
-            <!-- Force retry dialog when overwrite_all returns offer_force_retry (teleported for z-index) -->
-            <Teleport to="body">
-              <ForceRetryConfirmDialog
-                v-if="tableData.forceRetryOffer?.value"
-                :model-value="!!tableData.forceRetryOffer?.value"
-                :message="tableData.forceRetryOffer?.value?.message ?? ''"
-                :loading="!!tableData.forceRetryLoading?.value"
-                @confirm="tableData.acceptForceRetry"
-                @cancel="tableData.rejectForceRetry"
-                @update:model-value="
-                  (v) => {
-                    if (!v) tableData.rejectForceRetry()
-                  }
-                "
-              />
-            </Teleport>
-            <!-- Widgets column (30%) -->
-            <div class="widgets-column">
-              <!-- KPIs section (2 per row) -->
-              <div v-if="kpiWidgets.length > 0" class="kpis-section">
+                class="bottom-charts-section"
+              >
                 <div
-                  v-for="(widget, index) in kpiWidgets"
-                  :key="`kpi-${index}`"
-                  class="kpi-item"
+                  v-for="(widget, index) in bottomCharts"
+                  :key="`bottom-chart-${index}`"
+                  class="bottom-chart-item"
                 >
                   <component
                     :is="getWidgetComponent(widget.type)"
@@ -128,27 +115,10 @@
                     :config="widget.config"
                   />
                 </div>
-              </div>
-              <!-- Charts section (1 per row) -->
-              <div v-if="sideCharts.length > 0" class="charts-section">
                 <div
-                  v-for="(widget, index) in sideCharts"
-                  :key="`chart-${index}`"
-                  class="chart-item"
-                >
-                  <component
-                    :is="getWidgetComponent(widget.type)"
-                    :title="widget.title"
-                    :config="widget.config"
-                  />
-                </div>
-              </div>
-              <!-- Custom widgets section (side) -->
-              <div v-if="customSideWidgets.length > 0" class="charts-section">
-                <div
-                  v-for="(widget, index) in customSideWidgets"
-                  :key="`custom-side-${index}`"
-                  class="chart-item"
+                  v-for="(widget, index) in customBottomWidgets"
+                  :key="`custom-bottom-${index}`"
+                  class="bottom-chart-item"
                 >
                   <component
                     v-if="tableKey && executionType"
@@ -162,153 +132,51 @@
                 </div>
               </div>
             </div>
+            <!-- Regular table without widgets -->
+            <SectionDataTable
+              v-else
+              ref="singleTable"
+              :table-data="tableData"
+              :table-key="effectiveTableKey"
+              :read-only="isReadOnlyDataSection"
+              :column-sources="etlHeaderOriginIndicatorsForSingleTable"
+              :pending-count="pendingChangesCount"
+              :pending-tables="pendingTablesCount"
+              :review-label="reviewButtonLabel"
+              :highlighted-row-id="highlightedRowId"
+              @review="openReview"
+            />
           </div>
-          <!-- Additional charts below table (100% width) -->
-          <div
-            v-if="
-              shouldShowWidgets &&
-              (bottomCharts.length > 0 || customBottomWidgets.length > 0)
-            "
-            class="bottom-charts-section"
-          >
-            <div
-              v-for="(widget, index) in bottomCharts"
-              :key="`bottom-chart-${index}`"
-              class="bottom-chart-item"
-            >
-              <component
-                :is="getWidgetComponent(widget.type)"
-                :title="widget.title"
-                :config="widget.config"
-              />
-            </div>
-            <div
-              v-for="(widget, index) in customBottomWidgets"
-              :key="`custom-bottom-${index}`"
-              class="bottom-chart-item"
-            >
-              <component
-                v-if="tableKey && executionType"
-                :is="getWidgetComponent(widget.component)"
-                :table-data="getTableData(tableKey)"
-                :table-key="tableKey"
-                :execution-data="getExecutionData()"
-                :execution-type="executionType"
-                v-bind="widget.props || {}"
-              />
-            </div>
-          </div>
-        </div>
-        <!-- Regular table without widgets -->
-        <SectionSingleTable
-          v-else
-          :table-data="tableData"
-          :is-read-only-data-section="isReadOnlyDataSection"
-          :table-key="effectiveTableKey"
-          :header-origin-indicators="etlHeaderOriginIndicatorsForSingleTable"
-          @bulk-edit="() => handleBulkEditEvent('single')"
-        />
-        <!-- Force retry dialog when overwrite_all returns offer_force_retry (no-widgets layout; teleported for z-index) -->
-        <Teleport to="body">
-          <ForceRetryConfirmDialog
-            v-if="tableData.forceRetryOffer?.value"
-            :model-value="!!tableData.forceRetryOffer?.value"
-            :message="tableData.forceRetryOffer?.value?.message ?? ''"
-            :loading="!!tableData.forceRetryLoading?.value"
-            @confirm="tableData.acceptForceRetry"
-            @cancel="tableData.rejectForceRetry"
-            @update:model-value="
-              (v) => {
-                if (!v) tableData.rejectForceRetry()
-              }
-            "
-          />
-        </Teleport>
-      </div>
 
-      <!-- Group view with tabs (for grouped tables) -->
-      <div v-else class="table-section mt-5">
-        <v-card class="table-card">
-          <CoreTabs
-            v-model="selectedTabIndex"
-            color="var(--primary-variant)"
-            @update:model-value="handleTabChange"
-          >
-            <CoreTab
-              v-for="(table, index) in tabsData"
-              :key="table.value"
-              :value="index"
-              :title="table.text"
-              :tooltip="table.text"
-            >
-              <span>{{ table.text }}</span>
-              <!-- Validation table warning/error indicator -->
-              <v-tooltip
-                v-if="isValidationsGroup && groupTables[table.value] != null"
-                location="top"
-              >
-                <template #activator="{ props: tooltipProps }">
-                  <v-icon
-                    v-bind="tooltipProps"
-                    size="16"
-                    :color="groupTables[table.value]?.is_warning ? 'warning' : 'error'"
-                    class="ml-1"
-                  >
-                    {{ groupTables[table.value]?.is_warning ? 'mdi-alert-outline' : 'mdi-alert-circle-outline' }}
-                  </v-icon>
-                </template>
-                <span>{{
-                  groupTables[table.value]?.is_warning
-                    ? $t('sectionView.validationWarningTab')
-                    : $t('sectionView.validationErrorTab')
-                }}</span>
-              </v-tooltip>
-              <v-tooltip
-                v-if="showEtlTabOriginIndicatorsForTable(table.value)"
-                location="top"
-              >
-                <template #activator="{ props: tooltipProps }">
-                  <v-icon
-                    v-bind="tooltipProps"
-                    size="16"
-                    :color="isTableFromDb(table.value) ? 'success' : 'primary'"
-                    class="ml-2"
-                  >
-                    {{
-                      isTableFromDb(table.value)
-                        ? 'mdi-database-check'
-                        : 'mdi-file-document-outline'
-                    }}
-                  </v-icon>
-                </template>
-                <span>
-                  {{
-                    isTableFromDb(table.value)
-                      ? t('sectionView.etlMetadataInfo.fromDbTooltip')
-                      : t('sectionView.etlMetadataInfo.notFromDbTooltip')
-                  }}
-                </span>
-              </v-tooltip>
-            </CoreTab>
-          </CoreTabs>
-
-          <v-card-text class="table-card-content">
-            <!-- Table with widgets layout (70/30) for group view - only if there are actual widgets -->
+          <!-- Group of tables, one tab each -->
+          <div v-else class="table-section">
             <div
               v-if="shouldShowWidgets && hasActualWidgets"
               class="table-with-widgets"
             >
               <div class="table-column">
-                <SectionGroupTable
+                <SectionDataTable
+                  ref="groupTable"
                   :table-data="selectedTableData"
-                  :is-table-ui-loading="isTableUiLoading"
-                  :is-read-only-data-section="isReadOnlyDataSection"
-                  :table-key="selectedTable"
-                  :header-origin-indicators="
-                    etlHeaderOriginIndicatorsForSelectedTable
-                  "
-                  @bulk-edit="() => handleBulkEditEvent('group')"
-                />
+                  :table-key="selectedTable ?? ''"
+                  :read-only="isReadOnlyDataSection"
+                  :switching="isTableUiLoading(selectedTableData)"
+                  :check-level="selectedCheckLevel"
+                  :column-sources="etlHeaderOriginIndicatorsForSelectedTable"
+                  :pending-count="pendingChangesCount"
+                  :pending-tables="pendingTablesCount"
+                  :review-label="reviewButtonLabel"
+                  :highlighted-row-id="highlightedRowId"
+                  @review="openReview"
+                >
+                  <template #tabs>
+                    <DataTableTabs
+                      :model-value="selectedTable ?? ''"
+                      :tabs="groupTabs"
+                      @update:model-value="selectTab"
+                    />
+                  </template>
+                </SectionDataTable>
               </div>
               <!-- Widgets column (30%) -->
               <div class="widgets-column">
@@ -367,214 +235,175 @@
               </div>
             </div>
             <!-- Regular table without widgets -->
-            <SectionGroupTable
+            <SectionDataTable
               v-else
+              ref="groupTable"
               :table-data="selectedTableData"
-              :is-table-ui-loading="isTableUiLoading"
-              :is-read-only-data-section="isReadOnlyDataSection"
-              :table-key="selectedTable"
-              :header-origin-indicators="
-                etlHeaderOriginIndicatorsForSelectedTable
+              :table-key="selectedTable ?? ''"
+              :read-only="isReadOnlyDataSection"
+              :switching="isTableUiLoading(selectedTableData)"
+              :check-level="selectedCheckLevel"
+              :column-sources="etlHeaderOriginIndicatorsForSelectedTable"
+              :pending-count="pendingChangesCount"
+              :pending-tables="pendingTablesCount"
+              :review-label="reviewButtonLabel"
+              :highlighted-row-id="highlightedRowId"
+              @review="openReview"
+            >
+              <template #tabs>
+                <DataTableTabs
+                  :model-value="selectedTable ?? ''"
+                  :tabs="groupTabs"
+                  @update:model-value="selectTab"
+                />
+              </template>
+            </SectionDataTable>
+            <!-- Additional charts below table (100% width) for group view -->
+            <div
+              v-if="
+                shouldShowWidgets &&
+                (selectedBottomCharts.length > 0 ||
+                  selectedCustomBottomWidgets.length > 0)
               "
-              @bulk-edit="() => handleBulkEditEvent('group')"
-            />
-            <!-- Force retry for group view: outside widgets/no-widgets branches so it always mounts -->
-            <Teleport to="body">
-              <ForceRetryConfirmDialog
-                v-if="selectedTableData.forceRetryOffer?.value"
-                :model-value="!!selectedTableData.forceRetryOffer?.value"
-                :message="
-                  selectedTableData.forceRetryOffer?.value?.message ?? ''
-                "
-                :loading="!!selectedTableData.forceRetryLoading?.value"
-                @confirm="selectedTableData.acceptForceRetry"
-                @cancel="selectedTableData.rejectForceRetry"
-                @update:model-value="
-                  (v) => {
-                    if (!v) selectedTableData.rejectForceRetry()
-                  }
-                "
-              />
-            </Teleport>
-          </v-card-text>
-          <!-- Additional charts below table (100% width) for group view -->
-          <div
-            v-if="
-              shouldShowWidgets &&
-              (selectedBottomCharts.length > 0 ||
-                selectedCustomBottomWidgets.length > 0)
-            "
-            class="bottom-charts-section"
-          >
-            <div
-              v-for="(widget, index) in selectedBottomCharts"
-              :key="`bottom-chart-${index}`"
-              class="bottom-chart-item"
+              class="bottom-charts-section"
             >
-              <component
-                :is="getWidgetComponent(widget.type)"
-                :title="widget.title"
-                :config="widget.config"
-              />
-            </div>
-            <div
-              v-for="(widget, index) in selectedCustomBottomWidgets"
-              :key="`custom-bottom-${index}`"
-              class="bottom-chart-item"
-            >
-              <component
-                v-if="selectedTable && executionType"
-                :is="getWidgetComponent(widget.component)"
-                :table-data="getTableData(selectedTable)"
-                :table-key="selectedTable"
-                :execution-data="getExecutionData()"
-                :execution-type="executionType"
-                v-bind="widget.props || {}"
-              />
+              <div
+                v-for="(widget, index) in selectedBottomCharts"
+                :key="`bottom-chart-${index}`"
+                class="bottom-chart-item"
+              >
+                <component
+                  :is="getWidgetComponent(widget.type)"
+                  :title="widget.title"
+                  :config="widget.config"
+                />
+              </div>
+              <div
+                v-for="(widget, index) in selectedCustomBottomWidgets"
+                :key="`custom-bottom-${index}`"
+                class="bottom-chart-item"
+              >
+                <component
+                  v-if="selectedTable && executionType"
+                  :is="getWidgetComponent(widget.component)"
+                  :table-data="getTableData(selectedTable)"
+                  :table-key="selectedTable"
+                  :execution-data="getExecutionData()"
+                  :execution-type="executionType"
+                  v-bind="widget.props || {}"
+                />
+              </div>
             </div>
           </div>
-        </v-card>
+        </div>
+
+        <!-- Review of the pending changes (master data, or the data of a recalculation) -->
+        <PendingChangesPanel
+          v-if="isConfigurationSection || isRecalculationSection"
+          v-model:open="reviewOpen"
+          class="section-view__panel"
+          :groups="pendingGroups"
+          :saving="masterTableSaving || recalculationSaving"
+          :save-label="saveButtonLabel"
+          :banner="reviewBanner"
+          :overwrite="forceRetryOfferFromSaveAll ? { message: forceRetryOfferFromSaveAll.message } : null"
+          @save="saveReview"
+          @revert-all="tableChanges.clearAllChanges()"
+          @revert-table="revertTable"
+          @revert-row="revertRow"
+          @revert-field="(key, rowId, field) => tableChanges.revertChange(key, rowId, field)"
+          @update-field="updateReviewField"
+          @go-to="goToChange"
+          @close-banner="clearReviewError"
+          @confirm-overwrite="handleForceRetryConfirmFromSaveAll"
+          @cancel-overwrite="forceRetryOfferFromSaveAll = null"
+        />
       </div>
     </template>
 
-    <!-- Pending changes review modal (master tables / configuration only) -->
-    <PendingChangesReviewModal
-      v-if="isConfigurationSection"
-      v-model="showMasterTablePendingModal"
-      :saving="masterTableSaving"
-      :validation-error="masterTableValidationError"
-      :rows-data="aggregatedRowsDataForModal"
-      :table-headers="aggregatedTableHeadersForModal"
-      :table-data="
-        (isGroupView ? selectedTableData : tableData).tableData.value
+    <!-- Force retry when overwrite_all or a delete returns offer_force_retry -->
+    <ForceRetryConfirmDialog
+      v-for="instance in forceRetryInstances"
+      :key="instance.key"
+      :model-value="!!instance.data.forceRetryOffer?.value"
+      :message="instance.data.forceRetryOffer?.value?.message ?? ''"
+      :loading="!!instance.data.forceRetryLoading?.value"
+      @confirm="instance.data.acceptForceRetry"
+      @cancel="instance.data.rejectForceRetry"
+      @update:model-value="
+        (v) => {
+          if (!v) instance.data.rejectForceRetry()
+        }
       "
-      :table-keys-filter="undefined"
-      @save="handleMasterTableSaveAll"
-      @close="handleCloseMasterTablePendingModal"
-      @clear-validation-error="masterTableValidationError = null"
-      @update:model-value="(v) => (showMasterTablePendingModal = v)"
     />
 
-    <!-- Pending changes review modal (solution recalculation) -->
-    <PendingChangesReviewModal
-      v-if="isRecalculationSection"
-      v-model="showRecalculationPendingModal"
-      :saving="recalculationSaving"
-      :validation-error="recalculationValidationError"
-      :rows-data="aggregatedRowsDataForModal"
-      :table-headers="aggregatedTableHeadersForModal"
-      :table-data="
-        (isGroupView ? selectedTableData : tableData).tableData.value
-      "
-      :table-keys-filter="undefined"
-      :save-button-text="$t('recalculation.solutionRecalc.recalculateButton')"
-      :save-button-icon="'mdi-refresh'"
-      @save="handleSolutionRecalculation"
-      @close="handleCloseRecalculationPendingModal"
-      @clear-validation-error="recalculationValidationError = null"
-      @update:model-value="(v) => (showRecalculationPendingModal = v)"
-    />
-
-    <!-- Force retry dialog when save-all bulk delete returns offer_force_retry -->
-    <Teleport to="body">
-      <ForceRetryConfirmDialog
-        v-if="forceRetryOfferFromSaveAll"
-        :model-value="!!forceRetryOfferFromSaveAll"
-        :message="forceRetryOfferFromSaveAll?.message ?? ''"
-        :loading="forceRetryLoadingFromSaveAll"
-        @confirm="handleForceRetryConfirmFromSaveAll"
-        @cancel="forceRetryOfferFromSaveAll = null"
-        @update:model-value="
-          (v) => {
-            if (!v) forceRetryOfferFromSaveAll = null
-          }
-        "
-      />
-    </Teleport>
-
-    <CoreBulkEditModal
-      v-if="showBulkEditModal"
-      :model-value="showBulkEditModal"
-      :headers="activeBulkEditHeaders"
-      :selected-count="activeBulkEditSelectedCount"
-      @apply="handleBulkEditApply"
-      @cancel="showBulkEditModal = false"
-      @update:model-value="(v) => (showBulkEditModal = v)"
-    />
-
-    <CoreBulkUploadModal
+    <BulkUploadDialog
       v-if="isConfigurationSection"
-      v-model="showEditAllMasterTablesModal"
-      :title="$t('sectionView.editAllMasterTablesTitle')"
-      :accepted-formats="['.xlsx', '.json', '.csv']"
-      :multiple="true"
-      :loading="editAllMasterTablesUploading"
-      :available-operations="['post_update_bulk', 'post_bulk', 'overwrite_all']"
+      v-model:open="showEditAllMasterTablesModal"
+      :table-title="$t('sectionView.editAllMasterTablesTitle')"
+      :accept="['.xlsx', '.json', '.csv']"
+      multiple
+      :operations="['post_update_bulk', 'post_bulk', 'overwrite_all']"
+      :phase="editAllMasterTablesUploading ? 'loading' : 'form'"
       @upload="handleEditAllMasterTablesUpload"
-      @cancel="showEditAllMasterTablesModal = false"
     />
 
-    <Teleport to="body">
-      <ForceRetryConfirmDialog
-        v-if="editAllTablesForceContext"
-        :model-value="!!editAllTablesForceContext"
-        :message="editAllTablesForceContext.message"
-        :loading="editAllTablesForceLoading"
-        @confirm="confirmEditAllTablesForceRetry"
-        @cancel="cancelEditAllTablesForceRetry"
-        @update:model-value="
-          (v) => {
-            if (!v) cancelEditAllTablesForceRetry()
-          }
-        "
-      />
-    </Teleport>
+    <ForceRetryConfirmDialog
+      :model-value="!!editAllTablesForceContext"
+      :message="editAllTablesForceContext?.message ?? ''"
+      :loading="editAllTablesForceLoading"
+      @confirm="confirmEditAllTablesForceRetry"
+      @cancel="cancelEditAllTablesForceRetry"
+      @update:model-value="
+        (v) => {
+          if (!v) cancelEditAllTablesForceRetry()
+        }
+      "
+    />
 
-    <!-- Exit confirmation when leaving with unsaved pending changes (configuration) -->
-    <MBaseModal
+    <RelaunchDialog
+      v-if="isRecalculationSection"
+      v-model:open="relaunchOpen"
+      :name="relaunchName"
+      :summary="relaunchSummary"
+      :source-name="selectedExecutionName"
+      :busy="recalculationSaving"
+      @launch="handleSolutionRecalculation"
+    />
+
+    <!-- Leaving with unsaved pending changes -->
+    <CoreConfirmDialog
       v-model="showExitConfirmationModal"
-      :closeOnOutsideClick="false"
       :title="t('sectionView.exitConfirmation.title')"
-      :buttons="[
-        {
-          text: t('sectionView.exitConfirmation.confirmButton'),
-          action: 'confirm',
-          class: 'primary-btn',
-        },
-        {
-          text: t('sectionView.exitConfirmation.cancelButton'),
-          action: 'cancel',
-          class: 'secondary-btn',
-        },
-      ]"
+      :message="t('sectionView.exitConfirmation.message')"
+      :confirm-text="t('sectionView.exitConfirmation.confirmButton')"
+      :cancel-text="t('sectionView.exitConfirmation.cancelButton')"
+      confirm-color="var(--color-danger)"
+      icon="mdi-exit-to-app"
       @confirm="handleConfirmExit"
       @cancel="handleCancelExit"
-      @close="handleCancelExit"
-    >
-      <template #content>
-        <v-row class="d-flex justify-center pr-2 pl-2 pb-5 pt-3">
-          <span style="white-space: pre-line">{{
-            t('sectionView.exitConfirmation.message')
-          }}</span>
-        </v-row>
-      </template>
-    </MBaseModal>
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, watch, ref, inject, onDeactivated } from 'vue'
+import { computed, watch, ref, inject, nextTick, onDeactivated } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { formatDateForFilename } from '@cornflow-ui/core/utils/date'
-import SimpleList from '@cornflow-ui/core/components/core/SimpleList.vue'
-import CoreTab from '@cornflow-ui/core/components/core/CoreTab.vue'
-import CoreTabs from '@cornflow-ui/core/components/core/CoreTabs.vue'
+import CoreSpinner from '@cornflow-ui/core/components/core/CoreSpinner.vue'
 import CoreTitleView from '@cornflow-ui/core/components/core/CoreTitleView.vue'
-import PendingChangesReviewModal from '@cornflow-ui/core/components/core/PendingChangesReviewModal.vue'
+import CoreConfirmDialog from '@cornflow-ui/core/components/core/table/CoreConfirmDialog.vue'
 import ForceRetryConfirmDialog from '@cornflow-ui/core/components/core/table/ForceRetryConfirmDialog.vue'
-import SectionSingleTable from '@cornflow-ui/core/components/section-view/SectionSingleTable.vue'
-import SectionGroupTable from '@cornflow-ui/core/components/section-view/SectionGroupTable.vue'
+import BulkUploadDialog from '@cornflow-ui/core/components/core/data-table/BulkUploadDialog.vue'
+import DataTableTabs, {
+  type DataTableTab,
+} from '@cornflow-ui/core/components/core/data-table/DataTableTabs.vue'
+import PendingChangesPanel from '@cornflow-ui/core/components/core/data-table/PendingChangesPanel.vue'
+import RelaunchDialog from '@cornflow-ui/core/components/core/data-table/RelaunchDialog.vue'
+import SectionDataTable from '@cornflow-ui/core/components/section-view/SectionDataTable.vue'
+import { pendingChangeGroups } from '@cornflow-ui/core/composables/core-table/useDataTableChanges'
+import { columnsFromHeaders } from '@cornflow-ui/core/utils/dataTable'
 import { isForceRetryOfferError } from '@cornflow-ui/core/repositories/TableRepository'
 import { useSectionConfiguration } from '@cornflow-ui/core/composables/section-view/useSectionConfiguration'
 import { useGroupTables } from '@cornflow-ui/core/composables/section-view/useGroupTables'
@@ -585,8 +414,6 @@ import {
   invalidateAllTableDataCaches,
 } from '@cornflow-ui/core/composables/section-view/useTableData'
 import { ensureItemIds } from '@cornflow-ui/core/composables/section-view/useExecutionTableData'
-import CoreBulkUploadModal from '@cornflow-ui/core/components/core/table/CoreBulkUploadModal.vue'
-import CoreBulkEditModal from '@cornflow-ui/core/components/core/table/CoreBulkEditModal.vue'
 import {
   postEditAllTables,
   mapBulkUiOperationToEditAllApi,
@@ -663,7 +490,7 @@ const {
 } = useGroupTables(currentConfiguration, sectionType)
 
 /**
- * Loading signal handed to CoreTable. Combines the existing data-loading
+ * Loading signal handed to the table. Combines the existing data-loading
  * state from each `useTableData` instance with `tableSwitching` (true while a
  * group-tab change is in flight) so the centered overlay shows up the moment
  * the user clicks a tab — before the heavy reactivity work fires.
@@ -735,16 +562,6 @@ const recalculationModalDataCache = ref<
   >
 >({})
 
-/** In group view: modified table keys that belong to the current group. */
-const modifiedTableKeysInGroup = computed(() => {
-  if (!isGroupView.value || !groupTables.value) return []
-  const groupKeys = Object.keys(groupTables.value)
-  const normalizedGroup = new Set(groupKeys.map(normalizeTableKey))
-  return tableChanges.modifiedTableKeys.value.filter((mk) =>
-    normalizedGroup.has(mk),
-  )
-})
-
 /** Pending changes are shared across all sections/groups; show global count. */
 const hasPendingChanges = computed(() => {
   if (!isConfigurationSection.value && !isRecalculationSection.value) return false
@@ -756,9 +573,7 @@ const pendingChangesCount = computed(() => {
   return tableChanges.totalChangesCount.value
 })
 
-const showBulkEditModal = ref(false)
-const bulkEditSource = ref<'single' | 'group'>('single')
-const showMasterTablePendingModal = ref(false)
+const masterReviewOpen = ref(false)
 const masterTableSaving = ref(false)
 const masterTableValidationError = ref<string | null>(null)
 /** When save-all triggers delete and backend returns offer_force_retry, show dialog and retry with force. */
@@ -778,18 +593,9 @@ const enableRecalculation = computed(
 )
 
 // Solution recalculation modal state
-const showRecalculationPendingModal = ref(false)
+const recalculationReviewOpen = ref(false)
 const recalculationSaving = ref(false)
 const recalculationValidationError = ref<string | null>(null)
-
-const openRecalculationPendingModal = () => {
-  showRecalculationPendingModal.value = true
-}
-
-const handleCloseRecalculationPendingModal = () => {
-  recalculationValidationError.value = null
-  showRecalculationPendingModal.value = false
-}
 
 /**
  * Applies pending changes to a deep copy of the given data object (same logic
@@ -897,7 +703,7 @@ const applyPendingChangesToData = (
   return updatedData
 }
 
-const handleSolutionRecalculation = async () => {
+const handleSolutionRecalculation = async (name?: string) => {
   recalculationValidationError.value = null
   recalculationSaving.value = true
 
@@ -959,13 +765,13 @@ const handleSolutionRecalculation = async () => {
       )
     }
 
-    showRecalculationPendingModal.value = false
+    recalculationReviewOpen.value = false
     tableChanges.clearAllChanges()
     recalculationModalDataCache.value = {}
 
-    const executionName = recalculation.buildRecalculationExecutionName(
-      exec.name || 'Recalculated',
-    )
+    const executionName =
+      name?.trim() || recalculation.buildRecalculationExecutionName(exec.name || 'Recalculated')
+    relaunchOpen.value = false
 
     await recalculation.runSolutionRecalculation({
       instanceData: editedInstanceData,
@@ -1129,33 +935,6 @@ const cancelEditAllTablesForceRetry = () => {
   pendingEditAllFiles.value = []
 }
 
-const openMasterTablePendingModal = () => {
-  masterTableValidationError.value = null
-  showMasterTablePendingModal.value = true
-}
-
-const handleBulkEditEvent = (source: 'single' | 'group') => {
-  bulkEditSource.value = source
-  showBulkEditModal.value = true
-}
-
-const handleBulkEditApply = (fieldValues: Record<string, any>) => {
-  const handler = bulkEditSource.value === 'group'
-    ? selectedTableData.handleBulkEdit
-    : tableData.handleBulkEdit
-  if (handler) handler(fieldValues)
-  showBulkEditModal.value = false
-}
-
-const activeBulkEditHeaders = computed(() => {
-  const td = bulkEditSource.value === 'group' ? selectedTableData : tableData
-  return td.headers.value
-})
-
-const activeBulkEditSelectedCount = computed(() => {
-  const td = bulkEditSource.value === 'group' ? selectedTableData : tableData
-  return td.selectedItems.value.length
-})
 
 onBeforeRouteLeave((to, from, next) => {
   // Master tables: only skip the dialog when both ends are under /configuration/*
@@ -1209,7 +988,7 @@ const handleMasterTableSaveAll = async () => {
   masterTableSaving.value = true
   try {
     await saveAllMasterTableChanges()
-    showMasterTablePendingModal.value = false
+    masterReviewOpen.value = false
 
     if (enableRecalculation.value) {
       await recalculation.checkPlanDataAfterMasterDataChange()
@@ -1239,7 +1018,7 @@ const handleForceRetryConfirmFromSaveAll = async () => {
     tableChanges.clearDeletesForTable(offer.storageKey)
     forceRetryOfferFromSaveAll.value = null
     await saveAllMasterTableChanges()
-    showMasterTablePendingModal.value = false
+    masterReviewOpen.value = false
     if (enableRecalculation.value) {
       await recalculation.checkPlanDataAfterMasterDataChange()
     }
@@ -1251,43 +1030,6 @@ const handleForceRetryConfirmFromSaveAll = async () => {
     forceRetryOfferFromSaveAll.value = null
   } finally {
     forceRetryLoadingFromSaveAll.value = false
-  }
-}
-
-/** Apply pending deletes for a single table in a group save operation. */
-async function applyGroupDeletes(
-  storageKey: string,
-  config: any,
-  repository: any,
-): Promise<void> {
-  const deletes = tableChanges.getPendingDeletes(storageKey)
-  if (config?.delete_item && deletes.length > 0) {
-    for (const rowId of deletes) {
-      await repository.deleteItem(rowId)
-    }
-    tableChanges.clearDeletesForTable(storageKey)
-  }
-}
-
-/** Apply pending creates for a single table in a group save operation. */
-async function applyGroupCreates(
-  storageKey: string,
-  config: any,
-  repository: any,
-  tempIdToRealId: Record<string, string | number>,
-  loadTableDataForGroup: (tableName: string) => Promise<any[]>,
-): Promise<void> {
-  const creates = tableChanges.getPendingCreates(storageKey)
-  if (config?.post_item && creates.length > 0) {
-    for (const { tempId, data } of creates) {
-      const { id: _id, ...rawPayload } = data
-      const payloadWithTempIds = resolveTempIdsInPayload(rawPayload, tempIdToRealId, config)
-      const payload = await resolveDisplayValuesToFkIds(payloadWithTempIds, config, loadTableDataForGroup)
-      const result = await repository.createItem(payload)
-      const realId = result?.id ?? result?.pk
-      if (realId != null) tempIdToRealId[tempId] = realId
-    }
-    tableChanges.clearCreatesForTable(storageKey)
   }
 }
 
@@ -1314,85 +1056,6 @@ function buildPutPayloadWithTempIds(
     tempIdToRealId,
     config,
   )
-}
-
-/** Apply pending cell edits for a single table in a group save operation. */
-async function applyGroupEdits(
-  storageKey: string,
-  config: any,
-  repository: any,
-  tempIdToRealId: Record<string, string | number>,
-  loadTableDataForGroup: (tableName: string) => Promise<any[]>,
-): Promise<void> {
-  const changes = tableChanges.getChangesForTable(storageKey)
-  if (config?.put_item && changes) {
-    const items = normalizeGetListResponseToRows(await repository.getList(), config)
-    for (const [rowId, rowChanges] of Object.entries(changes)) {
-      const withTempIds = buildPutPayloadWithTempIds(
-        rowId,
-        rowChanges,
-        items,
-        tempIdToRealId,
-        config,
-      )
-      if (!withTempIds) continue
-      const preparedData = await resolveDisplayValuesToFkIds(withTempIds, config, loadTableDataForGroup)
-      delete preparedData.id
-      await repository.putItem(rowId, preparedData)
-    }
-    tableChanges.revertTableChanges(storageKey)
-  }
-}
-
-/** Save pending changes for all modified tables in the current group (deletes → creates → edits). */
-const saveAllGroupMasterTableChanges = async () => {
-  const keys = modifiedTableKeysInGroup.value
-  if (keys.length === 0 || !groupTables.value) return
-
-  const { default: TableRepository } = await import(
-    '@cornflow-ui/core/repositories/TableRepository'
-  )
-
-  /** Load referenced table data by table name for resolving display values to FK ids. */
-  const loadTableDataForGroup = async (tableName: string): Promise<any[]> => {
-    const refConfig = currentConfiguration.value?.[tableName]
-    if (!refConfig?.get_list) return []
-    const refRepo = new TableRepository(refConfig, t)
-    const data = await refRepo.getList()
-    return normalizeGetListResponseToRows(data, refConfig)
-  }
-
-  const getCreates = (storageKey: string) =>
-    tableChanges.getPendingCreates(storageKey)
-  const orderedKeys = sortKeysByCreateDependency(keys, getCreates)
-  const tempIdToRealId: Record<string, string | number> = {}
-
-  for (const storageKey of orderedKeys) {
-    const configKey = Object.keys(groupTables.value).find(
-      (gk) => normalizeTableKey(gk) === storageKey,
-    )
-    if (!configKey) continue
-
-    const config = groupTables.value[configKey]
-    const repository = new TableRepository(config, t)
-
-    // 1. Apply pending deletes
-    await applyGroupDeletes(storageKey, config, repository)
-
-    // 2. Apply pending creates: resolve FKs (temp id → real id), resolve display values to FK ids, then POST
-    await applyGroupCreates(storageKey, config, repository, tempIdToRealId, loadTableDataForGroup)
-
-    // 3. Apply cell edits (put): resolve display values to FK ids so API receives id_values.
-    await applyGroupEdits(storageKey, config, repository, tempIdToRealId, loadTableDataForGroup)
-  }
-
-  // Invalidate cache for each saved table so selectors in other sections see new rows
-  for (const storageKey of orderedKeys) {
-    invalidateTableDataCache(storageKey)
-  }
-
-  // Refresh current tab data so the new record appears in the table
-  await selectedTableData.loadData()
 }
 
 /** Apply pending deletes for a single table in the global save operation (bulk when supported). */
@@ -1563,10 +1226,6 @@ const saveAllMasterTableChanges = async () => {
   }
 }
 
-const handleCloseMasterTablePendingModal = () => {
-  showMasterTablePendingModal.value = false
-  forceRetryOfferFromSaveAll.value = null
-}
 
 // Table data management - Business logic layer
 // Use resolvedTableKey for non-group views to ensure correct key matching
@@ -1688,43 +1347,170 @@ const aggregatedTableHeadersForModal = computed(() => {
   return result
 })
 
-// Create a unified data source that uses the correct instance
-const activeTableData = computed(() => {
-  const isGroup = isGroupView.value
+// ── Tabs of a group ─────────────────────────────────────────────────────────
 
-  if (isGroup) {
-    return selectedTableData
-  } else {
-    return tableData
-  }
+/** Unsaved changes of a table: edited cells, added rows and deleted rows. */
+const pendingCountOf = (key: string): number => {
+  const storageKey = normalizeTableKey(key)
+  const edits = tableChanges.getChangesForTable(storageKey) ?? {}
+  return (
+    Object.values(edits).reduce((sum, row) => sum + Object.keys(row).length, 0) +
+    tableChanges.getPendingCreates(storageKey).length +
+    tableChanges.getPendingDeletes(storageKey).length
+  )
+}
+
+const checkLevelOf = (key: string): 'error' | 'warning' | undefined => {
+  if (!isValidationsGroup.value || groupTables.value?.[key] == null) return undefined
+  return groupTables.value[key]?.is_warning ? 'warning' : 'error'
+}
+
+const groupTabs = computed<DataTableTab[]>(() =>
+  tabsData.value.map((tab: { value: string; text: string }) => ({
+    key: tab.value,
+    label: tab.text,
+    pending: pendingCountOf(tab.value),
+    level: checkLevelOf(tab.value),
+    source: showEtlTabOriginIndicatorsForTable(tab.value)
+      ? isTableFromDb(tab.value)
+        ? 'database'
+        : 'file'
+      : undefined,
+  })),
+)
+
+const selectedCheckLevel = computed(() =>
+  selectedTable.value ? checkLevelOf(selectedTable.value) : undefined,
+)
+
+const selectTab = (key: string) => {
+  const index = tabsData.value.findIndex((tab: { value: string }) => tab.value === key)
+  if (index !== -1) handleTabChange(index)
+}
+
+/** The table data of each table shown, for its force-retry dialog. */
+const forceRetryInstances = computed(() =>
+  isGroupView.value
+    ? [{ key: 'group', data: selectedTableData }]
+    : [{ key: 'single', data: tableData }],
+)
+
+// ── Review of the pending changes ───────────────────────────────────────────
+
+const pendingTablesCount = computed(() => tableChanges.modifiedTableKeys.value.length)
+
+const reviewOpen = computed({
+  get: () =>
+    isConfigurationSection.value ? masterReviewOpen.value : recalculationReviewOpen.value,
+  set: (open: boolean) => {
+    if (isConfigurationSection.value) masterReviewOpen.value = open
+    else recalculationReviewOpen.value = open
+  },
 })
 
-// Watch for table changes and reset inline editing state
-watch(
-  [tableKey, selectedTable],
-  ([newTableKey, newSelectedTable], [oldTableKey, oldSelectedTable]) => {
-    // Check if we're switching between different tables
-    const isTableChange =
-      newTableKey !== oldTableKey || newSelectedTable !== oldSelectedTable
+const openReview = () => {
+  masterTableValidationError.value = null
+  recalculationValidationError.value = null
+  reviewOpen.value = true
+}
 
-    if (isTableChange) {
-      // Reset inline editing state for both table instances
-      // Note: isEditingAnyRow is a computed based on editingRowId, so we only need to reset editingRowId
-      if (tableData) {
-        tableData.editingRowId.value = null
-        tableData.editingData.value = {}
-        tableData.originalData.value = {}
-      }
-
-      if (selectedTableData) {
-        selectedTableData.editingRowId.value = null
-        selectedTableData.editingData.value = {}
-        selectedTableData.originalData.value = {}
-      }
-    }
-  },
-  { immediate: false },
+const reviewButtonLabel = computed(() =>
+  isRecalculationSection.value ? t('dataTable.relaunch.review') : '',
 )
+
+const saveButtonLabel = computed(() =>
+  isRecalculationSection.value ? t('dataTable.relaunch.action') : t('dataTable.pending.save'),
+)
+
+const pendingGroups = computed(() =>
+  pendingChangeGroups(
+    tableChanges.modifiedTableKeys.value.map((key) => ({
+      key,
+      title: tableChanges.tableTitles?.value?.[key] ?? key,
+      columns: columnsFromHeaders(aggregatedTableHeadersForModal.value[key] ?? []),
+      rows: Object.values(aggregatedRowsDataForModal.value[key] ?? {}),
+    })),
+  ),
+)
+
+const reviewBanner = computed(() => {
+  const message = isConfigurationSection.value
+    ? masterTableValidationError.value
+    : recalculationValidationError.value
+  return message ? { kind: 'validation' as const, message } : null
+})
+
+const clearReviewError = () => {
+  masterTableValidationError.value = null
+  recalculationValidationError.value = null
+}
+
+const revertTable = (key: string) => {
+  tableChanges.revertTableChanges(key)
+  tableChanges.clearCreatesForTable(key)
+  tableChanges.clearDeletesForTable(key)
+}
+
+const revertRow = (key: string, rowId: string | number, kind: string) => {
+  if (kind === 'new') tableChanges.revertCreate(key, String(rowId))
+  else if (kind === 'deleted') tableChanges.revertDelete(key, rowId)
+  else tableChanges.revertRowChanges(key, rowId)
+}
+
+const updateReviewField = (
+  key: string,
+  rowId: string | number,
+  field: string,
+  value: unknown,
+) => {
+  if (String(rowId).startsWith('create-')) {
+    tableChanges.updateCreateField(key, String(rowId), field, value)
+    return
+  }
+  const original = aggregatedRowsDataForModal.value[key]?.[String(rowId)]?.[field]
+  tableChanges.recordChange(key, rowId, field, original, value, field)
+}
+
+const singleTable = ref<InstanceType<typeof SectionDataTable>>()
+const groupTable = ref<InstanceType<typeof SectionDataTable>>()
+const highlightedRowId = ref<string | number | null>(null)
+
+/** Shows a pending change in its table: switches to its tab, clears what hides it and picks the cell. */
+const goToChange = async (key: string, rowId: string | number, field: string) => {
+  const inGroup = isGroupView.value
+    ? tabsData.value.find((tab: { value: string }) => normalizeTableKey(tab.value) === key)
+    : undefined
+  const isCurrent = !isGroupView.value && normalizeTableKey(effectiveTableKey.value) === key
+  if (!inGroup && !isCurrent) return
+  if (inGroup) selectTab(inGroup.value)
+  const target = inGroup ? selectedTableData : tableData
+  target.handleSearch('')
+  target.setFilters([])
+  await nextTick()
+  setTimeout(() => {
+    const id = target.items.value.find((item: any) => String(item.id) === String(rowId))?.id ?? rowId
+    ;(inGroup ? groupTable : singleTable).value?.focusCell(id, field)
+    highlightedRowId.value = id
+    setTimeout(() => (highlightedRowId.value = null), 1800)
+  }, 120)
+}
+
+// ── Relaunching an edited execution (solution recalculation) ────────────────
+
+const relaunchOpen = ref(false)
+const selectedExecutionName = computed(() => generalStore.selectedExecution?.name ?? '')
+const relaunchName = computed(() =>
+  recalculation.buildRecalculationExecutionName(selectedExecutionName.value || 'Recalculated'),
+)
+const relaunchSummary = computed(() => {
+  const tables = pendingGroups.value.map((group) => group.title).join(', ')
+  return t('dataTable.relaunch.changesIn', { count: pendingChangesCount.value, tables }, pendingChangesCount.value)
+})
+
+const saveReview = () => {
+  if (isRecalculationSection.value) relaunchOpen.value = true
+  else handleMasterTableSaveAll()
+}
 
 // Auto dashboard widgets logic
 const route = useRoute()
@@ -2459,12 +2245,6 @@ const navigateToEditInstance = () => {
   generalStore.incrementUploadComponentKey()
 }
 
-// Handle dropdown item click — do not call item.action() here; CoreDropdownMenu
-// already runs it on click, so calling it again would trigger downloads twice.
-const handleDropdownItemClick = (_item: any) => {
-  // Optional: add analytics or other side effects only when needed
-}
-
 // Cancel in-flight table loads when view is deactivated (keep-alive) so GET doesn't update state after navigate-away
 onDeactivated(() => {
   tableData.cancelLoadData()
@@ -2474,5 +2254,4 @@ onDeactivated(() => {
 // Component setup complete
 </script>
 
-<style src="@cornflow-ui/core/assets/styles/components/core/PendingChangesBar.css"></style>
 <style src="@cornflow-ui/core/assets/styles/views/SectionView.css"></style>

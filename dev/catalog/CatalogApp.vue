@@ -34,6 +34,7 @@ import {
 import ButtonsSection from './sections/ButtonsSection.vue'
 import CreateExecutionSection from './sections/CreateExecutionSection.vue'
 import DataSection from './sections/DataSection.vue'
+import DataTablesSection from './sections/DataTablesSection.vue'
 import FormsSection from './sections/FormsSection.vue'
 import HistorySection from './sections/HistorySection.vue'
 import MenusSection from './sections/MenusSection.vue'
@@ -51,6 +52,7 @@ const sections = [
   { id: 'forms', title: 'Form fields', component: FormsSection },
   { id: 'menus', title: 'Search, menus and filters', component: MenusSection },
   { id: 'data', title: 'Data', component: DataSection },
+  { id: 'data-tables', title: 'Data tables', component: DataTablesSection },
   { id: 'overlays', title: 'Dialogs and toasts', component: OverlaysSection },
   { id: 'history', title: 'Execution history', component: HistorySection },
   { id: 'create-execution', title: 'Create execution', component: CreateExecutionSection },

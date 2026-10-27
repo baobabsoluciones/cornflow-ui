@@ -1,511 +1,173 @@
 <template>
   <div class="execution-data-view">
-    <!-- Check Data Button-->
-    <div v-if="canCheckData" class="check-data-button-container">
-      <v-btn
-        @click="handleCheckData"
+    <!-- Checks of the data (the step of the wizard that runs them) -->
+    <div v-if="canCheckData" class="execution-data-view__checks">
+      <CoreButton
         variant="outlined"
-        prepend-icon="mdi-play"
+        size="small"
+        icon="mdi-play"
+        :text="t('projectExecution.steps.step5.check')"
         :disabled="checksLaunched && !checksFinished"
-        size="small"
+        @click="handleCheckData"
+      />
+      <CoreAlert
+        v-if="checksFinished && !hasValidationErrors"
+        tone="success"
+        :message="t('inputOutputData.dataChecksPassedMessage')"
+      />
+      <CoreAlert
+        v-if="isLoadingChecks"
+        tone="info"
+        icon="mdi-loading"
+        :message="t('inputOutputData.dataChecksLoadingMessage')"
+      />
+      <CoreAlert
+        v-if="checksError"
+        tone="error"
+        :message="t('inputOutputData.dataChecksFailedMessage')"
+      />
+    </div>
+
+    <div v-if="instanceTables.length > 0" class="execution-data-view__body">
+      <CoreDataTable
+        ref="dataTable"
+        v-model:search="currentSearch"
+        v-model:filters="currentFilters"
+        v-model:sort="currentSort"
+        v-model:selected="selectedIds"
+        v-model:fullscreen="fullscreen"
+        class="execution-data-view__table"
+        :title="currentTable.title"
+        :columns="currentColumns"
+        :rows="windowedCurrentItems"
+        :source-rows="currentSourceRows"
+        :cell-value="cellValue"
+        :has-more="windowedHasMore"
+        :total-count="currentTotalCount"
+        :filtered-count="currentFilteredCount"
+        :searchable="!isParametersView"
+        :filterable="!isParametersView && !isMessageView"
+        :editable="isEditableTable"
+        :selectable="isEditableTable && !currentTable.isObjectTable"
+        :can-add="isEditableTable && !currentTable.isObjectTable"
+        :can-delete="isEditableTable && !currentTable.isObjectTable"
+        :can-bulk-edit="isEditableTable && !currentTable.isObjectTable"
+        :stages-changes="enableExcelMode"
+        :row-state="rowState"
+        :row-level="rowLevel"
+        :cell-modified="(row, key) => isCellModified(row.id, key)"
+        :cell-disabled="cellDisabled"
+        :row-pinned="rowPinned"
+        :options-for="optionsFor"
+        :highlighted-row-id="highlightedRowId"
+        :pending-count="enableExcelMode && !readOnly ? pendingChangesCount : 0"
+        :pending-tables="tableChanges.modifiedTableKeys.value.length"
+        fill
+        @cell-change="onCellChange"
+        @add-row="addRow"
+        @delete-rows="deleteRows"
+        @restore-rows="restoreRows"
+        @bulk-edit="bulkEditRows"
+        @need-options="loadOptions"
+        @load-more="loadMoreWindow"
+        @review="openPendingChangesModal"
+        @discard="openPendingChangesModal"
       >
-        {{ t('projectExecution.steps.step5.check') }}
-      </v-btn>
+        <template #tabs>
+          <DataTableTabs v-model="selectedTabKey" :tabs="tableTabs" />
+        </template>
+        <template v-if="sourceOrigin || sourceMaster" #strip>
+          <TableSourceStrip
+            :source-choice="sourceChoice"
+            :origin="sourceOrigin"
+            :show-source-choice="!!sourceOrigin && !isCurrentTableParameterTable"
+            :master="sourceMaster"
+            @update:source-choice="setSourceChoice"
+            @compare="handleShowComparison"
+            @use-master="handleMasterTableAction('use_master')"
+            @save-master="handleMasterTableAction('replace_master')"
+          />
+        </template>
+        <template v-if="isParametersView" #body>
+          <ParametersTable
+            :rows="parameterRows"
+            :read-only="!isEditableTable"
+            :source-title="parameterSourceTitle"
+            @update:value="setParameterValue"
+            @update:source="setParameterSource"
+            @revert="revertParameter"
+          />
+        </template>
+        <template v-else-if="isMessageView" #body>
+          <MessageList :messages="messageRows" :level="currentTable.isWarning ? 'warning' : 'error'" />
+        </template>
+      </CoreDataTable>
+
+      <PendingChangesPanel
+        v-if="enableExcelMode && !readOnly"
+        v-model:open="showPendingChangesModal"
+        class="execution-data-view__panel"
+        :groups="pendingGroups"
+        :saving="savingChanges"
+        :save-label="t('dataTable.pending.apply')"
+        :banner="saveValidationError ? { kind: 'validation', message: saveValidationError } : null"
+        @save="handleSaveAllChanges"
+        @revert-all="handleRevertAll"
+        @revert-table="revertTable"
+        @revert-row="revertRow"
+        @revert-field="handleRevertChange"
+        @update-field="updateReviewField"
+        @go-to="goToChange"
+        @close-banner="saveValidationError = null"
+      />
     </div>
 
-    <!-- Alerts Section -->
-    <div v-if="checksFinished && !hasValidationErrors" class="alert-section">
-      <v-alert
-        class="mb-2 alert-text-size"
-        color="green"
-        elevation="2"
-        icon="mdi-check"
-        density="compact"
-      >
-        {{ t('inputOutputData.dataChecksPassedMessage') }}
-      </v-alert>
-    </div>
-
-    <div v-if="isLoadingChecks" class="alert-section">
-      <v-alert
-        class="mb-2 alert-text-size"
-        color="blue"
-        elevation="2"
-        icon="mdi-alert"
-        density="compact"
-      >
-        <v-progress-circular
-          indeterminate
-          color="white"
-          size="14"
-          class="mr-2"
-        ></v-progress-circular>
-        {{ t('inputOutputData.dataChecksLoadingMessage') }}
-      </v-alert>
-    </div>
-
-    <div v-if="checksError" class="alert-section">
-      <v-alert
-        class="mb-2 alert-text-size"
-        color="error"
-        elevation="2"
-        icon="mdi-alert-circle"
-        density="compact"
-      >
-        {{ t('inputOutputData.dataChecksFailedMessage') }}
-      </v-alert>
-    </div>
-
-    <!-- Pending Changes Review Button (Excel mode) - At top for visibility -->
-    <div
-      v-if="enableExcelMode && hasPendingChanges"
-      class="pending-changes-bar"
-    >
-      <v-chip color="success" variant="tonal" size="small" class="mr-2">
-        <v-icon start size="small">mdi-pencil</v-icon>
-        {{
-          $t('pendingChanges.changesIndicator', { count: pendingChangesCount })
-        }}
-      </v-chip>
-      <v-btn
-        color="success"
-        variant="flat"
-        size="small"
-        @click="openPendingChangesModal"
-      >
-        <v-icon start size="small">mdi-eye</v-icon>
-        {{ $t('pendingChanges.reviewChanges') }}
-      </v-btn>
-    </div>
-
-    <!-- Instance data tables display -->
-    <div v-if="instanceTables.length > 0" class="data-tables-container">
-      <!-- Multiple tables with tabs -->
-      <div class="multiple-tables-view">
-        <v-card class="table-card">
-          <CoreTabs v-model="selectedTableKey" color="primary">
-            <CoreTab
-              v-for="table in instanceTables"
-              :key="table.key"
-              :value="table.key"
-              :title="resolveTitle(table.title as any, formatTitle(table.key))"
-            >
-              <span class="tab-title-row">
-                <span class="tab-leading-indicators">
-                  <!-- Validation check: icon left of title (warning vs blocking error) -->
-                  <v-tooltip v-if="table.isValidationTable" location="top">
-                    <template #activator="{ props: tooltipProps }">
-                      <v-icon
-                        v-bind="tooltipProps"
-                        size="20"
-                        :class="
-                          table.isWarning
-                            ? 'check-data-tab-icon check-data-tab-icon--warning'
-                            : 'check-data-tab-icon check-data-tab-icon--error'
-                        "
-                      >
-                        {{ table.isWarning ? 'mdi-alert' : 'mdi-close-octagon' }}
-                      </v-icon>
-                    </template>
-                    <span>{{
-                      table.isWarning
-                        ? t('sectionView.validationWarningTab')
-                        : t('sectionView.validationErrorTab')
-                    }}</span>
-                  </v-tooltip>
-                  <!-- Master table match indicator -->
-                  <v-tooltip v-if="getMatchForTable(table.key)" location="top">
-                    <template #activator="{ props: tooltipProps }">
-                      <v-icon
-                        v-bind="tooltipProps"
-                        size="small"
-                        :color="
-                          getMatchForTable(table.key)?.hasDifferences
-                            ? 'warning'
-                            : 'success'
-                        "
-                        class="match-indicator"
-                      >
-                        {{
-                          getMatchForTable(table.key)?.hasDifferences
-                            ? 'mdi-database-sync'
-                            : 'mdi-database-check'
-                        }}
-                      </v-icon>
-                    </template>
-                    <span>
-                      {{
-                        getMatchForTable(table.key)?.hasDifferences
-                          ? t('masterTableMatch.hasDifferencesWithMaster')
-                          : t('masterTableMatch.identicalToMaster')
-                      }}
-                    </span>
-                  </v-tooltip>
-                </span>
-                <span class="tab-label">{{ table.title }}</span>
-              </span>
-            </CoreTab>
-          </CoreTabs>
-
-          <!-- Master table match action bar -->
-          <div
-            v-if="currentTableMatch && !currentTable.isValidationTable"
-            class="master-match-action-bar"
-          >
-            <div class="match-info">
-              <v-icon
-                size="small"
-                :color="
-                  currentTableMatch.hasDifferences ? 'warning' : 'success'
-                "
-                class="mr-2"
-              >
-                {{
-                  currentTableMatch.hasDifferences
-                    ? 'mdi-database-sync'
-                    : 'mdi-database-check'
-                }}
-              </v-icon>
-              <span class="match-text">
-                {{ t('masterTableMatch.matchFoundWith') }}
-                <strong>{{ currentTableMatch.masterTableTitle }}</strong>
-              </span>
-              <!-- Diff summary badges -->
-              <div
-                class="diff-badges ml-3"
-                v-if="currentTableMatch.hasDifferences"
-              >
-                <v-chip
-                  v-if="currentTableMatch.diffSummary.onlyInInstance > 0"
-                  size="x-small"
-                  color="success"
-                  variant="tonal"
-                  class="mr-1"
-                >
-                  <v-icon start size="x-small">mdi-plus</v-icon>
-                  {{ currentTableMatch.diffSummary.onlyInInstance }}
-                </v-chip>
-                <v-chip
-                  v-if="currentTableMatch.diffSummary.onlyInMaster > 0"
-                  size="x-small"
-                  color="error"
-                  variant="tonal"
-                  class="mr-1"
-                >
-                  <v-icon start size="x-small">mdi-minus</v-icon>
-                  {{ currentTableMatch.diffSummary.onlyInMaster }}
-                </v-chip>
-                <v-chip
-                  v-if="currentTableMatch.diffSummary.different > 0"
-                  size="x-small"
-                  color="warning"
-                  variant="tonal"
-                >
-                  <v-icon start size="x-small">mdi-pencil</v-icon>
-                  {{ currentTableMatch.diffSummary.different }}
-                </v-chip>
-              </div>
-              <v-chip
-                v-else
-                size="x-small"
-                color="success"
-                variant="tonal"
-                class="ml-3"
-              >
-                {{ t('masterTableMatch.identical') }}
-              </v-chip>
-            </div>
-            <div class="match-actions">
-              <v-btn
-                size="small"
-                variant="text"
-                color="primary"
-                @click="handleShowComparison"
-              >
-                <v-icon start size="small">mdi-compare</v-icon>
-                {{ t('masterTableMatch.viewDifferences') }}
-              </v-btn>
-              <!-- Non-ETL mode: show Use Master and optionally Replace Master (overwrite DB with uploaded) -->
-              <template v-if="!externalEtlFlow">
-                <v-divider vertical class="mx-2"></v-divider>
-                <v-btn
-                  size="small"
-                  variant="outlined"
-                  color="primary"
-                  class="mr-2"
-                  :class="{
-                    'v-btn--active':
-                      currentTableMatch.userChoice === 'use_master',
-                  }"
-                  @click="showUseMasterConfirmDialog = true"
-                >
-                  <v-tooltip activator="parent" location="top">
-                    {{ t('masterTableMatch.option.useMaster.description') }}
-                  </v-tooltip>
-                  <v-icon start size="small">mdi-database</v-icon>
-                  {{ t('masterTableMatch.option.useMaster.short') }}
-                </v-btn>
-                <v-btn
-                  v-if="currentTableMatch.showReplaceMasterOption"
-                  size="small"
-                  variant="outlined"
-                  color="warning"
-                  class="mr-2"
-                  :class="{
-                    'v-btn--active':
-                      currentTableMatch.userChoice === 'replace_master',
-                  }"
-                  @click="showReplaceMasterConfirmDialog = true"
-                >
-                  <v-tooltip activator="parent" location="top">
-                    {{ t('masterTableMatch.option.replaceMaster.description') }}
-                  </v-tooltip>
-                  <v-icon start size="small">mdi-database-sync</v-icon>
-                  {{ t('masterTableMatch.option.replaceMaster.short') }}
-                </v-btn>
-              </template>
-            </div>
-          </div>
-
-          <!-- ETL metadata info bar (shown when ETL flow is active, for non-parameter tables) -->
-          <div
-            v-if="
-              externalEtlFlow &&
-              currentTableSwitchState &&
-              !isCurrentTableParameterTable
-            "
-            class="etl-metadata-bar"
-            :class="`etl-metadata-bar--${currentTableSwitchState.variant}`"
-          >
-            <div class="etl-metadata-bar__info">
-              <v-icon size="16" class="mr-2">{{ etlInfoIcon }}</v-icon>
-              <span class="etl-metadata-bar__text">{{ etlInfoText }}</span>
-            </div>
-            <div class="etl-metadata-bar__action">
-              <!-- from_db: Static mode / Track changes with tooltips -->
-              <template v-if="currentTableSwitchState.variant === 'from_db'">
-                <v-tooltip :text="$t('externalEtl.switch.staticModeTooltip')" location="top" max-width="260">
-                  <template #activator="{ props: tooltipProps }">
-                    <span
-                      v-bind="tooltipProps"
-                      class="etl-metadata-bar__switch-label etl-metadata-bar__switch-label--tooltipable"
-                      :class="{ 'etl-metadata-bar__switch-label--active': !etlSwitchModelValue }"
-                    >{{ $t('externalEtl.switch.staticMode') }}</span>
-                  </template>
-                </v-tooltip>
-                <v-switch
-                  :model-value="etlSwitchModelValue"
-                  @update:model-value="handleEtlSwitchChange(currentTable.key, $event)"
-                  density="compact"
-                  hide-details
-                  color="primary"
-                  class="etl-metadata-bar__switch"
-                />
-                <v-tooltip :text="$t('externalEtl.switch.trackChangesTooltip')" location="top" max-width="260">
-                  <template #activator="{ props: tooltipProps }">
-                    <span
-                      v-bind="tooltipProps"
-                      class="etl-metadata-bar__switch-label etl-metadata-bar__switch-label--tooltipable"
-                      :class="{ 'etl-metadata-bar__switch-label--active': etlSwitchModelValue }"
-                    >{{ $t('externalEtl.switch.trackChanges') }}</span>
-                  </template>
-                </v-tooltip>
-              </template>
-              <!-- from_excel / edited_from_db / reuploaded: Use excel data / Use database data -->
-              <template v-else>
-                <span
-                  class="etl-metadata-bar__switch-label"
-                  :class="{ 'etl-metadata-bar__switch-label--active': !etlSwitchModelValue }"
-                >{{ $t('externalEtl.switch.useExcelData') }}</span>
-                <v-switch
-                  :model-value="etlSwitchModelValue"
-                  @update:model-value="handleEtlSwitchChange(currentTable.key, $event)"
-                  density="compact"
-                  hide-details
-                  color="primary"
-                  class="etl-metadata-bar__switch"
-                />
-                <span
-                  class="etl-metadata-bar__switch-label"
-                  :class="{ 'etl-metadata-bar__switch-label--active': etlSwitchModelValue }"
-                >{{ $t('externalEtl.switch.useDbData') }}</span>
-              </template>
-            </div>
-          </div>
-
-          <v-card-text class="table-card-content">
-            <CoreTable
-              :items="windowedCurrentItems"
-              :has-more="windowedHasMore"
-              @load-more="loadMoreWindow"
-              :headers="currentTable.headers"
-              :table-title="currentTable.title"
-              :table-key="currentTable.key"
-              :loading="false"
-              :elevation="0"
-              :enable-search="true"
-              :enable-filters="true"
-              :enable-selection="!readOnly && !currentTable.isValidationTable"
-              :enable-actions="!readOnly && !currentTable.isValidationTable"
-              :enable-bulk-actions="
-                !readOnly && !currentTable.isValidationTable
-              "
-              :enable-excel-mode="
-                enableExcelMode && !readOnly && !currentTable.isValidationTable
-              "
-              :get-row-class="getRowClass"
-              :is-cell-modified="isCellModified"
-              :get-modified-value="getModifiedValue"
-              :can-add="
-                !readOnly &&
-                !currentTable.isValidationTable &&
-                !currentTable.isObjectTable
-              "
-              :can-edit="!readOnly && !currentTable.isValidationTable"
-              :can-delete="
-                !readOnly &&
-                !currentTable.isValidationTable &&
-                !currentTable.isObjectTable
-              "
-              :can-bulk-upload="false"
-              :can-download-excel="false"
-              :search-value="currentTableState.searchValue"
-              :active-filters="currentTableState.activeFilters"
-              :available-filter-fields="currentTable.headers"
-              :selected-items="selectedItems"
-              :show-add-edit-modal="showAddEditModal"
-              :show-delete-dialog="showDeleteDialog"
-              :show-bulk-delete-dialog="showBulkDeleteDialog"
-              :form-fields="formFields"
-              :form-data="formData"
-              :table-data="tableDataForCoreTable"
-              :load-table-data="loadTableDataForCoreTable"
-              :is-editing="isEditing"
-              :editing-row-id="editingRowId"
-              :editing-table-key="editingTableKey"
-              :editing-data="editingData"
-              :original-data="originalData"
-              :is-editing-any-row="isEditingAnyRow"
-              :get-operators-for-field-type="getOperatorsForFieldType"
-              :get-operator-text="getOperatorText"
-              :operator-needs-value="operatorNeedsValue"
-              :operator-needs-second-value="operatorNeedsSecondValue"
-              :generate-filter-id="generateFilterId"
-              @search="handleSearch"
-              @add-filter="handleAddFilter"
-              @remove-filter="handleRemoveFilter"
-              @clear-all-filters="handleClearAllFilters"
-              @toggle-filters-panel="handleToggleFiltersPanel"
-              @select-item="handleSelectItem"
-              @select-all="handleSelectAll"
-              @clear-selection="handleClearSelection"
-              @add-item="handleAddItem"
-              @edit-item="handleEditItem"
-              @delete-item="handleDeleteItem"
-              @bulk-delete="handleBulkDelete"
-              @save-item="handleSaveItem"
-              @cancel-edit="() => (showAddEditModal = false)"
-              @confirm-delete="handleConfirmDelete"
-              @confirm-bulk-delete="handleConfirmBulkDelete"
-              @cancel-delete="() => (showDeleteDialog = false)"
-              @cancel-bulk-delete="() => (showBulkDeleteDialog = false)"
-              @update:selectedItems="(items) => (selectedItems = items)"
-              @update:showAddEditModal="(show) => (showAddEditModal = show)"
-              @update:showDeleteDialog="(show) => (showDeleteDialog = show)"
-              @update:showBulkDeleteDialog="
-                (show) => (showBulkDeleteDialog = show)
-              "
-              @update:formData="(data) => (formData = data)"
-              @start-inline-edit="startInlineEdit"
-              @save-inline-edit="saveInlineEdit"
-              @cancel-inline-edit="cancelInlineEdit"
-              @update-inline-field="updateInlineField"
-              @cell-change="handleCellChange"
-            />
-          </v-card-text>
-        </v-card>
-      </div>
-    </div>
-
-    <!-- No data message -->
-    <div
-      v-else-if="instanceTables.length === 0 && !canCheckData"
-      class="no-data-container"
-    >
-      <v-alert type="info" class="ma-4">
-        {{ t('inputOutputData.noDataAvailable') }}
-      </v-alert>
-    </div>
-
-    <!-- Pending Changes Review Modal -->
-    <PendingChangesReviewModal
-      v-model="showPendingChangesModal"
-      :saving="savingChanges"
-      :validation-error="saveValidationError"
-      :row-identifiers="getRowIdentifiers"
-      :rows-data="getRowsData"
-      :table-headers="getTableHeaders"
-      @save="handleSaveAllChanges"
-      @close="handleClosePendingChangesModal"
-      @update-change="handleModalUpdateChange"
-      @revert-change="handleRevertChange"
-      @revert-row="handleRevertRow"
-      @revert-table="handleRevertTable"
-      @revert-all="handleRevertAll"
-      @clear-validation-error="saveValidationError = null"
-    />
-
-    <!-- Use Master Confirmation Dialog -->
-    <CoreConfirmDialog
-      v-model="showUseMasterConfirmDialog"
-      :title="t('masterTableMatch.confirmUseMaster.title')"
-      :message="
-        t('masterTableMatch.confirmUseMaster.message', {
-          tableName: currentTable.title,
-        })
-      "
-      :confirm-text="t('masterTableMatch.confirmUseMaster.confirm')"
-      :cancel-text="t('table.cancel')"
-      confirm-color="var(--primary)"
-      @confirm="handleConfirmUseMaster"
-      @cancel="showUseMasterConfirmDialog = false"
-    />
-
-    <!-- Replace Master Confirmation Dialog -->
-    <CoreConfirmDialog
-      v-model="showReplaceMasterConfirmDialog"
-      :title="$t('masterTableMatch.confirmReplaceMaster.title')"
-      :message="
-        $t('masterTableMatch.confirmReplaceMaster.message', {
-          tableName: currentTable.title,
-        })
-      "
-      :confirm-text="$t('masterTableMatch.confirmReplaceMaster.confirm')"
-      :cancel-text="$t('table.cancel')"
-      confirm-color="var(--accent)"
-      @confirm="handleConfirmReplaceMaster"
-      @cancel="showReplaceMasterConfirmDialog = false"
+    <CoreEmptyState
+      v-else-if="!canCheckData"
+      icon="mdi-table-off"
+      :title="t('inputOutputData.noDataAvailable')"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, nextTick, reactive, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
-import CoreTable from '@cornflow-ui/core/components/core/table/CoreTable.vue'
-import CoreTab from '@cornflow-ui/core/components/core/CoreTab.vue'
-import CoreTabs from '@cornflow-ui/core/components/core/CoreTabs.vue'
-import CoreConfirmDialog from '@cornflow-ui/core/components/core/table/CoreConfirmDialog.vue'
-import PendingChangesReviewModal from '@cornflow-ui/core/components/core/PendingChangesReviewModal.vue'
+import CoreAlert from '@cornflow-ui/core/components/core/CoreAlert.vue'
+import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
+import CoreEmptyState from '@cornflow-ui/core/components/core/CoreEmptyState.vue'
+import CoreDataTable from '@cornflow-ui/core/components/core/data-table/CoreDataTable.vue'
+import DataTableTabs, {
+  type DataTableTab,
+} from '@cornflow-ui/core/components/core/data-table/DataTableTabs.vue'
+import MessageList from '@cornflow-ui/core/components/core/data-table/MessageList.vue'
+import ParametersTable, {
+  type ParameterRow,
+  type SourceChoice,
+} from '@cornflow-ui/core/components/core/data-table/ParametersTable.vue'
+import PendingChangesPanel from '@cornflow-ui/core/components/core/data-table/PendingChangesPanel.vue'
+import TableSourceStrip, {
+  type TableMasterComparison,
+  type TableOrigin,
+} from '@cornflow-ui/core/components/core/data-table/TableSourceStrip.vue'
+import type {
+  DataColumn,
+  DataColumnOption,
+  DataFilter,
+  DataRow,
+  DataRowState,
+  DataSort,
+} from '@cornflow-ui/core/components/core/data-table/types'
+import { pendingChangeGroups } from '@cornflow-ui/core/composables/core-table/useDataTableChanges'
 import {
-  getOperatorsForFieldType,
-  getOperatorText as getOperatorTextUtil,
-  operatorNeedsValue,
-  operatorNeedsSecondValue,
-  generateFilterId,
+  cellText,
+  columnsFromHeaders,
+  isEmptyValue,
+  sortRows,
+} from '@cornflow-ui/core/utils/dataTable'
+import {
   applyFiltersAndSearch as applyFiltersAndSearchUtil,
-  generateHeadersFromData,
   generateFrontendRowId,
   type FilterCondition,
 } from '@cornflow-ui/core/utils/tableFilterUtils'
@@ -513,6 +175,8 @@ import {
   transformJsonSchemaToAutomationFormat,
   stripInvisibleParameterPropertiesFromInstanceData,
   isTableSchemaVisible,
+  normalizeJsonSchemaPropertyTypeForUi,
+  parseJoinFrom,
 } from '@cornflow-ui/core/utils/schemaUtils'
 import { resolveTitle } from '@cornflow-ui/core/utils/i18nUtils'
 import {
@@ -551,6 +215,8 @@ interface Props {
   externalEtlFlow?: any | null
   /** Instance checks schema (instanceChecksSchema from SchemaConfig). Used to determine which check tables are warnings (is_warning: true). */
   checksSchema?: any | null
+  /** The comparison with the master tables is still running. */
+  masterTableLoading?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -563,6 +229,7 @@ const props = withDefaults(defineProps<Props>(), {
   enableExcelMode: true,
   externalEtlFlow: null,
   checksSchema: null,
+  masterTableLoading: false,
 })
 
 // Emits
@@ -597,29 +264,12 @@ const tableStates = ref<
       searchValue: string
       debouncedSearchValue: string
       activeFilters: FilterCondition[]
+      sort: DataSort | null
     }
   >
 >({})
 
-// State for modals and CRUD operations
-const showAddEditModal = ref(false)
-const showDeleteDialog = ref(false)
-const showBulkDeleteDialog = ref(false)
-const isEditing = ref(false)
-const formData = ref<any>({})
-const itemToDelete = ref<any>(null)
 const selectedItems = ref<any[]>([])
-
-// State for inline editing
-const editingRowId = ref<string | number | null>(null)
-const editingTableKey = ref<string | null>(null)
-const editingData = ref<any>({})
-const originalData = ref<any>({})
-
-// State for master table action confirmation dialogs
-const showUseMasterConfirmDialog = ref(false)
-const showReplaceMasterConfirmDialog = ref(false)
-const isEditingAnyRow = computed(() => editingRowId.value !== null)
 
 // State for pending changes review modal
 const showPendingChangesModal = ref(false)
@@ -630,8 +280,6 @@ const saveValidationError = ref<string | null>(null)
 const hasPendingChanges = computed(() => tableChanges.hasChanges.value)
 const pendingChangesCount = computed(() => tableChanges.totalChangesCount.value)
 
-// Use the utility function for generating headers
-const generateHeaders = generateHeadersFromData
 
 // Helper function to get or create table state
 const getTableState = (tableKey: string) => {
@@ -640,6 +288,7 @@ const getTableState = (tableKey: string) => {
       searchValue: '',
       debouncedSearchValue: '',
       activeFilters: [],
+      sort: null,
     }
   }
   return tableStates.value[tableKey]
@@ -917,12 +566,10 @@ const currentTable = computed(() => {
 
 /**
  * Client-side windowing for the visible table. `currentTable.items` can be
- * hundreds of thousands of rows on heavy ETL uploads; even though `CoreTable`
- * virtualizes the DOM via `v-data-table-virtual`, Vuetify's internal
- * sort/filter pipeline iterates the full array on mount and freezes the UI.
- * We slice to a small initial window and grow it via `@load-more` (reusing
- * the infinite-scroll wiring already in `CoreTable`). Same pattern as
- * `useTableData` for SectionView instance/solution tables.
+ * hundreds of thousands of rows on heavy ETL uploads: the table gets a first
+ * window of them and asks for the next one (`load-more`) when scrolled near
+ * the end. Same pattern as `useTableData` for SectionView instance/solution
+ * tables.
  */
 const EXECUTION_WINDOW_PAGE_SIZE = 200
 const executionWindowSize = ref(EXECUTION_WINDOW_PAGE_SIZE)
@@ -937,11 +584,7 @@ watch(
   },
 )
 
-const windowedCurrentItems = computed(() => {
-  const items = currentTable.value.items
-  if (!Array.isArray(items)) return items
-  return items.slice(0, executionWindowSize.value)
-})
+const windowedCurrentItems = computed(() => sortedItems.value.slice(0, executionWindowSize.value))
 
 const windowedHasMore = computed(() => {
   const items = currentTable.value.items
@@ -955,7 +598,7 @@ const loadMoreWindow = () => {
 const currentTableState = computed(() => {
   const table = currentTable.value
   if (!table.key)
-    return { searchValue: '', debouncedSearchValue: '', activeFilters: [] }
+    return { searchValue: '', debouncedSearchValue: '', activeFilters: [], sort: null }
   return getTableState(table.key)
 })
 
@@ -988,52 +631,6 @@ const isCurrentTableParameterTable = computed(() => {
   return props.externalEtlFlow.parameterTableNames?.has(key) ?? false
 })
 
-const etlInfoIcon = computed(() => {
-  const variant = currentTableSwitchState.value?.variant
-  switch (variant) {
-    case 'from_db':
-      return 'mdi-database'
-    case 'from_excel':
-      return 'mdi-file-excel'
-    case 'edited_from_db':
-      return 'mdi-database-edit'
-    case 'reuploaded':
-      return 'mdi-file-replace'
-    default:
-      return 'mdi-table'
-  }
-})
-
-const etlInfoText = computed(() => {
-  const variant = currentTableSwitchState.value?.variant
-  switch (variant) {
-    case 'from_db':
-      return t('externalEtl.switch.fromDbLabel')
-    case 'from_excel':
-      return t('externalEtl.switch.fromExcelLabel')
-    case 'edited_from_db':
-      return t('externalEtl.switch.editedFromDbLabel')
-    case 'reuploaded':
-      return t('externalEtl.switch.reuploadedLabel')
-    default:
-      return ''
-  }
-})
-
-const etlSwitchLabel = computed(() => {
-  const variant = currentTableSwitchState.value?.variant
-  switch (variant) {
-    case 'from_db':
-      return t('externalEtl.switch.fixTable')
-    case 'from_excel':
-    case 'edited_from_db':
-    case 'reuploaded':
-      return t('externalEtl.switch.replaceWithDb')
-    default:
-      return ''
-  }
-})
-
 /** Unified: switch ON = track changes (fixed: false), switch OFF = static mode (fixed: true/null). */
 const etlSwitchModelValue = computed(() => {
   const state = currentTableSwitchState.value
@@ -1047,11 +644,6 @@ function handleEtlSwitchChange(tableKey: string, value: boolean | null) {
   if (!switchState) return
   // Unified: switch ON = track changes (fixed: false), switch OFF = static mode (fixed: true)
   switchState.fixed = value !== true
-}
-
-function handleEtlParameterChange(paramKey: string, value: boolean | null) {
-  if (!props.externalEtlFlow) return
-  props.externalEtlFlow.parameterSwitches[paramKey] = value
 }
 
 /**
@@ -1081,10 +673,6 @@ function handleEtlParameterCellChange(
 
   applyEtlParameterSwitch(props.externalEtlFlow, paramKey, fieldKey, newValue, isReuploaded)
 }
-
-const hasAnyMatches = computed(() => {
-  return props.masterTableMatches && props.masterTableMatches.length > 0
-})
 
 // Dropdown options come from the instance JSON (tables that match), not from masterData API.
 // Expose both original keys and normalized keys (e.g. operadores_intercambios) so useFormFields
@@ -1131,64 +719,11 @@ const handleMasterTableAction = (
   emit('master-table-action', table.key, action)
 }
 
-// Confirmation handlers for master table actions
-const handleConfirmUseMaster = () => {
-  handleMasterTableAction('use_master')
-  showUseMasterConfirmDialog.value = false
-}
-
-const handleConfirmReplaceMaster = () => {
-  handleMasterTableAction('replace_master')
-  showReplaceMasterConfirmDialog.value = false
-}
-
 const handleShowComparison = () => {
   const table = currentTable.value
   if (!table.key) return
   emit('show-comparison', table.key)
 }
-
-const formFields = computed(() => {
-  const table = currentTable.value
-  if (!table.headers || table.headers.length === 0) return []
-
-  const shouldHideFieldFromForm = (header: any): boolean => {
-    // Internal/non-data column
-    if (header.key === 'selection') return true
-    // Explicitly hidden from schema/config
-    if (header.hidden === true) return true
-    // Raw FK ids used with columnsToJoin should stay technical (user edits display fields instead)
-    if (
-      header.isForeignKey &&
-      Array.isArray(header.columnsToJoin) &&
-      header.columnsToJoin.length > 0
-    ) {
-      return true
-    }
-    return false
-  }
-
-  // Convert headers to form fields format with validation rules and dropdown config (choices, joinFrom)
-  return table.headers
-    .filter((header: any) => !shouldHideFieldFromForm(header))
-    .map((header: any) => ({
-      key: header.key,
-      title: header.title,
-      type: header.type,
-      required: header.required || false,
-      frontendReadOnly: header.key === 'id',
-      minLength: header.minLength,
-      maxLength: header.maxLength,
-      min: header.min,
-      max: header.max,
-      pattern: header.pattern,
-      choices: header.choices,
-      joinFrom: header.joinFrom,
-      isDependentField: header.isDependentField,
-      isMainSelector: header.isMainSelector,
-      foreignKeyField: header.foreignKeyField,
-    }))
-})
 
 const hasValidationErrors = computed(() => {
   // Check if there are validation errors in the execution data
@@ -1222,13 +757,7 @@ watch(
   },
 )
 
-// Wrapper for getOperatorText to provide t function
-const getOperatorText = (operator: string): string => {
-  return getOperatorTextUtil(operator, t)
-}
 
-// Event handlers for CoreTable
-//
 // Search input flow:
 //   - `state.searchValue` updates synchronously so the textbox stays
 //     responsive (controlled input).
@@ -1249,223 +778,6 @@ const handleSearch = (value: string) => {
     searchDebounceTimer = null
     getTableState(targetKey).debouncedSearchValue = value
   }, SEARCH_DEBOUNCE_MS)
-}
-
-const handleAddFilter = (filter: any) => {
-  const table = currentTable.value
-  if (table.key) {
-    const state = getTableState(table.key)
-    state.activeFilters.push(filter)
-  }
-}
-
-const handleRemoveFilter = (filterId: string) => {
-  const table = currentTable.value
-  if (table.key) {
-    const state = getTableState(table.key)
-    state.activeFilters = state.activeFilters.filter((f) => f.id !== filterId)
-  }
-}
-
-const handleClearAllFilters = () => {
-  const table = currentTable.value
-  if (table.key) {
-    const state = getTableState(table.key)
-    state.activeFilters = []
-  }
-}
-
-const handleToggleFiltersPanel = (show: boolean) => {
-  // This is handled by CoreTable internally
-}
-
-// Selection handlers
-const handleSelectItem = (item: any) => {
-  const index = selectedItems.value.findIndex((i) => i.id === item.id)
-  if (index > -1) {
-    selectedItems.value.splice(index, 1)
-  } else {
-    selectedItems.value.push(item)
-  }
-}
-
-const handleSelectAll = (items: any[]) => {
-  selectedItems.value = [...items]
-}
-
-const handleClearSelection = () => {
-  selectedItems.value = []
-}
-
-// CRUD Operations - Modify instanceData directly
-const handleAddItem = () => {
-  isEditing.value = false
-  formData.value = {}
-  showAddEditModal.value = true
-}
-
-const handleEditItem = (item: any) => {
-  isEditing.value = true
-  formData.value = { ...item }
-  showAddEditModal.value = true
-}
-
-const handleSaveItem = (data: any) => {
-  const table = currentTable.value
-  if (!table.key || !props.execution?.instance?.data) return
-
-  const convertedData = convertDataTypesBasedOnSchema(data, table.key)
-  const { id, ...dataWithoutId } = convertedData
-
-  // Excel mode (review instance): stage add; no API, apply to JSON on Save all
-  if (props.enableExcelMode && !isEditing.value) {
-    tableChanges.recordCreate(
-      table.key,
-      dataWithoutId as Record<string, any>,
-      table.title,
-    )
-    showAddEditModal.value = false
-    formData.value = {}
-    emit(
-      'pending-changes-update',
-      tableChanges.hasChanges.value,
-      tableChanges.totalChangesCount.value,
-    )
-    return
-  }
-
-  const tableData = props.execution.instance.data[table.key]
-
-  if (isEditing.value) {
-    const index = tableData.findIndex((item: any) => item.id === data.id)
-    if (index !== -1) {
-      tableData[index] = { ...dataWithoutId, id: data.id }
-    }
-  } else {
-    const tempId = generateFrontendRowId(table.key)
-    tableData.push({ ...dataWithoutId, id: tempId })
-  }
-
-  showAddEditModal.value = false
-  formData.value = {}
-
-  emit('save-changes', props.execution.instance.data)
-}
-
-const handleDeleteItem = (item: any) => {
-  itemToDelete.value = item
-  showDeleteDialog.value = true
-}
-
-const handleBulkDelete = () => {
-  if (selectedItems.value.length === 0) return
-  showBulkDeleteDialog.value = true
-}
-
-const handleConfirmDelete = () => {
-  const table = currentTable.value
-  if (!table.key || !props.execution?.instance?.data || !itemToDelete.value)
-    return
-
-  // Excel mode: stage delete; no API, apply to JSON on Save all
-  if (props.enableExcelMode) {
-    tableChanges.recordDelete(
-      table.key,
-      itemToDelete.value.id,
-      itemToDelete.value,
-    )
-    showDeleteDialog.value = false
-    itemToDelete.value = null
-    emit(
-      'pending-changes-update',
-      tableChanges.hasChanges.value,
-      tableChanges.totalChangesCount.value,
-    )
-    return
-  }
-
-  const tableData = props.execution.instance.data[table.key]
-  const index = tableData.findIndex(
-    (item: any) => item.id === itemToDelete.value.id,
-  )
-
-  if (index !== -1) {
-    tableData.splice(index, 1)
-  }
-
-  showDeleteDialog.value = false
-  itemToDelete.value = null
-
-  emit('save-changes', props.execution.instance.data)
-}
-
-const handleConfirmBulkDelete = () => {
-  const table = currentTable.value
-  if (
-    !table.key ||
-    !props.execution?.instance?.data ||
-    selectedItems.value.length === 0
-  )
-    return
-
-  // Excel mode: stage deletes; no API, apply to JSON on Save all
-  if (props.enableExcelMode) {
-    selectedItems.value.forEach((item) =>
-      tableChanges.recordDelete(table.key, item.id, item),
-    )
-    showBulkDeleteDialog.value = false
-    selectedItems.value = []
-    emit(
-      'pending-changes-update',
-      tableChanges.hasChanges.value,
-      tableChanges.totalChangesCount.value,
-    )
-    return
-  }
-
-  const tableData = props.execution.instance.data[table.key]
-  const idsToDelete = new Set(selectedItems.value.map((item) => item.id))
-
-  for (let i = tableData.length - 1; i >= 0; i--) {
-    if (idsToDelete.has(tableData[i].id)) {
-      tableData.splice(i, 1)
-    }
-  }
-
-  showBulkDeleteDialog.value = false
-  selectedItems.value = []
-
-  emit('save-changes', props.execution.instance.data)
-}
-
-// Inline editing handlers
-const startInlineEdit = (item: any, field?: string) => {
-  const tableKey = currentTable.value?.key ?? null
-  // If we're already editing the same row of the same table, don't reset the editing data
-  // This preserves any pending changes (like Fijar toggle)
-  if (editingRowId.value === item.id && editingTableKey.value === tableKey) {
-    return
-  }
-
-  editingRowId.value = item.id
-  editingTableKey.value = tableKey
-  // Start from item and overlay any pending changes (e.g. Fijar) so edit form shows current state
-  editingData.value = { ...item }
-  originalData.value = { ...item }
-
-  if (props.enableExcelMode) {
-    const table = currentTable.value
-    if (table?.key) {
-      const rowChanges = tableChanges.getChangesForTable(table.key)?.[
-        String(item.id)
-      ]
-      if (rowChanges) {
-        Object.entries(rowChanges).forEach(([fieldKey, change]) => {
-          editingData.value[fieldKey] = change.newValue
-        })
-      }
-    }
-  }
 }
 
 // Convert value to integer type
@@ -1545,84 +857,10 @@ const convertDataTypesBasedOnSchema = (data: any, tableKey: string): any => {
   return convertedData
 }
 
-function applyInlineEditToObjectTable(
-  tableData: any,
-  table: any,
-  editingRowIdVal: any,
-) {
-  if (table.isParameterTableVertical) {
-    const paramKey = editingRowIdVal
-    const itemSchema = getItemSchemaForTypeConversion(table.key)
-    const fieldSchema = itemSchema?.properties?.[paramKey]
-    const typed = fieldSchema
-      ? convertFieldValue(
-          editingData.value.value,
-          fieldSchema.type || 'string',
-        )
-      : editingData.value.value
-    tableData[paramKey] = typed
-  } else {
-    const converted = convertDataTypesBasedOnSchema(
-      { ...editingData.value },
-      table.key,
-    )
-    delete converted.id
-    Object.assign(tableData, converted)
-  }
-}
-
-const saveInlineEdit = () => {
-  const table = currentTable.value
-  if (!table.key || !props.execution?.instance?.data || !editingRowId.value)
-    return
-
-  // Excel mode: cell changes are already in tableChanges; apply to JSON only on Save all
-  if (!props.enableExcelMode) {
-    const tableData = props.execution.instance.data[table.key]
-    if (
-      tableData != null &&
-      typeof tableData === 'object' &&
-      !Array.isArray(tableData)
-    ) {
-      applyInlineEditToObjectTable(tableData, table, editingRowId.value)
-      emit('save-changes', props.execution.instance.data)
-    } else {
-      const index = tableData.findIndex(
-        (item: any) => item.id === editingRowId.value,
-      )
-      if (index !== -1) {
-        const convertedData = convertDataTypesBasedOnSchema(
-          editingData.value,
-          table.key,
-        )
-        tableData[index] = convertedData
-      }
-      emit('save-changes', props.execution.instance.data)
-    }
-  }
-
-  editingRowId.value = null
-  editingTableKey.value = null
-  editingData.value = {}
-  originalData.value = {}
-}
-
-const cancelInlineEdit = () => {
-  editingRowId.value = null
-  editingTableKey.value = null
-  editingData.value = {}
-  originalData.value = {}
-}
-
-const updateInlineField = (field: string, value: any) => {
-  editingData.value[field] = value
-}
-
 /**
  * Records a cell change with the value coerced to its schema type, and (for ETL vertical
  * parameter `value` edits) turns off the matching "from DB" switch. Shared by handleCellChange
- * and handleModalUpdateChange. Returns the resolved `table` so callers can do extra work
- * (e.g. mirroring editingData) without re-looking it up.
+ * and handleModalUpdateChange.
  */
 const recordTypedCellChange = (
   tableKey: string,
@@ -1630,7 +868,7 @@ const recordTypedCellChange = (
   fieldKey: string,
   oldValue: any,
   newValue: any,
-): any => {
+): void => {
   const table = instanceTables.value.find((t) => t.key === tableKey)
   const header = table?.headers?.find((h: any) => h.key === fieldKey)
   const fieldTitle = header?.title || fieldKey
@@ -1670,7 +908,6 @@ const recordTypedCellChange = (
     )
   }
 
-  return table
 }
 
 // Excel mode handlers
@@ -1689,30 +926,7 @@ const handleCellChange = (
     return
   }
 
-  const table = recordTypedCellChange(
-    tableKey,
-    rowId,
-    fieldKey,
-    oldValue,
-    newValue,
-  )
-
-  // ETL vertical parameters: "Desde base de datos" ON => parameterSwitches[key] === false.
-  // Manual value edit => fixed (true); `instanceTables` also depends on etlParameterSwitchesSignature so switches re-render.
-  if (
-    props.externalEtlFlow &&
-    table?.isParameterTableVertical &&
-    fieldKey === 'value'
-  ) {
-    // CoreTable keeps `editingData` for the row; `__etl_from_db__` must mirror `parameterSwitches` while editing.
-    if (
-      editingRowId.value != null &&
-      String(editingRowId.value) === String(rowId) &&
-      editingTableKey.value === tableKey
-    ) {
-      editingData.value = { ...editingData.value, __etl_from_db__: false }
-    }
-  }
+  recordTypedCellChange(tableKey, rowId, fieldKey, oldValue, newValue)
 
   // ETL: table-level "editado manualmente" text only after Save all (handleSaveAllChanges).
 
@@ -1732,42 +946,13 @@ const isCellModified = (rowId: string | number, fieldKey: string): boolean => {
   return tableChanges.isCellModified(table.key, rowId, fieldKey)
 }
 
-// Get the modified value for a cell
-const getModifiedValue = (rowId: string | number, fieldKey: string): any => {
-  if (!props.enableExcelMode) return undefined
-  const table = currentTable.value
-  if (!table.key) return undefined
 
-  const changes = tableChanges.getChangesForTable(table.key)
-  if (!changes) return undefined
-
-  const rowChanges = changes[String(rowId)]
-  if (!rowChanges) return undefined
-
-  const fieldChange = rowChanges[fieldKey]
-  if (!fieldChange) return undefined
-
-  return fieldChange.newValue
-}
-
-// Row class for pending changes: new rows green, deleted rows red (Excel mode only)
-const getRowClass = (item: any): string => {
-  if (!props.enableExcelMode || !item) return ''
-  const tableKey = currentTable.value?.key
-  if (!tableKey) return ''
-  return tableChanges.getRowClass(tableKey, item)
-}
 
 // Open pending changes review modal
 const openPendingChangesModal = () => {
   showPendingChangesModal.value = true
 }
 
-// Close pending changes modal and clear validation error
-const handleClosePendingChangesModal = () => {
-  saveValidationError.value = null
-  showPendingChangesModal.value = false
-}
 
 function applyArrayTableChanges(
   updatedData: any,
@@ -2118,64 +1303,403 @@ const handleRevertAll = () => {
   emit('pending-changes-update', false, 0)
 }
 
-// Get row identifiers for the modal
-const getRowIdentifiers = computed(() => {
-  const identifiers: Record<string, Record<string, string>> = {}
 
-  instanceTables.value.forEach((table) => {
-    identifiers[table.key] = {}
-    table.items.forEach((item: any) => {
-      // Try to find a meaningful identifier
-      const idFields = ['name', 'nombre', 'code', 'codigo', 'title', 'titulo']
-      let identifier = String(item.id)
 
-      for (const field of idFields) {
-        if (item[field]) {
-          identifier = String(item[field])
-          break
-        }
-      }
 
-      identifiers[table.key][String(item.id)] = identifier
-    })
-  })
+// ── The table of the current tab ────────────────────────────────────────────
 
-  return identifiers
+const dataTable = ref<InstanceType<typeof CoreDataTable>>()
+const fullscreen = ref(false)
+const highlightedRowId = ref<string | number | null>(null)
+
+const selectedTabKey = computed<string>({
+  get: () => currentTable.value.key ?? '',
+  set: (key) => (selectedTableKey.value = key),
 })
 
-// Get all rows data for the modal to show context
-const getRowsData = computed(() => {
-  const rowsData: Record<string, Record<string, any>> = {}
+const isEditableTable = computed(
+  () => props.enableExcelMode && !props.readOnly && !currentTable.value.isValidationTable,
+)
 
-  instanceTables.value.forEach((table) => {
-    rowsData[table.key] = {}
-    table.items.forEach((item: any) => {
-      rowsData[table.key][String(item.id)] = { ...item }
-    })
-  })
+const currentColumns = computed<DataColumn[]>(() => columnsFromHeaders(currentTable.value.headers ?? []))
 
-  return rowsData
+/** A cell's value: the pending one when it was edited. */
+const cellValue = (row: DataRow, key: string): unknown => {
+  const tableKey = currentTable.value.key
+  if (!props.enableExcelMode || !tableKey) return row[key]
+  return tableChanges.getCurrentValue(tableKey, row.id, key, row[key])
+}
+
+const currentSearch = computed<string>({
+  get: () => currentTableState.value.searchValue,
+  set: (value) => handleSearch(value),
 })
 
-// Get table headers for the modal (with type for editable inputs)
-const getTableHeaders = computed(() => {
-  const headers: Record<
-    string,
-    Array<{ key: string; title: string; type?: string }>
-  > = {}
-
-  instanceTables.value.forEach((table) => {
-    headers[table.key] = table.headers
-      .filter((h: any) => h.key !== 'selection')
-      .map((h: any) => ({
-        key: h.key,
-        title: h.title,
-        type: h.type === 'integer' ? 'number' : h.type,
-      }))
-  })
-
-  return headers
+const currentFilters = computed<DataFilter[]>({
+  get: () => currentTableState.value.activeFilters,
+  set: (filters) => {
+    const key = currentTable.value.key
+    if (key) getTableState(key).activeFilters = filters
+  },
 })
+
+const currentSort = computed<DataSort | null>({
+  get: () => currentTableState.value.sort,
+  set: (sort) => {
+    const key = currentTable.value.key
+    if (key) getTableState(key).sort = sort
+  },
+})
+
+/** Every row of the table, before the search and filters: the list filters count in them. */
+const currentSourceRows = computed<DataRow[]>(() => currentTable.value.originalItems ?? currentTable.value.items ?? [])
+const currentTotalCount = computed(() => currentSourceRows.value.length)
+const currentFilteredCount = computed(() => (currentTable.value.items ?? []).length)
+
+const selectedIds = computed<Array<string | number>>({
+  get: () => selectedItems.value.map((item: any) => item.id),
+  set: (ids) => {
+    const wanted = new Set(ids.map((id) => cellText(id)))
+    selectedItems.value = (currentTable.value.items ?? []).filter((item: any) => wanted.has(cellText(item.id)))
+  },
+})
+
+const rowState = (row: DataRow): DataRowState | undefined => {
+  const tableKey = currentTable.value.key
+  if (!props.enableExcelMode || !tableKey) return undefined
+  const rowClass = tableChanges.getRowClass(tableKey, row)
+  if (rowClass === 'row-deleted') return 'deleted'
+  if (rowClass === 'row-new') return 'new'
+  return tableChanges.isRowModified(tableKey, row.id) ? 'modified' : undefined
+}
+
+const rowLevel = computed(() =>
+  currentTable.value.isValidationTable
+    ? () => (currentTable.value.isWarning ? 'warning' : 'error')
+    : undefined,
+)
+
+const headerByKey = computed<Record<string, any>>(() =>
+  Object.fromEntries((currentTable.value.headers ?? []).map((header: any) => [header.key, header])),
+)
+
+const cellDisabled = (row: DataRow, key: string): boolean => {
+  const disabledKey = headerByKey.value[key]?.cellDisabledKey
+  return !!disabledKey && !!row[disabledKey]
+}
+
+/** Rows whose pin switch is on are highlighted. */
+const rowPinned = computed(() => {
+  const pin = currentColumns.value.find((column) => column.type === 'switch' && column.key.toLowerCase() === 'fijar')
+  return pin ? (row: DataRow) => cellValue(row, pin.key) === true : undefined
+})
+
+const sortedItems = computed<DataRow[]>(() => {
+  const sort = currentSort.value
+  const column = sort ? currentColumns.value.find((c) => c.key === sort.key) : undefined
+  return sortRows(currentTable.value.items ?? [], sort, column, cellValue)
+})
+
+// ── Editing ─────────────────────────────────────────────────────────────────
+
+const notifyPendingChanges = () =>
+  emit('pending-changes-update', tableChanges.hasChanges.value, tableChanges.totalChangesCount.value)
+
+const onCellChange = (row: DataRow, key: string, value: unknown) => {
+  const tableKey = currentTable.value.key
+  if (!tableKey) return
+  if (cellText(row.id).startsWith('create-')) {
+    const [typed] = [convertDataTypesBasedOnSchema({ [key]: value }, tableKey)[key]]
+    tableChanges.updateCreateField(tableKey, cellText(row.id), key, typed)
+    notifyPendingChanges()
+    return
+  }
+  handleCellChange(tableKey, row.id, key, cellValue(row, key), value)
+}
+
+/** Adds a row: a pending change in Excel mode, at once in the data otherwise. */
+const addRow = (values: Record<string, unknown>) => {
+  const table = currentTable.value
+  if (!table.key || !props.execution?.instance?.data) return
+  const { id: _id, ...data } = convertDataTypesBasedOnSchema(values, table.key)
+  if (props.enableExcelMode) {
+    tableChanges.recordCreate(table.key, data as Record<string, any>, table.title)
+    notifyPendingChanges()
+    return
+  }
+  props.execution.instance.data[table.key].push({ ...data, id: generateFrontendRowId(table.key) })
+  emit('save-changes', props.execution.instance.data)
+}
+
+/** Deletes rows: marked as pending deletes in Excel mode, removed from the data otherwise. */
+const deleteRows = (ids: Array<string | number>) => {
+  const table = currentTable.value
+  if (!table.key || !props.execution?.instance?.data) return
+  const wanted = new Set(ids.map((id) => cellText(id)))
+  if (props.enableExcelMode) {
+    for (const item of table.items ?? []) {
+      if (wanted.has(cellText(item.id))) tableChanges.recordDelete(table.key, item.id, item)
+    }
+    selectedItems.value = []
+    notifyPendingChanges()
+    return
+  }
+  const rows = props.execution.instance.data[table.key]
+  for (let i = rows.length - 1; i >= 0; i--) {
+    if (wanted.has(cellText(rows[i].id))) rows.splice(i, 1)
+  }
+  selectedItems.value = []
+  emit('save-changes', props.execution.instance.data)
+}
+
+const restoreRows = (ids: Array<string | number>) => {
+  const tableKey = currentTable.value.key
+  if (!tableKey) return
+  ids.forEach((id) => tableChanges.revertDelete(tableKey, id))
+  notifyPendingChanges()
+}
+
+const bulkEditRows = (ids: Array<string | number>, values: Record<string, unknown>) => {
+  const wanted = new Set(ids.map((id) => cellText(id)))
+  for (const row of currentTable.value.items ?? []) {
+    if (!wanted.has(cellText(row.id)) || rowState(row) === 'deleted') continue
+    Object.entries(values).forEach(([key, value]) => onCellChange(row, key, value))
+  }
+}
+
+// ── Options of the references (from the tables of the instance) ─────────────
+
+const referenceOptions = reactive<Record<string, DataColumnOption[]>>({})
+
+watch(
+  () => currentTable.value.key,
+  () => Object.keys(referenceOptions).forEach((key) => delete referenceOptions[key]),
+)
+
+const optionsFor = (column: DataColumn) => referenceOptions[column.key]
+
+const loadOptions = async (column: DataColumn) => {
+  if (referenceOptions[column.key]) return
+  const join = parseJoinFrom(headerByKey.value[column.key]?.joinFrom ?? '')
+  if (!join) {
+    referenceOptions[column.key] = column.options ?? []
+    return
+  }
+  const rows = await loadTableDataForCoreTable(join.table)
+  const values = [...new Set(rows.map((row: any) => row[join.field]).filter((value: unknown) => !isEmptyValue(value)))]
+  referenceOptions[column.key] = values.map((value) => ({ value, label: cellText(value) }))
+}
+
+// ── Tabs and the bar of the source ──────────────────────────────────────────
+
+const SOURCE_VARIANTS: Record<string, TableOrigin['variant']> = {
+  from_db: 'database',
+  from_excel: 'file',
+  edited_from_db: 'edited',
+  reuploaded: 'reuploaded',
+}
+
+const pendingCountOf = (tableKey: string): number => {
+  const edits = tableChanges.getChangesForTable(tableKey) ?? {}
+  return (
+    Object.values(edits).reduce((sum, row) => sum + Object.keys(row).length, 0) +
+    tableChanges.getPendingCreates(tableKey).length +
+    tableChanges.getPendingDeletes(tableKey).length
+  )
+}
+
+const tableTabs = computed<DataTableTab[]>(() =>
+  instanceTables.value.map((table: any) => {
+    const match = getMatchForTable(table.key)
+    const variant = props.externalEtlFlow?.tableSwitches[table.key]?.variant
+    return {
+      key: table.key,
+      label: resolveTitle(table.title as any, formatTitle(table.key)),
+      rows: (table.originalItems ?? table.items ?? []).length,
+      pending: pendingCountOf(table.key),
+      level: table.isValidationTable ? (table.isWarning ? 'warning' : 'error') : undefined,
+      master: match ? (match.hasDifferences ? 'different' : 'identical') : undefined,
+      source: variant ? SOURCE_VARIANTS[variant] : undefined,
+    }
+  }),
+)
+
+const sourceOrigin = computed<TableOrigin | null>(() => {
+  const variant = currentTableSwitchState.value?.variant
+  if (!variant || !SOURCE_VARIANTS[variant]) return null
+  return { variant: SOURCE_VARIANTS[variant], perParameter: isCurrentTableParameterTable.value }
+})
+
+const sourceChoice = computed(() => {
+  const live = etlSwitchModelValue.value
+  if (sourceOrigin.value?.variant === 'database') return live ? 'live' : 'static'
+  return live ? 'database' : 'file'
+})
+
+const setSourceChoice = (choice: string) => {
+  const key = currentTable.value.key
+  if (key) handleEtlSwitchChange(key, choice === 'live' || choice === 'database')
+}
+
+const sourceMaster = computed<TableMasterComparison | null>(() => {
+  const match = currentTableMatch.value
+  if (!match || currentTable.value.isValidationTable) return null
+  return {
+    state: props.masterTableLoading ? 'comparing' : 'ready',
+    name: match.masterTableTitle,
+    added: match.diffSummary?.onlyInInstance ?? 0,
+    removed: match.diffSummary?.onlyInMaster ?? 0,
+    modified: match.diffSummary?.different ?? 0,
+    canUseMaster: !props.externalEtlFlow,
+    canSaveMaster: !props.externalEtlFlow && !!match.showReplaceMasterOption,
+  }
+})
+
+// ── Tables of one record, as a list of parameters ───────────────────────────
+
+const isParametersView = computed(() => !!currentTable.value.isObjectTable)
+
+const isMessageView = computed(() => {
+  const table = currentTable.value
+  if (!table.isValidationTable) return false
+  const keys = currentColumns.value.map((column) => column.key)
+  return keys.length === 1 && keys[0] === 'value'
+})
+
+const messageRows = computed(() => sortedItems.value.map((row) => cellText(row.value)))
+
+const parameterSourceTitle = computed(() =>
+  currentTableSwitchState.value?.variant === 'reuploaded'
+    ? t('dataTable.parameters.originOfValue')
+    : t('externalEtl.parameter.columnFromDb'),
+)
+
+const parameterColumn = (key: string, title: string, schema: any): DataColumn => {
+  const [column] = columnsFromHeaders([
+    {
+      key,
+      title,
+      type: schema ? normalizeJsonSchemaPropertyTypeForUi(schema) : 'string',
+      choices: schema?.choices ?? schema?.enum,
+    },
+  ])
+  return column
+}
+
+const parameterRows = computed<ParameterRow[]>(() => {
+  const table = currentTable.value
+  if (!table.key || !table.isObjectTable) return []
+  const itemSchema = getItemSchemaForTypeConversion(table.key)
+  if (table.isParameterTableVertical) {
+    const reuploaded = currentTableSwitchState.value?.variant === 'reuploaded'
+    return (table.items ?? []).map((row: any) => ({
+      id: cellText(row.id),
+      label: cellText(row.parameterTitle),
+      column: parameterColumn('value', cellText(row.parameterTitle), itemSchema?.properties?.[row.parameter]),
+      value: cellValue(row, 'value'),
+      modified: isCellModified(row.id, 'value'),
+      source: !props.externalEtlFlow
+        ? undefined
+        : reuploaded
+          ? {
+              mode: 'choice' as const,
+              value: row.__etl_default__ ? 'default' : row.__etl_from_db__ ? 'database' : 'fixed',
+              databaseDisabled: !!row.__etl_from_db_disabled__,
+            }
+          : { mode: 'switch' as const, fromDatabase: !!row.__etl_from_db__, disabled: !!row.__etl_from_db_disabled__ },
+    }))
+  }
+  const [single] = table.items ?? []
+  return (table.headers ?? [])
+    .filter((header: any) => header.key !== 'selection')
+    .map((header: any) => ({
+      id: header.key,
+      label: cellText(header.title) || formatTitle(header.key),
+      column: columnsFromHeaders([header])[0] ?? parameterColumn(header.key, header.title, null),
+      value: single ? cellValue(single, header.key) : undefined,
+      modified: single ? isCellModified(single.id, header.key) : false,
+    }))
+})
+
+const parameterRowId = (id: string) => (currentTable.value.isParameterTableVertical ? id : OBJECT_TABLE_ROW_ID)
+const parameterField = (id: string) => (currentTable.value.isParameterTableVertical ? 'value' : id)
+
+const setParameterValue = (id: string, value: unknown) => {
+  const tableKey = currentTable.value.key
+  const row = (currentTable.value.items ?? []).find((item: any) => cellText(item.id) === parameterRowId(id))
+  if (!tableKey || !row) return
+  handleCellChange(tableKey, row.id, parameterField(id), cellValue(row, parameterField(id)), value)
+}
+
+const SOURCE_FIELDS: Record<SourceChoice, string> = {
+  default: '__etl_default__',
+  database: '__etl_from_db__',
+  fixed: '__etl_fixed__',
+}
+
+const setParameterSource = (id: string, value: boolean | SourceChoice) => {
+  const tableKey = currentTable.value.key
+  if (!tableKey) return
+  if (typeof value === 'boolean') handleCellChange(tableKey, id, '__etl_from_db__', !value, value)
+  else handleCellChange(tableKey, id, SOURCE_FIELDS[value], false, true)
+}
+
+const revertParameter = (id: string) => {
+  const tableKey = currentTable.value.key
+  if (tableKey) handleRevertChange(tableKey, parameterRowId(id), parameterField(id))
+}
+
+// ── Review of the pending changes ───────────────────────────────────────────
+
+const pendingGroups = computed(() =>
+  pendingChangeGroups(
+    instanceTables.value.map((table: any) => ({
+      key: table.key,
+      title: resolveTitle(table.title as any, formatTitle(table.key)),
+      columns: columnsFromHeaders(table.headers ?? []),
+      rows: table.originalItems ?? table.items ?? [],
+    })),
+  ),
+)
+
+const revertTable = (tableKey: string) => {
+  handleRevertTable(tableKey)
+  tableChanges.clearCreatesForTable(tableKey)
+  tableChanges.clearDeletesForTable(tableKey)
+  notifyPendingChanges()
+}
+
+const revertRow = (tableKey: string, rowId: string | number, kind: string) => {
+  if (kind === 'new') tableChanges.revertCreate(tableKey, cellText(rowId))
+  else if (kind === 'deleted') tableChanges.revertDelete(tableKey, rowId)
+  else handleRevertRow(tableKey, cellText(rowId))
+  notifyPendingChanges()
+}
+
+const updateReviewField = (tableKey: string, rowId: string | number, key: string, value: unknown) => {
+  if (cellText(rowId).startsWith('create-')) {
+    tableChanges.updateCreateField(tableKey, cellText(rowId), key, value)
+    notifyPendingChanges()
+    return
+  }
+  handleModalUpdateChange(tableKey, cellText(rowId), key, value)
+}
+
+/** Shows a pending change in its table: switches to its tab, clears what hides it and picks the cell. */
+const goToChange = async (tableKey: string, rowId: string | number, key: string) => {
+  if (!instanceTables.value.some((table: any) => table.key === tableKey)) return
+  selectedTableKey.value = tableKey
+  const state = getTableState(tableKey)
+  state.searchValue = ''
+  state.debouncedSearchValue = ''
+  state.activeFilters = []
+  await nextTick()
+  const row = (currentTable.value.items ?? []).find((item: any) => cellText(item.id) === cellText(rowId))
+  const id = row?.id ?? rowId
+  dataTable.value?.focusCell(id, key)
+  highlightedRowId.value = id
+  setTimeout(() => (highlightedRowId.value = null), 1800)
+}
 
 // Methods
 const handleCheckData = () => {
@@ -2185,6 +1709,8 @@ const handleCheckData = () => {
 
 // Expose methods for parent component
 defineExpose({
+  /** Shows the table over the whole window, or back in its place. */
+  toggleFullscreen: () => (fullscreen.value = !fullscreen.value),
   hasPendingChanges,
   pendingChangesCount,
   openPendingChangesModal,
@@ -2195,255 +1721,39 @@ defineExpose({
 
 <style scoped>
 .execution-data-view {
-  width: 100%;
-  height: 100%;
   display: flex;
   flex-direction: column;
-}
-
-.check-data-button-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 6px 0;
-  margin-bottom: 8px;
-  flex-shrink: 0;
-}
-
-.alert-section {
-  margin-bottom: 8px;
-  flex-shrink: 0;
-}
-
-.alert-text-size {
-  font-size: 0.875rem;
-}
-
-.data-tables-container {
-  flex: 1;
-  min-height: 0; /* Important for flex scrolling */
-  display: flex;
-  flex-direction: column;
-}
-
-.single-table-view,
-.multiple-tables-view {
+  gap: calc(var(--spacing) * 3);
   width: 100%;
   height: 100%;
-  flex: 1;
   min-height: 0;
 }
 
-.table-card {
-  height: 100%;
+.execution-data-view__checks {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
 }
 
-.table-card-content {
+.execution-data-view__checks > :deep(.core-alert) {
+  align-self: stretch;
+}
+
+.execution-data-view__body {
   flex: 1;
+  display: flex;
+  gap: calc(var(--spacing) * 4);
   min-height: 0;
-  padding: 16px 0 0 0;
 }
 
-.no-data-container {
-  margin-top: 2rem;
-}
-
-/* ETL metadata info bar */
-.etl-metadata-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 16px;
-  font-size: 13px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.etl-metadata-bar--from_db {
-  background: linear-gradient(
-    90deg,
-    rgba(33, 150, 243, 0.08) 0%,
-    rgba(33, 150, 243, 0.02) 100%
-  );
-}
-
-.etl-metadata-bar--from_excel {
-  background: linear-gradient(
-    90deg,
-    rgba(76, 175, 80, 0.08) 0%,
-    rgba(76, 175, 80, 0.02) 100%
-  );
-}
-
-.etl-metadata-bar--edited_from_db {
-  background: linear-gradient(
-    90deg,
-    rgba(255, 152, 0, 0.08) 0%,
-    rgba(255, 152, 0, 0.02) 100%
-  );
-}
-
-.etl-metadata-bar--reuploaded {
-  background: linear-gradient(
-    90deg,
-    rgba(156, 39, 176, 0.08) 0%,
-    rgba(156, 39, 176, 0.02) 100%
-  );
-}
-
-.etl-metadata-bar__info {
-  display: flex;
-  align-items: center;
+.execution-data-view__table {
   flex: 1;
   min-width: 0;
 }
 
-.etl-metadata-bar__text {
-  color: var(--subtitle);
-  line-height: 1.3;
-}
-
-.etl-metadata-bar__action {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-  margin-left: 24px;
-}
-
-.etl-metadata-bar__switch-label {
-  font-size: 12px;
-  color: var(--subtitle);
-  white-space: nowrap;
-  transition: color 0.15s ease, font-weight 0.15s ease;
-}
-
-.etl-metadata-bar__switch-label--tooltipable {
-  cursor: help;
-  text-decoration: underline dotted;
-  text-underline-offset: 2px;
-}
-
-.etl-metadata-bar__switch-label--active {
-  color: var(--title);
-  font-weight: 500;
-}
-
-.etl-metadata-bar__switch {
-  flex-shrink: 0;
-}
-
-/* Tab label row: validation / match icons on the left, title truncates after */
-.tab-title-row {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
-  width: 100%;
-  min-width: 0;
-}
-
-.tab-leading-indicators {
-  display: inline-flex;
-  align-items: center;
-  flex-shrink: 0;
-  gap: 4px;
-}
-
-.tab-label {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: start;
-}
-
-.check-data-tab-icon--warning {
-  color: #e65100 !important;
-}
-
-.check-data-tab-icon--error {
-  color: #b71c1c !important;
-}
-
-.match-indicator {
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.6;
-  }
-}
-
-.master-match-action-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  background: linear-gradient(
-    90deg,
-    rgba(251, 140, 0, 0.08) 0%,
-    rgba(251, 140, 0, 0.02) 100%
-  );
-  border-bottom: 1px solid rgba(251, 140, 0, 0.2);
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.match-info {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.match-text {
-  font-size: 0.875rem;
-  color: var(--subtitle);
-}
-
-.match-text strong {
-  color: var(--title);
-}
-
-.diff-badges {
-  display: flex;
-  align-items: center;
-}
-
-.match-actions {
-  display: flex;
-  align-items: center;
-}
-
-.match-actions .v-btn-toggle {
-  border-radius: 4px;
-}
-
-.match-actions .v-btn-toggle .v-btn {
-  text-transform: none;
-  font-size: 0.75rem;
-}
-
-/* Responsive adjustments */
-@media (max-width: 960px) {
-  .master-match-action-bar {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .match-actions {
-    width: 100%;
-    justify-content: flex-end;
-    margin-top: 8px;
-  }
+.execution-data-view__panel {
+  flex: none;
+  width: 400px;
 }
 </style>
-<style src="@cornflow-ui/core/assets/styles/components/core/PendingChangesBar.css"></style>

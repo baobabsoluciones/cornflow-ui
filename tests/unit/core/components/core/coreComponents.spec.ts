@@ -4,13 +4,16 @@ import { createI18n } from 'vue-i18n'
 import CoreAlert from '@cornflow-ui/core/components/core/CoreAlert.vue'
 import CoreBadge from '@cornflow-ui/core/components/core/CoreBadge.vue'
 import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
+import CoreCheckbox from '@cornflow-ui/core/components/core/CoreCheckbox.vue'
 import CoreDescriptionList from '@cornflow-ui/core/components/core/CoreDescriptionList.vue'
 import CoreDialog from '@cornflow-ui/core/components/core/CoreDialog.vue'
 import CoreEmptyState from '@cornflow-ui/core/components/core/CoreEmptyState.vue'
 import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
 import CoreMenu from '@cornflow-ui/core/components/core/CoreMenu.vue'
 import CoreProgressBar from '@cornflow-ui/core/components/core/CoreProgressBar.vue'
+import CoreSegmentedControl from '@cornflow-ui/core/components/core/CoreSegmentedControl.vue'
 import CoreSelect from '@cornflow-ui/core/components/core/CoreSelect.vue'
+import CoreSwitch from '@cornflow-ui/core/components/core/CoreSwitch.vue'
 import CoreTextField from '@cornflow-ui/core/components/core/CoreTextField.vue'
 import CoreTimeline from '@cornflow-ui/core/components/core/CoreTimeline.vue'
 import CoreConfirmDialog from '@cornflow-ui/core/components/core/table/CoreConfirmDialog.vue'
@@ -525,5 +528,65 @@ describe('CoreSelect', () => {
     expect(clearable.find('option').attributes('disabled')).toBeUndefined()
     await clearable.find('select').setValue('')
     expect(clearable.emitted('update:modelValue')).toEqual([[null]])
+  })
+})
+
+describe('CoreSwitch', () => {
+  test('is a switch that toggles its value, with its label', async () => {
+    const wrapper = mount(CoreSwitch, { props: { modelValue: false, label: 'From the database' } })
+    expect(wrapper.attributes('role')).toBe('switch')
+    expect(wrapper.attributes('aria-checked')).toBe('false')
+    expect(wrapper.text()).toBe('From the database')
+    await wrapper.trigger('click')
+    expect(wrapper.emitted('update:modelValue')).toEqual([[true]])
+  })
+
+  test('a disabled switch does not toggle', async () => {
+    const wrapper = mount(CoreSwitch, { props: { modelValue: true, disabled: true } })
+    expect(wrapper.classes()).toContain('is-on')
+    await wrapper.trigger('click')
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+  })
+})
+
+describe('CoreCheckbox', () => {
+  test('is a checkbox that ticks and unticks', async () => {
+    const wrapper = mount(CoreCheckbox, { props: { modelValue: true, label: 'Ticked' } })
+    expect(wrapper.attributes('role')).toBe('checkbox')
+    expect(wrapper.attributes('aria-checked')).toBe('true')
+    expect(wrapper.find('.mdi-check-bold').exists()).toBe(true)
+    await wrapper.trigger('click')
+    expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
+  })
+
+  test('indeterminate reads as mixed and shows a dash; clicking it ticks it', async () => {
+    const wrapper = mount(CoreCheckbox, { props: { modelValue: false, indeterminate: true } })
+    expect(wrapper.attributes('aria-checked')).toBe('mixed')
+    expect(wrapper.find('.mdi-minus').exists()).toBe(true)
+    await wrapper.trigger('click')
+    expect(wrapper.emitted('update:modelValue')).toEqual([[true]])
+  })
+})
+
+describe('CoreSegmentedControl', () => {
+  const options = [
+    { value: 'summary', label: 'Summary' },
+    { value: 'changes', label: 'Changes', count: 6 },
+    { value: 'side', label: 'Side by side', disabled: true },
+  ]
+
+  test('marks the picked option and emits the one clicked', async () => {
+    const wrapper = mount(CoreSegmentedControl, { props: { modelValue: 'summary', options } })
+    const buttons = wrapper.findAll('[role="radio"]')
+    expect(buttons.map((b) => b.attributes('aria-checked'))).toEqual(['true', 'false', 'false'])
+    expect(buttons[1].text()).toContain('6')
+    await buttons[1].trigger('click')
+    expect(wrapper.emitted('update:modelValue')).toEqual([['changes']])
+    expect(buttons[2].attributes('disabled')).toBeDefined()
+  })
+
+  test('takes the soft look of a group switch', () => {
+    const wrapper = mount(CoreSegmentedControl, { props: { modelValue: 'summary', options, variant: 'soft' } })
+    expect(wrapper.classes()).toContain('core-segmented--soft')
   })
 })

@@ -213,17 +213,23 @@ Examples of matched table names:
 
 #### Visual indicators
 
-- Tables with master table matches display a badge in the tab header
-- Different colors indicate synchronization status (green = identical, orange = has differences)
-- Difference summary shows counts of added, removed, and modified rows
+- The tab of a table with a master table shows whether it is identical to it or has differences
+  (a spinner while comparing, an alert when the comparison failed).
+- A bar over the table names the master table and counts the rows only in the loaded data (+),
+  only in the master (−) and modified (✎), or says "Identical". Its menu offers "Use master data"
+  and "Save to master", each after a confirmation.
 
-#### Data comparison modal
+#### Data comparison
 
-Users can open a detailed comparison view showing:
+"Compare" opens the comparison of the table with its master:
 
-- **Summary tab**: Overview of data counts and differences
-- **Side by side tab**: Both datasets displayed in parallel
-- **Changes tab**: Detailed list of all differences with field-level comparison
+- **Summary**: the rows on each side and four cards (new, removed, modified, identical).
+- **Side by side**: the loaded rows and the master rows aligned row by row, the cells that differ
+  tinted. Each row can be removed from the loaded data or restored from the master.
+- **Changes**: one card per row that differs, filtered by kind; a modified field shows the master
+  value struck through and the loaded one.
+
+What is done here stays as pending changes of the table, reviewed and applied like any other edit.
 
 #### Configuration
 
@@ -285,8 +291,9 @@ When uploading data with `factoria_nombre = "Factory A"`, the system:
 #### Implementation details
 
 - **Composable**: `useMasterTableMatch.ts` manages detection, comparison, and synchronization
-- **Components**: `DataComparisonModal.vue` displays the comparison interface
-- **Integration**: `ExecutionDataView.vue` renders match indicators and action buttons
+- **Components**: `DataComparisonDialog.vue` displays the comparison (its lines come from
+  `utils/dataComparison.ts`); `TableSourceStrip.vue` is the bar over the table
+- **Integration**: `ExecutionDataView.vue` renders the match indicators and the bar
 
 ## Configuration tables section (optional)
 
@@ -386,13 +393,13 @@ The `required` array in each table definition lists property names that must be 
 
 For `type: "string"`, the optional `format` property controls the input and display:
 
-| `format`    | Input in modal / table                   | Description            |
+| `format`    | Input in the table                       | Description            |
 | ----------- | ---------------------------------------- | ---------------------- |
 | `date`      | Date picker / `type="date"`              | Date only (YYYY-MM-DD) |
 | `date-time` | Datetime input / `type="datetime-local"` | Date and time          |
 | `time`      | Time input / `type="time"`               | Time (HH:mm)           |
 
-These apply in the **add/edit modal** and in **inline table editing** (including the pending-changes review modal).
+These apply when editing a cell, in the row being added, in bulk edit and in the review of the pending changes. The table shows the values in the user's format (27/10/2026, 27/10/2026 14:30).
 
 Example:
 
@@ -487,8 +494,8 @@ Example in `paths`:
 - **Multi-language support**: Titles and descriptions support multiple languages
 - **Foreign key relationships**: Automatic handling of foreign key dependencies
 - **Bulk operations**: Support for bulk upload, update, and delete operations
-- **Advanced filtering**: Dynamic filter generation based on field types; list query parameters (section 3.1) support date range filters (“Desde” / “Hasta”) when the path defines `datetime_gte` / `datetime_lte` with `symmetric`
-- **Inline editing**: Direct table cell editing capabilities
+- **Filters**: a filter per column, edited by its type (text, number range, dates, list of values, yes/no); list query parameters (section 3.1) take the filters they can apply, and date range filters (“Desde” / “Hasta”) when the path defines `datetime_gte` / `datetime_lte` with `symmetric`. The rest apply to the loaded rows
+- **Editing**: cell by cell, like a spreadsheet; the changes stay pending until they are reviewed and saved (see [Data tables](#data-tables))
 - **Export functionality**: Excel export for all table data
 
 #### Navigation hierarchy (sections and groups)
@@ -637,7 +644,7 @@ used for now: they get no options, and the browser console says which table is m
 - **Utils**: `schemaUtils.ts` transforms the schema (including sections and per-table `section` from table/group) into the internal config format.
 - **Service**: `FrontendAutomationService.ts` provides `getMasterDataNavigationWithSections()` to build section → group → table navigation; schema-defined sections are ordered above the default "Master data" block.
 - **Drawer**: `useDrawerSections.ts` makes one group per schema section when there are any, and a single "Master data" group otherwise. It merges in config-driven sub-sections from `frontendAutomationSectionSubsections` (see [Sub-sections within frontend-automation sections](#sub-sections-within-frontend-automation-sections)).
-- **Component**: `CoreTable.vue` renders the dynamic table interface.
+- **Component**: `SectionDataTable.vue` renders each table with `CoreDataTable` (see [Data tables](#data-tables)).
 - **View**: `SectionView.vue` manages table display and navigation.
 - **Section sub-sections**: Routes for config-defined sub-sections use `configuration/section/:sectionId/:subsectionKey`; `ConfigurationSectionSubsectionView.vue` (in `src/app/views/`) loads and renders the component from config.
 
@@ -873,7 +880,7 @@ The application processes schemas through several layers:
 1. **API Layer**: `SchemaRepository.ts` fetches schema data from backend
 2. **Transformation**: `schemaUtils.ts` converts schemas to internal format
 3. **Service Layer**: `FrontendAutomationService.ts` provides utility functions
-4. **Component Layer**: `CoreTable.vue` renders dynamic interfaces
+4. **Component Layer**: `CoreDataTable.vue` renders the tables (through `SectionDataTable.vue` and `ExecutionDataView.vue`)
 5. **View Layer**: `SectionView.vue` manages navigation and display
 
 ### Dynamic route generation
@@ -1239,7 +1246,9 @@ take their look from the tokens, with the styles inside each component.
 | --- | --- |
 | `CoreIcon`, `CoreSpinner` | A Material Design Icons glyph (`mdi-*`); a loading ring |
 | `CoreButton` | Filled, outlined, text and icon buttons, in five sizes, with `loading` |
-| `CoreTextField`, `CoreSelect` | A text box (text, numbers, dates, passwords, several lines) and a dropdown, in three sizes |
+| `CoreTextField`, `CoreSelect` | A text box (text, numbers, dates, times, passwords, several lines) and a dropdown, in three sizes |
+| `CoreCheckbox`, `CoreSwitch` | A checkbox (with an indeterminate state) and an on/off switch |
+| `CoreSegmentedControl` | Joined buttons where one is picked, to switch views or modes |
 | `CoreBadge` | A short status or tag, as a pill or a dot, in a tone |
 | `CoreAlert` | A message inside the page (error, warning, info, success) with an optional action |
 | `CoreEmptyState`, `CoreSkeleton`, `CoreProgressBar` | Empty and loading states, progress |
@@ -1250,6 +1259,32 @@ take their look from the tokens, with the styles inside each component.
 | `CoreSnackbar` | The app's toast (`showSnackbar`) |
 | `table/CoreSearchInput`, `filters/*` | The search box and the filter chips |
 | `CoreTitleView` | The title of a view, with an `actions` slot |
+
+### Data tables
+
+Every table of data (master data, the input data and results of an execution, the review of a new
+execution and the checks) is a `CoreDataTable` (`src/components/core/data-table/`):
+
+| Piece | What it is |
+| --- | --- |
+| `CoreDataTable` | The card: tabs and source bar (slots), toolbar, grid, footer with the row count and the pending changes, the selection bar and the bulk dialogs |
+| `CoreDataGrid`, `DataGridEditor` | The grid: only the visible rows are drawn; sort, resize and fit columns, density, first column fixed; a cell is picked with a click or the arrows and edited with Enter, F2, a double click or by typing; Delete empties it |
+| `DataTableTabs` | The tables of a group, with their row count, pending changes, check level, master comparison and data origin |
+| `filters/ConditionFilterChip` | A column filter as a chip, always visible, with an editor by type |
+| `PendingChangesPanel` | The review of the pending changes beside the table, expandable to a dialog where the values can be corrected |
+| `BulkEditDialog`, `BulkUploadDialog`, `RelaunchDialog` | Set fields in the selected rows; upload a file (modes, progress); launch an edited execution as a new one |
+| `TableSourceStrip`, `DataComparisonDialog` | Data origin and master-table comparison of a table |
+| `ParametersTable`, `MessageList` | A table of one record as a list of its fields; a check that only returns sentences |
+
+The table shows and edits; the screen owns the data. It gets the rows already filtered and in order
+and is told the search, the filters, the order and the selection (`v-model`), so a table can filter
+on the server or in the browser. `useDataTableRows` filters, searches and sorts rows held in the
+browser; `useDataTableChanges` and `pendingChangeGroups` connect a table and the review to the
+pending changes (`useTableChanges`). The model (`DataColumn`, `DataFilter`…) is in `types.ts`, the
+formatting and parsing of values in `utils/dataTable.ts`.
+
+A table of one record (the parameters of the master data or of an instance) shows as a list of its
+fields. The catalog has every piece ("Data tables").
 
 The create-execution screen has blocks of its own in `src/components/create-execution/` (the data
 card, the launch panel, the checks, the parameters…), built with the `Core*` components and fed by

@@ -152,7 +152,7 @@ export async function postEditAllTables(
   throwForceRetryOrGenericError(operation, content, displayMessage, rawMessageForError)
 }
 
-/** Maps CoreBulkUploadModal / table bulk keys to the edit-all-tables API `operation` value. */
+/** Maps the bulk upload operations of the tables to the edit-all-tables API `operation` value. */
 export function mapBulkUiOperationToEditAllApi(
   uiOperation: string,
 ): EditAllTablesApiOperation {
