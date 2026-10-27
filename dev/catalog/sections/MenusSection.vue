@@ -86,8 +86,9 @@
     </CatalogBlock>
 
     <CatalogBlock
-      name="CorePopover"
+      name="CorePopover · CorePopoverPanel"
       api="v-model:open · side · align · width · #trigger · #default({ close })"
+      note="CorePopoverPanel is the floating panel itself; the popover and the filter chips draw their content in it."
     >
       <CorePopover :width="260">
         <template #trigger>
