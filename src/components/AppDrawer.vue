@@ -208,26 +208,30 @@
     </template>
   </aside>
 
-  <CoreDialog
+  <CoreConfirmDialog
     :model-value="modules.confirming"
     :title="$t('modules.switchTitle')"
+    :message="$t('modules.switchMessage')"
+    :confirm-text="$t('modules.confirm')"
+    :cancel-text="$t('modules.cancel')"
     icon="mdi-swap-horizontal"
-    @update:model-value="onModuleDialog"
-  >
-    {{ $t('modules.switchMessage') }}
-    <template #actions>
-      <CoreButton variant="outlined" :text="$t('modules.cancel')" @click="modules.cancel()" />
-      <CoreButton :text="$t('modules.confirm')" data-testid="app-drawer-module-confirm" @click="modules.confirm()" />
-    </template>
-  </CoreDialog>
+    :persistent="false"
+    data-testid="app-drawer-module-dialog"
+    @confirm="modules.confirm()"
+    @cancel="modules.cancel()"
+  />
 
-  <CoreDialog v-model="confirmSignOut" :title="$t('logOut.title')" icon="mdi-logout">
-    {{ $t('logOut.message') }}
-    <template #actions>
-      <CoreButton variant="outlined" :text="$t('logOut.cancel')" @click="confirmSignOut = false" />
-      <CoreButton :text="$t('logOut.accept')" data-testid="app-drawer-logout-confirm" @click="signOut" />
-    </template>
-  </CoreDialog>
+  <CoreConfirmDialog
+    v-model="confirmSignOut"
+    :title="$t('logOut.title')"
+    :message="$t('logOut.message')"
+    :confirm-text="$t('logOut.accept')"
+    :cancel-text="$t('logOut.cancel')"
+    icon="mdi-logout"
+    :persistent="false"
+    data-testid="app-drawer-logout-dialog"
+    @confirm="signOut"
+  />
 </template>
 
 <script setup lang="ts">
@@ -236,10 +240,10 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import CoreBadge from '@cornflow-ui/core/components/core/CoreBadge.vue'
 import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
-import CoreDialog from '@cornflow-ui/core/components/core/CoreDialog.vue'
 import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
 import CoreMenu from '@cornflow-ui/core/components/core/CoreMenu.vue'
 import CorePopover from '@cornflow-ui/core/components/core/CorePopover.vue'
+import CoreConfirmDialog from '@cornflow-ui/core/components/core/table/CoreConfirmDialog.vue'
 import DrawerExecutionList from '@cornflow-ui/core/components/app-drawer/DrawerExecutionList.vue'
 import DrawerGroup from '@cornflow-ui/core/components/app-drawer/DrawerGroup.vue'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
@@ -386,10 +390,6 @@ const moduleItems = computed(() =>
 function pickModule(item: { key: string }) {
   moduleMenuOpen.value = false
   void modules.request(item.key)
-}
-
-function onModuleDialog(open: boolean) {
-  if (!open) modules.cancel()
 }
 
 const user = computed(() => {

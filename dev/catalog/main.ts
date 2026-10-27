@@ -5,6 +5,7 @@
  */
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import { createMemoryHistory, createRouter } from 'vue-router'
 import '@/assets/styles/main.css'
 import '@/app/assets/styles/main.css'
 import '@/app/assets/styles/variables.css'
@@ -17,9 +18,16 @@ import {
 } from '@cornflow-ui/core/services/SnackbarService'
 import CatalogApp from './CatalogApp.vue'
 
+/** Some pieces link to routes and navigate: a router that stays in memory, on any path. */
+const router = createRouter({
+  history: createMemoryHistory(),
+  routes: [{ path: '/:pathMatch(.*)*', component: { render: () => null } }],
+})
+
 applyTokensToTheme()
 createApp(CatalogApp)
   .use(createPinia())
+  .use(router)
   .use(vuetify)
   .use(i18n)
   .provide('snackbar', snackbar)
