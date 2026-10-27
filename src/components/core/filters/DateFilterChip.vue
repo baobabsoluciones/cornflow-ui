@@ -17,28 +17,24 @@
       <div v-if="modelValue === customValue" class="date-filter__range">
         <label class="date-filter__field">
           <span class="date-filter__label">{{ fromLabel }}</span>
-          <input
-            class="date-filter__input"
+          <CoreTextField
             type="date"
-            :value="from ?? ''"
+            size="small"
+            :model-value="from"
             :max="to ?? undefined"
             data-testid="date-filter-from"
-            @input="
-              emit('update:from', ($event.target as HTMLInputElement).value)
-            "
+            @update:model-value="emit('update:from', String($event))"
           />
         </label>
         <label class="date-filter__field">
           <span class="date-filter__label">{{ toLabel }}</span>
-          <input
-            class="date-filter__input"
+          <CoreTextField
             type="date"
-            :value="to ?? ''"
+            size="small"
+            :model-value="to"
             :min="from ?? undefined"
             data-testid="date-filter-to"
-            @input="
-              emit('update:to', ($event.target as HTMLInputElement).value)
-            "
+            @update:model-value="emit('update:to', String($event))"
           />
         </label>
       </div>
@@ -48,6 +44,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import CoreTextField from '@cornflow-ui/core/components/core/CoreTextField.vue'
 import FilterChip from '@cornflow-ui/core/components/core/filters/FilterChip.vue'
 import { parseLocalDateKey } from '@cornflow-ui/core/utils/date'
 
@@ -116,23 +113,5 @@ const presetOptions = computed(() =>
 .date-filter__label {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
-}
-
-.date-filter__input {
-  height: 32px;
-  min-width: 0;
-  box-sizing: border-box;
-  padding: 0 calc(var(--spacing) * 2);
-  border: 1px solid var(--color-border-input);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  font-family: var(--font-sans);
-  font-size: var(--text-md);
-  color: var(--color-text);
-}
-
-.date-filter__input:focus {
-  border-color: var(--color-primary);
-  outline: none;
 }
 </style>
