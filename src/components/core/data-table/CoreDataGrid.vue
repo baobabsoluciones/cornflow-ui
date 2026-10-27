@@ -35,7 +35,7 @@
         :aria-rowcount="rows.length + 1"
         :aria-colcount="columns.length"
         :aria-busy="status === 'loading' || loadingMore || undefined"
-        :style="{ width: `${totalWidth}px` }"
+        :style="{ minWidth: `${totalWidth}px` }"
         data-testid="data-grid"
         @keydown="onGridKey"
       >
@@ -435,7 +435,9 @@ const gridTemplate = computed(() =>
   [
     props.selectable ? `${selectWidth.value}px` : '',
     `${MARK_WIDTH}px`,
-    ...props.columns.map((column) => `${widthOf(column)}px`),
+    ...props.columns.map((column, index) =>
+      index === props.columns.length - 1 ? `minmax(${widthOf(column)}px, 1fr)` : `${widthOf(column)}px`,
+    ),
   ]
     .filter(Boolean)
     .join(' '),
@@ -503,6 +505,17 @@ function onScroll() {
 }
 
 let resizeObserver: ResizeObserver | undefined
+// Another table in the same grid starts at its top.
+watch(
+  () => props.columns.map((column) => column.key).join('|'),
+  () => {
+    if (scroller.value) scroller.value.scrollTop = 0
+    scrollTop.value = 0
+    active.value = null
+    editing.value = false
+  },
+)
+
 watch(scroller, (element) => {
   resizeObserver?.disconnect()
   if (!element || typeof ResizeObserver === 'undefined') return
@@ -720,8 +733,10 @@ const editor = ref<Array<InstanceType<typeof DataGridEditor>>>()
 const cellId = (rowId: string | number, key: string) => `${rowId}\u0000${key}`
 const errorOf = (row: DataRow, column: DataColumn) =>
   errors[cellId(row.id, column.key)]
-const isActive = (row: DataRow, column: DataColumn) =>
-  active.value?.rowId === row.id && active.value.key === column.key
+const isActive = (row: DataRow, column: DataColumn) => {
+  const current = active.value
+  return !!current && current.rowId === row.id && current.key === column.key
+}
 const isEditing = (row: DataRow, column: DataColumn) =>
   editing.value && isActive(row, column)
 
@@ -743,8 +758,12 @@ const optionsLoading = (column: DataColumn) =>
   !!props.optionsFor &&
   props.optionsFor(column) === undefined
 
+/**
+ * Gives the focus back to the grid once the event that called it is over: a click on a cell
+ * would otherwise leave it on the page (cells are not focusable) and the arrows would not move.
+ */
 function focusGrid() {
-  nextTick(() => table.value?.focus({ preventScroll: true }))
+  setTimeout(() => table.value?.focus({ preventScroll: true }))
 }
 
 function setValue(row: DataRow, column: DataColumn, value: unknown) {
@@ -778,7 +797,7 @@ function startEdit(initial?: string) {
   if (column.type === 'reference') emit('need-options', column)
   editValue.value = initialEditValue(row, column, initial)
   editing.value = true
-  nextTick(() => editor.value?.[0]?.focus())
+  setTimeout(() => editor.value?.[0]?.focus())
 }
 
 /** What the editor starts with: the key typed over a text or number cell, else the value. */
@@ -862,6 +881,7 @@ function onCellDown(row: DataRow, column: DataColumn, event: PointerEvent) {
     return
   }
   active.value = { rowId: row.id, key: column.key }
+  focusGrid()
 }
 
 function clearActiveCell() {

@@ -3139,6 +3139,11 @@ export function useTableData(
   return {
     ...api,
     sort,
+    /** A master table of a single record (parameters): shown as a list of its fields. */
+    isParameterObjectTable,
+    /** Takes back the pending change of one cell. */
+    revertCell: (rowId: string | number, fieldKey: string) =>
+      tableChanges.revertChange(normalizeTableKeyForStorage(tableKey.value), rowId, fieldKey),
     /** The filters of the table; reloads when the ones the API applies change. */
     setFilters: (next: DataFilter[]) => {
       const sent = (filters: DataFilter[]) =>

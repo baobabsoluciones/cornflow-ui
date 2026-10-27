@@ -23,10 +23,10 @@
     :status="status"
     :loading-more="tableData.loadingMore.value"
     :has-more="tableData.hasMore.value"
-    :filterable="!isMessageList"
+    :filterable="!isMessageList && !isRecord"
     :editable="editable"
     :selectable="editable && tableData.enableSelection.value"
-    :can-add="editable && tableData.canAdd.value"
+    :can-add="editable && !isRecord && tableData.canAdd.value"
     :can-delete="editable && tableData.canDelete.value"
     :can-bulk-edit="editable"
     :can-bulk-upload="!readOnly && tableData.canBulkUpload.value"
@@ -77,6 +77,14 @@
     <template v-if="isMessageList" #body>
       <MessageList :messages="messages" :level="messageLevel" />
     </template>
+    <template v-else-if="isRecord" #body>
+      <ParametersTable
+        :rows="recordRows"
+        :read-only="!editable"
+        @update:value="setRecordValue"
+        @revert="(key) => tableData.revertCell(recordRow?.id, key)"
+      />
+    </template>
   </CoreDataTable>
 </template>
 
@@ -87,6 +95,9 @@ import CoreDataTable, {
   type DataTableAction,
 } from '@cornflow-ui/core/components/core/data-table/CoreDataTable.vue'
 import MessageList from '@cornflow-ui/core/components/core/data-table/MessageList.vue'
+import ParametersTable, {
+  type ParameterRow,
+} from '@cornflow-ui/core/components/core/data-table/ParametersTable.vue'
 import type {
   DataColumn,
   DataColumnOption,
@@ -255,6 +266,27 @@ async function loadOptions(column: DataColumn) {
   } catch {
     options[column.key] = noneOption(header)
   }
+}
+
+// ── A table of one record, as a list of its fields ──────────────────────────
+
+const isRecord = computed(() => !!props.tableData.isParameterObjectTable?.value)
+const recordRow = computed<DataRow | undefined>(() => rows.value[0])
+
+const recordRows = computed<ParameterRow[]>(() => {
+  const row = recordRow.value
+  return columns.value.map((column) => ({
+    id: column.key,
+    label: column.title,
+    unit: column.unit,
+    column,
+    value: row ? cellValue(row, column.key) : undefined,
+    modified: row ? props.tableData.isCellModified(row.id, column.key) : false,
+  }))
+})
+
+function setRecordValue(key: string, value: unknown) {
+  if (recordRow.value) onCellChange(recordRow.value, key, value)
 }
 
 // ── Checks that only return sentences ───────────────────────────────────────
