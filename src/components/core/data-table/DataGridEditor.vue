@@ -46,7 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import CoreSelect from '@cornflow-ui/core/components/core/CoreSelect.vue'
 import CoreSpinner from '@cornflow-ui/core/components/core/CoreSpinner.vue'
@@ -131,6 +131,14 @@ function focus() {
   }
   field.value?.$el?.querySelector<HTMLElement>('select, input')?.focus()
 }
+
+// The options of a reference arrive after the editor opens: the dropdown takes the focus then.
+watch(
+  () => props.loading,
+  (loading, wasLoading) => {
+    if (wasLoading && !loading) nextTick(focus)
+  },
+)
 
 defineExpose({ focus })
 </script>

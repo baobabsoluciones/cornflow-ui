@@ -27,6 +27,7 @@
     :style="fill && !fullscreen ? { height: `${fillHeight}px` } : undefined"
     :aria-label="title"
     data-testid="data-table"
+    @keydown.esc="adding = false"
   >
     <slot name="tabs" />
     <slot name="strip" />
