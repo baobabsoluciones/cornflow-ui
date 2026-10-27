@@ -208,6 +208,9 @@ export type MasterTableMatchingConfig = {
   compareStrategies: Record<string, MasterTableCompareStrategy>
 }
 
+/** Layout of the sign-in page: the login background behind a card, or a brand panel beside the form. */
+export type LoginLayout = 'photo' | 'brand'
+
 /**
  * Application configuration factory.
  * See README.md section "Internal app configuration" for detailed documentation.
@@ -239,6 +242,17 @@ const createAppConfig = () => ({
       },
       showTablesWithoutSchema: false,
       showOpenIdUsername: true,
+      /**
+       * Sign-in page. `layout`: 'photo' (the app's login background, the form on a card) or
+       * 'brand' (a panel in the primary colour, with the company logo, the app name and
+       * `description`, beside the form). `subtitle` goes under the title; without it the page
+       * shows a generic one. Both are texts or i18n keys.
+       */
+      login: {
+        layout: 'photo' as LoginLayout,
+        subtitle: '',
+        description: '',
+      },
       /**
        * Optional columns of the project executions table. `showSolver` is the odd one out:
        * the solver column is shown unless it is explicitly set to false, so deployments with

@@ -560,34 +560,26 @@ export default {
     replanning: 'Replanificación',
   },
   logIn: {
-    subtitle: '¡Inicia sesión para empezar!',
-    azure_button: 'Iniciar sesión con Azure',
-    cognito_button: 'Iniciar sesión con AWS',
     google_button: 'Continuar con Google',
     microsoft_button: 'Continuar con Microsoft',
     username_textfield_label: 'Nombre de usuario',
     password_textfield_label: 'Contraseña',
     button_label: 'Iniciar sesión',
-    question: '¿Nuevo en Cornflow?',
-    alternative: 'Registrarse',
     snackbar_message_success: 'Inicio de sesión exitoso',
     snackbar_message_error_server: 'Error del servidor',
     snackbar_message_error_auth: 'Credenciales incorrectas',
-    processing_auth: 'Procesando autenticación...',
-    redirecting:
-      'Redirigiendo a la autenticación externa... Si la redirección no ocurre automáticamente, por favor contacte con el servicio técnico para obtener ayuda.',
-    session_expired:
-      'Tu sesión ha expirado. Por favor, inicia sesión de nuevo.',
     or_divider: 'O',
-    form_login_disabled:
-      'El inicio de sesión con usuario y contraseña no está disponible con este método de autenticación. Por favor, use los botones de inicio de sesión social.',
-    google_not_configured: 'La autenticación con Google no está configurada',
     google_not_available:
       'El servicio de autenticación con Google no está disponible',
-    microsoft_not_configured:
-      'La autenticación con Microsoft no está configurada',
     microsoft_not_available:
       'El servicio de autenticación con Microsoft no está disponible',
+    default_subtitle: 'Inicia sesión para continuar.',
+    powered_by: 'Desarrollado por baobab soluciones',
+    show_password: 'Mostrar contraseña',
+    hide_password: 'Ocultar contraseña',
+    language: 'Idioma',
+    google_not_configured: 'La autenticación con Google no está configurada',
+    microsoft_not_configured: 'La autenticación con Microsoft no está configurada',
   },
   drawer: {
     label: 'Menú principal',
@@ -614,31 +606,8 @@ export default {
     cancel: 'Cancelar',
     snackbar_message_success: 'Sesión cerrada con éxito',
   },
-  signUp: {
-    subtitle: 'Ingresa tus datos para registrarte',
-    username_textfield_label: 'Nombre de usuario',
-    email_textfield_label: 'Correo electrónico',
-    password_textfield_label: 'Contraseña',
-    password_confirmation_textfield_label: 'Confirma tu contraseña',
-    button_label: 'Registrarse',
-    question: '¿Ya eres miembro?',
-    alternative: 'Iniciar sesión',
-    snackbar_message_success: 'Registro exitoso. Ahora puedes iniciar sesión.',
-    snackbar_message_error: 'Algo salió mal, por favor inténtalo de nuevo.',
-  },
   rules: {
     required: 'Requerido',
-    valid_email: 'Por favor, ingresa un correo electrónico válido.',
-    password_length: 'La contraseña debe tener al menos {length} caracteres.',
-    password_capital_letters:
-      'La contraseña debe contener al menos 1 letra mayúscula',
-    password_lower_case_letters:
-      'La contraseña debe contener al menos 1 letra minúscula',
-    password_numbers: 'La contraseña debe contener al menos 1 número',
-    password_special_characters:
-      "La contraseña debe contener al menos 1 carácter especial (!?@#$%^&*)(+=.<>{}[],/¿¡:;'|~`_-)",
-    password_no_space: 'La contraseña no puede contener espacios',
-    password_match: 'Las contraseñas no coinciden',
   },
   versionHistory: {
     filterBar: {

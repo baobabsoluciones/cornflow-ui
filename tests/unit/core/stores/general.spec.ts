@@ -14,7 +14,6 @@ Object.defineProperty(import.meta, 'env', {
     VITE_APP_USE_HASH_MODE: 'false',
     VITE_APP_DEFAULT_LANGUAGE: 'en',
     VITE_APP_IS_DEVELOPER_MODE: 'false',
-    VITE_APP_ENABLE_SIGNUP: 'false',
     VITE_APP_AUTH_TYPE: 'cornflow',
   },
   writable: true,
@@ -31,7 +30,6 @@ vi.mock('@cornflow-ui/core/config', () => ({
     useHashMode: false,
     defaultLanguage: 'en',
     isDeveloperMode: false,
-    enableSignup: false,
     valuesJsonPath: '/values.json',
     auth: {
       type: 'cornflow',
@@ -78,7 +76,6 @@ vi.mock('@/app/config', () => ({
 vi.mock('@cornflow-ui/core/utils/assets', () => ({
   mainLogo: 'logo.png',
   fullLogo: 'full_logo.png',
-  baobabLogo: 'baobab_full_logo.png',
   baobabLogoSmall: 'baobab_logo.png',
   companyLogo: 'company_logo.png',
   googleLogo: 'google_logo.png',

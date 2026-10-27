@@ -4,7 +4,6 @@
  */
 
 // Logo assets
-export const baobabLogo = new URL('@/app/assets/logo/baobab_full_logo.png', import.meta.url).href
 export const baobabLogoSmall = new URL('@/app/assets/logo/baobab_logo.png', import.meta.url).href
 export const companyLogo = new URL('@/app/assets/logo/company_logo.png', import.meta.url).href
 export const googleLogo = new URL('@/app/assets/logo/google_logo.png', import.meta.url).href

@@ -540,33 +540,26 @@ export default {
     replanning: 'Replaneamento',
   },
   logIn: {
-    subtitle: 'Inicie sessão para começar!',
-    azure_button: 'Iniciar sessão com Azure',
-    cognito_button: 'Iniciar sessão com AWS',
     google_button: 'Continuar com Google',
     microsoft_button: 'Continuar com Microsoft',
     username_textfield_label: 'Nome de utilizador',
     password_textfield_label: 'Palavra-passe',
     button_label: 'Iniciar sessão',
-    question: 'Novo no Cornflow?',
-    alternative: 'Registe-se',
     snackbar_message_success: 'Sessão iniciada com sucesso',
     snackbar_message_error_server: 'Erro do servidor',
     snackbar_message_error_auth: 'Credenciais incorretas',
-    processing_auth: 'A processar a autenticação...',
-    redirecting:
-      'A redirecionar para a autenticação externa... Se o redirecionamento não ocorrer automaticamente, contacte o suporte técnico para obter ajuda.',
-    session_expired: 'A sua sessão expirou. Inicie sessão novamente.',
     or_divider: 'OU',
-    form_login_disabled:
-      'O início de sessão com nome de utilizador e palavra-passe não está disponível com este método de autenticação. Utilize os botões de início de sessão social.',
-    google_not_configured: 'A autenticação da Google não está configurada',
     google_not_available:
       'O serviço de autenticação da Google não está disponível',
-    microsoft_not_configured:
-      'A autenticação da Microsoft não está configurada',
     microsoft_not_available:
       'O serviço de autenticação da Microsoft não está disponível',
+    default_subtitle: 'Inicie sessão para continuar.',
+    powered_by: 'Desenvolvido por baobab soluciones',
+    show_password: 'Mostrar palavra-passe',
+    hide_password: 'Ocultar palavra-passe',
+    language: 'Idioma',
+    google_not_configured: 'A autenticação da Google não está configurada',
+    microsoft_not_configured: 'A autenticação da Microsoft não está configurada',
   },
   drawer: {
     label: 'Menu principal',
@@ -593,32 +586,8 @@ export default {
     cancel: 'Cancelar',
     snackbar_message_success: 'Sessão terminada com sucesso',
   },
-  signUp: {
-    subtitle: 'Introduza os seus dados para se registar',
-    username_textfield_label: 'Nome de utilizador',
-    email_textfield_label: 'E-mail',
-    password_textfield_label: 'Palavra-passe',
-    password_confirmation_textfield_label: 'Confirme a sua palavra-passe',
-    button_label: 'Registar',
-    question: 'Já é membro?',
-    alternative: 'Iniciar sessão',
-    snackbar_message_success: 'Registo efetuado. Já pode iniciar sessão.',
-    snackbar_message_error: 'Algo correu mal, tente novamente.',
-  },
   rules: {
     required: 'Obrigatório',
-    valid_email: 'Introduza um endereço de e-mail válido.',
-    password_length:
-      'A palavra-passe deve ter pelo menos {length} caracteres.',
-    password_capital_letters:
-      'A palavra-passe deve conter pelo menos 1 letra maiúscula',
-    password_lower_case_letters:
-      'A palavra-passe deve conter pelo menos 1 letra minúscula',
-    password_numbers: 'A palavra-passe deve conter pelo menos 1 número',
-    password_special_characters:
-      "A palavra-passe deve conter pelo menos 1 carácter especial (!?@#$%^&*)(+=.<>{}[],/¿¡:;'|~`_-)",
-    password_no_space: 'A palavra-passe não pode conter espaços',
-    password_match: 'As palavras-passe não coincidem',
   },
   versionHistory: {
     filterBar: {

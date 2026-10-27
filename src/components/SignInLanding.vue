@@ -1,450 +1,383 @@
+<!--
+  SignInLanding: the sign-in page, in one of two layouts (`login.layout` in the app config):
+
+  - `photo` (default): the app's login background fills the window; the sign-in form sits on a
+    white card on the right, and the app's full logo and the product mark on a small card at the
+    bottom left.
+  - `brand`: a panel in the app's primary colour on the left, with the company logo (in white), the
+    app name and its description; the sign-in form on the right.
+
+  The app name is split in two (bold first word); `login.subtitle` and `login.description` are
+  texts or i18n keys of the app.
+-->
 <template>
   <div
-    class="signin-landing"
-    :style="{ '--login-background': `url(${loginBackground})` }"
+    v-if="layout === 'brand'"
+    class="sign-in sign-in--brand"
+    data-testid="sign-in-brand"
   >
-    <div class="left-panel">
-      <div class="background-image" />
-      <div class="overlay" />
-      <div class="mask-grid">
-        <div class="mask-grid-inner">
-          <!-- SVG mask: black background, transparent rounded panels -->
-          <svg
-            class="panel-svg"
-            :viewBox="`0 0 ${SVG_PADDED_SIZE} ${SVG_PADDED_SIZE}`"
-            width="100%"
-            height="100%"
-            preserveAspectRatio="none"
-          >
-            <defs>
-              <mask id="panel-mask">
-                <rect
-                  :x="0"
-                  :y="0"
-                  :width="SVG_PADDED_SIZE"
-                  :height="SVG_PADDED_SIZE"
-                  fill="white"
-                />
-                <g>
-                  <rect
-                    v-for="panel in panelPositions"
-                    :key="`panel-${panel.row}-${panel.col}`"
-                    :x="PANEL_GAP + (panel.col - 1) * (PANEL_SIZE + PANEL_GAP)"
-                    :y="PANEL_GAP + (panel.row - 1) * (PANEL_SIZE + PANEL_GAP)"
-                    :width="PANEL_SIZE"
-                    :height="PANEL_SIZE"
-                    :rx="CARD_RADIUS"
-                    :ry="CARD_RADIUS"
-                    fill="#18181a"
-                  />
-                </g>
-              </mask>
-            </defs>
-            <rect
-              :x="0"
-              :y="0"
-              :width="SVG_PADDED_SIZE"
-              :height="SVG_PADDED_SIZE"
-              fill="var(--primary-light-variant)"
-              mask="url(#panel-mask)"
-            />
-          </svg>
-          <transition-group name="card-move" tag="div">
-            <div
-              v-for="card in animatedCards"
-              :key="card.id"
-              class="animated-card"
-              :style="cardStyle(card)"
-            >
-              <div
-                v-if="card.image"
-                class="card-image"
-                :class="{
-                  'card-image-small': card.id === 1,
-                  'card-image-half': card.id === 4,
-                }"
-              >
-                <img :src="card.image" :alt="card.text" />
-              </div>
-              <div v-if="card.icon" class="card-icon">
-                <v-icon :icon="card.icon" size="20" />
-              </div>
-              <div v-if="card.text" class="card-text">{{ t(card.text) }}</div>
-            </div>
-          </transition-group>
-        </div>
+    <aside class="sign-in__brand-panel">
+      <img class="sign-in__brand-logo" :src="companyLogo" alt="" />
+      <div class="sign-in__brand-claim">
+        <span class="sign-in__brand-accent" />
+        <h1 class="sign-in__brand-title">
+          <span class="is-bold">{{ appTitle.first }}</span>{{ appTitle.rest }}
+        </h1>
+        <p v-if="description" class="sign-in__brand-description">{{ description }}</p>
       </div>
-    </div>
-    <div class="right-panel">
-      <div class="form-container minimal-form">
-        <div class="app-logo">
-          <span class="app-logo-bold">{{ firstWord }}</span
-          ><span v-if="secondWord" class="app-logo-normal">
-            {{ secondWord }}</span
-          >
-        </div>
-        <v-form @submit.prevent="submitLogIn()" class="login-form">
-          <MInputField
-            v-model="username"
-            :title="t('logIn.username_textfield_label')"
-            :placeholder="t('logIn.username_textfield_label')"
-            type="text"
-            :rules="[rules.required]"
-          />
-          <MInputField
-            v-model="password"
-            :title="t('logIn.password_textfield_label')"
-            :placeholder="t('logIn.password_textfield_label')"
-            type="password"
-            :rules="[rules.required]"
-          />
-          <v-btn
-            type="submit"
-            color="var(--primary)"
-            class="form-btn main-signin-btn"
-            rounded="sm"
-            block
-          >
-            {{ t('logIn.button_label') }}
-          </v-btn>
-        </v-form>
-
-        <div class="divider-container">
-          <div class="divider-line"></div>
-          <span class="divider-text">{{ t('logIn.or_divider') }}</span>
-          <div class="divider-line"></div>
-        </div>
-
-        <div class="social-buttons">
-          <button
-            class="social-btn google-btn"
-            @click="initiateGoogleAuth"
-            :title="t('logIn.google_button')"
-          >
-            <img :src="googleLogo" alt="Google" class="logo-image" />
-            <span>{{ t('logIn.google_button') }}</span>
-          </button>
-          <button
-            class="social-btn microsoft-btn"
-            @click="initiateMicrosoftAuth"
-            :title="t('logIn.microsoft_button')"
-          >
-            <img :src="microsoftLogo" alt="Microsoft" class="logo-image" />
-            <span>{{ t('logIn.microsoft_button') }}</span>
-          </button>
-        </div>
+      <div class="sign-in__brand-product">
+        <img :src="baobabLogoSmall" alt="" />
+        <span>{{ PRODUCT }} · baobab soluciones</span>
       </div>
+    </aside>
+    <main class="sign-in__brand-form">
+      <div class="sign-in__body">
+        <header class="sign-in__heading">
+          <h2 class="sign-in__title">{{ $t('logIn.button_label') }}</h2>
+          <p class="sign-in__subtitle">{{ subtitle }}</p>
+        </header>
+        <SignInForm compact />
+      </div>
+      <footer class="sign-in__footer is-end">
+        <SignInLanguages />
+      </footer>
+    </main>
+  </div>
+
+  <div
+    v-else
+    class="sign-in sign-in--photo"
+    :style="{ '--sign-in-background': `url(${loginBackground})` }"
+    data-testid="sign-in-photo"
+  >
+    <div class="sign-in__marks">
+      <img class="sign-in__marks-company" :src="fullLogo" alt="" />
+      <span class="sign-in__marks-divider" />
+      <span class="sign-in__marks-product">
+        <img :src="baobabLogoSmall" alt="" />
+        {{ PRODUCT }}
+      </span>
     </div>
+    <main class="sign-in__card">
+      <div class="sign-in__body">
+        <header class="sign-in__heading">
+          <h1 class="sign-in__app-title">
+            <span class="is-bold">{{ appTitle.first }}</span> {{ appTitle.rest }}
+          </h1>
+          <p class="sign-in__subtitle">{{ subtitle }}</p>
+        </header>
+        <SignInForm />
+      </div>
+      <footer class="sign-in__footer">
+        <span>{{ $t('logIn.powered_by') }}</span>
+        <SignInLanguages />
+      </footer>
+    </main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, inject } from 'vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useGeneralStore } from '@cornflow-ui/core/stores/general'
-import getAuthService, {
-  getAllAuthServices,
-  getSpecificAuthService,
-} from '@cornflow-ui/core/services/AuthServiceFactory'
-import { useRouter } from 'vue-router'
 import config from '@cornflow-ui/core/config'
-import type { AuthServices } from '@cornflow-ui/core/services/AuthServiceFactory'
-import type { AnimatedCard } from '@cornflow-ui/core/interfaces/AnimatedCard'
-import type { CSSProperties } from 'vue'
-import {
-  baobabLogo,
-  companyLogo,
-  googleLogo,
-  microsoftLogo,
-  loginBackground,
-} from '@cornflow-ui/core/utils/assets'
+import SignInForm from '@cornflow-ui/core/components/sign-in/SignInForm.vue'
+import SignInLanguages from '@cornflow-ui/core/components/sign-in/SignInLanguages.vue'
+import { getAppParameters } from '@cornflow-ui/core/utils/appParameters'
+import { baobabLogoSmall, companyLogo, fullLogo, loginBackground } from '@cornflow-ui/core/utils/assets'
 
-const { t } = useI18n()
-const router = useRouter()
-const store = useGeneralStore()
-const showSnackbar =
-  inject<(message: string, type: string) => void>('showSnackbar')
+defineOptions({ name: 'SignInLanding' })
 
-// Form logic
-const username = ref('')
-const password = ref('')
-const rules = {
-  required: (value: string) => !!value || t('rules.required'),
-}
+/** The product the apps are part of. */
+const PRODUCT = 'DecisionOps'
 
-// Auth services
-let authServices: AuthServices | null = null
-let defaultAuth: any = null
+const { t, te } = useI18n()
 
-onMounted(async () => {
-  try {
-    // Initialize all auth services
-    authServices = await getAllAuthServices()
-    defaultAuth = await getAuthService()
-  } catch (error) {
-    console.error('Failed to initialize auth services:', error)
-    showSnackbar?.(t('logIn.snackbar_message_error_server'), 'error')
-  }
+const login = computed(() => getAppParameters().login)
+const layout = computed(() => login.value?.layout ?? 'photo')
+
+/** A text of the app: an i18n key, or the text itself. */
+const appText = (value?: string | null) => (value && te(value) ? t(value) : value || '')
+
+const subtitle = computed(() => appText(login.value?.subtitle) || t('logIn.default_subtitle'))
+const description = computed(() => appText(login.value?.description))
+
+/** The app name, split after its first word ("Planner Pro") or its first capital ("PlannerPro"). */
+const appTitle = computed(() => {
+  const name = config.name || ''
+  const space = name.indexOf(' ')
+  if (space > 0) return { first: name.slice(0, space), rest: name.slice(space + 1) }
+  const camel = name.match(/^([A-Z][a-z0-9]+)([A-Z].*)$/)
+  if (camel) return { first: camel[1], rest: camel[2] }
+  return { first: name, rest: '' }
 })
-
-const submitLogIn = async () => {
-  try {
-    if (!defaultAuth) {
-      showSnackbar?.(t('logIn.snackbar_message_error_server'), 'error')
-      return
-    }
-
-    // Check if username and password are filled for cornflow auth
-    if (!username.value || !password.value) {
-      showSnackbar?.(t('rules.required'), 'error')
-      return
-    }
-
-    // Always use cornflow auth for username/password login
-    const cornflowAuth = await getSpecificAuthService('cornflow')
-    if (!cornflowAuth) {
-      showSnackbar?.(t('logIn.snackbar_message_error_server'), 'error')
-      return
-    }
-
-    const isAuthenticated = await cornflowAuth.login(
-      username.value,
-      password.value,
-    )
-    if (isAuthenticated) {
-      router.push('/')
-      showSnackbar?.(t('logIn.snackbar_message_success'), 'success')
-    } else {
-      showSnackbar?.(t('logIn.snackbar_message_error_auth'), 'error')
-    }
-  } catch (error) {
-    console.error('Login error:', error)
-    showSnackbar?.(t('logIn.snackbar_message_error_server'), 'error')
-  }
-}
-
-const initiateGoogleAuth = async () => {
-  try {
-    // Check if auth type is cornflow
-    if (config.auth.type === 'cornflow') {
-      showSnackbar?.(t('logIn.google_not_configured'), 'error')
-      return
-    }
-
-    // Check if Google is actually configured for the current auth type
-    if (!config.isGoogleConfigured()) {
-      showSnackbar?.(t('logIn.google_not_configured'), 'error')
-      return
-    }
-
-    // Get the appropriate auth service based on config type
-    const authService =
-      config.auth.type === 'cognito'
-        ? await getSpecificAuthService('cognito')
-        : await getSpecificAuthService('azure')
-
-    if (!authService) {
-      showSnackbar?.(t('logIn.google_not_available'), 'error')
-      return
-    }
-
-    await authService.login()
-  } catch (error) {
-    console.error('Google auth login failed:', error)
-    showSnackbar?.(t('logIn.snackbar_message_error_server'), 'error')
-  }
-}
-
-const initiateMicrosoftAuth = async () => {
-  try {
-    // Check if auth type is cornflow
-    if (config.auth.type === 'cornflow') {
-      showSnackbar?.(t('logIn.microsoft_not_configured'), 'error')
-      return
-    }
-
-    // Check if Microsoft is actually configured for the current auth type
-    if (!config.isMicrosoftConfigured()) {
-      showSnackbar?.(t('logIn.microsoft_not_configured'), 'error')
-      return
-    }
-
-    // Get the appropriate auth service based on config type
-    const authService =
-      config.auth.type === 'cognito'
-        ? await getSpecificAuthService('cognito')
-        : await getSpecificAuthService('azure')
-
-    if (!authService) {
-      showSnackbar?.(t('logIn.microsoft_not_available'), 'error')
-      return
-    }
-
-    await authService.login()
-  } catch (error) {
-    console.error('Microsoft auth login failed:', error)
-    showSnackbar?.(t('logIn.snackbar_message_error_server'), 'error')
-  }
-}
-
-// Panel positions for SVG grid (4x4, small gap)
-const GRID_COLS = 4
-const GRID_ROWS = 4
-const PANEL_GAP = 4 // SVG units (small gap)
-const SVG_SIZE = 480
-const TOTAL_GAP = PANEL_GAP * (GRID_COLS - 1)
-const PANEL_SIZE = (SVG_SIZE - TOTAL_GAP) / GRID_COLS // 119px
-const CARD_SIZE = PANEL_SIZE // cards fit panel exactly
-const CARD_RADIUS = 16 // SVG units
-const SVG_PADDED_SIZE = SVG_SIZE + 2 * PANEL_GAP
-
-const panelPositions = Array.from({ length: GRID_COLS * GRID_ROWS }, (_, i) => {
-  const row = Math.floor(i / GRID_COLS) + 1
-  const col = (i % GRID_COLS) + 1
-  return { row, col }
-})
-
-// Initial card positions: first 4 panels in the first column
-const cardDefs: AnimatedCard[] = [
-  {
-    id: 1,
-    text: '',
-    color: 'var(--secondary)',
-    icon: '',
-    image: baobabLogo,
-    gridPosition: { row: 1, col: 1 },
-  },
-  {
-    id: 2,
-    text: 'DecisionOps',
-    color: 'var(--primary)',
-    icon: '',
-    gridPosition: { row: 2, col: 1 },
-  },
-  {
-    id: 3,
-    text: 'baobab',
-    color: 'var(--secondary)',
-    icon: '',
-    gridPosition: { row: 3, col: 1 },
-  },
-  {
-    id: 4,
-    text: '',
-    color: 'var(--primary)',
-    icon: '',
-    image: companyLogo,
-    gridPosition: { row: 4, col: 1 },
-  },
-]
-const animatedCards = ref(cardDefs.map((card) => ({ ...card })))
-
-// Define the movement steps for each card
-const cardMovementSteps = [
-  // Step 1
-  [
-    { col: 2, row: 2 },
-    { col: 2, row: 3 },
-    { col: 3, row: 3 },
-    { col: 3, row: 4 },
-  ],
-  // Step 2
-  [
-    { col: 2, row: 3 },
-    { col: 2, row: 4 },
-    { col: 3, row: 2 },
-    { col: 3, row: 3 },
-  ],
-  // Step 3
-  [
-    { col: 2, row: 4 },
-    { col: 3, row: 4 },
-    { col: 2, row: 2 },
-    { col: 3, row: 2 },
-  ],
-  // Step 4
-  [
-    { col: 3, row: 4 },
-    { col: 3, row: 3 },
-    { col: 2, row: 3 },
-    { col: 2, row: 2 },
-  ],
-]
-
-let movementStep = 0
-let movementInterval: NodeJS.Timeout | null = null
-
-const moveCards = () => {
-  movementStep = (movementStep + 1) % cardMovementSteps.length
-  animatedCards.value = animatedCards.value.map((card, idx) => {
-    const pos = cardMovementSteps[movementStep][idx]
-    return { ...card, gridPosition: { ...pos } }
-  })
-
-  // Stop at the last step
-  if (movementStep === cardMovementSteps.length - 1 && movementInterval) {
-    clearInterval(movementInterval)
-    movementInterval = null
-  }
-}
-
-// Set initial positions
-animatedCards.value = animatedCards.value.map((card, idx) => {
-  const pos = cardMovementSteps[0][idx]
-  return { ...card, gridPosition: { ...pos } }
-})
-
-movementInterval = setInterval(moveCards, 2000)
-
-const cardStyle = (card: AnimatedCard): CSSProperties => {
-  // Calculate percent-based sizes to match SVG grid, including padding
-  const panelWidthPercent = (PANEL_SIZE / SVG_PADDED_SIZE) * 100
-  const gapPercent = (PANEL_GAP / SVG_PADDED_SIZE) * 100
-  const col = card.gridPosition.col - 1
-  const row = card.gridPosition.row - 1
-
-  // Calculate the border radius as a percentage of the panel width to match SVG exactly
-  const borderRadiusPercent = (CARD_RADIUS / PANEL_SIZE) * 100
-
-  // Offset by one gap for the padding
-  return {
-    background: card.color,
-    borderRadius: `${borderRadiusPercent}%`,
-    position: 'absolute',
-    left: `calc(${gapPercent}% + ${col * (panelWidthPercent + gapPercent)}%)`,
-    top: `calc(${gapPercent}% + ${row * (panelWidthPercent + gapPercent)}%)`,
-    width: `${panelWidthPercent}%`,
-    height: `${panelWidthPercent}%`,
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
-    transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
-  }
-}
-
-const appName = config.name || ''
-let firstWord = appName
-let secondWord = ''
-
-if (appName.includes(' ')) {
-  // Split by the first space
-  const idx = appName.indexOf(' ')
-  firstWord = appName.slice(0, idx)
-  secondWord = appName.slice(idx + 1)
-} else {
-  // Split PascalCase or camelCase
-  const match = appName.match(/^([A-Z][a-z0-9]+)([A-Z].*)$/)
-  if (match) {
-    firstWord = match[1]
-    secondWord = match[2]
-  }
-}
 </script>
 
-<style
-  scoped
-  lang="scss"
-  src="@cornflow-ui/core/assets/styles/components/log-in/SignInLanding.scss"
-></style>
+<style scoped>
+.sign-in {
+  box-sizing: border-box;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+}
+
+.is-bold {
+  font-weight: var(--font-weight-bold);
+}
+
+.sign-in__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: calc(var(--spacing) * 7);
+}
+
+.sign-in__heading {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 2);
+}
+
+.sign-in__heading h1,
+.sign-in__heading h2,
+.sign-in__heading p {
+  margin: 0;
+}
+
+.sign-in__subtitle {
+  font-size: var(--text-base);
+  line-height: 1.5;
+  color: var(--color-text-muted);
+  text-wrap: pretty;
+}
+
+.sign-in__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--spacing) * 4);
+  padding: calc(var(--spacing) * 5) 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-subtle);
+}
+
+.sign-in__footer.is-end {
+  justify-content: flex-end;
+}
+
+/* ── Photo ──────────────────────────────────────────────────────────────── */
+
+.sign-in--photo {
+  position: relative;
+  height: 100vh;
+  min-height: 640px;
+  overflow: hidden;
+  background: var(--sign-in-background) 30% center / cover no-repeat var(--color-primary);
+}
+
+.sign-in--photo::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 40%,
+    color-mix(in srgb, var(--color-primary) 35%, transparent) 100%
+  );
+}
+
+.sign-in__marks {
+  position: absolute;
+  left: 40px;
+  bottom: 40px;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 5);
+  padding: calc(var(--spacing) * 3.5) calc(var(--spacing) * 5);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+}
+
+.sign-in__marks-company {
+  height: 32px;
+  max-width: 160px;
+  object-fit: contain;
+}
+
+.sign-in__marks-divider {
+  width: 1px;
+  height: 32px;
+  background: var(--color-divider);
+}
+
+.sign-in__marks-product {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.06em;
+}
+
+.sign-in__marks-product img {
+  height: 28px;
+}
+
+/* As tall as its content, centred on the right; it scrolls only on a short window. */
+.sign-in__card {
+  position: absolute;
+  top: 50%;
+  right: 40px;
+  transform: translateY(-50%);
+  box-sizing: border-box;
+  width: 480px;
+  max-height: calc(100% - 80px);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 10);
+  padding: 48px 56px 0;
+  overflow-y: auto;
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-xl);
+}
+
+.sign-in__card .sign-in__footer {
+  border-top: 1px solid var(--color-divider);
+}
+
+.sign-in__app-title {
+  font-size: 1.75rem;
+  font-weight: 300;
+  line-height: 1.2;
+}
+
+/* ── Brand ──────────────────────────────────────────────────────────────── */
+
+.sign-in--brand {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 600px;
+  height: 100vh;
+  min-height: 640px;
+  background: var(--color-surface);
+}
+
+.sign-in__brand-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 56px 72px;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+/* Any company logo reads on the primary colour once turned white. */
+.sign-in__brand-logo,
+.sign-in__brand-product img {
+  filter: brightness(0) invert(1);
+}
+
+.sign-in__brand-logo {
+  align-self: flex-start;
+  height: 40px;
+  max-width: 220px;
+  object-fit: contain;
+  object-position: left;
+}
+
+.sign-in__brand-claim {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 5);
+  max-width: 560px;
+}
+
+.sign-in__brand-accent {
+  width: 48px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-secondary);
+}
+
+.sign-in__brand-title {
+  margin: 0;
+  font-size: 3.5rem;
+  font-weight: 300;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+}
+
+.sign-in__brand-description {
+  margin: 0;
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  color: color-mix(in srgb, var(--color-on-primary) 85%, transparent);
+  text-wrap: pretty;
+}
+
+.sign-in__brand-product {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 3);
+  font-size: var(--text-md);
+  color: color-mix(in srgb, var(--color-on-primary) 80%, transparent);
+}
+
+.sign-in__brand-product img {
+  height: 26px;
+}
+
+.sign-in__brand-form {
+  display: flex;
+  flex-direction: column;
+  padding: 0 104px;
+  overflow-y: auto;
+}
+
+.sign-in__title {
+  font-size: 1.625rem;
+  font-weight: var(--font-weight-medium);
+}
+
+/* ── Narrow screens ─────────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+  .sign-in--brand {
+    grid-template-columns: minmax(0, 1fr) 480px;
+  }
+
+  .sign-in__brand-panel {
+    padding: 48px;
+  }
+
+  .sign-in__brand-form {
+    padding: 0 56px;
+  }
+}
+
+@media (max-width: 860px) {
+  .sign-in--brand {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sign-in__brand-panel {
+    display: none;
+  }
+
+  .sign-in__card {
+    right: 16px;
+    left: 16px;
+    width: auto;
+    max-height: calc(100% - 32px);
+    padding: 32px 24px 0;
+  }
+
+  .sign-in__marks {
+    display: none;
+  }
+
+  .sign-in__brand-form {
+    padding: 0 24px;
+  }
+}
+</style>

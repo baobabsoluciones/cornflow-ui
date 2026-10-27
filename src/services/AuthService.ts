@@ -29,19 +29,6 @@ class AuthService {
     return isAuthenticated
   }
 
-  async signup(
-    email: string,
-    username: string,
-    password: string,
-  ): Promise<boolean> {
-    const response = await client.post(
-      '/signup/',
-      { email, username, password },
-      { 'Content-Type': 'application/json' },
-    )
-    return response.status === 201
-  }
-
   logout(): void {
     sessionStorage.setItem('isAuthenticated', 'false')
     sessionStorage.removeItem('token')
