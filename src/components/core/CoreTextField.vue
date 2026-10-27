@@ -1,5 +1,5 @@
 <!--
-  CoreTextField: a text box, for text, numbers, dates and passwords, or several lines with
+  CoreTextField: a text box, for text, numbers, dates, times and passwords, or several lines with
   `multiline`.
 
   - `v-model`: a number field gives a number, or `null` when empty (`integer` keeps it whole); the
@@ -67,7 +67,7 @@ defineOptions({ name: 'CoreTextField', inheritAttrs: false })
 
 interface Props {
   modelValue?: string | number | null
-  type?: 'text' | 'number' | 'date' | 'password' | 'email'
+  type?: 'text' | 'number' | 'date' | 'time' | 'datetime-local' | 'password' | 'email'
   /** A number field that takes whole numbers only. */
   integer?: boolean
   size?: 'small' | 'default' | 'large'
