@@ -12,27 +12,23 @@
         {{ labelOf(field) }}
         <span v-if="!field.required" class="load-filters__optional">{{ $t('createExecution.data.optional') }}</span>
       </span>
-      <select
+      <CoreSelect
         v-if="optionsOf(field).length > 0"
-        class="load-filters__control"
-        :class="{ 'is-empty': isEmpty(field), 'is-invalid': isInvalid(field) }"
-        :value="selectedIndex(field)"
-        @change="onSelect(field, $event)"
-      >
-        <option value="">
-          {{ field.required ? $t('createExecution.data.choose') : $t('createExecution.data.notSet') }}
-        </option>
-        <option v-for="(option, index) in optionsOf(field)" :key="index" :value="String(index)">
-          {{ option.label }}
-        </option>
-      </select>
-      <input
+        :model-value="values[field.key]"
+        :options="optionsOf(field)"
+        :placeholder="field.required ? $t('createExecution.data.choose') : $t('createExecution.data.notSet')"
+        clearable
+        :invalid="isInvalid(field)"
+        @update:model-value="$emit('change', field.key, $event)"
+      />
+      <CoreTextField
         v-else
-        class="load-filters__control"
-        :class="{ 'is-invalid': isInvalid(field) }"
         :type="field.type === 'date' ? 'date' : field.type === 'number' || field.type === 'float' ? 'number' : 'text'"
-        :value="values[field.key] ?? ''"
-        @change="onInput(field, $event)"
+        :integer="field.type === 'number'"
+        :model-value="values[field.key]"
+        :invalid="isInvalid(field)"
+        lazy
+        @update:model-value="$emit('change', field.key, $event === '' ? null : $event)"
       />
     </label>
   </div>
@@ -40,6 +36,8 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import CoreSelect from '@cornflow-ui/core/components/core/CoreSelect.vue'
+import CoreTextField from '@cornflow-ui/core/components/core/CoreTextField.vue'
 import { isEmptyConfigValue } from '@cornflow-ui/core/composables/create-execution/configFieldValues'
 
 defineOptions({ name: 'LoadFiltersForm' })
@@ -54,7 +52,7 @@ const props = withDefaults(
   { showErrors: false },
 )
 
-const emit = defineEmits<{ change: [key: string, value: unknown] }>()
+defineEmits<{ change: [key: string, value: unknown] }>()
 
 const { t } = useI18n()
 
@@ -78,24 +76,6 @@ function isEmpty(field: any) {
 
 function isInvalid(field: any) {
   return props.showErrors && field.required && isEmpty(field)
-}
-
-function selectedIndex(field: any) {
-  const index = optionsOf(field).findIndex((o) => o.value === props.values[field.key])
-  return index === -1 ? '' : String(index)
-}
-
-function onSelect(field: any, event: Event) {
-  const raw = (event.target as HTMLSelectElement).value
-  emit('change', field.key, raw === '' ? null : optionsOf(field)[Number(raw)]?.value)
-}
-
-function onInput(field: any, event: Event) {
-  const raw = (event.target as HTMLInputElement).value
-  if (raw === '') emit('change', field.key, null)
-  else if (field.type === 'number') emit('change', field.key, Number.parseInt(raw, 10))
-  else if (field.type === 'float') emit('change', field.key, Number.parseFloat(raw))
-  else emit('change', field.key, raw)
 }
 </script>
 
@@ -128,31 +108,5 @@ function onInput(field: any, event: Event) {
 .load-filters__optional {
   font-weight: var(--font-weight-regular);
   color: var(--color-text-subtle);
-}
-
-.load-filters__control {
-  box-sizing: border-box;
-  min-width: 0;
-  height: 36px;
-  padding: 0 calc(var(--spacing) * 2);
-  border: 1px solid var(--color-border-input);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  font-family: var(--font-sans);
-  font-size: var(--text-md);
-  color: var(--color-text);
-}
-
-.load-filters__control.is-empty {
-  color: var(--color-text-subtle);
-}
-
-.load-filters__control.is-invalid {
-  border-color: var(--color-danger-border);
-}
-
-.load-filters__control:focus {
-  border-color: var(--color-primary);
-  outline: none;
 }
 </style>

@@ -55,6 +55,20 @@
     </CatalogBlock>
 
     <CatalogBlock
+      name="ChecksDetailDialog"
+      api="v-model · results · initialKey"
+      note="Everything the checks found: the checks on the left, the rows of the picked one on the right, with a search."
+    >
+      <CoreButton
+        variant="outlined"
+        icon="mdi-shield-search"
+        text="Open the checks detail"
+        @click="checksDetailOpen = true"
+      />
+      <ChecksDetailDialog v-model="checksDetailOpen" :results="[error, warning]" />
+    </CatalogBlock>
+
+    <CatalogBlock
       name="ExecutionParametersForm · ParameterInput"
       api="fields · values · solvers · defaultSolver · fromData · highlight · showErrors → change"
     >
@@ -110,6 +124,7 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
+import ChecksDetailDialog from '@cornflow-ui/core/components/create-execution/ChecksDetailDialog.vue'
 import ChecksStatus from '@cornflow-ui/core/components/create-execution/ChecksStatus.vue'
 import DraftBanner from '@cornflow-ui/core/components/create-execution/DraftBanner.vue'
 import ExecutionDataCard from '@cornflow-ui/core/components/create-execution/ExecutionDataCard.vue'
@@ -239,8 +254,15 @@ const error: CheckResult = {
   description: '',
   kind: 'error',
   columns: [{ key: 'product', title: 'Product' }, { key: 'week', title: 'Week' }],
-  records: [{ product: 'P-199', week: 43 }, { product: 'P-207', week: 44 }],
+  records: [
+    { product: 'P-199', week: 43 },
+    { product: 'P-207', week: 44 },
+    { product: 'P-212', week: 44 },
+    { product: 'P-230', week: 45 },
+  ],
 }
+const checksDetailOpen = ref(false)
+
 const checkSamples: { status: Status; results: CheckResult[] }[] = [
   { status: 'none', results: [] },
   { status: 'running', results: [] },
@@ -260,6 +282,17 @@ const parameterFields = [
       { value: 'cost', label: 'Cost' },
       { value: 'service', label: 'Service' },
       { value: 'balanced', label: 'Balanced' },
+    ],
+  },
+  {
+    key: 'horizon',
+    title: 'Horizon',
+    type: 'select',
+    options: [
+      { value: 1, label: '1 week' },
+      { value: 2, label: '2 weeks' },
+      { value: 4, label: '4 weeks' },
+      { value: 8, label: '8 weeks' },
     ],
   },
   { key: 'start_date', title: 'Plan start date', type: 'date' },

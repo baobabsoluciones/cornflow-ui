@@ -75,27 +75,27 @@
             <label for="launch-panel-name" class="launch-panel__section-title">
               {{ $t('createExecution.launch.name') }}
             </label>
-            <input
+            <CoreTextField
               id="launch-panel-name"
               ref="nameInput"
               class="launch-panel__name-input"
-              :class="{ 'is-highlighted': highlight === 'name' }"
-              :value="draft.execution.name"
+              :model-value="draft.execution.name"
+              :invalid="highlight === 'name'"
               :disabled="draft.launch.running"
               :placeholder="$t('createExecution.launch.namePlaceholder')"
               data-testid="launch-panel-name"
-              @input="draft.setName(($event.target as HTMLInputElement).value)"
+              @update:model-value="draft.setName(String($event ?? ''))"
             />
             <span v-if="draft.nameProposed && draft.execution.name" class="launch-panel__hint">
               {{ $t('createExecution.launch.nameProposed') }}
             </span>
-            <textarea
+            <CoreTextField
               v-if="showDescription"
-              class="launch-panel__description"
-              rows="2"
-              :value="draft.execution.description"
+              multiline
+              :rows="2"
+              :model-value="draft.execution.description"
               :placeholder="$t('createExecution.launch.descriptionPlaceholder')"
-              @input="draft.setDescription(($event.target as HTMLTextAreaElement).value)"
+              @update:model-value="draft.setDescription(String($event ?? ''))"
             />
             <button
               v-else
@@ -214,6 +214,7 @@ import { useI18n } from 'vue-i18n'
 import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
 import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
 import CorePopover from '@cornflow-ui/core/components/core/CorePopover.vue'
+import CoreTextField from '@cornflow-ui/core/components/core/CoreTextField.vue'
 import ChecksStatus from '@cornflow-ui/core/components/create-execution/ChecksStatus.vue'
 import ExecutionParametersForm from '@cornflow-ui/core/components/create-execution/ExecutionParametersForm.vue'
 import LaunchResult from '@cornflow-ui/core/components/create-execution/LaunchResult.vue'
@@ -238,7 +239,7 @@ const collapsed = defineModel<boolean>('collapsed', { default: false })
 
 const { t } = useI18n()
 
-const nameInput = ref<HTMLInputElement | null>(null)
+const nameInput = ref<InstanceType<typeof CoreTextField> | null>(null)
 const solutionInput = ref<HTMLInputElement | null>(null)
 const descriptionOpen = ref(false)
 const menuOpen = ref(false)
@@ -487,34 +488,14 @@ function onSolutionPicked(event: Event) {
   color: var(--color-text-muted);
 }
 
-.launch-panel__name-input {
-  box-sizing: border-box;
-  width: 100%;
-  height: 38px;
-  padding: 0 calc(var(--spacing) * 2.5);
-  border: 1px solid var(--color-border-input);
-  border-radius: var(--radius-md);
-  outline: none;
-  font-family: var(--font-sans);
+.launch-panel__name-input :deep(.core-text-field__input) {
   font-size: var(--text-base);
   font-weight: var(--font-weight-medium);
   color: var(--color-primary);
 }
 
-.launch-panel__name-input::placeholder,
-.launch-panel__description::placeholder {
-  color: var(--color-text-subtle);
+.launch-panel__name-input :deep(.core-text-field__input::placeholder) {
   font-weight: var(--font-weight-regular);
-}
-
-.launch-panel__name-input:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 12%, transparent);
-}
-
-.launch-panel__name-input.is-highlighted {
-  border-color: var(--color-danger);
-  box-shadow: 0 0 0 2px var(--color-danger-soft);
 }
 
 .launch-panel__hint {
@@ -522,22 +503,6 @@ function onSolutionPicked(event: Event) {
   color: var(--color-text-subtle);
 }
 
-.launch-panel__description {
-  box-sizing: border-box;
-  width: 100%;
-  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 2.5);
-  border: 1px solid var(--color-border-input);
-  border-radius: var(--radius-md);
-  outline: none;
-  font-family: var(--font-sans);
-  font-size: var(--text-md);
-  color: var(--color-text);
-  resize: vertical;
-}
-
-.launch-panel__description:focus {
-  border-color: var(--color-primary);
-}
 
 .launch-panel__link {
   display: inline-flex;

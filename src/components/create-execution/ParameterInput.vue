@@ -25,19 +25,15 @@
     </button>
   </div>
 
-  <select
+  <CoreSelect
     v-else-if="field.type === 'options'"
     :id="inputId"
-    class="parameter-input__control parameter-input__select"
-    :class="{ 'is-invalid': invalid, 'is-empty': value === undefined || value === null || value === '' }"
-    :value="selectValue"
-    @change="onSelect"
-  >
-    <option value="" disabled>{{ $t('createExecution.parameters.choose') }}</option>
-    <option v-for="(option, index) in field.options" :key="String(option.value)" :value="String(index)">
-      {{ option.label }}
-    </option>
-  </select>
+    :model-value="value"
+    :options="field.options"
+    :placeholder="$t('createExecution.parameters.choose')"
+    :invalid="invalid"
+    @update:model-value="$emit('change', $event)"
+  />
 
   <button
     v-else-if="field.type === 'boolean'"
@@ -54,25 +50,22 @@
     {{ value ? $t('createExecution.parameters.yes') : $t('createExecution.parameters.no') }}
   </button>
 
-  <div
+  <CoreTextField
     v-else
-    class="parameter-input__control parameter-input__field"
-    :class="{ 'is-invalid': invalid }"
-  >
-    <input
-      :id="inputId"
-      class="parameter-input__input"
-      :type="field.type === 'date' ? 'date' : field.type === 'text' ? 'text' : 'number'"
-      :step="field.type === 'float' ? 'any' : field.type === 'number' ? '1' : undefined"
-      :value="value ?? ''"
-      @change="onInput"
-    />
-    <span v-if="field.suffix" class="parameter-input__suffix">{{ field.suffix }}</span>
-  </div>
+    :id="inputId"
+    :type="field.type === 'date' ? 'date' : field.type === 'text' ? 'text' : 'number'"
+    :integer="field.type === 'number'"
+    :model-value="value as string | number | null | undefined"
+    :suffix="field.suffix"
+    :invalid="invalid"
+    lazy
+    @update:model-value="$emit('change', $event)"
+  />
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import CoreSelect from '@cornflow-ui/core/components/core/CoreSelect.vue'
+import CoreTextField from '@cornflow-ui/core/components/core/CoreTextField.vue'
 
 defineOptions({ name: 'ParameterInput' })
 
@@ -86,7 +79,7 @@ export interface ParameterFieldView {
   default?: unknown
 }
 
-const props = withDefaults(
+withDefaults(
   defineProps<{
     field: ParameterFieldView
     value: unknown
@@ -98,27 +91,10 @@ const props = withDefaults(
   { invalid: false, inputId: undefined, compact: false },
 )
 
-const emit = defineEmits<{ change: [value: unknown] }>()
+defineEmits<{ change: [value: unknown] }>()
 
 const MAX_BUTTONS = 3
 
-/** Options can be numbers or ids: the select works with their position. */
-const selectValue = computed(() => {
-  const index = props.field.options.findIndex((o) => o.value === props.value)
-  return index === -1 ? '' : String(index)
-})
-
-function onSelect(event: Event) {
-  const index = Number((event.target as HTMLSelectElement).value)
-  emit('change', props.field.options[index]?.value)
-}
-
-function onInput(event: Event) {
-  const raw = (event.target as HTMLInputElement).value
-  if (props.field.type === 'number') emit('change', raw === '' ? null : Number.parseInt(raw, 10))
-  else if (props.field.type === 'float') emit('change', raw === '' ? null : Number.parseFloat(raw))
-  else emit('change', raw)
-}
 </script>
 
 <style scoped>
@@ -160,57 +136,6 @@ function onInput(event: Event) {
   background: var(--color-primary-subtle);
   font-weight: var(--font-weight-bold);
   color: var(--color-primary);
-}
-
-.parameter-input__control {
-  box-sizing: border-box;
-  height: 34px;
-  border: 1px solid var(--color-border-input);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  font-family: var(--font-sans);
-  font-size: var(--text-md);
-  color: var(--color-text);
-}
-
-.parameter-input__control.is-invalid {
-  border-color: var(--color-danger-border);
-}
-
-.parameter-input__select {
-  padding: 0 calc(var(--spacing) * 2);
-}
-
-.parameter-input__select.is-empty {
-  color: var(--color-text-subtle);
-}
-
-.parameter-input__field {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--spacing) * 1.5);
-  padding: 0 calc(var(--spacing) * 2.5);
-}
-
-.parameter-input__field:focus-within {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 12%, transparent);
-}
-
-.parameter-input__input {
-  flex: 1;
-  min-width: 0;
-  border: 0;
-  outline: none;
-  background: transparent;
-  font: inherit;
-  font-variant-numeric: tabular-nums;
-  color: inherit;
-}
-
-.parameter-input__suffix {
-  font-size: var(--text-sm);
-  color: var(--color-text-subtle);
 }
 
 .parameter-input__switch {
