@@ -321,11 +321,10 @@ test.describe('Validations Page', () => {
     console.log(`API returned ${checkKeys.length} validation tables: ${checkKeys.join(', ')}`);
 
     // Tabs: should match the number of check tables (or at least show content)
-    const tableCard = page.locator('.table-card');
-    const hasGroupView = await tableCard.count() > 0;
+    const dataTabs = page.locator('[role="tab"][data-testid^="data-table-tab-"]');
+    const hasGroupView = await dataTabs.count() > 0;
 
     if (hasGroupView) {
-      const dataTabs = tableCard.locator('.m-tab, button[role="tab"]');
       const tabCount = await dataTabs.count();
       expect(tabCount).toBeGreaterThan(0);
       console.log(`UI shows ${tabCount} tabs for ${checkKeys.length} check tables from API`);
@@ -345,7 +344,7 @@ test.describe('Validations Page', () => {
 
       if (sampleValue != null && String(sampleValue).length <= 50) {
         const cellWithValue = page
-          .locator('.v-data-table, .simple-list, .table-section')
+          .locator('[data-testid="data-table"]')
           .getByText(String(sampleValue), { exact: false });
         const valueFound = await cellWithValue.count() > 0;
         expect(valueFound).toBe(true);
@@ -403,39 +402,24 @@ test.describe('Validations Page', () => {
       timeout: TIMEOUTS.NAVIGATION,
     });
 
-    // Find the three-dots menu button (same structure as input data page)
-    const menuButton = page
-      .locator(
-        '.table-card-content .core-dropdown-menu__trigger, ' +
-          '.core-table-container .core-dropdown-menu__trigger, ' +
-          '.table-section .core-dropdown-menu__trigger'
-      )
-      .first();
+    const downloadButton = page.locator('[data-testid="data-table-excel"]').first();
 
-    const menuVisible = await menuButton
+    const buttonVisible = await downloadButton
       .isVisible({ timeout: TIMEOUTS.FORM_LOAD })
       .catch(() => false);
 
-    if (!menuVisible) {
+    if (!buttonVisible) {
       console.log(
-        'Download menu button not visible on validations page - skipping test.'
+        'Download Excel button not visible on validations page - skipping test.'
       );
       return;
     }
-
-    await menuButton.click();
-
-    const downloadOption = page.getByText(/Descargar excel|Download excel/i);
-    await downloadOption.waitFor({
-      state: 'visible',
-      timeout: TIMEOUTS.FORM_LOAD,
-    });
 
     const downloadPromise = page.waitForEvent('download', {
       timeout: TIMEOUTS.NAVIGATION,
     });
 
-    await downloadOption.click();
+    await downloadButton.click();
 
     const download = await downloadPromise;
     const suggestedFilename = download.suggestedFilename();
@@ -596,8 +580,8 @@ test.describe('Validations Page', () => {
       timeout: TIMEOUTS.NAVIGATION,
     });
 
-    const tableCard = page.locator('.table-card');
-    const hasGroupView = await tableCard.count() > 0;
+    const dataTabs = page.locator('[role="tab"][data-testid^="data-table-tab-"]');
+    const hasGroupView = await dataTabs.count() > 0;
 
     if (!hasGroupView) {
       console.log(
@@ -608,7 +592,6 @@ test.describe('Validations Page', () => {
       return;
     }
 
-    const dataTabs = tableCard.locator('.m-tab, button[role="tab"]');
     const tabCount = await dataTabs.count();
 
     if (tabCount < 2) {
@@ -631,8 +614,8 @@ test.describe('Validations Page', () => {
     });
     await expect(firstTab).toHaveAttribute('aria-selected', 'false');
 
-    const tableCardContent = tableCard.locator('.table-card-content');
-    await expect(tableCardContent).toBeVisible({
+    const dataTable = page.locator('[data-testid="data-table"]');
+    await expect(dataTable.first()).toBeVisible({
       timeout: TIMEOUTS.FORM_LOAD,
     });
 

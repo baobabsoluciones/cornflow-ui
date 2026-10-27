@@ -860,8 +860,7 @@ const convertDataTypesBasedOnSchema = (data: any, tableKey: string): any => {
 /**
  * Records a cell change with the value coerced to its schema type, and (for ETL vertical
  * parameter `value` edits) turns off the matching "from DB" switch. Shared by handleCellChange
- * and handleModalUpdateChange. Returns the resolved `table` so callers can do extra work
- * (e.g. mirroring editingData) without re-looking it up.
+ * and handleModalUpdateChange.
  */
 const recordTypedCellChange = (
   tableKey: string,
@@ -869,7 +868,7 @@ const recordTypedCellChange = (
   fieldKey: string,
   oldValue: any,
   newValue: any,
-): any => {
+): void => {
   const table = instanceTables.value.find((t) => t.key === tableKey)
   const header = table?.headers?.find((h: any) => h.key === fieldKey)
   const fieldTitle = header?.title || fieldKey
@@ -909,7 +908,6 @@ const recordTypedCellChange = (
     )
   }
 
-  return table
 }
 
 // Excel mode handlers

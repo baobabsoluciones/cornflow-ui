@@ -183,7 +183,6 @@ vi.mock('@cornflow-ui/core/composables/useTableChanges', () => ({
 vi.mock('@cornflow-ui/core/composables/core-table/useFormFields', () => ({
   useFormFields: () => ({
     prepareFormDataForSubmit: (data: any) => ({ ...data }),
-    updateDependentFields: (_f: string, _v: any, data: any) => data,
   }),
 }))
 
@@ -229,13 +228,7 @@ vi.mock('@cornflow-ui/core/utils/schemaUtils', () => ({
 
 // applyFiltersAndSearch real-ish: passthrough so windowing slices the full set.
 vi.mock('@cornflow-ui/core/utils/tableFilterUtils', () => ({
-  getOperatorsForFieldType: vi.fn(() => ['equals']),
-  getOperatorText: vi.fn((op: string) => `OP:${op}`),
-  operatorNeedsValue: vi.fn(() => true),
-  operatorNeedsSecondValue: vi.fn(() => false),
-  generateFilterId: vi.fn(() => 'fid-1'),
   applyFiltersAndSearch: vi.fn((items: any[]) => items),
-  getFilterFieldTypeFromSchemaProperty: vi.fn(() => 'string'),
 }))
 
 // csvUtils — controllable for the CSV parse path.

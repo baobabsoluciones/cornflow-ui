@@ -44,83 +44,6 @@ export const isFrontendRowId = (value: unknown, tableKey: string): boolean => {
 export type FilterCondition = DataFilter
 
 /**
- * Column type for filter UI: JSON Schema often uses `type: string` with `format: date` or `date-time`.
- */
-export function getFilterFieldTypeFromSchemaProperty(prop: {
-  type?: string
-  format?: string
-}): string {
-  if (!prop) return 'string'
-  if (prop.format === 'date') return 'date'
-  if (prop.format === 'date-time' || prop.format === 'datetime') {
-    return 'date-time'
-  }
-  if (prop.type === 'integer') return 'number'
-  return prop.type || 'string'
-}
-
-/** Date columns use only a from/to range in the filter panel (no is/contains operators). */
-export function isDateLikeFieldType(fieldType: string): boolean {
-  return (
-    fieldType === 'date' ||
-    fieldType === 'date-time' ||
-    fieldType === 'datetime'
-  )
-}
-
-/**
- * Get available operators for a field type
- */
-export const getOperatorsForFieldType = (fieldType: string): string[] => {
-  switch (fieldType) {
-    case 'string':
-      return ['is', 'is_not', 'contains', 'has_any_value']
-    case 'number':
-    case 'integer':
-      return ['is', 'is_not', 'is_between', 'has_any_value']
-    case 'date':
-    case 'date-time':
-    case 'datetime':
-      return ['is_between']
-    case 'boolean':
-      return ['is', 'is_not']
-    default:
-      return ['is', 'is_not', 'has_any_value']
-  }
-}
-
-/**
- * Get translated text for an operator
- */
-export const getOperatorText = (
-  operator: string,
-  t: (key: string) => string,
-): string => {
-  const operatorTexts: Record<string, string> = {
-    is: t('table.filters.operators.is'),
-    is_not: t('table.filters.operators.is_not'),
-    contains: t('table.filters.operators.contains'),
-    is_between: t('table.filters.operators.is_between'),
-    has_any_value: t('table.filters.operators.has_any_value'),
-  }
-  return operatorTexts[operator] || operator
-}
-
-/**
- * Check if operator needs a value
- */
-export const operatorNeedsValue = (operator: string): boolean => {
-  return operator !== 'has_any_value'
-}
-
-/**
- * Check if operator needs a second value (for ranges)
- */
-export const operatorNeedsSecondValue = (operator: string): boolean => {
-  return operator === 'is_between'
-}
-
-/**
  * Generate a unique filter ID
  */
 export const generateFilterId = (): string => {
@@ -132,19 +55,6 @@ export const generateFilterId = (): string => {
  */
 export const applyFilterToItem = (item: any, filter: FilterCondition): boolean =>
   valuePassesFilter(item[filter.field], filter)
-
-/**
- * Apply search term to an item
- */
-export const itemMatchesSearch = (item: any, searchTerm: string): boolean => {
-  if (!searchTerm) return true
-
-  const lowerSearchTerm = searchTerm.toLowerCase()
-  return Object.values(item).some((value) => {
-    if (value === null || value === undefined) return false
-    return String(value).toLowerCase().includes(lowerSearchTerm)
-  })
-}
 
 /**
  * Apply filters and search to a list of items.
@@ -186,8 +96,8 @@ export const applyFiltersAndSearch = (
 
 /**
  * True if any of the item's own values contains the (already lower-cased)
- * search term. Mirrors `itemMatchesSearch` but avoids the per-row
- * `Object.values()` allocation on the hot path.
+ * search term. Walks the keys with `for…in` rather than `Object.values()` so the
+ * hot path allocates no array per row.
  */
 const itemMatchesLowerSearch = (item: any, lowerSearch: string): boolean => {
   for (const key in item) {
