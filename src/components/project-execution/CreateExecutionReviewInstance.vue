@@ -547,12 +547,6 @@ const handleDeleteInstanceRow = (row: any) => {
   }
 }
 
-// Clear errors handler
-const clearErrors = () => {
-  instanceErrors.value = null
-  emit('update:instanceErrors', null)
-}
-
 const fileInput = ref<HTMLInputElement>()
 const getActiveFileInput = () => fileInput.value
 

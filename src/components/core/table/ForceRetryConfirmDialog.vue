@@ -18,8 +18,8 @@
     icon="mdi-alert-outline"
     :loading="loading"
     @confirm="emit('confirm')"
-    @cancel="cancel"
-    @update:model-value="!$event && cancel()"
+    @cancel="emit('cancel')"
+    @update:model-value="emit('update:modelValue', $event)"
   />
 </template>
 
@@ -43,9 +43,4 @@ const emit = defineEmits<{
   confirm: []
   cancel: []
 }>()
-
-function cancel() {
-  emit('cancel')
-  emit('update:modelValue', false)
-}
 </script>

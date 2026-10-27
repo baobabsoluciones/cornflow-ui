@@ -25,6 +25,7 @@
     :has-more="tableData.hasMore.value"
     :total-count="tableData.totalCount?.value"
     :filtered-count="tableData.filteredCount?.value"
+    :searchable="!isRecord"
     :filterable="!isMessageList && !isRecord"
     :editable="editable"
     :selectable="editable && tableData.enableSelection.value"

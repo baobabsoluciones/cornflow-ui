@@ -1575,6 +1575,7 @@ export default {
       desc: 'Ordenada por {column}, descendente',
     },
     pending: {
+      apply: 'Aplicar alterações',
       save: 'Guardar alterações',
       discard: 'Descartar',
       review: 'Rever alterações',

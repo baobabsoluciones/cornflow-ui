@@ -135,6 +135,22 @@
     </CatalogBlock>
 
     <CatalogBlock
+      name="CreateExecutionReviewInstance · ExecutionDataView"
+      api="newExecution · instanceErrors · externalEtlFlow · showToolbar → update:instance, update:instanceErrors, has-pending-changes"
+      note="The review of a new execution: the loaded tables with their pending changes, the parameters as a list, Excel download and upload and the full screen."
+    >
+      <div class="review">
+        <CreateExecutionReviewInstance
+          :new-execution="reviewExecution"
+          :instance-errors="reviewErrors"
+          show-toolbar
+          @update:instance="(instance) => (reviewExecution.instance = instance)"
+          @update:instance-errors="(errors) => (reviewErrors = errors)"
+        />
+      </div>
+    </CatalogBlock>
+
+    <CatalogBlock
       name="BulkEditDialog · BulkUploadDialog · RelaunchDialog"
       api="open · columns · count · tableTitle → apply | operations · phase · progressText → upload | name · summary · busy → launch"
     >
@@ -161,6 +177,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
+import { Instance } from '@/app/models/Instance'
 import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
 import CoreSegmentedControl from '@cornflow-ui/core/components/core/CoreSegmentedControl.vue'
 import BulkEditDialog from '@cornflow-ui/core/components/core/data-table/BulkEditDialog.vue'
@@ -185,6 +202,8 @@ import type {
 import { useDataTableRows } from '@cornflow-ui/core/composables/core-table/useDataTableRows'
 import { pendingChangeGroups, useDataTableChanges } from '@cornflow-ui/core/composables/core-table/useDataTableChanges'
 import { useTableChanges } from '@cornflow-ui/core/composables/useTableChanges'
+import CreateExecutionReviewInstance from '@cornflow-ui/core/components/project-execution/CreateExecutionReviewInstance.vue'
+import type { NewExecution } from '@cornflow-ui/core/composables/project-execution/useExecutionExcel'
 import CatalogBlock from '../CatalogBlock.vue'
 
 const PLANTS = ['North plant', 'South plant']
@@ -498,6 +517,88 @@ const messages = [
   'There are 3 products weighing 0 kg.',
 ]
 
+const reviewSchema = {
+  type: 'object',
+  properties: {
+    lines: {
+      type: 'array',
+      title: 'Lines',
+      items: {
+        type: 'object',
+        properties: {
+          line: { type: 'string', title: 'Line' },
+          plant: { type: 'string', title: 'Plant' },
+          capacity: { type: 'number', title: 'Capacity' },
+          active: { type: 'boolean', title: 'Active' },
+        },
+        required: ['line'],
+      },
+    },
+    products: {
+      type: 'array',
+      title: 'Products',
+      items: {
+        type: 'object',
+        properties: {
+          code: { type: 'string', title: 'Code' },
+          family: { type: 'string', title: 'Family' },
+          weight: { type: 'number', title: 'Weight (kg)' },
+        },
+        required: ['code'],
+      },
+    },
+    demand: {
+      type: 'array',
+      title: 'Demand',
+      items: {
+        type: 'object',
+        properties: {
+          product: { type: 'string', title: 'Product' },
+          due: { type: 'string', format: 'date', title: 'Due date' },
+          quantity: { type: 'integer', title: 'Quantity' },
+        },
+        required: ['product', 'quantity'],
+      },
+    },
+    parameters: {
+      type: 'object',
+      title: 'Parameters',
+      properties: {
+        horizon_days: { type: 'integer', title: 'Horizon (days)' },
+        start_date: { type: 'string', format: 'date', title: 'Start date' },
+        allow_overtime: { type: 'boolean', title: 'Allow overtime' },
+        max_utilisation: { type: 'number', title: 'Maximum utilisation' },
+      },
+    },
+  },
+}
+
+const reviewData = {
+  lines: LINES.slice(0, 12).map((line, i) => ({
+    line,
+    plant: PLANTS[i % 2],
+    capacity: 1200 + ((i * 379) % 9000),
+    active: i % 5 !== 3,
+  })),
+  products: PRODUCTS.slice(0, 20).map((code, i) => ({
+    code,
+    family: FAMILIES[i % 4],
+    weight: Math.round((0.15 + ((i * 37) % 180) / 100) * 100) / 100,
+  })),
+  demand: Array.from({ length: 30 }, (_, i) => ({
+    product: PRODUCTS[(i * 5) % 20],
+    due: `2026-${pad(10 + (i % 3))}-${pad(1 + ((i * 7) % 28))}`,
+    quantity: 200 + ((i * 613) % 14000),
+  })),
+  parameters: { horizon_days: 28, start_date: '2026-10-26', allow_overtime: false, max_utilisation: 0.85 },
+}
+
+const reviewExecution = reactive<NewExecution>({
+  name: 'Week 43',
+  instance: new Instance(null as unknown as string, reviewData, reviewSchema, {}, 'catalog'),
+})
+const reviewErrors = ref<string | null>(null)
+
 const bulkOpen = ref(false)
 const uploadOpen = ref(false)
 const relaunchOpen = ref(false)
@@ -552,6 +653,12 @@ const relaunchOpen = ref(false)
 .screen__panel {
   flex: none;
   width: 400px;
+}
+
+.review {
+  flex: 1 1 100%;
+  height: 620px;
+  min-width: 0;
 }
 
 .frame {

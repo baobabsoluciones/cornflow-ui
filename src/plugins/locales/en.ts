@@ -1579,6 +1579,7 @@ export default {
       desc: 'Sorted by {column}, descending',
     },
     pending: {
+      apply: 'Apply changes',
       save: 'Save changes',
       discard: 'Discard',
       review: 'Review changes',

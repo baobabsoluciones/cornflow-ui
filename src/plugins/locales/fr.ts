@@ -1311,6 +1311,7 @@ export default {
       desc: 'Triée par {column}, décroissant',
     },
     pending: {
+      apply: 'Appliquer les modifications',
       save: 'Enregistrer les modifications',
       discard: 'Abandonner',
       review: 'Revoir les modifications',

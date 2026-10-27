@@ -45,6 +45,7 @@
         :has-more="windowedHasMore"
         :total-count="currentTotalCount"
         :filtered-count="currentFilteredCount"
+        :searchable="!isParametersView"
         :filterable="!isParametersView && !isMessageView"
         :editable="isEditableTable"
         :selectable="isEditableTable && !currentTable.isObjectTable"
