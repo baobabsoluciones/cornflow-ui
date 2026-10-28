@@ -25,7 +25,7 @@ body {
   --color-surface: #ffffff;
   --color-surface-muted: #f5f6f7;
   --color-surface-hover: #f2f4f7;
-  --color-inverse: #263238;
+  --color-inverse: var(--inverse, #263238);
   --color-on-inverse: #ffffff;
   --color-border: #dcdfe4;
   --color-border-subtle: rgba(0, 0, 0, 0.08);
