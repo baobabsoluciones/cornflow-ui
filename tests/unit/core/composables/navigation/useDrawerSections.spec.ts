@@ -3,8 +3,9 @@ import { defineComponent, h } from 'vue'
 import { mount } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
 
-const { store, appConfig } = vi.hoisted(() => ({
+const { store, appConfig, forbiddenViews } = vi.hoisted(() => ({
   store: {} as Record<string, any>,
+  forbiddenViews: [] as string[],
   appConfig: {
     getCore: vi.fn(),
     getAppSections: vi.fn(),
@@ -14,6 +15,9 @@ const { store, appConfig } = vi.hoisted(() => ({
 
 vi.mock('@cornflow-ui/core/stores/general', () => ({ useGeneralStore: () => store }))
 vi.mock('@/app/config', () => ({ default: appConfig }))
+vi.mock('@/app/rolesConfig', () => ({
+  isViewAllowed: (_roles: string[], view: string) => !forbiddenViews.includes(view),
+}))
 
 import {
   isPageActive,
@@ -58,19 +62,30 @@ describe('useDrawerSections', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     resetStore()
+    forbiddenViews.length = 0
     appConfig.getCore.mockReturnValue({ parameters: { showDashboardMainView: false } })
     appConfig.getAppSections.mockReturnValue([])
     appConfig.getFrontendAutomationSectionSubsections.mockReturnValue([])
   })
 
-  test('without an execution selected: executions, then master data', () => {
+  test('without an execution selected: the history, then master data', () => {
     store.getConfigurations = { masterData: { tableA: { title: 'Table A', icon: 'mdi-table', group: null } } }
     const api = setup()
-    expect(keys(api)).toEqual(['executions', 'master-data'])
-    expect(section(api, 'executions').subPages!.map((p) => [p.title, p.icon, p.to])).toEqual([
-      ['drawer.history', 'mdi-history', '/history-execution'],
-      ['drawer.newExecution', 'mdi-plus', '/project-execution'],
-    ])
+    expect(keys(api)).toEqual(['history', 'master-data'])
+    expect(section(api, 'history')).toMatchObject({
+      title: 'drawer.history',
+      icon: 'mdi-history',
+      to: '/history-execution',
+      scope: 'general',
+    })
+    expect(api.canCreateExecution.value).toBe(true)
+  })
+
+  test('a role that may not create executions sees the history but not the way to create one', () => {
+    forbiddenViews.push('project-execution')
+    const api = setup()
+    expect(api.canCreateExecution.value).toBe(false)
+    expect(keys(api)).toEqual(['history'])
   })
 
   test('with an execution selected, its input data and results follow, with the dashboards', () => {
@@ -79,7 +94,7 @@ describe('useDrawerSections', () => {
     store.appDashboardPages = [{ title: 'Board', icon: 'mdi-a', to: '/board' }]
     appConfig.getCore.mockReturnValue({ parameters: { showDashboardMainView: true } })
     const api = setup()
-    expect(keys(api)).toEqual(['executions', 'input-data', 'results'])
+    expect(keys(api)).toEqual(['history', 'input-data', 'results'])
     expect(api.sections.value.map((s) => s.scope)).toEqual(['general', 'execution', 'execution'])
     expect(section(api, 'results').subPages!.map((p) => p.to)).toEqual(['/output-data', '/dashboard', '/board'])
   })

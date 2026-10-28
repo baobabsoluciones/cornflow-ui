@@ -2,10 +2,11 @@
  * useDrawerSections — what the side menu lists: its groups and their pages, gated by the user's
  * roles and the DAG the session is on.
  *
- * Groups, in order: executions (history, new execution), the entries of premium modules, the
- * app's own sections (`appSections`), master data (one group per schema section, or a single
+ * Groups, in order: the history of executions (a page of its own), the entries of premium modules,
+ * the app's own sections (`appSections`), master data (one group per schema section, or a single
  * "Master data"), and, with an execution selected, its input data and results (with the
- * dashboards); last, administration for admins when roles management is on.
+ * dashboards); last, administration for admins when roles management is on. Creating an
+ * execution is not a group: `canCreateExecution` says whether the menu heads with its button.
  *
  * Each group says whether it belongs to the loaded execution (`scope: 'execution'`: its input
  * data, its results, and the app sections that need one) or is the same for all of them.
@@ -71,22 +72,13 @@ export function useDrawerSections() {
   const allowed = (viewId: string) => isViewAllowed(roleNames.value, viewId)
   const hasSelectedExecution = computed(() => store.selectedExecution != null)
 
-  const executions = computed<DrawerSection | null>(() => {
-    const subPages = [
-      { title: t('drawer.history'), icon: 'mdi-history', to: '/history-execution', view: 'history-execution' },
-      { title: t('drawer.newExecution'), icon: 'mdi-plus', to: '/project-execution', view: 'project-execution' },
-    ]
-      .filter((page) => allowed(page.view))
-      .map(({ view: _view, ...page }) => page)
-    if (subPages.length === 0) return null
-    return {
-      key: 'executions',
-      scope: 'general',
-      title: getSectionTitle('executions'),
-      icon: 'mdi-chart-timeline-variant',
-      subPages,
-    }
-  })
+  const history = computed<DrawerSection | null>(() =>
+    allowed('history-execution')
+      ? { key: 'history', scope: 'general', title: t('drawer.history'), icon: 'mdi-history', to: '/history-execution' }
+      : null,
+  )
+
+  const canCreateExecution = computed(() => allowed('project-execution'))
 
   /** Entries contributed by premium modules (enterprise), e.g. the agent. */
   const premium = computed<DrawerSection[]>(() =>
@@ -252,7 +244,7 @@ export function useDrawerSections() {
 
   const sections = computed<DrawerSection[]>(() => {
     const list: DrawerSection[] = []
-    if (executions.value) list.push(executions.value)
+    if (history.value) list.push(history.value)
     list.push(...premium.value, ...app.value)
     if (allowed('configuration')) list.push(...masterData.value)
     if (inputData.value && allowed('input-data')) list.push(inputData.value)
@@ -261,5 +253,5 @@ export function useDrawerSections() {
     return list
   })
 
-  return { sections, isAdmin }
+  return { sections, isAdmin, canCreateExecution }
 }
