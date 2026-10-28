@@ -178,4 +178,26 @@ describe('CoreDataGrid', () => {
     const wrapper = mountGrid({ rows: [] }, { message: '<p class="nothing">Nothing here</p>' })
     expect(wrapper.find('.nothing').exists()).toBe(true)
   })
+
+  test('the columns grow in proportion to fill the card; a resized one keeps its width', async () => {
+    const wrapper = mountGrid({ columns: columns.slice(0, 2) })
+    expect(gridColumns(wrapper)).toBe('24px minmax(200px, 200fr) minmax(214px, 214fr)')
+    await wrapper.setProps({ widths: { line: 150 } })
+    expect(gridColumns(wrapper)).toBe('24px 150px minmax(214px, 214fr)')
+    await wrapper.setProps({ widths: { line: 150, capacity: 180 } })
+    expect(gridColumns(wrapper)).toBe('24px 150px minmax(180px, 1fr)')
+  })
+
+  test('resizing a column keeps the widths at its left and follows the pointer', async () => {
+    const wrapper = mountGrid({ columns: columns.slice(0, 3) })
+    wrapper.findAll('.data-grid__resize')[1].element.dispatchEvent(
+      new MouseEvent('pointerdown', { clientX: 100, bubbles: true, cancelable: true }),
+    )
+    window.dispatchEvent(new MouseEvent('pointermove', { clientX: 140 }))
+    window.dispatchEvent(new MouseEvent('pointerup'))
+    expect(wrapper.emitted('update:widths')?.at(-1)).toEqual([{ line: 200, capacity: 254 }])
+  })
 })
+
+const gridColumns = (wrapper: VueWrapper) =>
+  (wrapper.find('.data-grid').element as HTMLElement).style.getPropertyValue('--grid-columns')

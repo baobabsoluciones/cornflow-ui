@@ -19,266 +19,267 @@
     "Discard" and "Review changes".
 -->
 <template>
-  <section
-    ref="card"
-    class="data-table"
-    :class="{ 'is-fullscreen': fullscreen, 'is-filled': fill }"
-    :style="fill && !fullscreen ? { height: `${fillHeight}px` } : undefined"
-    :aria-label="title"
-    data-testid="data-table"
-    @keydown.esc="adding = false"
-  >
-    <Teleport to="body">
-      <div v-if="fullscreen" class="data-table__scrim" @click="fullscreen = false" />
-    </Teleport>
-    <slot name="tabs" />
-    <slot name="strip" />
-
-    <div class="data-table__toolbar">
-      <CoreSearchInput
-        v-if="searchable"
-        :model-value="search"
-        class="data-table__search"
-        :placeholder="$t('dataTable.searchIn', { table: title })"
-        :show-shortcut="!fullscreen"
-        clearable
-        @update:model-value="search = $event"
-      />
-      <div v-if="filterable || dateRanges.length" class="data-table__filters">
-        <ConditionFilterChip
-          v-for="range in dateRanges"
-          :key="`range-${range.key}`"
-          :filter="dateRangeFilter(range.key)"
-          :column="{ key: range.key, title: range.label, type: 'date' }"
-          fixed
-          @apply="(filter) => emit('date-range', range.key, { from: filter.value, to: filter.value2 ?? '' })"
-          @remove="emit('date-range', range.key, null)"
-        />
-        <template v-if="filterable">
-        <ConditionFilterChip
-          v-for="filter in filters"
-          :key="filter.id"
-          :filter="filter"
-          :column="columnByKey[filter.field]"
-          :choices="choicesFor(filter.field)"
-          :boolean-counts="booleanCountsFor(filter.field)"
-          :is-new="filter.id === newFilterId"
-          @apply="replaceFilter"
-          @remove="removeFilter"
-        />
-        <AddFilterMenu
-          v-if="addableFilterFields.length"
-          :label="$t('dataTable.filters.add')"
-          :search-placeholder="$t('dataTable.filters.searchField')"
-          :no-matches-text="$t('dataTable.filters.noField')"
-          :groups="[{ key: 'columns', title: $t('dataTable.filters.columns'), fields: addableFilterFields }]"
-          data-testid="data-table-add-filter"
-          @add="addFilter"
-        />
-        </template>
-      </div>
-
-      <div class="data-table__actions">
-        <CoreButton
-          v-if="canAdd"
-          variant="outlined"
-          icon="mdi-table-row-plus-after"
-          :text="$t('dataTable.addRow')"
-          :disabled="adding"
-          data-testid="data-table-add-row"
-          @click="adding = true"
-        />
-        <CoreButton
-          v-if="canDownloadExcel"
-          variant="icon"
-          icon="mdi-microsoft-excel"
-          class="data-table__excel"
-          :loading="downloading"
-          :aria-label="$t('dataTable.downloadExcel')"
-          :title="$t('dataTable.downloadExcel')"
-          data-testid="data-table-excel"
-          @click="emit('download-excel')"
-        />
-        <CorePopover v-model:open="densityOpen" :width="200" align="end">
-          <template #trigger>
-            <CoreButton
-              variant="icon"
-              icon="mdi-format-line-spacing"
-              :aria-label="$t('dataTable.density.title')"
-              :title="$t('dataTable.density.title')"
-            />
-          </template>
-          <CoreMenu
-            :title="$t('dataTable.density.title')"
-            selectable
-            :items="densityItems"
-            @select="pickDensity($event.key)"
-          />
-        </CorePopover>
-        <CorePopover v-if="actionItems.length" v-model:open="actionsOpen" :width="260" align="end">
-          <template #trigger>
-            <CoreButton
-              variant="icon"
-              icon="mdi-dots-vertical"
-              :aria-label="$t('dataTable.moreActions')"
-              :title="$t('dataTable.moreActions')"
-              data-testid="data-table-actions"
-            />
-          </template>
-          <CoreMenu :items="actionItems" @select="runAction($event.key)" />
-        </CorePopover>
-        <CoreButton
-          variant="icon"
-          :icon="fullscreen ? 'mdi-fullscreen-exit' : 'mdi-fullscreen'"
-          :aria-label="fullscreen ? $t('dataTable.exitFullscreen') : $t('dataTable.fullscreen')"
-          :title="fullscreen ? $t('dataTable.exitFullscreen') : $t('dataTable.fullscreen')"
-          data-testid="data-table-fullscreen"
-          @click="fullscreen = !fullscreen"
-        />
-      </div>
-    </div>
-
-    <div v-if="adding" class="data-table__adding" role="status">
-      <CoreIcon name="mdi-table-row-plus-after" :size="18" />
-      <span>
-        <strong>{{ $t('dataTable.newRow.title') }}</strong>
-        {{ requiredText }} {{ $t('dataTable.newRow.keys') }}
-      </span>
-      <CoreButton variant="text" size="small" :text="$t('dataTable.newRow.cancel')" @click="adding = false" />
-      <CoreButton size="small" :text="$t('dataTable.addRow')" data-testid="data-table-add-confirm" @click="grid?.commitAdd()" />
-    </div>
-
-    <div v-if="$slots.body" class="data-table__body">
-      <slot name="body" />
-    </div>
-    <CoreDataGrid
-      v-else
-      ref="grid"
-      v-model:sort="sort"
-      v-model:selected="selected"
-      v-model:widths="widths"
-      class="data-table__grid"
-      :columns="columns"
-      :rows="rows"
-      :cell-value="cellValue"
-      :status="status"
-      :loading-more="loadingMore"
-      :has-more="hasMore"
-      :density="density"
-      :editable="editable"
-      :selectable="selectable"
-      :row-state="rowState"
-      :row-level="rowLevel"
-      :cell-modified="cellModified"
-      :cell-disabled="cellDisabled"
-      :row-pinned="rowPinned"
-      :options-for="optionsFor"
-      :highlighted-row-id="highlightedRowId"
-      :adding="adding"
-      @cell-change="(row, key, value) => emit('cell-change', row, key, value)"
-      @load-more="emit('load-more')"
-      @need-options="emit('need-options', $event)"
-      @add="addRow"
-      @add-cancel="adding = false"
+  <Teleport to="body" :disabled="!fullscreen">
+    <div v-if="fullscreen" class="data-table__scrim" @click="fullscreen = false" />
+    <section
+      v-bind="$attrs"
+      ref="card"
+      class="data-table"
+      :class="{ 'is-fullscreen': fullscreen, 'is-filled': fill }"
+      :style="fill && !fullscreen ? { height: `${fillHeight}px` } : undefined"
+      :aria-label="title"
+      data-testid="data-table"
+      @keydown.esc="adding = false"
     >
-      <template #message>
-        <CoreEmptyState
-          v-bind="message"
-          @action="onMessageAction"
+      <slot name="tabs" />
+      <slot name="strip" />
+
+      <div class="data-table__toolbar">
+        <CoreSearchInput
+          v-if="searchable"
+          :model-value="search"
+          class="data-table__search"
+          :placeholder="$t('dataTable.searchIn', { table: title })"
+          :show-shortcut="!fullscreen"
+          clearable
+          @update:model-value="search = $event"
         />
-      </template>
-    </CoreDataGrid>
+        <div v-if="filterable || dateRanges.length" class="data-table__filters">
+          <ConditionFilterChip
+            v-for="range in dateRanges"
+            :key="`range-${range.key}`"
+            :filter="dateRangeFilter(range.key)"
+            :column="{ key: range.key, title: range.label, type: 'date' }"
+            fixed
+            @apply="(filter) => emit('date-range', range.key, { from: filter.value, to: filter.value2 ?? '' })"
+            @remove="emit('date-range', range.key, null)"
+          />
+          <template v-if="filterable">
+          <ConditionFilterChip
+            v-for="filter in filters"
+            :key="filter.id"
+            :filter="filter"
+            :column="columnByKey[filter.field]"
+            :choices="choicesFor(filter.field)"
+            :boolean-counts="booleanCountsFor(filter.field)"
+            :is-new="filter.id === newFilterId"
+            @apply="replaceFilter"
+            @remove="removeFilter"
+          />
+          <AddFilterMenu
+            v-if="addableFilterFields.length"
+            :label="$t('dataTable.filters.add')"
+            :search-placeholder="$t('dataTable.filters.searchField')"
+            :no-matches-text="$t('dataTable.filters.noField')"
+            :groups="[{ key: 'columns', title: $t('dataTable.filters.columns'), fields: addableFilterFields }]"
+            data-testid="data-table-add-filter"
+            @add="addFilter"
+          />
+          </template>
+        </div>
 
-    <div v-if="selectable && selected.length" class="data-table__selection" role="region" :aria-label="$t('dataTable.selection.label')">
-      <span class="data-table__selection-count">{{ $t('dataTable.selection.count', { count: selected.length }, selected.length) }}</span>
-      <CoreButton
-        v-if="canBulkEdit"
-        variant="text"
-        size="small"
-        icon="mdi-pencil-outline"
-        :text="$t('dataTable.selection.bulkEdit')"
-        data-testid="data-table-bulk-edit"
-        @click="bulkEditOpen = true"
-      />
-      <CoreButton
-        v-if="canDelete"
-        variant="text"
-        size="small"
-        :color="allSelectedDeleted ? undefined : 'danger'"
-        :icon="allSelectedDeleted ? 'mdi-restore' : 'mdi-delete-outline'"
-        :text="allSelectedDeleted ? $t('dataTable.selection.restore') : $t('dataTable.selection.delete')"
-        data-testid="data-table-delete"
-        @click="onDeleteSelected"
-      />
-      <CoreButton
-        variant="icon"
-        size="small"
-        icon="mdi-close"
-        :aria-label="$t('dataTable.selection.clear')"
-        :title="$t('dataTable.selection.clear')"
-        @click="selected = []"
-      />
-    </div>
+        <div class="data-table__actions">
+          <CoreButton
+            v-if="canAdd"
+            variant="outlined"
+            icon="mdi-table-row-plus-after"
+            :text="$t('dataTable.addRow')"
+            :disabled="adding"
+            data-testid="data-table-add-row"
+            @click="adding = true"
+          />
+          <CoreButton
+            v-if="canDownloadExcel"
+            variant="icon"
+            icon="mdi-microsoft-excel"
+            class="data-table__excel"
+            :loading="downloading"
+            :aria-label="$t('dataTable.downloadExcel')"
+            :title="$t('dataTable.downloadExcel')"
+            data-testid="data-table-excel"
+            @click="emit('download-excel')"
+          />
+          <CorePopover v-model:open="densityOpen" :width="200" align="end">
+            <template #trigger>
+              <CoreButton
+                variant="icon"
+                icon="mdi-format-line-spacing"
+                :aria-label="$t('dataTable.density.title')"
+                :title="$t('dataTable.density.title')"
+              />
+            </template>
+            <CoreMenu
+              :title="$t('dataTable.density.title')"
+              selectable
+              :items="densityItems"
+              @select="pickDensity($event.key)"
+            />
+          </CorePopover>
+          <CorePopover v-if="actionItems.length" v-model:open="actionsOpen" :width="260" align="end">
+            <template #trigger>
+              <CoreButton
+                variant="icon"
+                icon="mdi-dots-vertical"
+                :aria-label="$t('dataTable.moreActions')"
+                :title="$t('dataTable.moreActions')"
+                data-testid="data-table-actions"
+              />
+            </template>
+            <CoreMenu :items="actionItems" @select="runAction($event.key)" />
+          </CorePopover>
+          <CoreButton
+            variant="icon"
+            :icon="fullscreen ? 'mdi-fullscreen-exit' : 'mdi-fullscreen'"
+            :aria-label="fullscreen ? $t('dataTable.exitFullscreen') : $t('dataTable.fullscreen')"
+            :title="fullscreen ? $t('dataTable.exitFullscreen') : $t('dataTable.fullscreen')"
+            data-testid="data-table-fullscreen"
+            @click="fullscreen = !fullscreen"
+          />
+        </div>
+      </div>
 
-    <footer class="data-table__footer">
-      <span class="data-table__count" data-testid="data-table-count">{{ countText }}</span>
-      <button v-if="isFiltered" type="button" class="data-table__link" @click="clearFilters">
-        {{ $t('dataTable.clearFilters') }}
-      </button>
-      <span v-if="sortText" class="data-table__sort">{{ sortText }}</span>
-      <span class="data-table__spacer" />
-      <template v-if="pendingCount > 0">
-        <span class="data-table__pending">
-          <CoreIcon name="mdi-pencil-circle" :size="16" />
-          {{ pendingText }}
+      <div v-if="adding" class="data-table__adding" role="status">
+        <CoreIcon name="mdi-table-row-plus-after" :size="18" />
+        <span>
+          <strong>{{ $t('dataTable.newRow.title') }}</strong>
+          {{ requiredText }} {{ $t('dataTable.newRow.keys') }}
         </span>
-        <button type="button" class="data-table__link is-muted" @click="emit('discard')">
-          {{ $t('dataTable.pending.discard') }}
-        </button>
-        <CoreButton
-          size="small"
-          icon="mdi-chevron-right"
-          :text="reviewLabel || $t('dataTable.pending.review')"
-          data-testid="data-table-review"
-          @click="emit('review')"
-        />
-      </template>
-    </footer>
+        <CoreButton variant="text" size="small" :text="$t('dataTable.newRow.cancel')" @click="adding = false" />
+        <CoreButton size="small" :text="$t('dataTable.addRow')" data-testid="data-table-add-confirm" @click="grid?.commitAdd()" />
+      </div>
 
-    <BulkEditDialog
-      v-if="canBulkEdit"
-      v-model:open="bulkEditOpen"
-      :columns="bulkColumns"
-      :count="selected.length"
-      :table-title="title"
-      @apply="applyBulkEdit"
-    />
-    <BulkUploadDialog
-      v-if="canBulkUpload"
-      v-model:open="uploadOpen"
-      :table-title="title"
-      :operations="uploadOperations"
-      :row-count="totalCount"
-      :phase="uploadPhase"
-      :progress-text="uploadProgressText"
-      :error-text="uploadErrorText"
-      @upload="emit('upload', $event)"
-      @view-data="uploadOpen = false"
-    />
-    <CoreConfirmDialog
-      v-model="deleteConfirmOpen"
-      :title="$t('dataTable.deleteRows.title', { count: selected.length }, selected.length)"
-      :message="$t('dataTable.deleteRows.message', { count: selected.length }, selected.length)"
-      :confirm-text="$t('dataTable.deleteRows.confirm')"
-      :cancel-text="$t('common.cancel')"
-      confirm-color="var(--color-danger)"
-      icon="mdi-delete-outline"
-      :loading="deleting"
-      :loading-message="$t('dataTable.deleteRows.deleting')"
-      @confirm="confirmDelete"
-      @cancel="deleteConfirmOpen = false"
-    />
-  </section>
+      <div v-if="$slots.body" class="data-table__body">
+        <slot name="body" />
+      </div>
+      <CoreDataGrid
+        v-else
+        ref="grid"
+        v-model:sort="sort"
+        v-model:selected="selected"
+        v-model:widths="widths"
+        class="data-table__grid"
+        :columns="columns"
+        :rows="rows"
+        :cell-value="cellValue"
+        :status="status"
+        :loading-more="loadingMore"
+        :has-more="hasMore"
+        :density="density"
+        :editable="editable"
+        :selectable="selectable"
+        :row-state="rowState"
+        :row-level="rowLevel"
+        :cell-modified="cellModified"
+        :cell-disabled="cellDisabled"
+        :row-pinned="rowPinned"
+        :options-for="optionsFor"
+        :highlighted-row-id="highlightedRowId"
+        :adding="adding"
+        @cell-change="(row, key, value) => emit('cell-change', row, key, value)"
+        @load-more="emit('load-more')"
+        @need-options="emit('need-options', $event)"
+        @add="addRow"
+        @add-cancel="adding = false"
+      >
+        <template #message>
+          <CoreEmptyState
+            v-bind="message"
+            @action="onMessageAction"
+          />
+        </template>
+      </CoreDataGrid>
+
+      <div v-if="selectable && selected.length" class="data-table__selection" role="region" :aria-label="$t('dataTable.selection.label')">
+        <span class="data-table__selection-count">{{ $t('dataTable.selection.count', { count: selected.length }, selected.length) }}</span>
+        <CoreButton
+          v-if="canBulkEdit"
+          variant="text"
+          size="small"
+          icon="mdi-pencil-outline"
+          :text="$t('dataTable.selection.bulkEdit')"
+          data-testid="data-table-bulk-edit"
+          @click="bulkEditOpen = true"
+        />
+        <CoreButton
+          v-if="canDelete"
+          variant="text"
+          size="small"
+          :color="allSelectedDeleted ? undefined : 'danger'"
+          :icon="allSelectedDeleted ? 'mdi-restore' : 'mdi-delete-outline'"
+          :text="allSelectedDeleted ? $t('dataTable.selection.restore') : $t('dataTable.selection.delete')"
+          data-testid="data-table-delete"
+          @click="onDeleteSelected"
+        />
+        <CoreButton
+          variant="icon"
+          size="small"
+          icon="mdi-close"
+          :aria-label="$t('dataTable.selection.clear')"
+          :title="$t('dataTable.selection.clear')"
+          @click="selected = []"
+        />
+      </div>
+
+      <footer class="data-table__footer">
+        <span class="data-table__count" data-testid="data-table-count">{{ countText }}</span>
+        <button v-if="isFiltered" type="button" class="data-table__link" @click="clearFilters">
+          {{ $t('dataTable.clearFilters') }}
+        </button>
+        <span v-if="sortText" class="data-table__sort">{{ sortText }}</span>
+        <span class="data-table__spacer" />
+        <template v-if="pendingCount > 0">
+          <span class="data-table__pending">
+            <CoreIcon name="mdi-pencil-circle" :size="16" />
+            {{ pendingText }}
+          </span>
+          <button type="button" class="data-table__link is-muted" @click="emit('discard')">
+            {{ $t('dataTable.pending.discard') }}
+          </button>
+          <CoreButton
+            size="small"
+            icon="mdi-chevron-right"
+            :text="reviewLabel || $t('dataTable.pending.review')"
+            data-testid="data-table-review"
+            @click="emit('review')"
+          />
+        </template>
+      </footer>
+
+      <BulkEditDialog
+        v-if="canBulkEdit"
+        v-model:open="bulkEditOpen"
+        :columns="bulkColumns"
+        :count="selected.length"
+        :table-title="title"
+        @apply="applyBulkEdit"
+      />
+      <BulkUploadDialog
+        v-if="canBulkUpload"
+        v-model:open="uploadOpen"
+        :table-title="title"
+        :operations="uploadOperations"
+        :row-count="totalCount"
+        :phase="uploadPhase"
+        :progress-text="uploadProgressText"
+        :error-text="uploadErrorText"
+        @upload="emit('upload', $event)"
+        @view-data="uploadOpen = false"
+      />
+      <CoreConfirmDialog
+        v-model="deleteConfirmOpen"
+        :title="$t('dataTable.deleteRows.title', { count: selected.length }, selected.length)"
+        :message="$t('dataTable.deleteRows.message', { count: selected.length }, selected.length)"
+        :confirm-text="$t('dataTable.deleteRows.confirm')"
+        :cancel-text="$t('common.cancel')"
+        confirm-color="var(--color-danger)"
+        icon="mdi-delete-outline"
+        :loading="deleting"
+        :loading-message="$t('dataTable.deleteRows.deleting')"
+        @confirm="confirmDelete"
+        @cancel="deleteConfirmOpen = false"
+      />
+    </section>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -311,7 +312,7 @@ import { cellText, emptyFilter, filterKindOf, formatCellValue, isTruthy } from '
 import { generateFilterId } from '@cornflow-ui/core/utils/tableFilterUtils'
 import { useFillHeight } from '@cornflow-ui/core/composables/core-table/useFillHeight'
 
-defineOptions({ name: 'CoreDataTable' })
+defineOptions({ name: 'CoreDataTable', inheritAttrs: false })
 
 export interface DataTableAction {
   key: string
