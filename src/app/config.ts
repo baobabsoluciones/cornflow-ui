@@ -357,6 +357,12 @@ const createAppConfig = () => ({
 
       enableWarnings: false,
 
+      /**
+       * When true, users may switch to dark mode (or follow the system's) in their settings. Turn it
+       * on once the app's own screens and dashboards read well on dark surfaces.
+       */
+      enableDarkMode: false,
+
       enableSolutionRecalculation: false,
 
       enableMasterTableMatching: false,

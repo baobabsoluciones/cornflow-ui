@@ -150,7 +150,7 @@ const downloadFullMessage = (): void => {
 }
 
 .core-snackbar__icon.is-success {
-  color: color-mix(in srgb, var(--color-success) 45%, #ffffff);
+  color: color-mix(in srgb, var(--color-success) 45%, var(--color-on-inverse));
 }
 
 .core-snackbar__icon.is-warning {
@@ -158,11 +158,11 @@ const downloadFullMessage = (): void => {
 }
 
 .core-snackbar__icon.is-error {
-  color: color-mix(in srgb, var(--color-danger) 55%, #ffffff);
+  color: color-mix(in srgb, var(--color-danger) 55%, var(--color-on-inverse));
 }
 
 .core-snackbar__icon.is-info {
-  color: color-mix(in srgb, var(--color-info) 45%, #ffffff);
+  color: color-mix(in srgb, var(--color-info) 45%, var(--color-on-inverse));
 }
 
 .core-snackbar__message {
@@ -180,7 +180,7 @@ const downloadFullMessage = (): void => {
   padding: calc(var(--spacing) * 1) calc(var(--spacing) * 2);
   border: 0;
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.12);
+  background: color-mix(in srgb, var(--color-on-inverse) 12%, transparent);
   font: inherit;
   font-weight: var(--font-weight-medium);
   color: inherit;
@@ -194,7 +194,7 @@ const downloadFullMessage = (): void => {
 
 .core-snackbar__download:hover,
 .core-snackbar__close:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: color-mix(in srgb, var(--color-on-inverse) 20%, transparent);
 }
 
 .core-snackbar__download:focus-visible,

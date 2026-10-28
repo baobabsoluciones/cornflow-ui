@@ -100,11 +100,20 @@
         </template>
       </CorePopover>
     </CatalogBlock>
+
+    <CatalogBlock
+      name="CoreDropdownMenu"
+      api="items · sections · closeOnItemClick · v-model → item-click · slot activator"
+      note="The menu of the actions in a view's title (CoreTitleView's dropdown)."
+    >
+      <CoreDropdownMenu :sections="dropdownSections" />
+    </CatalogBlock>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import CoreDropdownMenu from '@cornflow-ui/core/components/core/CoreDropdownMenu.vue'
 import CoreMenu from '@cornflow-ui/core/components/core/CoreMenu.vue'
 import CorePopover from '@cornflow-ui/core/components/core/CorePopover.vue'
 import CoreSearchInput from '@cornflow-ui/core/components/core/table/CoreSearchInput.vue'
@@ -114,6 +123,16 @@ import FilterChip from '@cornflow-ui/core/components/core/filters/FilterChip.vue
 import CatalogBlock from '../CatalogBlock.vue'
 
 const search = ref('')
+const dropdownSections = [
+  {
+    title: 'Data',
+    items: [
+      { title: 'Download Excel', icon: 'mdi-microsoft-excel' },
+      { title: 'Upload a file', icon: 'mdi-upload' },
+    ],
+  },
+  { items: [{ title: 'Delete the execution', icon: 'mdi-delete-outline' }] },
+]
 const date = ref<string | null>('lastMonth')
 const from = ref<string | null>(null)
 const to = ref<string | null>(null)

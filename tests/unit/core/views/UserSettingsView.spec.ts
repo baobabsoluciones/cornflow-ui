@@ -6,15 +6,26 @@ import UserSettingsView from '@cornflow-ui/core/views/UserSettingsView.vue'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import appConfig from '@/app/config'
 
-const { changeLanguage, snackbar, authConfig } = vi.hoisted(() => ({
+const { changeLanguage, snackbar, authConfig, theme } = vi.hoisted(() => ({
   changeLanguage: vi.fn(),
   snackbar: vi.fn(),
   authConfig: { auth: { type: 'cornflow' }, initConfig: vi.fn(async () => undefined) },
+  theme: { enabled: false, preference: { value: 'light' }, setPreference: vi.fn() },
 }))
 
 vi.mock('@cornflow-ui/core/plugins/i18n', () => ({ changeLanguage }))
 vi.mock('@cornflow-ui/core/services/SnackbarService', () => ({ showSnackbar: snackbar }))
 vi.mock('@cornflow-ui/core/config', () => ({ default: authConfig }))
+vi.mock('@cornflow-ui/core/plugins/theme', async () => {
+  const { ref } = await import('vue')
+  const preference = ref('light')
+  return {
+    useTheme: () => {
+      preference.value = theme.preference.value
+      return { enabled: theme.enabled, preference, setPreference: theme.setPreference }
+    },
+  }
+})
 
 const messages = {
   settings: {
@@ -22,6 +33,11 @@ const messages = {
     userDescription: 'Your account, the language of the app and your password',
     username: 'User name',
     roles: 'Roles',
+    theme: 'Appearance',
+    selectTheme: 'Light, dark, or as your system is',
+    light: 'Light',
+    dark: 'Dark',
+    system: 'As the system',
     language: 'Language',
     selectLanguage: 'The language the app shows',
     english: 'English',
@@ -81,6 +97,8 @@ describe('UserSettingsView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     getLanguages = vi.spyOn(appConfig, 'getLanguages').mockReturnValue([])
+    theme.enabled = false
+    theme.preference.value = 'light'
   })
 
   afterEach(() => {
@@ -96,6 +114,31 @@ describe('UserSettingsView', () => {
     expect(account.text()).toContain('User name: aruiz')
     expect(account.findAll('.core-badge').map((badge: any) => badge.text())).toEqual(['planner', 'admin'])
     expect(account.find('.user-settings__avatar').text()).toBe('A')
+  })
+
+  describe('appearance', () => {
+    test('shows only when the app offers dark mode', () => {
+      ;({ wrapper } = mountView())
+      expect(field(wrapper, 'settings-theme').exists()).toBe(false)
+      wrapper.unmount()
+      theme.enabled = true
+      ;({ wrapper } = mountView())
+      expect(field(wrapper, 'settings-theme').exists()).toBe(true)
+    })
+
+    test('offers light, dark and the system, the chosen one picked; picking one changes it', async () => {
+      theme.enabled = true
+      theme.preference.value = 'system'
+      ;({ wrapper } = mountView())
+      const options = wrapper.findAll('[data-testid="settings-theme"] [role="radio"]')
+      expect(options.map((option: any) => [option.text(), option.attributes('aria-checked')])).toEqual([
+        ['Light', 'false'],
+        ['Dark', 'false'],
+        ['As the system', 'true'],
+      ])
+      await options[1].trigger('click')
+      expect(theme.setPreference).toHaveBeenCalledWith('dark')
+    })
   })
 
   describe('language', () => {

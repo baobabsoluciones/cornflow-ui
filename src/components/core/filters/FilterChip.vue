@@ -215,7 +215,7 @@ onMounted(async () => {
 }
 
 .filter-chip.is-removable {
-  border-color: color-mix(in srgb, var(--color-primary) 25%, #ffffff);
+  border-color: color-mix(in srgb, var(--color-primary) 25%, var(--color-surface));
   background: var(--color-primary-subtle);
   color: var(--color-primary);
 }
@@ -286,7 +286,7 @@ onMounted(async () => {
 }
 
 .filter-chip__remove:hover {
-  background: rgba(0, 0, 0, 0.08);
+  background: color-mix(in srgb, var(--color-text) 10%, transparent);
 }
 
 .filter-chip__main:focus-visible,

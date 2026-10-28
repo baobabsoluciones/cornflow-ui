@@ -65,6 +65,8 @@ The user's own page (`views/UserSettingsView.vue`, reached from the user at the 
 menu), a card per subject:
 
 - **Account**: the name, e-mail, user name and roles of who is signed in.
+- **Appearance**, when the app offers dark mode (`enableDarkMode`): light, dark or as the system
+  is (see [Dark mode](#dark-mode)).
 - **Language** of the app, among the ones it offers (`languages` in the app config).
 - **Password**, when the app signs in with Cornflow (`auth.type: 'cornflow'`): the new one twice,
   with what it needs ticked as it is typed (at least 5 characters; upper and lower case letters,
@@ -858,8 +860,9 @@ core: {
   key by key (`etl: { useEtlBackend: true }` keeps the rest of `etl`); arrays and any other value
   replace the app's. A DAG without an entry works with the app's `parameters`.
 - `dashboardLayout` and `instanceDashboardLayout` replace the app's layouts on that DAG.
-- `valuesJsonPath`, `schemaLabels`, `enableRolesManagement`, `allowEditRoles` and
-  `showOpenIdUsername` apply to the whole application: a DAG entry cannot set them. A key the app's
+- `valuesJsonPath`, `schemaLabels`, `enableRolesManagement`, `allowEditRoles`,
+  `showOpenIdUsername` and `enableDarkMode` apply to the whole application: a DAG entry cannot set
+  them. A key the app's
   `parameters` does not declare is ignored too. Both log a console warning naming the DAG.
 - The schema config in Cornflow still sets the solver and the config fields on top of the DAG's
   settings, as it does for a single DAG.
@@ -1132,6 +1135,7 @@ This file contains **internal application-specific configuration** that is part 
 | `enableAutoInstanceDashboard` | `boolean`  | Auto-generate dashboards for instance tables          |
 | `enableAutoSolutionDashboard` | `boolean`  | Auto-generate dashboards for solution tables          |
 | `enableMasterTableMatching`   | `boolean`  | Enable master table matching during instance review   |
+| `enableDarkMode`              | `boolean`  | Users may switch to dark mode in their settings (see [Dark mode](#dark-mode)) |
 | `executionSolvers`            | `string[]` | List of available solvers for execution               |
 | `instanceFileFormats`         | `string[]` | File extensions the instance upload accepts. Empty or absent means the default (`json`, `xlsx`, `csv`). |
 | `executionFilters`            | `ExecutionFilter[]` | Filters of the execution history, fed by frontend-automation tables. Empty means date filters only. See [Execution history filters](#execution-history-filters-optional) |
@@ -1251,10 +1255,27 @@ imports it, so an application gets the tokens with the core's stylesheet.
 The tokens are declared on `body`, where the app variables live. Their names follow Tailwind 4's
 theme variables.
 
-**Vuetify.** When the app starts, the Vuetify theme's `primary` is set to the app's
-`--color-primary` (`applyTokensToTheme` in `src/plugins/vuetify.ts`), so Vuetify components with
-`color="primary"` paint with the same colour as the core's own components. The token has to be a
-hex colour; otherwise the theme keeps its default with a console warning.
+**Vuetify.** When the app starts, and on each change between light and dark, the Vuetify theme's
+`primary` is set to the app's `--color-primary` (`applyTokensToTheme` in `src/plugins/vuetify.ts`),
+so Vuetify components with `color="primary"` paint with the same colour as the core's own
+components. A token written otherwise than in hex (a `color-mix`) is read as the colour the browser
+computes; a token that is not a colour leaves the theme's default, with a console warning.
+
+### Dark mode
+
+With `enableDarkMode` in the app's parameters, each user picks light, dark or the system's in their
+settings ("Appearance"); the choice stays in the browser (`plugins/theme.ts`). Dark puts
+`data-theme="dark"` on `body`, which swaps the colour tokens for dark ones (`tokens.css`), and
+switches Vuetify to its dark theme.
+
+- The dark tokens keep the app's palette: the primary and the tones are lightened so they read on
+  dark surfaces, and their soft backgrounds and borders mix with the surface instead of white.
+- The app variables that older screens read directly (`--title`, `--subtitle`, `--background`…)
+  are dark too. `--primary` is the app's own: a screen that paints text with it, instead of
+  `--color-primary`, keeps the darker colour.
+- The flag is off by default, and applies to the whole application (a DAG cannot set it): turn it
+  on once the app's own screens and dashboards read well on dark surfaces. The catalog has a
+  light/dark switch to review the core's components in both.
 
 **Catalog.** `npm run catalog` opens the component catalog (`dev/catalog/`): the tokens and every
 core component with its variants and states. It is a development page and is not part of the

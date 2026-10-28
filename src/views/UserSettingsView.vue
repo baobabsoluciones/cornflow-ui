@@ -2,6 +2,7 @@
   UserSettingsView: the user's own settings, a card for each subject.
 
   - Account: the name, the e-mail, the user name and the roles of who is signed in.
+  - Appearance, when the app offers dark mode (`enableDarkMode`): light, dark or as the system is.
   - Language of the app, among the ones the app offers (`languages` in its config).
   - Password, when the app signs in with Cornflow: the new one twice, with what it needs ticked
     as it is typed; it is sent once it meets all of it.
@@ -27,6 +28,20 @@
             <CoreBadge v-for="role in account.roles" :key="role" :label="role" tone="neutral" size="sm" />
           </div>
         </div>
+      </section>
+
+      <section v-if="themeEnabled" class="user-settings__card" aria-labelledby="settings-theme-title">
+        <header class="user-settings__head">
+          <h2 id="settings-theme-title" class="user-settings__title">{{ $t('settings.theme') }}</h2>
+          <p class="user-settings__hint">{{ $t('settings.selectTheme') }}</p>
+        </header>
+        <CoreSegmentedControl
+          :model-value="themePreference"
+          :options="themeOptions"
+          :aria-label="$t('settings.theme')"
+          data-testid="settings-theme"
+          @update:model-value="setThemePreference($event as ThemePreference)"
+        />
       </section>
 
       <section class="user-settings__card" aria-labelledby="settings-language-title">
@@ -114,12 +129,14 @@ import { useI18n } from 'vue-i18n'
 import CoreBadge from '@cornflow-ui/core/components/core/CoreBadge.vue'
 import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
 import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
+import CoreSegmentedControl from '@cornflow-ui/core/components/core/CoreSegmentedControl.vue'
 import CoreSelect from '@cornflow-ui/core/components/core/CoreSelect.vue'
 import CoreTextField from '@cornflow-ui/core/components/core/CoreTextField.vue'
 import CoreTitleView from '@cornflow-ui/core/components/core/CoreTitleView.vue'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { showSnackbar } from '@cornflow-ui/core/services/SnackbarService'
 import { changeLanguage } from '@cornflow-ui/core/plugins/i18n'
+import { useTheme, type ThemePreference } from '@cornflow-ui/core/plugins/theme'
 import {
   resolveVisibleLanguages,
   readConfiguredLanguages,
@@ -146,6 +163,20 @@ const account = computed(() => {
     roles: (user.roles ?? []).map((role: { name: string }) => role.name),
   }
 })
+
+// ── Appearance ───────────────────────────────────────────────────────────────
+
+const {
+  enabled: themeEnabled,
+  preference: themePreference,
+  setPreference: setThemePreference,
+} = useTheme()
+
+const themeOptions = computed(() => [
+  { value: 'light', label: t('settings.light'), icon: 'mdi-white-balance-sunny' },
+  { value: 'dark', label: t('settings.dark'), icon: 'mdi-weather-night' },
+  { value: 'system', label: t('settings.system'), icon: 'mdi-monitor' },
+])
 
 // ── Language ─────────────────────────────────────────────────────────────────
 

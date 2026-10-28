@@ -102,3 +102,67 @@ body {
   --duration-base: 200ms;
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/*
+  Dark mode (`data-theme="dark"` on `body`, see `plugins/theme.ts`): dark surfaces and light text.
+  The primary and the tones keep the app's palette, lightened so they read on the dark surfaces;
+  their soft backgrounds and borders mix with the surface instead of white. The app variables that
+  older screens read directly (`--title`, `--background`…) are dark too.
+*/
+body[data-theme='dark'] {
+  color-scheme: dark;
+
+  --title: #e6e8eb;
+  --subtitle: #a3abb3;
+  --background: #121417;
+  --background-variant: #1b1f24;
+  /* The links of the app's stylesheet (`main.css`), lightened as the primary is. */
+  --primary-variant: color-mix(in srgb, var(--primary, #1b5e8a) 70%, #ffffff);
+  --primary-light-variant: color-mix(in srgb, var(--primary, #1b5e8a) 30%, #1b1f24);
+  --disabled: #252a30;
+
+  --color-primary: color-mix(in srgb, var(--primary, #1b5e8a) 70%, #ffffff);
+  --color-primary-light: color-mix(in srgb, var(--primary, #1b5e8a) 45%, #ffffff);
+  --color-primary-soft: color-mix(in srgb, var(--primary, #1b5e8a) 30%, var(--color-surface));
+  --color-primary-subtle: color-mix(in srgb, var(--color-primary) 18%, var(--color-surface));
+  --color-text: #e6e8eb;
+  --color-text-muted: #a3abb3;
+  --color-text-subtle: #7d868f;
+  --color-background: #121417;
+  --color-surface: #1b1f24;
+  --color-surface-muted: #22272d;
+  --color-surface-hover: #2a3037;
+  --color-inverse: #e6e8eb;
+  --color-on-inverse: #1b1f24;
+  --color-border: #343b43;
+  --color-border-subtle: rgba(255, 255, 255, 0.08);
+  --color-border-input: #3a424b;
+  --color-border-strong: #56606b;
+  --color-divider: #2b3138;
+  --color-disabled: #252a30;
+
+  --color-success: color-mix(in srgb, var(--success, #3b7b5e) 75%, #ffffff);
+  --color-success-soft: color-mix(in srgb, var(--color-success) 18%, var(--color-surface));
+  --color-success-border: color-mix(in srgb, var(--color-success) 40%, var(--color-surface));
+  --color-success-strong: color-mix(in srgb, var(--color-success) 70%, #ffffff);
+  --color-warning-soft: color-mix(in srgb, var(--color-warning) 18%, var(--color-surface));
+  --color-warning-border: color-mix(in srgb, var(--color-warning) 45%, var(--color-surface));
+  --color-warning-strong: color-mix(in srgb, var(--color-warning) 75%, #ffffff);
+  --color-danger: color-mix(in srgb, var(--danger, #f44336) 85%, #ffffff);
+  --color-danger-soft: color-mix(in srgb, var(--color-danger) 18%, var(--color-surface));
+  --color-danger-border: color-mix(in srgb, var(--color-danger) 45%, var(--color-surface));
+  --color-danger-strong: color-mix(in srgb, var(--color-danger) 70%, #ffffff);
+  --color-info-soft: color-mix(in srgb, var(--color-info) 18%, var(--color-surface));
+  --color-info-border: color-mix(in srgb, var(--color-info) 40%, var(--color-surface));
+  --color-info-strong: color-mix(in srgb, var(--color-info) 70%, #ffffff);
+  --color-neutral: #8a949c;
+  --color-neutral-soft: #2a3037;
+  --color-neutral-border: #3a424b;
+  --color-neutral-strong: #c3c9cf;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.55);
+  --shadow-xl: 0 16px 40px rgba(0, 0, 0, 0.6);
+  --color-scrim: rgba(0, 0, 0, 0.6);
+}
