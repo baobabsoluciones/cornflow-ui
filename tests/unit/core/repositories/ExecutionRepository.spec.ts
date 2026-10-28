@@ -2,6 +2,7 @@ import { describe, test, expect, vi, beforeEach } from 'vitest'
 import ExecutionRepository, {
   ExecutionFilesRegenerationError,
 } from '@cornflow-ui/core/repositories/ExecutionRepository'
+import { LoadedExecution } from '@cornflow-ui/core/models/LoadedExecution'
 
 // Mock the API client
 vi.mock('@cornflow-ui/core/api/Api', () => ({
@@ -260,6 +261,21 @@ describe('ExecutionRepository', () => {
 
       expect(mockClient.get).toHaveBeenCalledWith('/execution/test-id/data/')
       expect(mockInstanceRepo.getInstance).toHaveBeenCalledWith('test-instance-id')
+      expect(LoadedExecution).toHaveBeenCalledWith(expect.objectContaining({ solutionState: null }))
+    })
+
+    test('the loaded execution keeps the solver log status as its solution state', async () => {
+      mockClient.get.mockResolvedValue({
+        status: 200,
+        content: { ...mockExecutionResponse, log: { status: 'Optimal', status_code: 1, sol_code: 1 } },
+      })
+      mockInstanceRepo.getInstance.mockResolvedValue(mockInstance)
+
+      await repository.loadExecution('test-id')
+
+      expect(LoadedExecution).toHaveBeenCalledWith(
+        expect.objectContaining({ solutionState: { status: 'Optimal', status_code: 1, sol_code: 1 } }),
+      )
     })
 
     test('should throw error when instance loading fails', async () => {
