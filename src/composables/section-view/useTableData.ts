@@ -1240,9 +1240,10 @@ export function useTableData(
   const loadData = async () => {
     if (shouldUseExecutionData.value) return
 
-    if (!tableConfig.value?.get_list) {
+    // A table with no list endpoint (e.g. a result the execution did not return) is empty.
+    if (!tableConfig.value?.get_list?.url) {
       items.value = []
-      hasMore.value = true
+      hasMore.value = false
       return
     }
 
@@ -1280,7 +1281,7 @@ export function useTableData(
 
   /** Load next page and append (infinite scroll). Called when user scrolls to bottom. */
   const loadMore = async () => {
-    if (!tableConfig.value?.get_list || loadingMore.value || !hasMore.value)
+    if (!tableConfig.value?.get_list?.url || loadingMore.value || !hasMore.value)
       return
 
     const pageSize = listPageSize.value
