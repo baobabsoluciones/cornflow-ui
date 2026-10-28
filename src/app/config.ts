@@ -325,7 +325,6 @@ const createAppConfig = () => ({
       },
 
       sectionTitles: {
-        executions: null as string | null,
         masterData: null as string | null,
         inputData: null as string | null,
         results: null as string | null,

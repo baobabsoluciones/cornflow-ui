@@ -1145,7 +1145,6 @@ Customize navigation section titles using i18n keys. See [Custom section titles]
 
 | Property     | Type             | Description                                                                |
 | ------------ | ---------------- | -------------------------------------------------------------------------- |
-| `executions` | `string \| null` | Custom i18n key for executions section (default: `navigation.executions`)  |
 | `masterData` | `string \| null` | Custom i18n key for master data section (default: `navigation.masterData`) |
 | `inputData`  | `string \| null` | Custom i18n key for input data section (default: `navigation.inputData`)   |
 | `results`    | `string \| null` | Custom i18n key for results section (default: `navigation.results`)        |
@@ -1511,11 +1510,10 @@ The application allows customization of navigation section titles through i18n k
 
 #### Default section titles
 
-The application has four main navigation sections with default titles:
+The application has three main navigation sections with default titles:
 
 | Section Key  | English Default      | Spanish Default         | French Default           |
 | ------------ | -------------------- | ----------------------- | ------------------------ |
-| `executions` | Executions           | Ejecuciones             | Exécutions               |
 | `masterData` | Configuration tables | Tablas de configuración | Données de configuration |
 | `inputData`  | Input data           | Datos de entrada        | Données d'entrée         |
 | `results`    | Results              | Resultados              | Résultats                |
@@ -1530,7 +1528,6 @@ Add custom translations in your app's locale files (`src/app/plugins/locales/*.t
 // src/app/plugins/locales/en.ts
 export default {
   sectionTitles: {
-    executions: 'Plans', // Custom title for executions
     masterData: 'Master Data', // Custom title for configuration
     inputData: 'Inputs', // Custom title for input data
     results: 'Outputs', // Custom title for results
@@ -1540,7 +1537,6 @@ export default {
 // src/app/plugins/locales/es.ts
 export default {
   sectionTitles: {
-    executions: 'Planes',
     masterData: 'Datos Maestros',
     inputData: 'Entradas',
     results: 'Salidas',
@@ -1555,7 +1551,6 @@ You can also point to specific translation keys in `src/app/config.ts`:
 ```typescript
 parameters: {
   sectionTitles: {
-    executions: 'myApp.nav.plans',      // Use custom i18n key
     masterData: null,                    // Use default (navigation.masterData)
     inputData: 'myApp.nav.inputs',      // Use custom i18n key
     results: null,                       // Use default (navigation.results)

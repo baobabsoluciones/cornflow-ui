@@ -44,9 +44,9 @@ describe('useSectionTitles', () => {
 
   test('getSectionTitle falls back to navigation key when no config and no app key', () => {
     const { getSectionTitle } = useSectionTitles()
-    const result = getSectionTitle('executions')
-    expect(mockT).toHaveBeenCalledWith('navigation.executions')
-    expect(result).toBe('navigation.executions')
+    const result = getSectionTitle('masterData')
+    expect(mockT).toHaveBeenCalledWith('navigation.masterData')
+    expect(result).toBe('navigation.masterData')
   })
 
   test('getSectionTitle uses custom key when configured and te() returns true', () => {
@@ -83,10 +83,10 @@ describe('useSectionTitles', () => {
     expect(result).toBe('navigation.results')
   })
 
-  test('getAllSectionTitles returns all four sections', () => {
+  test('getAllSectionTitles returns the master data, input data and results titles', () => {
     const { getAllSectionTitles } = useSectionTitles()
     const titles = getAllSectionTitles()
-    expect(titles).toHaveProperty('executions')
+    expect(Object.keys(titles)).toEqual(['masterData', 'inputData', 'results'])
     expect(titles).toHaveProperty('masterData')
     expect(titles).toHaveProperty('inputData')
     expect(titles).toHaveProperty('results')

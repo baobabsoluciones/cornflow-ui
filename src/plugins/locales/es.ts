@@ -778,7 +778,6 @@ export default {
     download: 'Descargar manual de usuario',
   },
   navigation: {
-    executions: 'Ejecuciones',
     masterData: 'Tablas de configuración',
     inputData: 'Datos de entrada',
     results: 'Resultados',
