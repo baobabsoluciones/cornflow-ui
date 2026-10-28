@@ -174,7 +174,7 @@
           :title="$t('drawer.newExecution')"
           data-testid="app-drawer-rail-new-execution"
         >
-          <CoreIcon name="mdi-plus" :size="20" />
+          <CoreIcon name="mdi-plus" :size="18" />
         </RouterLink>
         <div
           v-for="block in railBlocks"
@@ -949,8 +949,11 @@ async function signOut() {
   color: var(--color-primary);
 }
 
+/* Smaller than the other buttons of the rail: filled, it weighs more than their icons. */
 .app-drawer__rail-button.is-create {
-  margin-top: calc(var(--spacing) * 1);
+  width: 32px;
+  height: 32px;
+  margin-top: calc(var(--spacing) * 2);
   border-radius: var(--radius-full);
   background: var(--color-primary);
   box-shadow: var(--shadow-sm);
