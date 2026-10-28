@@ -572,6 +572,10 @@ export default {
     google_not_configured: 'Google authentication is not configured',
     microsoft_not_configured: 'Microsoft authentication is not configured',
   },
+  executionTabs: {
+    label: 'Open executions',
+    close: 'Close {name}',
+  },
   drawer: {
     label: 'Main menu',
     pin: 'Pin the menu open',

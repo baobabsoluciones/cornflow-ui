@@ -215,7 +215,6 @@ describe('General Store', () => {
       expect(store.autoLoadInterval).toBeNull()
       expect(store.isDrawerPinned).toBe(false)
       expect(store.uploadComponentKey).toBe(0)
-      expect(store.tabBarKey).toBe(0)
       expect(store.cornflowVersion).toBe('')
       expect(store.configurations).toBeNull()
       expect(store.rawConfigurations).toBeNull()
@@ -679,16 +678,6 @@ describe('General Store', () => {
 
       expect(store.uploadComponentKey).toBe(initialKey + 1)
     })
-
-    test('incrementTabBarKey increments and returns key', () => {
-      const store = useGeneralStore()
-      const initialKey = store.tabBarKey
-
-      const returnedKey = store.incrementTabBarKey()
-
-      expect(returnedKey).toBe(initialKey)
-      expect(store.tabBarKey).toBe(initialKey + 1)
-    })
   })
 
   describe('Actions - Drawer Management', () => {
@@ -781,54 +770,17 @@ describe('General Store', () => {
       expect(solvers).toEqual(['solver1', 'solver2'])
     })
 
-    test('getLoadedExecutionTabs returns formatted execution tabs with correct icons and loading states', () => {
+    test('getLoadedExecutionTabs gives each loaded execution its id, name, state and solution state', () => {
       const store = useGeneralStore()
       store.loadedExecutions = [
-        { executionId: '1', name: 'Completed', state: 1 },
-        { executionId: '2', name: 'Running', state: 0 },
-        { executionId: '3', name: 'Failed', state: -1 },
-        { executionId: '4', name: 'Not Run', state: -4 },
-        { executionId: '5', name: 'Queued', state: -7 },
+        { executionId: '1', name: 'Finished', state: 1, solutionState: { status_code: 2 } },
+        { executionId: '2', name: 'Running', state: 0, solutionState: null },
       ] as LoadedExecution[]
 
-      const tabs = store.getLoadedExecutionTabs
-
-      expect(tabs).toHaveLength(5)
-      expect(tabs[0]).toEqual({
-        value: '1',
-        text: 'Completed',
-        icon: 'mdi-checkbox-marked',
-        loading: false,
-        selected: false,
-      })
-      expect(tabs[1]).toEqual({
-        value: '2',
-        text: 'Running',
-        icon: 'mdi-loading',
-        loading: true,
-        selected: false,
-      })
-      expect(tabs[2]).toEqual({
-        value: '3',
-        text: 'Failed',
-        icon: 'mdi-close-box',
-        loading: false,
-        selected: false,
-      })
-      expect(tabs[3]).toEqual({
-        value: '4',
-        text: 'Not Run',
-        icon: 'mdi-checkbox-marked',
-        loading: false,
-        selected: false,
-      })
-      expect(tabs[4]).toEqual({
-        value: '5',
-        text: 'Queued',
-        icon: 'mdi-loading',
-        loading: true,
-        selected: false,
-      })
+      expect(store.getLoadedExecutionTabs).toEqual([
+        { value: '1', text: 'Finished', state: 1, solutionStatusCode: 2 },
+        { value: '2', text: 'Running', state: 0, solutionStatusCode: null },
+      ])
     })
 
     test('getNotifications returns notifications array', () => {

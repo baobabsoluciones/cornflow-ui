@@ -470,6 +470,10 @@ export default {
     google_not_configured: "L'authentification Google n'est pas configurée",
     microsoft_not_configured: "L'authentification Microsoft n'est pas configurée",
   },
+  executionTabs: {
+    label: 'Exécutions ouvertes',
+    close: 'Fermer {name}',
+  },
   drawer: {
     label: 'Menu principal',
     pin: 'Épingler le menu',

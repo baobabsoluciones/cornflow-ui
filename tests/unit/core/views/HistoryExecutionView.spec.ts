@@ -142,8 +142,6 @@ const createWrapper = () => {
   generalStore.deleteExecution = vi.fn()
   generalStore.setSelectedExecution = vi.fn()
   generalStore.loadedExecutions = []
-  generalStore.addLoadedExecutionTab = vi.fn()
-  generalStore.incrementTabBarKey = vi.fn()
 
   const mockShowSnackbar = vi.fn()
 
@@ -408,7 +406,7 @@ describe('HistoryExecutionView', () => {
     })
 
     describe('loadExecution', () => {
-      test('loads execution successfully and updates state', async () => {
+      test('loads the execution and selects it', async () => {
         const { wrapper, generalStore, mockShowSnackbar } = createWrapper()
         generalStore.fetchLoadedExecution.mockResolvedValue(true)
         generalStore.loadedExecutions = []
@@ -419,11 +417,6 @@ describe('HistoryExecutionView', () => {
 
         expect(generalStore.fetchLoadedExecution).toHaveBeenCalledWith(1)
         expect(generalStore.setSelectedExecution).toHaveBeenCalledWith(1)
-        expect(generalStore.addLoadedExecutionTab).toHaveBeenCalledWith({
-          value: 1,
-          selected: true,
-          name: 'Test Execution',
-        })
         expect(mockShowSnackbar).toHaveBeenCalledWith(
           'Execution loaded successfully',
         )
@@ -442,21 +435,6 @@ describe('HistoryExecutionView', () => {
         await loadPromise
 
         expect(wrapper.vm.loadingExecutions.has(1)).toBe(false)
-      })
-
-      test('handles existing tab correctly', async () => {
-        const { wrapper, generalStore } = createWrapper()
-        generalStore.fetchLoadedExecution.mockResolvedValue(true)
-        generalStore.loadedExecutions = [
-          { executionId: 1, name: 'Existing Tab', state: 1 },
-        ]
-
-        const execution = { id: 1, name: 'Test Execution' }
-
-        await wrapper.vm.loadExecution(execution)
-
-        expect(generalStore.addLoadedExecutionTab).not.toHaveBeenCalled()
-        expect(generalStore.getLoadedExecutionTabs[0].selected).toBe(true)
       })
 
       test('shows error message on load failure', async () => {
@@ -487,22 +465,6 @@ describe('HistoryExecutionView', () => {
           'Error loading execution',
           'error',
         )
-      })
-
-      test('handles execution without name gracefully', async () => {
-        const { wrapper, generalStore } = createWrapper()
-        generalStore.fetchLoadedExecution.mockResolvedValue(true)
-        generalStore.loadedExecutions = []
-
-        const execution = { id: 1 }
-
-        await wrapper.vm.loadExecution(execution)
-
-        expect(generalStore.addLoadedExecutionTab).toHaveBeenCalledWith({
-          value: 1,
-          selected: true,
-          name: 'Execution 1',
-        })
       })
     })
 

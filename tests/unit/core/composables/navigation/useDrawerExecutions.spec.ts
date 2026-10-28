@@ -12,8 +12,10 @@ vi.mock('@cornflow-ui/core/stores/general', () => ({ useGeneralStore: () => stor
 vi.mock('@cornflow-ui/core/services/SnackbarService', () => ({ showSnackbar: snackbar }))
 vi.mock('@cornflow-ui/core/composables/project-execution/useExecutionStatus', () => ({
   useExecutionStatus: () => ({
-    executionStatus: (state: number) => ({ label: `state ${state}`, tone: state === -1 ? 'danger' : 'primary', spin: state === 0 }),
-    solutionStatus: (code: number) => ({ label: `solution ${code}`, tone: 'success', spin: false }),
+    displayStatus: (state: number, code: number | null | undefined) =>
+      state === 1 && code != null
+        ? { label: `solution ${code}`, tone: 'success', spin: false }
+        : { label: `state ${state}`, tone: state === -1 ? 'danger' : 'primary', spin: state === 0 },
   }),
 }))
 
@@ -65,7 +67,6 @@ describe('useDrawerExecutions', () => {
       ]),
       fetchLoadedExecution: vi.fn(async () => true),
       setSelectedExecution: vi.fn(),
-      incrementTabBarKey: vi.fn(),
     })
   })
 
@@ -88,13 +89,25 @@ describe('useDrawerExecutions', () => {
     expect(api.loaded.value).toMatchObject({ id: 'e1', status: { label: 'solution 1' } })
   })
 
+  test('a loaded execution not among the latest reads as the solution state it was loaded with', async () => {
+    store.selectedExecution = {
+      executionId: 'old',
+      name: 'Plan old',
+      createdAt: minutesAgo(60 * 24 * 30),
+      state: 1,
+      solutionState: { status_code: 2 },
+    }
+    const api = setup()
+    await api.refresh()
+    expect(api.loaded.value).toMatchObject({ id: 'old', status: { label: 'solution 2' } })
+  })
+
   test('opening one loads it when it is not loaded yet, and selects it', async () => {
     const api = setup()
     await api.refresh()
     expect(await api.open(api.latest.value[1])).toBe(true)
     expect(store.fetchLoadedExecution).toHaveBeenCalledWith('e2')
     expect(store.setSelectedExecution).toHaveBeenCalledWith('e2')
-    expect(store.incrementTabBarKey).toHaveBeenCalled()
   })
 
   test('opening one already loaded only selects it', async () => {

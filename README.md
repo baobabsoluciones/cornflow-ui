@@ -48,6 +48,17 @@ Cornflow-UI follows a modular architecture organized into distinct functional ar
   `composables/navigation/useDrawerSections.ts` (the groups and their scope) and
   `composables/navigation/useDrawerExecutions.ts` (the loaded and latest executions).
 
+### Execution tab bar
+
+At the foot of the app, from where the side menu ends, a tab per loaded execution
+(`components/ExecutionTabBar.vue`):
+
+- Each tab has a dot in the colour of the execution's state, as the side menu shows it: a finished
+  execution reads as its solution ("Optimal"), any other as its own state; a running one shows a
+  spinner. The selected tab is marked; clicking it again deselects it.
+- The × closes a tab; "New execution" opens the screen that creates one.
+- Premium modules may decorate the tabs (`decorateExecutionTabs`), e.g. the ⭐ of the current plan.
+
 ## Execution management section
 
 The execution management section handles the complete lifecycle of optimization executions, from creation to historical tracking.
