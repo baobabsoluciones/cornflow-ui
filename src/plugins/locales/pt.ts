@@ -630,7 +630,6 @@ export default {
     download: 'Transferir manual do utilizador',
   },
   navigation: {
-    executions: 'Execuções',
     masterData: 'Tabelas de configuração',
     inputData: 'Dados de entrada',
     results: 'Resultados',

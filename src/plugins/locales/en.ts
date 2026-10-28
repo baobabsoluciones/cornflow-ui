@@ -638,7 +638,6 @@ export default {
     download: 'Download user manual',
   },
   navigation: {
-    executions: 'Executions',
     masterData: 'Configuration tables',
     inputData: 'Input data',
     results: 'Results',

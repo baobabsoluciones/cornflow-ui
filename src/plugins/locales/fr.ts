@@ -517,7 +517,6 @@ export default {
     download: "Télécharger le manuel de l'utilisateur",
   },
   navigation: {
-    executions: 'Exécutions',
     masterData: 'Données de configuration',
     inputData: "Données d'entrée",
     results: 'Résultats',

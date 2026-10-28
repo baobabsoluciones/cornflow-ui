@@ -23,11 +23,11 @@ export function useSectionTitles() {
 
   /**
    * Get the title for a specific section
-   * @param section - The section key: 'executions', 'masterData', 'inputData', or 'results'
+   * @param section - The section key: 'masterData', 'inputData' or 'results'
    * @returns The translated title for the section
    */
   const getSectionTitle = (
-    section: 'executions' | 'masterData' | 'inputData' | 'results',
+    section: 'masterData' | 'inputData' | 'results',
   ): string => {
     const config = getSectionTitlesConfig()
     const customKey = config[section]
@@ -56,7 +56,6 @@ export function useSectionTitles() {
    * Get all section titles as an object
    */
   const getAllSectionTitles = () => ({
-    executions: getSectionTitle('executions'),
     masterData: getSectionTitle('masterData'),
     inputData: getSectionTitle('inputData'),
     results: getSectionTitle('results'),
