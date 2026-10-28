@@ -31,7 +31,7 @@
 
     <CatalogBlock
       name="ExecutionTabBar"
-      api="tabs · selected · createLabel → select, close, create · slot end"
+      api="tabs · selected → select, close · slot end"
       note="The open executions, the selected one marked: finished with a solution, running, failed. Below, with none open."
       column
     >
@@ -39,7 +39,6 @@
         <ExecutionTabBar
           :tabs="openTabs"
           :selected="selectedTab"
-          create-label="New execution"
           @select="selectedTab = $event"
           @close="openTabs = openTabs.filter((_, index) => index !== $event)"
         >
@@ -49,7 +48,7 @@
         </ExecutionTabBar>
       </div>
       <div class="tab-bar-frame">
-        <ExecutionTabBar :tabs="[]" :selected="null" create-label="New execution" />
+        <ExecutionTabBar :tabs="[]" :selected="null" />
       </div>
     </CatalogBlock>
 

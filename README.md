@@ -10,7 +10,7 @@ Cornflow-UI follows a modular architecture organized into distinct functional ar
 
 - The menu takes the full height of the window; the execution tab bar starts where it ends.
 - It heads with **New execution**, a button filled in the app's primary colour, for a user who may
-  create executions (the `project-execution` view).
+  create executions (the `project-execution` view). It starts a new execution afresh.
 - It keeps apart what belongs to the loaded execution from what is the same for all of them. The
   loaded execution heads a block that holds its own groups: its input data, its results with the
   dashboards, and the app sections that need an execution (`requiresSelectedExecution`). The
@@ -56,7 +56,7 @@ At the foot of the app, from where the side menu ends, a tab per loaded executio
 - Each tab has a dot in the colour of the execution's state, as the side menu shows it: a finished
   execution reads as its solution ("Optimal"), any other as its own state; a running one shows a
   spinner. The selected tab is marked; clicking it again deselects it.
-- The × closes a tab; "New execution" opens the screen that creates one.
+- The × closes a tab. A new execution starts from the side menu ("New execution").
 - Premium modules may decorate the tabs (`decorateExecutionTabs`), e.g. the ⭐ of the current plan.
 
 ## Execution management section

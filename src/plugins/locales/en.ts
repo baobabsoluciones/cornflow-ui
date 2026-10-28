@@ -232,7 +232,6 @@ export default {
     previousButton: 'Previous',
     maximize: 'Maximize',
     minimize: 'Minimize',
-    create: 'New execution',
     downloadExcel: 'Download data',
     uploadExcel: 'Overwrite data',
     snackbar: {
