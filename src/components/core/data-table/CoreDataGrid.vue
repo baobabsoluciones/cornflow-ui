@@ -1278,6 +1278,11 @@ defineExpose({ commitAdd, focusCell })
   cursor: col-resize;
 }
 
+/* Inside the last column, so it does not widen the table past its card. */
+.data-grid__header:last-child .data-grid__resize {
+  right: 0;
+}
+
 .data-grid__resize:hover,
 .data-grid__resize.is-dragging {
   background: var(--color-primary);
