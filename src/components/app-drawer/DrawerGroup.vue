@@ -88,7 +88,6 @@ const pages = computed(() => (props.section.subPages ?? []).filter((page) => pag
   font: inherit;
   font-size: var(--text-md);
   font-weight: var(--font-weight-medium);
-  color: var(--color-text);
   text-align: left;
   text-decoration: none;
   cursor: pointer;
@@ -101,7 +100,6 @@ const pages = computed(() => (props.section.subPages ?? []).filter((page) => pag
 .drawer-group__head.is-active {
   background: var(--color-primary-subtle);
   box-shadow: inset 2px 0 0 var(--color-primary);
-  color: var(--color-primary);
 }
 
 .drawer-group__icon {
@@ -109,8 +107,10 @@ const pages = computed(() => (props.section.subPages ?? []).filter((page) => pag
   color: var(--color-primary);
 }
 
+/* The app's stylesheet colours every link (`!important`), so the titles take their colour. */
 .drawer-group__title {
   flex: 1;
+  color: var(--color-text);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -155,7 +155,6 @@ const pages = computed(() => (props.section.subPages ?? []).filter((page) => pag
   background: none;
   font: inherit;
   font-size: var(--text-md);
-  color: var(--color-text-muted);
   text-align: left;
   text-decoration: none;
   cursor: pointer;
@@ -174,15 +173,17 @@ const pages = computed(() => (props.section.subPages ?? []).filter((page) => pag
   background: var(--color-primary-subtle);
   box-shadow: inset 2px 0 0 var(--color-primary);
   font-weight: var(--font-weight-medium);
-  color: var(--color-primary);
 }
 
+.drawer-group__head.is-active .drawer-group__title,
+.drawer-group__page.is-active .drawer-group__page-title,
 .drawer-group__page.is-active .core-icon {
   color: var(--color-primary);
 }
 
 .drawer-group__page-title {
   flex: 1;
+  color: var(--color-text-muted);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
