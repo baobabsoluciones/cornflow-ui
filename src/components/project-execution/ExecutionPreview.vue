@@ -70,8 +70,8 @@ const parameters = computed(() => parameterItems(props.execution))
   gap: calc(var(--spacing) * 1);
   padding: calc(var(--spacing) * 3.5) calc(var(--spacing) * 4)
     calc(var(--spacing) * 3);
-  border-bottom: 1px solid color-mix(in srgb, var(--color-primary) 12%, #ffffff);
-  background: color-mix(in srgb, var(--color-primary) 7%, #ffffff);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
+  background: color-mix(in srgb, var(--color-primary) 7%, var(--color-surface));
 }
 
 .execution-preview__name {
