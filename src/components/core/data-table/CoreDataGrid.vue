@@ -4,7 +4,8 @@
 
   - Columns from `columns` (see `DataColumn`): an icon of their type, title, unit, the source
     icon, a sort button (`v-model:sort`) and a handle to resize (`v-model:widths`; double click
-    fits the content). The first column stays visible when scrolling sideways.
+    fits the content). The columns share the width left in the card in proportion to their
+    width; a resized column keeps its own. The first column stays visible when scrolling sideways.
   - Only the visible rows are drawn. Near the end it emits `load-more` while `hasMore`.
   - A cell is picked with a click or the arrows; Enter, F2, a double click or typing edits it,
     Delete empties it. Editing commits with Enter/Tab/a click elsewhere and emits `cell-change`;
@@ -61,6 +62,7 @@
             <th
               v-for="(column, index) in columns"
               :key="column.key"
+              :ref="(element) => setHeader(column.key, element)"
               class="data-grid__cell data-grid__header"
               :class="{
                 'is-sticky': index === 0,
@@ -116,7 +118,6 @@
                 @click.stop
               />
             </th>
-            <th class="data-grid__cell data-grid__filler" aria-hidden="true" />
           </tr>
         </thead>
 
@@ -171,7 +172,6 @@
                 @cancel="emit('add-cancel')"
               />
             </td>
-            <td class="data-grid__cell data-grid__filler" aria-hidden="true" />
           </tr>
         </tbody>
 
@@ -255,7 +255,6 @@
                 >{{ displayOf(row, column) }}</span
               >
             </td>
-            <td class="data-grid__cell data-grid__filler" aria-hidden="true" />
           </tr>
         </tbody>
 
@@ -284,7 +283,6 @@
                 :height="10"
               />
             </td>
-            <td class="data-grid__cell data-grid__filler" aria-hidden="true" />
           </tr>
         </tbody>
       </table>
@@ -435,17 +433,26 @@ function defaultWidth(column: DataColumn): number {
 const widthOf = (column: DataColumn) =>
   widths.value[column.key] ?? defaultWidth(column)
 
-const gridTemplate = computed(() =>
-  [
+/**
+ * The columns without a width of their own grow in proportion to their default width to fill
+ * the card; when every column has one, the last one takes what is left.
+ */
+const gridTemplate = computed(() => {
+  const flexible = props.columns.some((column) => widths.value[column.key] === undefined)
+  const last = props.columns.length - 1
+  const track = (column: DataColumn, index: number) => {
+    const width = widthOf(column)
+    if (widths.value[column.key] === undefined) return `minmax(${width}px, ${width}fr)`
+    return !flexible && index === last ? `minmax(${width}px, 1fr)` : `${width}px`
+  }
+  return [
     props.selectable ? `${selectWidth.value}px` : '',
     `${MARK_WIDTH}px`,
-    ...props.columns.map((column) => `${widthOf(column)}px`),
-    // An empty column takes the width left, so the grid fills its card.
-    'minmax(0, 1fr)',
+    ...props.columns.map(track),
   ]
     .filter(Boolean)
-    .join(' '),
-)
+    .join(' ')
+})
 
 const totalWidth = computed(
   () =>
@@ -674,17 +681,36 @@ function ariaSort(column: DataColumn) {
 }
 
 const resizing = ref<string | null>(null)
+const headers = new Map<string, Element>()
 
+function setHeader(key: string, element: unknown) {
+  if (element instanceof Element) headers.set(key, element)
+  else headers.delete(key)
+}
+
+const shownWidth = (column: DataColumn) =>
+  Math.max(widthOf(column), Math.round(headers.get(column.key)?.getBoundingClientRect().width ?? 0))
+
+/**
+ * The column and those at its left keep the width they show, so the handle follows the
+ * pointer while the columns at its right share what is left.
+ */
 function startResize(column: DataColumn, event: PointerEvent) {
   event.preventDefault()
   event.stopPropagation()
+  const index = props.columns.indexOf(column)
+  widths.value = {
+    ...widths.value,
+    ...Object.fromEntries(props.columns.slice(0, index + 1).map((c) => [c.key, shownWidth(c)])),
+  }
   const startX = event.clientX
   const startWidth = widthOf(column)
+  const maxWidth = Math.max(600, startWidth)
   resizing.value = column.key
   const move = (moveEvent: PointerEvent) => {
     const width = Math.max(
       56,
-      Math.min(600, Math.round(startWidth + moveEvent.clientX - startX)),
+      Math.min(maxWidth, Math.round(startWidth + moveEvent.clientX - startX)),
     )
     widths.value = { ...widths.value, [column.key]: width }
   }
@@ -1156,11 +1182,6 @@ defineExpose({ commitAdd, focusCell })
 }
 
 .data-grid__cell--mark {
-  border-right: 0;
-}
-
-.data-grid__filler {
-  padding: 0;
   border-right: 0;
 }
 
