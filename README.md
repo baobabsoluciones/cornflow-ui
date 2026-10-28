@@ -6,6 +6,17 @@ Cornflow-UI is a Vue.js application that serves as the user interface for Cornfl
 
 Cornflow-UI follows a modular architecture organized into distinct functional areas. The application structure is designed to be flexible and adaptable to different optimization problems while maintaining consistency across implementations.
 
+## User settings
+
+The user's own page (`views/UserSettingsView.vue`, reached from the user at the foot of the side
+menu), a card per subject:
+
+- **Account**: the name, e-mail, user name and roles of who is signed in.
+- **Language** of the app, among the ones it offers (`languages` in the app config).
+- **Password**, when the app signs in with Cornflow (`auth.type: 'cornflow'`): the new one twice,
+  with what it needs ticked as it is typed (at least 5 characters; upper and lower case letters,
+  numbers and a special character; no spaces; both the same). It is sent once it meets all of it.
+
 ## Execution management section
 
 The execution management section handles the complete lifecycle of optimization executions, from creation to historical tracking.
