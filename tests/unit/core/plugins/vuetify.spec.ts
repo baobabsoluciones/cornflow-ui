@@ -50,6 +50,15 @@ describe('plugins/vuetify', () => {
               secondary: '#5CBBF6',
             },
           },
+          dark: {
+            dark: true,
+            colors: {
+              primary: '#5f8ead',
+              secondary: '#5CBBF6',
+              background: '#121417',
+              surface: '#1b1f24',
+            },
+          },
         },
       },
     })
@@ -140,6 +149,33 @@ describe('plugins/vuetify', () => {
       expect(theme.themes.value.light.colors.primary).toBe('#1b5e8a')
       expect(warn).toHaveBeenCalledWith(expect.stringContaining('--color-primary'))
       warn.mockRestore()
+    })
+
+    test('sets the colours of the theme the tokens are in', async () => {
+      const { applyTokensToTheme } = await import('@cornflow-ui/core/plugins/vuetify')
+      const theme = {
+        themes: { value: { light: { colors: { primary: '#1b5e8a' } }, dark: { colors: { primary: '#5f8ead' } } } },
+      }
+
+      applyTokensToTheme(theme as any, () => '#8ab4d4', 'dark')
+
+      expect(theme.themes.value.dark.colors.primary).toBe('#8ab4d4')
+      expect(theme.themes.value.light.colors.primary).toBe('#1b5e8a')
+    })
+
+    test('readCssToken gives a colour written otherwise in hex, as the browser computes it', async () => {
+      const { readCssToken } = await import('@cornflow-ui/core/plugins/vuetify')
+      document.body.style.setProperty('--color-surface', 'color-mix(in srgb, #000000 50%, #ffffff)')
+      const computed = window.getComputedStyle
+      const spy = vi.spyOn(window, 'getComputedStyle').mockImplementation((element: Element) => {
+        const style = computed(element)
+        if (element.tagName !== 'SPAN') return style
+        return { ...style, color: 'color(srgb 0.5 0.25 1)' } as CSSStyleDeclaration
+      })
+
+      expect(readCssToken('--color-surface')).toBe('#8040ff')
+      spy.mockRestore()
+      document.body.style.removeProperty('--color-surface')
     })
 
     test('readCssToken reads a custom property set on body', async () => {
