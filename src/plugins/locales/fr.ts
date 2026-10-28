@@ -311,7 +311,7 @@ export default {
     pin: 'Épingler le menu',
     unpin: 'Détacher le menu',
     close: 'Fermer le menu',
-    history: 'Historique',
+    history: 'Historique des exécutions',
     newExecution: 'Nouvelle exécution',
     loadedExecution: 'Exécution chargée',
     noExecution: 'Aucune exécution chargée',
@@ -386,7 +386,7 @@ export default {
       },
     },
     filterAll: 'Tous',
-    title: 'Historique des versions',
+    title: 'Historique des exécutions',
     description:
       'Sélectionnez une exécution pour voir son détail et la charger dans un nouvel onglet.',
     yesterday: 'Hier',

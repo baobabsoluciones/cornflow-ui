@@ -414,7 +414,7 @@ export default {
     pin: 'Afixar o menu',
     unpin: 'Desafixar o menu',
     close: 'Fechar o menu',
-    history: 'Histórico',
+    history: 'Histórico de execuções',
     newExecution: 'Nova execução',
     loadedExecution: 'Execução carregada',
     noExecution: 'Nenhuma execução carregada',
@@ -489,7 +489,7 @@ export default {
       },
     },
     filterAll: 'Todos',
-    title: 'Histórico de versões',
+    title: 'Histórico de execuções',
     description:
       'Selecione uma execução para ver o seu detalhe e carregá-la num novo separador.',
     yesterday: 'Ontem',
