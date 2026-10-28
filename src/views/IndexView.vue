@@ -81,9 +81,7 @@
         class="execution-tabs"
         :tabs="executionTabs"
         :selected="selectedExecutionId ?? null"
-        :create-label="$t('projectExecution.create')"
         @close="removeTab"
-        @create="createTab"
         @select="selectTab"
       >
         <template #end>
@@ -201,11 +199,6 @@ defineExpose({
 })
 const removeTab = (index) => {
   generalStore.removeLoadedExecution(index)
-}
-
-const createTab = () => {
-  router.push({ path: 'project-execution' })
-  generalStore.incrementUploadComponentKey()
 }
 
 // Clicking the selected tab deselects it, and leaves a view that needs an execution.

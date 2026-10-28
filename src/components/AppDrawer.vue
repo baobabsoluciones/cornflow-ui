@@ -1,7 +1,8 @@
 <!--
   AppDrawer: the side menu, the full height of the window.
 
-  It heads with "New execution", filled in the app's primary colour, for a user who may create one.
+  It heads with "New execution", filled in the app's primary colour, for a user who may create one;
+  it starts a new one afresh.
   Then it keeps apart what belongs to the loaded execution from what is the same for all of them:
   the loaded execution heads a block that holds its own groups (its input data, its results and
   dashboards, the app sections that need an execution); the rest of the groups follow, below a
@@ -74,7 +75,7 @@
           to="/project-execution"
           class="app-drawer__create"
           data-testid="app-drawer-new-execution"
-          @click="closeOnNarrow"
+          @click="startExecution"
         >
           <CoreIcon name="mdi-plus" :size="18" />
           <span>{{ $t('drawer.newExecution') }}</span>
@@ -173,6 +174,7 @@
           :aria-label="$t('drawer.newExecution')"
           :title="$t('drawer.newExecution')"
           data-testid="app-drawer-rail-new-execution"
+          @click="startExecution"
         >
           <CoreIcon name="mdi-plus" :size="18" />
         </RouterLink>
@@ -472,6 +474,12 @@ function goToHistory() {
   selectorOpen.value = false
   closeOnNarrow()
   void router.push('/history-execution')
+}
+
+/** A new execution starts afresh: the views kept alive, the create screen among them, reset. */
+function startExecution() {
+  store.incrementUploadComponentKey()
+  closeOnNarrow()
 }
 
 function goToSettings() {

@@ -94,7 +94,6 @@ const createWrapper = async (isAuthenticated = true, isStagingEnvironment = fals
     messages: {
       en: {
         projectExecution: {
-          create: 'Create',
           stagingWarning: 'This is a staging environment'
         }
       }
@@ -218,7 +217,7 @@ describe('IndexView', () => {
   })
 
   describe('Execution tab bar', () => {
-    test('has a tab per loaded execution, the selected one marked, and "Create"', async () => {
+    test('has a tab per loaded execution, the selected one marked', async () => {
       const { wrapper } = await createWrapper()
       const bar = wrapper.findComponent({ name: 'CoreExecutionTabBar' })
 
@@ -227,7 +226,6 @@ describe('IndexView', () => {
         [2, 'Test Execution 2'],
       ])
       expect(bar.props('selected')).toBe(2)
-      expect(bar.props('createLabel')).toBe('Create')
       expect(wrapper.find('[data-testid="execution-tab-2"]').attributes('aria-selected')).toBe('true')
     })
 
@@ -257,16 +255,6 @@ describe('IndexView', () => {
       expect(generalStore.removeLoadedExecution).toHaveBeenCalledWith(1)
     })
 
-    test('createTab navigates to project-execution and increments key', async () => {
-      const { wrapper, generalStore, router } = await createWrapper()
-      const pushSpy = vi.spyOn(router, 'push')
-      
-      await wrapper.vm.createTab()
-      await router.isReady()
-      
-      expect(pushSpy).toHaveBeenCalledWith({ path: 'project-execution' })
-      expect(generalStore.incrementUploadComponentKey).toHaveBeenCalled()
-    })
 
     describe('selectTab', () => {
       test('deselects tab when same execution is selected and on project-execution route', async () => {

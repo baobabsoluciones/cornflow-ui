@@ -18,7 +18,7 @@ const i18n = () =>
 
 function mountBar(props: Record<string, unknown> = {}, slots: Record<string, string> = {}) {
   return mount(ExecutionTabBar, {
-    props: { tabs, selected: 'e1', createLabel: 'New execution', ...props },
+    props: { tabs, selected: 'e1', ...props },
     slots,
     global: { plugins: [i18n()] },
   })
@@ -57,14 +57,6 @@ describe('ExecutionTabBar', () => {
     await close.trigger('click')
     expect(wrapper.emitted('close')).toEqual([[2]])
     expect(wrapper.emitted('select')).toHaveLength(1)
-  })
-
-  test('"New execution" asks to create one', async () => {
-    const wrapper = mountBar({ tabs: [] })
-    const create = wrapper.find('[data-testid="execution-tab-bar-create"]')
-    expect(create.text()).toBe('New execution')
-    await create.trigger('click')
-    expect(wrapper.emitted('create')).toHaveLength(1)
   })
 
   test('shows the end slot after the tabs', () => {

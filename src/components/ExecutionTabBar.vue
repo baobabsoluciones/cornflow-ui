@@ -3,11 +3,9 @@
 
   Each tab shows a dot in the colour of the execution's state (a spinner while it runs) and its
   name; the selected one is marked. A click selects a tab (`select`, its id), the × closes it
-  (`close`, its index). After the tabs, "New execution" (`create`); at the end, the `end` slot.
-  Many tabs scroll sideways.
+  (`close`, its index). At the end, the `end` slot. Many tabs scroll sideways.
 
-  <ExecutionTabBar :tabs="tabs" :selected="selectedId" :create-label="$t('projectExecution.create')"
-    @select="select" @close="close" @create="create" />
+  <ExecutionTabBar :tabs="tabs" :selected="selectedId" @select="select" @close="close" />
 -->
 <template>
   <nav class="execution-tab-bar" :aria-label="$t('executionTabs.label')" data-testid="execution-tab-bar">
@@ -43,15 +41,6 @@
         </button>
       </div>
     </div>
-    <button
-      type="button"
-      class="execution-tab-bar__create"
-      data-testid="execution-tab-bar-create"
-      @click="emit('create')"
-    >
-      <CoreIcon name="mdi-plus" :size="16" />
-      <span>{{ createLabel }}</span>
-    </button>
     <div v-if="$slots.end" class="execution-tab-bar__end">
       <slot name="end" />
     </div>
@@ -76,13 +65,11 @@ defineProps<{
   tabs: ExecutionTabBarTab[]
   /** Id of the selected tab. */
   selected: string | null
-  createLabel: string
 }>()
 
 const emit = defineEmits<{
   select: [id: string]
   close: [index: number]
-  create: []
 }>()
 </script>
 
@@ -140,8 +127,7 @@ const emit = defineEmits<{
 }
 
 .execution-tab-bar__select:focus-visible,
-.execution-tab-bar__close:focus-visible,
-.execution-tab-bar__create:focus-visible {
+.execution-tab-bar__close:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: -2px;
 }
@@ -198,24 +184,6 @@ const emit = defineEmits<{
 .execution-tab-bar__close:hover {
   background: var(--color-border-subtle);
   color: var(--color-text);
-}
-
-.execution-tab-bar__create {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: calc(var(--spacing) * 1.5);
-  padding: 0 calc(var(--spacing) * 3);
-  border: 0;
-  background: none;
-  font: inherit;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-primary);
-  cursor: pointer;
-}
-
-.execution-tab-bar__create:hover {
-  background: var(--color-primary-subtle);
 }
 
 .execution-tab-bar__end {

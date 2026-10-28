@@ -47,7 +47,6 @@ export default {
     previousButton: 'Anterior',
     maximize: 'Maximizar',
     minimize: 'Minimizar',
-    create: 'Adicionar novo',
     downloadExcel: 'Transferir dados',
     uploadExcel: 'Substituir dados',
     snackbar: {
