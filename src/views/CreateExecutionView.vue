@@ -154,10 +154,6 @@ function viewResult() {
   const id = draft.launch.executionId
   if (!id) return
   store.setSelectedExecution(id)
-  store.getLoadedExecutionTabs.forEach((tab: any) => {
-    tab.selected = tab.value === id
-  })
-  store.incrementTabBarKey()
   const results = getNavigationItemsFromConfig(
     store.getConfigurations?.resultsData ?? {},
     '/results',
