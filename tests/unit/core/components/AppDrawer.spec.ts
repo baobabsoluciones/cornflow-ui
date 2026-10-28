@@ -5,7 +5,7 @@ import { createI18n } from 'vue-i18n'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
 const { state, auth, snackbar, appConfig } = vi.hoisted(() => ({
-  state: { store: null as any, sections: [] as any[], executions: null as any },
+  state: { store: null as any, sections: [] as any[], executions: null as any, canCreate: true },
   auth: { logout: vi.fn() },
   snackbar: vi.fn(),
   appConfig: {
@@ -21,7 +21,11 @@ vi.mock('@/app/config', () => ({ default: appConfig }))
 vi.mock('@cornflow-ui/core/config', () => ({ default: { name: 'Planner' } }))
 vi.mock('@cornflow-ui/core/composables/navigation/useDrawerSections', async (importOriginal) => ({
   ...(await importOriginal<any>()),
-  useDrawerSections: () => ({ sections: computed(() => state.sections), isAdmin: computed(() => false) }),
+  useDrawerSections: () => ({
+    sections: computed(() => state.sections),
+    isAdmin: computed(() => false),
+    canCreateExecution: computed(() => state.canCreate),
+  }),
 }))
 vi.mock('@cornflow-ui/core/composables/navigation/useDrawerExecutions', () => ({
   useDrawerExecutions: () => state.executions,
@@ -30,16 +34,7 @@ vi.mock('@cornflow-ui/core/composables/navigation/useDrawerExecutions', () => ({
 import AppDrawer from '@cornflow-ui/core/components/AppDrawer.vue'
 
 const SECTIONS = [
-  {
-    key: 'executions',
-    scope: 'general',
-    title: 'Executions',
-    icon: 'mdi-chart-timeline-variant',
-    subPages: [
-      { title: 'History', icon: 'mdi-history', to: '/history-execution' },
-      { title: 'Execution', icon: 'mdi-play-circle-outline', to: '/project-execution' },
-    ],
-  },
+  { key: 'history', scope: 'general', title: 'History', icon: 'mdi-history', to: '/history-execution' },
   {
     key: 'master-data',
     scope: 'general',
@@ -98,6 +93,7 @@ function makeRouter() {
     '/results/plan',
     '/user-settings',
     '/sign-in',
+    '/roles-management',
   ].map((path) => ({ path, component: { template: '<div />' } }))
   return createRouter({ history: createMemoryHistory(), routes })
 }
@@ -136,6 +132,7 @@ describe('AppDrawer', () => {
     auth.logout.mockResolvedValue(undefined)
     appConfig.getCore.mockReturnValue({ parameters: { showOpenIdUsername: false } })
     state.sections = SECTIONS
+    state.canCreate = true
     state.executions = makeExecutions()
     state.store = reactive({
       isDrawerPinned: false,
@@ -166,7 +163,7 @@ describe('AppDrawer', () => {
     ;({ wrapper } = await mountDrawer())
     expect(wrapper.find('[data-testid="app-drawer"]').classes()).not.toContain('is-expanded')
     const buttons = wrapper.findAll('.app-drawer__rail-block.is-general .app-drawer__rail-button')
-    expect(buttons.map((b: any) => b.attributes('aria-label'))).toEqual(['Executions', 'Master data', 'Agent'])
+    expect(buttons.map((b: any) => b.attributes('aria-label'))).toEqual(['History', 'Master data', 'Agent'])
     expect(buttons[0].classes()).toContain('is-active')
     expect(wrapper.find('[data-testid="app-drawer-rail-execution"]').exists()).toBe(true)
   })
@@ -177,18 +174,14 @@ describe('AppDrawer', () => {
     const railLabels = (block: string) =>
       wrapper.findAll(`.app-drawer__rail-block.is-${block} .app-drawer__rail-button`).map((b: any) => b.attributes('aria-label'))
     expect(railLabels('execution')).toEqual(['drawer.loadedExecution', 'Input data', 'Results'])
-    expect(railLabels('general')).toEqual(['Executions', 'Master data', 'Agent'])
+    expect(railLabels('general')).toEqual(['History', 'Master data', 'Agent'])
 
     state.store.isDrawerPinned = true
     await flushPromises()
     const heads = (block: string) =>
       wrapper.findAll(`[data-testid="app-drawer-${block}-block"] .drawer-group__head`).map((h: any) => h.text())
     expect(heads('execution')).toEqual([expect.stringContaining('Input data'), expect.stringContaining('Results')])
-    expect(heads('general')).toEqual([
-      expect.stringContaining('Executions'),
-      expect.stringContaining('Master data'),
-      'Agent',
-    ])
+    expect(heads('general')).toEqual(['History', expect.stringContaining('Master data'), 'Agent'])
     expect(wrapper.find('[data-testid="app-drawer-execution-block"] .drawer-group__page.is-active').text()).toBe('Plan')
   })
 
@@ -264,7 +257,7 @@ describe('AppDrawer', () => {
 
   test('clicking a group of the rail pins the menu open on it', async () => {
     ;({ wrapper } = await mountDrawer())
-    await wrapper.findAll('.app-drawer__rail-block.is-general button.app-drawer__rail-button')[1].trigger('click')
+    await wrapper.findAll('.app-drawer__rail-block.is-general button.app-drawer__rail-button')[0].trigger('click')
     expect(state.store.isDrawerPinned).toBe(true)
     const open = wrapper.findAll('.drawer-group__head[aria-expanded="true"]')
     expect(open.map((h: any) => h.text())).toEqual(['Master data'])
@@ -272,25 +265,60 @@ describe('AppDrawer', () => {
 
   test('pinned, the groups are an accordion opened on the current page', async () => {
     state.store.isDrawerPinned = true
+    state.sections = [
+      ...SECTIONS,
+      {
+        key: 'admin',
+        scope: 'general',
+        title: 'Administration',
+        icon: 'mdi-shield-account',
+        subPages: [{ title: 'Roles', to: '/roles-management' }],
+      },
+    ]
     ;({ wrapper } = await mountDrawer('/configuration/lines'))
     const heads = () => wrapper.findAll('button.drawer-group__head')
-    expect(heads().map((h: any) => h.attributes('aria-expanded'))).toEqual(['false', 'true'])
+    expect(heads().map((h: any) => h.attributes('aria-expanded'))).toEqual(['true', 'false'])
     // A group of tables is one page: on one of its tables, the group is the current page.
     const pages = wrapper.findAll('.drawer-group__page')
     expect(pages.map((p: any) => p.text())).toEqual(['Plants', 'Group'])
     expect(wrapper.find('.drawer-group__page.is-active').text()).toBe('Group')
 
-    await heads()[0].trigger('click')
-    expect(heads().map((h: any) => h.attributes('aria-expanded'))).toEqual(['true', 'false'])
+    await heads()[1].trigger('click')
+    expect(heads().map((h: any) => h.attributes('aria-expanded'))).toEqual(['false', 'true'])
     // The closed group still says it holds the current page.
-    expect(heads()[1].find('.drawer-group__dot').exists()).toBe(true)
-    expect(heads()[1].find('.drawer-group__count').text()).toBe('2')
+    expect(heads()[0].find('.drawer-group__dot').exists()).toBe(true)
+    expect(heads()[0].find('.drawer-group__count').text()).toBe('2')
+  })
+
+  test('the menu heads with "New execution", and the rail with a round "+"', async () => {
+    ;({ wrapper } = await mountDrawer('/project-execution'))
+    const rail = wrapper.find('.app-drawer__rail > :first-child')
+    expect(rail.attributes('data-testid')).toBe('app-drawer-rail-new-execution')
+    expect(rail.attributes('href')).toBe('/project-execution')
+    expect(rail.attributes('aria-label')).toBe('drawer.newExecution')
+
+    state.store.isDrawerPinned = true
+    await flushPromises()
+    const create = wrapper.find('.app-drawer__nav > :first-child')
+    expect(create.attributes('data-testid')).toBe('app-drawer-new-execution')
+    expect(create.attributes('href')).toBe('/project-execution')
+    expect(create.text()).toBe('drawer.newExecution')
+  })
+
+  test('a user who may not create executions does not get the button', async () => {
+    state.canCreate = false
+    state.store.isDrawerPinned = true
+    ;({ wrapper } = await mountDrawer())
+    expect(wrapper.find('[data-testid="app-drawer-new-execution"]').exists()).toBe(false)
+    state.store.isDrawerPinned = false
+    await flushPromises()
+    expect(wrapper.find('[data-testid="app-drawer-rail-new-execution"]').exists()).toBe(false)
   })
 
   test('a group that is a page of its own is a link', async () => {
     state.store.isDrawerPinned = true
     ;({ wrapper } = await mountDrawer('/agent'))
-    const agent = wrapper.find('a.drawer-group__head')
+    const agent = wrapper.findAll('a.drawer-group__head').find((link: any) => link.text() === 'Agent')
     expect(agent.attributes('href')).toBe('/agent')
     expect(agent.classes()).toContain('is-active')
   })

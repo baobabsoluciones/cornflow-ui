@@ -10,7 +10,7 @@
     <CatalogBlock
       name="AppDrawer"
       api="no props: it reads the store (pinned, loaded execution, DAGs, user) and the route"
-      note="Folded; pinned with no execution loaded; pinned with one loaded. With several DAGs, the line under the logo is the module selector."
+      note="Folded; pinned with no execution loaded; pinned with one loaded. It heads with &quot;New execution&quot;; with several DAGs, the line under the logo is the module selector."
       column
     >
       <label class="toggle">

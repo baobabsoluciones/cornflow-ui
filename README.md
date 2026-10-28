@@ -9,12 +9,14 @@ Cornflow-UI follows a modular architecture organized into distinct functional ar
 ## Side menu
 
 - The menu takes the full height of the window; the execution tab bar starts where it ends.
+- It heads with **New execution**, a button filled in the app's primary colour, for a user who may
+  create executions (the `project-execution` view).
 - It keeps apart what belongs to the loaded execution from what is the same for all of them. The
   loaded execution heads a block that holds its own groups: its input data, its results with the
   dashboards, and the app sections that need an execution (`requiresSelectedExecution`). The
-  other groups follow, below a divider.
+  other groups follow, below a divider, the history first.
 - **Folded** (default): a 56 px rail with the app's icon (with several DAGs, the initial of the
-  active one on it), the loaded execution (a dot in the colour of
+  active one on it), a round "+" for a new execution, the loaded execution (a dot in the colour of
   its state) boxed with the icons of its groups, one icon per shared group, and the user's
   initial. Resting the pointer on it opens the whole menu over the content; it folds again when
   the pointer leaves. Clicking an icon pins it open.
@@ -23,6 +25,7 @@ Cornflow-UI follows a modular architecture organized into distinct functional ar
     line, the app name and, with several DAGs, the active one (its label from `schemaLabels`); for
     a user who may switch DAG, that line is a pill that opens the module selector (see
     [Module selector and top bar](#module-selector-and-top-bar));
+  - **New execution**, to the screen that creates one;
   - **Loaded execution**: the selected execution with its date and state. It opens the DAG's
     five latest executions (a dot in the colour of each state) to switch to, and "See full
     history". Picking one loads it if needed and selects its tab, as "Load" does in the history.
@@ -35,8 +38,8 @@ Cornflow-UI follows a modular architecture organized into distinct functional ar
   on its own; closed, it shows a dot when it holds the current page, and how many pages it has.
 - **Narrow screens** (768 px or less): pinned, the menu lies over the content with a scrim, and
   closes with the X.
-- **Groups**, in order: executions (history, new execution), the entries of premium modules, the
-  app's sections (`appSections`), master data (one group per schema section, or a single
+- **Groups**, in order: the history of executions (a page of its own), the entries of premium
+  modules, the app's sections (`appSections`), master data (one group per schema section, or a single
   "Master data"), and, with an execution selected, its input data and results with the
   dashboards; last, administration for admins when roles management is on. Each one is gated by
   the user's roles and the active DAG.

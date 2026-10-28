@@ -1,13 +1,14 @@
 <!--
   AppDrawer: the side menu, the full height of the window.
 
-  The menu keeps apart what belongs to the loaded execution from what is the same for all of them:
+  It heads with "New execution", filled in the app's primary colour, for a user who may create one.
+  Then it keeps apart what belongs to the loaded execution from what is the same for all of them:
   the loaded execution heads a block that holds its own groups (its input data, its results and
   dashboards, the app sections that need an execution); the rest of the groups follow, below a
-  divider.
+  divider, the history first.
 
   - Folded (default): a 56 px rail with the logo (with several DAGs, the initial of the active one
-    on it), the loaded execution (a dot in the colour of its
+    on it), a round "+" to create an execution, the loaded execution (a dot in the colour of its
     state) boxed with the icons of its groups, then one icon per shared group. Resting the pointer
     on it opens the whole menu over the content; it folds again when the pointer leaves. The pin
     keeps it open.
@@ -68,6 +69,16 @@
       </header>
 
       <nav class="app-drawer__nav" :aria-label="$t('drawer.label')">
+        <RouterLink
+          v-if="canCreateExecution"
+          to="/project-execution"
+          class="app-drawer__create"
+          data-testid="app-drawer-new-execution"
+          @click="closeOnNarrow"
+        >
+          <CoreIcon name="mdi-plus" :size="18" />
+          <span>{{ $t('drawer.newExecution') }}</span>
+        </RouterLink>
         <section class="app-drawer__execution" data-testid="app-drawer-execution-block">
           <span class="app-drawer__label">{{ $t('drawer.loadedExecution') }}</span>
           <CorePopover v-model:open="selectorOpen" align="start" :width="226">
@@ -155,6 +166,16 @@
       </div>
 
       <nav class="app-drawer__rail" :aria-label="$t('drawer.label')">
+        <RouterLink
+          v-if="canCreateExecution"
+          to="/project-execution"
+          class="app-drawer__rail-button is-create"
+          :aria-label="$t('drawer.newExecution')"
+          :title="$t('drawer.newExecution')"
+          data-testid="app-drawer-rail-new-execution"
+        >
+          <CoreIcon name="mdi-plus" :size="20" />
+        </RouterLink>
         <div
           v-for="block in railBlocks"
           :key="block.key"
@@ -276,7 +297,7 @@ const store = useGeneralStore()
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
-const { sections } = useDrawerSections()
+const { sections, canCreateExecution } = useDrawerSections()
 const executions = reactive(useDrawerExecutions())
 const modules = reactive(useSchemaSwitch())
 
@@ -624,6 +645,39 @@ async function signOut() {
   padding-bottom: calc(var(--spacing) * 2);
 }
 
+/* Creating an execution heads the menu, filled in the app's primary colour. */
+.app-drawer__create {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--spacing) * 1.5);
+  height: 40px;
+  margin: calc(var(--spacing) * 3) calc(var(--spacing) * 2.5) 0;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+  font-size: var(--text-md);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+}
+
+/* The app's stylesheet colours every link (`!important`), so the label and icon take theirs. */
+.app-drawer__create > *,
+.app-drawer__rail-button.is-create > * {
+  color: var(--color-on-primary);
+}
+
+.app-drawer__create:hover,
+.app-drawer__rail-button.is-create:hover {
+  filter: brightness(0.92);
+}
+
+.app-drawer__create:focus-visible,
+.app-drawer__rail-button.is-create:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 /* The loaded execution and its groups, boxed together. */
 .app-drawer__execution {
   display: flex;
@@ -893,6 +947,13 @@ async function signOut() {
 .app-drawer__rail-button.is-active {
   background: var(--color-primary-subtle);
   color: var(--color-primary);
+}
+
+.app-drawer__rail-button.is-create {
+  margin-top: calc(var(--spacing) * 1);
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  box-shadow: var(--shadow-sm);
 }
 
 .app-drawer__rail-dot {
