@@ -59,6 +59,17 @@ At the foot of the app, from where the side menu ends, a tab per loaded executio
 - The × closes a tab. A new execution starts from the side menu ("New execution").
 - Premium modules may decorate the tabs (`decorateExecutionTabs`), e.g. the ⭐ of the current plan.
 
+## User settings
+
+The user's own page (`views/UserSettingsView.vue`, reached from the user at the foot of the side
+menu), a card per subject:
+
+- **Account**: the name, e-mail, user name and roles of who is signed in.
+- **Language** of the app, among the ones it offers (`languages` in the app config).
+- **Password**, when the app signs in with Cornflow (`auth.type: 'cornflow'`): the new one twice,
+  with what it needs ticked as it is typed (at least 5 characters; upper and lower case letters,
+  numbers and a special character; no spaces; both the same). It is sent once it meets all of it.
+
 ## Execution management section
 
 The execution management section handles the complete lifecycle of optimization executions, from creation to historical tracking.
