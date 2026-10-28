@@ -577,7 +577,7 @@ export default {
     pin: 'Pin the menu open',
     unpin: 'Unpin the menu',
     close: 'Close the menu',
-    history: 'History',
+    history: 'Execution history',
     newExecution: 'New execution',
     loadedExecution: 'Loaded execution',
     noExecution: 'No execution loaded',
@@ -628,7 +628,7 @@ export default {
       },
     },
     filterAll: 'All',
-    title: 'Version history',
+    title: 'Execution history',
     description:
       'Select an execution to see its detail and load it in a new tab.',
     yesterday: 'Yesterday',
