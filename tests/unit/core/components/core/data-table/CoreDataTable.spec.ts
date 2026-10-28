@@ -139,6 +139,17 @@ describe('CoreDataTable', () => {
     expect(wrapper.emitted('action')).toEqual([['relaunch']])
   })
 
+  test('in full screen the table sits over the page, and a click outside it leaves', async () => {
+    const wrapper = mountTable({ fullscreen: true })
+    await flushPromises()
+    const card = document.body.querySelector<HTMLElement>(':scope > [data-testid="data-table"]')
+    expect(card?.classList).toContain('is-fullscreen')
+    card?.click()
+    expect(wrapper.emitted('update:fullscreen')).toBeUndefined()
+    document.body.querySelector<HTMLElement>(':scope > .data-table__scrim')?.click()
+    expect(wrapper.emitted('update:fullscreen')).toEqual([[false]])
+  })
+
   test('adding a filter appends an empty one on that column', async () => {
     const wrapper = mountTable()
     await wrapper.find('[data-testid="data-table-add-filter"]').trigger('click')
