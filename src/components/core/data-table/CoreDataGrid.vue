@@ -699,12 +699,10 @@ function startResize(column: DataColumn, event: PointerEvent) {
   event.preventDefault()
   event.stopPropagation()
   const index = props.columns.indexOf(column)
-  widths.value = {
-    ...widths.value,
-    ...Object.fromEntries(props.columns.slice(0, index + 1).map((c) => [c.key, shownWidth(c)])),
-  }
+  const shown = Object.fromEntries(props.columns.slice(0, index + 1).map((c) => [c.key, shownWidth(c)]))
+  widths.value = { ...widths.value, ...shown }
   const startX = event.clientX
-  const startWidth = widthOf(column)
+  const startWidth = shown[column.key]
   const maxWidth = Math.max(600, startWidth)
   resizing.value = column.key
   const move = (moveEvent: PointerEvent) => {
