@@ -430,6 +430,24 @@ export default {
     microsoft_not_available:
       'El servicio de autenticación con Microsoft no está disponible',
   },
+  drawer: {
+    label: 'Menú principal',
+    pin: 'Fijar el menú',
+    unpin: 'Desfijar el menú',
+    close: 'Cerrar el menú',
+    history: 'Historial de ejecuciones',
+    newExecution: 'Nueva ejecución',
+    loadedExecution: 'Ejecución cargada',
+    noExecution: 'Ninguna ejecución cargada',
+    pickExecution: 'Elige una de las últimas',
+    executionHint: 'Carga una para ver aquí sus datos de entrada, resultados y dashboards.',
+    latestExecutions: 'Últimas ejecuciones',
+    noExecutions: 'Todavía no hay ejecuciones',
+    seeHistory: 'Ver historial completo',
+    containsCurrent: 'La página actual está en este grupo',
+    userSettings: 'Ajustes de usuario',
+    logout: 'Cerrar sesión',
+  },
   logOut: {
     title: 'Cerrar sesión',
     message: '¿Está seguro de que desea cerrar sesión?',
@@ -491,7 +509,7 @@ export default {
       },
     },
     filterAll: 'Todos',
-    title: 'Historial de versiones',
+    title: 'Historial de ejecuciones',
     description:
       'Selecciona una ejecución para ver su detalle y cargarla en una nueva pestaña.',
     yesterday: 'Ayer',
@@ -632,7 +650,6 @@ export default {
     download: 'Descargar manual de usuario',
   },
   navigation: {
-    executions: 'Ejecuciones',
     masterData: 'Tablas de configuración',
     inputData: 'Datos de entrada',
     results: 'Resultados',
