@@ -430,6 +430,10 @@ export default {
     microsoft_not_available:
       'El servicio de autenticación con Microsoft no está disponible',
   },
+  executionTabs: {
+    label: 'Ejecuciones abiertas',
+    close: 'Cerrar {name}',
+  },
   drawer: {
     label: 'Menú principal',
     pin: 'Fijar el menú',

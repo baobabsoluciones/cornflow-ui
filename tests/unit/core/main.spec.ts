@@ -110,7 +110,6 @@ vi.mock('mango-vue', () => ({
   MBaseModal: { name: 'MBaseModal' },
   MSnackbar: { name: 'MSnackbar' },
   MTitleView: { name: 'MTitleView' },
-  MAppBarTab: { name: 'MAppBarTab' },
   MInfoCard: { name: 'MInfoCard' },
   MPanelData: { name: 'MPanelData' },
   MInputField: { name: 'MInputField' },
@@ -180,7 +179,7 @@ describe('Main Module Integration', () => {
 
     const expectedComponents = [
       'MAppDrawer', 'MFilterSearch', 'MButton', 'MFormSteps', 'MDragNDropFile',
-      'MBaseModal', 'MTitleView', 'MAppBarTab', 'MInfoCard', 'MPanelData',
+      'MBaseModal', 'MTitleView', 'MInfoCard', 'MPanelData',
       'MSnackbar', 'MInputField', 'MDataTable', 'MCheckboxOptions', 'MTabTable'
     ]
 
@@ -350,14 +349,14 @@ describe('Main Module Integration', () => {
     ])
   })
 
-  test('should register exactly 15 components', async () => {
+  test('should register exactly 14 components', async () => {
     const { initApp } = await import('@cornflow-ui/core/main')
     
     await initApp()
 
     // Filter component calls (excluding other chained calls)
     const componentCalls = mockApp.component.mock.calls
-    expect(componentCalls).toHaveLength(15)
+    expect(componentCalls).toHaveLength(14)
   })
 
   test('should handle app creation with correct App component', async () => {
@@ -419,7 +418,7 @@ describe('Main Module - Dependency Tests', () => {
     
     const expectedComponents = [
       'MAppDrawer', 'MFilterSearch', 'MButton', 'MFormSteps', 'MDragNDropFile',
-      'MBaseModal', 'MSnackbar', 'MTitleView', 'MAppBarTab', 'MInfoCard',
+      'MBaseModal', 'MSnackbar', 'MTitleView', 'MInfoCard',
       'MPanelData', 'MInputField', 'MDataTable', 'MCheckboxOptions', 'MTabTable'
     ]
 
