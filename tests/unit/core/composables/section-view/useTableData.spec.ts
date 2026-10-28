@@ -695,6 +695,16 @@ describe('useTableData — loadData', () => {
     expect(repoCtrl.calls.get).toBeUndefined()
   })
 
+  test('a table whose list has no endpoint loads empty, without an error', async () => {
+    const { api } = mountTableData({ title: 'Plan', get_list: { http_method: 'GET' } })
+    await api.loadData()
+    await api.loadMore()
+    expect(repoCtrl.calls.get).toBeUndefined()
+    expect(api.items.value).toEqual([])
+    expect(api.error.value).toBeNull()
+    expect(api.hasMore.value).toBe(false)
+  })
+
   test('loadData sets error on reject', async () => {
     repoCtrl.getListResult = []
     repoCtrl.rejectWith = new Error('list failed')
