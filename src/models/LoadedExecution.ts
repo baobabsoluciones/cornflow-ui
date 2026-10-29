@@ -12,6 +12,11 @@ export class LoadedExecution {
   name: string
   description: string
   createdAt: string
+  /** Last update of the execution (when it finished, once it has). */
+  finishedAt: string | null
+  /** Who launched it: user name, and full name where the user has one. */
+  userName: string | null
+  userFullName: string | null
   state: number
   messageState: string
   /** The solver's log status (`status_code`: the solution state), when the execution has one. */
@@ -25,6 +30,9 @@ export class LoadedExecution {
     name: string
     description: string
     createdAt: string
+    finishedAt?: string | null
+    userName?: string | null
+    userFullName?: string | null
     state: number
     message: string
     solutionState?: { status_code?: number | null } | null
@@ -35,6 +43,9 @@ export class LoadedExecution {
     this.name = params.name
     this.description = params.description
     this.createdAt = params.createdAt
+    this.finishedAt = params.finishedAt ?? null
+    this.userName = params.userName ?? null
+    this.userFullName = params.userFullName ?? null
     this.state = params.state
     this.messageState = params.message
     this.solutionState = params.solutionState ?? null
