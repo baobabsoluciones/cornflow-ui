@@ -78,8 +78,8 @@ const emit = defineEmits<{
   display: flex;
   align-items: stretch;
   box-sizing: border-box;
-  height: 40px;
-  border-top: 1px solid var(--color-border-subtle);
+  height: var(--bottom-bar-height);
+  border-top: 1px solid var(--color-divider);
   background: var(--color-surface-muted);
   font-family: var(--font-sans);
   font-size: var(--text-md);

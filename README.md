@@ -1343,6 +1343,9 @@ Reka directly.
 Tones (`neutral`, `primary`, `info`, `success`, `warning`, `danger`) have four tokens each:
 `--color-<tone>` and its `-soft`, `-border` and `-strong` variants (see `tokens.css`). Overlays sit
 above Vuetify's with `--z-popover`, `--z-dialog` and `--z-toast`.
+The execution tab bar at the foot of the window is `--bottom-bar-height` tall, as is the side
+menu's user row beside it; an app view that fills the window leaves it free:
+`height: calc(100vh - var(--bottom-bar-height))`.
 
 ## 3. Important disclaimer
 

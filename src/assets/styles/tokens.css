@@ -91,6 +91,12 @@ body {
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
   --shadow-xl: 0 16px 40px rgba(15, 23, 32, 0.18);
 
+  /*
+    Height of the bar at the foot of the window (the execution tabs) and of the side menu's user
+    row beside it, so their top lines meet. The views leave it free under them.
+  */
+  --bottom-bar-height: 48px;
+
   /* Layers of what opens over the page; above Vuetify's overlays while both live together. */
   --z-popover: 2500;
   --z-dialog: 2600;
