@@ -54,6 +54,7 @@ import FormsSection from './sections/FormsSection.vue'
 import HistorySection from './sections/HistorySection.vue'
 import MenusSection from './sections/MenusSection.vue'
 import OverlaysSection from './sections/OverlaysSection.vue'
+import RolesSection from './sections/RolesSection.vue'
 import SideMenuSection from './sections/SideMenuSection.vue'
 import SignInSection from './sections/SignInSection.vue'
 import StatusSection from './sections/StatusSection.vue'
@@ -72,6 +73,7 @@ const sections = [
   { id: 'overlays', title: 'Dialogs and toasts', component: OverlaysSection },
   { id: 'history', title: 'Execution history', component: HistorySection },
   { id: 'create-execution', title: 'Create execution', component: CreateExecutionSection },
+  { id: 'roles', title: 'Roles management', component: RolesSection },
   { id: 'side-menu', title: 'Side menu', component: SideMenuSection },
   { id: 'sign-in', title: 'Sign-in', component: SignInSection },
 ]

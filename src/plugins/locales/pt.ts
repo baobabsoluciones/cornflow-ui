@@ -38,6 +38,7 @@ export default {
   baobab: 'baobab',
   general: {
     loading: 'A carregar...',
+    moreActions: 'Mais ações',
   },
   createExecution: {
     title: 'Nova execução',
@@ -215,19 +216,13 @@ export default {
   },
   projectExecution: {
     title: 'Execução do projeto',
-    description:
-      'Crie uma nova execução ou carregue uma existente para visualizar a solução que procura. Para tal, siga os passos abaixo:',
-    continueButton: 'Continuar',
-    previousButton: 'Anterior',
     maximize: 'Maximizar',
     minimize: 'Minimizar',
     downloadExcel: 'Transferir dados',
     uploadExcel: 'Substituir dados',
     snackbar: {
-      instanceDataChecksSuccess: 'Verificação de dados concluída com sucesso',
       instanceDataChecksError: 'Ocorreu um erro ao verificar os dados',
       instanceCreationError: 'Ocorreu um erro ao criar a instância',
-      successCreate: 'Execução criada com sucesso',
       errorCreate: 'Ocorreu um erro ao criar a execução',
       succesSearch: 'Pesquisa concluída com sucesso',
       errorSearch: 'Ocorreu um erro ao pesquisar execuções',
@@ -239,26 +234,7 @@ export default {
       autoLoadError:
         'Ocorreu um erro inesperado ao obter as informações da execução',
     },
-    exitConfirmation: {
-      title: 'Sair do processo de criação',
-      message:
-        'Tem a certeza de que pretende sair do processo de criação da execução?\nSe sair agora, o fluxo será reiniciado e todo o progresso realizado será perdido.',
-      confirmButton: 'Sim, sair',
-      cancelButton: 'Cancelar',
-    },
     steps: {
-      step1: {
-        firstOption: {
-          title: 'Criar uma nova execução',
-          description:
-            'Será criada uma nova execução, para a qual será necessário carregar uma nova instância da tabela de dados de entrada com a estrutura correta.',
-        },
-        secondOption: {
-          title: 'Pesquisar e carregar uma execução existente',
-          description:
-            'Pesquise por data uma execução existente e carregue-a para a visualizar.',
-        },
-      },
       nameDescription: {
         title: 'Nome e descrição',
         description: 'Atribua um nome e uma descrição à execução',
@@ -367,53 +343,23 @@ export default {
         },
       },
       // Legacy step keys for backward compatibility
-      step2: {
-        nameTitleField: 'Nome',
-        descriptionTitleField: 'Descrição',
-        namePlaceholder: 'Introduza um nome',
-        descriptionPlaceholder: 'Introduza uma descrição',
-      },
       step3: {
         loadInstance: {
-          dragAndDropDescription:
-            'Arraste e largue aqui o seu ficheiro / ficheiros de instância',
-          uploadFile: 'Carregar ficheiro',
           noSchemaError:
             'Não foi encontrado nenhum esquema: está ligado ao servidor?',
           instanceSchemaError: 'A instância não cumpre o esquema ',
           instanceLoaded: 'Instância carregada com sucesso',
-          instancesLoaded:
-            'Ficheiros combinados para criar a instância e carregados com sucesso',
-          warningTitle: 'Aviso',
-          loadInstance: 'Carregar instância',
           selectedFiles: 'Ficheiros selecionados',
-          invalidFileFormat: 'Formato de ficheiro inválido. Tente novamente.',
           unexpectedError: 'Ocorreu um erro inesperado. Tente novamente.',
           instanceLoadedWithErrors: 'Instância carregada com erros',
           noValidInstancesError:
             'Não foram encontradas instâncias válidas nos ficheiros carregados',
           downloadExcel: 'Transferir Excel',
-          downloadAllErrors: 'Transferir todos os erros',
           showingErrorsTruncated:
             'A mostrar os primeiros {displayed} de {total} erros. Transfira a lista completa de erros para ver todos.',
-          totalErrors: 'Existem {total} erros',
-          andMoreErrors: 'e mais {count}',
           errorsDownloadStarted: 'Transferência do ficheiro de erros iniciada',
           errorsDownloadError: 'Erro ao transferir o ficheiro de erros',
           noFilesSelectedError: 'Selecione pelo menos um ficheiro',
-          optionalOrDivider: 'ou',
-          loadFromDb: 'Obter todos os dados da base de dados',
-          preEtlParamsHint: 'Dados com os quais a instância será carregada',
-          source: 'Origem dos dados',
-          sourceDatabase: 'Tabelas mestras',
-          sourceDatabaseDescription: 'Dados atuais das tabelas mestras',
-          sourceFile: 'Ficheiro',
-          sourceFileDescription: 'Carregue um ficheiro com os dados',
-          databaseSummary: 'Serão carregados os dados atuais das tabelas mestras.',
-          reload: 'Carregar novamente',
-          loaded: 'Dados carregados',
-          preEtlChangedAfterLoad:
-            'Alterou estes valores depois do carregamento. Carregue novamente para que sejam aplicados à instância.',
         },
       },
       step4: {
@@ -429,24 +375,9 @@ export default {
         secondsSuffix: 'seg',
       },
       step8: {
-        resolve: 'Resolver',
-        successMessage:
-          'A execução foi iniciada com sucesso. Foi aberto um novo separador na barra inferior. Pode clicar nesse separador para o abrir.',
-        loadNewExecution: 'Carregar nova execução',
         developerMode: {
-          title: 'Modo de programador',
-          normalSolve: 'Resolver normalmente',
-          uploadSolution: 'Carregar solução',
-          dragAndDropDescription:
-            'Arraste e largue um ficheiro de solução ou clique para procurar',
-          uploadFile: 'Carregar ficheiro de solução',
-          invalidFileFormat:
-            'Formato de ficheiro inválido. Carregue um ficheiro JSON, XLSX ou CSV.',
-          solutionSchemaError:
-            'O ficheiro de solução não corresponde ao esquema exigido',
           unsupportedFileFormat: 'Formato de ficheiro não suportado',
           fileReadError: 'Erro ao ler o ficheiro',
-          noSolutionData: 'Carregue primeiro um ficheiro de solução',
           uploadError: 'Erro ao carregar os dados da solução',
         },
       },
@@ -474,10 +405,6 @@ export default {
     },
     stagingWarning:
       'Está atualmente a trabalhar num ambiente de staging. Este ambiente destina-se apenas a fins de teste e desenvolvimento. Para execuções reais, mude para o ambiente de produção.',
-    checks: {
-      blockingErrorsFound:
-        'Foram encontrados erros durante a verificação dos dados. Corrija-os antes de continuar.',
-    },
   },
   executionTable: {
     date: 'Hora',
@@ -757,6 +684,11 @@ export default {
     licences: 'Licenças',
     close: 'Fechar',
     download: 'Transferir manual do utilizador',
+  },
+  warnings: {
+    title: 'Avisos',
+    downloadAll: 'Transferir todos',
+    noWarnings: 'Não há avisos.',
   },
   navigation: {
     masterData: 'Tabelas de configuração',
@@ -1282,13 +1214,13 @@ export default {
     save: 'Guardar',
     searchUsers: 'Pesquisar utilizadores...',
     colUsername: 'Nome de utilizador',
-    colName: 'Nome',
     colEmail: 'E-mail',
     colRoles: 'Funções',
     noRoles: 'Ainda não existem funções definidas.',
     noRoles2: 'Sem funções',
     errorLoadRoles: 'Erro ao carregar as funções.',
     errorLoadUsers: 'Erro ao carregar os utilizadores.',
+    noUsersMatch: 'Nenhum utilizador corresponde à pesquisa.',
     errorSaveRole: 'Erro ao guardar a função.',
     errorDeleteRole: 'Erro ao eliminar a função.',
     errorAssignRole: 'Erro ao atualizar as funções do utilizador.',

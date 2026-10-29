@@ -1,12 +1,8 @@
 import { describe, test, expect } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
-import { createVuetify } from 'vuetify'
-import * as components from 'vuetify/components'
-import * as directives from 'vuetify/directives'
 import FilterChip from '@cornflow-ui/core/components/core/filters/FilterChip.vue'
 import DateFilterChip from '@cornflow-ui/core/components/core/filters/DateFilterChip.vue'
 import AddFilterMenu from '@cornflow-ui/core/components/core/filters/AddFilterMenu.vue'
-import OptionCards from '@cornflow-ui/core/components/core/OptionCards.vue'
 
 // The menus open in a popover rendered at the end of the document (gone once the test unmounts).
 const menu = () => document.body.querySelector<HTMLElement>('.core-menu')
@@ -252,41 +248,5 @@ describe('AddFilterMenu', () => {
 
     expect(wrapper.emitted('add')).toEqual([['user']])
     expect(menu()).toBeNull()
-  })
-})
-
-describe('OptionCards', () => {
-  const global = { plugins: [createVuetify({ components, directives })] }
-
-  const options = [
-    {
-      value: 'operative',
-      title: 'Operative',
-      description: 'Current staff only',
-    },
-    { value: 'strategic', title: 'Strategic' },
-  ]
-
-  test('shows each option with its description and marks the picked one', () => {
-    const wrapper = mount(OptionCards, {
-      props: { modelValue: 'strategic', options },
-      global,
-    })
-
-    const cards = wrapper.findAll('.option-card')
-    expect(cards[0].text()).toContain('Current staff only')
-    expect(cards[1].classes()).toContain('is-selected')
-    expect(cards[1].attributes('aria-pressed')).toBe('true')
-  })
-
-  test('clicking a card emits its value', async () => {
-    const wrapper = mount(OptionCards, {
-      props: { modelValue: null, options },
-      global,
-    })
-
-    await wrapper.find('[data-testid="option-card-operative"]').trigger('click')
-
-    expect(wrapper.emitted('update:modelValue')).toEqual([['operative']])
   })
 })

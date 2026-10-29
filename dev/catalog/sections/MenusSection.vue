@@ -103,10 +103,30 @@
 
     <CatalogBlock
       name="CoreDropdownMenu"
-      api="items · sections · closeOnItemClick · v-model → item-click · slot activator"
+      api="items · sections · closeOnItemClick · v-model → item-click · slots activator, content"
       note="The menu of the actions in a view's title (CoreTitleView's dropdown)."
     >
       <CoreDropdownMenu :sections="dropdownSections" />
+    </CatalogBlock>
+
+    <CatalogBlock
+      name="HelpMenu"
+      api="(no props) · helpMenuFiles of the app config · licences and versions from the store"
+      note="The help button at the top right of every view: the help centre, the licences and the versions."
+    >
+      <div class="help-frame">
+        <HelpMenu />
+      </div>
+    </CatalogBlock>
+
+    <CatalogBlock
+      name="WarningsPanel"
+      api="(no props) · the warnings of the store · enableWarnings in the app config"
+      note="The bell under the help button: marked while there are warnings, which it lists and downloads."
+    >
+      <div class="help-frame is-tall">
+        <WarningsPanel />
+      </div>
     </CatalogBlock>
   </div>
 </template>
@@ -114,6 +134,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import CoreDropdownMenu from '@cornflow-ui/core/components/core/CoreDropdownMenu.vue'
+import HelpMenu from '@cornflow-ui/core/components/core/HelpMenu.vue'
+import WarningsPanel from '@cornflow-ui/core/components/WarningsPanel.vue'
 import CoreMenu from '@cornflow-ui/core/components/core/CoreMenu.vue'
 import CorePopover from '@cornflow-ui/core/components/core/CorePopover.vue'
 import CoreSearchInput from '@cornflow-ui/core/components/core/table/CoreSearchInput.vue'
@@ -217,5 +239,17 @@ const valueItems = [
 .popover-text {
   margin: calc(var(--spacing) * 2);
   font-size: var(--text-md);
+}
+
+/* The help button is fixed to the window: the frame's transform keeps it inside. */
+.help-frame {
+  position: relative;
+  width: 320px;
+  height: 72px;
+  transform: translateZ(0);
+}
+
+.help-frame.is-tall {
+  height: 116px;
 }
 </style>

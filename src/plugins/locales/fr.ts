@@ -48,6 +48,7 @@ export default {
   },
   general: {
     loading: 'Chargement...',
+    moreActions: 'Plus d’actions',
   },
   createExecution: {
     title: 'Nouvelle exécution',
@@ -226,17 +227,11 @@ export default {
   projectExecution: {
     create: 'Nouvelle exécution',
     title: 'Exécution du projet',
-    description:
-      'Créez une nouvelle exécution ou chargez une exécution existante pour visualiser la solution que vous recherchez. Pour ce faire, suivez les étapes ci-dessous :',
-    continueButton: 'Continuer',
-    previousButton: 'Précédent',
     maximize: 'Agrandir',
     minimize: 'Réduire',
     snackbar: {
-      instanceDataChecksSuccess: 'Vérification des données réussie',
       instanceDataChecksError:
         'Une erreur est survenue lors de la vérification des données',
-      successCreate: 'Exécution créée avec succès',
       errorCreate: "Une erreur est survenue lors de la création de l'exécution",
       succesSearch: 'Recherche terminée avec succès',
       errorSearch: "Une erreur est survenue lors de la recherche d'exécutions",
@@ -254,16 +249,6 @@ export default {
         title: 'Nouvelle exécution',
         description: 'Créer une nouvelle exécution',
         titleContent: 'Choisissez une option',
-        firstOption: {
-          title: 'Créer une nouvelle exécution',
-          description:
-            "Une nouvelle exécution sera créée pour laquelle une nouvelle instance du tableau de données d'entrée avec la structure correcte devra être téléchargée.",
-        },
-        secondOption: {
-          title: 'Rechercher et charger une exécution existante',
-          description:
-            'Recherchez par date une exécution existante et chargez-la pour la visualiser.',
-        },
       },
       step2Search: {
         title: 'Sélectionner les dates',
@@ -314,47 +299,23 @@ export default {
         namePlaceholder: 'Veuillez insérer un nom',
         descriptionPlaceholder: 'Veuillez insérer une description',
         loadInstance: {
-          dragAndDropDescription:
-            "Faites glisser et déposez votre ou vos fichiers d'instance ici",
-          uploadFile: 'Télécharger le fichier',
           noSchemaError:
             "Aucun schéma n'a été trouvé : êtes-vous connecté au serveur ?",
           instanceSchemaError: "L'instance ne respecte pas le schéma",
           instanceLoaded: 'Instance chargée avec succès',
-          instancesLoaded:
-            'Fichiers fusionnés pour créer l’instance et chargés avec succès',
-          warningTitle: 'Avertissement',
-          loadInstance: "Charger l'instance",
           selectedFiles: 'Fichiers sélectionnés',
-          invalidFileFormat:
-            'Format de fichier non valide. Veuillez réessayer.',
           unexpectedError:
             "Une erreur inattendue s'est produite. Veuillez réessayer.",
           instanceLoadedWithErrors: 'Instance chargée avec des erreurs',
           noValidInstancesError:
             'Aucune instance valide trouvée dans les fichiers téléchargés',
           downloadExcel: 'Télécharger Excel',
-          downloadAllErrors: 'Télécharger toutes les erreurs',
           showingErrorsTruncated:
             'Affichage des {displayed} premières erreurs sur {total}. Téléchargez la liste complète des erreurs pour voir toutes les erreurs.',
-          totalErrors: 'Il y a {total} erreurs',
-          andMoreErrors: 'et {count} de plus',
           errorsDownloadStarted: "Téléchargement du fichier d'erreurs démarré",
           errorsDownloadError:
             "Erreur lors du téléchargement du fichier d'erreurs",
           noFilesSelectedError: 'Veuillez sélectionner au moins un fichier',
-          optionalOrDivider: 'ou',
-          preEtlParamsHint: "Données avec lesquelles l'instance sera chargée",
-          source: 'Origine des données',
-          sourceDatabase: 'Tables maîtres',
-          sourceDatabaseDescription: 'Données actuelles des tables maîtres',
-          sourceFile: 'Fichier',
-          sourceFileDescription: 'Téléversez un fichier avec les données',
-          databaseSummary: 'Les données actuelles des tables maîtres seront chargées.',
-          reload: 'Recharger',
-          loaded: 'Données chargées',
-          preEtlChangedAfterLoad:
-            "Vous avez modifié ces données après le chargement. Rechargez pour qu'elles s'appliquent à l'instance.",
         },
       },
       step4: {
@@ -397,10 +358,6 @@ export default {
     },
     stagingWarning:
       "Vous travaillez actuellement dans un environnement de test. Cet environnement est destiné uniquement aux tests et au développement. Pour des exécutions réelles, veuillez utiliser l'environnement de production.",
-    checks: {
-      blockingErrorsFound:
-        'Des erreurs ont été trouvées lors de la vérification des données. Veuillez les corriger avant de continuer.',
-    },
   },
   executionTable: {
     date: 'Temps',
@@ -657,6 +614,11 @@ export default {
     licences: 'Licences',
     close: 'Fermer',
     download: "Télécharger le manuel de l'utilisateur",
+  },
+  warnings: {
+    title: 'Avertissements',
+    downloadAll: 'Tout télécharger',
+    noWarnings: 'Il n’y a aucun avertissement.',
   },
   navigation: {
     masterData: 'Données de configuration',
@@ -1026,13 +988,13 @@ export default {
     save: 'Enregistrer',
     searchUsers: 'Rechercher des utilisateurs...',
     colUsername: "Nom d'utilisateur",
-    colName: 'Nom',
     colEmail: 'E-mail',
     colRoles: 'Rôles',
     noRoles: 'Aucun rôle défini pour le moment.',
     noRoles2: 'Aucun rôle',
     errorLoadRoles: 'Erreur lors du chargement des rôles.',
     errorLoadUsers: 'Erreur lors du chargement des utilisateurs.',
+    noUsersMatch: 'Aucun utilisateur ne correspond à la recherche.',
     errorSaveRole: "Erreur lors de l'enregistrement du rôle.",
     errorDeleteRole: 'Erreur lors de la suppression du rôle.',
     errorAssignRole: "Erreur lors de la mise à jour des rôles de l'utilisateur.",

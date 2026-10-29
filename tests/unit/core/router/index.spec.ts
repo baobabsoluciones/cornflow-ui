@@ -47,12 +47,6 @@ vi.mock('@cornflow-ui/core/views/IndexView.vue', () => ({
 vi.mock('@cornflow-ui/core/views/LoginView.vue', () => ({
   default: { name: 'LoginView', template: '<div>Login</div>' },
 }))
-vi.mock('@cornflow-ui/core/views/ProjectExecutionView.vue', () => ({
-  default: {
-    name: 'ProjectExecutionView',
-    template: '<div>ProjectExecution</div>',
-  },
-}))
 vi.mock('@cornflow-ui/core/views/CreateExecutionView.vue', () => ({
   default: {
     name: 'CreateExecutionView',
@@ -76,6 +70,9 @@ vi.mock('@cornflow-ui/core/views/OutputDataView.vue', () => ({
 }))
 vi.mock('@cornflow-ui/core/views/UserSettingsView.vue', () => ({
   default: { name: 'UserSettingsView', template: '<div>UserSettings</div>' },
+}))
+vi.mock('@cornflow-ui/core/views/RolesManagementView.vue', () => ({
+  default: { name: 'RolesManagementView', template: '<div>RolesManagement</div>' },
 }))
 
 // Mock SectionView component used in configuration routes
@@ -325,19 +322,13 @@ describe('Router Configuration', () => {
       return root?.children?.find((route) => route.path === 'project-execution')?.component as any
     }
 
-    test('is the one-page flow by default', async () => {
+    test("is core's page by default", async () => {
       expect((await projectExecutionComponent())?.name).toBe('CreateExecutionView')
-    })
-
-    test('is the wizard with flow "wizard"', async () => {
-      expect((await projectExecutionComponent({ flow: 'wizard' }))?.name).toBe(
-        'ProjectExecutionView',
-      )
     })
 
     test("is the app's own component when it gives one", async () => {
       const own = () => Promise.resolve({ name: 'OwnFlow' })
-      expect(await projectExecutionComponent({ flow: 'page', component: own })).toBe(own)
+      expect(await projectExecutionComponent({ component: own })).toBe(own)
     })
   })
 })

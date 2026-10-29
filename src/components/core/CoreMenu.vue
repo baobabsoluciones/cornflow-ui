@@ -45,7 +45,8 @@
 
     <div class="core-menu__list" role="menu" :aria-label="title || undefined">
       <template v-for="item in items" :key="item.key">
-        <div v-if="item.header" class="core-menu__group" role="presentation">
+        <div v-if="item.separator" class="core-menu__separator" role="separator" />
+        <div v-else-if="item.header" class="core-menu__group" role="presentation">
           {{ item.label }}
         </div>
         <button
@@ -109,6 +110,8 @@ export interface CoreMenuItem {
   disabled?: boolean
   /** A group heading, not a row. */
   header?: boolean
+  /** A line between groups, not a row. */
+  separator?: boolean
   testId?: string
 }
 
@@ -145,7 +148,7 @@ const query = defineModel<string>('query', { default: '' })
 const root = ref<HTMLElement | null>(null)
 const searchInput = ref<HTMLInputElement | null>(null)
 
-const hasRows = computed(() => props.items.some((item) => !item.header))
+const hasRows = computed(() => props.items.some((item) => !item.header && !item.separator))
 
 function rows(): HTMLButtonElement[] {
   return Array.from(
@@ -218,6 +221,12 @@ function onKeydown(event: KeyboardEvent) {
   padding: calc(var(--spacing) * 2) calc(var(--spacing) * 2)
     calc(var(--spacing) * 1);
   color: var(--color-text-subtle);
+}
+
+.core-menu__separator {
+  height: 1px;
+  margin: calc(var(--spacing) * 1) 0;
+  background: var(--color-divider);
 }
 
 .core-menu__search {
