@@ -33,6 +33,8 @@ body {
   --color-border-strong: #bdbdbd;
   --color-divider: #ededed;
   --color-disabled: var(--disabled, #f2f4f7);
+  /* baobab's symbol (`BaobabMark`), in the brand's colour: it does not follow the app's palette. */
+  --color-baobab-mark: #333333;
 
   /*
     Tones: each has a base colour, a soft background, a border for that background and the text

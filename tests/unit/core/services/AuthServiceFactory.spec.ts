@@ -27,7 +27,6 @@ const mockCornflowAuthService = vi.hoisted(() => ({
   isAuthenticated: vi.fn(),
   getToken: vi.fn(),
   getUserId: vi.fn(),
-  signup: vi.fn(),
   refreshToken: vi.fn()
 }))
 
