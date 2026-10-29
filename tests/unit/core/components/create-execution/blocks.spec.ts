@@ -258,21 +258,23 @@ describe('ExecutionDataCard', () => {
     expect(draft.addFiles).toHaveBeenCalledWith([dropped])
   })
 
-  test('names the formats the app accepts in the drop zone and on the upload button', () => {
-    const messages = {
-      en: {
-        createExecution: {
-          data: { dropHint: 'Accepted formats: {formats}.', uploadHint: 'One or several files ({formats})' },
-        },
-      },
-    }
-    const draft = makeDraft({ acceptedExtensions: ['xlsx', 'csv'] })
+  test.each([
+    ['files', {}],
+    ['database', { dataSourceMode: 'database' }],
+  ])('with %s, it says which formats the app accepts', (_mode, overrides) => {
+    const messages = { en: { createExecution: { data: { formats: 'Accepted formats: {formats}' } } } }
+    const draft = makeDraft({ acceptedExtensions: ['xlsx', 'csv'], ...overrides })
     const wrapper = mount(ExecutionDataCard, {
       props: { draft },
       global: { plugins: [createI18n({ legacy: false, locale: 'en', messages, missingWarn: false })] },
     })
-    expect(wrapper.text()).toContain('Accepted formats: Excel or CSV.')
-    expect(wrapper.find('button[title]').attributes('title')).toBe('One or several files (Excel or CSV)')
+    expect(wrapper.find('[data-testid="data-card-formats"]').text()).toBe('Accepted formats: Excel or CSV')
+  })
+
+  test('does not offer the formats while the data loads', () => {
+    const draft = makeDraft({ loadStatus: 'loading', files: [new File(['{}'], 'a.json')] })
+    const wrapper = mount(ExecutionDataCard, { props: { draft }, global: global() })
+    expect(wrapper.find('[data-testid="data-card-formats"]').exists()).toBe(false)
   })
 
   test('with the database and filters, it asks for the filters before getting the data', async () => {

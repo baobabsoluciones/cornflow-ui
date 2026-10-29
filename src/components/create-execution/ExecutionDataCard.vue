@@ -6,7 +6,7 @@
   - `files`: a drop zone for one or several files, loaded with "Load".
   - `database`: "Upload files" and "Get data"; the files' tables replace the ones with the same
     name and the database fills in the rest.
-  The texts name the formats the app accepts (`draft.acceptedExtensions`).
+  Under them, the formats the app accepts (`draft.acceptedExtensions`).
   - `database-filtered`: the same, after the load filters.
   The load filters (`pre_etl` parameters) are asked in every mode that has them: the ETL gets them
   with the files too.
@@ -93,7 +93,7 @@
             :variant="uploadPrimary ? 'filled' : 'outlined'"
             icon="mdi-paperclip"
             :text="uploadLabel"
-            :title="uploadHint"
+            :title="$t('createExecution.data.uploadHint')"
             data-testid="data-card-upload"
             @click="browse"
           />
@@ -199,12 +199,17 @@
           @change="draft.setFilter"
         />
 
+        <span v-if="showFormats" class="data-card__empty-formats" data-testid="data-card-formats">
+          <CoreIcon name="mdi-file-document-outline" :size="14" />
+          {{ $t('createExecution.data.formats', { formats }) }}
+        </span>
+
         <div v-if="showEmptyActions" class="data-card__empty-actions">
           <CoreButton
             variant="outlined"
             icon="mdi-paperclip"
             :text="$t('createExecution.data.uploadFiles')"
-            :title="uploadHint"
+            :title="$t('createExecution.data.uploadHint')"
             @click="browse"
           />
           <CoreButton
@@ -328,7 +333,6 @@ const uploadPrimary = computed(() => props.draft.files.length === 0)
 const uploadLabel = computed(() =>
   props.draft.files.length > 0 ? t('createExecution.data.addFiles') : t('createExecution.data.uploadFiles'),
 )
-const uploadHint = computed(() => t('createExecution.data.uploadHint', { formats: formats.value }))
 
 const showHeaderLoad = computed(
   () => props.draft.isLoaded || (mode.value === 'files' && props.draft.files.length > 0),
@@ -349,6 +353,8 @@ const showFiltersForm = computed(
     props.draft.loadStatus !== 'loading' &&
     !props.draft.loadErrors,
 )
+/** The formats the files may come in, wherever files are offered and nothing is loading or failed. */
+const showFormats = computed(() => props.draft.loadStatus !== 'loading' && !props.draft.loadErrors)
 const showEmptyActions = computed(() => usesDatabase.value && props.draft.loadStatus !== 'loading')
 
 const emptyIcon = computed(() => {
@@ -379,11 +385,11 @@ const emptyText = computed(() => {
   if (!usesDatabase.value) {
     return props.draft.files.length
       ? t('createExecution.data.readyHint')
-      : t('createExecution.data.dropHint', { formats: formats.value })
+      : t('createExecution.data.dropHint')
   }
   return mode.value === 'database-filtered'
-    ? t('createExecution.data.databaseFilteredHint', { formats: formats.value })
-    : t('createExecution.data.databaseHint', { formats: formats.value })
+    ? t('createExecution.data.databaseFilteredHint')
+    : t('createExecution.data.databaseHint')
 })
 
 // ── Actions ──────────────────────────────────────────────────────────────────
@@ -715,6 +721,15 @@ onBeforeUnmount(() => props.draft.registerPendingChangesApplier(null))
   font-size: var(--text-md);
   color: var(--color-text-muted);
   text-wrap: pretty;
+}
+
+.data-card__empty-formats {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--spacing) * 1);
+  font-size: var(--text-sm);
+  color: var(--color-text-subtle);
 }
 
 .data-card__empty-filters {
