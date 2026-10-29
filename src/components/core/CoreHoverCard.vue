@@ -73,7 +73,7 @@ withDefaults(
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 28%, #ffffff);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 28%, var(--color-surface));
   border-radius: var(--radius-lg);
   background: var(--color-surface);
   box-shadow: var(--shadow-xl);

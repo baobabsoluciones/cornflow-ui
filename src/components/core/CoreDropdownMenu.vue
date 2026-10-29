@@ -150,9 +150,9 @@ const handleItemClick = (item: DropdownItem) => {
 
 <style scoped>
 .core-dropdown-menu {
-  background: white;
+  background: var(--color-surface);
   border-radius: 8px;
-  border: 1px solid #6e6e6e33;
+  border: 1px solid var(--color-border);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   overflow: hidden;
 }
@@ -172,7 +172,7 @@ const handleItemClick = (item: DropdownItem) => {
 
 .core-dropdown-menu__divider {
   margin: 4px 0;
-  border-color: #e0e0e0;
+  border-color: var(--color-divider);
 }
 
 .core-dropdown-menu__trigger {

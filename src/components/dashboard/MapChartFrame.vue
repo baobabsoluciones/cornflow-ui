@@ -66,7 +66,7 @@ defineExpose({ mapContainer })
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: color-mix(in srgb, var(--color-surface) 90%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -80,7 +80,7 @@ defineExpose({ mapContainer })
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(255, 255, 255, 0.95);
+  background-color: color-mix(in srgb, var(--color-surface) 95%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;

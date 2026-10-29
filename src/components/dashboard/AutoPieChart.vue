@@ -46,6 +46,7 @@
 import { computed } from 'vue'
 import VueApexCharts from 'vue3-apexcharts'
 import { getChartColors } from '@cornflow-ui/core/utils/chartColors'
+import { readCssToken } from '@cornflow-ui/core/plugins/vuetify'
 import '@cornflow-ui/core/assets/styles/dashboard.css'
 
 const ApexChart = VueApexCharts
@@ -173,9 +174,10 @@ const chartOptions = computed(() => ({
       expandOnClick: false,
     },
   },
+  // The slices are parted by the colour of the card, light or dark.
   stroke: {
     width: 2,
-    colors: ['#ffffff'],
+    colors: [readCssToken('--color-surface') || '#ffffff'],
   },
 }))
 
@@ -300,8 +302,8 @@ const series = computed(() => props.config.series)
 <!-- Global (non-scoped) styles for custom tooltip rendered by ApexCharts -->
 <style>
 .pie-tooltip {
-  background: #ffffff;
-  border: 1px solid #e0e0e0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   padding: 8px 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);

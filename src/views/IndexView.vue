@@ -313,11 +313,11 @@ if (AuthService.isAuthenticated()) {
   background:
     linear-gradient(
       180deg,
-      rgba(255, 255, 255, 0.6) 0%,
-      rgba(255, 255, 255, 0) 100%
+      color-mix(in srgb, var(--color-surface) 60%, transparent) 0%,
+      transparent 100%
     ),
-    color-mix(in srgb, var(--primary) 14%, #fff);
-  border-bottom: 1px solid color-mix(in srgb, var(--primary) 18%, #fff);
+    color-mix(in srgb, var(--color-primary) 14%, var(--color-surface));
+  border-bottom: 1px solid color-mix(in srgb, var(--color-primary) 18%, var(--color-surface));
   box-shadow: 0 4px 14px rgba(16, 24, 40, 0.08);
 }
 
