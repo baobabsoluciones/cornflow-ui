@@ -316,17 +316,13 @@ export default {
       validationErrorTitle: 'Validation errors',
     },
     infoCard: {
-      createNewExecution: 'Create new execution',
       loadFromHistory: 'Load from history',
       executionCreated: 'Execution successfully created',
-      noSolutionFoundTitle: 'No solution found',
       noExecutionSelected: 'No execution selected',
       solutionWillLoadMessage:
         'The solution will be loaded automatically on this view when the resolution is finished',
       loadExecutionMessage:
         'You can load an execution from the history view or create a new one and select it on the bottom tab bar',
-      noSolutionMessage:
-        'The execution has been succesfully created but no solution has been found',
     },
     stagingWarning:
       'You are currently working in a staging environment. This environment is intended for testing and development purposes only. For real executions, please switch to the production environment.',

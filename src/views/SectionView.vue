@@ -14,7 +14,11 @@
         :description="description"
         :dropdown-items="dropdownMenuItems"
         @dropdown-item-click="handleDropdownItemClick"
-      />
+      >
+        <template v-if="executionType" #actions>
+          <CoreExecutionSummary />
+        </template>
+      </CoreTitleView>
 
       <!-- Pending changes bar (master tables / configuration or solution recalculation) -->
       <div
@@ -571,6 +575,7 @@ import SimpleList from '@cornflow-ui/core/components/core/SimpleList.vue'
 import CoreTab from '@cornflow-ui/core/components/core/CoreTab.vue'
 import CoreTabs from '@cornflow-ui/core/components/core/CoreTabs.vue'
 import CoreTitleView from '@cornflow-ui/core/components/core/CoreTitleView.vue'
+import CoreExecutionSummary from '@cornflow-ui/core/components/ExecutionSummary.vue'
 import PendingChangesReviewModal from '@cornflow-ui/core/components/core/PendingChangesReviewModal.vue'
 import ForceRetryConfirmDialog from '@cornflow-ui/core/components/core/table/ForceRetryConfirmDialog.vue'
 import SectionSingleTable from '@cornflow-ui/core/components/section-view/SectionSingleTable.vue'

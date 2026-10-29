@@ -59,6 +59,34 @@ At the foot of the app, from where the side menu ends, a tab per loaded executio
 - The × closes a tab. A new execution starts from the side menu ("New execution").
 - Premium modules may decorate the tabs (`decorateExecutionTabs`), e.g. the ⭐ of the current plan.
 
+### Execution summary
+
+The views of the loaded execution (input data, results, dashboard) carry a summary of it beside
+their title (`components/ExecutionSummary.vue`): its name, the date it was created and its solver
+under the name (the solver only where `showExtraProjectExecutionColumns.showSolver` is not
+`false`), and its state as a badge, as the tab bar reads it. Resting the pointer on the name opens
+the execution's details, as in the history.
+
+An app says something else with `parameters.executionSummary` in `src/app/config.ts`: a function
+that gets the loaded execution and the core's summary, and returns the `meta` line and/or the
+`badges` it shows instead (`types/executionSummary.ts`); what it leaves out keeps the core's. Each
+badge is a `label`, a `tone` (`neutral`, `primary`, `info`, `success`, `warning`, `danger`) and an
+optional `title` (its tooltip):
+
+```ts
+executionSummary: (execution, defaults) => ({
+  meta: `${execution.config.days} days · ${defaults.meta}`,
+  badges: [
+    { label: execution.config.mode === 'week' ? 'Strategic' : 'Operational', tone: 'info' },
+    ...defaults.badges,
+  ],
+}),
+```
+
+The app's own views of the execution (`dashboardRoutes`, `appSections`) place it beside their
+title with `<ExecutionSummary />` (`@cornflow-ui/core/components/ExecutionSummary.vue`). As a
+parameter, a DAG can set its own (`schemaOverrides`).
+
 ## Execution management section
 
 The execution management section handles the complete lifecycle of optimization executions, from creation to historical tracking.
@@ -1101,6 +1129,7 @@ This file contains **internal application-specific configuration** that is part 
 | `executionSolvers`            | `string[]` | List of available solvers for execution               |
 | `instanceFileFormats`         | `string[]` | File extensions the instance upload accepts. Empty or absent means the default (`json`, `xlsx`, `csv`). |
 | `executionFilters`            | `ExecutionFilter[]` | Filters of the execution history, fed by frontend-automation tables. Empty means date filters only. See [Execution history filters](#execution-history-filters-optional) |
+| `executionSummary`            | `ExecutionSummaryResolver` \| `null` | The app's own summary of the loaded execution; `null` means the core's. See [Execution summary](#execution-summary) |
 | `executionsListEndpoint`      | `{ path, isExternal }` \| `null` | Endpoint of the executions list; `null` means Cornflow's `GET /execution/` |
 | `schemaLabels`                | `Record<string, string>` | Text of each DAG in the module selector, by DAG name. See [Several DAGs](#several-dags-in-one-application) |
 
