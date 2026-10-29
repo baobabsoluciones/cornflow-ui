@@ -1,6 +1,7 @@
 import client from '@cornflow-ui/core/api/Api'
 import { Execution } from '@cornflow-ui/core/models/Execution'
 import { LoadedExecution } from '@cornflow-ui/core/models/LoadedExecution'
+import getUserFullName from '@cornflow-ui/core/utils/user'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import InstanceRepository from './InstanceRepository'
 import {
@@ -220,7 +221,12 @@ export default class ExecutionRepository {
 
   // Get full execution data by id
   async loadExecution(id: string): Promise<LoadedExecution> {
-    const response = await client.get(`/execution/${id}/data/`)
+    // The data endpoint has no user nor last update; the details endpoint (the history's) does.
+    const [response, details] = await Promise.all([
+      client.get(`/execution/${id}/data/`),
+      client.get(`/execution/${id}/`).catch(() => null),
+    ])
+    const detail = details?.status === 200 ? details.content : {}
 
     if (response.status === 200) {
       const execution = response.content
@@ -262,6 +268,10 @@ export default class ExecutionRepository {
           message: execution.message,
           solutionState: execution.log ?? null,
           config: execution.config,
+          finishedAt: normalizeBackendDate(detail.updated_at) ?? null,
+          userName: detail.username ?? null,
+          userFullName:
+            getUserFullName(detail.first_name, detail.last_name) || detail.username || null,
         })
       } else {
         throw new Error('Error loading instance')

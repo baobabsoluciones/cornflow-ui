@@ -70,6 +70,9 @@ const preview = computed<HistoryExecution>(() => {
     state: execution.state,
     message: execution.messageState,
     createdAt: execution.createdAt,
+    finishedAt: execution.finishedAt,
+    userName: execution.userName,
+    userFullName: execution.userFullName,
     config: execution.config,
     solution_state: execution.solutionState,
   }
