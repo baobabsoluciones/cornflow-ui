@@ -26,7 +26,7 @@
         <p v-if="description" class="sign-in__brand-description">{{ description }}</p>
       </div>
       <div class="sign-in__brand-product">
-        <img :src="baobabLogoSmall" alt="" />
+        <BaobabMark class="sign-in__brand-mark" />
         <span>{{ PRODUCT }} · baobab soluciones</span>
       </div>
     </aside>
@@ -54,7 +54,7 @@
       <img class="sign-in__marks-company" :src="fullLogo" alt="" />
       <span class="sign-in__marks-divider" />
       <span class="sign-in__marks-product">
-        <img :src="baobabLogoSmall" alt="" />
+        <BaobabMark class="sign-in__marks-mark" />
         {{ PRODUCT }}
       </span>
     </div>
@@ -83,7 +83,8 @@ import config from '@cornflow-ui/core/config'
 import SignInForm from '@cornflow-ui/core/components/sign-in/SignInForm.vue'
 import SignInLanguages from '@cornflow-ui/core/components/sign-in/SignInLanguages.vue'
 import { getAppParameters } from '@cornflow-ui/core/utils/appParameters'
-import { baobabLogoSmall, companyLogo, fullLogo, loginBackground } from '@cornflow-ui/core/utils/assets'
+import BaobabMark from '@cornflow-ui/core/components/BaobabMark.vue'
+import { companyLogo, fullLogo, loginBackground } from '@cornflow-ui/core/utils/assets'
 
 defineOptions({ name: 'SignInLanding' })
 
@@ -219,8 +220,10 @@ const appTitle = computed(() => {
   letter-spacing: 0.06em;
 }
 
-.sign-in__marks-product img {
+.sign-in__marks-mark {
   height: 28px;
+  width: auto;
+  color: var(--color-baobab-mark);
 }
 
 /* As tall as its content, centred on the right; it scrolls only on a short window. */
@@ -272,8 +275,7 @@ const appTitle = computed(() => {
 }
 
 /* Any company logo reads on the primary colour once turned white. */
-.sign-in__brand-logo,
-.sign-in__brand-product img {
+.sign-in__brand-logo {
   filter: brightness(0) invert(1);
 }
 
@@ -323,8 +325,10 @@ const appTitle = computed(() => {
   color: color-mix(in srgb, var(--color-on-primary) 80%, transparent);
 }
 
-.sign-in__brand-product img {
+.sign-in__brand-mark {
   height: 26px;
+  width: auto;
+  color: var(--color-on-primary);
 }
 
 .sign-in__brand-form {

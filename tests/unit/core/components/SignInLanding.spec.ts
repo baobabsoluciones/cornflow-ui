@@ -27,7 +27,6 @@ vi.mock('@cornflow-ui/core/services/AuthServiceFactory', () => ({
 vi.mock('@cornflow-ui/core/config', () => ({ default: config }))
 vi.mock('@cornflow-ui/core/utils/appParameters', () => ({ getAppParameters: () => parameters.current }))
 vi.mock('@cornflow-ui/core/utils/assets', () => ({
-  baobabLogoSmall: '/baobab.png',
   companyLogo: '/company.png',
   fullLogo: '/full.png',
   loginBackground: '/background.png',
@@ -93,6 +92,7 @@ describe('SignInLanding', () => {
       expect(page.exists()).toBe(true)
       expect(page.attributes('style')).toContain('/background.png')
       expect(wrapper.find('.sign-in__marks-company').attributes('src')).toBe('/full.png')
+      expect(wrapper.find('.sign-in__marks-product svg.sign-in__marks-mark').exists()).toBe(true)
       expect(wrapper.find('.sign-in__app-title .is-bold').text()).toBe('Planner')
       expect(wrapper.find('.sign-in__app-title').text()).toBe('Planner Pro')
       expect(wrapper.find('.sign-in__subtitle').text()).toBe('logIn.default_subtitle')
@@ -104,6 +104,7 @@ describe('SignInLanding', () => {
       expect(wrapper.find('[data-testid="sign-in-photo"]').exists()).toBe(false)
       const panel = wrapper.find('.sign-in__brand-panel')
       expect(panel.find('.sign-in__brand-logo').attributes('src')).toBe('/company.png')
+      expect(panel.find('.sign-in__brand-product svg.sign-in__brand-mark').exists()).toBe(true)
       expect(panel.find('.sign-in__brand-title').text()).toBe('PlannerPro')
       expect(panel.find('.sign-in__brand-description').text()).toBe('Plans the week.')
       expect(wrapper.find('.sign-in__title').text()).toBe('logIn.button_label')
