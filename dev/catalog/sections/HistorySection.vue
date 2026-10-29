@@ -89,7 +89,7 @@
       column
     >
       <div class="summary-frame">
-        <ExecutionSummary :execution="loadedSample(executions[1])" />
+        <ExecutionSummary :execution="loadedSample(executions[2])" />
       </div>
       <div class="summary-frame">
         <ExecutionSummary :execution="loadedSample(executions[0])" />
