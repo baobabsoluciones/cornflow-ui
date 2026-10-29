@@ -25,25 +25,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import CoreDropdownMenu from './CoreDropdownMenu.vue'
+import CoreDropdownMenu, { type DropdownItem, type DropdownSection } from './CoreDropdownMenu.vue'
 import CoreIcon from './CoreIcon.vue'
-
-// Types
-interface DropdownItem {
-  id?: string
-  title: string
-  icon?: string
-  rightIcon?: string
-  rightContent?: string
-  disabled?: boolean
-  action?: () => void
-  data?: any
-}
-
-interface DropdownSection {
-  title?: string
-  items: DropdownItem[]
-}
 
 // Props
 interface Props {

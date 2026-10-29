@@ -50,6 +50,7 @@ export default {
   baobab: 'baobab',
   general: {
     loading: 'Cargando...',
+    moreActions: 'Más acciones',
   },
   createExecution: {
     title: 'Nueva ejecución',
@@ -790,6 +791,11 @@ export default {
     licences: 'Licencias',
     close: 'Cerrar',
     download: 'Descargar manual de usuario',
+  },
+  warnings: {
+    title: 'Avisos',
+    downloadAll: 'Descargar todos',
+    noWarnings: 'No hay avisos.',
   },
   navigation: {
     executions: 'Ejecuciones',

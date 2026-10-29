@@ -48,6 +48,7 @@ export default {
   },
   general: {
     loading: 'Chargement...',
+    moreActions: 'Plus d’actions',
   },
   createExecution: {
     title: 'Nouvelle exécution',
@@ -664,6 +665,11 @@ export default {
     licences: 'Licences',
     close: 'Fermer',
     download: "Télécharger le manuel de l'utilisateur",
+  },
+  warnings: {
+    title: 'Avertissements',
+    downloadAll: 'Tout télécharger',
+    noWarnings: 'Il n’y a aucun avertissement.',
   },
   navigation: {
     executions: 'Exécutions',

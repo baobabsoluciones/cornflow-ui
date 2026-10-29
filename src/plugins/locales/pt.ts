@@ -38,6 +38,7 @@ export default {
   baobab: 'baobab',
   general: {
     loading: 'A carregar...',
+    moreActions: 'Mais ações',
   },
   createExecution: {
     title: 'Nova execução',
@@ -770,6 +771,11 @@ export default {
     licences: 'Licenças',
     close: 'Fechar',
     download: 'Transferir manual do utilizador',
+  },
+  warnings: {
+    title: 'Avisos',
+    downloadAll: 'Transferir todos',
+    noWarnings: 'Não há avisos.',
   },
   navigation: {
     executions: 'Execuções',
