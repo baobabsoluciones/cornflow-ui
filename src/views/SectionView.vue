@@ -13,7 +13,11 @@
         :title="title"
         :description="description"
         :dropdown-items="dropdownMenuItems"
-      />
+      >
+        <template v-if="executionType" #actions>
+          <CoreExecutionSummary />
+        </template>
+      </CoreTitleView>
 
       <div class="section-view__body">
         <div class="section-view__main">
@@ -394,6 +398,7 @@ import { formatDateForFilename } from '@cornflow-ui/core/utils/date'
 import CoreSpinner from '@cornflow-ui/core/components/core/CoreSpinner.vue'
 import CoreTitleView from '@cornflow-ui/core/components/core/CoreTitleView.vue'
 import CoreConfirmDialog from '@cornflow-ui/core/components/core/table/CoreConfirmDialog.vue'
+import CoreExecutionSummary from '@cornflow-ui/core/components/ExecutionSummary.vue'
 import ForceRetryConfirmDialog from '@cornflow-ui/core/components/core/table/ForceRetryConfirmDialog.vue'
 import BulkUploadDialog from '@cornflow-ui/core/components/core/data-table/BulkUploadDialog.vue'
 import DataTableTabs, {

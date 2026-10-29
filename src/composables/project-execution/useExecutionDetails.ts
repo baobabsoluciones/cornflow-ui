@@ -375,6 +375,7 @@ export function useExecutionDetails() {
   }
 
   return {
+    formatDateTime,
     dataItems,
     parameterItems,
     timelineSteps,
