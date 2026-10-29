@@ -1233,7 +1233,6 @@ export default {
     save: 'Save',
     searchUsers: 'Search users...',
     colUsername: 'Username',
-    colName: 'Name',
     colEmail: 'Email',
     colRoles: 'Roles',
     noRoles: 'No roles defined yet.',

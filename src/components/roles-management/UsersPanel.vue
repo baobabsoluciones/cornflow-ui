@@ -1,127 +1,150 @@
-<template>
-  <v-card class="users-col" :elevation="1" rounded="lg">
-    <div class="panel-header">
-      <div class="panel-header__left">
-        <v-icon size="18" color="var(--primary)">
-          mdi-account-group-outline
-        </v-icon>
-        <span class="section-subtitle">
-          {{ $t('rolesManagement.usersTitle') }}
-        </span>
-        <v-chip size="x-small" color="var(--primary)" variant="tonal">
-          <template v-if="selectedRole">
-            {{ filteredUsers.length }} / {{ users.length }}
-          </template>
-          <template v-else>{{ users.length }}</template>
-        </v-chip>
-      </div>
-    </div>
+<!--
+  UsersPanel: the users of the app with their roles, to search and to edit.
 
-    <div class="search-bar">
+  - The header counts the users, or the ones of the selected role out of all of them.
+  - The search looks in the user name, the full name, the e-mail and the roles; the role selected
+    in the RolesPanel shows as a filter that can be cleared.
+  - The table sorts by user or e-mail from its headers and scrolls inside past the window height.
+    While loading with no users yet it shows placeholder rows.
+
+  <UsersPanel :users="users" :selected-role="role" v-model:search="search"
+    @clear-filter="clearRole" @edit="openUser" />
+-->
+<template>
+  <section class="panel users-panel" :aria-label="$t('rolesManagement.usersTitle')">
+    <header class="panel-header">
+      <CoreIcon name="mdi-account-group-outline" :size="18" class="panel-header__icon" />
+      <h2 class="panel-header__title">{{ $t('rolesManagement.usersTitle') }}</h2>
+      <CoreBadge :label="countLabel" tone="primary" size="sm" class="users-count" />
+    </header>
+
+    <div class="users-toolbar">
       <CoreSearchInput
         :model-value="search"
         :placeholder="$t('rolesManagement.searchUsers')"
-        class="search-bar__input"
+        class="users-toolbar__search"
         @update:model-value="$emit('update:search', $event)"
         @search="$emit('update:search', $event)"
       />
-      <v-chip
-        v-if="selectedRole"
-        class="search-bar__filter-chip"
-        color="var(--primary)"
-        variant="tonal"
-        size="small"
-        closable
-        @click:close="$emit('clear-filter')"
-      >
-        <v-icon size="14" class="mr-1">mdi-filter-variant</v-icon>
+      <span v-if="selectedRole" class="role-filter">
+        <CoreIcon name="mdi-filter-variant" :size="14" />
         {{ $t('rolesManagement.filteringByRole') }} · {{ selectedRole.name }}
-      </v-chip>
+        <button
+          type="button"
+          class="role-filter__clear"
+          :aria-label="$t('common.clear')"
+          :title="$t('common.clear')"
+          @click="$emit('clear-filter')"
+        >
+          <CoreIcon name="mdi-close" :size="14" />
+        </button>
+      </span>
     </div>
 
-    <div class="table-wrapper users-table-wrapper">
-      <v-data-table-virtual
-        :headers="headers"
-        :items="filteredUsers"
-        :loading="loading"
-        :height="virtualHeight"
-        :item-height="ROW_HEIGHT"
-        item-value="id"
-        density="comfortable"
-        fixed-header
-        hover
-      >
-        <template #item.username="{ item }">
-          <div class="user-cell">
-            <div
-              class="user-avatar"
-              :style="{ background: avatar.colorFor(item) }"
+    <div class="users-table" :class="{ 'is-loading': loading }" :aria-busy="loading || undefined">
+      <table class="users-table__table">
+        <thead>
+          <tr>
+            <th
+              v-for="column in columns"
+              :key="column.key"
+              scope="col"
+              :class="`users-table__col--${column.key}`"
+              :aria-sort="ariaSort(column.key)"
             >
-              {{ avatar.initialsFor(item) }}
-            </div>
-            <div class="user-info">
-              <div class="user-name">{{ item.full_name }}</div>
-              <div class="user-handle">@{{ item.username }}</div>
-            </div>
-          </div>
-        </template>
-
-        <template #item.role_names="{ item }">
-          <div class="roles-cell">
-            <template v-if="item.role_names.length">
-              <v-chip
-                v-for="name in item.role_names"
-                :key="name"
-                size="small"
-                variant="tonal"
-                :color="roleMeta.colorForName(name)"
-                class="mr-1 role-chip"
+              <button
+                v-if="column.sortable"
+                type="button"
+                class="users-table__sort"
+                :class="{ 'is-sorted': sort?.key === column.key }"
+                @click="toggleSort(column.key as SortKey)"
               >
-                <span class="role-chip__dot" />
-                {{ name }}
-              </v-chip>
-            </template>
-            <span v-else class="text-disabled text-body-2">
-              {{ $t('rolesManagement.noRoles2') }}
-            </span>
-          </div>
-        </template>
+                {{ column.title }}
+                <CoreIcon :name="sortIcon(column.key)" :size="14" class="users-table__sort-icon" />
+              </button>
+              <template v-else>{{ column.title }}</template>
+            </th>
+          </tr>
+        </thead>
 
-        <template #item.actions="{ item }">
-          <v-btn
-            icon
-            size="x-small"
-            variant="text"
-            @click="$emit('edit', item)"
-          >
-            <v-icon size="16" color="var(--primary)">
-              mdi-pencil-outline
-            </v-icon>
-          </v-btn>
-        </template>
+        <tbody v-if="loading && filteredUsers.length === 0">
+          <tr v-for="n in 5" :key="n" class="users-table__skeleton">
+            <td>
+              <div class="user-cell">
+                <CoreSkeleton :width="36" :height="36" shape="circle" />
+                <CoreSkeleton width="60%" :height="12" />
+              </div>
+            </td>
+            <td><CoreSkeleton width="70%" :height="12" /></td>
+            <td><CoreSkeleton :width="64" :height="18" shape="pill" /></td>
+            <td />
+          </tr>
+        </tbody>
 
-        <template #no-data>
-          <div class="empty-state">
-            <v-icon size="32" color="var(--subtitle)" class="mb-2">
-              mdi-account-off-outline
-            </v-icon>
-            <p class="text-body-2 text-medium-emphasis">
-              {{ $t('rolesManagement.errorLoadUsers') }}
-            </p>
-          </div>
-        </template>
+        <tbody v-else>
+          <tr v-for="user in sortedUsers" :key="user.id" class="users-table__row">
+            <td>
+              <div class="user-cell">
+                <span class="user-avatar" :class="`is-${avatar.toneFor(user)}`" aria-hidden="true">
+                  {{ avatar.initialsFor(user) }}
+                </span>
+                <span class="user-info">
+                  <span class="user-name">{{ user.full_name }}</span>
+                  <span class="user-handle">@{{ user.username }}</span>
+                </span>
+              </div>
+            </td>
+            <td class="users-table__email">{{ user.email }}</td>
+            <td>
+              <div class="roles-cell">
+                <template v-if="user.role_names.length">
+                  <CoreBadge
+                    v-for="name in user.role_names"
+                    :key="name"
+                    :label="name"
+                    :tone="roleMeta.toneForName(name)"
+                    size="sm"
+                    class="role-chip"
+                  />
+                </template>
+                <span v-else class="roles-cell__none">
+                  {{ $t('rolesManagement.noRoles2') }}
+                </span>
+              </div>
+            </td>
+            <td class="users-table__actions">
+              <CoreButton
+                variant="icon"
+                size="small"
+                icon="mdi-pencil-outline"
+                class="users-table__edit"
+                :aria-label="$t('rolesManagement.editUser')"
+                :title="$t('rolesManagement.editUser')"
+                @click="$emit('edit', user)"
+              />
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-        <template #loading>
-          <v-skeleton-loader type="table-row@5" />
-        </template>
-      </v-data-table-virtual>
+      <CoreEmptyState
+        v-if="!loading && filteredUsers.length === 0"
+        class="empty-state"
+        icon="mdi-account-off-outline"
+        :title="$t('rolesManagement.errorLoadUsers')"
+      />
     </div>
-  </v-card>
+  </section>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import CoreBadge from '@cornflow-ui/core/components/core/CoreBadge.vue'
+import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
+import CoreEmptyState from '@cornflow-ui/core/components/core/CoreEmptyState.vue'
+import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
+import CoreSkeleton from '@cornflow-ui/core/components/core/CoreSkeleton.vue'
 import CoreSearchInput from '@cornflow-ui/core/components/core/table/CoreSearchInput.vue'
 import { useRoleMeta } from '@cornflow-ui/core/composables/roles-management/useRoleMeta'
 import { useUserAvatar } from '@cornflow-ui/core/composables/roles-management/useUserAvatar'
@@ -148,52 +171,13 @@ const { t } = useI18n()
 const roleMeta = useRoleMeta()
 const avatar = useUserAvatar()
 
-const ROW_HEIGHT = 68
-const virtualHeight = ref(520)
+type SortKey = 'username' | 'email'
 
-function updateVirtualHeight() {
-  if (globalThis.window === undefined) return
-  virtualHeight.value = Math.max(
-    280,
-    Math.min(Math.round(globalThis.window.innerHeight - 300), 760),
-  )
-}
-
-onMounted(() => {
-  updateVirtualHeight()
-  window.addEventListener('resize', updateVirtualHeight)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', updateVirtualHeight)
-})
-
-const headers = computed(() => [
-  {
-    title: t('rolesManagement.colUsername'),
-    key: 'username',
-    sortable: true,
-    width: 280,
-  },
-  {
-    title: t('rolesManagement.colEmail'),
-    key: 'email',
-    sortable: true,
-    minWidth: 200,
-  },
-  {
-    title: t('rolesManagement.colRoles'),
-    key: 'role_names',
-    sortable: false,
-    width: 200,
-  },
-  {
-    title: '',
-    key: 'actions',
-    sortable: false,
-    align: 'end' as const,
-    width: 52,
-  },
+const columns = computed(() => [
+  { key: 'username', title: t('rolesManagement.colUsername'), sortable: true },
+  { key: 'email', title: t('rolesManagement.colEmail'), sortable: true },
+  { key: 'role_names', title: t('rolesManagement.colRoles'), sortable: false },
+  { key: 'actions', title: '', sortable: false },
 ])
 
 const filteredUsers = computed(() => {
@@ -210,125 +194,285 @@ const filteredUsers = computed(() => {
     )
   })
 })
+
+const countLabel = computed(() =>
+  props.selectedRole
+    ? `${filteredUsers.value.length} / ${props.users.length}`
+    : String(props.users.length),
+)
+
+// ── Sorting: a header click sorts ascending, then descending, then not at all ──
+const sort = ref<{ key: SortKey; order: 'asc' | 'desc' } | null>(null)
+
+function toggleSort(key: SortKey) {
+  if (sort.value?.key !== key) sort.value = { key, order: 'asc' }
+  else if (sort.value.order === 'asc') sort.value = { key, order: 'desc' }
+  else sort.value = null
+}
+
+function ariaSort(key: string): 'ascending' | 'descending' | undefined {
+  if (sort.value?.key !== key) return undefined
+  return sort.value.order === 'asc' ? 'ascending' : 'descending'
+}
+
+function sortIcon(key: string): string {
+  if (sort.value?.key !== key) return 'mdi-swap-vertical'
+  return sort.value.order === 'asc' ? 'mdi-arrow-up' : 'mdi-arrow-down'
+}
+
+const sortedUsers = computed(() => {
+  const current = sort.value
+  if (!current) return filteredUsers.value
+  const direction = current.order === 'asc' ? 1 : -1
+  return [...filteredUsers.value].sort(
+    (a, b) =>
+      direction *
+      (a[current.key] ?? '').localeCompare(b[current.key] ?? '', undefined, {
+        sensitivity: 'base',
+      }),
+  )
+})
 </script>
 
 <style scoped>
-.users-col {
-  flex: 1;
-  min-width: 0;
-}
-
-.search-bar {
+.users-toolbar {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--spacing) * 2.5);
+  padding: calc(var(--spacing) * 3) calc(var(--spacing) * 4);
+  border-bottom: 1px solid var(--color-divider);
 }
 
-.search-bar__input {
+.users-toolbar__search {
   flex: 1;
   min-width: 220px;
 }
 
-.search-bar__filter-chip {
-  font-weight: 500;
+.role-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 1.5);
+  padding: calc(var(--spacing) * 1) calc(var(--spacing) * 1) calc(var(--spacing) * 1)
+    calc(var(--spacing) * 2.5);
+  border-radius: var(--radius-full);
+  background: var(--color-primary-subtle);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-primary);
 }
 
-.table-wrapper {
-  padding: 8px 12px 4px;
+.role-filter__clear {
+  display: inline-flex;
+  padding: calc(var(--spacing) * 0.5);
+  border: 0;
+  border-radius: var(--radius-full);
+  background: none;
+  color: var(--color-primary);
+  cursor: pointer;
+}
+
+.role-filter__clear:hover {
+  background: var(--color-surface);
+}
+
+.role-filter__clear:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+/* Scrolls inside once the users pass the height the window leaves under the title. */
+.users-table {
+  max-height: clamp(280px, calc(100vh - 300px), 760px);
+  padding: 0 calc(var(--spacing) * 3) calc(var(--spacing) * 1);
+  overflow: auto;
+}
+
+.users-table.is-loading .users-table__row {
+  opacity: 0.7;
+}
+
+.users-table__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-md);
+}
+
+.users-table__table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: calc(var(--spacing) * 3);
+  border-bottom: 1px solid var(--color-divider);
+  background: var(--color-surface);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+  text-align: left;
+  white-space: nowrap;
+  color: var(--color-text-muted);
+}
+
+.users-table__col--username {
+  width: 280px;
+}
+
+.users-table__col--email {
+  min-width: 200px;
+}
+
+.users-table__col--role_names {
+  width: 200px;
+}
+
+.users-table__col--actions {
+  width: 52px;
+}
+
+.users-table__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 1);
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.users-table__sort:hover,
+.users-table__sort.is-sorted {
+  color: var(--color-text);
+}
+
+.users-table__sort:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.users-table__sort-icon {
+  color: var(--color-text-subtle);
+}
+
+.users-table__sort.is-sorted .users-table__sort-icon {
+  color: var(--color-primary);
+}
+
+.users-table__table td {
+  padding: calc(var(--spacing) * 3);
+  border-bottom: 1px solid var(--color-divider);
+  vertical-align: middle;
+  color: var(--color-text);
+}
+
+.users-table__table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.users-table__row {
+  transition: background-color var(--duration-base) var(--ease-standard);
+}
+
+.users-table__row:hover {
+  background: var(--color-surface-hover);
+}
+
+.users-table__email {
+  color: var(--color-text-muted);
+  word-break: break-all;
+}
+
+.users-table__actions {
+  text-align: right;
 }
 
 .user-cell {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 4px 0;
+  gap: calc(var(--spacing) * 3);
   min-width: 0;
 }
 
 .user-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: #5b6bb5;
-  color: #fff;
-  font-size: 0.8rem;
-  font-weight: 600;
   display: flex;
+  flex: none;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
   letter-spacing: 0.02em;
 }
 
+.user-avatar.is-primary {
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+}
+
+.user-avatar.is-info {
+  background: var(--color-info-soft);
+  color: var(--color-info-strong);
+}
+
+.user-avatar.is-success {
+  background: var(--color-success-soft);
+  color: var(--color-success-strong);
+}
+
+.user-avatar.is-warning {
+  background: var(--color-warning-soft);
+  color: var(--color-warning-strong);
+}
+
+.user-avatar.is-danger {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-strong);
+}
+
+.user-avatar.is-neutral {
+  background: var(--color-neutral-soft);
+  color: var(--color-neutral-strong);
+}
+
 .user-info {
-  min-width: 0;
   display: flex;
   flex-direction: column;
+  gap: calc(var(--spacing) * 0.5);
+  min-width: 0;
+}
+
+.user-name,
+.user-handle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .user-name {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--title);
-  line-height: 1.2;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-weight: var(--font-weight-medium);
 }
 
 .user-handle {
-  font-size: 0.75rem;
-  color: var(--subtitle);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }
 
 .roles-cell {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  padding: 4px 0;
+  gap: calc(var(--spacing) * 1);
 }
 
-.role-chip {
-  font-weight: 500;
+.roles-cell__none {
+  color: var(--color-text-subtle);
 }
 
-.role-chip__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  margin-right: 6px;
-  display: inline-block;
-}
-
-.users-table-wrapper :deep(tbody tr:last-child td) {
-  border-bottom: none;
-}
-
-.users-table-wrapper :deep(.v-table__wrapper) {
-  border-radius: 0 0 8px 8px;
-}
-
-.users-table-wrapper :deep(tbody td) {
-  padding-top: 14px;
-  padding-bottom: 14px;
-  height: auto;
-}
-
-.users-table-wrapper :deep(tbody tr) {
-  height: 68px;
-}
-
-.users-table-wrapper :deep(thead th) {
-  padding-top: 12px;
-  padding-bottom: 12px;
+.empty-state {
+  padding-block: calc(var(--spacing) * 8);
 }
 </style>
 <style scoped src="@cornflow-ui/core/assets/styles/roles-management/panel-shared.css"></style>

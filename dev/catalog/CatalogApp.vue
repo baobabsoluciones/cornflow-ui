@@ -54,6 +54,7 @@ import FormsSection from './sections/FormsSection.vue'
 import HistorySection from './sections/HistorySection.vue'
 import MenusSection from './sections/MenusSection.vue'
 import OverlaysSection from './sections/OverlaysSection.vue'
+import RolesSection from './sections/RolesSection.vue'
 import StatusSection from './sections/StatusSection.vue'
 import TokensSection from './sections/TokensSection.vue'
 
@@ -70,6 +71,7 @@ const sections = [
   { id: 'overlays', title: 'Dialogs and toasts', component: OverlaysSection },
   { id: 'history', title: 'Execution history', component: HistorySection },
   { id: 'create-execution', title: 'Create execution', component: CreateExecutionSection },
+  { id: 'roles', title: 'Roles management', component: RolesSection },
 ]
 
 const activeId = ref(sections[0].id)

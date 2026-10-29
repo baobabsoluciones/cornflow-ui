@@ -1,5 +1,5 @@
 /**
- * Presentation helpers for roles: icon, color, description and permissions
+ * Presentation helpers for roles: icon, tone, description and permissions
  * derived from a role name. Visuals come from a static mapping (presets);
  * description and permissions come from i18n so they translate per locale.
  *
@@ -8,6 +8,7 @@
  */
 
 import { useI18n } from 'vue-i18n'
+import type { CoreTone } from '@cornflow-ui/core/types/ui'
 import type { Role } from './types'
 
 const ROLE_PRESETS: Record<string, { icon: string; color: string }> = {
@@ -35,12 +36,23 @@ function iconFor(role: Role): string {
   return preset(role.name).icon
 }
 
-function colorFor(role: Role): string {
-  return preset(role.name).color
+const TONES = new Set<string>([
+  'neutral',
+  'primary',
+  'info',
+  'success',
+  'warning',
+  'danger',
+] satisfies CoreTone[])
+
+/** Tone of the core components for a role name; a preset colour that is not a tone reads as neutral. */
+function toneForName(name: string): CoreTone {
+  const { color } = preset(name)
+  return TONES.has(color) ? (color as CoreTone) : 'neutral'
 }
 
-function colorForName(name: string): string {
-  return preset(name).color
+function toneFor(role: Role): CoreTone {
+  return toneForName(role.name)
 }
 
 export function useRoleMeta() {
@@ -63,8 +75,8 @@ export function useRoleMeta() {
 
   return {
     iconFor,
-    colorFor,
-    colorForName,
+    toneFor,
+    toneForName,
     descriptionFor,
     permissionsFor,
   }

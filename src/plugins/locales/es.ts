@@ -1251,7 +1251,6 @@ export default {
     save: 'Guardar',
     searchUsers: 'Buscar usuarios...',
     colUsername: 'Usuario',
-    colName: 'Nombre',
     colEmail: 'Correo electrónico',
     colRoles: 'Roles',
     noRoles: 'No hay roles definidos aún.',
