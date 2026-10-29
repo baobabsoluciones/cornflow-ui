@@ -1,11 +1,24 @@
 <!--
   ParameterInput: the control of one execution parameter. A choice of three options or fewer is a
-  row of buttons, more is a dropdown; yes/no is a switch; numbers, dates and text are a field with
-  an optional suffix (e.g. "sec").
+  row of buttons, more is a dropdown; a choice of several is a dropdown with checks; yes/no is a
+  switch; numbers, dates and text are a field with an optional suffix (e.g. "sec").
 -->
 <template>
+  <CoreMultiSelect
+    v-if="field.type === 'options' && field.multiple"
+    :id="inputId"
+    :model-value="Array.isArray(value) ? value : []"
+    :options="field.options"
+    :placeholder="$t('createExecution.parameters.choose')"
+    :search-placeholder="$t('createExecution.data.searchOptions')"
+    :no-matches-text="$t('createExecution.data.noMatchingOptions')"
+    :clear-text="$t('createExecution.data.clearPicked')"
+    :invalid="invalid"
+    @update:model-value="$emit('change', $event.length > 0 ? $event : null)"
+  />
+
   <div
-    v-if="field.type === 'options' && field.options.length <= MAX_BUTTONS"
+    v-else-if="field.type === 'options' && field.options.length <= MAX_BUTTONS"
     class="parameter-input__segments"
     role="radiogroup"
     :aria-label="field.label"
@@ -64,6 +77,7 @@
 </template>
 
 <script setup lang="ts">
+import CoreMultiSelect from '@cornflow-ui/core/components/core/CoreMultiSelect.vue'
 import CoreSelect from '@cornflow-ui/core/components/core/CoreSelect.vue'
 import CoreTextField from '@cornflow-ui/core/components/core/CoreTextField.vue'
 
@@ -74,6 +88,8 @@ export interface ParameterFieldView {
   label: string
   type: 'options' | 'boolean' | 'number' | 'float' | 'date' | 'text'
   options: { value: unknown; label: string }[]
+  /** Several options can be picked; the value is the list of them. */
+  multiple?: boolean
   suffix: string
   required: boolean
   default?: unknown

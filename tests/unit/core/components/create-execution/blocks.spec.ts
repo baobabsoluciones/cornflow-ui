@@ -305,6 +305,40 @@ describe('ExecutionDataCard', () => {
     expect(draft.setFilter).toHaveBeenCalledWith('full', false)
   })
 
+  test('a load filter of several values is a dropdown with checks, and once loaded the header names the picks', async () => {
+    const field = {
+      key: 'product_ids',
+      title: 'Products',
+      type: 'select',
+      multiple: true,
+      options: [
+        { value: 3, label: 'P-003' },
+        { value: 7, label: 'P-007' },
+        { value: 9, label: 'P-009' },
+      ],
+    }
+    const draft = makeDraft({ dataSourceMode: 'database-filtered', loadFilterFields: [field] })
+    const popover = { name: 'CorePopover', template: '<div><slot name="trigger" /><slot /></div>' }
+    const wrapper = mount(ExecutionDataCard, {
+      props: { draft },
+      global: { ...global(), stubs: { teleport: true, CorePopover: popover } },
+    })
+    const filters = wrapper.find('[data-testid="load-filters"]')
+    expect(filters.find('.core-multi-select').exists()).toBe(true)
+    await filters.findAll('.core-menu__item')[1].trigger('click')
+    expect(draft.setFilter).toHaveBeenCalledWith('product_ids', [7])
+
+    const loaded = makeDraft({
+      isLoaded: true,
+      loadStatus: 'loaded',
+      loadFilterFields: [field],
+      execution: { instance: { data: {} }, config: { product_ids: [3, 7, 9] }, name: '', description: '' },
+    })
+    const card = mount(ExecutionDataCard, { props: { draft: loaded }, global: global() })
+    await flushPromises()
+    expect(card.find('.data-card__meta').text()).toContain('P-003, P-007 +1')
+  })
+
   test('shows the load errors grouped by table', () => {
     const draft = makeDraft({
       loadStatus: 'error',

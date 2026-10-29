@@ -1005,6 +1005,39 @@ describe('getExecutionConfigFromSchemaConfig', () => {
       required: true,
     })
   })
+  test('an array with join_from or items.enum is a select of several', () => {
+    const fields = getExecutionConfigFromSchemaConfig({
+      properties: {
+        product_ids: {
+          type: 'array',
+          items: { type: 'integer' },
+          pre_etl: true,
+          join_from: 'products.code',
+        },
+        shifts: { type: 'array', items: { type: 'string', enum: ['day', 'night'] } },
+        notes: { type: 'array', items: { type: 'string' } },
+      },
+    })!.configFields
+    const byKey = Object.fromEntries(fields.map((f) => [f.key, f]))
+
+    expect(byKey.product_ids).toMatchObject({
+      type: 'select',
+      multiple: true,
+      joinFrom: 'products.code',
+      preEtl: true,
+    })
+    expect(byKey.shifts).toMatchObject({
+      type: 'select',
+      multiple: true,
+      options: [
+        { value: 'day', label: 'day' },
+        { value: 'night', label: 'night' },
+      ],
+    })
+    // Without options to pick from, an array is not a select.
+    expect(byKey.notes.type).toBe('text')
+    expect(byKey.notes.multiple).toBeUndefined()
+  })
   test('ignores a join_from that is not <table>.<column>', () => {
     const fields = getExecutionConfigFromSchemaConfig({
       properties: { plant_id: { type: 'integer', join_from: 'plants' } },
@@ -1150,6 +1183,14 @@ describe('getPreEtlConfigFields / pickPreEtlConfigValues', () => {
     ).toEqual({ horizon_days: 1 })
     expect(pickPreEtlConfigValues({ date: '' }, fields)).toEqual({})
     expect(pickPreEtlConfigValues(null, fields)).toEqual({})
+  })
+
+  test('sends a list of picks as it is, and leaves an empty one out', () => {
+    const listFields = [{ key: 'product_ids', title: '', type: 'select', multiple: true, preEtl: true }]
+    expect(pickPreEtlConfigValues({ product_ids: [3, 7] }, listFields)).toEqual({
+      product_ids: [3, 7],
+    })
+    expect(pickPreEtlConfigValues({ product_ids: [] }, listFields)).toEqual({})
   })
 
   test('keeps falsy values that are real answers', () => {

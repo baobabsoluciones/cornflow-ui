@@ -1501,6 +1501,11 @@ export interface ExecutionConfigField {
    * are the rows of that frontend-automation table (value: the row's `id`; text: the column).
    */
   joinFrom?: string
+  /**
+   * A select of a schema `"type": "array"` (options from `join_from` or `items.enum`): several
+   * options can be picked, and the value is the list of them.
+   */
+  multiple?: boolean
 }
 
 /** Resolves solver list and default from the `solver` schema property. */
@@ -1593,7 +1598,8 @@ function buildExecutionConfigField(
     field.joinFrom = prop.join_from
     field.icon = DEFAULT_FIELD_ICONS.select
   }
-  applyEnumOptionsToField(field, prop)
+  applyEnumOptionsToField(field, schemaType === 'array' ? (prop.items ?? {}) : prop)
+  if (schemaType === 'array' && field.type === 'select') field.multiple = true
   applyDateFieldOverrides(field, prop, fieldType)
   applyTimeFieldOverrides(field, prop, fieldType, key)
 
@@ -1675,10 +1681,11 @@ export function getPreEtlConfigFields(
  * to the `POST /external/etl/` form as loose fields (agreed contract: one form field
  * per parameter, not a single JSON blob).
  *
- * Empty values are dropped rather than sent blank: a loose form field cannot carry
- * `null`, and for a nullable parameter such as `date` an empty string would be
- * indistinguishable from "the user left it blank", which the backend answers by
- * anchoring the run itself instead of to a given day.
+ * Empty values (an empty list included) are dropped rather than sent blank: a loose form
+ * field cannot carry `null`, and for a nullable parameter such as `date` an empty string
+ * would be indistinguishable from "the user left it blank", which the backend answers by
+ * anchoring the run itself instead of to a given day. A list goes as it is; the form field
+ * carries it as its items separated by commas (`1,2,3`).
  */
 export function pickPreEtlConfigValues(
   config: Record<string, any> | null | undefined,
@@ -1689,6 +1696,7 @@ export function pickPreEtlConfigValues(
   for (const field of getPreEtlConfigFields(configFields)) {
     const value = config[field.key]
     if (value === null || value === undefined || value === '') continue
+    if (Array.isArray(value) && value.length === 0) continue
     values[field.key] = value
   }
   return values

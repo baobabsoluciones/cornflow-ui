@@ -252,6 +252,7 @@ import LoadFiltersForm from '@cornflow-ui/core/components/create-execution/LoadF
 import CreateExecutionReviewInstance from '@cornflow-ui/core/components/project-execution/CreateExecutionReviewInstance.vue'
 import { useErrorDownload } from '@cornflow-ui/core/composables/useErrorDownload'
 import { isEmptyConfigValue } from '@cornflow-ui/core/composables/create-execution/configFieldValues'
+import { pickedSummary } from '@cornflow-ui/core/components/core/CoreMultiSelect.vue'
 import { showSnackbar } from '@cornflow-ui/core/services/SnackbarService'
 import { fileFormatNames } from '@cornflow-ui/core/utils/fileConstants'
 import type { ExecutionDraftController } from '@cornflow-ui/core/composables/create-execution/useExecutionDraft'
@@ -311,8 +312,11 @@ function filterSummary(): string[] {
         const label = field.title ? t(field.title) : field.key
         return `${label}: ${value ? t('createExecution.data.yes') : t('createExecution.data.no')}`
       }
-      const option = (field.options ?? []).find((o: any) => o.value === value)
-      return option ? String(option.label) : String(value)
+      const labelOf = (v: unknown) => {
+        const option = (field.options ?? []).find((o: any) => o.value === v)
+        return option ? String(option.label) : String(v)
+      }
+      return Array.isArray(value) ? pickedSummary(value.map(labelOf)) : labelOf(value)
     })
     .filter(Boolean)
 }

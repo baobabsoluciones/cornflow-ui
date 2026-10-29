@@ -1196,6 +1196,7 @@ take their look from the tokens, with the styles inside each component.
 | `CoreIcon`, `CoreSpinner` | A Material Design Icons glyph (`mdi-*`); a loading ring |
 | `CoreButton` | Filled, outlined, text and icon buttons, in five sizes, with `loading` |
 | `CoreTextField`, `CoreSelect` | A text box (text, numbers, dates, passwords, several lines) and a dropdown, in three sizes |
+| `CoreMultiSelect` | A dropdown to pick several options, with a search box when the list is long |
 | `CoreBadge` | A short status or tag, as a pill or a dot, in a tone |
 | `CoreAlert` | A message inside the page (error, warning, info, success) with an optional action |
 | `CoreEmptyState`, `CoreSkeleton`, `CoreProgressBar` | Empty and loading states, progress |
@@ -1730,6 +1731,25 @@ Both flows show it as a select with one option per row of the `plants` frontend-
 the text is the row's `name`, and the value it stores in the config (and sends to the ETL) is the
 row's `id`. See [Selectors fed by frontend-automation tables](#selectors-fed-by-frontend-automation-tables);
 without frontend automation the select has no options.
+
+**Several values.** A parameter of `"type": "array"` with `join_from` (or with `items.enum`) is a
+select of several: the user picks any number of rows, and the config stores the list of their
+`id`s. With nothing picked it is empty, like any other value, and is not sent:
+
+```json
+{
+  "properties": {
+    "product_ids": {
+      "type": "array",
+      "items": { "type": "integer" },
+      "pre_etl": true,
+      "join_from": "products.code"
+    }
+  }
+}
+```
+
+The ETL gets a list in its form field as the items separated by commas (`3,7,12`).
 
 **Where they are asked.** Before the data is brought, so they read as part of loading rather than
 as a separate stage:
