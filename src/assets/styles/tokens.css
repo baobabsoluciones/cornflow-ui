@@ -148,6 +148,8 @@ body[data-theme='dark'] {
   --color-border-strong: #56606b;
   --color-divider: #2b3138;
   --color-disabled: #252a30;
+  /* baobab's symbol in the brand's light version. */
+  --color-baobab-mark: #f6f6f6;
 
   --color-success: color-mix(in srgb, var(--success, #3b7b5e) 75%, #ffffff);
   --color-success-soft: color-mix(in srgb, var(--color-success) 18%, var(--color-surface));
