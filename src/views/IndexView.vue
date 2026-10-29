@@ -86,7 +86,7 @@
       >
         <template #end>
           <span class="powered-by">
-            <img class="powered-by__logo" :src="baobabLogoSmall" alt="" />
+            <BaobabMark class="powered-by__logo" />
             Powered by
             <a href="https://baobabsoluciones.es/" target="_blank" rel="noopener">baobab soluciones</a>
           </span>
@@ -118,7 +118,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { computed } from 'vue'
 import { Vue3Marquee } from 'vue3-marquee'
 import config from '@cornflow-ui/core/config'
-import { baobabLogoSmall } from '@cornflow-ui/core/utils/assets'
+import BaobabMark from '@cornflow-ui/core/components/BaobabMark.vue'
 import {
   getPremiumGlobalComponents,
   applyPremiumExecutionTabDecorators,
@@ -261,6 +261,8 @@ if (AuthService.isAuthenticated()) {
 
 .powered-by__logo {
   height: 18px;
+  width: auto;
+  color: var(--color-baobab-mark);
 }
 
 /*
