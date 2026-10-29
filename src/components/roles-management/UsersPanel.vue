@@ -131,7 +131,10 @@
         v-if="!loading && filteredUsers.length === 0"
         class="empty-state"
         icon="mdi-account-off-outline"
-        :title="$t('rolesManagement.errorLoadUsers')"
+        :title="
+          users.length ? $t('rolesManagement.noUsersMatch') : $t('rolesManagement.errorLoadUsers')
+        "
+        data-testid="users-empty"
       />
     </div>
   </section>

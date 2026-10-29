@@ -1002,6 +1002,7 @@ export default {
     noRoles2: 'Aucun rôle',
     errorLoadRoles: 'Erreur lors du chargement des rôles.',
     errorLoadUsers: 'Erreur lors du chargement des utilisateurs.',
+    noUsersMatch: 'Aucun utilisateur ne correspond à la recherche.',
     errorSaveRole: "Erreur lors de l'enregistrement du rôle.",
     errorDeleteRole: 'Erreur lors de la suppression du rôle.',
     errorAssignRole: "Erreur lors de la mise à jour des rôles de l'utilisateur.",

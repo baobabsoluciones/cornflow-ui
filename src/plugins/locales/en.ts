@@ -1239,6 +1239,7 @@ export default {
     noRoles2: 'No roles',
     errorLoadRoles: 'Error loading roles.',
     errorLoadUsers: 'Error loading users.',
+    noUsersMatch: 'No user matches the search.',
     errorSaveRole: 'Error saving role.',
     errorDeleteRole: 'Error deleting role.',
     errorAssignRole: 'Error updating user roles.',

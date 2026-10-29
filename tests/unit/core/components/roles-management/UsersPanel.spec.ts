@@ -135,6 +135,13 @@ describe('UsersPanel', () => {
       expect(wrapper.text()).toContain('rolesManagement.errorLoadUsers')
     })
 
+    test('says no user matches when the search leaves none', () => {
+      wrapper = createWrapper({ users: [user()], search: 'nobody-like-this' })
+      expect(wrapper.find('[data-testid="users-empty"]').text()).toContain(
+        'rolesManagement.noUsersMatch',
+      )
+    })
+
     test('shows placeholder rows while loading with no users yet', () => {
       wrapper = createWrapper({ users: [], loading: true })
       expect(wrapper.findAll('.users-table__skeleton')).toHaveLength(5)

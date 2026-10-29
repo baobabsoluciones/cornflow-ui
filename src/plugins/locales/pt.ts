@@ -1234,6 +1234,7 @@ export default {
     noRoles2: 'Sem funções',
     errorLoadRoles: 'Erro ao carregar as funções.',
     errorLoadUsers: 'Erro ao carregar os utilizadores.',
+    noUsersMatch: 'Nenhum utilizador corresponde à pesquisa.',
     errorSaveRole: 'Erro ao guardar a função.',
     errorDeleteRole: 'Erro ao eliminar a função.',
     errorAssignRole: 'Erro ao atualizar as funções do utilizador.',
