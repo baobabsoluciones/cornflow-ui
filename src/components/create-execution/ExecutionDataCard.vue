@@ -4,8 +4,9 @@
 
   Empty, it offers what the app is set up for (`draft.dataSourceMode`):
   - `files`: a drop zone for one or several files, loaded with "Load".
-  - `database`: "Upload Excel" and "Get data"; the files' sheets replace the tables with the same
+  - `database`: "Upload files" and "Get data"; the files' tables replace the ones with the same
     name and the database fills in the rest.
+  The texts name the formats the app accepts (`draft.acceptedExtensions`).
   - `database-filtered`: the same, after the load filters.
   The load filters (`pre_etl` parameters) are asked in every mode that has them: the ETL gets them
   with the files too.
@@ -92,7 +93,7 @@
             :variant="uploadPrimary ? 'filled' : 'outlined'"
             icon="mdi-paperclip"
             :text="uploadLabel"
-            :title="$t('createExecution.data.uploadHint')"
+            :title="uploadHint"
             data-testid="data-card-upload"
             @click="browse"
           />
@@ -202,8 +203,8 @@
           <CoreButton
             variant="outlined"
             icon="mdi-paperclip"
-            :text="$t('createExecution.data.uploadExcel')"
-            :title="$t('createExecution.data.uploadHint')"
+            :text="$t('createExecution.data.uploadFiles')"
+            :title="uploadHint"
             @click="browse"
           />
           <CoreButton
@@ -247,6 +248,7 @@ import CreateExecutionReviewInstance from '@cornflow-ui/core/components/project-
 import { useErrorDownload } from '@cornflow-ui/core/composables/useErrorDownload'
 import { isEmptyConfigValue } from '@cornflow-ui/core/composables/create-execution/configFieldValues'
 import { showSnackbar } from '@cornflow-ui/core/services/SnackbarService'
+import { fileFormatNames } from '@cornflow-ui/core/utils/fileConstants'
 import type { ExecutionDraftController } from '@cornflow-ui/core/composables/create-execution/useExecutionDraft'
 
 defineOptions({ name: 'ExecutionDataCard' })
@@ -260,7 +262,7 @@ const props = withDefaults(
   { highlight: false },
 )
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const errorDownload = useErrorDownload()
 
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -274,6 +276,12 @@ const filterEdit = ref<Record<string, unknown>>({})
 const mode = computed(() => props.draft.dataSourceMode)
 const usesDatabase = computed(() => mode.value !== 'files')
 const accept = computed(() => props.draft.acceptedExtensions.map((ext: string) => `.${ext}`).join(','))
+/** The accepted formats as the user knows them: "Excel, JSON or CSV". */
+const formats = computed(() =>
+  new Intl.ListFormat(locale.value, { type: 'disjunction' }).format(
+    fileFormatNames(props.draft.acceptedExtensions),
+  ),
+)
 
 // ── Header ───────────────────────────────────────────────────────────────────
 
@@ -318,8 +326,9 @@ const meta = computed(() => {
 const showUploadButton = computed(() => !props.draft.isLoaded && mode.value === 'files')
 const uploadPrimary = computed(() => props.draft.files.length === 0)
 const uploadLabel = computed(() =>
-  props.draft.files.length > 0 ? t('createExecution.data.addExcel') : t('createExecution.data.uploadExcel'),
+  props.draft.files.length > 0 ? t('createExecution.data.addFiles') : t('createExecution.data.uploadFiles'),
 )
+const uploadHint = computed(() => t('createExecution.data.uploadHint', { formats: formats.value }))
 
 const showHeaderLoad = computed(
   () => props.draft.isLoaded || (mode.value === 'files' && props.draft.files.length > 0),
@@ -370,11 +379,11 @@ const emptyText = computed(() => {
   if (!usesDatabase.value) {
     return props.draft.files.length
       ? t('createExecution.data.readyHint')
-      : t('createExecution.data.dropHint')
+      : t('createExecution.data.dropHint', { formats: formats.value })
   }
   return mode.value === 'database-filtered'
-    ? t('createExecution.data.databaseFilteredHint')
-    : t('createExecution.data.databaseHint')
+    ? t('createExecution.data.databaseFilteredHint', { formats: formats.value })
+    : t('createExecution.data.databaseHint', { formats: formats.value })
 })
 
 // ── Actions ──────────────────────────────────────────────────────────────────

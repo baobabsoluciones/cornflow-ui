@@ -1734,7 +1734,7 @@ without frontend automation the select has no options.
 **Where they are asked.** Before the data is brought, so they read as part of loading rather than
 as a separate stage:
 
-- **Page**: the data card, while empty, shows them in a grid, above "Upload Excel" and "Get data"
+- **Page**: the data card, while empty, shows them in a grid, above "Upload files" and "Get data"
   when the database is offered, and in the drop zone otherwise (the ETL gets them with the
   files too). Once loaded they become text in the card's header ("North plant · since 01/10/2026 · 4 tables ·
   58 rows") and are changed with **Load filters**, which brings the data again.

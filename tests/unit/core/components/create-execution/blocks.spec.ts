@@ -258,6 +258,23 @@ describe('ExecutionDataCard', () => {
     expect(draft.addFiles).toHaveBeenCalledWith([dropped])
   })
 
+  test('names the formats the app accepts in the drop zone and on the upload button', () => {
+    const messages = {
+      en: {
+        createExecution: {
+          data: { dropHint: 'Accepted formats: {formats}.', uploadHint: 'One or several files ({formats})' },
+        },
+      },
+    }
+    const draft = makeDraft({ acceptedExtensions: ['xlsx', 'csv'] })
+    const wrapper = mount(ExecutionDataCard, {
+      props: { draft },
+      global: { plugins: [createI18n({ legacy: false, locale: 'en', messages, missingWarn: false })] },
+    })
+    expect(wrapper.text()).toContain('Accepted formats: Excel or CSV.')
+    expect(wrapper.find('button[title]').attributes('title')).toBe('One or several files (Excel or CSV)')
+  })
+
   test('with the database and filters, it asks for the filters before getting the data', async () => {
     const draft = makeDraft({
       dataSourceMode: 'database-filtered',
