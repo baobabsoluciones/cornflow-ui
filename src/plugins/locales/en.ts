@@ -227,20 +227,14 @@ export default {
   },
   projectExecution: {
     title: 'Project execution',
-    description:
-      'Create a new execution or load an existing one to visualize the solution you are looking for. To do so, follow the steps below:',
-    continueButton: 'Continue',
-    previousButton: 'Previous',
     maximize: 'Maximize',
     minimize: 'Minimize',
     create: 'New execution',
     downloadExcel: 'Download data',
     uploadExcel: 'Overwrite data',
     snackbar: {
-      instanceDataChecksSuccess: 'Data verification completed successfully',
       instanceDataChecksError: 'An error occurred while verifying the data',
       instanceCreationError: 'An error occurred while creating the instance',
-      successCreate: 'Execution created successfully',
       errorCreate: 'An error occurred while creating the execution',
       succesSearch: 'Search succesfully completed',
       errorSearch: 'An error occurred while searching for executions',
@@ -252,26 +246,7 @@ export default {
       autoLoadError:
         'An unexpected error occurred while retrieving the execution information',
     },
-    exitConfirmation: {
-      title: 'Exit creation process',
-      message:
-        'Are you sure you want to exit the execution creation process?\nIf you exit now, the flow will be reset and all progress made will be lost.',
-      confirmButton: 'Yes, exit',
-      cancelButton: 'Cancel',
-    },
     steps: {
-      step1: {
-        firstOption: {
-          title: 'Create a new execution',
-          description:
-            'A new execution will be created for which a new instance of the input data table with the correct structure will need to be uploaded.',
-        },
-        secondOption: {
-          title: 'Search for and load an existing execution',
-          description:
-            'Search by date for an existing execution and load it to view.',
-        },
-      },
       nameDescription: {
         title: 'Name and description',
         description: 'Name and describe the execution',
@@ -380,53 +355,23 @@ export default {
         },
       },
       // Legacy step keys for backward compatibility
-      step2: {
-        nameTitleField: 'Name',
-        descriptionTitleField: 'Description',
-        namePlaceholder: 'Please insert a name',
-        descriptionPlaceholder: 'Please insert a description',
-      },
       step3: {
         loadInstance: {
-          dragAndDropDescription:
-            'Drag and drop your instance file / files here',
-          uploadFile: 'Upload file',
           noSchemaError:
             'No schema was found: are you connected to the server?',
           instanceSchemaError: 'Instance does not comply with schema ',
           instanceLoaded: 'Instance loaded successfully',
-          instancesLoaded:
-            'Files merged to create the instance and loaded successfully',
-          warningTitle: 'Warning',
-          loadInstance: 'Load Instance',
           selectedFiles: 'Selected Files',
-          invalidFileFormat: 'Invalid file format. Please try again.',
           unexpectedError: 'An unexpected error occurred. Please try again.',
           instanceLoadedWithErrors: 'Instance loaded with errors',
           noValidInstancesError:
             'No valid instances found in the uploaded files',
           downloadExcel: 'Download Excel',
-          downloadAllErrors: 'Download all errors',
           showingErrorsTruncated:
             'Showing first {displayed} of {total} errors. Download the complete error list to see all errors.',
-          totalErrors: 'There are {total} errors',
-          andMoreErrors: 'and {count} more',
           errorsDownloadStarted: 'Error file download started',
           errorsDownloadError: 'Error downloading error file',
           noFilesSelectedError: 'Please select at least one file',
-          optionalOrDivider: 'or',
-          loadFromDb: 'Get all data from database',
-          preEtlParamsHint: 'Data the instance will be loaded with',
-          source: 'Data source',
-          sourceDatabase: 'Master tables',
-          sourceDatabaseDescription: 'Current data of the master tables',
-          sourceFile: 'File',
-          sourceFileDescription: 'Upload a file with the data',
-          databaseSummary: 'The current data of the master tables will be loaded.',
-          reload: 'Load again',
-          loaded: 'Data loaded',
-          preEtlChangedAfterLoad:
-            'You changed these after loading. Load again so they apply to the instance.',
         },
       },
       step4: {
@@ -442,24 +387,9 @@ export default {
         secondsSuffix: 'sec',
       },
       step8: {
-        resolve: 'Solve',
-        successMessage:
-          'The execution has been launched successfully. A new tab has been opened on the bottom bar. You can click on this tab to open it.',
-        loadNewExecution: 'Load new execution',
         developerMode: {
-          title: 'Developer Mode',
-          normalSolve: 'Solve normally',
-          uploadSolution: 'Upload solution',
-          dragAndDropDescription:
-            'Drag and drop a solution file or click to browse',
-          uploadFile: 'Upload solution file',
-          invalidFileFormat:
-            'Invalid file format. Please upload a JSON, XLSX, or CSV file.',
-          solutionSchemaError:
-            'Solution file does not match the required schema',
           unsupportedFileFormat: 'Unsupported file format',
           fileReadError: 'Error reading file',
-          noSolutionData: 'Please upload a solution file first',
           uploadError: 'Error uploading solution data',
         },
       },
@@ -491,10 +421,6 @@ export default {
     },
     stagingWarning:
       'You are currently working in a staging environment. This environment is intended for testing and development purposes only. For real executions, please switch to the production environment.',
-    checks: {
-      blockingErrorsFound:
-        'Errors were found during data verification. Please fix them before continuing.',
-    },
   },
   executionTable: {
     date: 'Time',

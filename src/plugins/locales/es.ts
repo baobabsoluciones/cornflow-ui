@@ -227,21 +227,15 @@ export default {
   },
   projectExecution: {
     title: 'Ejecución',
-    description:
-      'Crea una nueva ejecución o carga una existente para visualizar la solución que estás buscando. Para hacerlo, sigue los pasos a continuación:',
-    continueButton: 'Continuar',
-    previousButton: 'Anterior',
     maximize: 'Maximizar',
     minimize: 'Minimizar',
     create: 'Nueva ejecución',
     downloadExcel: 'Descargar datos',
     uploadExcel: 'Sobreescribir datos',
     snackbar: {
-      instanceDataChecksSuccess: 'Verificación de datos finalizado con éxito',
       instanceDataChecksError:
         'Ha ocurrido un error en la verificación de datos',
       instanceCreationError: 'Ha ocurrido un error al crear la instancia',
-      successCreate: 'Ejecución creada con éxito',
       errorCreate: 'Ocurrió un error al crear la ejecución',
       succesSearch: 'Búsqueda completada con éxito',
       errorSearch: 'Ocurrió un error al buscar ejecuciones',
@@ -254,26 +248,7 @@ export default {
       autoLoadError:
         'Ocurrió un error inesperado al recuperar la información de la ejecución',
     },
-    exitConfirmation: {
-      title: 'Salir del proceso de creación',
-      message:
-        '¿Seguro que quieres salir del proceso de creación de la ejecución?\nSi sales ahora, se reiniciará el flujo y se perderá todo el progreso realizado.',
-      confirmButton: 'Sí, salir',
-      cancelButton: 'Cancelar',
-    },
     steps: {
-      step1: {
-        firstOption: {
-          title: 'Crear una nueva ejecución',
-          description:
-            'Se creará una nueva ejecución para la cual se deberá cargar una nueva instancia de la tabla de datos de entrada con la estructura correcta.',
-        },
-        secondOption: {
-          title: 'Buscar y cargar una ejecución existente',
-          description:
-            'Busca por fecha una ejecución existente y cárgala para verla.',
-        },
-      },
       nameDescription: {
         title: 'Nombre y descripción',
         description: 'Nombra y describe la ejecución',
@@ -384,55 +359,24 @@ export default {
         },
       },
       // Legacy step keys for backward compatibility
-      step2: {
-        nameTitleField: 'Nombre',
-        descriptionTitleField: 'Descripción',
-        namePlaceholder: 'Por favor, inserta un nombre',
-        descriptionPlaceholder: 'Por favor, inserta una descripción',
-      },
       step3: {
         loadInstance: {
-          dragAndDropDescription:
-            'Arrastra y suelta tu archivo / archivos de instancia aquí',
-          uploadFile: 'Subir archivo',
           noSchemaError:
             'No se encontró ningún esquema: ¿estás conectado al servidor?',
           instanceSchemaError: 'La instancia no cumple con el esquema',
           instanceLoaded: 'Instancia cargada con éxito',
-          instancesLoaded:
-            'Archivos combinados para crear la instancia y cargados con éxito',
-          warningTitle: 'Advertencia',
-          loadInstance: 'Cargar instancia',
           selectedFiles: 'Archivos seleccionados',
-          invalidFileFormat:
-            'Formato de archivo no válido. Por favor, inténtalo de nuevo.',
           unexpectedError:
             'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.',
           instanceLoadedWithErrors: 'Instancia cargada con errores',
           noValidInstancesError:
             'No se encontraron instancias válidas en los archivos cargados',
           downloadExcel: 'Descargar excel',
-          downloadAllErrors: 'Descargar todos los errores',
           showingErrorsTruncated:
             'Mostrando los primeros {displayed} de {total} errores. Descarga la lista completa de errores para ver todos los errores.',
-          totalErrors: 'Hay {total} errores',
-          andMoreErrors: 'y {count} más',
           errorsDownloadStarted: 'Descarga del archivo de errores iniciada',
           errorsDownloadError: 'Error al descargar el archivo de errores',
           noFilesSelectedError: 'Selecciona al menos un archivo',
-          optionalOrDivider: 'o',
-          loadFromDb: 'Obtener todos los datos de base de datos',
-          preEtlParamsHint: 'Datos con los que se cargará la instancia',
-          source: 'Origen de los datos',
-          sourceDatabase: 'Tablas maestras',
-          sourceDatabaseDescription: 'Datos actuales de las tablas maestras',
-          sourceFile: 'Archivo',
-          sourceFileDescription: 'Sube un archivo con los datos',
-          databaseSummary: 'Se cargarán los datos actuales de las tablas maestras.',
-          reload: 'Volver a cargar',
-          loaded: 'Datos cargados',
-          preEtlChangedAfterLoad:
-            'Has cambiado estos datos después de cargar. Vuelve a cargar para que se apliquen a la instancia.',
         },
       },
       step4: {
@@ -448,24 +392,9 @@ export default {
         secondsSuffix: 'seg',
       },
       step8: {
-        resolve: 'Resolver',
-        successMessage:
-          'La ejecución se ha lanzado con éxito. Se ha abierto una nueva pestaña en la barra inferior. Puedes hacer clic en esta pestaña para abrirla.',
-        loadNewExecution: 'Cargar nueva ejecución',
         developerMode: {
-          title: 'Developer Mode',
-          normalSolve: 'Solve normally',
-          uploadSolution: 'Upload solution',
-          dragAndDropDescription:
-            'Drag and drop a solution file or click to browse',
-          uploadFile: 'Upload solution file',
-          invalidFileFormat:
-            'Invalid file format. Please upload a JSON, XLSX, or CSV file.',
-          solutionSchemaError:
-            'Solution file does not match the required schema',
           unsupportedFileFormat: 'Unsupported file format',
           fileReadError: 'Error reading file',
-          noSolutionData: 'Please upload a solution file first',
           uploadError: 'Error uploading solution data',
         },
       },
@@ -497,10 +426,6 @@ export default {
     },
     stagingWarning:
       'Estás en un entorno de pruebas, destinado solamente a desarrollo y testeo. Para ejecuciones reales, por favor utiliza el entorno de producción.',
-    checks: {
-      blockingErrorsFound:
-        'Se han encontrado errores en la verificación de datos. Corrígelos antes de continuar.',
-    },
   },
   executionTable: {
     date: 'Hora',

@@ -30,7 +30,6 @@ export type {
   PremiumGlobalComponentSlot,
   PremiumGlobalComponent,
   PremiumLocaleMessages,
-  PremiumWizardStep,
   PremiumViewSlot,
   TableEditStrategy,
   EtlBackendOperations,

@@ -1,6 +1,6 @@
 <template>
   <div class="execution-data-view">
-    <!-- Checks of the data (the step of the wizard that runs them) -->
+    <!-- Checks of the data -->
     <div v-if="canCheckData" class="execution-data-view__checks">
       <CoreButton
         variant="outlined"

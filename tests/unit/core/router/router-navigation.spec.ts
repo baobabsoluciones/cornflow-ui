@@ -47,12 +47,6 @@ vi.mock('@cornflow-ui/core/views/IndexView.vue', () => ({
 vi.mock('@cornflow-ui/core/views/LoginView.vue', () => ({
   default: { name: 'LoginView', template: '<div>Login</div>' },
 }))
-vi.mock('@cornflow-ui/core/views/ProjectExecutionView.vue', () => ({
-  default: {
-    name: 'ProjectExecutionView',
-    template: '<div>ProjectExecution</div>',
-  },
-}))
 vi.mock('@cornflow-ui/core/views/CreateExecutionView.vue', () => ({
   default: {
     name: 'CreateExecutionView',
