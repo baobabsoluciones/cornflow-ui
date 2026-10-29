@@ -1273,10 +1273,6 @@ export default {
           'Create and launch executions',
         ],
       },
-      ie_viewer: {
-        description: 'Limited visibility into the IE environment',
-        permissions: ['Read instances and solutions'],
-      },
     },
   },
   externalEtl: {

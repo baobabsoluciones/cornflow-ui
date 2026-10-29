@@ -1265,10 +1265,6 @@ export default {
           'Criar e iniciar execuções',
         ],
       },
-      ie_viewer: {
-        description: 'Visibilidade limitada do ambiente IE',
-        permissions: ['Ler instâncias e soluções'],
-      },
     },
   },
   externalEtl: {
