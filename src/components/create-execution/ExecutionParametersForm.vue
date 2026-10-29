@@ -90,6 +90,7 @@ import ParameterInput, {
   type ParameterFieldView,
 } from '@cornflow-ui/core/components/create-execution/ParameterInput.vue'
 import { isEmptyConfigValue } from '@cornflow-ui/core/composables/create-execution/configFieldValues'
+import { pickedSummary } from '@cornflow-ui/core/components/core/CoreMultiSelect.vue'
 
 defineOptions({ name: 'ExecutionParametersForm' })
 
@@ -162,6 +163,7 @@ function viewOf(field: any): ParameterFieldView {
     label: field.title ? t(field.title) : field.key,
     type,
     options: options.map((o: any) => ({ value: o.value, label: String(o.label) })),
+    multiple: Boolean(field.multiple),
     suffix,
     required: Boolean(field.required),
     default: field.default,
@@ -202,7 +204,11 @@ function displayValue(field: ParameterFieldView, value: unknown): string {
     return `${field.label}: ${answer.toLowerCase()}`
   }
   if (field.type === 'options') {
-    return field.options.find((o) => o.value === value)?.label ?? '—'
+    const labelOf = (v: unknown) => field.options.find((o) => o.value === v)?.label
+    if (Array.isArray(value)) {
+      return value.length > 0 ? pickedSummary(value.map((v) => labelOf(v) ?? String(v))) : '—'
+    }
+    return labelOf(value) ?? '—'
   }
   if (value === null || value === undefined || value === '') return '—'
   const text = typeof value === 'number' ? String(value).replace('.', ',') : String(value)
@@ -230,7 +236,11 @@ function isMissing(field: ParameterFieldView) {
 }
 
 function isChanged(field: ParameterFieldView) {
-  return field.default !== undefined && props.values[field.key] !== field.default
+  if (field.default === undefined) return false
+  const value = props.values[field.key]
+  return Array.isArray(value) || Array.isArray(field.default)
+    ? JSON.stringify(value ?? []) !== JSON.stringify(field.default ?? [])
+    : value !== field.default
 }
 
 function emitChange(field: ParameterFieldView, value: unknown) {

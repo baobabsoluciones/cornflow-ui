@@ -12,8 +12,19 @@
         {{ labelOf(field) }}
         <span v-if="!field.required" class="load-filters__optional">{{ $t('createExecution.data.optional') }}</span>
       </span>
+      <CoreMultiSelect
+        v-if="field.multiple"
+        :model-value="values[field.key] ?? []"
+        :options="optionsOf(field)"
+        :placeholder="field.required ? $t('createExecution.data.choose') : $t('createExecution.data.notSet')"
+        :search-placeholder="$t('createExecution.data.searchOptions')"
+        :no-matches-text="$t('createExecution.data.noMatchingOptions')"
+        :clear-text="$t('createExecution.data.clearPicked')"
+        :invalid="isInvalid(field)"
+        @update:model-value="$emit('change', field.key, $event.length > 0 ? $event : null)"
+      />
       <CoreSelect
-        v-if="optionsOf(field).length > 0"
+        v-else-if="optionsOf(field).length > 0"
         :model-value="values[field.key]"
         :options="optionsOf(field)"
         :placeholder="field.required ? $t('createExecution.data.choose') : $t('createExecution.data.notSet')"
@@ -36,6 +47,7 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import CoreMultiSelect from '@cornflow-ui/core/components/core/CoreMultiSelect.vue'
 import CoreSelect from '@cornflow-ui/core/components/core/CoreSelect.vue'
 import CoreTextField from '@cornflow-ui/core/components/core/CoreTextField.vue'
 import { isEmptyConfigValue } from '@cornflow-ui/core/composables/create-execution/configFieldValues'

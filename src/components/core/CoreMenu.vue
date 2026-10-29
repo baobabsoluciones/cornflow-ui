@@ -4,7 +4,8 @@
 
   Arrow keys move between the rows (and from the search box to the first row); Enter or Space
   picks one. With `selectable` the rows are options of a single choice, and the picked one says so
-  to screen readers.
+  to screen readers; with `multiple` as well, they are options of a choice of several, each one
+  checked or not.
 
   <CorePopover>
     <template #trigger>…</template>
@@ -53,8 +54,8 @@
           v-else
           type="button"
           :class="['core-menu__item', { 'is-selected': item.selected }]"
-          :role="selectable ? 'menuitemradio' : 'menuitem'"
-          :aria-checked="selectable ? Boolean(item.selected) : undefined"
+          :role="multiple ? 'menuitemcheckbox' : selectable ? 'menuitemradio' : 'menuitem'"
+          :aria-checked="selectable || multiple ? Boolean(item.selected) : undefined"
           :disabled="item.disabled"
           :data-testid="item.testId"
           @click="emit('select', item)"
@@ -121,6 +122,8 @@ const props = withDefaults(
     items: CoreMenuItem[]
     /** The rows are options of a single choice, not commands. */
     selectable?: boolean
+    /** The rows are options of a choice of several: picking one does not unpick the others. */
+    multiple?: boolean
     searchable?: boolean
     searchPlaceholder?: string
     /** Shown when no row is left (e.g. nothing matches the search). */
@@ -131,6 +134,7 @@ const props = withDefaults(
   {
     title: '',
     selectable: false,
+    multiple: false,
     searchable: false,
     searchPlaceholder: '',
     emptyText: '',
