@@ -309,7 +309,7 @@ if (AuthService.isAuthenticated()) {
 }
 
 .no-schema-access {
-  min-height: calc(100vh - 40px - var(--app-top-offset, 0px));
+  min-height: calc(100vh - var(--bottom-bar-height) - var(--app-top-offset, 0px));
   margin-left: 56px;
   display: flex;
   flex-direction: column;

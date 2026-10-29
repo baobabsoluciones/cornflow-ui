@@ -788,7 +788,8 @@ async function signOut() {
   display: flex;
   align-items: center;
   gap: calc(var(--spacing) * 1);
-  height: 56px;
+  box-sizing: border-box;
+  height: var(--bottom-bar-height);
   padding: 0 calc(var(--spacing) * 2) 0 calc(var(--spacing) * 3);
   border-top: 1px solid var(--color-divider);
 }
@@ -1001,8 +1002,10 @@ async function signOut() {
 .app-drawer__rail-user {
   flex: none;
   display: flex;
+  align-items: center;
   justify-content: center;
-  padding: calc(var(--spacing) * 3) 0;
+  box-sizing: border-box;
+  height: var(--bottom-bar-height);
   border-top: 1px solid var(--color-divider);
 }
 </style>
