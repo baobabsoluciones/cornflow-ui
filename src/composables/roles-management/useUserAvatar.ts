@@ -1,21 +1,13 @@
 /**
- * Deterministic avatar helpers. The background color is keyed by the user's
- * username (or other stable identifier) so the same user keeps the same color
- * across reloads without any backend support.
+ * Deterministic avatar helpers. The tone is keyed by the user's username (or
+ * other stable identifier) so the same user keeps the same tone across reloads
+ * without any backend support.
  */
 
+import type { CoreTone } from '@cornflow-ui/core/types/ui'
 import type { UserRow } from './types'
 
-const AVATAR_PALETTE = [
-  '#5B6BB5',
-  '#2E8B6A',
-  '#B8763F',
-  '#A24F8E',
-  '#3F8BC4',
-  '#C45E5E',
-  '#6F8B36',
-  '#7A4FB2',
-]
+const AVATAR_TONES: CoreTone[] = ['primary', 'success', 'warning', 'info', 'neutral']
 
 function hashString(input: string): number {
   let h = 0
@@ -25,9 +17,9 @@ function hashString(input: string): number {
   return Math.abs(h)
 }
 
-function colorFor(user: UserRow): string {
+function toneFor(user: UserRow): CoreTone {
   const seed = user.username || user.full_name || String(user.id)
-  return AVATAR_PALETTE[hashString(seed) % AVATAR_PALETTE.length]
+  return AVATAR_TONES[hashString(seed) % AVATAR_TONES.length]
 }
 
 function initialsFor(user: UserRow): string {
@@ -40,5 +32,5 @@ function initialsFor(user: UserRow): string {
 }
 
 export function useUserAvatar() {
-  return { colorFor, initialsFor }
+  return { toneFor, initialsFor }
 }

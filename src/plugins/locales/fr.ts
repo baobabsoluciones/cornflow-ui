@@ -1034,7 +1034,6 @@ export default {
     save: 'Enregistrer',
     searchUsers: 'Rechercher des utilisateurs...',
     colUsername: "Nom d'utilisateur",
-    colName: 'Nom',
     colEmail: 'E-mail',
     colRoles: 'Rôles',
     noRoles: 'Aucun rôle défini pour le moment.',
