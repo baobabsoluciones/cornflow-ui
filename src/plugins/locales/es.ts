@@ -1302,10 +1302,6 @@ export default {
           'Crear y lanzar ejecuciones',
         ],
       },
-      ie_viewer: {
-        description: 'Visualización limitada al entorno IE',
-        permissions: ['Leer instancias y soluciones'],
-      },
     },
   },
   externalEtl: {
