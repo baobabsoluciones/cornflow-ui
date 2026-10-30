@@ -163,6 +163,7 @@ export default {
       missingCount: 'Falta 1 cosa | Faltan {count} cosas',
       ready: 'Listo para lanzar',
       resolve: 'Resolver',
+      failed: 'No se ha podido lanzar la ejecución',
       applyAndResolve: 'Aplicar cambios y resolver',
       createWithSolution: 'Crear con esta solución',
       syncing: 'Sincronizando datos…',

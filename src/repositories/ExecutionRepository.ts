@@ -436,7 +436,9 @@ export default class ExecutionRepository {
         const execution = response.content
         return execution
       } else {
-        throw new Error('Error creating execution')
+        throw new Error(
+          getApiErrorMessageFromContent(response.content, 'Error creating execution'),
+        )
       }
     } else {
       throw new Error('Error creating instance')

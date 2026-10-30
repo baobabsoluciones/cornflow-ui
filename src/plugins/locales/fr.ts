@@ -161,6 +161,7 @@ export default {
       missingCount: 'Il manque 1 chose | Il manque {count} choses',
       ready: 'Prêt à lancer',
       resolve: 'Résoudre',
+      failed: "L'exécution n'a pas pu être lancée",
       applyAndResolve: 'Appliquer les modifications et résoudre',
       createWithSolution: 'Créer avec cette solution',
       syncing: 'Synchronisation des données…',

@@ -1,7 +1,7 @@
 <!--
   LaunchPanel: the side panel that launches a new execution. Name, data checks, parameters, the
-  list of what is still missing (each item takes the user to it) and Resolve. Folded, it is a
-  strip that still says whether it can launch. Once launched it follows the execution.
+  list of what is still missing (each item takes the user to it), why the last launch failed and
+  Resolve. Folded, it is a strip that still says whether it can launch. Once launched it follows the execution.
 
   <LaunchPanel v-model:collapsed="collapsed" :draft="draft" @go="onGo" @view="..." @history="..." />
 
@@ -176,6 +176,14 @@
             />
           </div>
 
+          <CoreAlert
+            v-if="draft.launch.error"
+            tone="error"
+            :title="$t('createExecution.launch.failed')"
+            :message="draft.launch.error"
+            data-testid="launch-panel-error"
+          />
+
           <div class="launch-panel__resolve-row">
             <CoreButton
               block
@@ -211,6 +219,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import CoreAlert from '@cornflow-ui/core/components/core/CoreAlert.vue'
 import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
 import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
 import CorePopover from '@cornflow-ui/core/components/core/CorePopover.vue'
@@ -338,6 +347,8 @@ async function resolve() {
     return
   }
   await props.draft.launchExecution()
+  // Folded, the panel would hide why the launch failed.
+  if (props.draft.launch.error) collapsed.value = false
 }
 
 function toggleSolutionMode() {

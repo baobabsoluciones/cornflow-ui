@@ -330,6 +330,23 @@ describe('useExecutionDraft', () => {
     expect(draft.hasProgress).toBe(false)
   })
 
+  test('a launch the backend refuses says why, until the next attempt', async () => {
+    processing.processFiles.mockResolvedValue(loadedOk())
+    const draft = setup()
+    draft.addFiles([file('a.json')])
+    await draft.load()
+    draft.setParameter('objective', 'cost')
+    store.createExecution.mockRejectedValueOnce(new Error('The orchestrator is not reachable'))
+
+    expect(await draft.launchExecution()).toBe(false)
+    expect(draft.launch.error).toBe('The orchestrator is not reachable')
+    expect(draft.isLaunched).toBe(false)
+    expect(draft.hasProgress).toBe(true)
+
+    expect(await draft.launchExecution()).toBe(true)
+    expect(draft.launch.error).toBeNull()
+  })
+
   test('applies the pending edits before launching, and stops if they cannot be applied', async () => {
     processing.processFiles.mockResolvedValue(loadedOk())
     const draft = setup()

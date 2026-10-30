@@ -101,7 +101,7 @@ reactive object (read `draft.isLoaded`, not `draft.isLoaded.value`).
 | `nameProposed` | The name was proposed, not typed. |
 | `fromDataKeys` | Parameters whose value was read from the loaded data. |
 | `checks` | `{ status, results, checkedAt }`; `status` is `'none' \| 'running' \| 'ok' \| 'warnings' \| 'errors' \| 'stale'`, `results` one entry per check table that found rows, errors first (`{ key, title, description, kind: 'error' \| 'warning', columns: { key, title }[], records }`). |
-| `launch` | `{ running, step, executionId }`; `step` is `'sync' \| 'execution' \| 'solution'` while it runs. |
+| `launch` | `{ running, step, executionId, error }`; `step` is `'sync' \| 'execution' \| 'solution'` while it runs; `error` says why the last launch failed, in the backend's words (e.g. the orchestrator is down), until the next attempt. |
 | `solution` | Developer mode: `{ enabled, file, data, errors }` of the solution to upload instead of solving. |
 
 ### What the configuration offers
@@ -139,7 +139,7 @@ reactive object (read `draft.isLoaded`, not `draft.isLoaded.value`).
 | `setParameter(key, value)`, `setName(name)`, `setDescription(text)` | Edit the execution. |
 | `runChecks()` | Apply pending edits, sync the ETL review, store the instance and run the data checks. |
 | `setSolutionMode(on)`, `setSolutionFile(file)` | Developer mode: create with an uploaded solution. |
-| `launchExecution()` | Apply pending edits, sync the ETL review, create the execution (or create it without running and upload the solution) and start following it. |
+| `launchExecution()` | Apply pending edits, sync the ETL review, create the execution (or create it without running and upload the solution) and start following it. Resolves whether it was created; when not, `launch.error` says why. |
 | `reset()` | Back to an empty execution ("Launch another"). |
 | `startFrom(loadedExecution)` | An editable copy of a loaded execution: its data, parameters, description and name ("relaunch"). |
 | `saveDraft()`, `readDraft()`, `discardDraft()`, `resumeDraft(draft)` | Keep the unfinished execution in the browser (IndexedDB, one per DAG and user): data, unapplied edits and the ETL review not yet sent. |
@@ -152,7 +152,7 @@ plain props, so they also fit a flow that keeps its own state.
 | Block | Props | What it shows |
 | --- | --- | --- |
 | `ExecutionDataCard` | `draft`, `highlight` | Where the data comes from (files, or the database with or without load filters), the load errors and warning, and once loaded the tables to review and edit (`CreateExecutionReviewInstance`), with "Load filters", the Excel menu (download the data, or overwrite it with a workbook), "Reload" and "Maximize". The table fills the card: the card's table area is marked `data-table-bounds`, so the table takes its height from it instead of from the window. |
-| `LaunchPanel` | `draft`, `v-model:collapsed`; emits `go`, `view`, `history` | Name, checks, parameters, what is missing, the note about unapplied edits or unchecked data, the developer menu, Resolve; folded, a strip; launched, `LaunchResult`. |
+| `LaunchPanel` | `draft`, `v-model:collapsed`; emits `go`, `view`, `history` | Name, checks, parameters, what is missing, the note about unapplied edits or unchecked data, why the last launch failed, the developer menu, Resolve; folded, a strip; launched, `LaunchResult`. |
 | `LoadFiltersForm` | `fields`, `values`, `showErrors`; emits `change` | The load filters in a grid. |
 | `ChecksStatus` | `status`, `results`, `checkedAt`, `blocking`, `disabled`, `highlight`; emits `run` | Where the checks stand and what they found: one line per check with its count, errors first; any of them opens `ChecksDetailDialog`. |
 | `ChecksDetailDialog` | `v-model`, `results`, `initialKey` | Every check as a table with the columns of the checks schema, with a search over its rows. |
