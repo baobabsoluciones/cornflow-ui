@@ -801,6 +801,32 @@ describe('useTableData — Excel mode (pending changes)', () => {
     expect(showSnackbar).toHaveBeenCalledWith('table.bulkEditApplied:{"count":2}', 'success')
   })
 
+  test('bulkEditRows sets the values in an added row as part of it', async () => {
+    const { api } = await mountLoaded(masterConfig, [{ id: 1, name: 'a' }])
+    await api.addRow({ name: 'draft' })
+
+    api.bulkEditRows(['create-table_a-0', 1], { name: 'X' })
+
+    expect(changesStore.map.table_a.creates[0].data).toEqual({ name: 'X' })
+    expect(api.items.value).toContainEqual({ id: 'create-table_a-0', name: 'X' })
+    expect(api.getRowState({ id: 'create-table_a-0' })).toBe('new')
+    expect(api.getModifiedValue(1, 'name')).toBe('X')
+  })
+
+  test('bulkEditRows leaves the rows marked for deletion as they are', async () => {
+    const { api } = await mountLoaded(masterConfig, [
+      { id: 1, name: 'a' },
+      { id: 2, name: 'b' },
+    ])
+    await api.deleteRows([1])
+
+    api.bulkEditRows([1, 2], { name: 'X' })
+
+    expect(api.isCellModified(1, 'name')).toBe(false)
+    expect(api.getModifiedValue(2, 'name')).toBe('X')
+    expect(showSnackbar).toHaveBeenCalledWith('table.bulkEditApplied:{"count":1}', 'success')
+  })
+
   test('getRowState tells a new, a modified and an untouched row apart', async () => {
     const { api } = await mountLoaded(masterConfig, [
       { id: 1, name: 'a' },
