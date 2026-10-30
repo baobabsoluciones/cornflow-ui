@@ -56,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
 
 interface Props {
@@ -145,16 +145,18 @@ const focusInput = () => {
   inputRef.value?.focus()
 }
 
-onMounted(() => {
-  if (props.showShortcut) {
-    document.addEventListener('keydown', handleGlobalKeydown)
-  }
-})
+// The shortcut listens on the document only while `showShortcut` is on.
+const listenForShortcut = (on: boolean) => {
+  if (on) document.addEventListener('keydown', handleGlobalKeydown)
+  else document.removeEventListener('keydown', handleGlobalKeydown)
+}
+
+watch(() => props.showShortcut, listenForShortcut)
+
+onMounted(() => listenForShortcut(props.showShortcut))
 
 onBeforeUnmount(() => {
-  if (props.showShortcut) {
-    document.removeEventListener('keydown', handleGlobalKeydown)
-  }
+  listenForShortcut(false)
   if (debounceTimer.value) {
     clearTimeout(debounceTimer.value)
   }
