@@ -149,6 +149,33 @@ describe('CoreSearchInput', () => {
     addSpy.mockRestore()
   })
 
+  test('the shortcut follows showShortcut while mounted', async () => {
+    wrapper = createWrapper({ showShortcut: true })
+    const focusSpy = vi.spyOn(wrapper.find('input').element as HTMLInputElement, 'focus')
+    const pressCtrlK = () =>
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))
+
+    await wrapper.setProps({ showShortcut: false })
+    pressCtrlK()
+    expect(focusSpy).not.toHaveBeenCalled()
+
+    await wrapper.setProps({ showShortcut: true })
+    pressCtrlK()
+    expect(focusSpy).toHaveBeenCalledTimes(1)
+  })
+
+  test('does not listen for the shortcut after unmounting with it turned off', async () => {
+    wrapper = createWrapper({ showShortcut: true })
+    const focusSpy = vi.spyOn(wrapper.find('input').element as HTMLInputElement, 'focus')
+    await wrapper.setProps({ showShortcut: false })
+    wrapper.unmount()
+    wrapper = null
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))
+
+    expect(focusSpy).not.toHaveBeenCalled()
+  })
+
   test('shortcutKey computed returns Ctrl on non-mac', () => {
     wrapper = createWrapper({ showShortcut: true, modelValue: '' })
     expect(wrapper.find('.core-search-input__shortcut').text()).toContain('K')
