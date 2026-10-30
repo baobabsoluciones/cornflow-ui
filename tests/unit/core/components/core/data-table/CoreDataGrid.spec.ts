@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import CoreDataGrid from '@cornflow-ui/core/components/core/data-table/CoreDataGrid.vue'
 import type { DataColumn, DataRow } from '@cornflow-ui/core/components/core/data-table/types'
@@ -201,3 +201,166 @@ describe('CoreDataGrid', () => {
 
 const gridColumns = (wrapper: VueWrapper) =>
   (wrapper.find('.data-grid').element as HTMLElement).style.getPropertyValue('--grid-columns')
+
+describe('CoreDataGrid from the keyboard', () => {
+  const active = (wrapper: VueWrapper) => {
+    const td = wrapper.find('td.is-active')
+    if (!td.exists()) return null
+    return `${td.element.closest('tr')!.getAttribute('data-row-id')}:${td.attributes('data-column')}`
+  }
+
+  test('the first arrow picks the first cell, and without rows there is nothing to pick', async () => {
+    const wrapper = mountGrid()
+    await key(wrapper, 'ArrowDown')
+    expect(active(wrapper)).toBe('1:line')
+
+    const empty = mountGrid({ rows: [] })
+    await key(empty, 'ArrowDown')
+    expect(active(empty)).toBeNull()
+  })
+
+  test('other keys do nothing until a cell is picked', async () => {
+    const wrapper = mountGrid()
+    await key(wrapper, 'Enter')
+    await key(wrapper, 'x')
+    expect(active(wrapper)).toBeNull()
+    expect(wrapper.find('td input').exists()).toBe(false)
+  })
+
+  test('Tab and Shift+Tab move along the row', async () => {
+    const wrapper = mountGrid()
+    await pick(wrapper, 2, 'line')
+    await key(wrapper, 'Tab')
+    await key(wrapper, 'Tab')
+    expect(active(wrapper)).toBe('2:description')
+    await key(wrapper, 'Tab', { shiftKey: true })
+    expect(active(wrapper)).toBe('2:capacity')
+  })
+
+  test('the moves stop at the edges of the table', async () => {
+    const wrapper = mountGrid()
+    await pick(wrapper, 1, 'line')
+    await key(wrapper, 'ArrowUp')
+    await key(wrapper, 'ArrowLeft')
+    expect(active(wrapper)).toBe('1:line')
+
+    await pick(wrapper, 3, 'pinned')
+    await key(wrapper, 'ArrowDown')
+    await key(wrapper, 'Tab')
+    expect(active(wrapper)).toBe('3:pinned')
+  })
+
+  test('F2 edits the cell as Enter does', async () => {
+    const wrapper = mountGrid()
+    await pick(wrapper, 3, 'description')
+    await key(wrapper, 'F2')
+    expect(cell(wrapper, 3, 'description').find('input').element.value).toBe('Small')
+  })
+
+  test('typing a letter replaces a text cell with it', async () => {
+    const wrapper = mountGrid()
+    await pick(wrapper, 1, 'description')
+    await key(wrapper, 'B')
+    expect(cell(wrapper, 1, 'description').find('input').element.value).toBe('B')
+  })
+
+  test('a key with Ctrl, Cmd or Alt is not typing', async () => {
+    const wrapper = mountGrid()
+    await pick(wrapper, 1, 'description')
+    await key(wrapper, 'c', { ctrlKey: true })
+    await key(wrapper, 'v', { metaKey: true })
+    await key(wrapper, 'x', { altKey: true })
+    expect(cell(wrapper, 1, 'description').find('input').exists()).toBe(false)
+  })
+
+  test('Escape lets go of the active cell', async () => {
+    const wrapper = mountGrid()
+    await pick(wrapper, 1, 'line')
+    await key(wrapper, 'Escape')
+    expect(active(wrapper)).toBeNull()
+  })
+
+  test('Space toggles a switch cell', async () => {
+    const wrapper = mountGrid()
+    await pick(wrapper, 1, 'pinned')
+    await key(wrapper, ' ')
+    expect(wrapper.emitted('cell-change')).toEqual([[rows[0], 'pinned', true]])
+  })
+
+  test('Delete and Backspace empty an optional cell', async () => {
+    const wrapper = mountGrid()
+    await pick(wrapper, 1, 'description')
+    await key(wrapper, 'Delete')
+    await pick(wrapper, 3, 'description')
+    await key(wrapper, 'Backspace')
+    expect(wrapper.emitted('cell-change')).toEqual([
+      [rows[0], 'description', null],
+      [rows[2], 'description', null],
+    ])
+  })
+
+  test('a required cell cannot be emptied, and the grid says why', async () => {
+    const snackbar = vi.fn()
+    const wrapper = mount(CoreDataGrid, {
+      props: { columns, rows, editable: true, cellValue: (row: DataRow, k: string) => row[k] },
+      global: { plugins: [createEnI18n()], provide: { showSnackbar: snackbar } },
+      attachTo: document.body,
+    })
+    await pick(wrapper, 1, 'line')
+    await key(wrapper, 'Delete')
+    expect(wrapper.emitted('cell-change')).toBeUndefined()
+    expect(snackbar).toHaveBeenCalledWith('“Line” is required: it can’t be left empty.', 'info')
+  })
+
+  test('a deleted row says how to edit it again', async () => {
+    const snackbar = vi.fn()
+    const wrapper = mount(CoreDataGrid, {
+      props: {
+        columns,
+        rows,
+        editable: true,
+        cellValue: (row: DataRow, k: string) => row[k],
+        rowState: (row: DataRow) => (row.id === 2 ? 'deleted' : undefined),
+      },
+      global: { plugins: [createEnI18n()], provide: { showSnackbar: snackbar } },
+      attachTo: document.body,
+    })
+    await pick(wrapper, 2, 'description')
+    await key(wrapper, 'F2')
+    expect(snackbar).toHaveBeenCalledWith('Row marked to be deleted. Restore it to edit it.', 'info')
+  })
+
+  test('while a cell is edited the keys are the editor’s, not the grid’s', async () => {
+    const wrapper = mountGrid()
+    await pick(wrapper, 1, 'description')
+    await key(wrapper, 'Enter')
+    await key(wrapper, 'ArrowDown')
+    expect(active(wrapper)).toBe('1:description')
+    expect(cell(wrapper, 1, 'description').find('input').exists()).toBe(true)
+  })
+
+  test('a read-only grid moves but does not edit', async () => {
+    const wrapper = mountGrid({ editable: false })
+    await pick(wrapper, 1, 'description')
+    await key(wrapper, 'ArrowRight')
+    await key(wrapper, 'Enter')
+    await key(wrapper, 'Delete')
+    expect(active(wrapper)).toBe('1:plant')
+    expect(wrapper.find('td input').exists()).toBe(false)
+    expect(wrapper.emitted('cell-change')).toBeUndefined()
+  })
+
+  test('the active cell goes when its row does', async () => {
+    const wrapper = mountGrid()
+    await pick(wrapper, 2, 'line')
+    await wrapper.setProps({ rows: [rows[0], rows[2]] })
+    expect(active(wrapper)).toBeNull()
+  })
+
+  test('"go to" picks the cell it is given', async () => {
+    const wrapper = mountGrid()
+    ;(wrapper.vm as any).focusCell(3, 'plant')
+    await flushPromises()
+    expect(active(wrapper)).toBe('3:plant')
+  })
+})
