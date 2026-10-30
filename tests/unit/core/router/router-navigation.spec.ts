@@ -47,12 +47,6 @@ vi.mock('@cornflow-ui/core/views/IndexView.vue', () => ({
 vi.mock('@cornflow-ui/core/views/LoginView.vue', () => ({
   default: { name: 'LoginView', template: '<div>Login</div>' },
 }))
-vi.mock('@cornflow-ui/core/views/ProjectExecutionView.vue', () => ({
-  default: {
-    name: 'ProjectExecutionView',
-    template: '<div>ProjectExecution</div>',
-  },
-}))
 vi.mock('@cornflow-ui/core/views/CreateExecutionView.vue', () => ({
   default: {
     name: 'CreateExecutionView',
@@ -76,6 +70,9 @@ vi.mock('@cornflow-ui/core/views/OutputDataView.vue', () => ({
 }))
 vi.mock('@cornflow-ui/core/views/UserSettingsView.vue', () => ({
   default: { name: 'UserSettingsView', template: '<div>UserSettings</div>' },
+}))
+vi.mock('@cornflow-ui/core/views/RolesManagementView.vue', () => ({
+  default: { name: 'RolesManagementView', template: '<div>RolesManagement</div>' },
 }))
 
 // Mock SectionView component used in configuration routes

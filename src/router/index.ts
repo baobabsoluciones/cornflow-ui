@@ -18,7 +18,6 @@ import {
 } from 'vue-router'
 import IndexView from '@cornflow-ui/core/views/IndexView.vue'
 import LoginView from '@cornflow-ui/core/views/LoginView.vue'
-import ProjectExecutionView from '@cornflow-ui/core/views/ProjectExecutionView.vue'
 import CreateExecutionView from '@cornflow-ui/core/views/CreateExecutionView.vue'
 import HistoryExecutionView from '@cornflow-ui/core/views/HistoryExecutionView.vue'
 import DashboardView from '@cornflow-ui/core/views/DashboardView.vue'
@@ -182,14 +181,11 @@ const isRouteGatedOut = (
 // Factory for the repeated keep-alive child route shape (path + name + component + keepAlive,
 // with an optional meta). Keeps the route table DRY while producing identical records.
 /**
- * The "create execution" screen the app asks for (`createExecution` in `src/app/config.ts`): its
- * own flow, core's wizard, or core's one-page flow (the default).
+ * The "create execution" screen: the app's own flow (`createExecution.component` in
+ * `src/app/config.ts`), or core's page.
  */
-const createExecutionComponent = (): RouteRecordRaw['component'] => {
-  const options = (appConfig.getCore().parameters as any).createExecution
-  if (options?.component) return options.component
-  return options?.flow === 'wizard' ? ProjectExecutionView : CreateExecutionView
-}
+const createExecutionComponent = (): RouteRecordRaw['component'] =>
+  (appConfig.getCore().parameters as any).createExecution?.component ?? CreateExecutionView
 
 const keepAliveRoute = (
   path: string,

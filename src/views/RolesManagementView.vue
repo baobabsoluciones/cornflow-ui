@@ -1,12 +1,19 @@
+<!--
+  RolesManagementView: the roles of the app and its users, side by side.
+
+  - Roles: pick one to see its permissions and filter the users by it; with `allowEditRoles`, add,
+    rename and delete roles.
+  - Users: search them and edit a user's name, e-mail and roles.
+-->
 <template>
   <div class="view-container">
     <CoreTitleView
-      :icon="'mdi-shield-account'"
+      icon="mdi-shield-account"
       :title="$t('rolesManagement.title')"
       :description="$t('rolesManagement.description')"
     />
 
-    <div class="roles-layout mt-4">
+    <div class="roles-layout">
       <RolesPanel
         :roles="roles"
         :selected-role-id="selectedRoleId"
@@ -182,14 +189,16 @@ onMounted(async () => {
 
 <style scoped>
 .roles-layout {
-  display: flex;
-  gap: 20px;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  align-items: start;
+  gap: calc(var(--spacing) * 5);
+  margin-top: calc(var(--spacing) * 4);
 }
 
 @media (max-width: 960px) {
   .roles-layout {
-    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

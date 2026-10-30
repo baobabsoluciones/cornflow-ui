@@ -1,33 +1,5 @@
 <template>
   <div class="execution-data-view">
-    <!-- Checks of the data (the step of the wizard that runs them) -->
-    <div v-if="canCheckData" class="execution-data-view__checks">
-      <CoreButton
-        variant="outlined"
-        size="small"
-        icon="mdi-play"
-        :text="t('projectExecution.steps.step5.check')"
-        :disabled="checksLaunched && !checksFinished"
-        @click="handleCheckData"
-      />
-      <CoreAlert
-        v-if="checksFinished && !hasValidationErrors"
-        tone="success"
-        :message="t('inputOutputData.dataChecksPassedMessage')"
-      />
-      <CoreAlert
-        v-if="isLoadingChecks"
-        tone="info"
-        icon="mdi-loading"
-        :message="t('inputOutputData.dataChecksLoadingMessage')"
-      />
-      <CoreAlert
-        v-if="checksError"
-        tone="error"
-        :message="t('inputOutputData.dataChecksFailedMessage')"
-      />
-    </div>
-
     <div v-if="instanceTables.length > 0" class="execution-data-view__body">
       <CoreDataTable
         ref="dataTable"
@@ -46,7 +18,7 @@
         :total-count="currentTotalCount"
         :filtered-count="currentFilteredCount"
         :searchable="!isParametersView"
-        :filterable="!isParametersView && !isMessageView"
+        :filterable="!isParametersView"
         :editable="isEditableTable"
         :selectable="isEditableTable && !currentTable.isObjectTable"
         :can-add="isEditableTable && !currentTable.isObjectTable"
@@ -54,7 +26,6 @@
         :can-bulk-edit="isEditableTable && !currentTable.isObjectTable"
         :stages-changes="enableExcelMode"
         :row-state="rowState"
-        :row-level="rowLevel"
         :cell-modified="(row, key) => isCellModified(row.id, key)"
         :cell-disabled="cellDisabled"
         :row-pinned="rowPinned"
@@ -98,9 +69,6 @@
             @revert="revertParameter"
           />
         </template>
-        <template v-else-if="isMessageView" #body>
-          <MessageList :messages="messageRows" :level="currentTable.isWarning ? 'warning' : 'error'" />
-        </template>
       </CoreDataTable>
 
       <PendingChangesPanel
@@ -110,7 +78,7 @@
         :groups="pendingGroups"
         :saving="savingChanges"
         :save-label="t('dataTable.pending.apply')"
-        :banner="saveValidationError ? { kind: 'validation', message: saveValidationError } : null"
+        :validation-error="saveValidationError"
         @save="handleSaveAllChanges"
         @revert-all="handleRevertAll"
         @revert-table="revertTable"
@@ -123,7 +91,7 @@
     </div>
 
     <CoreEmptyState
-      v-else-if="!canCheckData"
+      v-else
       icon="mdi-table-off"
       :title="t('inputOutputData.noDataAvailable')"
     />
@@ -134,14 +102,11 @@
 import { ref, computed, nextTick, reactive, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
-import CoreAlert from '@cornflow-ui/core/components/core/CoreAlert.vue'
-import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
 import CoreEmptyState from '@cornflow-ui/core/components/core/CoreEmptyState.vue'
 import CoreDataTable from '@cornflow-ui/core/components/core/data-table/CoreDataTable.vue'
 import DataTableTabs, {
   type DataTableTab,
 } from '@cornflow-ui/core/components/core/data-table/DataTableTabs.vue'
-import MessageList from '@cornflow-ui/core/components/core/data-table/MessageList.vue'
 import ParametersTable, {
   type ParameterRow,
   type SourceChoice,
@@ -190,7 +155,6 @@ import {
   formatTitle,
   createParameterTableVertical,
   createObjectTableObject,
-  createValidationTables,
   createTableObject,
   injectParameterSwitchColumns,
 } from '@cornflow-ui/core/utils/executionTableBuilders'
@@ -204,44 +168,30 @@ import {
 // Props
 interface Props {
   execution?: any
-  canCheckData?: boolean
-  checksFinished?: boolean
-  checksError?: boolean
-  /** Set by parent while create + data-check requests run; avoids stale prop timing vs checksLaunched */
-  checksInProgress?: boolean
   readOnly?: boolean
   masterTableMatches?: any[]
   enableExcelMode?: boolean
   externalEtlFlow?: any | null
-  /** Instance checks schema (instanceChecksSchema from SchemaConfig). Used to determine which check tables are warnings (is_warning: true). */
-  checksSchema?: any | null
   /** The comparison with the master tables is still running. */
   masterTableLoading?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  canCheckData: false,
-  checksFinished: false,
-  checksError: false,
-  checksInProgress: false,
   readOnly: false,
   masterTableMatches: () => [],
   enableExcelMode: true,
   externalEtlFlow: null,
-  checksSchema: null,
   masterTableLoading: false,
 })
 
 // Emits
 const emit = defineEmits<{
   'save-changes': [data: any]
-  'check-data': []
   'master-table-action': [
     tableKey: string,
     action: 'keep_uploaded' | 'use_master' | 'replace_master',
   ]
   'show-comparison': [tableKey: string]
-  'pending-changes-update': [hasChanges: boolean, changesCount: number]
 }>()
 
 // Composables
@@ -250,7 +200,6 @@ const generalStore = useGeneralStore()
 const tableChanges = useTableChanges()
 
 // State
-const checksLaunched = ref(false)
 /** Stable tab id (schema / table key); avoids CoreTabs registry corruption when instanceTables reorder */
 const selectedTableKey = ref<string | undefined>(undefined)
 // Each table has its own search and filters.
@@ -344,20 +293,7 @@ const instanceTables = computed(() => {
 
   const tables: any[] = []
 
-  // If we're in check data mode, show validation tables if they exist
-  if (props.canCheckData) {
-    // Show validation tables if they exist (don't wait for checks to finish)
-    const validationTables = createValidationTables(execution, {
-      applyFilters: applyFiltersAndSearch,
-      checksSchema: props.checksSchema,
-    })
-    if (validationTables.length > 0) {
-      tables.push(...validationTables)
-    }
-    return tables
-  }
-
-  // Normal mode: show instance data tables in schema order
+  // The instance data tables in schema order
   const instanceData = execution.instance.data
   const schema = instanceSchema.value
   const rawSchema = execution.instance.schema
@@ -491,8 +427,7 @@ const instanceTables = computed(() => {
   // (Section -> Group -> Table), then others keep schema/data order.
   if (
     props.masterTableMatches &&
-    props.masterTableMatches.length > 0 &&
-    !props.canCheckData
+    props.masterTableMatches.length > 0
   ) {
     const masterDataConfig = generalStore.getConfigurations?.masterData || {}
     const masterRankByKey = getMasterDataTableRankByDrawerHierarchy(
@@ -536,7 +471,7 @@ const instanceTables = computed(() => {
   return tables
 })
 
-// After table-building helpers (createTableObject, createValidationTables, …) so
+// After table-building helpers (createTableObject, …) so
 // immediate watch does not evaluate instanceTables while those consts are still in TDZ.
 watch(
   () => instanceTables.value.map((t) => t.key),
@@ -725,38 +660,6 @@ const handleShowComparison = () => {
   emit('show-comparison', table.key)
 }
 
-const hasValidationErrors = computed(() => {
-  // Check if there are validation errors in the execution data
-  const execution = props.execution || generalStore.selectedExecution
-  if (!execution) return false
-
-  const instanceData = execution.instance
-  const dataChecks = instanceData?.dataChecks
-
-  // Check if dataChecks exists and has at least one key with non-empty array
-  if (!dataChecks || !Object.keys(dataChecks).length) return false
-
-  // Return true if at least one key has an array with items
-  return Object.values(dataChecks).some(
-    (check: any) => Array.isArray(check) && check.length > 0,
-  )
-})
-
-const isLoadingChecks = computed(() => {
-  if (props.checksInProgress) return true
-  return checksLaunched.value && !props.checksFinished && !props.checksError
-})
-
-watch(
-  () =>
-    [props.checksInProgress, props.checksFinished, props.checksError] as const,
-  ([inProgress, finished, error]) => {
-    if (!inProgress && (finished || error)) {
-      checksLaunched.value = false
-    }
-  },
-)
-
 
 // Search input flow:
 //   - `state.searchValue` updates synchronously so the textbox stays
@@ -929,13 +832,6 @@ const handleCellChange = (
   recordTypedCellChange(tableKey, rowId, fieldKey, oldValue, newValue)
 
   // ETL: table-level "editado manualmente" text only after Save all (handleSaveAllChanges).
-
-  // Emit event to parent
-  emit(
-    'pending-changes-update',
-    tableChanges.hasChanges.value,
-    tableChanges.totalChangesCount.value,
-  )
 }
 
 // Check if a cell is modified
@@ -1154,7 +1050,6 @@ const handleSaveAllChanges = async (): Promise<boolean> => {
     emit('save-changes', instance.data)
     tableChanges.clearAllChanges()
     showPendingChangesModal.value = false
-    emit('pending-changes-update', false, 0)
     return true
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
@@ -1197,11 +1092,6 @@ const handleModalUpdateChange = (
     ? existing.oldValue
     : getOriginalRowValue(tableKey, rowId, fieldKey)
   recordTypedCellChange(tableKey, rowId, fieldKey, oldValue, newValue)
-  emit(
-    'pending-changes-update',
-    tableChanges.hasChanges.value,
-    tableChanges.totalChangesCount.value,
-  )
 }
 
 // Handle revert change from modal
@@ -1222,11 +1112,6 @@ const handleRevertChange = (
       }
     }
   }
-  emit(
-    'pending-changes-update',
-    tableChanges.hasChanges.value,
-    tableChanges.totalChangesCount.value,
-  )
 }
 
 // Handle revert row from modal
@@ -1244,11 +1129,6 @@ const handleRevertRow = (tableKey: string, rowId: string) => {
       })
     }
   }
-  emit(
-    'pending-changes-update',
-    tableChanges.hasChanges.value,
-    tableChanges.totalChangesCount.value,
-  )
 }
 
 // Handle revert table from modal
@@ -1268,11 +1148,6 @@ const handleRevertTable = (tableKey: string) => {
       }
     })
   }
-  emit(
-    'pending-changes-update',
-    tableChanges.hasChanges.value,
-    tableChanges.totalChangesCount.value,
-  )
 }
 
 // Handle revert all from modal
@@ -1300,7 +1175,6 @@ const handleRevertAll = () => {
   }
 
   tableChanges.clearAllChanges()
-  emit('pending-changes-update', false, 0)
 }
 
 
@@ -1318,7 +1192,7 @@ const selectedTabKey = computed<string>({
 })
 
 const isEditableTable = computed(
-  () => props.enableExcelMode && !props.readOnly && !currentTable.value.isValidationTable,
+  () => props.enableExcelMode && !props.readOnly,
 )
 
 const currentColumns = computed<DataColumn[]>(() => columnsFromHeaders(currentTable.value.headers ?? []))
@@ -1373,12 +1247,6 @@ const rowState = (row: DataRow): DataRowState | undefined => {
   return tableChanges.isRowModified(tableKey, row.id) ? 'modified' : undefined
 }
 
-const rowLevel = computed(() =>
-  currentTable.value.isValidationTable
-    ? () => (currentTable.value.isWarning ? 'warning' : 'error')
-    : undefined,
-)
-
 const headerByKey = computed<Record<string, any>>(() =>
   Object.fromEntries((currentTable.value.headers ?? []).map((header: any) => [header.key, header])),
 )
@@ -1402,16 +1270,12 @@ const sortedItems = computed<DataRow[]>(() => {
 
 // ── Editing ─────────────────────────────────────────────────────────────────
 
-const notifyPendingChanges = () =>
-  emit('pending-changes-update', tableChanges.hasChanges.value, tableChanges.totalChangesCount.value)
-
 const onCellChange = (row: DataRow, key: string, value: unknown) => {
   const tableKey = currentTable.value.key
   if (!tableKey) return
   if (cellText(row.id).startsWith('create-')) {
     const [typed] = [convertDataTypesBasedOnSchema({ [key]: value }, tableKey)[key]]
     tableChanges.updateCreateField(tableKey, cellText(row.id), key, typed)
-    notifyPendingChanges()
     return
   }
   handleCellChange(tableKey, row.id, key, cellValue(row, key), value)
@@ -1424,7 +1288,6 @@ const addRow = (values: Record<string, unknown>) => {
   const { id: _id, ...data } = convertDataTypesBasedOnSchema(values, table.key)
   if (props.enableExcelMode) {
     tableChanges.recordCreate(table.key, data as Record<string, any>, table.title)
-    notifyPendingChanges()
     return
   }
   props.execution.instance.data[table.key].push({ ...data, id: generateFrontendRowId(table.key) })
@@ -1441,7 +1304,6 @@ const deleteRows = (ids: Array<string | number>) => {
       if (wanted.has(cellText(item.id))) tableChanges.recordDelete(table.key, item.id, item)
     }
     selectedItems.value = []
-    notifyPendingChanges()
     return
   }
   const rows = props.execution.instance.data[table.key]
@@ -1456,7 +1318,6 @@ const restoreRows = (ids: Array<string | number>) => {
   const tableKey = currentTable.value.key
   if (!tableKey) return
   ids.forEach((id) => tableChanges.revertDelete(tableKey, id))
-  notifyPendingChanges()
 }
 
 const bulkEditRows = (ids: Array<string | number>, values: Record<string, unknown>) => {
@@ -1517,7 +1378,6 @@ const tableTabs = computed<DataTableTab[]>(() =>
       label: resolveTitle(table.title as any, formatTitle(table.key)),
       rows: (table.originalItems ?? table.items ?? []).length,
       pending: pendingCountOf(table.key),
-      level: table.isValidationTable ? (table.isWarning ? 'warning' : 'error') : undefined,
       master: match ? (match.hasDifferences ? 'different' : 'identical') : undefined,
       source: variant ? SOURCE_VARIANTS[variant] : undefined,
     }
@@ -1543,7 +1403,7 @@ const setSourceChoice = (choice: string) => {
 
 const sourceMaster = computed<TableMasterComparison | null>(() => {
   const match = currentTableMatch.value
-  if (!match || currentTable.value.isValidationTable) return null
+  if (!match) return null
   return {
     state: props.masterTableLoading ? 'comparing' : 'ready',
     name: match.masterTableTitle,
@@ -1558,15 +1418,6 @@ const sourceMaster = computed<TableMasterComparison | null>(() => {
 // ── Tables of one record, as a list of parameters ───────────────────────────
 
 const isParametersView = computed(() => !!currentTable.value.isObjectTable)
-
-const isMessageView = computed(() => {
-  const table = currentTable.value
-  if (!table.isValidationTable) return false
-  const keys = currentColumns.value.map((column) => column.key)
-  return keys.length === 1 && keys[0] === 'value'
-})
-
-const messageRows = computed(() => sortedItems.value.map((row) => cellText(row.value)))
 
 const parameterSourceTitle = computed(() =>
   currentTableSwitchState.value?.variant === 'reuploaded'
@@ -1666,20 +1517,17 @@ const revertTable = (tableKey: string) => {
   handleRevertTable(tableKey)
   tableChanges.clearCreatesForTable(tableKey)
   tableChanges.clearDeletesForTable(tableKey)
-  notifyPendingChanges()
 }
 
 const revertRow = (tableKey: string, rowId: string | number, kind: string) => {
   if (kind === 'new') tableChanges.revertCreate(tableKey, cellText(rowId))
   else if (kind === 'deleted') tableChanges.revertDelete(tableKey, rowId)
   else handleRevertRow(tableKey, cellText(rowId))
-  notifyPendingChanges()
 }
 
 const updateReviewField = (tableKey: string, rowId: string | number, key: string, value: unknown) => {
   if (cellText(rowId).startsWith('create-')) {
     tableChanges.updateCreateField(tableKey, cellText(rowId), key, value)
-    notifyPendingChanges()
     return
   }
   handleModalUpdateChange(tableKey, cellText(rowId), key, value)
@@ -1699,12 +1547,6 @@ const goToChange = async (tableKey: string, rowId: string | number, key: string)
   dataTable.value?.focusCell(id, key)
   highlightedRowId.value = id
   setTimeout(() => (highlightedRowId.value = null), 1800)
-}
-
-// Methods
-const handleCheckData = () => {
-  checksLaunched.value = true
-  emit('check-data')
 }
 
 // Expose methods for parent component
@@ -1727,17 +1569,6 @@ defineExpose({
   width: 100%;
   height: 100%;
   min-height: 0;
-}
-
-.execution-data-view__checks {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: calc(var(--spacing) * 2);
-}
-
-.execution-data-view__checks > :deep(.core-alert) {
-  align-self: stretch;
 }
 
 .execution-data-view__body {

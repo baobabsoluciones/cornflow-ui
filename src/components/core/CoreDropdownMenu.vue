@@ -1,185 +1,133 @@
+<!--
+  CoreDropdownMenu: a "⋮" button that opens a list of actions (CoreMenu), loose or in sections.
+  An item runs its `action` and is emitted with `item-click`; the menu closes after it unless
+  `closeOnItemClick` is false.
+
+  <CoreDropdownMenu :sections="[{ title: 'Data', items: [{ title: 'Download', icon: 'mdi-download', action }] }]" />
+-->
 <template>
-  <v-menu
-    v-model="isOpen"
-    :close-on-content-click="false"
-    :offset="4"
-    location="bottom end"
-  >
-    <template v-slot:activator="{ props }">
-      <slot name="activator" :props="props" :isOpen="isOpen">
-        <v-btn
-          icon="mdi-dots-vertical"
-          variant="text"
-          size="small"
-          v-bind="props"
+  <CorePopover v-model:open="open" align="end" :width="240">
+    <template #trigger>
+      <slot name="activator" :is-open="open">
+        <button
+          type="button"
           class="core-dropdown-menu__trigger"
-        />
+          :aria-label="label"
+          :title="label"
+          data-testid="core-dropdown-menu-trigger"
+        >
+          <CoreIcon name="mdi-dots-vertical" :size="20" />
+        </button>
       </slot>
     </template>
-
-    <v-card
-      class="core-dropdown-menu"
-      elevation="2"
-      rounded="lg"
-      min-width="200"
-    >
-      <v-list density="compact" class="core-dropdown-menu__list">
-        <!-- Render sections with items -->
-        <template
-          v-for="(section, sectionIndex) in sections"
-          :key="sectionIndex"
-        >
-          <!-- Section header -->
-          <v-list-subheader
-            v-if="section.title"
-            class="core-dropdown-menu__section-header"
-          >
-            {{ section.title }}
-          </v-list-subheader>
-
-          <!-- Section items -->
-          <template v-for="(item, itemIndex) in section.items" :key="itemIndex">
-            <CoreDropdownMenuItem :item="item" @item-click="handleItemClick" />
-          </template>
-
-          <!-- Divider between sections (except last) -->
-          <v-divider
-            v-if="sectionIndex < sections.length - 1"
-            class="core-dropdown-menu__divider"
-          />
-        </template>
-
-        <!-- Render items without sections -->
-        <template
-          v-for="(item, itemIndex) in itemsWithoutSections"
-          :key="`item-${itemIndex}`"
-        >
-          <CoreDropdownMenuItem :item="item" @item-click="handleItemClick" />
-        </template>
-
-        <!-- Custom content slot -->
-        <slot name="content" />
-      </v-list>
-    </v-card>
-  </v-menu>
+    <CoreMenu :items="menuItems" @select="pick" />
+    <slot name="content" />
+  </CorePopover>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import CoreDropdownMenuItem from '@cornflow-ui/core/components/core/CoreDropdownMenuItem.vue'
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
+import CoreMenu, { type CoreMenuItem } from '@cornflow-ui/core/components/core/CoreMenu.vue'
+import CorePopover from '@cornflow-ui/core/components/core/CorePopover.vue'
 
-// Types
-interface DropdownItem {
+defineOptions({ name: 'CoreDropdownMenu' })
+
+export interface DropdownItem {
   id?: string
   title: string
   icon?: string
-  rightIcon?: string
-  rightContent?: string
   disabled?: boolean
   action?: () => void
   data?: any
 }
 
-interface DropdownSection {
+export interface DropdownSection {
   title?: string
   items: DropdownItem[]
 }
 
-// Props
-interface Props {
-  // Items configuration
-  items?: DropdownItem[]
-  sections?: DropdownSection[]
+const props = withDefaults(
+  defineProps<{
+    items?: DropdownItem[]
+    sections?: DropdownSection[]
+    closeOnItemClick?: boolean
+  }>(),
+  { items: () => [], sections: () => [], closeOnItemClick: true },
+)
 
-  // Menu state
-  modelValue?: boolean
+const emit = defineEmits<{ 'item-click': [item: DropdownItem] }>()
 
-  // Behavior
-  closeOnItemClick?: boolean
-}
+const open = defineModel<boolean>({ default: false })
 
-const props = withDefaults(defineProps<Props>(), {
-  items: () => [],
-  sections: () => [],
-  modelValue: false,
-  closeOnItemClick: true,
+const { t } = useI18n()
+const label = computed(() => t('general.moreActions'))
+
+/** Every item with the key CoreMenu gives back, in the order shown. */
+const entries = computed(() => {
+  const list: { key: string; item: DropdownItem }[] = []
+  props.sections.forEach((section, s) =>
+    section.items.forEach((item, i) => list.push({ key: `s${s}-${i}`, item })),
+  )
+  props.items.forEach((item, i) => list.push({ key: `i${i}`, item }))
+  return list
 })
 
-// Emits
-interface Emits {
-  (e: 'update:modelValue', value: boolean): void
-  (e: 'item-click', item: DropdownItem): void
-}
-
-const emit = defineEmits<Emits>()
-
-// Local state
-const isOpen = ref(false)
-
-// Computed properties
-const itemsWithoutSections = computed(() => {
-  return props.items || []
-})
-
-const sections = computed(() => {
-  return props.sections || []
-})
-
-// Event handlers
-const handleMenuToggle = (value: boolean) => {
-  isOpen.value = value
-}
-
-const handleItemClick = (item: DropdownItem) => {
-  if (item.disabled) return
-
-  // Execute item action if provided
-  if (item.action) {
-    item.action()
+const menuItems = computed<CoreMenuItem[]>(() => {
+  const rows: CoreMenuItem[] = []
+  const row = (key: string, item: DropdownItem): CoreMenuItem => ({
+    key,
+    label: item.title,
+    icon: item.icon,
+    disabled: item.disabled,
+    testId: item.id ? `dropdown-item-${item.id}` : undefined,
+  })
+  props.sections.forEach((section, s) => {
+    if (s > 0) rows.push({ key: `sep-${s}`, label: '', separator: true })
+    if (section.title) rows.push({ key: `head-${s}`, label: section.title, header: true })
+    section.items.forEach((item, i) => rows.push(row(`s${s}-${i}`, item)))
+  })
+  if (props.sections.length && props.items.length) {
+    rows.push({ key: 'sep-items', label: '', separator: true })
   }
+  props.items.forEach((item, i) => rows.push(row(`i${i}`, item)))
+  return rows
+})
 
-  // Emit item click event
+function pick(row: CoreMenuItem) {
+  const item = entries.value.find((entry) => entry.key === row.key)?.item
+  if (!item || item.disabled) return
+  item.action?.()
   emit('item-click', item)
-
-  // Close menu if configured to do so
-  if (props.closeOnItemClick) {
-    isOpen.value = false
-  }
+  if (props.closeOnItemClick) open.value = false
 }
 </script>
 
 <style scoped>
-.core-dropdown-menu {
-  background: var(--color-surface);
-  border-radius: 8px;
-  border: 1px solid var(--color-border);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  overflow: hidden;
-}
-
-.core-dropdown-menu__list {
-  padding: 8px 0;
-}
-
-.core-dropdown-menu__section-header {
-  font-weight: 600;
-  font-size: 12px;
-  color: var(--title);
-  padding: 8px 16px 4px 16px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.core-dropdown-menu__divider {
-  margin: 4px 0;
-  border-color: var(--color-divider);
-}
-
 .core-dropdown-menu__trigger {
-  color: var(--subtitle);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard);
 }
 
-.core-dropdown-menu__trigger:hover {
-  background-color: var(--primary-light-variant);
+.core-dropdown-menu__trigger:hover,
+.core-dropdown-menu__trigger[data-state='open'] {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.core-dropdown-menu__trigger:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 </style>

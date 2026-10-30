@@ -1,59 +1,51 @@
+<!--
+  RoleFormDialog: creates a role, or renames the one it is given.
+
+  The name is required; Enter saves it. `save` gives the trimmed name, with the id when editing.
+
+  <RoleFormDialog v-model="open" :role="roleBeingEdited" :saving="saving" @save="saveRole" />
+-->
 <template>
-  <v-dialog
+  <CoreDialog
     :model-value="modelValue"
-    max-width="420"
+    :title="isEdit ? $t('rolesManagement.editRole') : $t('rolesManagement.addRole')"
+    :icon="isEdit ? 'mdi-pencil-outline' : 'mdi-plus-circle-outline'"
     persistent
     @update:model-value="$emit('update:modelValue', $event)"
   >
-    <v-card rounded="lg">
-      <v-card-title class="dialog-title pt-5 px-6">
-        <v-icon color="var(--primary)" class="mr-2" size="20">
-          {{ isEdit ? 'mdi-pencil-outline' : 'mdi-plus-circle-outline' }}
-        </v-icon>
-        {{
-          isEdit
-            ? $t('rolesManagement.editRole')
-            : $t('rolesManagement.addRole')
-        }}
-      </v-card-title>
+    <label class="role-form__label">
+      {{ $t('rolesManagement.roleName') }}
+      <CoreTextField
+        v-model="form.name"
+        autocomplete="off"
+        @keyup.enter="onSave"
+      />
+    </label>
 
-      <v-card-text class="px-6 pt-3 pb-2">
-        <v-text-field
-          v-model="form.name"
-          :label="$t('rolesManagement.roleName')"
-          variant="outlined"
-          density="comfortable"
-          autofocus
-          :rules="[(v: string) => !!v?.trim() || $t('rolesManagement.roleName')]"
-          @keyup.enter="onSave"
-        />
-      </v-card-text>
-
-      <v-card-actions class="px-6 pb-5 pt-0 d-flex justify-end ga-2">
-        <CoreButton
-          :text="$t('rolesManagement.cancel')"
-          variant="outlined"
-          color="primary"
-          size="small"
-          @click="close"
-        />
-        <CoreButton
-          :text="$t('rolesManagement.save')"
-          icon="mdi-content-save-outline"
-          variant="filled"
-          color="primary"
-          size="small"
-          :disabled="saving || !form.name?.trim()"
-          @click="onSave"
-        />
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+    <template #actions>
+      <CoreButton
+        :text="$t('rolesManagement.cancel')"
+        variant="outlined"
+        size="small"
+        @click="close"
+      />
+      <CoreButton
+        :text="$t('rolesManagement.save')"
+        icon="mdi-content-save-outline"
+        size="small"
+        :loading="saving"
+        :disabled="!form.name?.trim()"
+        @click="onSave"
+      />
+    </template>
+  </CoreDialog>
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
+import CoreDialog from '@cornflow-ui/core/components/core/CoreDialog.vue'
+import CoreTextField from '@cornflow-ui/core/components/core/CoreTextField.vue'
 import type { Role, RoleFormValue } from '@cornflow-ui/core/composables/roles-management/types'
 
 interface Props {
@@ -105,11 +97,12 @@ function onSave() {
 </script>
 
 <style scoped>
-.dialog-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--title);
+.role-form__label {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 1.5);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
 }
 </style>

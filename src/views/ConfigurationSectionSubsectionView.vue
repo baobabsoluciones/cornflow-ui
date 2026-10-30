@@ -2,7 +2,7 @@
   <div>
     <div v-if="error" class="pa-4">
       <v-alert type="warning" variant="tonal">
-        {{ $t('errors.notFound') }}
+        {{ $t('notFound.title') }}
       </v-alert>
     </div>
     <Suspense v-else>

@@ -50,6 +50,7 @@ export default {
   baobab: 'baobab',
   general: {
     loading: 'Loading...',
+    moreActions: 'More actions',
   },
   createExecution: {
     title: 'New execution',
@@ -226,20 +227,13 @@ export default {
   },
   projectExecution: {
     title: 'Project execution',
-    description:
-      'Create a new execution or load an existing one to visualize the solution you are looking for. To do so, follow the steps below:',
-    continueButton: 'Continue',
-    previousButton: 'Previous',
     maximize: 'Maximize',
-    minimize: 'Minimize',
     create: 'New execution',
     downloadExcel: 'Download data',
     uploadExcel: 'Overwrite data',
     snackbar: {
-      instanceDataChecksSuccess: 'Data verification completed successfully',
       instanceDataChecksError: 'An error occurred while verifying the data',
       instanceCreationError: 'An error occurred while creating the instance',
-      successCreate: 'Execution created successfully',
       errorCreate: 'An error occurred while creating the execution',
       succesSearch: 'Search succesfully completed',
       errorSearch: 'An error occurred while searching for executions',
@@ -251,189 +245,24 @@ export default {
       autoLoadError:
         'An unexpected error occurred while retrieving the execution information',
     },
-    exitConfirmation: {
-      title: 'Exit creation process',
-      message:
-        'Are you sure you want to exit the execution creation process?\nIf you exit now, the flow will be reset and all progress made will be lost.',
-      confirmButton: 'Yes, exit',
-      cancelButton: 'Cancel',
-    },
     steps: {
-      step1: {
-        firstOption: {
-          title: 'Create a new execution',
-          description:
-            'A new execution will be created for which a new instance of the input data table with the correct structure will need to be uploaded.',
-        },
-        secondOption: {
-          title: 'Search for and load an existing execution',
-          description:
-            'Search by date for an existing execution and load it to view.',
-        },
-      },
-      nameDescription: {
-        title: 'Name and description',
-        description: 'Name and describe the execution',
-        titleContent: 'Fill the following information',
-        subtitleContent:
-          'Please provide a name and a brief description for the execution to be created. This will aid in searching and identifying it. We recommend keeping them brief and as concise as possible',
-        nameTitleField: 'Name',
-        descriptionTitleField: 'Description',
-        namePlaceholder: 'Please insert a name',
-        descriptionPlaceholder: 'Please insert a description',
-      },
-      loadInstance: {
-        title: 'Load instance',
-        description: 'Load a file with the instance data',
-        titleContent: 'Load instance',
-        subtitleContent:
-          'Select one or several files to load the instance data. When finishing the uploads, press the button below to load the instance data. If several files are selected, the data will be merged into a single instance.',
-        loadInstance: {
-          dragAndDropDescription:
-            'Drag and drop your instance file / files here',
-          uploadFile: 'Upload file',
-          noSchemaError:
-            'No schema was found: are you connected to the server?',
-          instanceSchemaError: 'Instance does not comply with schema ',
-          instanceLoaded: 'Instance loaded successfully',
-          instancesLoaded:
-            'Files merged to create the instance and loaded successfully',
-          warningTitle: 'Warning',
-          loadInstance: 'Load Instance',
-          selectedFiles: 'Selected Files',
-          invalidFileFormat: 'Invalid file format. Please try again.',
-          unexpectedError: 'An unexpected error occurred. Please try again.',
-          instanceLoadedWithErrors: 'Instance loaded with errors',
-          noValidInstancesError:
-            'No valid instances found in the uploaded files',
-          downloadExcel: 'Download Excel',
-          downloadAllErrors: 'Download all errors',
-          showingErrorsTruncated:
-            'Showing first {displayed} of {total} errors. Download the complete error list to see all errors.',
-          totalErrors: 'There are {total} errors',
-          andMoreErrors: 'and {count} more',
-          errorsDownloadStarted: 'Error file download started',
-          errorsDownloadError: 'Error downloading error file',
-          noFilesSelectedError: 'Please select at least one file',
-          optionalOrDivider: 'or',
-          loadFromDb: 'Get all data from database',
-        },
-      },
-      reviewInstance: {
-        title: 'Review instance',
-        description: 'Review and edit instance data',
-        titleContent: 'Review instance',
-        subtitleContent:
-          'Review the data of the loaded instance and edit it if necessary. These changes will not be saved to the system until you confirm in the final step.',
-      },
-      checkData: {
-        title: 'Check data',
-        description: 'Verify data consistency',
-        titleContent: 'Check data',
-        subtitleContent:
-          "Optionally, you can check if the instance data has inconsistencies. Note that if you don't check and correct the data if necessary, the execution may not be able to find a solution.",
-        check: 'Check data',
-      },
-      selectSolver: {
-        title: 'Select solver',
-        description: 'Select the solver to use for the execution',
-        titleContent: 'Select a solver',
-        subtitleContent:
-          'The solver you select will be the algorithm used to find the solution',
-      },
-      configParams: {
-        title: 'Execution parameters',
-        description: 'Configure the execution parameters',
-        titleContent: 'Configure execution parameters',
-        subtitleContent:
-          'Set the parameters that will control the execution behavior. These parameters can be configured based on your needs.',
-        timeLimitPlaceholder: 'Please insert a time limit',
-        time: 'Time limit',
-        secondsSuffix: 'sec',
-      },
-      solve: {
-        title: 'Confirm',
-        description: 'Confirm the execution data and start the execution',
-        titleContent: 'Execution resolution confirmation',
-        subtitleContent:
-          'If you choose to solve the execution, the model will automatically initiate resolution and will take the estimated time to finish. You can access its status by opening the tab with the assigned name on the bottom horizontal bar.',
-        resolve: 'Solve',
-        successMessage:
-          'The execution has been launched successfully. A new tab has been opened on the bottom bar. You can click on this tab to open it.',
-        loadNewExecution: 'Load new execution',
-        developerMode: {
-          title: 'Developer Mode',
-          normalSolve: 'Solve normally',
-          uploadSolution: 'Upload solution',
-          dragAndDropDescription:
-            'Drag and drop a solution file or click to browse',
-          uploadFile: 'Upload solution file',
-          invalidFileFormat:
-            'Invalid file format. Please upload a JSON, XLSX, or CSV file.',
-          solutionSchemaError:
-            'Solution file does not match the required schema',
-          unsupportedFileFormat: 'Unsupported file format',
-          fileReadError: 'Error reading file',
-          noSolutionData: 'Please upload a solution file first',
-          uploadError: 'Error uploading solution data',
-        },
-      },
       // Legacy step keys for backward compatibility
-      step2: {
-        nameTitleField: 'Name',
-        descriptionTitleField: 'Description',
-        namePlaceholder: 'Please insert a name',
-        descriptionPlaceholder: 'Please insert a description',
-      },
       step3: {
         loadInstance: {
-          dragAndDropDescription:
-            'Drag and drop your instance file / files here',
-          uploadFile: 'Upload file',
-          noSchemaError:
-            'No schema was found: are you connected to the server?',
           instanceSchemaError: 'Instance does not comply with schema ',
-          instanceLoaded: 'Instance loaded successfully',
-          instancesLoaded:
-            'Files merged to create the instance and loaded successfully',
-          warningTitle: 'Warning',
-          loadInstance: 'Load Instance',
-          selectedFiles: 'Selected Files',
-          invalidFileFormat: 'Invalid file format. Please try again.',
           unexpectedError: 'An unexpected error occurred. Please try again.',
-          instanceLoadedWithErrors: 'Instance loaded with errors',
           noValidInstancesError:
             'No valid instances found in the uploaded files',
-          downloadExcel: 'Download Excel',
-          downloadAllErrors: 'Download all errors',
-          showingErrorsTruncated:
-            'Showing first {displayed} of {total} errors. Download the complete error list to see all errors.',
-          totalErrors: 'There are {total} errors',
-          andMoreErrors: 'and {count} more',
           errorsDownloadStarted: 'Error file download started',
           errorsDownloadError: 'Error downloading error file',
           noFilesSelectedError: 'Please select at least one file',
-          optionalOrDivider: 'or',
-          loadFromDb: 'Get all data from database',
-          preEtlParamsHint: 'Data the instance will be loaded with',
-          source: 'Data source',
-          sourceDatabase: 'Master tables',
-          sourceDatabaseDescription: 'Current data of the master tables',
-          sourceFile: 'File',
-          sourceFileDescription: 'Upload a file with the data',
-          databaseSummary: 'The current data of the master tables will be loaded.',
-          reload: 'Load again',
-          loaded: 'Data loaded',
-          preEtlChangedAfterLoad:
-            'You changed these after loading. Load again so they apply to the instance.',
+          unsupportedFileFormat: 'Unsupported file format',
+          fileReadError: 'Error reading file',
+          mergingError: 'Error merging the files',
         },
-      },
-      step4: {
-        titleContent: 'Review instance',
       },
       step5: {
         title: 'Check data',
-        check: 'Check data',
       },
       step7: {
         timeLimitPlaceholder: 'Please insert a time limit',
@@ -441,24 +270,9 @@ export default {
         secondsSuffix: 'sec',
       },
       step8: {
-        resolve: 'Solve',
-        successMessage:
-          'The execution has been launched successfully. A new tab has been opened on the bottom bar. You can click on this tab to open it.',
-        loadNewExecution: 'Load new execution',
         developerMode: {
-          title: 'Developer Mode',
-          normalSolve: 'Solve normally',
-          uploadSolution: 'Upload solution',
-          dragAndDropDescription:
-            'Drag and drop a solution file or click to browse',
-          uploadFile: 'Upload solution file',
-          invalidFileFormat:
-            'Invalid file format. Please upload a JSON, XLSX, or CSV file.',
-          solutionSchemaError:
-            'Solution file does not match the required schema',
           unsupportedFileFormat: 'Unsupported file format',
           fileReadError: 'Error reading file',
-          noSolutionData: 'Please upload a solution file first',
           uploadError: 'Error uploading solution data',
         },
       },
@@ -490,25 +304,8 @@ export default {
     },
     stagingWarning:
       'You are currently working in a staging environment. This environment is intended for testing and development purposes only. For real executions, please switch to the production environment.',
-    checks: {
-      blockingErrorsFound:
-        'Errors were found during data verification. Please fix them before continuing.',
-    },
   },
   executionTable: {
-    date: 'Time',
-    endDate: 'End Time',
-    userName: 'User',
-    userFullName: 'User',
-    name: 'Name',
-    description: 'Description',
-    state: 'State',
-    solver: 'Solver',
-    solution: 'Info',
-    excel: 'Excel',
-    actions: 'Actions',
-    deleteTitle: 'Delete execution',
-    deleteMessage: 'Are you sure you want to delete this execution?',
     deleteButton: 'Delete',
     cancelButton: 'Cancel',
     optimal: 'Optimal',
@@ -584,6 +381,7 @@ export default {
     accept: 'Log me out',
     cancel: 'Cancel',
     snackbar_message_success: 'Successfully logged out',
+    snackbar_message_error: 'Something went wrong, please try again.',
   },
   signUp: {
     subtitle: 'Enter your details to register',
@@ -648,7 +446,6 @@ export default {
     custom: 'Custom range',
     from: 'From',
     to: 'To',
-    noData: ' No data found for the selected range dates',
     loading: 'Loading executions...',
     createNewExecution: 'Create new execution',
     list: {
@@ -713,12 +510,6 @@ export default {
       'Data verification inconsistencies have been detected, which may result in incorrect solutions or, in some cases, the inability to find a solution.',
     dataChecksSolutionMessage:
       'Data verification inconsistencies have been detected for the solution.',
-    dataChecksPassedMessage:
-      'Data verification has completed successfully. No inconsistencies found in the data.',
-    dataChecksLoadingMessage:
-      'Data verification is in progress. Please wait...',
-    dataChecksFailedMessage:
-      'Data verification process failed. Please try again or contact support.',
     parameter: 'Parameter',
     value: 'Value',
     key: 'Key',
@@ -779,6 +570,11 @@ export default {
     close: 'Close',
     download: 'Download user manual',
   },
+  warnings: {
+    title: 'Warnings',
+    downloadAll: 'Download all',
+    noWarnings: 'There are no warnings.',
+  },
   navigation: {
     executions: 'Executions',
     masterData: 'Configuration tables',
@@ -794,9 +590,6 @@ export default {
     downloadError: 'Error downloading file',
     downloadNoData: 'No data to download',
     etlMetadataInfo: {
-      fromDbTooltip:
-        'This table contains the information available in the database at execution time.',
-      notFromDbTooltip: 'This table comes from a file uploaded by the user.',
       fromDbValueTooltip:
         'This value contains the information available in the database at execution time.',
       notFromDbValueTooltip:
@@ -812,95 +605,29 @@ export default {
     editAllMasterTables: 'Upload all master tables',
     editAllMasterTablesTitle: 'Upload all master tables',
     editAllMasterTablesSuccess: 'Master tables updated successfully',
-    validationWarningTab: 'This table contains warnings',
-    validationErrorTab: 'This table contains errors',
   },
   table: {
-    loading: 'Loading data...',
-    noDataAvailable: 'No data available for this table',
-    loadingError: 'Error loading table data',
     apiNotSupported: 'API not available or operation not supported',
     validationMessageColumn: 'Message',
     groups: {
       inputTables: 'Input Tables',
       outputTables: 'Output Tables',
     },
-    actions: 'Actions',
-    add: 'Add',
-    edit: 'Edit',
     delete: 'Delete',
-    bulkUpload: 'Bulk upload',
-    addItem: 'Add item',
-    editItem: 'Edit item',
     deleteItem: 'Delete item',
     confirmDelete: 'Confirm delete',
     deleteMessage: 'Are you sure you want to delete this item?',
-    cancel: 'Cancel',
-    save: 'Save',
-    update: 'Update',
     ok: 'OK',
-    clickToEdit: 'Click to edit',
-    fieldReadOnly: 'This field cannot be edited',
-    upload: 'Upload',
-    selectFile: 'Select file',
-    selectFiles: 'Select files',
-    multipleFileAccumulateHint:
-      'You can add more files in another selection; they are merged with the list (duplicates by name are replaced).',
     dragAndDrop: 'Drag and drop files here or click to select',
-    supportedFormats: 'Supported formats:',
-    searchPlaceholder: 'Search...',
     filters: {
-      title: 'Filters',
       noFilters: 'No filters applied',
       addFirst: 'Add your first filter',
-      addCondition: 'Add condition',
-      field: 'Field',
-      operator: 'Operator',
-      value: 'Value',
-      valueTo: 'To',
-      and: 'AND',
-      remove: 'Remove filter',
-      clearAll: 'Clear all',
-      removeAll: 'Remove all',
-      apply: 'Apply filters',
-      cancel: 'Cancel',
-      dateFrom: 'From',
-      dateTo: 'To',
-      reset: 'Reset',
       activeFilters: 'Active filters',
-      operators: {
-        is: 'is',
-        is_not: 'is not',
-        contains: 'contains',
-        has_any_value: 'has any value',
-        is_greater_than: 'is greater than',
-        is_less_than: 'is less than',
-        is_between: 'is between',
-        is_greater_than_or_equal: 'is greater than or equal to',
-        is_less_than_or_equal: 'is less than or equal to',
-      },
     },
-    maxFileSize: 'Maximum file size',
     downloadFullMessage: 'Download full message',
-    updateMode: 'Update existing data',
-    updateModeDescription:
-      'Existing records will be updated with the new data. New records will be added to the table.',
-    recommended: 'Recommended',
-    addMode: 'Add to existing data',
-    addModeDescription:
-      'Append new records to the existing table data. Existing records will be preserved.',
-    overwriteMode: 'Replace all data',
-    overwriteModeDescription:
-      'Replace all existing table data with the uploaded records. All current data will be deleted.',
-    itemAdded: 'Item added successfully',
-    itemUpdated: 'Item updated successfully',
-    itemDeleted: 'Item deleted successfully',
     itemsDeleted: 'Items deleted successfully',
-    bulkUploadSuccess: 'Bulk upload completed successfully',
     messages: {
       itemCreated: 'Item created successfully',
-      itemUpdated: 'Item updated successfully',
-      itemDeleted: 'Item deleted successfully',
       itemsDeleted: 'Items deleted successfully',
       bulkUploadSuccess: 'Bulk upload completed successfully',
       errorSaving: 'Error saving item',
@@ -917,40 +644,17 @@ export default {
       asyncUploadCompleted: 'Done — {count} rows imported',
       asyncUploadFailed: 'The upload could not be processed',
       asyncUploadNotFound: 'Upload not found',
+      invalidFileFormat: 'Invalid file format',
+      noValidDataFound: 'No valid data found in file',
     },
-    downloadExcelTable: 'Download Excel',
-    downloadExcelSuccess: 'Excel file downloaded successfully',
-    errorDownloadExcelTable: 'Error downloading Excel file',
     // Selection and bulk operations
-    selectedItems: '{count} selected',
     clearSelection: 'Clear selection',
-    deleteSelected: 'Delete selected',
-    confirmBulkDelete: 'Confirm bulk delete',
-    bulkDeleteMessage:
-      'Are you sure you want to delete {count} items? This action cannot be undone.',
-    deletingPleaseWait: 'Deleting, please wait...',
     overwritingPleaseWait: 'Processing your data. Please wait...',
-    uploadingPleaseWait: 'Uploading data… Please wait.',
-    bulkDeleteSuccess: '{count} items deleted successfully',
-    bulkDeleteAllFailed: 'Failed to delete all selected items',
-    bulkDeletePartialFailed: 'Items with IDs {ids} could not be deleted',
-    errorBulkDelete: 'Error during bulk delete operation',
-    errorAdding: 'Error adding item',
-    errorUpdating: 'Error updating item',
-    errorDeleting: 'Error deleting item',
-    errorBulkUpload: 'Error during bulk upload',
-    invalidFileFormat: 'Invalid file format',
     fileProcessingError: 'Error processing file',
-    noValidDataFound: 'No valid data found in file',
     bulkEdit: 'Bulk edit',
-    bulkEditDescription: 'Edit {count} selected items. Leave a field blank to keep existing values unchanged.',
-    bulkEditNoChange: 'No change',
-    bulkEditHint: 'Only filled fields will be applied to the selected items.',
-    applyToSelected: 'Apply to selected',
     bulkEditApplied: '{count} items updated successfully',
     yes: 'Yes',
     no: 'No',
-    search: 'Search',
     forceRetry: {
       title: 'Confirm overwrite',
       accept: 'Overwrite anyway',
@@ -963,19 +667,6 @@ export default {
     },
   },
   validation: {
-    required: 'This field is required',
-    email: 'Please enter a valid email address',
-    min: 'Minimum value is {min}',
-    max: 'Maximum value is {max}',
-    minLength: 'Minimum length is {length} characters',
-    maxLength: 'Maximum length is {length} characters',
-    pattern: 'Invalid format',
-    invalidNumber: 'Please enter a valid number',
-    integer: 'Please enter a whole number',
-    url: 'Please enter a valid URL',
-    date: 'Please enter a valid date',
-    phone: 'Please enter a valid phone number',
-    alphanumeric: 'Only letters and numbers are allowed',
     keywords: {
       type: 'Type',
       required: 'Required',
@@ -1076,40 +767,9 @@ export default {
     alertTitle: 'Master table matches detected',
     alertDescription:
       'Some tables in your uploaded data match existing master tables. Please choose how to handle each match below.',
-    hasDifferences: 'Has differences',
-    hasDifferencesWithMaster:
-      'This table has differences with the master table',
-    identical: 'Identical',
-    identicalToMaster: 'This table is identical to the master table',
-    viewDifferences: 'Compare',
-    matchFoundWith: 'Matches master:',
-    matchFoundWithMaster: 'Matches master table: {masterTable}',
-    uploadedRows: 'Uploaded rows',
-    masterRows: 'Master rows',
-    newRows: 'New rows',
-    removedRows: 'Removed rows',
-    modifiedRows: 'Modified rows',
-    identicalRows: 'Identical rows',
-    selectAction: 'Select an action:',
     option: {
       keepUploaded: {
-        title: 'Keep uploaded data',
         short: 'Keep uploaded',
-        description:
-          'Use the uploaded data for this execution without modifying the master table.',
-      },
-      useMaster: {
-        title: 'Apply master data',
-        short: 'Apply master',
-        description:
-          'Use the master table data instead of the uploaded data for this execution.',
-      },
-      replaceMaster: {
-        title: 'Save to master table',
-        short: 'Save to master',
-        description:
-          'Save the uploaded data to the master table. This affects all future executions.',
-        notAvailable: 'This operation is not available for this table',
       },
     },
     messages: {
@@ -1127,93 +787,26 @@ export default {
       errorProcessingDependentField:
         'Error processing dependent field {fieldKey}',
     },
-    confirmUseMaster: {
-      title: 'Apply master data',
-      message:
-        'Do you want to use the master table data for "{tableName}"? The uploaded data will be replaced with master data only for this execution.',
-      confirm: 'Apply master',
-    },
-    confirmReplaceMaster: {
-      title: 'Save to master table',
-      message:
-        'Do you want to save the uploaded data to the master table "{tableName}"? This will permanently modify the master table and affect all future executions.',
-      confirm: 'Save to master',
-    },
   },
   dataComparison: {
-    title: 'Data comparison: {tableName}',
-    subtitle: 'Comparing uploaded data with master table "{masterTable}"',
-    loading: 'Loading comparison data...',
-    uploadedData: 'Uploaded data',
-    masterData: 'Master data',
-    rows: 'rows',
-    newRows: 'New',
-    removedRows: 'Removed',
-    modifiedRows: 'Modified',
-    identicalRows: 'Identical',
-    tabs: {
-      summary: 'Summary',
-      sideBySide: 'Side by side',
-      changes: 'Changes',
-    },
-    filter: {
-      all: 'All',
-      added: 'Added',
-      removed: 'Removed',
-      modified: 'Modified',
-    },
-    noChangesInFilter: 'No changes in this filter',
     restoreRow: 'Restore this row from master',
     restoreRowQueued: 'Row queued for restore — review and save in the table',
     deleteRow: 'Delete this row from uploaded data',
     deleteRowQueued: 'Row queued for deletion — review and save in the table',
-    changeType: {
-      added: 'Added row',
-      removed: 'Removed row',
-      modified: 'Modified row',
-    },
   },
   pendingChanges: {
-    title: 'Pending changes',
     subtitle: 'Review and confirm your changes before saving',
-    changes: 'changes',
     modifiedTables: 'Modified tables',
-    modifiedRows: 'Modified rows',
-    modifiedRow: 'Modified row',
     totalChanges: 'Total changes',
-    noChanges: 'No pending changes',
-    row: 'Row',
     rowContext: 'Row data',
     changedFields: 'Changed fields',
     originalValue: 'Original value',
     newValue: 'New value',
-    revert: 'Revert',
     revertField: 'Revert this change',
     revertRow: 'Revert row changes',
     revertAllTable: 'Revert all changes in this table',
-    revertAll: 'Revert all',
-    revertAllChanges: 'Revert all changes',
-    saveAllChanges: 'Save all changes',
-    processingChanges: 'Processing your changes. Please wait...',
-    confirmRevertAll: {
-      title: 'Revert all changes',
-      message:
-        'Are you sure you want to revert all pending changes? This action cannot be undone.',
-      confirm: 'Yes, revert all',
-    },
-    unsavedChangesWarning: {
-      title: 'Unsaved changes',
-      message:
-        'You have unsaved changes. If you leave now, your changes will be lost.',
-      stay: 'Stay',
-      leave: 'Leave anyway',
-    },
-    reviewChanges: 'Review changes',
-    changesIndicator: '{count} pending changes',
     changeStaged: 'Change staged. It will be applied when you save.',
     createReverted: 'New row removed. No changes to save.',
-    newRow: 'New row',
-    deletedRow: 'Deleted row',
     saveErrorNoInstanceData:
       'No instance data available. Changes cannot be saved.',
   },
@@ -1221,10 +814,6 @@ export default {
     clear: 'Clear',
     close: 'Close',
     cancel: 'Cancel',
-    file: 'file',
-    files: 'files',
-    error: 'error',
-    errors: 'errors',
   },
   configParams: {
     fromFile: 'From the file',
@@ -1301,13 +890,13 @@ export default {
     save: 'Save',
     searchUsers: 'Search users...',
     colUsername: 'Username',
-    colName: 'Name',
     colEmail: 'Email',
     colRoles: 'Roles',
     noRoles: 'No roles defined yet.',
     noRoles2: 'No roles',
     errorLoadRoles: 'Error loading roles.',
     errorLoadUsers: 'Error loading users.',
+    noUsersMatch: 'No user matches the search.',
     errorSaveRole: 'Error saving role.',
     errorDeleteRole: 'Error deleting role.',
     errorAssignRole: 'Error updating user roles.',
@@ -1352,38 +941,15 @@ export default {
           'Create and launch executions',
         ],
       },
-      ie_viewer: {
-        description: 'Limited visibility into the IE environment',
-        permissions: ['Read instances and solutions'],
-      },
     },
   },
   externalEtl: {
     switch: {
-      fromDbLabel: 'This table was obtained from the database.',
-      fromExcelLabel:
-        'This table was uploaded from a file in the previous step.',
-      editedFromDbLabel:
-        'Manual changes have been made and the table is no longer identical to the database.',
-      reuploadedLabel: 'Data in this table was imported from an Excel file.',
-      fixTable: 'Fix table',
-      replaceWithDb: 'Use database values',
-      staticMode: 'Static mode',
-      staticModeTooltip:
-        'The table will be kept as-is and will not be refreshed from the database when calculating the latest solution.',
-      trackChanges: 'Track changes',
-      trackChangesTooltip:
-        'The table will be refreshed with the latest data from the database when calculating the latest solution.',
-      useExcelData: 'Use Excel data',
-      useDbData: 'Use database data',
       default: 'Default',
       fromDb: 'From database',
       fixed: 'Fixed',
     },
     parameter: {
-      fromDb: 'From database (will refresh)',
-      fixed: 'Fixed (current value kept)',
-      cannotBeFromDb: 'Always user-provided',
       columnFromDb: 'From database',
     },
   },
@@ -1495,8 +1061,6 @@ export default {
       },
       master: {
         comparing: 'Comparing with master tables…',
-        error: 'The comparison with the master failed',
-        retry: 'Retry',
         matches: 'Master {name}',
         identical: 'Identical',
         identicalTitle: 'No differences with the master',
@@ -1553,7 +1117,6 @@ export default {
       message: 'The selected row will be deleted. It can’t be undone. | The {count} selected rows will be deleted. It can’t be undone.',
       confirm: 'Delete',
       deleting: 'Deleting…',
-      marked: '1 row marked to be deleted. | {count} rows marked to be deleted.',
     },
     messages: {
       errorTitle: 'The data could not be loaded',
@@ -1586,16 +1149,13 @@ export default {
       review: 'Review changes',
       summary: '1 pending change | {count} pending changes',
       summaryTables: '1 pending change in {tables} tables | {count} pending changes in {tables} tables',
-      staged: 'Change added to pending changes. It will be applied when saving.',
       title: 'Pending changes',
       changes: '{n} change | {n} change | {n} changes',
       tables: '{n} table | {n} table | {n} tables',
       rowsAffected: '{n} row affected | {n} row affected | {n} rows affected',
       expand: 'Open large',
       closeBanner: 'Close message',
-      retry: 'Retry',
       validationTitle: 'The data does not match the schema',
-      serverTitle: 'Server error',
       empty: 'No pending changes',
       emptyText: 'What you edit in any table will show here.',
       emptyTextDialog: 'The changes you make in any table show here before you save them.',
@@ -1771,6 +1331,7 @@ export default {
       parameter: 'Parameter',
       value: 'Value',
       source: 'From database',
+      originOfValue: 'Origin',
       fromDatabase: 'From database',
       revert: 'Revert',
       choose: 'Choose…',

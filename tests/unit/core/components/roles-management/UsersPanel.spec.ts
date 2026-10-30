@@ -1,56 +1,14 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, test, expect, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { createVuetify } from 'vuetify'
 import { createI18n } from 'vue-i18n'
-import { h } from 'vue'
 import UsersPanel from '@cornflow-ui/core/components/roles-management/UsersPanel.vue'
-
-// CoreSearchInput pulls extra deps; stub it as a simple input wrapper.
-vi.mock('@cornflow-ui/core/components/core/table/CoreSearchInput.vue', () => ({
-  default: {
-    name: 'CoreSearchInput',
-    template:
-      '<input class="core-search-input" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" @keyup.enter="$emit(\'search\', $event.target.value)" />',
-    props: ['modelValue', 'placeholder'],
-    emits: ['update:modelValue', 'search'],
-  },
-}))
-
-// Stub the virtual data table so item/no-data slots render deterministically in jsdom.
-const VDataTableVirtualStub = {
-  name: 'VDataTableVirtual',
-  props: ['headers', 'items', 'loading', 'height', 'itemHeight'],
-  setup(props: any, { slots }: any) {
-    return () => {
-      if (props.loading && slots.loading) {
-        return h('div', { class: 'dt-loading' }, slots.loading())
-      }
-      if (!props.items || props.items.length === 0) {
-        return h(
-          'div',
-          { class: 'dt-empty' },
-          slots['no-data'] ? slots['no-data']() : [],
-        )
-      }
-      return h(
-        'div',
-        { class: 'dt-body' },
-        props.items.map((item: any) =>
-          h('div', { class: 'dt-row', key: item.id }, [
-            slots['item.username'] ? slots['item.username']({ item }) : null,
-            slots['item.role_names'] ? slots['item.role_names']({ item }) : null,
-            slots['item.actions'] ? slots['item.actions']({ item }) : null,
-          ]),
-        ),
-      )
-    }
-  },
-}
 
 const user = (overrides: any = {}) => ({
   id: 1,
   username: 'jdoe',
   full_name: 'John Doe',
+  first_name: 'John',
+  last_name: 'Doe',
   email: 'john@example.com',
   role_names: ['admin'],
   _role_ids: [1],
@@ -58,18 +16,19 @@ const user = (overrides: any = {}) => ({
 })
 
 describe('UsersPanel', () => {
-  let vuetify: any
   let wrapper: any
-
-  beforeEach(() => {
-    vuetify = createVuetify()
-  })
 
   afterEach(() => {
     if (wrapper) wrapper.unmount()
   })
 
-  const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } })
+  const i18n = createI18n({
+    legacy: false,
+    locale: 'en',
+    missingWarn: false,
+    fallbackWarn: false,
+    messages: { en: {} },
+  })
 
   const createWrapper = (props = {}) =>
     mount(UsersPanel, {
@@ -80,118 +39,145 @@ describe('UsersPanel', () => {
         loading: false,
         ...props,
       },
-      global: {
-        plugins: [vuetify, i18n],
-        stubs: {
-          'v-data-table-virtual': VDataTableVirtualStub,
-          'v-card': { template: '<div><slot /></div>' },
-          'v-icon': { template: '<i><slot /></i>' },
-          'v-chip': {
-            template: '<span class="v-chip" @click:close="$emit(\'click:close\')"><slot /></span>',
-            emits: ['click:close'],
-          },
-          'v-btn': {
-            template: '<button class="v-btn" @click="$emit(\'click\')"><slot /></button>',
-            emits: ['click'],
-          },
-          'v-skeleton-loader': { template: '<div class="skeleton" />' },
-        },
-      },
+      global: { plugins: [i18n] },
     })
+
+  const rows = () => wrapper.findAll('.users-table__row')
+  const usernames = () => wrapper.findAll('.user-handle').map((h: any) => h.text())
 
   describe('rendering and counts', () => {
-    test('renders the panel and a row per user', () => {
+    test('renders a row per user', () => {
       wrapper = createWrapper({ users: [user(), user({ id: 2, username: 'b' })] })
-      expect(wrapper.findAll('.dt-row')).toHaveLength(2)
+      expect(rows()).toHaveLength(2)
     })
 
-    test('shows total count chip when no role selected', () => {
+    test('counts every user when no role is selected', () => {
       wrapper = createWrapper({ users: [user(), user({ id: 2 })] })
-      // chip text contains the total (2)
-      expect(wrapper.text()).toContain('2')
+      expect(wrapper.find('.users-count').text()).toBe('2')
     })
 
-    test('shows filtered/total chip when a role is selected', () => {
+    test('counts the filtered users out of all of them when a role is selected', () => {
       wrapper = createWrapper({
         users: [user(), user({ id: 2, role_names: [] })],
         selectedRole: { id: 1, name: 'admin' },
       })
-      // filteredUsers (1 has admin) / total (2)
-      expect(wrapper.text()).toContain('1 / 2')
+      expect(wrapper.find('.users-count').text()).toBe('1 / 2')
     })
 
-    test('renders the role filter chip when a role is selected', () => {
+    test('shows the role filter when a role is selected', () => {
       wrapper = createWrapper({ selectedRole: { id: 1, name: 'admin' } })
-      expect(wrapper.text()).toContain('rolesManagement.filteringByRole')
-      expect(wrapper.text()).toContain('admin')
+      const filter = wrapper.find('.role-filter')
+      expect(filter.text()).toContain('rolesManagement.filteringByRole')
+      expect(filter.text()).toContain('admin')
+    })
+
+    test('shows no role filter without a selected role', () => {
+      wrapper = createWrapper()
+      expect(wrapper.find('.role-filter').exists()).toBe(false)
+    })
+
+    test('has the user, e-mail, roles and actions columns', () => {
+      wrapper = createWrapper()
+      expect(wrapper.vm.columns.map((c: any) => c.key)).toEqual([
+        'username',
+        'email',
+        'role_names',
+        'actions',
+      ])
+      expect(wrapper.findAll('th')).toHaveLength(4)
     })
   })
 
-  describe('item slots', () => {
-    test('renders user name, handle and initials/avatar', () => {
+  describe('rows', () => {
+    test('renders the user name, handle, e-mail and initials', () => {
       wrapper = createWrapper()
       expect(wrapper.find('.user-name').text()).toBe('John Doe')
       expect(wrapper.find('.user-handle').text()).toBe('@jdoe')
       expect(wrapper.find('.user-avatar').text()).toBe('JD')
+      expect(wrapper.find('.users-table__email').text()).toBe('john@example.com')
     })
 
-    test('renders role chips when user has roles', () => {
+    test('gives the avatar a tone of the core', () => {
+      wrapper = createWrapper()
+      const tone = wrapper
+        .find('.user-avatar')
+        .classes()
+        .find((c: string) => c.startsWith('is-'))
+      expect(['is-primary', 'is-success', 'is-warning', 'is-info', 'is-neutral']).toContain(tone)
+    })
+
+    test('renders a badge per role in the tone of its preset', () => {
       wrapper = createWrapper({ users: [user({ role_names: ['admin', 'viewer'] })] })
       const chips = wrapper.findAll('.role-chip')
-      expect(chips.length).toBe(2)
+      expect(chips.map((c: any) => c.text())).toEqual(['admin', 'viewer'])
+      expect(chips[0].classes()).toContain('core-badge--primary')
+      expect(chips[1].classes()).toContain('core-badge--success')
     })
 
-    test('renders noRoles placeholder when user has no roles', () => {
+    test('renders the no-roles placeholder when the user has no roles', () => {
       wrapper = createWrapper({ users: [user({ role_names: [] })] })
-      expect(wrapper.text()).toContain('rolesManagement.noRoles2')
+      expect(wrapper.find('.roles-cell__none').text()).toBe('rolesManagement.noRoles2')
     })
 
     test('emits edit when the row edit button is clicked', async () => {
       wrapper = createWrapper()
-      await wrapper.find('.dt-row .v-btn').trigger('click')
-      expect(wrapper.emitted('edit')).toBeTruthy()
+      const edit = wrapper.find('.users-table__edit')
+      expect(edit.attributes('aria-label')).toBe('rolesManagement.editUser')
+      await edit.trigger('click')
       expect(wrapper.emitted('edit')![0][0]).toMatchObject({ username: 'jdoe' })
     })
   })
 
   describe('empty / loading states', () => {
-    test('renders no-data slot when there are no users', () => {
+    test('renders the empty state when there are no users', () => {
       wrapper = createWrapper({ users: [] })
       expect(wrapper.find('.empty-state').exists()).toBe(true)
       expect(wrapper.text()).toContain('rolesManagement.errorLoadUsers')
     })
 
-    test('renders loading slot when loading', () => {
+    test('says no user matches when the search leaves none', () => {
+      wrapper = createWrapper({ users: [user()], search: 'nobody-like-this' })
+      expect(wrapper.find('[data-testid="users-empty"]').text()).toContain(
+        'rolesManagement.noUsersMatch',
+      )
+    })
+
+    test('shows placeholder rows while loading with no users yet', () => {
       wrapper = createWrapper({ users: [], loading: true })
-      expect(wrapper.find('.skeleton').exists()).toBe(true)
+      expect(wrapper.findAll('.users-table__skeleton')).toHaveLength(5)
+      expect(wrapper.find('.empty-state').exists()).toBe(false)
+      expect(wrapper.find('.users-table').attributes('aria-busy')).toBe('true')
+    })
+
+    test('keeps the users on screen while they reload', () => {
+      wrapper = createWrapper({ loading: true })
+      expect(rows()).toHaveLength(1)
+      expect(wrapper.find('.users-table__skeleton').exists()).toBe(false)
     })
   })
 
   describe('search and filter emits', () => {
     test('emits update:search when the search input changes', async () => {
       wrapper = createWrapper()
-      const input = wrapper.find('.core-search-input')
-      await input.setValue('abc')
-      expect(wrapper.emitted('update:search')).toBeTruthy()
+      await wrapper.find('.core-search-input__field').setValue('abc')
       expect(wrapper.emitted('update:search')![0]).toEqual(['abc'])
     })
 
-    test('emits clear-filter when the filter chip close is triggered', async () => {
+    test('emits clear-filter when the role filter is cleared', async () => {
       wrapper = createWrapper({ selectedRole: { id: 1, name: 'admin' } })
-      const chip = wrapper.findAll('.v-chip').find((c) => c.text().includes('admin'))
-      await chip!.trigger('click:close')
+      await wrapper.find('.role-filter__clear').trigger('click')
       expect(wrapper.emitted('clear-filter')).toBeTruthy()
     })
   })
 
-  describe('filteredUsers computed', () => {
-    test('filters by selected role name', () => {
+  describe('filteredUsers', () => {
+    test('filters by the selected role name', () => {
       wrapper = createWrapper({
-        users: [user(), user({ id: 2, role_names: ['viewer'] })],
+        users: [user(), user({ id: 2, username: 'other', role_names: ['viewer'] })],
         selectedRole: { id: 1, name: 'admin' },
       })
       expect(wrapper.vm.filteredUsers).toHaveLength(1)
-      expect(wrapper.vm.filteredUsers[0].username).toBe('jdoe')
+      expect(usernames()).toEqual(['@jdoe'])
     })
 
     test('filters by search query across username, full_name, email and roles', () => {
@@ -209,26 +195,56 @@ describe('UsersPanel', () => {
       expect(wrapper.vm.filteredUsers.map((u: any) => u.username)).toEqual(['bob'])
     })
 
-    test('returns all users when search is empty', () => {
+    test('returns all users when search is blank', () => {
       wrapper = createWrapper({ users: [user(), user({ id: 2 })], search: '   ' })
       expect(wrapper.vm.filteredUsers).toHaveLength(2)
     })
   })
 
-  describe('headers computed', () => {
-    test('exposes the expected column keys', () => {
-      wrapper = createWrapper()
-      const keys = wrapper.vm.headers.map((h: any) => h.key)
-      expect(keys).toEqual(['username', 'email', 'role_names', 'actions'])
-    })
-  })
+  describe('sorting', () => {
+    const users = [
+      user({ id: 1, username: 'carla', email: 'b@example.com' }),
+      user({ id: 2, username: 'Agarcia', email: 'c@example.com' }),
+      user({ id: 3, username: 'bruno', email: 'a@example.com' }),
+    ]
 
-  describe('virtual height', () => {
-    test('updateVirtualHeight clamps within bounds', () => {
-      wrapper = createWrapper()
-      // jsdom window.innerHeight default; value should stay within [280, 760]
-      expect(wrapper.vm.virtualHeight).toBeGreaterThanOrEqual(280)
-      expect(wrapper.vm.virtualHeight).toBeLessThanOrEqual(760)
+    const sortButton = (index: number) => wrapper.findAll('.users-table__sort')[index]
+
+    test('only the user and e-mail columns sort', () => {
+      wrapper = createWrapper({ users })
+      expect(wrapper.findAll('.users-table__sort')).toHaveLength(2)
+    })
+
+    test('keeps the order it is given until a header is clicked', () => {
+      wrapper = createWrapper({ users })
+      expect(usernames()).toEqual(['@carla', '@Agarcia', '@bruno'])
+      expect(wrapper.findAll('th')[0].attributes('aria-sort')).toBeUndefined()
+    })
+
+    test('a header click sorts ascending, then descending, then back to the given order', async () => {
+      wrapper = createWrapper({ users })
+      const th = () => wrapper.findAll('th')[0]
+
+      await sortButton(0).trigger('click')
+      expect(usernames()).toEqual(['@Agarcia', '@bruno', '@carla'])
+      expect(th().attributes('aria-sort')).toBe('ascending')
+
+      await sortButton(0).trigger('click')
+      expect(usernames()).toEqual(['@carla', '@bruno', '@Agarcia'])
+      expect(th().attributes('aria-sort')).toBe('descending')
+
+      await sortButton(0).trigger('click')
+      expect(usernames()).toEqual(['@carla', '@Agarcia', '@bruno'])
+      expect(th().attributes('aria-sort')).toBeUndefined()
+    })
+
+    test('sorting by another column starts it ascending', async () => {
+      wrapper = createWrapper({ users })
+      await sortButton(0).trigger('click')
+      await sortButton(1).trigger('click')
+      expect(usernames()).toEqual(['@bruno', '@carla', '@Agarcia'])
+      expect(wrapper.findAll('th')[1].attributes('aria-sort')).toBe('ascending')
+      expect(wrapper.findAll('th')[0].attributes('aria-sort')).toBeUndefined()
     })
   })
 })

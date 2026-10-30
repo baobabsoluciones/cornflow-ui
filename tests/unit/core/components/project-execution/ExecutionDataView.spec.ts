@@ -85,7 +85,6 @@ const stubs = {
   MessageList: { template: '<div class="messages-stub" />' },
   PendingChangesPanel: { template: '<div class="pending-panel-stub" />' },
   CoreAlert: { props: ['tone', 'message'], template: '<div class="alert-stub" :data-tone="tone">{{ message }}</div>' },
-  CoreButton: { props: ['text'], emits: ['click'], template: '<button class="button-stub" @click="$emit(\'click\')">{{ text }}</button>' },
   CoreEmptyState: { props: ['title'], template: '<div class="empty-stub">{{ title }}</div>' },
 }
 
@@ -177,91 +176,11 @@ describe('ExecutionDataView', () => {
       expect(wrapper.find('.empty-stub').text()).toBe('No data available')
     })
 
-    test('the check button emits check-data', async () => {
-      const wrapper = createWrapper({ canCheckData: true })
-      await wrapper.find('.button-stub').trigger('click')
-      expect(wrapper.emitted('check-data')).toBeTruthy()
-      expect(wrapper.vm.checksLaunched).toBe(true)
-    })
-
     test('a one-record table shows as a list of parameters', async () => {
       const wrapper = createWrapper({ execution: buildExecution() })
       await openTable(wrapper, 'parameters')
       expect(wrapper.vm.isParametersView).toBe(true)
       expect(wrapper.find('.parameters-stub').exists()).toBe(true)
-    })
-  })
-
-  describe('checks', () => {
-    test('says the checks passed', () => {
-      const wrapper = createWrapper({ canCheckData: true, checksFinished: true })
-      expect(wrapper.find('.alert-stub').attributes('data-tone')).toBe('success')
-    })
-
-    test('is loading while the checks run', async () => {
-      expect(createWrapper({ checksInProgress: true }).vm.isLoadingChecks).toBe(true)
-      const wrapper = createWrapper()
-      wrapper.vm.checksLaunched = true
-      await nextTick()
-      expect(wrapper.vm.isLoadingChecks).toBe(true)
-    })
-
-    test('says the checks failed', () => {
-      const wrapper = createWrapper({ canCheckData: true, checksError: true })
-      expect(wrapper.find('.alert-stub').attributes('data-tone')).toBe('error')
-    })
-
-    test('clears the launch once the checks finish', async () => {
-      const wrapper = createWrapper({ checksInProgress: true })
-      wrapper.vm.checksLaunched = true
-      await wrapper.setProps({ checksInProgress: false, checksFinished: true })
-      await nextTick()
-      expect(wrapper.vm.checksLaunched).toBe(false)
-    })
-
-    test('knows whether the data checks found something', () => {
-      const withErrors = createWrapper({
-        execution: { instance: { data: {}, schema: { properties: {} }, dataChecks: { errors: ['bad'] } } },
-      })
-      expect(withErrors.vm.hasValidationErrors).toBe(true)
-      const clean = createWrapper({
-        execution: { instance: { data: {}, schema: { properties: {} }, dataChecks: {} } },
-      })
-      expect(clean.vm.hasValidationErrors).toBe(false)
-    })
-
-    test('check tables mark their rows with their level and are not editable', async () => {
-      const wrapper = createWrapper({
-        canCheckData: true,
-        execution: {
-          instance: {
-            data: { products: [{ id: 1 }] },
-            schema: { properties: {} },
-            dataChecks: { missing_rows: [{ row: 1, msg: 'x' }] },
-          },
-        },
-      })
-      await openTable(wrapper, 'validation_missing_rows')
-      expect(wrapper.vm.rowLevel()).toBe('error')
-      expect(wrapper.vm.isEditableTable).toBe(false)
-    })
-
-    test('a check that only returns sentences shows as a list of messages', async () => {
-      const wrapper = createWrapper({
-        canCheckData: true,
-        execution: {
-          instance: {
-            data: { products: [{ id: 1 }] },
-            schema: { properties: {} },
-            dataChecks: { warnings_list: ['w1', 'w2'] },
-          },
-        },
-        checksSchema: { properties: { warnings_list: { is_warning: true } } },
-      })
-      await openTable(wrapper, 'validation_warnings_list')
-      expect(wrapper.vm.currentColumns.map((c: any) => c.key)).toEqual(['value'])
-      expect(wrapper.vm.isMessageView).toBe(true)
-      expect(wrapper.vm.messageRows).toEqual(['w1', 'w2'])
     })
   })
 
@@ -325,26 +244,6 @@ describe('ExecutionDataView', () => {
     test('has no tables without instance data', () => {
       const wrapper = createWrapper({ execution: { instance: { data: null, schema: {} } } })
       expect(wrapper.vm.instanceTables).toEqual([])
-    })
-
-    test('builds the check tables in the check step', async () => {
-      const wrapper = createWrapper({
-        canCheckData: true,
-        execution: {
-          instance: {
-            data: { products: [{ id: 1 }] },
-            schema: { properties: {} },
-            dataChecks: { missing_rows: [{ row: 1, msg: 'x' }], warnings_list: ['w1', 'w2'] },
-          },
-        },
-        checksSchema: { properties: { warnings_list: { is_warning: true } } },
-      })
-      await nextTick()
-      const tables = wrapper.vm.instanceTables
-      expect(tables.map((t: any) => t.key)).toEqual(
-        expect.arrayContaining(['validation_missing_rows', 'validation_warnings_list']),
-      )
-      expect(tables.find((t: any) => t.key === 'validation_warnings_list').isWarning).toBe(true)
     })
 
     test('lists the tables matched to a master table first', async () => {
@@ -478,7 +377,6 @@ describe('ExecutionDataView', () => {
       wrapper.vm.onCellChange({ id: 1, name: 'A', qty: 5 }, 'qty', '8')
       const [table, rowId, key, oldValue, newValue] = tableChangesMock.recordChange.mock.calls[0]
       expect([table, rowId, key, oldValue, newValue]).toEqual(['products', 1, 'qty', 5, 8])
-      expect(wrapper.emitted('pending-changes-update')).toBeTruthy()
     })
 
     test('an edit on an added row changes that row', async () => {
@@ -492,7 +390,6 @@ describe('ExecutionDataView', () => {
       const { wrapper } = await editing()
       wrapper.vm.addRow({ name: 'C', qty: '3' })
       expect(tableChangesMock.recordCreate).toHaveBeenCalledWith('products', { name: 'C', qty: 3 }, 'Products')
-      expect(wrapper.emitted('pending-changes-update')).toBeTruthy()
     })
 
     test('deleting rows marks them and clears the selection', async () => {
@@ -588,7 +485,7 @@ describe('ExecutionDataView', () => {
       expect(products).toMatchObject({ label: 'Products', rows: 2, pending: 3 })
     })
 
-    test('a tab shows its master comparison, its origin and its check level', async () => {
+    test('a tab shows its master comparison and its origin', async () => {
       const wrapper = createWrapper({
         execution: buildExecution(),
         masterTableMatches: [{ tableKey: 'products', hasDifferences: true }],

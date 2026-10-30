@@ -1481,7 +1481,7 @@ export interface ExecutionConfigField {
   /**
    * True when the schema property carries `"pre_etl": true`. Such a parameter is
    * needed *before* the instance exists, because the ETL backend filters the data
-   * with it, so the wizard asks for it in its own step ahead of the instance load
+   * with it, so the create-execution screen asks for it ahead of the instance load
    * and sends it in the `POST /external/etl/` form.
    */
   preEtl?: boolean

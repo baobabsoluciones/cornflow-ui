@@ -1,15 +1,15 @@
 # Create-execution flows
 
-The "create execution" screen (route `project-execution`) is one of several **flows** built on the
-same logic. Core ships two, and an application can replace them with its own without touching core.
+The "create execution" screen (route `project-execution`) is a **flow** built on logic that does not
+depend on its layout. Core ships one, and an application can replace it with its own without
+touching core.
 
 | Flow | What the user sees | How to get it |
 | --- | --- | --- |
-| **Page** (default) | One page: the data card on the left (where the data comes from, then its tables to review and edit) and the launch panel on the right (name, data checks, parameters, what is still missing, Resolve). | Nothing to set, or `createExecution.flow: 'page'` |
-| **Wizard** | The step-by-step wizard: load, review, check, solver, parameters, name, confirm. | `createExecution.flow: 'wizard'` |
+| **Core's page** (default) | One page: the data card on the left (where the data comes from, then its tables to review and edit) and the launch panel on the right (name, data checks, parameters, what is still missing, Resolve). | Nothing to set |
 | **The app's own** | Whatever the application needs, built with the same logic and blocks. | `createExecution.component` |
 
-All of them go through `useExecutionDraft`, so the calls to the backend, the states and the
+Both go through `useExecutionDraft`, so the calls to the backend, the states and the
 configuration flags behave the same whichever flow is on screen.
 
 In an application this guide ships with the package, at
@@ -21,9 +21,7 @@ In the application's `src/app/config.ts`, under `core.parameters`:
 
 ```ts
 createExecution: {
-  // 'page' (default) or 'wizard'
-  flow: 'page',
-  // The app's own flow; when set, it wins over `flow`.
+  // The app's own flow; without it, core's page.
   component: () => import('@/app/views/MyCreateExecutionView.vue'),
   // How the execution is named when its data is loaded (optional, see below).
   proposeName: null,

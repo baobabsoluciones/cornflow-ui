@@ -2264,12 +2264,12 @@ describe('SectionView', () => {
       })
     })
 
-    test('a validation error of the save shows as the banner', () => {
+    test('a validation error of the save shows in the review', () => {
       const vm = createWrapper().vm as any
       vm.masterTableValidationError = 'Row 3 is not valid'
-      expect(vm.reviewBanner).toEqual({ kind: 'validation', message: 'Row 3 is not valid' })
+      expect(vm.reviewValidationError).toBe('Row 3 is not valid')
       vm.clearReviewError()
-      expect(vm.reviewBanner).toBe(null)
+      expect(vm.reviewValidationError).toBe(null)
     })
 
     test('the server asking to force a delete shows inside the review', async () => {

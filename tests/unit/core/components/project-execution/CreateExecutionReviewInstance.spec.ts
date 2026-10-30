@@ -160,20 +160,16 @@ const ExecutionDataViewStub = {
       <button @click="$emit('master-table-action', 'orders', 'replace_master')" data-testid="trigger-replace-master" />
       <button @click="$emit('master-table-action', 'orders', 'keep_uploaded')" data-testid="trigger-keep" />
       <button @click="$emit('show-comparison', 'orders')" data-testid="trigger-show-comparison" />
-      <button @click="$emit('pending-changes-update', true, 3)" data-testid="trigger-pending" />
     </div>
   `,
   props: [
     'execution',
-    'canCheckData',
-    'checksFinished',
-    'checksError',
     'masterTableMatches',
     'masterTableLoading',
     'enableExcelMode',
     'externalEtlFlow',
   ],
-  emits: ['save-changes', 'master-table-action', 'show-comparison', 'pending-changes-update'],
+  emits: ['save-changes', 'master-table-action', 'show-comparison'],
   methods: {
     toggleFullscreen: () => view.toggleFullscreen(),
     saveAllChanges: () => view.saveAllChanges(),
@@ -294,7 +290,7 @@ describe('CreateExecutionReviewInstance', () => {
   })
 
   describe('the data view', () => {
-    test('shows the execution in a single data view, with pending changes and no checks', () => {
+    test('shows the execution in a single data view, with pending changes', () => {
       const execution = {
         id: 'test',
         name: 'Test Execution',
@@ -304,9 +300,6 @@ describe('CreateExecutionReviewInstance', () => {
       const dataViews = wrapper.findAllComponents(ExecutionDataViewStub)
       expect(dataViews).toHaveLength(1)
       expect(dataViews[0].props('execution')).toEqual(execution)
-      expect(dataViews[0].props('canCheckData')).toBe(false)
-      expect(dataViews[0].props('checksFinished')).toBe(false)
-      expect(dataViews[0].props('checksError')).toBe(false)
       expect(dataViews[0].props('enableExcelMode')).toBe(true)
     })
 
@@ -439,14 +432,6 @@ describe('CreateExecutionReviewInstance', () => {
       expect(mtm.rejectForceRetry).toHaveBeenCalled()
     })
 
-    test('clears it again when the step becomes active', async () => {
-      wrapper = createWrapper({ isStepActive: false })
-      mtm.rejectForceRetry.mockClear()
-      await wrapper.setProps({ isStepActive: true })
-      await flushPromises()
-      expect(mtm.rejectForceRetry).toHaveBeenCalled()
-    })
-
     test('detects the matches on mount', () => {
       wrapper = createWrapper()
       expect(mtm.detectMatches).toHaveBeenCalled()
@@ -494,7 +479,7 @@ describe('CreateExecutionReviewInstance', () => {
       expect(wrapper.emitted('update:instance')).toBeTruthy()
     })
 
-    test('saving as master emits the updated master tables', async () => {
+    test('saving as master marks the table as replaced', async () => {
       mtm.matches.value = [ordersMatch()]
       mtm.applyChoices.mockResolvedValueOnce({ masterTablesUpdated: ['Orders'] })
       wrapper = createWrapper()
@@ -502,7 +487,6 @@ describe('CreateExecutionReviewInstance', () => {
       await wrapper.find('[data-testid="trigger-replace-master"]').trigger('click')
       await flushPromises()
       expect(mtm.applyChoices).toHaveBeenCalled()
-      expect(wrapper.emitted('master-tables-updated')![0]).toEqual([['Orders']])
       expect(mtm.updateMatchAfterAction).toHaveBeenCalledWith('orders', 'replace_master')
     })
 
@@ -513,7 +497,7 @@ describe('CreateExecutionReviewInstance', () => {
       await flushPromises()
       await wrapper.find('[data-testid="trigger-replace-master"]').trigger('click')
       await flushPromises()
-      expect(wrapper.emitted('master-tables-updated')).toBeFalsy()
+      expect(mtm.updateMatchAfterAction).not.toHaveBeenCalled()
     })
 
     test('saving as master says what failed', async () => {
@@ -556,14 +540,17 @@ describe('CreateExecutionReviewInstance', () => {
       expect(dialog().props()).toMatchObject({ modelValue: false, message: '', loading: false })
     })
 
-    test('confirming retries and emits the updated master tables', async () => {
+    test.each([
+      ['with a snackbar', {}],
+      ['without a snackbar', { showSnackbar: undefined }],
+    ])('confirming retries and marks the table as replaced, %s', async (_, provide) => {
       mtm.forceRetryOffer.value = offer
-      wrapper = createWrapper()
+      wrapper = createWrapper({}, provide)
       await flushPromises()
       dialog().vm.$emit('confirm')
       await flushPromises()
       expect(mtm.acceptForceRetry).toHaveBeenCalled()
-      expect(wrapper.emitted('master-tables-updated')![0]).toEqual([['Orders']])
+      expect(mtm.updateMatchAfterAction).toHaveBeenCalledWith('orders', 'replace_master')
     })
 
     test('cancelling or closing rejects the retry', async () => {
@@ -713,12 +700,6 @@ describe('CreateExecutionReviewInstance', () => {
   })
 
   describe('pending changes', () => {
-    test('tells the parent when there are pending changes', async () => {
-      wrapper = createWrapper()
-      await wrapper.find('[data-testid="trigger-pending"]').trigger('click')
-      expect(wrapper.emitted('has-pending-changes')![0]).toEqual([true])
-    })
-
     test('exposes whether there are pending changes', async () => {
       tableChangesMock.hasChanges.value = true
       wrapper = createWrapper()

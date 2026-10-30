@@ -6,7 +6,7 @@
     partial selection). Clicking it ticks it.
   - `disabled` greys it and stops clicks.
 
-  <CoreCheckbox v-model="selected" :aria-label="$t('table.selectRow')" />
+  <CoreCheckbox v-model="selected" :aria-label="$t('dataTable.grid.selectRow')" />
   <CoreCheckbox :model-value="allSelected" :indeterminate="someSelected" @update:model-value="selectAll" />
 -->
 <template>

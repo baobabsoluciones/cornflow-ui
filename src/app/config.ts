@@ -185,13 +185,6 @@ function collectLoadingOnEnterAppRoutePrefixes(
   )
 }
 /** Declarative rules for master vs uploaded row matching and display normalization (per table key). */
-/**
- * How the "create execution" screen is laid out:
- * - `page`: one page, the data on the left and the launch panel on the right.
- * - `wizard`: the step-by-step wizard (load, review, check, solver, parameters, name, confirm).
- */
-export type CreateExecutionFlow = 'page' | 'wizard'
-
 export type MasterTableMatchingDictionaryRule = {
   sourceTable: string
   keyField: string
@@ -370,9 +363,8 @@ const createAppConfig = () => ({
         enableEditAllMasterTables: false,
 
       /**
-       * When true, if any instance-check table marked with is_warning=false in the schema
-       * contains rows after checks run, the user is blocked from advancing to the next step.
-       * Requires the parent stepper to listen to the 'blocking-errors' emit from CreateExecutionCheckData.
+       * When true, the errors of the data checks (a check table marked with is_warning=false in
+       * the schema that has rows) stop the launch of the execution.
        */
       enableBlockAdvanceOnCheckErrors: false,
 
@@ -423,15 +415,13 @@ const createAppConfig = () => ({
 
       /**
        * The "create execution" screen. See docs/create-execution-flows.md.
-       * - `flow`: core's layout (`page` or `wizard`).
-       * - `component`: the app's own flow instead, e.g.
+       * - `component`: the app's own flow instead of core's page, e.g.
        *   `() => import('@/app/views/MyCreateExecutionView.vue')`. It is built with
        *   `useExecutionDraft` and the create-execution blocks, so it keeps every call to the backend.
        * - `proposeName`: the rule that names the execution when its data is loaded; by default the
        *   first file's name, or "Data of <date>", followed by the load filters.
        */
       createExecution: {
-        flow: 'page' as CreateExecutionFlow,
         component: null as (() => Promise<unknown>) | null,
         proposeName: null as ProposeExecutionName | null,
       },

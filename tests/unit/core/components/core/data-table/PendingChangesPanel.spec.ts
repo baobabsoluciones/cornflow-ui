@@ -21,9 +21,7 @@ const i18n = createI18n({
           rowsAffected: '{n} row affected | {n} row affected | {n} rows affected',
           expand: 'Open large',
           closeBanner: 'Close message',
-          retry: 'Retry',
           validationTitle: 'The data does not match the schema',
-          serverTitle: 'Server error',
           empty: 'No pending changes',
           emptyText: 'What you edit shows here.',
           emptyTextDialog: 'What you edit shows here.',
@@ -200,18 +198,13 @@ describe('PendingChangesPanel', () => {
     expect(wrapper.find('[data-testid="pending-revert-all"]').attributes('disabled')).toBeDefined()
   })
 
-  test('shows a server error with a retry, and a validation error without one', async () => {
-    const server = mountPanel({
-      banner: { kind: 'server', message: 'Saving Lines failed.', canRetry: true },
-    })
-    expect(server.text()).toContain('Server error')
-    expect(server.text()).toContain('Saving Lines failed.')
-    await server.find('.core-alert__action').trigger('click')
-    expect(server.emitted('retry')).toHaveLength(1)
+  test('shows why the data does not match the schema, and closes it', async () => {
+    const wrapper = mountPanel({ validationError: 'Row 12: too low.' })
+    expect(wrapper.text()).toContain('The data does not match the schema')
+    expect(wrapper.text()).toContain('Row 12: too low.')
 
-    const validation = mountPanel({ banner: { kind: 'validation', message: 'Row 12: too low.' } })
-    expect(validation.text()).toContain('The data does not match the schema')
-    expect(validation.find('.core-alert__action').exists()).toBe(false)
+    await wrapper.find('.pending-panel__banner-close').trigger('click')
+    expect(wrapper.emitted('close-banner')).toHaveLength(1)
   })
 
   test('says so when there is nothing to review', () => {

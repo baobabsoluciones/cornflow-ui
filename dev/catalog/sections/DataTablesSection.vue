@@ -87,13 +87,13 @@
 
     <CatalogBlock
       name="TableSourceStrip"
-      api="origin · v-model:sourceChoice · showSourceChoice · master → compare, use-master, save-master, retry"
+      api="origin · v-model:sourceChoice · showSourceChoice · master → compare, use-master, save-master"
       column
     >
       <TableSourceStrip v-model:source-choice="sourceChoice" :origin="{ variant: 'database' }" show-source-choice />
       <TableSourceStrip v-model:source-choice="fileChoice" :origin="{ variant: 'file' }" show-source-choice :master="masterReady" />
       <TableSourceStrip :origin="{ variant: 'edited' }" :master="{ ...masterReady, state: 'comparing' }" />
-      <TableSourceStrip :origin="{ variant: 'reuploaded', perParameter: true }" :master="{ ...masterReady, state: 'error' }" />
+      <TableSourceStrip :origin="{ variant: 'reuploaded', perParameter: true }" />
       <TableSourceStrip :master="{ ...masterReady, added: 0, removed: 0, modified: 0 }" />
     </CatalogBlock>
 
@@ -136,7 +136,7 @@
 
     <CatalogBlock
       name="CreateExecutionReviewInstance · ExecutionDataView"
-      api="newExecution · instanceErrors · externalEtlFlow · showToolbar → update:instance, update:instanceErrors, has-pending-changes"
+      api="newExecution · instanceErrors · externalEtlFlow · showToolbar → update:instance, update:instanceErrors"
       note="The review of a new execution: the loaded tables with their pending changes, the parameters as a list, Excel download and upload and the full screen."
     >
       <div class="review">
