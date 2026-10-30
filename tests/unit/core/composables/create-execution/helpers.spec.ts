@@ -48,6 +48,12 @@ describe('configFieldValues', () => {
     expect(getValueFromSource({ ...field, param: 'missing' }, data.settings)).toBeUndefined()
   })
 
+  test('reads nothing from a table of the other shape', () => {
+    const byValue = { key: 'm', type: 'text', lookupType: 'arrayByValue', param: 'mode', lookupParam: 'name', lookupValue: 'value' } as any
+    expect(getValueFromSource(byValue, data.params)).toBeUndefined()
+    expect(getValueFromSource({ key: 'h', type: 'number', param: 'horizon' } as any, data.settings)).toBeUndefined()
+  })
+
   test('converts numbers and floats and keeps the rest', () => {
     expect(convertValueByType('1.5', 'float')).toBe(1.5)
     expect(convertValueByType('3', 'number')).toBe(3)
@@ -99,6 +105,12 @@ describe('configFieldValues', () => {
     expect(isEmptyConfigValue({ type: 'boolean' } as any, false)).toBe(false)
     expect(isEmptyConfigValue({ type: 'text' } as any, '')).toBe(true)
     expect(isEmptyConfigValue({ type: 'number' } as any, 0)).toBe(false)
+  })
+
+  test('a parameter of several values is empty while nothing is picked', () => {
+    expect(isEmptyConfigValue({ type: 'select', multiple: true } as any, [])).toBe(true)
+    expect(isEmptyConfigValue({ type: 'select', multiple: true } as any, ['north'])).toBe(false)
+    expect(isEmptyConfigValue({ type: 'select', multiple: true } as any, null)).toBe(true)
   })
 })
 

@@ -204,6 +204,70 @@ describe('ExecutionParametersForm', () => {
   })
 })
 
+describe('ExecutionParametersForm with parameters of several values', () => {
+  const regions = {
+    key: 'regions',
+    title: 'Regions',
+    type: 'select',
+    multiple: true,
+    options: [
+      { value: 'n', label: 'North' },
+      { value: 's', label: 'South' },
+      { value: 'e', label: 'East' },
+    ],
+  }
+  const popover = { name: 'CorePopover', template: '<div><slot name="trigger" /><slot /></div>' }
+  const mountForm = (props: Record<string, any>) =>
+    mount(ExecutionParametersForm, {
+      props: { values: {}, ...props },
+      global: { ...global(), stubs: { teleport: true, CorePopover: popover } },
+    })
+
+  test('a required one is a dropdown with checks: each pick adds to the list, and none is no value', async () => {
+    const wrapper = mountForm({ fields: [{ ...regions, required: true }], values: { regions: ['n'] } })
+    expect(wrapper.find('.core-multi-select').exists()).toBe(true)
+
+    const items = wrapper.findAll('.core-menu__item')
+    await items[2].trigger('click')
+    await items[0].trigger('click')
+
+    expect(wrapper.emitted('change')).toEqual([
+      ['regions', ['n', 'e']],
+      ['regions', null],
+    ])
+  })
+
+  test('an empty list is a missing value once the errors show', () => {
+    const wrapper = mountForm({ fields: [{ ...regions, required: true }], values: { regions: [] }, showErrors: true })
+
+    expect(wrapper.find('.parameters-form__required').classes()).toContain('is-missing')
+  })
+
+  test('with a default it folds into "Advanced", which names the picks', () => {
+    const fields = [{ ...regions, default: ['n'] }]
+
+    expect(mountForm({ fields, values: { regions: ['n', 's', 'e'] } }).find('.parameters-form__advanced-summary').text()).toBe(
+      'North, South +1',
+    )
+    expect(mountForm({ fields, values: { regions: [] } }).find('.parameters-form__advanced-summary').text()).toBe('—')
+  })
+
+  test('offers to go back to the default list only when the picks differ from it', async () => {
+    const fields = [{ ...regions, default: ['n', 's'] }]
+    const reset = async (values: Record<string, any>) => {
+      const wrapper = mountForm({ fields, values })
+      await wrapper.find('[data-testid="parameters-advanced"]').trigger('click')
+      return wrapper
+    }
+
+    expect((await reset({ regions: ['n', 's'] })).find('.parameters-form__reset').exists()).toBe(false)
+    const changed = await reset({ regions: ['n'] })
+    await changed.find('.parameters-form__reset').trigger('click')
+    expect(changed.emitted('change')).toEqual([['regions', ['n', 's']]])
+    expect((await reset({})).find('.parameters-form__reset').exists()).toBe(true)
+  })
+})
+
 describe('LaunchPanel', () => {
   test('lists what is missing and points outside for the data', async () => {
     const draft = makeDraft({
