@@ -7,6 +7,7 @@ import {
   EXCEL_EXTENSIONS,
   SUPPORTED_DATA_EXTENSIONS,
   resolveAllowedExtensions,
+  fileFormatNames,
 } from '@cornflow-ui/core/utils/fileConstants'
 
 describe('isExcelExtension', () => {
@@ -179,5 +180,15 @@ describe('resolveAllowedExtensions', () => {
     expect(resolveAllowedExtensions(['xlsx', '.xlsx', 'XLSX'], FALLBACK)).toEqual([
       'xlsx',
     ])
+  })
+})
+
+describe('fileFormatNames', () => {
+  test('names every Excel extension "Excel" and the rest in capitals, without repeats', () => {
+    expect(fileFormatNames(['xlsx', 'xls', 'json', 'csv'])).toEqual(['Excel', 'JSON', 'CSV'])
+  })
+
+  test('keeps the order it is given', () => {
+    expect(fileFormatNames(['csv', 'xlsx'])).toEqual(['CSV', 'Excel'])
   })
 })

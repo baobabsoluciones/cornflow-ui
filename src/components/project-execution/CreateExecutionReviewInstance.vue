@@ -570,10 +570,18 @@ const handleInstanceUpdate = (instance: Instance) => {
       }
     }
   }
-  emit('update:instance', {
-    ...props.newExecution.instance!,
-    data: instance.data,
-  } as Instance)
+  // The workbook is new data: a new instance, so the launch does not reuse the one already stored
+  const schemas = generalStore.getSchemaConfig
+  emit(
+    'update:instance',
+    new Instance(
+      null,
+      instance.data,
+      schemas.instanceSchema,
+      schemas.instanceChecksSchema,
+      generalStore.getSchemaName,
+    ),
+  )
 }
 
 const { downloadExcel, handleFileUpload } =

@@ -336,12 +336,23 @@ describe('ExecutionRepository', () => {
       expect(result).toEqual(mockExecutionResponse.content)
     })
 
-    test('should throw error when execution creation fails', async () => {
-      const mockResponse = {
+    test('throws the error the backend gives when the execution cannot be created', async () => {
+      mockClient.post.mockResolvedValue({
         status: 400,
-        content: { error: 'Bad request' }
-      }
-      mockClient.post.mockResolvedValue(mockResponse)
+        content: {
+          error: 'The orchestrator is not reachable',
+          message: "The execution couldn't start running.",
+          state: -3,
+        },
+      })
+
+      await expect(repository.createExecution(mockExecutionData)).rejects.toThrow(
+        'The orchestrator is not reachable',
+      )
+    })
+
+    test('throws a generic error when the backend gives no reason', async () => {
+      mockClient.post.mockResolvedValue({ status: 500, content: null })
 
       await expect(repository.createExecution(mockExecutionData)).rejects.toThrow('Error creating execution')
     })

@@ -4,8 +4,9 @@
 
   Empty, it offers what the app is set up for (`draft.dataSourceMode`):
   - `files`: a drop zone for one or several files, loaded with "Load".
-  - `database`: "Upload Excel" and "Get data"; the files' sheets replace the tables with the same
+  - `database`: "Upload files" and "Get data"; the files' tables replace the ones with the same
     name and the database fills in the rest.
+  Under them, the formats the app accepts (`draft.acceptedExtensions`).
   - `database-filtered`: the same, after the load filters.
   The load filters (`pre_etl` parameters) are asked in every mode that has them: the ETL gets them
   with the files too.
@@ -198,11 +199,16 @@
           @change="draft.setFilter"
         />
 
+        <span v-if="showFormats" class="data-card__empty-formats" data-testid="data-card-formats">
+          <CoreIcon name="mdi-file-document-outline" :size="14" />
+          {{ $t('createExecution.data.formats', { formats }) }}
+        </span>
+
         <div v-if="showEmptyActions" class="data-card__empty-actions">
           <CoreButton
             variant="outlined"
             icon="mdi-paperclip"
-            :text="$t('createExecution.data.uploadExcel')"
+            :text="$t('createExecution.data.uploadFiles')"
             :title="$t('createExecution.data.uploadHint')"
             @click="browse"
           />
@@ -246,7 +252,9 @@ import LoadFiltersForm from '@cornflow-ui/core/components/create-execution/LoadF
 import CreateExecutionReviewInstance from '@cornflow-ui/core/components/project-execution/CreateExecutionReviewInstance.vue'
 import { useErrorDownload } from '@cornflow-ui/core/composables/useErrorDownload'
 import { isEmptyConfigValue } from '@cornflow-ui/core/composables/create-execution/configFieldValues'
+import { pickedSummary } from '@cornflow-ui/core/components/core/CoreMultiSelect.vue'
 import { showSnackbar } from '@cornflow-ui/core/services/SnackbarService'
+import { fileFormatNames } from '@cornflow-ui/core/utils/fileConstants'
 import type { ExecutionDraftController } from '@cornflow-ui/core/composables/create-execution/useExecutionDraft'
 
 defineOptions({ name: 'ExecutionDataCard' })
@@ -260,7 +268,7 @@ const props = withDefaults(
   { highlight: false },
 )
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const errorDownload = useErrorDownload()
 
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -274,6 +282,12 @@ const filterEdit = ref<Record<string, unknown>>({})
 const mode = computed(() => props.draft.dataSourceMode)
 const usesDatabase = computed(() => mode.value !== 'files')
 const accept = computed(() => props.draft.acceptedExtensions.map((ext: string) => `.${ext}`).join(','))
+/** The accepted formats as the user knows them: "Excel, JSON or CSV". */
+const formats = computed(() =>
+  new Intl.ListFormat(locale.value, { type: 'disjunction' }).format(
+    fileFormatNames(props.draft.acceptedExtensions),
+  ),
+)
 
 // ── Header ───────────────────────────────────────────────────────────────────
 
@@ -298,8 +312,11 @@ function filterSummary(): string[] {
         const label = field.title ? t(field.title) : field.key
         return `${label}: ${value ? t('createExecution.data.yes') : t('createExecution.data.no')}`
       }
-      const option = (field.options ?? []).find((o: any) => o.value === value)
-      return option ? String(option.label) : String(value)
+      const labelOf = (v: unknown) => {
+        const option = (field.options ?? []).find((o: any) => o.value === v)
+        return option ? String(option.label) : String(v)
+      }
+      return Array.isArray(value) ? pickedSummary(value.map(labelOf)) : labelOf(value)
     })
     .filter(Boolean)
 }
@@ -318,7 +335,7 @@ const meta = computed(() => {
 const showUploadButton = computed(() => !props.draft.isLoaded && mode.value === 'files')
 const uploadPrimary = computed(() => props.draft.files.length === 0)
 const uploadLabel = computed(() =>
-  props.draft.files.length > 0 ? t('createExecution.data.addExcel') : t('createExecution.data.uploadExcel'),
+  props.draft.files.length > 0 ? t('createExecution.data.addFiles') : t('createExecution.data.uploadFiles'),
 )
 
 const showHeaderLoad = computed(
@@ -340,6 +357,8 @@ const showFiltersForm = computed(
     props.draft.loadStatus !== 'loading' &&
     !props.draft.loadErrors,
 )
+/** The formats the files may come in, wherever files are offered and nothing is loading or failed. */
+const showFormats = computed(() => props.draft.loadStatus !== 'loading' && !props.draft.loadErrors)
 const showEmptyActions = computed(() => usesDatabase.value && props.draft.loadStatus !== 'loading')
 
 const emptyIcon = computed(() => {
@@ -706,6 +725,15 @@ onBeforeUnmount(() => props.draft.registerPendingChangesApplier(null))
   font-size: var(--text-md);
   color: var(--color-text-muted);
   text-wrap: pretty;
+}
+
+.data-card__empty-formats {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--spacing) * 1);
+  font-size: var(--text-sm);
+  color: var(--color-text-subtle);
 }
 
 .data-card__empty-filters {

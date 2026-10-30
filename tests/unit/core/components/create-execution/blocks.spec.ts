@@ -49,7 +49,7 @@ function makeDraft(overrides: Record<string, any> = {}) {
     fromDataKeys: [],
     dataErrors: null,
     checks: { status: 'none', results: [], checkedAt: null },
-    launch: { running: false, step: null, executionId: null },
+    launch: { running: false, step: null, executionId: null, error: null },
     solution: { enabled: false, file: null, data: null, errors: null },
     etlReviewState: null,
     acceptedExtensions: ['json', 'xlsx'],
@@ -236,6 +236,25 @@ describe('LaunchPanel', () => {
     expect(wrapper.find('.launch-panel__strip-status').classes()).toContain('is-missing')
   })
 
+  test('says why the last launch failed, and unfolds to say it', async () => {
+    const draft = makeDraft({ canLaunch: true })
+    draft.launchExecution.mockImplementation(async () => {
+      draft.launch.error = 'The orchestrator is not reachable'
+      return false
+    })
+    const wrapper = mount(LaunchPanel, { props: { draft, collapsed: true }, global: global() })
+    expect(wrapper.find('[data-testid="launch-panel-error"]').exists()).toBe(false)
+
+    await wrapper.find('.launch-panel__strip-resolve').trigger('click')
+    await flushPromises()
+    expect(wrapper.emitted('update:collapsed')).toEqual([[false]])
+    await wrapper.setProps({ collapsed: false })
+    const error = wrapper.find('[data-testid="launch-panel-error"]')
+    expect(error.attributes('role')).toBe('alert')
+    expect(error.text()).toContain('createExecution.launch.failed')
+    expect(error.text()).toContain('The orchestrator is not reachable')
+  })
+
   test('follows the execution once launched', () => {
     const draft = makeDraft({
       isLaunched: true,
@@ -256,6 +275,25 @@ describe('ExecutionDataCard', () => {
     const dropped = new File(['{}'], 'a.json')
     await wrapper.find('[data-testid="data-card-empty"]').trigger('drop', { dataTransfer: { files: [dropped] } })
     expect(draft.addFiles).toHaveBeenCalledWith([dropped])
+  })
+
+  test.each([
+    ['files', {}],
+    ['database', { dataSourceMode: 'database' }],
+  ])('with %s, it says which formats the app accepts', (_mode, overrides) => {
+    const messages = { en: { createExecution: { data: { formats: 'Accepted formats: {formats}' } } } }
+    const draft = makeDraft({ acceptedExtensions: ['xlsx', 'csv'], ...overrides })
+    const wrapper = mount(ExecutionDataCard, {
+      props: { draft },
+      global: { plugins: [createI18n({ legacy: false, locale: 'en', messages, missingWarn: false })] },
+    })
+    expect(wrapper.find('[data-testid="data-card-formats"]').text()).toBe('Accepted formats: Excel or CSV')
+  })
+
+  test('does not offer the formats while the data loads', () => {
+    const draft = makeDraft({ loadStatus: 'loading', files: [new File(['{}'], 'a.json')] })
+    const wrapper = mount(ExecutionDataCard, { props: { draft }, global: global() })
+    expect(wrapper.find('[data-testid="data-card-formats"]').exists()).toBe(false)
   })
 
   test('with the database and filters, it asks for the filters before getting the data', async () => {
@@ -284,6 +322,40 @@ describe('ExecutionDataCard', () => {
     ])
     await select.setValue('1')
     expect(draft.setFilter).toHaveBeenCalledWith('full', false)
+  })
+
+  test('a load filter of several values is a dropdown with checks, and once loaded the header names the picks', async () => {
+    const field = {
+      key: 'product_ids',
+      title: 'Products',
+      type: 'select',
+      multiple: true,
+      options: [
+        { value: 3, label: 'P-003' },
+        { value: 7, label: 'P-007' },
+        { value: 9, label: 'P-009' },
+      ],
+    }
+    const draft = makeDraft({ dataSourceMode: 'database-filtered', loadFilterFields: [field] })
+    const popover = { name: 'CorePopover', template: '<div><slot name="trigger" /><slot /></div>' }
+    const wrapper = mount(ExecutionDataCard, {
+      props: { draft },
+      global: { ...global(), stubs: { teleport: true, CorePopover: popover } },
+    })
+    const filters = wrapper.find('[data-testid="load-filters"]')
+    expect(filters.find('.core-multi-select').exists()).toBe(true)
+    await filters.findAll('.core-menu__item')[1].trigger('click')
+    expect(draft.setFilter).toHaveBeenCalledWith('product_ids', [7])
+
+    const loaded = makeDraft({
+      isLoaded: true,
+      loadStatus: 'loaded',
+      loadFilterFields: [field],
+      execution: { instance: { data: {} }, config: { product_ids: [3, 7, 9] }, name: '', description: '' },
+    })
+    const card = mount(ExecutionDataCard, { props: { draft: loaded }, global: global() })
+    await flushPromises()
+    expect(card.find('.data-card__meta').text()).toContain('P-003, P-007 +1')
   })
 
   test('shows the load errors grouped by table', () => {

@@ -399,7 +399,7 @@ describe('CreateExecutionReviewInstance', () => {
       wrapper = null
     })
 
-    test('an uploaded Excel replaces the data and marks the ETL tables as reuploaded', async () => {
+    test('an uploaded Excel is a new instance with its data, and marks the ETL tables as reuploaded', async () => {
       const flow = {
         tableSwitches: { orders: { variant: 'from_db', fixed: false } },
         parameterSwitches: { 'parameters.horizon': true },
@@ -408,7 +408,7 @@ describe('CreateExecutionReviewInstance', () => {
       excel.onInstanceUpdate!({ data: { orders: [] } })
       expect(flow.tableSwitches.orders).toEqual({ variant: 'reuploaded', fixed: true })
       expect(flow.parameterSwitches['parameters.horizon']).toBe(null)
-      expect(wrapper.emitted('update:instance')![0][0]).toMatchObject({ id: 'i', data: { orders: [] } })
+      expect(wrapper.emitted('update:instance')![0][0]).toMatchObject({ id: null, data: { orders: [] } })
     })
   })
 

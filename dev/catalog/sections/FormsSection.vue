@@ -144,6 +144,37 @@
       <CoreSegmentedControl v-model="view" :options="views" size="small" />
       <CoreSegmentedControl v-model="group" variant="soft" :options="groups" />
     </CatalogBlock>
+
+    <CatalogBlock
+      name="CoreMultiSelect"
+      api="v-model (list) · options ({ value, label }) · placeholder · searchPlaceholder · noMatchesText · clearText · invalid · disabled"
+    >
+      <div class="grid">
+        <label class="field">
+          <span class="caption">Picked · {{ JSON.stringify(products) }}</span>
+          <CoreMultiSelect
+            v-model="products"
+            :options="productOptions"
+            placeholder="All products"
+            search-placeholder="Search…"
+            no-matches-text="No option matches"
+            clear-text="Clear"
+          />
+        </label>
+        <label class="field">
+          <span class="caption">Few options, no search box</span>
+          <CoreMultiSelect v-model="pickedPlants" :options="plants" placeholder="All plants" />
+        </label>
+        <label class="field">
+          <span class="caption">Invalid</span>
+          <CoreMultiSelect :options="plants" placeholder="Required" invalid />
+        </label>
+        <label class="field">
+          <span class="caption">Disabled</span>
+          <CoreMultiSelect :model-value="[1]" :options="plants" disabled />
+        </label>
+      </div>
+    </CatalogBlock>
   </div>
 </template>
 
@@ -151,6 +182,7 @@
 import { ref } from 'vue'
 import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
 import CoreCheckbox from '@cornflow-ui/core/components/core/CoreCheckbox.vue'
+import CoreMultiSelect from '@cornflow-ui/core/components/core/CoreMultiSelect.vue'
 import CoreSegmentedControl from '@cornflow-ui/core/components/core/CoreSegmentedControl.vue'
 import CoreSelect from '@cornflow-ui/core/components/core/CoreSelect.vue'
 import CoreSwitch from '@cornflow-ui/core/components/core/CoreSwitch.vue'
@@ -193,6 +225,13 @@ const plants = [
   { value: 2, label: 'Plant 2' },
 ]
 const plant = ref<unknown>(null)
+const pickedPlants = ref<unknown[]>([])
+
+const productOptions = Array.from({ length: 12 }, (_, i) => ({
+  value: i + 1,
+  label: `Product ${String(i + 1).padStart(3, '0')}`,
+}))
+const products = ref<unknown[]>([2, 5, 9])
 
 const yesNo = [
   { value: true, label: 'Yes' },

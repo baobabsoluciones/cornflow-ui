@@ -122,5 +122,6 @@ export function seedConfigFieldDefaults(
 
 export function isEmptyConfigValue(field: Field, value: unknown): boolean {
   if (field.type === 'boolean') return typeof value !== 'boolean'
+  if (Array.isArray(value)) return value.length === 0
   return value === null || value === undefined || value === ''
 }

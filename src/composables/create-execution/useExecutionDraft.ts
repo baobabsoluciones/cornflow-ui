@@ -156,6 +156,8 @@ export function useExecutionDraft() {
     running: false,
     step: null as LaunchStep | null,
     executionId: null as string | null,
+    /** Why the last launch failed, as the backend put it; cleared by the next attempt. */
+    error: null as string | null,
   })
 
   const solution = reactive({
@@ -677,6 +679,7 @@ export function useExecutionDraft() {
   async function launchExecution(): Promise<boolean> {
     if (!canLaunch.value) return false
     launch.running = true
+    launch.error = null
     try {
       if (!(await applyPendingChanges())) return false
       if (etlNeedsSync.value) {
@@ -698,10 +701,10 @@ export function useExecutionDraft() {
       await discardDraft()
       return true
     } catch (error) {
-      showSnackbar(
-        error instanceof Error ? error.message : t('projectExecution.snackbar.errorCreate'),
-        'error',
-      )
+      launch.error =
+        error instanceof Error && error.message
+          ? error.message
+          : t('projectExecution.snackbar.errorCreate')
       return false
     } finally {
       launch.running = false
@@ -733,6 +736,7 @@ export function useExecutionDraft() {
     etlNeedsSync.value = false
     resetChecks()
     launch.executionId = null
+    launch.error = null
     solution.enabled = false
     void setSolutionFile(null)
     seedDefaults()
