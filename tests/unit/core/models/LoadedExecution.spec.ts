@@ -48,6 +48,22 @@ describe('LoadedExecution', () => {
       expect(loadedExecution.config).toEqual({ solver: 'CBC' })
     })
 
+    test('keeps the solver log status it was loaded with as its solution state, none by default', () => {
+      expect(loadedExecution.solutionState).toBeNull()
+      const solved = new LoadedExecution({
+        experiment: mockExperiment as any,
+        executionId: 'exec-124',
+        name: 'Solved',
+        description: '',
+        createdAt: '2023-01-01T00:00:00Z',
+        state: 1,
+        message: 'Success',
+        solutionState: { status_code: 2 },
+        config: {},
+      })
+      expect(solved.solutionState).toEqual({ status_code: 2 })
+    })
+
     test('should initialize UI preferences with default values', () => {
       expect(loadedExecution.getSelectedTablePreference('instance')).toBeNull()
       expect(loadedExecution.getSelectedTablePreference('solution')).toBeNull()

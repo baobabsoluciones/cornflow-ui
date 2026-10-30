@@ -26,7 +26,6 @@ import {
   MBaseModal,
   MSnackbar,
   MTitleView,
-  MAppBarTab,
   MInfoCard,
   MPanelData,
   MInputField,
@@ -102,7 +101,6 @@ export async function createCornflowApp(
   app.component('MDragNDropFile', MDragNDropFile)
   app.component('MBaseModal', MBaseModal)
   app.component('MTitleView', MTitleView)
-  app.component('MAppBarTab', MAppBarTab)
   app.component('MInfoCard', MInfoCard)
   app.component('MPanelData', MPanelData)
   app.component('MSnackbar', MSnackbar)

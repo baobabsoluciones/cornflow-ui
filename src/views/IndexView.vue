@@ -77,31 +77,21 @@
         <p>{{ $t('modules.noAccessMessage') }}</p>
       </div>
       <core-app-view v-else />
-      <div class="tab-container">
-        <MAppBarTab
-          :key="tabsKey"
-          :tabs="enhancedTabsData"
-          :createTitle="$t('projectExecution.create')"
-          @close="removeTab"
-          @create="createTab"
-          @select="selectTab"
-        >
-          <template #actions>
-            <div
-              class="d-flex align-center"
-              style="min-width: 200px !important"
-            >
-              <v-img height="20" :src="baobabLogoSmall" />
-              <div class="mr-2">
-                Powered by
-                <a href="https://baobabsoluciones.es/" target="_blank"
-                  >baobab soluciones</a
-                >
-              </div>
-            </div>
-          </template>
-        </MAppBarTab>
-      </div>
+      <CoreExecutionTabBar
+        class="execution-tabs"
+        :tabs="executionTabs"
+        :selected="selectedExecutionId ?? null"
+        @close="removeTab"
+        @select="selectTab"
+      >
+        <template #end>
+          <span class="powered-by">
+            <BaobabMark class="powered-by__logo" />
+            Powered by
+            <a href="https://baobabsoluciones.es/" target="_blank" rel="noopener">baobab soluciones</a>
+          </span>
+        </template>
+      </CoreExecutionTabBar>
     </div>
 
     <!--
@@ -123,17 +113,19 @@ import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import AuthService from '@cornflow-ui/core/services/AuthService'
 import CoreAppDrawer from '@cornflow-ui/core/components/AppDrawer.vue'
 import CoreAppView from '@cornflow-ui/core/components/AppView.vue'
+import CoreExecutionTabBar from '@cornflow-ui/core/components/ExecutionTabBar.vue'
 import { useRouter, useRoute } from 'vue-router'
 import { computed } from 'vue'
 import { Vue3Marquee } from 'vue3-marquee'
 import config from '@cornflow-ui/core/config'
-import { baobabLogoSmall } from '@cornflow-ui/core/utils/assets'
+import BaobabMark from '@cornflow-ui/core/components/BaobabMark.vue'
 import {
   getPremiumGlobalComponents,
   applyPremiumExecutionTabDecorators,
 } from '@cornflow-ui/core/plugins/extensions'
 import { totalTopBannerOffset } from '@cornflow-ui/core/plugins/layoutOffsets'
 import { isOnInstanceDependentRoute } from '@cornflow-ui/core/utils/instanceDependentRoutes'
+import { useExecutionStatus } from '@cornflow-ui/core/composables/project-execution/useExecutionStatus'
 
 /** Heights (px) of the fixed top stack's own parts (premium banners report theirs). */
 const APP_TOP_BAR_HEIGHT = 56
@@ -142,8 +134,7 @@ const STAGING_NOTICE_HEIGHT = 40
 const generalStore = useGeneralStore()
 const router = useRouter()
 const route = useRoute()
-let tabsData = computed(() => generalStore.getLoadedExecutionTabs)
-let tabsKey = computed(() => generalStore.tabBarKey)
+const { displayStatus } = useExecutionStatus()
 let showStagingWarning = computed(() => config.isStagingEnvironment)
 let isDrawerPinned = computed(() => generalStore.isDrawerPinned)
 let showInitialLoading = computed(() => generalStore.initialDataLoading)
@@ -182,19 +173,20 @@ const selectedExecutionId = computed(
   () => generalStore.selectedExecution?.executionId,
 )
 
-// Enhance tabs: premium modules (latest-plan ⭐) decorate them via the registry; the core only
-// applies the selected state. Without premium modules the tabs pass through unchanged.
-const enhancedTabsData = computed(() => {
-  const currentSelectedId = selectedExecutionId.value
-  const decorated = applyPremiumExecutionTabDecorators(tabsData.value, {
+// A tab per loaded execution, with the state the app shows for it. Premium modules (the ⭐ of the
+// latest plan) decorate them first; without premium modules they pass through unchanged.
+const executionTabs = computed(() =>
+  applyPremiumExecutionTabDecorators(generalStore.getLoadedExecutionTabs, {
     routeName: route.name,
-  })
-  return decorated.map((tab) => ({
-    ...tab,
-    // Ensure selected state is correctly set based on store
-    selected: tab.value === currentSelectedId,
-  }))
-})
+  }).map((tab) => {
+    const status = displayStatus(tab.state, tab.solutionStatusCode)
+    return {
+      id: tab.value,
+      name: tab.text,
+      status: { label: status.label, tone: status.tone, spin: status.spin },
+    }
+  }),
+)
 
 // Show FAB whenever there is a selected execution
 const hasSelectedExecution = computed(
@@ -202,43 +194,31 @@ const hasSelectedExecution = computed(
 )
 
 defineExpose({
-  tabsData,
-  tabsKey,
-  enhancedTabsData,
+  executionTabs,
   hasSelectedExecution,
 })
-const removeTab = (index) => {
-  generalStore.removeLoadedExecution(index)
-}
-
-const createTab = () => {
-  router.push({ path: 'project-execution' })
-  generalStore.incrementUploadComponentKey()
-}
-
-const selectTab = (executionTab) => {
-  if (generalStore.selectedExecution?.executionId === executionTab.value) {
-    // Deselect if clicking the same tab
-    generalStore.setSelectedExecution(null)
-    // Set all tabs to not selected
-    generalStore.getLoadedExecutionTabs.forEach((tab) => {
-      tab.selected = false
-    })
-    generalStore.incrementTabBarKey()
-
-    const currentRoute = router.currentRoute.value.path
-    if (isOnInstanceDependentRoute(currentRoute)) {
-      router.push('/history-execution')
-    }
-  } else {
-    // Select the clicked tab
-    generalStore.setSelectedExecution(executionTab.value)
-    // Set all tabs to not selected, except for the current one
-    generalStore.getLoadedExecutionTabs.forEach((tab) => {
-      tab.selected = tab.value === executionTab.value
-    })
-    generalStore.incrementTabBarKey()
+// No execution selected: a view that needs one is left for the history.
+const deselectExecution = () => {
+  generalStore.setSelectedExecution(null)
+  if (isOnInstanceDependentRoute(router.currentRoute.value.path)) {
+    router.push('/history-execution')
   }
+}
+
+// Closing the selected tab deselects its execution too.
+const removeTab = (index) => {
+  const closesSelected = executionTabs.value[index]?.id === selectedExecutionId.value
+  generalStore.removeLoadedExecution(index)
+  if (closesSelected) deselectExecution()
+}
+
+// Clicking the selected tab deselects it.
+const selectTab = (executionId) => {
+  if (generalStore.selectedExecution?.executionId !== executionId) {
+    generalStore.setSelectedExecution(executionId)
+    return
+  }
+  deselectExecution()
 }
 
 // Check if user is logged in
@@ -264,22 +244,33 @@ if (AuthService.isAuthenticated()) {
   overflow-x: hidden; /* Prevent horizontal scroll */
 }
 
-.tab-container {
-  width: 100%;
+/* The execution tab bar, at the foot, starts where the side menu ends: the rail, or the pinned menu. */
+.execution-tabs {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 56px;
+  z-index: 900;
+  transition: left 0.3s ease;
+}
+
+.main-content.drawer-pinned .execution-tabs {
+  left: 250px;
+}
+
+.powered-by {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  white-space: nowrap;
 }
 
-/* The execution tab bar starts where the side menu ends: the rail, or the pinned menu. */
-.tab-container .v-bottom-navigation {
-  left: 56px !important;
-  width: calc(100% - 56px) !important;
-  transition: left 0.3s ease, width 0.3s ease;
-}
-
-.main-content.drawer-pinned .tab-container .v-bottom-navigation {
-  left: 250px !important;
-  width: calc(100% - 250px) !important;
+.powered-by__logo {
+  height: 18px;
+  width: auto;
+  color: var(--color-baobab-mark);
 }
 
 /*
@@ -328,7 +319,7 @@ if (AuthService.isAuthenticated()) {
 }
 
 .no-schema-access {
-  min-height: calc(100vh - 40px - var(--app-top-offset, 0px));
+  min-height: calc(100vh - var(--bottom-bar-height) - var(--app-top-offset, 0px));
   margin-left: 56px;
   display: flex;
   flex-direction: column;
@@ -402,9 +393,8 @@ body {
     padding-left: 96px;
   }
 
-  .main-content.drawer-pinned .tab-container .v-bottom-navigation {
-    left: 56px !important;
-    width: calc(100% - 56px) !important;
+  .main-content.drawer-pinned .execution-tabs {
+    left: 56px;
   }
 }
 

@@ -139,6 +139,7 @@ describe('AppDrawer', () => {
       setDrawerPinned(value: boolean) {
         this.isDrawerPinned = value
       },
+      incrementUploadComponentKey: vi.fn(),
       getUser: { username: 'planner', fullName: 'Plan Ner', email: 'planner@example.com' },
       getSchemaName: 'planning_dag',
       selectedExecution: null,
@@ -303,6 +304,17 @@ describe('AppDrawer', () => {
     expect(create.attributes('data-testid')).toBe('app-drawer-new-execution')
     expect(create.attributes('href')).toBe('/project-execution')
     expect(create.text()).toBe('drawer.newExecution')
+  })
+
+  test('"New execution" starts a new execution afresh, from the menu and from the rail', async () => {
+    ;({ wrapper } = await mountDrawer())
+    await wrapper.find('[data-testid="app-drawer-rail-new-execution"]').trigger('click')
+    expect(state.store.incrementUploadComponentKey).toHaveBeenCalledTimes(1)
+
+    state.store.isDrawerPinned = true
+    await flushPromises()
+    await wrapper.find('[data-testid="app-drawer-new-execution"]').trigger('click')
+    expect(state.store.incrementUploadComponentKey).toHaveBeenCalledTimes(2)
   })
 
   test('a user who may not create executions does not get the button', async () => {

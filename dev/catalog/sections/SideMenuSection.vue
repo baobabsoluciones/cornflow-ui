@@ -3,8 +3,8 @@
     <h1 class="catalog-section__title">Side menu</h1>
     <p class="catalog-section__lead">
       The side menu (<code>src/components/AppDrawer.vue</code>) and its pieces, with sample groups
-      and executions. Each menu runs on a store of its own; rest the pointer on the folded one to
-      open it over the content.
+      and executions, and the bar of open executions at the foot of the app. Each menu runs on a
+      store of its own; rest the pointer on the folded one to open it over the content.
     </p>
 
     <CatalogBlock
@@ -26,6 +26,29 @@
             :class="{ 'is-folded': !sample.pinned }"
           />
         </div>
+      </div>
+    </CatalogBlock>
+
+    <CatalogBlock
+      name="ExecutionTabBar"
+      api="tabs · selected → select, close · slot end"
+      note="The open executions, the selected one marked: finished with a solution, running, failed. Below, with none open."
+      column
+    >
+      <div class="tab-bar-frame">
+        <ExecutionTabBar
+          :tabs="openTabs"
+          :selected="selectedTab"
+          @select="selectedTab = $event"
+          @close="openTabs = openTabs.filter((_, index) => index !== $event)"
+        >
+          <template #end>
+            <span class="caption">Powered by baobab soluciones</span>
+          </template>
+        </ExecutionTabBar>
+      </div>
+      <div class="tab-bar-frame">
+        <ExecutionTabBar :tabs="[]" :selected="null" />
       </div>
     </CatalogBlock>
 
@@ -75,6 +98,7 @@ import { useRouter, createMemoryHistory, createRouter } from 'vue-router'
 import AppDrawer from '@cornflow-ui/core/components/AppDrawer.vue'
 import DrawerExecutionList from '@cornflow-ui/core/components/app-drawer/DrawerExecutionList.vue'
 import DrawerGroup from '@cornflow-ui/core/components/app-drawer/DrawerGroup.vue'
+import ExecutionTabBar, { type ExecutionTabBarTab } from '@cornflow-ui/core/components/ExecutionTabBar.vue'
 import config from '@cornflow-ui/core/config'
 import appConfig from '@/app/config'
 import i18n from '@cornflow-ui/core/plugins/i18n'
@@ -233,6 +257,16 @@ const latest: DrawerExecution[] = [
   { id: 'e4', name: 'Plan week 42', date: '25 Oct · 12:30', status: { label: 'Error', tone: 'danger', spin: false } },
 ]
 const opening = ref<string | null>('e3')
+
+// ── ExecutionTabBar ───────────────────────────────────────────────────────────
+
+const openTabs = ref<ExecutionTabBarTab[]>([
+  { id: 'e2', name: 'Plan week 43', status: { label: 'Optimal', tone: 'success', spin: false } },
+  { id: 'e1', name: 'Plan week 44', status: { label: 'Running', tone: 'primary', spin: true } },
+  { id: 'e4', name: 'Plan week 42', status: { label: 'Error', tone: 'danger', spin: false } },
+  { id: 'e3', name: 'Plan week 43 · adjustment', status: { label: 'Feasible', tone: 'info', spin: false } },
+])
+const selectedTab = ref<string | null>('e2')
 </script>
 
 <style scoped>
@@ -279,6 +313,12 @@ const opening = ref<string | null>('e3')
 
 .drawer-frame.is-folded {
   width: 280px;
+}
+
+.tab-bar-frame {
+  overflow: hidden;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
 }
 
 .group-frame {

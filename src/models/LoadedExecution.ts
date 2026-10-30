@@ -14,6 +14,8 @@ export class LoadedExecution {
   createdAt: string
   state: number
   messageState: string
+  /** The solver's log status (`status_code`: the solution state), when the execution has one. */
+  solutionState: { status_code?: number | null } | null
   config: any
   private readonly uiPreferences: UIPreferences
 
@@ -25,6 +27,7 @@ export class LoadedExecution {
     createdAt: string
     state: number
     message: string
+    solutionState?: { status_code?: number | null } | null
     config: any
   }) {
     this.experiment = params.experiment
@@ -34,6 +37,7 @@ export class LoadedExecution {
     this.createdAt = params.createdAt
     this.state = params.state
     this.messageState = params.message
+    this.solutionState = params.solutionState ?? null
     this.config = params.config
     this.uiPreferences = {
       inputData: { selectedTable: null, filters: {} },

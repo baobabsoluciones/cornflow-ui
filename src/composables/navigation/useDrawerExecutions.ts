@@ -24,12 +24,10 @@ export interface DrawerExecution {
   status: { label: string; tone: CoreTone; spin: boolean }
 }
 
-const SUCCESS_STATE = 1
-
 export function useDrawerExecutions() {
   const store = useGeneralStore()
   const { t, locale } = useI18n()
-  const { executionStatus, solutionStatus } = useExecutionStatus()
+  const { displayStatus } = useExecutionStatus()
 
   const recent = ref<any[]>([])
   const loadingRecent = ref(false)
@@ -43,12 +41,8 @@ export function useDrawerExecutions() {
     return `${day} · ${time}`
   }
 
-  /** A finished execution reads as its solution ("Optimal"); any other, as its own state. */
   function statusOf(state: number | null | undefined, solutionCode: number | null | undefined) {
-    const display =
-      state === SUCCESS_STATE && solutionCode !== null && solutionCode !== undefined
-        ? solutionStatus(solutionCode)
-        : executionStatus(state)
+    const display = displayStatus(state, solutionCode)
     return { label: display.label, tone: display.tone, spin: display.spin }
   }
 
@@ -65,13 +59,13 @@ export function useDrawerExecutions() {
     recent.value.slice(0, RECENT_EXECUTIONS).map((e) => toDrawerExecution(e, e.id)),
   )
 
-  /** The selected execution; its solution state comes from the latest list when it is there. */
+  /** The selected execution; the latest list has its solution state when it is more recent. */
   const loaded = computed<DrawerExecution | null>(() => {
     const selected = store.selectedExecution
     if (!selected) return null
     const listed = recent.value.find((e) => e.id === selected.executionId)
     return toDrawerExecution(
-      { ...selected, solution_state: listed?.solution_state },
+      { ...selected, solution_state: listed?.solution_state ?? selected.solutionState },
       selected.executionId,
     )
   })
@@ -96,7 +90,6 @@ export function useDrawerExecutions() {
         return false
       }
       store.setSelectedExecution(execution.id)
-      store.incrementTabBarKey()
       return true
     } catch {
       showSnackbar(t('projectExecution.snackbar.errorLoad'), 'error')

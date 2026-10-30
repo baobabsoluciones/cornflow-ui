@@ -10,7 +10,7 @@ Cornflow-UI follows a modular architecture organized into distinct functional ar
 
 - The menu takes the full height of the window; the execution tab bar starts where it ends.
 - It heads with **New execution**, a button filled in the app's primary colour, for a user who may
-  create executions (the `project-execution` view).
+  create executions (the `project-execution` view). It starts a new execution afresh.
 - It keeps apart what belongs to the loaded execution from what is the same for all of them. The
   loaded execution heads a block that holds its own groups: its input data, its results with the
   dashboards, and the app sections that need an execution (`requiresSelectedExecution`). The
@@ -47,6 +47,18 @@ Cornflow-UI follows a modular architecture organized into distinct functional ar
   and its pages), `components/app-drawer/DrawerExecutionList.vue`,
   `composables/navigation/useDrawerSections.ts` (the groups and their scope) and
   `composables/navigation/useDrawerExecutions.ts` (the loaded and latest executions).
+
+### Execution tab bar
+
+At the foot of the app, from where the side menu ends, a tab per loaded execution
+(`components/ExecutionTabBar.vue`):
+
+- Each tab has a dot in the colour of the execution's state, as the side menu shows it: a finished
+  execution reads as its solution ("Optimal"), any other as its own state; a running one shows a
+  spinner. The selected tab is marked; clicking it again deselects it.
+- The × closes a tab; closing the selected one deselects its execution, as clicking it again does.
+  A new execution starts from the side menu ("New execution").
+- Premium modules may decorate the tabs (`decorateExecutionTabs`), e.g. the ⭐ of the current plan.
 
 ## Execution management section
 
@@ -1242,6 +1254,9 @@ Reka directly.
 Tones (`neutral`, `primary`, `info`, `success`, `warning`, `danger`) have four tokens each:
 `--color-<tone>` and its `-soft`, `-border` and `-strong` variants (see `tokens.css`). Overlays sit
 above Vuetify's with `--z-popover`, `--z-dialog` and `--z-toast`.
+The execution tab bar at the foot of the window is `--bottom-bar-height` tall, as is the side
+menu's user row beside it; an app view that fills the window leaves it free:
+`height: calc(100vh - var(--bottom-bar-height))`.
 
 ## 3. Important disclaimer
 

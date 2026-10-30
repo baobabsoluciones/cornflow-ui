@@ -24,6 +24,7 @@ import RoleRepository from '@cornflow-ui/core/repositories/RoleRepository'
 import WarningsRepository from '@cornflow-ui/core/repositories/WarningsRepository'
 import TableRepository from '@cornflow-ui/core/repositories/TableRepository'
 import type { Warning } from '@cornflow-ui/core/repositories/WarningsRepository'
+import type { ExecutionTab } from '@cornflow-ui/core/types/extension'
 
 import { toUTCDayBoundary } from '@cornflow-ui/core/utils/date'
 
@@ -219,7 +220,6 @@ export const useGeneralStore = defineStore('general', {
     autoLoadTickInFlight: false,
     isDrawerPinned: false, // New state for drawer pin status
     uploadComponentKey: 0,
-    tabBarKey: 0,
     cornflowVersion: '',
     configurations: null as ConfigurationData | null,
     rawConfigurations: null as ConfigurationData | null, // Store raw configurations with original multilingual data
@@ -499,7 +499,6 @@ export const useGeneralStore = defineStore('general', {
       this.setSelectedExecution(null)
       this.lastExecutions = []
       this.clearHistoricalExecution()
-      this.incrementTabBarKey()
     },
 
     /**
@@ -1192,10 +1191,6 @@ export const useGeneralStore = defineStore('general', {
       this.uploadComponentKey++
     },
 
-    incrementTabBarKey() {
-      return this.tabBarKey++
-    },
-
     async getDataToDownload(
       id: string,
       onlySolution: boolean = false,
@@ -1306,32 +1301,14 @@ export const useGeneralStore = defineStore('general', {
       )
     },
 
-    getLoadedExecutionTabs(): object[] {
-      return this.loadedExecutions.map((execution) => {
-        let icon
-        let isLoading = false
-        switch (execution.state) {
-          case 1:
-          case -4:
-            icon = 'mdi-checkbox-marked'
-            break
-          case 0:
-          case -7:
-            isLoading = true
-            icon = 'mdi-loading'
-            break
-          default:
-            icon = 'mdi-close-box'
-        }
-
-        return {
-          value: execution.executionId,
-          text: execution.name,
-          icon: icon,
-          loading: isLoading,
-          selected: false,
-        }
-      })
+    /** A tab per loaded execution: its id, name, state and the state of its solution. */
+    getLoadedExecutionTabs(): ExecutionTab[] {
+      return this.loadedExecutions.map((execution) => ({
+        value: execution.executionId,
+        text: execution.name,
+        state: execution.state,
+        solutionStatusCode: execution.solutionState?.status_code ?? null,
+      }))
     },
 
     getConfigurations(): ConfigurationData | null {

@@ -260,6 +260,7 @@ export default class ExecutionRepository {
           createdAt: normalizeBackendDate(execution.created_at),
           state: execution.state,
           message: execution.message,
+          solutionState: execution.log ?? null,
           config: execution.config,
         })
       } else {

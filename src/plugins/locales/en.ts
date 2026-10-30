@@ -59,7 +59,6 @@ export default {
     previousButton: 'Previous',
     maximize: 'Maximize',
     minimize: 'Minimize',
-    create: 'Add new',
     downloadExcel: 'Download data',
     uploadExcel: 'Overwrite data',
     snackbar: {
@@ -418,6 +417,10 @@ export default {
     microsoft_not_configured: 'Microsoft authentication is not configured',
     microsoft_not_available:
       'Microsoft authentication service is not available',
+  },
+  executionTabs: {
+    label: 'Open executions',
+    close: 'Close {name}',
   },
   drawer: {
     label: 'Main menu',

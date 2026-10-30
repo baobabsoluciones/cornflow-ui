@@ -306,6 +306,10 @@ export default {
       "Redirection vers l'authentification externe... Si la redirection ne se produit pas automatiquement, veuillez contacter le support technique pour obtenir de l'aide.",
     session_expired: 'Votre session a expiré. Veuillez vous reconnecter.',
   },
+  executionTabs: {
+    label: 'Exécutions ouvertes',
+    close: 'Fermer {name}',
+  },
   drawer: {
     label: 'Menu principal',
     pin: 'Épingler le menu',

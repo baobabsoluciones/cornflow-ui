@@ -47,7 +47,6 @@ export default {
     previousButton: 'Anterior',
     maximize: 'Maximizar',
     minimize: 'Minimizar',
-    create: 'Adicionar novo',
     downloadExcel: 'Transferir dados',
     uploadExcel: 'Substituir dados',
     snackbar: {
@@ -408,6 +407,10 @@ export default {
       'A autenticação da Microsoft não está configurada',
     microsoft_not_available:
       'O serviço de autenticação da Microsoft não está disponível',
+  },
+  executionTabs: {
+    label: 'Execuções abertas',
+    close: 'Fechar {name}',
   },
   drawer: {
     label: 'Menu principal',
