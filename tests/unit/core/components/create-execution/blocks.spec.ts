@@ -49,7 +49,7 @@ function makeDraft(overrides: Record<string, any> = {}) {
     fromDataKeys: [],
     dataErrors: null,
     checks: { status: 'none', results: [], checkedAt: null },
-    launch: { running: false, step: null, executionId: null },
+    launch: { running: false, step: null, executionId: null, error: null },
     solution: { enabled: false, file: null, data: null, errors: null },
     etlReviewState: null,
     acceptedExtensions: ['json', 'xlsx'],
@@ -234,6 +234,25 @@ describe('LaunchPanel', () => {
     const wrapper = mount(LaunchPanel, { props: { draft, collapsed: true }, global: global() })
     expect(wrapper.find('.launch-panel__strip').exists()).toBe(true)
     expect(wrapper.find('.launch-panel__strip-status').classes()).toContain('is-missing')
+  })
+
+  test('says why the last launch failed, and unfolds to say it', async () => {
+    const draft = makeDraft({ canLaunch: true })
+    draft.launchExecution.mockImplementation(async () => {
+      draft.launch.error = 'The orchestrator is not reachable'
+      return false
+    })
+    const wrapper = mount(LaunchPanel, { props: { draft, collapsed: true }, global: global() })
+    expect(wrapper.find('[data-testid="launch-panel-error"]').exists()).toBe(false)
+
+    await wrapper.find('.launch-panel__strip-resolve').trigger('click')
+    await flushPromises()
+    expect(wrapper.emitted('update:collapsed')).toEqual([[false]])
+    await wrapper.setProps({ collapsed: false })
+    const error = wrapper.find('[data-testid="launch-panel-error"]')
+    expect(error.attributes('role')).toBe('alert')
+    expect(error.text()).toContain('createExecution.launch.failed')
+    expect(error.text()).toContain('The orchestrator is not reachable')
   })
 
   test('follows the execution once launched', () => {

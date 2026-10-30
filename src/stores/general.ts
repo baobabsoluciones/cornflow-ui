@@ -989,17 +989,9 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
+    /** Creates (and, unless `params` says `?run=0`, launches) an execution; throws the backend's error. */
     async createExecution(execution: Execution, params: string = '') {
-      try {
-        const newExecution = await this.executionRepository.createExecution(
-          execution,
-          params,
-        )
-        return newExecution
-      } catch (error) {
-        console.error('Error creating execution', error)
-        return false
-      }
+      return this.executionRepository.createExecution(execution, params)
     },
 
     async uploadSolutionData(executionId: string, solutionData: any) {

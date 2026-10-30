@@ -152,6 +152,7 @@ export default {
       missingCount: 'Falta 1 coisa | Faltam {count} coisas',
       ready: 'Pronto para lançar',
       resolve: 'Resolver',
+      failed: 'Não foi possível lançar a execução',
       applyAndResolve: 'Aplicar alterações e resolver',
       createWithSolution: 'Criar com esta solução',
       syncing: 'A sincronizar os dados…',

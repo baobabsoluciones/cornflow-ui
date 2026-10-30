@@ -164,6 +164,7 @@ export default {
       missingCount: '1 thing missing | {count} things missing',
       ready: 'Ready to launch',
       resolve: 'Resolve',
+      failed: 'The execution could not be launched',
       applyAndResolve: 'Apply changes and resolve',
       createWithSolution: 'Create with this solution',
       syncing: 'Syncing the data…',

@@ -263,12 +263,14 @@ describe('InstanceRepository', () => {
       expect(result).toEqual(mockResponse.content)
     })
 
-    test('should throw error when API returns non-201 status', async () => {
-      const mockResponse = {
-        status: 400,
-        content: { error: 'Invalid data' },
-      }
-      mockClient.post.mockResolvedValue(mockResponse)
+    test('throws the error the backend gives when the instance cannot be created', async () => {
+      mockClient.post.mockResolvedValue({ status: 400, content: { error: 'Invalid data' } })
+
+      await expect(repository.createInstance(mockInstanceData)).rejects.toThrow('Invalid data')
+    })
+
+    test('throws a generic error when the backend gives no reason', async () => {
+      mockClient.post.mockResolvedValue({ status: 500, content: null })
 
       await expect(repository.createInstance(mockInstanceData)).rejects.toThrow(
         'Error creating instance',
