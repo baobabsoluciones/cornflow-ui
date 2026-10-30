@@ -108,7 +108,7 @@ describe('columnsFromHeaders', () => {
 
   test('picks the type of each column from its header', () => {
     const columns = columnsFromHeaders([
-      { key: 'fijar', type: 'boolean' },
+      { key: 'pinned', type: 'boolean', pinsRow: true },
       { key: 'origin', renderAsSwitch: true },
       { key: 'plant', joinFrom: 'plants.name', isDependentField: true, isMainSelector: true },
       { key: 'plant_code', joinFrom: 'plants.code', isDependentField: true },
@@ -127,6 +127,8 @@ describe('columnsFromHeaders', () => {
       'datetime',
       'text',
     ])
+    expect(columns[0].pinsRow).toBe(true)
+    expect(columns[1].pinsRow).toBeUndefined()
     expect(columns[2].readOnly).toBe(false)
     expect(columns[3].readOnly).toBe(true)
     expect(columns[4].options).toEqual([

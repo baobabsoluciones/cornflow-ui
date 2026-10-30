@@ -477,6 +477,7 @@ export function convertDefinitionToSchema(
       type,
       ...(format && { format }),
       ...(prop.frontendReadOnly && { frontendReadOnly: prop.frontendReadOnly }),
+      ...(prop.pinsRow && { pinsRow: true }),
       required: requiredSet.has(key),
       ...(hasValidChoices(prop) && { choices: prop.choices }),
       ...(hasColumnsToJoin && {

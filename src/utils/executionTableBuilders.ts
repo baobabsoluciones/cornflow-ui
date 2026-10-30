@@ -236,6 +236,7 @@ export function createObjectTableObject(
             : prop?.type || 'string',
         required: (objectSchema.required || []).includes(key),
         frontendReadOnly: prop?.frontendReadOnly || false,
+        pinsRow: prop?.pinsRow || false,
       }))
   } else {
     const dataHeaders = generateHeadersFromData([{ ...visibleObjectData }])
@@ -544,6 +545,7 @@ export function createTableObject(
           max: prop.maximum,
           pattern: prop.pattern,
           frontendReadOnly: prop.frontendReadOnly || false,
+          pinsRow: prop.pinsRow || false,
           isForeignKey: prop.isForeignKey || false,
           isDependentField: prop.isDependentField || false,
           isMainSelector: prop.isMainSelector || false,

@@ -212,7 +212,7 @@ function onCellChange(row: DataRow, key: string, value: unknown) {
 const rowLevel = computed(() => (props.checkLevel ? () => props.checkLevel : undefined))
 
 /** A switch column that marks rows as pinned highlights them. */
-const pinColumn = computed(() => columns.value.find((column) => column.type === 'switch' && column.key.toLowerCase() === 'fijar'))
+const pinColumn = computed(() => columns.value.find((column) => column.pinsRow))
 const rowPinned = computed(() => {
   const column = pinColumn.value
   return column ? (row: DataRow) => cellValue(row, column.key) === true : undefined

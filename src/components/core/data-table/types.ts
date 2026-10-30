@@ -28,7 +28,7 @@ export interface DataColumn {
   key: string
   title: string
   type: DataColumnType
-  /** Unit shown after the title, "(uds/sem)". */
+  /** Unit shown after the title, "(kg)". */
   unit?: string
   /** Decimals a number shows; without it, the ones it has. */
   decimals?: number
@@ -37,6 +37,8 @@ export interface DataColumn {
   /** Cannot be edited even when the table can. */
   readOnly?: boolean
   required?: boolean
+  /** A `switch` that pins its row: the rows where it is on are highlighted. */
+  pinsRow?: boolean
   /** Values of a `list` column, or the loaded values of a `reference` one. */
   options?: DataColumnOption[]
   /** Where the column's data comes from, shown as an icon by the title. */

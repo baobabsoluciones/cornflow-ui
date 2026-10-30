@@ -71,7 +71,7 @@ const CoreDataTableStub = {
   props: [
     'title', 'columns', 'rows', 'cellValue', 'status', 'filterable', 'editable', 'selectable',
     'canAdd', 'canDelete', 'selected', 'search', 'filters', 'optionsFor', 'dateRanges',
-    'dateRangeValues', 'pendingCount', 'totalCount', 'filteredCount', 'uploadPhase',
+    'dateRangeValues', 'pendingCount', 'totalCount', 'filteredCount', 'uploadPhase', 'rowPinned',
   ],
   emits: [
     'update:search', 'update:filters', 'update:selected', 'cell-change', 'add-row', 'delete-rows',
@@ -202,6 +202,19 @@ describe('SectionDataTable', () => {
     await t.vm.$emit('review')
     await t.vm.$emit('discard')
     expect(wrapper.emitted('review')).toHaveLength(2)
+  })
+
+  test('the rows whose pinsRow column is on are pinned; without that column none is', () => {
+    const plain = mountTable()
+    expect(table(plain).props('rowPinned')).toBeUndefined()
+
+    const data = makeTableData()
+    data.headers.value.push({ key: 'pinned', title: 'Pinned', type: 'boolean', pinsRow: true })
+    data.items.value[0].pinned = true
+    const wrapper = mountTable(data)
+    const rowPinned = table(wrapper).props('rowPinned')
+    expect(rowPinned(data.items.value[0])).toBe(true)
+    expect(rowPinned(data.items.value[1])).toBe(false)
   })
 
   test('a cell shows its pending value when it was edited', () => {
