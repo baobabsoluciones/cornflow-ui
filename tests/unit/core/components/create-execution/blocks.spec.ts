@@ -15,7 +15,7 @@ vi.mock('@cornflow-ui/core/stores/general', () => ({ useGeneralStore: () => stor
 vi.mock('@cornflow-ui/core/components/project-execution/CreateExecutionReviewInstance.vue', () => ({
   default: {
     name: 'CreateExecutionReviewInstance',
-    props: ['newExecution', 'instanceErrors', 'isEditMode', 'externalEtlFlow', 'isStepActive', 'showToolbar'],
+    props: ['newExecution', 'instanceErrors', 'externalEtlFlow', 'showToolbar'],
     template: '<div data-testid="review" :data-toolbar="String(showToolbar)" />',
     methods: {
       applyPendingChanges: () => Promise.resolve(true),

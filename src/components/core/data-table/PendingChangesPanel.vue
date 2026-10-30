@@ -13,9 +13,9 @@
   out above the new one, new rows are editable in full, deleted rows read-only. A correction is
   validated as the table does and emitted with `update-field`; the host records it.
 
-  The host owns the saving: `saving` locks the panel while it runs, `banner` shows a validation or
-  server error (with a retry for the server), and `overwrite` asks for a second confirmation when
-  the server reports data that depends on what is about to change.
+  The host owns the saving: `saving` locks the panel while it runs, `validationError` says why the
+  edited data does not match the schema, and `overwrite` asks for a second confirmation when the
+  server reports data that depends on what is about to change.
 
   <PendingChangesPanel v-model:open="reviewOpen" :groups="groups" :saving="saving"
     :save-label="$t('dataTable.pending.save')" @save="saveAll" @revert-all="revertAll" />
@@ -55,13 +55,11 @@
       />
     </header>
 
-    <div v-if="banner" class="pending-panel__banner">
+    <div v-if="validationError" class="pending-panel__banner">
       <CoreAlert
         tone="error"
-        :title="bannerTitle"
-        :message="banner.message"
-        :action-label="banner.canRetry ? $t('dataTable.pending.retry') : ''"
-        @action="emit('retry')"
+        :title="$t('dataTable.pending.validationTitle')"
+        :message="validationError"
       />
       <CoreButton
         variant="icon"
@@ -263,13 +261,11 @@
         {{ hasChanges ? $t('dataTable.pending.dialogSubtitle', { summary: summaryText }) : $t('dataTable.pending.nothingToSave') }}
       </p>
 
-      <div v-if="banner" class="pending-dialog__banner">
+      <div v-if="validationError" class="pending-dialog__banner">
         <CoreAlert
           tone="error"
-          :title="bannerTitle"
-          :message="banner.message"
-          :action-label="banner.canRetry ? $t('dataTable.pending.retry') : ''"
-          @action="emit('retry')"
+          :title="$t('dataTable.pending.validationTitle')"
+          :message="validationError"
         />
         <CoreButton
           variant="icon"
@@ -563,12 +559,6 @@ export interface PendingChangeGroup {
   items: PendingChangeItem[]
 }
 
-export interface PendingChangesBanner {
-  kind: 'validation' | 'server'
-  message: string
-  canRetry?: boolean
-}
-
 const props = withDefaults(
   defineProps<{
     open: boolean
@@ -576,11 +566,12 @@ const props = withDefaults(
     saving?: boolean
     /** The primary button: "Save changes", "Apply changes", "Relaunch"… */
     saveLabel: string
-    banner?: PendingChangesBanner | null
+    /** Why the edited data does not match the schema, above the changes. */
+    validationError?: string | null
     /** Second confirmation when the server reports data that depends on the changes. */
     overwrite?: { message: string } | null
   }>(),
-  { saving: false, banner: null, overwrite: null },
+  { saving: false, validationError: null, overwrite: null },
 )
 
 const emit = defineEmits<{
@@ -593,7 +584,6 @@ const emit = defineEmits<{
   'update-field': [tableKey: string, rowId: string | number, key: string, value: unknown]
   'go-to': [tableKey: string, rowId: string | number, key: string | undefined]
   'close-banner': []
-  retry: []
   'confirm-overwrite': []
   'cancel-overwrite': []
 }>()
@@ -661,12 +651,6 @@ const hasChanges = computed(() => props.groups.some((group) => group.items.lengt
 const summaryText = computed(
   () =>
     `${t('dataTable.pending.changes', totalChanges.value)} · ${t('dataTable.pending.tables', props.groups.length)}`,
-)
-
-const bannerTitle = computed(() =>
-  props.banner?.kind === 'validation'
-    ? t('dataTable.pending.validationTitle')
-    : t('dataTable.pending.serverTitle'),
 )
 
 function close() {

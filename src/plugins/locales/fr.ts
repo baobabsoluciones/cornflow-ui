@@ -227,7 +227,6 @@ export default {
     create: 'Nouvelle exécution',
     title: 'Exécution du projet',
     maximize: 'Agrandir',
-    minimize: 'Réduire',
     snackbar: {
       instanceDataChecksError:
         'Une erreur est survenue lors de la vérification des données',
@@ -244,106 +243,36 @@ export default {
         "Une erreur inattendue est survenue lors de la récupération des informations de l'exécution",
     },
     steps: {
-      step1: {
-        title: 'Nouvelle exécution',
-        description: 'Créer une nouvelle exécution',
-        titleContent: 'Choisissez une option',
-      },
-      step2Search: {
-        title: 'Sélectionner les dates',
-        description: 'Sélectionnez les dates pour rechercher une exécution',
-        titleContent: 'Sélectionnez les dates',
-        subtitleContent:
-          "Choisissez une date de début et une date de fin pour rechercher des exécutions dans l'intervalle entre elles",
-        startDate: 'Date de début',
-        endDate: 'Date de fin',
-        search: 'Rechercher',
-      },
-      step2: {
-        title: "Charger l'instance",
-        description: "Chargez un fichier avec les données de l'instance",
-        titleContent: "Charger l'instance",
-        subtitleContent:
-          "Sélectionnez un fichier pour charger les données de l'instance",
-        loadInstance: {
-          dragAndDropDescription:
-            "Faites glisser et déposez votre fichier d'instance ici",
-          uploadFile: 'Télécharger le fichier',
-          noSchemaError:
-            "Aucun schéma n'a été trouvé : êtes-vous connecté au serveur ?",
-          instanceSchemaError: "L'instance ne respecte pas le schéma",
-          instanceLoaded: 'Instance chargée avec succès',
-          invalidFileFormat:
-            'Format de fichier non valide. Veuillez réessayer.',
-          unexpectedError:
-            "Une erreur inattendue s'est produite. Veuillez réessayer.",
-          downloadAllErrors: 'Télécharger toutes les erreurs',
-          showingErrorsTruncated:
-            'Affichage des {displayed} premières erreurs sur {total}. Téléchargez la liste complète des erreurs pour voir toutes les erreurs.',
-          totalErrors: 'Il y a {total} erreurs',
-          andMoreErrors: 'et {count} de plus',
-          errorsDownloadStarted: "Téléchargement du fichier d'erreurs démarré",
-          errorsDownloadError:
-            "Erreur lors du téléchargement du fichier d'erreurs",
-        },
-      },
       step3: {
-        title: 'Nom et description',
-        description: "Nommez et décrivez l'exécution",
-        titleContent: 'Remplissez les informations suivantes',
-        subtitleContent:
-          "Veuillez fournir un nom et une brève description pour l'exécution à créer. Cela aidera à la rechercher et à l'identifier. Nous vous recommandons d'être bref et aussi concis que possible",
-        nameTitleField: 'Nom',
-        descriptionTitleField: 'Description',
-        namePlaceholder: 'Veuillez insérer un nom',
-        descriptionPlaceholder: 'Veuillez insérer une description',
         loadInstance: {
-          noSchemaError:
-            "Aucun schéma n'a été trouvé : êtes-vous connecté au serveur ?",
           instanceSchemaError: "L'instance ne respecte pas le schéma",
-          instanceLoaded: 'Instance chargée avec succès',
-          selectedFiles: 'Fichiers sélectionnés',
           unexpectedError:
             "Une erreur inattendue s'est produite. Veuillez réessayer.",
-          instanceLoadedWithErrors: 'Instance chargée avec des erreurs',
           noValidInstancesError:
             'Aucune instance valide trouvée dans les fichiers téléchargés',
-          downloadExcel: 'Télécharger Excel',
-          showingErrorsTruncated:
-            'Affichage des {displayed} premières erreurs sur {total}. Téléchargez la liste complète des erreurs pour voir toutes les erreurs.',
           errorsDownloadStarted: "Téléchargement du fichier d'erreurs démarré",
           errorsDownloadError:
             "Erreur lors du téléchargement du fichier d'erreurs",
           noFilesSelectedError: 'Veuillez sélectionner au moins un fichier',
+          unsupportedFileFormat: 'Format de fichier non pris en charge',
+          fileReadError: 'Erreur lors de la lecture du fichier',
+          mergingError: 'Erreur lors de la fusion des fichiers',
         },
       },
-      step4: {
-        title: 'Sélectionner le solveur',
-        description: "Sélectionnez le solveur à utiliser pour l'exécution",
-        titleContent: 'Sélectionnez un solveur',
-        subtitleContent:
-          "Le solveur que vous sélectionnez sera l'algorithme utilisé pour trouver la solution",
-      },
       step5: {
-        title: 'Limiter le temps',
-        description: "Sélectionnez le temps maximum pour l'exécution",
-        titleContent: 'Remplissez les informations suivantes',
-        subtitleContent: "Sélectionnez la durée souhaitée pour l'exécution",
-        timeLimitPlaceholder: 'Veuillez insérer',
-        time: 'Temps',
+        title: 'Vérifier les données',
+      },
+      step7: {
+        timeLimitPlaceholder: 'Veuillez insérer une limite de temps',
+        time: 'Limite de temps',
         secondsSuffix: 'sec',
       },
-      step6: {
-        title: 'Confirmer',
-        description: "Confirmez les données d'exécution et lancez l'exécution",
-        titleContent: "Confirmation de la résolution de l'exécution",
-        subtitleContent:
-          "Si vous choisissez de résoudre l'exécution, le modèle démarrera automatiquement et prendra le temps estimé pour se terminer. Vous pouvez accéder à son état en ouvrant l'onglet avec le nom attribué dans la barre horizontale inférieure.",
-        resolve: 'Résoudre',
-        review: 'Revoir',
-        successMessage:
-          "L'exécution a été lancée avec succès. Un nouvel onglet a été ouvert dans la barre inférieure. Vous pouvez cliquer sur cet onglet pour l'ouvrir.",
-        loadNewExecution: 'Charger une nouvelle exécution',
+      step8: {
+        developerMode: {
+          unsupportedFileFormat: 'Format de fichier non pris en charge',
+          fileReadError: 'Erreur lors de la lecture du fichier',
+          uploadError: 'Erreur lors du téléchargement des données de la solution',
+        },
       },
     },
     infoCard: {
@@ -362,17 +291,6 @@ export default {
       "Vous travaillez actuellement dans un environnement de test. Cet environnement est destiné uniquement aux tests et au développement. Pour des exécutions réelles, veuillez utiliser l'environnement de production.",
   },
   executionTable: {
-    date: 'Temps',
-    endDate: 'Date de fin',
-    userName: 'Utilisateur',
-    userFullName: 'Utilisateur',
-    name: 'Nom',
-    description: 'Description',
-    state: 'Statut',
-    solver: 'Solveur',
-    solution: 'Info',
-    excel: 'Excel',
-    actions: 'Actions',
     optimal: 'Optimal',
     optimalTooltip: 'La solution optimale a été trouvée',
     timeLimit: 'Limite de temps',
@@ -434,6 +352,8 @@ export default {
     message: 'Êtes-vous sûr de vouloir vous déconnecter ?',
     accept: 'Déconnectez-moi',
     cancel: 'Annuler',
+    snackbar_message_success: 'Déconnexion réussie',
+    snackbar_message_error: "Une erreur s'est produite, veuillez réessayer.",
   },
   signUp: {
     subtitle: 'Entrez vos informations pour vous inscrire',
@@ -501,7 +421,6 @@ export default {
     custom: 'Plage personnalisée',
     from: 'De',
     to: 'À',
-    noData: 'Aucune donnée trouvée pour la plage de dates sélectionnée',
     loading: 'Chargement des exécutions...',
     createNewExecution: 'créer une nouvelle exécution',
     list: {
@@ -635,10 +554,6 @@ export default {
   },
   sectionView: {
     etlMetadataInfo: {
-      fromDbTooltip:
-        "Cette table contient les informations disponibles dans la base de données au moment de l'exécution.",
-      notFromDbTooltip:
-        "Cette table provient d'un fichier importé par l'utilisateur.",
       fromDbValueTooltip:
         "Cette valeur contient les informations disponibles dans la base de données au moment de l'exécution.",
       notFromDbValueTooltip:
@@ -647,115 +562,30 @@ export default {
     editAllMasterTables: 'Importer toutes les tables de référence',
     editAllMasterTablesTitle: 'Importer toutes les tables de référence',
     editAllMasterTablesSuccess: 'Tables de référence mises à jour',
-    validationWarningTab: 'Cette table contient des avertissements',
-    validationErrorTab: 'Cette table contient des erreurs',
   },
   table: {
-    loading: 'Chargement des données...',
-    noDataAvailable: 'Aucune donnée disponible pour cette table',
-    loadingError:
-      "Erreur lors du chargement des données de la table depuis l'API",
     apiNotSupported: 'API non disponible ou opération non supportée',
-    searchPlaceholder: 'Rechercher...',
     validationMessageColumn: 'Message',
     groups: {
       inputTables: "Tables d'entrée",
       outputTables: 'Tables de sortie',
     },
-    actions: 'Actions',
-    add: 'Ajouter',
-    edit: 'Modifier',
     delete: 'Supprimer',
-    bulkUpload: 'Téléchargement en Masse',
-    addItem: 'Ajouter un Élément',
-    editItem: 'Modifier un Élément',
     deleteItem: 'Supprimer un Élément',
     confirmDelete: 'Confirmer la Suppression',
     deleteMessage: 'Êtes-vous sûr de vouloir supprimer cet élément?',
-    cancel: 'Annuler',
-    save: 'Enregistrer',
-    clickToEdit: 'Cliquez pour modifier',
-    upload: 'Télécharger',
-    selectFile: 'Sélectionner un Fichier',
-    selectFiles: 'Sélectionner des fichiers',
-    multipleFileAccumulateHint:
-      'Vous pouvez ajouter d’autres fichiers dans une sélection suivante ; ils sont fusionnés (doublons remplacés).',
     dragAndDrop:
       'Glissez et déposez les fichiers ici ou cliquez pour sélectionner',
     filters: {
-      title: 'Filtres',
       noFilters: 'Aucun filtre appliqué',
       addFirst: 'Ajoutez votre premier filtre',
-      addCondition: 'Ajouter une condition',
-      field: 'Champ',
-      operator: 'Opérateur',
-      value: 'Valeur',
-      valueTo: 'À',
-      and: 'ET',
-      remove: 'Supprimer le filtre',
-      clearAll: 'Tout effacer',
-      apply: 'Appliquer les filtres',
-      cancel: 'Annuler',
-      dateFrom: 'Du',
-      dateTo: 'Au',
-      reset: 'Réinitialiser',
       activeFilters: 'Filtres actifs',
-      operators: {
-        is: 'est',
-        is_not: "n'est pas",
-        contains: 'contient',
-        has_any_value: 'a une valeur',
-        is_greater_than: 'est supérieur à',
-        is_less_than: 'est inférieur à',
-        is_between: 'est entre',
-        is_greater_than_or_equal: 'est supérieur ou égal à',
-        is_less_than_or_equal: 'est inférieur ou égal à',
-      },
     },
-    supportedFormats:
-      'Formats supportés: Excel (.xlsx), JSON (.json), CSV (.csv)',
-    maxFileSize: 'Taille maximale du fichier',
     downloadFullMessage: 'Télécharger le message complet',
-    uploadMode: 'Mode de téléchargement',
-    updateMode: 'Mettre à jour les données existantes',
-    updateModeDescription:
-      'Les enregistrements existants seront mis à jour avec les nouvelles données. Les nouveaux enregistrements seront ajoutés à la table.',
-    recommended: 'Recommandé',
-    addMode: 'Ajouter aux données existantes',
-    addModeDescription:
-      'Ajouter de nouveaux enregistrements aux données existantes de la table. Les enregistrements actuels seront préservés.',
-    overwriteMode: 'Remplacer toutes les données',
-    overwriteModeDescription:
-      'Remplacer toutes les données existantes de la table par les enregistrements téléchargés. Toutes les données actuelles seront supprimées.',
-    itemAdded: 'Élément ajouté avec succès',
-    itemUpdated: 'Élément mis à jour avec succès',
-    itemDeleted: 'Élément supprimé avec succès',
-    bulkUploadSuccess: 'Téléchargement en masse terminé avec succès',
-    downloadExcelTable: 'Télécharger Excel',
-    downloadExcelSuccess: 'Fichier Excel téléchargé avec succès',
-    errorDownloadExcelTable: 'Erreur lors du téléchargement du fichier Excel',
     // Selection and bulk operations
-    selectedItems: '{count} sélectionnés',
     clearSelection: 'Effacer la sélection',
-    deleteSelected: 'Supprimer la sélection',
-    confirmBulkDelete: 'Confirmer la suppression en lot',
-    bulkDeleteMessage:
-      'Êtes-vous sûr de vouloir supprimer {count} éléments ? Cette action ne peut pas être annulée.',
-    deletingPleaseWait: 'Suppression en cours. Veuillez patienter.',
     overwritingPleaseWait:
       'Traitement des données en cours. Veuillez patienter.',
-    uploadingPleaseWait: 'Envoi des données en cours… Veuillez patienter.',
-    bulkDeleteSuccess: '{count} éléments supprimés avec succès',
-    bulkDeleteAllFailed:
-      'Échec de la suppression de tous les éléments sélectionnés',
-    bulkDeletePartialFailed:
-      "Les éléments avec les IDs {ids} n'ont pas pu être supprimés",
-    errorBulkDelete: 'Erreur lors de la suppression en lot',
-    errorAdding: "Erreur lors de l'ajout de l'élément",
-    errorUpdating: "Erreur lors de la mise à jour de l'élément",
-    errorDeleting: "Erreur lors de la suppression de l'élément",
-    errorBulkUpload: 'Erreur lors du téléchargement en masse',
-    invalidFileFormat: 'Format de fichier invalide',
     fileProcessingError: 'Erreur lors du traitement du fichier',
     messages: {
       bulkUploadReferenceNotFound:
@@ -766,16 +596,13 @@ export default {
       asyncUploadCompleted: 'Terminé — {count} lignes importées',
       asyncUploadFailed: 'Le téléchargement n’a pas pu être traité',
       asyncUploadNotFound: 'Téléchargement introuvable',
+      invalidFileFormat: 'Format de fichier invalide',
+      noValidDataFound: 'Aucune donnée valide trouvée dans le fichier',
     },
     bulkEdit: 'Édition en masse',
-    bulkEditDescription: 'Modifier {count} éléments sélectionnés. Laissez un champ vide pour conserver les valeurs existantes.',
-    bulkEditNoChange: 'Sans changement',
-    bulkEditHint: 'Seuls les champs renseignés seront appliqués aux éléments sélectionnés.',
-    applyToSelected: 'Appliquer à la sélection',
     bulkEditApplied: '{count} éléments mis à jour avec succès',
     yes: 'Oui',
     no: 'Non',
-    search: 'Rechercher',
     forceRetry: {
       title: "Confirmer l'écrasement",
       accept: 'Écraser quand même',
@@ -783,19 +610,6 @@ export default {
     },
   },
   validation: {
-    required: 'Ce champ est obligatoire',
-    email: 'Veuillez saisir une adresse e-mail valide',
-    min: 'La valeur minimale est {min}',
-    max: 'La valeur maximale est {max}',
-    minLength: 'La longueur minimale est de {length} caractères',
-    maxLength: 'La longueur maximale est de {length} caractères',
-    pattern: 'Format invalide',
-    invalidNumber: 'Veuillez saisir un nombre valide',
-    integer: 'Veuillez saisir un nombre entier',
-    url: 'Veuillez saisir une URL valide',
-    date: 'Veuillez saisir une date valide',
-    phone: 'Veuillez saisir un numéro de téléphone valide',
-    alphanumeric: 'Seuls les lettres et les chiffres sont autorisés',
     keywords: {
       type: 'Type',
       required: 'Requis',
@@ -826,41 +640,9 @@ export default {
     alertTitle: 'Correspondances avec les tables de configuration détectées',
     alertDescription:
       'Certaines tables de vos données téléchargées correspondent à des tables de configuration existantes. Veuillez choisir comment gérer chaque correspondance ci-dessous.',
-    hasDifferences: 'A des différences',
-    hasDifferencesWithMaster:
-      'Cette table a des différences avec la table de configuration',
-    identical: 'Identiques',
-    identicalToMaster: 'Cette table est identique à la table de configuration',
-    viewDifferences: 'Comparer',
-    matchFoundWith: 'Correspond à:',
-    matchFoundWithMaster:
-      'Correspond à la table de configuration: {masterTable}',
-    uploadedRows: 'Lignes téléchargées',
-    masterRows: 'Lignes du maître',
-    newRows: 'Nouvelles lignes',
-    removedRows: 'Lignes supprimées',
-    modifiedRows: 'Lignes modifiées',
-    identicalRows: 'Lignes identiques',
-    selectAction: 'Sélectionnez une action:',
     option: {
       keepUploaded: {
-        title: 'Conserver les données téléchargées',
         short: 'Conserver',
-        description:
-          'Utiliser les données téléchargées pour cette exécution sans modifier la table de configuration.',
-      },
-      useMaster: {
-        title: 'Appliquer les données du maître',
-        short: 'Appliquer maître',
-        description:
-          'Utiliser les données de la table de configuration au lieu des données téléchargées pour cette exécution.',
-      },
-      replaceMaster: {
-        title: 'Enregistrer dans la table maître',
-        short: 'Enregistrer',
-        description:
-          'Enregistrer les données téléchargées dans la table de configuration. Cela affecte toutes les exécutions futures.',
-        notAvailable: "Cette opération n'est pas disponible pour cette table",
       },
     },
     messages: {
@@ -870,56 +652,10 @@ export default {
         'La table de configuration "{tableName}" a été mise à jour',
       updateError: 'Erreur lors de la mise à jour de la table de configuration',
     },
-    confirmUseMaster: {
-      title: 'Appliquer les données du maître',
-      message:
-        'Voulez-vous utiliser les données de la table de configuration pour "{tableName}"? Les données téléchargées seront remplacées par les données du maître uniquement pour cette exécution.',
-      confirm: 'Appliquer maître',
-    },
-    confirmReplaceMaster: {
-      title: 'Enregistrer dans la table maître',
-      message:
-        'Voulez-vous enregistrer les données téléchargées dans la table maître "{tableName}"? Cela modifiera définitivement la table de configuration et affectera toutes les exécutions futures.',
-      confirm: 'Enregistrer',
-    },
-  },
-  dataComparison: {
-    title: 'Comparaison des données: {tableName}',
-    subtitle:
-      'Comparaison des données téléchargées avec la table de configuration "{masterTable}"',
-    loading: 'Chargement des données de comparaison...',
-    uploadedData: 'Données téléchargées',
-    masterData: 'Données du maître',
-    rows: 'lignes',
-    newRows: 'Nouvelles',
-    removedRows: 'Supprimées',
-    modifiedRows: 'Modifiées',
-    identicalRows: 'Identiques',
-    tabs: {
-      summary: 'Résumé',
-      sideBySide: 'Côte à côte',
-      changes: 'Modifications',
-    },
-    filter: {
-      all: 'Tout',
-      added: 'Ajoutées',
-      removed: 'Supprimées',
-      modified: 'Modifiées',
-    },
-    noChangesInFilter: 'Aucune modification dans ce filtre',
-    changeType: {
-      added: 'Ligne ajoutée',
-      removed: 'Ligne supprimée',
-      modified: 'Ligne modifiée',
-    },
   },
   common: {
     clear: 'Effacer',
     close: 'Fermer',
-    file: 'fichier',
-    files: 'fichiers',
-    error: 'erreur',
-    errors: 'erreurs',
   },
   configParams: {
     fromFile: 'Du fichier',
@@ -1051,29 +787,11 @@ export default {
   },
   externalEtl: {
     switch: {
-      fromDbLabel: 'Cette table a été obtenue depuis la base de données.',
-      fromExcelLabel:
-        "Cette table a été importée depuis un fichier à l'étape précédente.",
-      editedFromDbLabel:
-        "Des modifications manuelles ont été effectuées et la table n'est plus identique à celle de la base de données.",
-      reuploadedLabel:
-        'Les données de cette table proviennent d’un fichier Excel importé.',
-      fixTable: 'Fixer la table',
-      replaceWithDb: 'Utiliser les données de la base',
-      staticMode: 'Mode statique',
-      staticModeTooltip: 'La table sera conservée telle quelle et ne sera pas mise à jour depuis la base de données lors du calcul de la dernière solution.',
-      trackChanges: 'Suivre les changements',
-      trackChangesTooltip: 'La table sera mise à jour avec les dernières données de la base de données lors du calcul de la dernière solution.',
-      useExcelData: 'Utiliser les données Excel',
-      useDbData: 'Utiliser les données de la base',
       default: 'Par défaut',
       fromDb: 'Depuis BD',
       fixed: 'Fixé',
     },
     parameter: {
-      fromDb: 'Depuis la base de données (sera actualisé)',
-      fixed: 'Fixé (valeur actuelle conservée)',
-      cannotBeFromDb: "Toujours fourni par l'utilisateur",
       columnFromDb: 'Depuis BD',
     },
   },
@@ -1185,8 +903,6 @@ export default {
       },
       master: {
         comparing: 'Comparaison avec les tables maîtres…',
-        error: 'La comparaison avec la table maître a échoué',
-        retry: 'Réessayer',
         matches: 'Table maître {name}',
         identical: 'Identiques',
         identicalTitle: 'Aucune différence avec la table maître',
@@ -1243,7 +959,6 @@ export default {
       message: 'La ligne sélectionnée sera supprimée. C’est irréversible. | Les {count} lignes sélectionnées seront supprimées. C’est irréversible.',
       confirm: 'Supprimer',
       deleting: 'Suppression…',
-      marked: '1 ligne marquée pour suppression. | {count} lignes marquées pour suppression.',
     },
     messages: {
       errorTitle: 'Les données n’ont pas pu être chargées',
@@ -1276,16 +991,13 @@ export default {
       review: 'Revoir les modifications',
       summary: '1 modification en attente | {count} modifications en attente',
       summaryTables: '1 modification en attente dans {tables} tables | {count} modifications en attente dans {tables} tables',
-      staged: 'Modification ajoutée aux modifications en attente. Elle sera appliquée à l’enregistrement.',
       title: 'Modifications en attente',
       changes: '{n} modification | {n} modification | {n} modifications',
       tables: '{n} table | {n} table | {n} tables',
       rowsAffected: '{n} ligne concernée | {n} ligne concernée | {n} lignes concernées',
       expand: 'Ouvrir en grand',
       closeBanner: 'Fermer le message',
-      retry: 'Réessayer',
       validationTitle: 'Les données ne respectent pas le schéma',
-      serverTitle: 'Erreur du serveur',
       empty: 'Aucune modification en attente',
       emptyText: 'Ce que vous modifiez dans une table apparaîtra ici.',
       emptyTextDialog: "Les modifications faites dans une table apparaissent ici avant d'être enregistrées.",
@@ -1461,6 +1173,7 @@ export default {
       parameter: 'Paramètre',
       value: 'Valeur',
       source: 'Depuis la base de données',
+      originOfValue: 'Origine',
       fromDatabase: 'Depuis la base de données',
       revert: 'Annuler la modification',
       choose: 'Choisir…',

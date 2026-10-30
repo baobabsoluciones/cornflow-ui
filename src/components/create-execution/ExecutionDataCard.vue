@@ -224,9 +224,7 @@
         :show-toolbar="false"
         :new-execution="draft.execution"
         :instance-errors="draft.dataErrors"
-        :is-edit-mode="Boolean(draft.fromExecution)"
         :external-etl-flow="draft.etlReviewState"
-        :is-step-active="true"
         @update:instance="draft.setInstance"
         @update:instance-errors="draft.setDataErrors"
       />

@@ -34,9 +34,6 @@
     <ExecutionDataView
       ref="executionDataViewRef"
       :execution="newExecution"
-      :can-check-data="false"
-      :checks-finished="false"
-      :checks-error="false"
       :master-table-matches="masterTableMatchesWithCanReplace"
       :master-table-loading="isMasterTableMatchingEnabled && isMasterTableLoading"
       :enable-excel-mode="true"
@@ -44,7 +41,6 @@
       @save-changes="handleSaveChanges"
       @master-table-action="handleMasterTableChoice"
       @show-comparison="handleShowComparison"
-      @pending-changes-update="handlePendingChangesUpdate"
     />
     <!-- Validation errors of the data, below the table -->
     <CoreAlert v-if="instanceErrors" tone="error" class="review-instance-errors">
@@ -111,10 +107,7 @@ import type { ExternalEtlFlowState } from '@cornflow-ui/core/types/etlFlow'
 interface Props {
   newExecution: NewExecution
   instanceErrors?: string | null
-  isEditMode?: boolean
   externalEtlFlow?: ExternalEtlFlowState | null
-  /** When true, we are on the review-instance step (used to clear stale force-retry dialog when entering the step). */
-  isStepActive?: boolean
   /**
    * Show the floating Excel menu and maximize button. A screen that offers them in its own header
    * turns it off and calls the exposed `downloadExcel`, `uploadExcel` and `toggleMaximize`.
@@ -124,17 +117,13 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   instanceErrors: null,
-  isEditMode: false,
   externalEtlFlow: null,
-  isStepActive: false,
   showToolbar: true,
 })
 
 const emit = defineEmits<{
   (e: 'update:instance', instance: Instance): void
   (e: 'update:instanceErrors', errors: string | null): void
-  (e: 'master-tables-updated', tables: string[]): void
-  (e: 'has-pending-changes', hasChanges: boolean): void
 }>()
 
 // Table changes composable for tracking pending changes
@@ -155,18 +144,10 @@ const isMasterTableMatchingEnabled = computed(() => {
 // Master table match composable
 const masterTableMatch = useMasterTableMatch()
 
-// Clear any stale force-retry dialog when entering this step (e.g. from a previous replace_master that returned offer_force_retry)
+// A force-retry offer left by an earlier replace_master (offer_force_retry) does not carry over
 onMounted(() => {
   masterTableMatch.rejectForceRetry()
 })
-
-// When step becomes active (e.g. user navigates to this step; component may already be mounted if step content uses v-show), clear dialog
-watch(
-  () => props.isStepActive,
-  (active) => {
-    if (active) masterTableMatch.rejectForceRetry()
-  },
-)
 
 // Unwrap refs for ForceRetryConfirmDialog (composable returns refs; template would see Ref object as truthy and offer.match would be undefined)
 const forceRetryOfferValue = computed(
@@ -378,7 +359,6 @@ const handleReplaceMasterChoice = async (tableKey: string) => {
     )
 
     if (result.masterTablesUpdated.length > 0) {
-      emit('master-tables-updated', result.masterTablesUpdated)
       masterTableMatch.updateMatchAfterAction(tableKey, 'replace_master')
 
       if (showSnackbar) {
@@ -413,10 +393,9 @@ const handleForceRetryConfirm = async () => {
   const { tableKey, tableName } = offer.match
   try {
     const replaced = await masterTableMatch.acceptForceRetry()
-    if (replaced && showSnackbar) {
+    if (replaced) {
       masterTableMatch.updateMatchAfterAction(tableKey, 'replace_master')
-      emit('master-tables-updated', [tableName])
-      showSnackbar(
+      showSnackbar?.(
         t('masterTableMatch.messages.masterTableUpdated', {
           tableName,
         }),
@@ -698,14 +677,6 @@ const handleSaveChanges = async (data: object) => {
 const executionDataViewRef = ref<InstanceType<typeof ExecutionDataView> | null>(
   null,
 )
-
-// Handle pending changes update from ExecutionDataView
-const handlePendingChangesUpdate = (
-  hasChanges: boolean,
-  changesCount: number,
-) => {
-  emit('has-pending-changes', hasChanges)
-}
 
 // Check if there are pending changes
 const hasPendingChanges = computed(() => {
