@@ -1303,6 +1303,7 @@ function convertJsonSchemaItemToSchema(itemSchema: any): any {
         ...(prop.frontendReadOnly && {
           frontendReadOnly: prop.frontendReadOnly,
         }),
+        ...(prop.pinsRow && { pinsRow: true }),
         ...(prop.description && { description: prop.description }),
         ...(prop.minimum !== undefined && { minimum: prop.minimum }),
         ...(prop.maximum !== undefined && { maximum: prop.maximum }),

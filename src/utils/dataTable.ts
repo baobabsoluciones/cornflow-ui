@@ -169,6 +169,8 @@ export interface SchemaHeader {
   isDependentField?: boolean
   isMainSelector?: boolean
   renderAsSwitch?: boolean
+  /** A yes/no that pins its row: shown as a switch, and the rows where it is on are highlighted. */
+  pinsRow?: boolean
   description?: string
   unit?: string
   [key: string]: unknown
@@ -198,7 +200,7 @@ const SCHEMA_TYPES: Record<string, DataColumnType> = {
 }
 
 function columnTypeOf(header: SchemaHeader): DataColumnType {
-  if (header.renderAsSwitch || cellText(header.key).toLowerCase() === 'fijar') return 'switch'
+  if (header.renderAsSwitch || header.pinsRow) return 'switch'
   if (header.joinFrom || header.isDependentField || header.isMainSelector) return 'reference'
   if (Array.isArray(header.choices) && header.choices.length > 0) return 'list'
   return SCHEMA_TYPES[header.type ?? ''] ?? 'text'
@@ -227,6 +229,7 @@ export function columnsFromHeaders(headers: SchemaHeader[]): DataColumn[] {
         unit: header.unit,
         description: header.description,
         required: !!header.required,
+        pinsRow: !!header.pinsRow || undefined,
         readOnly:
           !!header.frontendReadOnly ||
           (type === 'reference' && !!header.isDependentField && !header.isMainSelector),
@@ -420,7 +423,7 @@ function rangeChipValue(from: string, to: string, kind: FilterKind, t: Translate
   return from ? `≥ ${from}` : `≤ ${to}`
 }
 
-/** The value part of a filter chip: "≥ 10", "10 – 50", "Envasado +2", "contains «norte»". */
+/** The value part of a filter chip: "≥ 10", "10 – 50", "Pending +2", "contains «north»". */
 export function filterChipValue(
   filter: DataFilter,
   column: Pick<DataColumn, 'type' | 'decimals' | 'options'>,

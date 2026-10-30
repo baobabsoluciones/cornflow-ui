@@ -25,18 +25,18 @@ const i18n = createI18n({
 })
 
 const columns: DataColumn[] = [
-  { key: 'line', title: 'Línea', type: 'text', required: true },
-  { key: 'capacity', title: 'Capacidad', type: 'number', unit: 'uds/sem' },
-  { key: 'type', title: 'Tipo', type: 'list', options: [{ value: 'Envasado', label: 'Envasado' }] },
+  { key: 'line', title: 'Nombre', type: 'text', required: true },
+  { key: 'capacity', title: 'Cantidad', type: 'number', unit: 'kg' },
+  { key: 'type', title: 'Tipo', type: 'list', options: [{ value: 'Estándar', label: 'Estándar' }] },
   { key: 'active', title: 'Activa', type: 'boolean' },
-  { key: 'pinned', title: 'Fijar', type: 'switch' },
+  { key: 'pinned', title: 'Destacado', type: 'switch' },
 ]
 
 let wrapper: VueWrapper | undefined
 
 async function mountDialog() {
   wrapper = mount(BulkEditDialog, {
-    props: { open: true, columns, count: 3, tableTitle: 'Líneas' },
+    props: { open: true, columns, count: 3, tableTitle: 'Elementos' },
     global: { plugins: [i18n] },
     attachTo: document.body,
   })
@@ -67,7 +67,7 @@ describe('BulkEditDialog', () => {
     await mountDialog()
 
     expect(columns.every((column) => field(column.key))).toBe(true)
-    expect(field('capacity').textContent).toContain('(uds/sem)')
+    expect(field('capacity').textContent).toContain('(kg)')
     expect(applyButton().disabled).toBe(true)
     expect(summary()).toBe('Ningún campo rellenado')
   })
@@ -85,7 +85,7 @@ describe('BulkEditDialog', () => {
     applyButton().click()
     await flushPromises()
 
-    expect(dialog.emitted('apply')).toEqual([[{ capacity: 1250.5, type: 'Envasado' }]])
+    expect(dialog.emitted('apply')).toEqual([[{ capacity: 1250.5, type: 'Estándar' }]])
     expect(dialog.emitted('update:open')).toEqual([[false]])
   })
 

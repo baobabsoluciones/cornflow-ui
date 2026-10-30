@@ -158,6 +158,7 @@ export function useExecutionTableData(
         type: normalizeJsonSchemaPropertyTypeForUi(prop),
         required: requiredList.includes(key) || false,
         frontendReadOnly: prop.frontendReadOnly || false,
+        pinsRow: prop.pinsRow || false,
         choices: prop.choices || undefined,
       }))
   })

@@ -1390,7 +1390,7 @@ const cellDisabled = (row: DataRow, key: string): boolean => {
 
 /** Rows whose pin switch is on are highlighted. */
 const rowPinned = computed(() => {
-  const pin = currentColumns.value.find((column) => column.type === 'switch' && column.key.toLowerCase() === 'fijar')
+  const pin = currentColumns.value.find((column) => column.pinsRow)
   return pin ? (row: DataRow) => cellValue(row, pin.key) === true : undefined
 })
 

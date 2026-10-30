@@ -99,6 +99,7 @@ function buildFieldDescriptorFromProperty(
     foreignKeyField: prop.foreignKeyField || undefined,
     hidden: prop.hidden || false,
     frontendReadOnly: prop.frontendReadOnly || false,
+    pinsRow: prop.pinsRow || false,
     choices: prop.choices || undefined,
   }
 }
@@ -563,6 +564,7 @@ export function useTableData(
         hidden: 'hidden' in header ? header.hidden : undefined,
         frontendReadOnly:
           'frontendReadOnly' in header ? header.frontendReadOnly : undefined,
+        pinsRow: 'pinsRow' in header ? header.pinsRow : undefined,
       }))
   })
 

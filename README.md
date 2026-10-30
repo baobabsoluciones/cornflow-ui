@@ -1360,7 +1360,9 @@ pending changes (`useTableChanges`). The model (`DataColumn`, `DataFilter`…) i
 formatting and parsing of values in `utils/dataTable.ts`.
 
 A table of one record (the parameters of the master data or of an instance) shows as a list of its
-fields. The catalog has every piece ("Data tables").
+fields. A yes/no column whose property in the table schema has `"pinsRow": true` pins its row: it
+shows as a switch, and the rows where it is on are highlighted. The catalog has every piece ("Data
+tables").
 
 The create-execution screen has blocks of its own in `src/components/create-execution/` (the data
 card, the launch panel, the checks, the parameters…), built with the `Core*` components and fed by
