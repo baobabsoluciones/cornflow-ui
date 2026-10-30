@@ -4,6 +4,9 @@
 
   A chip with a picked value (or open) is tinted in the primary. A `removable` chip is a filter the
   user added: it shows a cross that emits `remove` instead of the chevron.
+
+  The `panel` slot replaces the list of options with an editor of its own (a condition with an
+  operator, a range…); `valueText` is then the value the chip shows, and the slot gets `close`.
 -->
 <template>
   <PopoverRoot v-model:open="open">
@@ -51,7 +54,9 @@
       </div>
     </PopoverAnchor>
     <CorePopoverPanel :width="menuWidth">
+      <slot v-if="$slots.panel" name="panel" :close="() => (open = false)" />
       <CoreMenu
+        v-else
         :title="label"
         selectable
         :items="menuItems"
@@ -64,7 +69,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted } from 'vue'
 import { PopoverAnchor, PopoverRoot, PopoverTrigger } from 'reka-ui'
 import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
 import CoreMenu from '@cornflow-ui/core/components/core/CoreMenu.vue'
@@ -99,6 +104,8 @@ const props = withDefaults(
     keepOpenValue?: unknown
     /** Width of the menu, in px. */
     menuWidth?: number
+    /** The value shown on the chip, instead of the title of the picked option. */
+    valueText?: string
   }>(),
   {
     icon: undefined,
@@ -110,6 +117,7 @@ const props = withDefaults(
     autoOpen: false,
     keepOpenValue: undefined,
     menuWidth: 260,
+    valueText: undefined,
   },
 )
 
@@ -118,7 +126,7 @@ const emit = defineEmits<{
   remove: []
 }>()
 
-const open = ref(false)
+const open = defineModel<boolean>('open', { default: false })
 
 /** Same value on both sides, comparing as text (ids may come as numbers or strings). */
 const isSame = (a: unknown, b: unknown): boolean =>
@@ -132,7 +140,7 @@ const options = computed<FilterChipOption[]>(() => [
 ])
 
 const hasValue = computed(
-  () => props.value !== null && props.value !== undefined,
+  () => props.valueText !== undefined || (props.value !== null && props.value !== undefined),
 )
 
 const isSelected = (value: unknown): boolean =>
@@ -140,6 +148,7 @@ const isSelected = (value: unknown): boolean =>
 
 const valueTitle = computed(
   () =>
+    props.valueText ??
     options.value.find((option) => isSelected(option.value))?.title ??
     props.allLabel ??
     '',

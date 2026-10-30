@@ -644,7 +644,7 @@ export function isTableSchemaVisible(tableSchema: unknown): boolean {
   return (tableSchema as any).visible !== false
 }
 
-/** Single type string for table headers / CoreModal (matches `FieldConfig.type` primitives). */
+/** Single type string for table headers and form fields (matches `FieldConfig.type` primitives). */
 export type JsonSchemaNormalizedUiType =
   | 'string'
   | 'number'
@@ -655,7 +655,7 @@ export type JsonSchemaNormalizedUiType =
 
 /**
  * JSON Schema allows `type` as an array (e.g. `["integer", "number", "null"]`). The UI
- * (CoreModal add/edit, CoreTable metadata) expects a single string `FieldConfig.type`;
+ * (table columns and form fields) expects a single string `FieldConfig.type`;
  * unknown compound types would otherwise render no input control (empty grid cell).
  */
 export function normalizeJsonSchemaPropertyTypeForUi(
@@ -1303,6 +1303,7 @@ function convertJsonSchemaItemToSchema(itemSchema: any): any {
         ...(prop.frontendReadOnly && {
           frontendReadOnly: prop.frontendReadOnly,
         }),
+        ...(prop.pinsRow && { pinsRow: true }),
         ...(prop.description && { description: prop.description }),
         ...(prop.minimum !== undefined && { minimum: prop.minimum }),
         ...(prop.maximum !== undefined && { maximum: prop.maximum }),

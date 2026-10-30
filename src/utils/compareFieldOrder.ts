@@ -1,7 +1,6 @@
 /**
  * Pure helpers that decide which compare-display fields to show and in what
- * order. Extracted from DataComparisonModal.vue; the instance schema columns
- * are injected via `allowedColumns` instead of read from props.
+ * order. The instance schema columns come in `allowedColumns`.
  */
 
 const IGNORED_COMPARE_DISPLAY_FIELDS = new Set(['id', '_id', 'created_at', 'updated_at'])

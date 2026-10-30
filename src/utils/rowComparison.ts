@@ -1,7 +1,6 @@
 /**
- * Pure value-normalization and row-difference helpers extracted from
- * DataComparisonModal.vue. The allowed (schema) columns are injected so
- * `areRowsDifferent` does not depend on component props.
+ * Pure value-normalization and row-difference helpers of the comparison with
+ * the master tables. The allowed (schema) columns come as an argument.
  */
 
 import {
