@@ -278,6 +278,50 @@ describe('ExecutionRepository', () => {
       )
     })
 
+    test('the loaded execution keeps who launched it and when it finished, from the details', async () => {
+      mockClient.get.mockImplementation(async (url: string) =>
+        url === '/execution/test-id/'
+          ? {
+              status: 200,
+              content: {
+                id: 'test-id',
+                updated_at: '2023-01-01T00:05:00Z',
+                username: 'agarcia',
+                first_name: 'ana',
+                last_name: 'garcia',
+              },
+            }
+          : { status: 200, content: mockExecutionResponse },
+      )
+      mockInstanceRepo.getInstance.mockResolvedValue(mockInstance)
+
+      await repository.loadExecution('test-id')
+
+      expect(mockClient.get).toHaveBeenCalledWith('/execution/test-id/')
+      expect(LoadedExecution).toHaveBeenCalledWith(
+        expect.objectContaining({
+          finishedAt: '2023-01-01T00:05:00Z',
+          userName: 'agarcia',
+          userFullName: 'Ana Garcia',
+        }),
+      )
+    })
+
+    test('loads the execution without its user when the details do not answer', async () => {
+      mockClient.get.mockImplementation(async (url: string) =>
+        url === '/execution/test-id/'
+          ? { status: 403, content: {} }
+          : { status: 200, content: mockExecutionResponse },
+      )
+      mockInstanceRepo.getInstance.mockResolvedValue(mockInstance)
+
+      await repository.loadExecution('test-id')
+
+      expect(LoadedExecution).toHaveBeenCalledWith(
+        expect.objectContaining({ finishedAt: null, userName: null, userFullName: null }),
+      )
+    })
+
     test('should throw error when instance loading fails', async () => {
       const mockResponse = {
         status: 200,

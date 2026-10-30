@@ -7,6 +7,7 @@ import type {
   ExecutionsListEndpoint,
 } from '@cornflow-ui/core/types/executionFilters'
 import type { SchemaOverrides } from '@cornflow-ui/core/utils/schemaOverrides'
+import type { ExecutionSummaryResolver } from '@cornflow-ui/core/types/executionSummary'
 
 /**
  * Definition for an app-specific section (top-level or subsection).
@@ -454,6 +455,18 @@ const createAppConfig = () => ({
         },
       ],
       fileProcessors: {},
+
+      /**
+       * The app's own summary of the loaded execution, the strip at the head of the views of an
+       * execution (input data, results, dashboards). By default it shows the creation date and
+       * the solver under the name, and the execution's state as a badge. A function here gets the
+       * execution and that default, and returns the `meta` line and/or the `badges` it shows
+       * instead, e.g. a badge for the kind of run read from `execution.config`:
+       *   executionSummary: (execution, defaults) => ({
+       *     badges: [{ label: execution.config.mode, tone: 'info' }, ...defaults.badges],
+       *   })
+       */
+      executionSummary: null as ExecutionSummaryResolver | null,
 
       // File extensions the instance upload accepts. Empty means the default
       // (json, xlsx, csv); narrow it to e.g. ['xlsx'] where only Excel is ever received.

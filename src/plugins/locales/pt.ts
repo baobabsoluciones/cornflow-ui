@@ -304,17 +304,13 @@ export default {
       validationErrorTitle: 'Erros de validação',
     },
     infoCard: {
-      createNewExecution: 'Criar nova execução',
       loadFromHistory: 'Carregar do histórico',
       executionCreated: 'Execução criada com sucesso',
-      noSolutionFoundTitle: 'Nenhuma solução encontrada',
       noExecutionSelected: 'Nenhuma execução selecionada',
       solutionWillLoadMessage:
         'A solução será carregada automaticamente nesta vista quando a resolução terminar',
       loadExecutionMessage:
         'Pode carregar uma execução a partir da vista de histórico ou criar uma nova e selecioná-la na barra de separadores inferior',
-      noSolutionMessage:
-        'A execução foi criada com sucesso, mas não foi encontrada nenhuma solução',
     },
     stagingWarning:
       'Está atualmente a trabalhar num ambiente de staging. Este ambiente destina-se apenas a fins de teste e desenvolvimento. Para execuções reais, mude para o ambiente de produção.',

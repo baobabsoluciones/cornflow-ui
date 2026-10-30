@@ -83,6 +83,20 @@
     </CatalogBlock>
 
     <CatalogBlock
+      name="ExecutionSummary"
+      api="execution (the selected one when not given)"
+      note="The loaded execution at the head of its views: date and solver under the name, its state beside it; resting on the name opens its details. An app changes the line and the badges with parameters.executionSummary."
+      column
+    >
+      <div class="summary-frame">
+        <ExecutionSummary :execution="loadedSample(executions[2])" />
+      </div>
+      <div class="summary-frame">
+        <ExecutionSummary :execution="loadedSample(executions[0])" />
+      </div>
+    </CatalogBlock>
+
+    <CatalogBlock
       name="Execution detail"
       note="Header, progress, data and parameters of the selected execution, as the history shows them."
       column
@@ -120,6 +134,8 @@ import CoreTimeline from '@cornflow-ui/core/components/core/CoreTimeline.vue'
 import ExecutionDetailHeader from '@cornflow-ui/core/components/project-execution/ExecutionDetailHeader.vue'
 import ExecutionList from '@cornflow-ui/core/components/project-execution/ExecutionList.vue'
 import ExecutionStateBadge from '@cornflow-ui/core/components/project-execution/ExecutionStateBadge.vue'
+import ExecutionSummary from '@cornflow-ui/core/components/ExecutionSummary.vue'
+import type { LoadedExecution } from '@cornflow-ui/core/models/LoadedExecution'
 import {
   useExecutionDetails,
   type HistoryExecution,
@@ -235,6 +251,19 @@ const executions: HistoryExecution[] = [
   ),
 ]
 
+/** A history row as the execution tab bar loads it. */
+const loadedSample = (execution: HistoryExecution) =>
+  ({
+    executionId: execution.id,
+    name: execution.name,
+    description: execution.description,
+    createdAt: execution.createdAt,
+    state: execution.state,
+    messageState: execution.message,
+    solutionState: execution.solution_state,
+    config: execution.config,
+  }) as unknown as LoadedExecution
+
 const byId = (id: string) =>
   executions.find((execution) => execution.id === id)!
 
@@ -296,5 +325,11 @@ const loadingIds = ref(new Set<string>())
 
 .detail-section + .detail-section {
   border-top: 1px solid var(--color-divider);
+}
+.summary-frame {
+  padding: calc(var(--spacing) * 3) calc(var(--spacing) * 4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
 }
 </style>
