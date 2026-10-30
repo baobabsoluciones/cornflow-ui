@@ -2609,19 +2609,22 @@ export function useTableData(
     }
   }
 
-  /** Sets the same values in several rows, as pending changes. */
+  /**
+   * Sets the same values in several rows, as pending changes, each cell as if it were edited on
+   * its own. Rows marked for deletion are left as they are.
+   */
   const bulkEditRows = (ids: Array<string | number>, values: Record<string, unknown>) => {
     selectRows(ids)
     const storageKey = normalizeTableKeyForStorage(tableKey.value)
-    const tableTitle = tableConfig.value?.title || tableKey.value
-    tableChanges.setTableTitle(storageKey, tableTitle)
-    for (const item of selectedItems.value) {
+    const deleted = new Set(tableChanges.getPendingDeletes(storageKey).map(cellText))
+    const rows = selectedItems.value.filter((item: any) => !deleted.has(cellText(item.id)))
+    for (const item of rows) {
       for (const [fieldKey, newValue] of Object.entries(values)) {
         const oldValue = tableChanges.getCurrentValue(storageKey, item.id, fieldKey, item[fieldKey])
-        tableChanges.recordChange(storageKey, item.id, fieldKey, oldValue, newValue, fieldKey, tableTitle)
+        api.handleCellChange(tableKey.value, item.id, fieldKey, oldValue, newValue)
       }
     }
-    showSnackbar(t('table.bulkEditApplied', { count: selectedItems.value.length }), 'success')
+    showSnackbar(t('table.bulkEditApplied', { count: rows.length }), 'success')
   }
 
   return {
