@@ -51,7 +51,7 @@ vi.mock('@cornflow-ui/core/stores/general', () => ({
 for (const view of [
   'IndexView',
   'LoginView',
-  'ProjectExecutionView',
+  'CreateExecutionView',
   'HistoryExecutionView',
   'DashboardView',
   'UserSettingsView',

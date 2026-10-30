@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 import { TIMEOUTS } from './constants';
 
 /**
- * Returns true when at least one execution tab (excluding "Add new") exists.
+ * Returns true when at least one execution tab (excluding "New execution") exists.
  */
 async function hasLoadedExecutionTab(page: Page): Promise<boolean> {
   const tablist = page.getByRole('tablist');
@@ -10,7 +10,7 @@ async function hasLoadedExecutionTab(page: Page): Promise<boolean> {
   if (!tablistVisible) return false;
 
   const executionTabs = tablist.getByRole('tab').filter({
-    hasNot: page.getByText(/Añadir nuevo|Add new/i),
+    hasNot: page.getByText(/Nueva ejecución|New execution/i),
   });
 
   return (await executionTabs.count().catch(() => 0)) > 0;
@@ -59,91 +59,29 @@ export async function waitForStableLoadedExecutionTab(
   return false;
 }
 
+/** The rows of the history list. */
+const historyRows = (page: Page) => page.locator('[data-testid="history-row"]');
+
+/** Rows marked as the current plan carry its star tag. */
+const isCurrentPlanRow = async (page: Page, rowIndex: number): Promise<boolean> =>
+  (await historyRows(page).nth(rowIndex).locator('.core-badge .mdi-star').count()) > 0;
+
 /**
- * Finds the "load execution" trigger within a history row.
- * Prioritizes explicit tray-arrow-up icon selectors to avoid clicking other actions.
+ * Finds the "load execution" action of a history row. It shows on hover, so the row is hovered
+ * first.
  */
 export async function findLoadExecutionButtonInRow(page: Page, rowIndex: number) {
-  const row = page.locator('tbody tr, .v-data-table tbody tr, .execution-table tbody tr').nth(rowIndex);
-
-  // Deterministic target: first action in actions column is "load execution".
-  const firstActionButton = row
-    .locator('.actions-container')
-    .first()
-    .locator('span')
-    .first()
-    .locator('.v-icon, button, i')
-    .first();
-  const firstActionVisible = await firstActionButton.isVisible().catch(() => false);
-  if (firstActionVisible) return firstActionButton;
-
-  const iconSelectors = [
-    '.actions-container [class*="mdi-tray-arrow-up"]',
-    '.actions-container .mdi-tray-arrow-up',
-    '.actions-container i.mdi-tray-arrow-up',
-    '[class*="mdi-tray-arrow-up"]',
-    '.mdi-tray-arrow-up',
-    'i.mdi-tray-arrow-up',
-    '[class*="mdi"][class*="tray-arrow-up"]',
-  ];
-
-  for (const selector of iconSelectors) {
-    const icon = row.locator(selector).first();
-    const visible = await icon.isVisible().catch(() => false);
-    if (visible) return icon;
-  }
-
-  const tooltipBased = row
-    .locator(
-      '[title*="Cargar ejecución"], [title*="Load execution"], [aria-label*="Cargar ejecución"], [aria-label*="Load execution"]'
-    )
-    .first();
-  const tooltipVisible = await tooltipBased.isVisible().catch(() => false);
-  if (tooltipVisible) return tooltipBased;
-
-  // Last fallback: scan visible icons and choose the tray-arrow icon only.
-  const icons = row.locator('.actions-container .v-icon, .v-icon, i[class*="mdi"]');
-  const iconCount = await icons.count().catch(() => 0);
-  for (let i = 0; i < iconCount; i++) {
-    const icon = icons.nth(i);
-    const iconClass = await icon.getAttribute('class').catch(() => '');
-    const visible = await icon.isVisible().catch(() => false);
-    if (visible && iconClass?.includes('mdi-tray-arrow-up')) return icon;
-  }
-
-  // Final fallback: first action button in the last cell.
-  // In this app, "load execution" is rendered before delete in actions.
-  const lastCellFirstButton = row.locator('td').last().locator('button').first();
-  const lastCellFirstButtonVisible = await lastCellFirstButton.isVisible().catch(() => false);
-  if (lastCellFirstButtonVisible) return lastCellFirstButton;
-
-  return null;
+  const row = historyRows(page).nth(rowIndex);
+  await row.hover().catch(() => {});
+  const loadButton = row.locator('[data-testid="history-row-load"]').first();
+  const visible = await loadButton.isVisible().catch(() => false);
+  return visible ? loadButton : null;
 }
 
 export async function ensureHistoryHasRows(page: Page): Promise<number> {
-  const tableRows = page.locator('tbody tr, .v-data-table tbody tr, .execution-table tbody tr');
-  await tableRows.first().waitFor({ state: 'visible', timeout: 2000 }).catch(() => {});
-
-  let rowCount = await tableRows.count().catch(() => 0);
-  if (rowCount > 0) return rowCount;
-
-  // If there are no rows, broaden the date filter window.
-  const last30DaysCheckbox = page.getByRole('checkbox', {
-    name: /Últimos 30 días|Last 30 days/i,
-  });
-  const checkboxVisible = await last30DaysCheckbox.isVisible().catch(() => false);
-  if (checkboxVisible) {
-    const checked = await last30DaysCheckbox.isChecked().catch(() => false);
-    if (!checked) {
-      await last30DaysCheckbox.check().catch(async () => {
-        await last30DaysCheckbox.click({ force: true });
-      });
-    }
-    await page.waitForTimeout(1000);
-  }
-
-  rowCount = await tableRows.count().catch(() => 0);
-  return rowCount;
+  const rows = historyRows(page);
+  await rows.first().waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD }).catch(() => {});
+  return rows.count().catch(() => 0);
 }
 
 /**
@@ -155,23 +93,14 @@ export async function loadNonCurrentExecutionFromHistory(
 ): Promise<boolean> {
   await page.goto('/history-execution', { waitUntil: 'domcontentloaded' });
 
-  const table = page.getByRole('table').first();
-  await table.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD }).catch(() => {});
-
-  const tableRows = page.locator('tbody tr, .v-data-table tbody tr, .execution-table tbody tr');
   let rowCount = await ensureHistoryHasRows(page);
   if (rowCount < 1) return false;
 
   const tryLoadFromRows = async (skipCurrentPlanRows: boolean): Promise<boolean> => {
-    // Refresh row count in case filters/table changed.
+    // Refresh row count in case the filters changed.
     rowCount = await ensureHistoryHasRows(page);
     for (let i = 0; i < rowCount; i++) {
-      const row = tableRows.nth(i);
-      const hasLatestPlanChip = (await row.locator('.latest-plan-chip').count()) > 0;
-      if (skipCurrentPlanRows && hasLatestPlanChip) continue;
-
-      await row.hover();
-      await page.waitForTimeout(300);
+      if (skipCurrentPlanRows && (await isCurrentPlanRow(page, i))) continue;
 
       const loadButton = await findLoadExecutionButtonInRow(page, i);
       if (loadButton) {
@@ -208,22 +137,13 @@ export async function loadExecutionFromHistoryUntil(
 ): Promise<boolean> {
   await page.goto('/history-execution', { waitUntil: 'domcontentloaded' });
 
-  const table = page.getByRole('table').first();
-  await table.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD }).catch(() => {});
-
-  const tableRows = page.locator('tbody tr, .v-data-table tbody tr, .execution-table tbody tr');
   let rowCount = await ensureHistoryHasRows(page);
   if (rowCount < 1) return false;
 
   const tryLoadFromRows = async (skipCurrentPlanRows: boolean): Promise<boolean> => {
     rowCount = await ensureHistoryHasRows(page);
     for (let i = 0; i < rowCount; i++) {
-      const row = tableRows.nth(i);
-      const hasLatestPlanChip = (await row.locator('.latest-plan-chip').count()) > 0;
-      if (skipCurrentPlanRows && hasLatestPlanChip) continue;
-
-      await row.hover();
-      await page.waitForTimeout(300);
+      if (skipCurrentPlanRows && (await isCurrentPlanRow(page, i))) continue;
 
       const loadButton = await findLoadExecutionButtonInRow(page, i);
       if (!loadButton) continue;

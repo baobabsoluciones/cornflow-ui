@@ -1,7 +1,10 @@
 import client from '@cornflow-ui/core/api/Api'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { InstanceCore } from '@cornflow-ui/core/models/Instance'
-import { getMessageFromResponseContent } from '@cornflow-ui/core/utils/i18nUtils'
+import {
+  getApiErrorMessageFromContent,
+  getMessageFromResponseContent,
+} from '@cornflow-ui/core/utils/i18nUtils'
 import {
   stripFrontendRowIdsFromInstanceData,
   stripInvisibleParameterPropertiesFromInstanceData,
@@ -82,7 +85,9 @@ export default class InstanceRepository {
     if (response.status === 201) {
       return response.content
     } else {
-      throw new Error('Error creating instance')
+      throw new Error(
+        getApiErrorMessageFromContent(response.content, 'Error creating instance'),
+      )
     }
   }
 }

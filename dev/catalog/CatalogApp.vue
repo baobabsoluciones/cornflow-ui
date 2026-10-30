@@ -12,6 +12,19 @@
         {{ section.title }}
       </a>
 
+      <div class="catalog__theme">
+        <span>Theme</span>
+        <CoreSegmentedControl
+          :model-value="theme"
+          :options="[
+            { value: 'light', label: 'Light', icon: 'mdi-white-balance-sunny' },
+            { value: 'dark', label: 'Dark', icon: 'mdi-weather-night' },
+          ]"
+          size="small"
+          aria-label="Theme"
+          @update:model-value="setTheme($event as 'light' | 'dark')"
+        />
+      </div>
       <label class="catalog__primary">
         <span>App primary (<code>--primary</code>)</span>
         <input type="color" :value="primary" @input="onPrimaryInput" />
@@ -27,15 +40,48 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { applyTokensToTheme, readCssToken } from '@cornflow-ui/core/plugins/vuetify'
+import vuetify, {
+  applyTokensToTheme,
+  readCssToken,
+} from '@cornflow-ui/core/plugins/vuetify'
+import CoreSegmentedControl from '@cornflow-ui/core/components/core/CoreSegmentedControl.vue'
+import ButtonsSection from './sections/ButtonsSection.vue'
+import CreateExecutionSection from './sections/CreateExecutionSection.vue'
+import DashboardsSection from './sections/DashboardsSection.vue'
+import DataSection from './sections/DataSection.vue'
+import DataTablesSection from './sections/DataTablesSection.vue'
+import FormsSection from './sections/FormsSection.vue'
+import HistorySection from './sections/HistorySection.vue'
+import MenusSection from './sections/MenusSection.vue'
+import OverlaysSection from './sections/OverlaysSection.vue'
+import RolesSection from './sections/RolesSection.vue'
+import SideMenuSection from './sections/SideMenuSection.vue'
+import SignInSection from './sections/SignInSection.vue'
+import StatusSection from './sections/StatusSection.vue'
 import TokensSection from './sections/TokensSection.vue'
 
 /** A page of the catalog. A component added to the core gets its own section here. */
-const sections = [{ id: 'tokens', title: 'Design tokens', component: TokensSection }]
+const sections = [
+  { id: 'tokens', title: 'Design tokens', component: TokensSection },
+  { id: 'buttons', title: 'Buttons and icons', component: ButtonsSection },
+  { id: 'status', title: 'Status and feedback', component: StatusSection },
+  { id: 'forms', title: 'Form fields', component: FormsSection },
+  { id: 'menus', title: 'Search, menus and filters', component: MenusSection },
+  { id: 'data', title: 'Data', component: DataSection },
+  { id: 'data-tables', title: 'Data tables', component: DataTablesSection },
+  { id: 'dashboards', title: 'Dashboards', component: DashboardsSection },
+  { id: 'overlays', title: 'Dialogs and toasts', component: OverlaysSection },
+  { id: 'history', title: 'Execution history', component: HistorySection },
+  { id: 'create-execution', title: 'Create execution', component: CreateExecutionSection },
+  { id: 'roles', title: 'Roles management', component: RolesSection },
+  { id: 'side-menu', title: 'Side menu', component: SideMenuSection },
+  { id: 'sign-in', title: 'Sign-in', component: SignInSection },
+]
 
 const activeId = ref(sections[0].id)
 const activeSection = computed(
-  () => sections.find((section) => section.id === activeId.value) ?? sections[0],
+  () =>
+    sections.find((section) => section.id === activeId.value) ?? sections[0],
 )
 
 function syncWithHash() {
@@ -49,12 +95,21 @@ onMounted(() => {
 })
 onUnmounted(() => window.removeEventListener('hashchange', syncWithHash))
 
+/** Light or dark, as the app's dark mode sets it (`plugins/theme.ts`), to review both. */
+const theme = ref<'light' | 'dark'>('light')
+function setTheme(value: 'light' | 'dark') {
+  theme.value = value
+  document.body.dataset.theme = value
+  vuetify.theme.global.name.value = value
+  applyTokensToTheme(vuetify.theme, undefined, value)
+}
+
 /** Tries another app primary, as an application would declare it in its variables.css. */
 const primary = ref(readCssToken('--color-primary'))
 function onPrimaryInput(event: Event) {
   primary.value = (event.target as HTMLInputElement).value
   document.body.style.setProperty('--primary', primary.value)
-  applyTokensToTheme()
+  applyTokensToTheme(vuetify.theme, undefined, theme.value)
 }
 </script>
 
@@ -100,7 +155,7 @@ function onPrimaryInput(event: Event) {
   font-weight: var(--font-weight-medium);
 }
 
-.catalog__primary {
+.catalog__theme {
   display: flex;
   flex-direction: column;
   gap: calc(var(--spacing) * 1);
@@ -109,8 +164,30 @@ function onPrimaryInput(event: Event) {
   color: var(--color-text-muted);
 }
 
+.catalog__primary {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 1);
+  margin-top: calc(var(--spacing) * 3);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
 .catalog__main {
   padding: calc(var(--spacing) * 8);
   overflow: auto;
+}
+
+.catalog__main :deep(.catalog-section) {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 5);
+  max-width: 1100px;
+}
+
+.catalog__main :deep(.catalog-section__title) {
+  margin: 0;
+  font-size: var(--text-2xl);
+  font-weight: var(--font-weight-bold);
 }
 </style>

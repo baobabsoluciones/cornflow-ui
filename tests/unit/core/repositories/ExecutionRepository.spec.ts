@@ -2,6 +2,7 @@ import { describe, test, expect, vi, beforeEach } from 'vitest'
 import ExecutionRepository, {
   ExecutionFilesRegenerationError,
 } from '@cornflow-ui/core/repositories/ExecutionRepository'
+import { LoadedExecution } from '@cornflow-ui/core/models/LoadedExecution'
 
 // Mock the API client
 vi.mock('@cornflow-ui/core/api/Api', () => ({
@@ -260,6 +261,65 @@ describe('ExecutionRepository', () => {
 
       expect(mockClient.get).toHaveBeenCalledWith('/execution/test-id/data/')
       expect(mockInstanceRepo.getInstance).toHaveBeenCalledWith('test-instance-id')
+      expect(LoadedExecution).toHaveBeenCalledWith(expect.objectContaining({ solutionState: null }))
+    })
+
+    test('the loaded execution keeps the solver log status as its solution state', async () => {
+      mockClient.get.mockResolvedValue({
+        status: 200,
+        content: { ...mockExecutionResponse, log: { status: 'Optimal', status_code: 1, sol_code: 1 } },
+      })
+      mockInstanceRepo.getInstance.mockResolvedValue(mockInstance)
+
+      await repository.loadExecution('test-id')
+
+      expect(LoadedExecution).toHaveBeenCalledWith(
+        expect.objectContaining({ solutionState: { status: 'Optimal', status_code: 1, sol_code: 1 } }),
+      )
+    })
+
+    test('the loaded execution keeps who launched it and when it finished, from the details', async () => {
+      mockClient.get.mockImplementation(async (url: string) =>
+        url === '/execution/test-id/'
+          ? {
+              status: 200,
+              content: {
+                id: 'test-id',
+                updated_at: '2023-01-01T00:05:00Z',
+                username: 'agarcia',
+                first_name: 'ana',
+                last_name: 'garcia',
+              },
+            }
+          : { status: 200, content: mockExecutionResponse },
+      )
+      mockInstanceRepo.getInstance.mockResolvedValue(mockInstance)
+
+      await repository.loadExecution('test-id')
+
+      expect(mockClient.get).toHaveBeenCalledWith('/execution/test-id/')
+      expect(LoadedExecution).toHaveBeenCalledWith(
+        expect.objectContaining({
+          finishedAt: '2023-01-01T00:05:00Z',
+          userName: 'agarcia',
+          userFullName: 'Ana Garcia',
+        }),
+      )
+    })
+
+    test('loads the execution without its user when the details do not answer', async () => {
+      mockClient.get.mockImplementation(async (url: string) =>
+        url === '/execution/test-id/'
+          ? { status: 403, content: {} }
+          : { status: 200, content: mockExecutionResponse },
+      )
+      mockInstanceRepo.getInstance.mockResolvedValue(mockInstance)
+
+      await repository.loadExecution('test-id')
+
+      expect(LoadedExecution).toHaveBeenCalledWith(
+        expect.objectContaining({ finishedAt: null, userName: null, userFullName: null }),
+      )
     })
 
     test('should throw error when instance loading fails', async () => {
@@ -336,12 +396,23 @@ describe('ExecutionRepository', () => {
       expect(result).toEqual(mockExecutionResponse.content)
     })
 
-    test('should throw error when execution creation fails', async () => {
-      const mockResponse = {
+    test('throws the error the backend gives when the execution cannot be created', async () => {
+      mockClient.post.mockResolvedValue({
         status: 400,
-        content: { error: 'Bad request' }
-      }
-      mockClient.post.mockResolvedValue(mockResponse)
+        content: {
+          error: 'The orchestrator is not reachable',
+          message: "The execution couldn't start running.",
+          state: -3,
+        },
+      })
+
+      await expect(repository.createExecution(mockExecutionData)).rejects.toThrow(
+        'The orchestrator is not reachable',
+      )
+    })
+
+    test('throws a generic error when the backend gives no reason', async () => {
+      mockClient.post.mockResolvedValue({ status: 500, content: null })
 
       await expect(repository.createExecution(mockExecutionData)).rejects.toThrow('Error creating execution')
     })

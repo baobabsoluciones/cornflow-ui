@@ -22,16 +22,8 @@ import {
   isExcelExtension,
   getFileExtension,
 } from '@cornflow-ui/core/utils/fileConstants'
-import { buildExcelBuffer } from '@cornflow-ui/core/utils/data_io'
-import {
-  buildAlternativeParameterInstanceData,
-  convertParameterNameValueArraysToObjectsForInstance,
-  getInstanceSchemaRootForTables,
-  patchInstanceSchemaRootForParameterTableEtlExport,
-  pickPreEtlConfigValues,
-} from '@cornflow-ui/core/utils/schemaUtils'
+import { pickPreEtlConfigValues } from '@cornflow-ui/core/utils/schemaUtils'
 import { unwrapEtlResponse } from '@cornflow-ui/core/utils/etlResponse'
-import type { LoadInstanceAlternativeParamField } from '@/app/config'
 
 export interface ProcessingResult {
   instance: Instance | null
@@ -50,28 +42,6 @@ export interface ProcessingState {
   isProcessing: boolean
   processedInstances: Instance[]
   errors: string | null
-}
-
-export interface BuildInstanceDataFromAlternativeFieldsContext {
-  instanceSchema: any
-  /** `rawConfigurations.masterData` from the general store (frontend-automation tables). */
-  masterDataTables?: Record<string, any> | null
-}
-
-/**
- * Build `instance.data` for the optional parameter form using instance schema + master-data config.
- */
-export function buildInstanceDataFromAlternativeFields(
-  fields: LoadInstanceAlternativeParamField[],
-  values: Record<string, unknown>,
-  context: BuildInstanceDataFromAlternativeFieldsContext,
-): Record<string, any> {
-  return buildAlternativeParameterInstanceData(
-    fields,
-    values,
-    context.instanceSchema,
-    context.masterDataTables ?? null,
-  )
 }
 
 export function useInstanceProcessing() {
@@ -106,13 +76,6 @@ export function useInstanceProcessing() {
   const canProcessFiles = computed(() => !state.value.isProcessing)
 
   /**
-   * Main processing function that handles both ETL backend and frontend processing
-   */
-  /**
-   * Process partial instance JSON: same validation as file upload; with ETL enabled,
-   * builds an XLSX (one sheet per table) and sends it as FormData like file upload.
-   */
-  /**
    * The values the ETL backend needs out of an execution config, i.e. the parameters the
    * config schema marked `pre_etl: true`. Callers hand over the whole config and this
    * picks the subset, so no caller has to know which parameters those are.
@@ -124,87 +87,6 @@ export function useInstanceProcessing() {
       executionConfig,
       store.appConfig.parameters.configFields,
     )
-
-  const processInstanceData = async (
-    data: Record<string, any>,
-    executionConfig?: Record<string, any> | null,
-  ): Promise<ProcessingResult> => {
-    if (!data || Object.keys(data).length === 0) {
-      return createErrorResult(
-        t('projectExecution.steps.step3.loadInstance.noParametersDataError'),
-        null,
-      )
-    }
-
-    state.value.isProcessing = true
-    state.value.processedInstances = []
-    state.value.errors = null
-
-    try {
-      if (
-        etlBackend &&
-        (store.appConfig.parameters.etl.enableEtlMetadataAndReview ||
-          store.appConfig.parameters.etl.useEtlBackend)
-      ) {
-        const tableSchemaRoot =
-          getInstanceSchemaRootForTables(store.getSchemaConfig.instanceSchema) ??
-          (store.getSchemaConfig.instanceSchema as Record<string, any> | null)
-        const exportSchemaRoot = patchInstanceSchemaRootForParameterTableEtlExport(
-          data,
-          tableSchemaRoot,
-        )
-        const effectiveRoot = exportSchemaRoot ?? tableSchemaRoot
-        if (!instanceDataHasVisibleSheets(data, effectiveRoot)) {
-          return createErrorResult(
-            t('projectExecution.steps.step3.loadInstance.noParametersSheetsError'),
-            null,
-          )
-        }
-        const file = await buildInstanceXlsxFile(
-          data,
-          'instance-from-parameters.xlsx',
-          effectiveRoot,
-        )
-        if (!file.size) {
-          return createErrorResult(
-            t('projectExecution.steps.step3.loadInstance.noParametersSheetsError'),
-            null,
-          )
-        }
-        return await processWithEtlBackend([file], executionConfig)
-      }
-
-      const schemas = store.getSchemaConfig
-      const dataForInstance = convertParameterNameValueArraysToObjectsForInstance(
-        data,
-        schemas.instanceSchema,
-      )
-      const instance = new Instance(
-        null,
-        dataForInstance,
-        schemas.instanceSchema,
-        schemas.instanceChecksSchema,
-        store.getSchemaName,
-      )
-      const validationResult = await validateInstance(
-        instance,
-        'Parameters instance',
-      )
-      if (!validationResult.success) {
-        return validationResult
-      }
-      return {
-        instance,
-        errors: null,
-        rawErrors: null,
-        success: true,
-      }
-    } catch (error: any) {
-      return createErrorResult(error.message || String(error), null)
-    } finally {
-      state.value.isProcessing = false
-    }
-  }
 
   const processFiles = async (
     files: File[],
@@ -236,65 +118,6 @@ export function useInstanceProcessing() {
     } finally {
       state.value.isProcessing = false
     }
-  }
-
-  /**
-   * Resolves the schema root used when serialising instance data to xlsx for the
-   * ETL endpoint.
-   */
-  const resolveInstanceSchemaRoot = (
-    schemaRoot?: Record<string, any> | null,
-  ): Record<string, any> | null => {
-    if (schemaRoot !== undefined) return schemaRoot
-    return (
-      getInstanceSchemaRootForTables(store.getSchemaConfig.instanceSchema) ??
-      (store.getSchemaConfig.instanceSchema as Record<string, any> | null)
-    )
-  }
-
-  /**
-   * Mirrors `prepareSheetData` + visibility checks from `schemaDataToTable`:
-   * returns true if at least one sheet would be written to the workbook. Used
-   * to detect the "no parameters" empty-export case without first materialising
-   * a workbook on the main thread.
-   */
-  const instanceDataHasVisibleSheets = (
-    data: Record<string, any>,
-    schemaRoot: Record<string, any> | null,
-  ): boolean => {
-    for (const [sheetName, rawSheetData] of Object.entries(data)) {
-      if (schemaRoot?.properties?.[sheetName]?.visible === false) continue
-      const normalized = Array.isArray(rawSheetData) ? rawSheetData : [rawSheetData]
-      if (normalized.length === 0) {
-        const requiredHeaders =
-          schemaRoot?.properties?.[sheetName]?.items?.required
-        if (!requiredHeaders) continue
-      }
-      return true
-    }
-    return false
-  }
-
-  /**
-   * Builds an xlsx `File` from instance data using the Excel worker (falls back
-   * to the main thread when no worker is available). Keeps heavy ExcelJS
-   * serialisation off the main thread for large datasets.
-   */
-  const buildInstanceXlsxFile = async (
-    data: Record<string, any>,
-    filename: string,
-    schemaRoot?: Record<string, any> | null,
-  ): Promise<File> => {
-    const root = resolveInstanceSchemaRoot(schemaRoot)
-    // The ETL upload requires a real xlsx file. In practice the data passed
-    // through this code path (parameter forms, file pre-processing) is small
-    // enough to stay below the worker's huge-dataset threshold, so the
-    // returned format is always 'xlsx' here.
-    const { bytes } = await buildExcelBuffer(data, root)
-    const blob = new Blob([bytes as BlobPart], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    })
-    return new File([blob], filename, { type: blob.type })
   }
 
   /**
@@ -763,7 +586,6 @@ export function useInstanceProcessing() {
     // Methods
     processFiles,
     processFromDb,
-    processInstanceData,
     resetState,
   }
 }

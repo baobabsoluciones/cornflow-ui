@@ -1,15 +1,13 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
-import { createVuetify } from 'vuetify'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
 import { nextTick } from 'vue'
 import ExecutionDataView from '@cornflow-ui/core/components/project-execution/ExecutionDataView.vue'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 
-// Controllable mock holder for the useTableChanges composable so individual
-// tests can override return values while keeping a stable object across the
-// single setup-time call.
+// Controllable mock of the pending changes store: tests override what they need while the
+// component keeps the same object from its setup.
 const tableChangesMock: Record<string, any> = {}
 
 const resetTableChangesMock = () => {
@@ -22,14 +20,21 @@ const resetTableChangesMock = () => {
     getPendingDeletesWithData: vi.fn(() => []),
     getChangesForTable: vi.fn(() => null),
     getAllChanges: vi.fn(() => ({})),
+    getCurrentValue: vi.fn((_table: string, _row: unknown, _key: string, original: unknown) => original),
     recordCreate: vi.fn(() => 'create-t0-0'),
     recordChange: vi.fn(),
     recordDelete: vi.fn(),
+    updateCreateField: vi.fn(),
     revertChange: vi.fn(() => null),
     revertRowChanges: vi.fn(() => null),
     revertTableChanges: vi.fn(() => null),
+    revertCreate: vi.fn(),
+    revertDelete: vi.fn(),
+    clearCreatesForTable: vi.fn(),
+    clearDeletesForTable: vi.fn(),
     clearAllChanges: vi.fn(),
     isCellModified: vi.fn(() => false),
+    isRowModified: vi.fn(() => false),
     getFullGroupedChanges: vi.fn(() => []),
     modifiedTableKeys: { value: [] },
   })
@@ -39,87 +44,63 @@ vi.mock('@cornflow-ui/core/composables/useTableChanges', () => ({
   useTableChanges: () => tableChangesMock,
 }))
 
-const i18nMessages = {
-  en: {
-    projectExecution: {
-      steps: {
-        step5: { check: 'Check data' },
-        step3: { loadInstance: { instanceSchemaError: 'Schema error' } },
-      },
-    },
-    inputOutputData: {
-      dataChecksPassedMessage: 'Checks passed',
-      dataChecksLoadingMessage: 'Loading...',
-      dataChecksFailedMessage: 'Checks failed',
-      noDataAvailable: 'No data available',
-      parameter: 'Parameter',
-      value: 'Value',
-    },
-    pendingChanges: {
-      changesIndicator: '{count} changes',
-      reviewChanges: 'Review changes',
-      saveErrorNoInstanceData: 'No instance data',
-    },
-  },
-}
-
-// Stub every Vuetify overlay/component so jsdom doesn't choke and resolution
-// warnings disappear. We assert on selectors/keys, not rendered Vuetify DOM.
-const vuetifyStubs = {
-  'v-btn': { template: '<button class="v-btn-stub"><slot /></button>' },
-  'v-alert': { template: '<div class="v-alert-stub"><slot /></div>' },
-  'v-progress-circular': { template: '<span></span>' },
-  'v-icon': { template: '<i><slot /></i>' },
-  'v-chip': { template: '<span class="v-chip-stub"><slot /></span>' },
-  'v-tooltip': {
-    template: '<div><slot name="activator" :props="{}" /><slot /></div>',
-  },
-  'v-divider': { template: '<hr />' },
-  'v-switch': { template: '<input type="checkbox" class="v-switch-stub" />' },
-  'v-card': { template: '<div class="v-card-stub"><slot /></div>' },
-  'v-card-text': { template: '<div><slot /></div>' },
-  'v-card-title': { template: '<div><slot /></div>' },
-  'v-card-actions': { template: '<div><slot /></div>' },
-  'v-spacer': { template: '<span></span>' },
-  'v-dialog': { template: '<div><slot /></div>' },
-}
-
-const createWrapper = (props: Record<string, unknown> = {}) => {
-  const vuetify = createVuetify()
-  const pinia = createPinia()
-  setActivePinia(pinia)
-  const i18n = createI18n({ legacy: false, locale: 'en', messages: i18nMessages })
-
-  return mount(ExecutionDataView, {
-    props: {
-      execution: {
-        instance: {
-          data: {},
-          schema: { properties: {} },
+const i18n = () =>
+  createI18n({
+    legacy: false,
+    locale: 'en',
+    missingWarn: false,
+    fallbackWarn: false,
+    messages: {
+      en: {
+        projectExecution: {
+          steps: {
+            step5: { check: 'Check data' },
+            step3: { loadInstance: { instanceSchemaError: 'Schema error' } },
+          },
         },
-      },
-      ...props,
-    },
-    global: {
-      plugins: [vuetify, pinia, i18n],
-      stubs: {
-        ...vuetifyStubs,
-        CoreTable: { template: '<div class="core-table-stub"></div>' },
-        CoreTabs: { template: '<div class="core-tabs-stub"><slot /></div>' },
-        CoreTab: { template: '<div class="core-tab-stub"><slot /></div>' },
-        CoreConfirmDialog: {
-          template: '<div class="confirm-dialog-stub"><slot /></div>',
+        inputOutputData: {
+          dataChecksPassedMessage: 'Checks passed',
+          dataChecksLoadingMessage: 'Loading...',
+          dataChecksFailedMessage: 'Checks failed',
+          noDataAvailable: 'No data available',
+          parameter: 'Parameter',
+          value: 'Value',
         },
-        PendingChangesReviewModal: {
-          template: '<div class="pending-changes-modal-stub"></div>',
-        },
+        pendingChanges: { saveErrorNoInstanceData: 'No instance data' },
       },
     },
   })
+
+// The table pieces are stubbed: these tests are about what the view feeds them.
+const stubs = {
+  CoreDataTable: {
+    props: ['title', 'rows', 'columns', 'editable'],
+    methods: { focusCell: vi.fn() },
+    template:
+      '<div class="data-table-stub" :data-title="title"><slot name="tabs" /><slot name="strip" /><slot name="body" /></div>',
+  },
+  DataTableTabs: { template: '<div class="tabs-stub" />' },
+  TableSourceStrip: { template: '<div class="strip-stub" />' },
+  ParametersTable: { template: '<div class="parameters-stub" />' },
+  MessageList: { template: '<div class="messages-stub" />' },
+  PendingChangesPanel: { template: '<div class="pending-panel-stub" />' },
+  CoreAlert: { props: ['tone', 'message'], template: '<div class="alert-stub" :data-tone="tone">{{ message }}</div>' },
+  CoreEmptyState: { props: ['title'], template: '<div class="empty-stub">{{ title }}</div>' },
 }
 
-// Helper: a realistic execution with a schema-defined array table, an object
-// (parameters) table and raw array data.
+const createWrapper = (props: Record<string, unknown> = {}) => {
+  const pinia = createPinia()
+  setActivePinia(pinia)
+  return mount(ExecutionDataView, {
+    props: {
+      execution: { instance: { data: {}, schema: { properties: {} } } },
+      ...props,
+    },
+    global: { plugins: [pinia, i18n()], stubs },
+  })
+}
+
+// A realistic execution: an array table declared in the schema and a parameters object.
 const buildExecution = (overrides: Record<string, any> = {}) => ({
   instance: {
     data: {
@@ -156,123 +137,63 @@ const buildExecution = (overrides: Record<string, any> = {}) => ({
   },
 })
 
+const etlFlow = (switches: Record<string, any>, parameterSwitches: Record<string, any> = {}, parameterTables: string[] = []) => ({
+  tableSwitches: switches,
+  parameterSwitches,
+  parameterTableNames: new Set(parameterTables),
+})
+
+const openTable = async (wrapper: any, key: string) => {
+  await nextTick()
+  wrapper.vm.selectedTableKey = key
+  await nextTick()
+}
+
 describe('ExecutionDataView', () => {
   beforeEach(() => {
-    resetTableChangesMock()
     vi.clearAllMocks()
     resetTableChangesMock()
   })
 
-  describe('Component rendering', () => {
-    test('renders execution data view container', () => {
-      const wrapper = createWrapper()
-      expect(wrapper.find('.execution-data-view').exists()).toBe(true)
-    })
-
-    test('renders without execution prop (optional)', () => {
-      const wrapper = mount(ExecutionDataView, {
-        props: {},
-        global: {
-          plugins: [
-            createVuetify(),
-            createPinia(),
-            createI18n({ legacy: false, locale: 'en', messages: { en: {} } }),
-          ],
-          stubs: {
-            ...vuetifyStubs,
-            CoreTable: true,
-            CoreTabs: true,
-            CoreTab: true,
-            CoreConfirmDialog: true,
-            PendingChangesReviewModal: true,
-          },
-        },
-      })
-      expect(wrapper.find('.execution-data-view').exists()).toBe(true)
-    })
-
-    test('shows no-data alert when no tables and cannot check data', () => {
-      const wrapper = createWrapper()
-      expect(wrapper.find('.no-data-container').exists()).toBe(true)
-    })
-
-    test('shows check-data button and emits check-data on click', async () => {
-      const wrapper = createWrapper({ canCheckData: true })
-      const btn = wrapper.find('.check-data-button-container .v-btn-stub')
-      expect(btn.exists()).toBe(true)
-      await btn.trigger('click')
-      expect(wrapper.emitted('check-data')).toBeTruthy()
-      expect(wrapper.vm.checksLaunched).toBe(true)
-    })
-  })
-
-  describe('Alerts and loading states', () => {
-    test('shows passed alert when checks finished without errors', () => {
-      const wrapper = createWrapper({ checksFinished: true })
-      expect(wrapper.find('.alert-section').exists()).toBe(true)
-    })
-
-    test('isLoadingChecks true when checksInProgress', () => {
-      const wrapper = createWrapper({ checksInProgress: true })
-      expect(wrapper.vm.isLoadingChecks).toBe(true)
-    })
-
-    test('isLoadingChecks true after launch while not finished', async () => {
-      const wrapper = createWrapper()
-      wrapper.vm.checksLaunched = true
-      await nextTick()
-      expect(wrapper.vm.isLoadingChecks).toBe(true)
-    })
-
-    test('shows error alert when checksError', () => {
-      const wrapper = createWrapper({ checksError: true })
-      expect(wrapper.find('.alert-section').exists()).toBe(true)
-    })
-
-    test('watcher resets checksLaunched when finished and not in progress', async () => {
-      const wrapper = createWrapper({ checksInProgress: true })
-      wrapper.vm.checksLaunched = true
-      await wrapper.setProps({ checksInProgress: false, checksFinished: true })
-      await nextTick()
-      expect(wrapper.vm.checksLaunched).toBe(false)
-    })
-
-    test('hasValidationErrors true when dataChecks has items', () => {
-      const wrapper = createWrapper({
-        execution: {
-          instance: {
-            data: {},
-            schema: { properties: {} },
-            dataChecks: { errors: ['bad'] },
-          },
-        },
-      })
-      expect(wrapper.vm.hasValidationErrors).toBe(true)
-    })
-
-    test('hasValidationErrors false when dataChecks empty', () => {
-      const wrapper = createWrapper({
-        execution: {
-          instance: { data: {}, schema: { properties: {} }, dataChecks: {} },
-        },
-      })
-      expect(wrapper.vm.hasValidationErrors).toBe(false)
-    })
-  })
-
-  describe('instanceTables building', () => {
-    test('builds array and object tables from schema', async () => {
+  describe('rendering', () => {
+    test('shows the current table in a data table with its tabs', async () => {
       const wrapper = createWrapper({ execution: buildExecution() })
       await nextTick()
-      const tables = wrapper.vm.instanceTables
-      const keys = tables.map((t: any) => t.key)
-      expect(keys).toContain('products')
-      expect(keys).toContain('parameters')
-      // selectedTableKey set by the immediate watcher
-      expect(wrapper.vm.selectedTableKey).toBe(keys[0])
+      expect(wrapper.find('.data-table-stub').attributes('data-title')).toBe('Products')
+      expect(wrapper.find('.tabs-stub').exists()).toBe(true)
     })
 
-    test('builds no tab for tables declared visible: false', async () => {
+    test('renders without an execution', () => {
+      const wrapper = mount(ExecutionDataView, {
+        props: {},
+        global: { plugins: [createPinia(), i18n()], stubs },
+      })
+      expect(wrapper.find('.execution-data-view').exists()).toBe(true)
+    })
+
+    test('says there is no data when there are no tables', () => {
+      const wrapper = createWrapper()
+      expect(wrapper.find('.empty-stub').text()).toBe('No data available')
+    })
+
+    test('a one-record table shows as a list of parameters', async () => {
+      const wrapper = createWrapper({ execution: buildExecution() })
+      await openTable(wrapper, 'parameters')
+      expect(wrapper.vm.isParametersView).toBe(true)
+      expect(wrapper.find('.parameters-stub').exists()).toBe(true)
+    })
+  })
+
+  describe('tables of the instance', () => {
+    test('builds the array and object tables of the schema', async () => {
+      const wrapper = createWrapper({ execution: buildExecution() })
+      await nextTick()
+      const keys = wrapper.vm.instanceTables.map((t: any) => t.key)
+      expect(keys).toEqual(['products', 'parameters'])
+      expect(wrapper.vm.selectedTableKey).toBe('products')
+    })
+
+    test('leaves out the tables declared visible: false', async () => {
       const execution: any = buildExecution()
       execution.instance.data.audit_log = [{ id: 1, event: 'x' }]
       execution.instance.schema.properties.audit_log = {
@@ -283,117 +204,73 @@ describe('ExecutionDataView', () => {
       execution.instance.schema.properties.parameters.visible = false
       const wrapper = createWrapper({ execution })
       await nextTick()
-      const keys = wrapper.vm.instanceTables.map((t: any) => t.key)
-      expect(keys).toEqual(['products'])
+      expect(wrapper.vm.instanceTables.map((t: any) => t.key)).toEqual(['products'])
     })
 
     describe('tables the schema does not declare', () => {
-      const executionWithUndeclaredTable = () => {
+      const withUndeclared = () => {
         const execution: any = buildExecution()
         execution.instance.data.extra = [{ id: 1, note: 'x' }]
         return execution
       }
 
       test('get no tab by default', async () => {
-        const wrapper = createWrapper({ execution: executionWithUndeclaredTable() })
+        const wrapper = createWrapper({ execution: withUndeclared() })
         await nextTick()
-        const keys = wrapper.vm.instanceTables.map((t: any) => t.key)
-        expect(keys).toEqual(['products', 'parameters'])
+        expect(wrapper.vm.instanceTables.map((t: any) => t.key)).toEqual(['products', 'parameters'])
       })
 
       test('get a tab with showTablesWithoutSchema', async () => {
-        const wrapper = createWrapper({ execution: executionWithUndeclaredTable() })
+        const wrapper = createWrapper({ execution: withUndeclared() })
         const generalStore = useGeneralStore()
         generalStore.appConfig = {
           ...generalStore.appConfig,
-          parameters: {
-            ...generalStore.appConfig.parameters,
-            showTablesWithoutSchema: true,
-          },
+          parameters: { ...generalStore.appConfig.parameters, showTablesWithoutSchema: true },
         }
         await nextTick()
-        const keys = wrapper.vm.instanceTables.map((t: any) => t.key)
-        expect(keys).toEqual(['products', 'parameters', 'extra'])
+        expect(wrapper.vm.instanceTables.map((t: any) => t.key)).toEqual(['products', 'parameters', 'extra'])
       })
 
       test('get a tab when matched to a master table', async () => {
         const wrapper = createWrapper({
-          execution: executionWithUndeclaredTable(),
+          execution: withUndeclared(),
           masterTableMatches: [{ tableKey: 'extra', masterTableConfig: {} }],
         })
         await nextTick()
-        const keys = wrapper.vm.instanceTables.map((t: any) => t.key)
-        expect(keys).toContain('extra')
+        expect(wrapper.vm.instanceTables.map((t: any) => t.key)).toContain('extra')
       })
     })
 
-    test('returns empty when no instance data', () => {
-      const wrapper = createWrapper({
-        execution: { instance: { data: null, schema: {} } },
-      })
+    test('has no tables without instance data', () => {
+      const wrapper = createWrapper({ execution: { instance: { data: null, schema: {} } } })
       expect(wrapper.vm.instanceTables).toEqual([])
     })
 
-    test('builds validation tables in check-data mode', async () => {
-      const wrapper = createWrapper({
-        canCheckData: true,
-        execution: {
-          instance: {
-            data: { products: [{ id: 1 }] },
-            schema: { properties: {} },
-            dataChecks: {
-              missing_rows: [{ row: 1, msg: 'x' }],
-              warnings_list: ['w1', 'w2'],
-            },
-          },
-        },
-        checksSchema: { properties: { warnings_list: { is_warning: true } } },
-      })
-      await nextTick()
-      const tables = wrapper.vm.instanceTables
-      const valKeys = tables.map((t: any) => t.key)
-      expect(valKeys).toContain('validation_missing_rows')
-      expect(valKeys).toContain('validation_warnings_list')
-      const warn = tables.find((t: any) => t.key === 'validation_warnings_list')
-      expect(warn.isWarning).toBe(true)
-    })
-
-    test('sorts master-matched tables first', async () => {
+    test('lists the tables matched to a master table first', async () => {
       const wrapper = createWrapper({
         execution: buildExecution(),
-        masterTableMatches: [
-          { tableKey: 'parameters', masterTableConfig: { order: 0 } },
-        ],
+        masterTableMatches: [{ tableKey: 'parameters', masterTableConfig: { order: 0 } }],
       })
       await nextTick()
-      const tables = wrapper.vm.instanceTables
-      expect(tables[0].key).toBe('parameters')
+      expect(wrapper.vm.instanceTables[0].key).toBe('parameters')
     })
   })
 
-  describe('current table computed helpers', () => {
-    test('currentTable resolves selected key', async () => {
+  describe('the current table', () => {
+    test('is the selected one, or the first', async () => {
       const wrapper = createWrapper({ execution: buildExecution() })
-      await nextTick()
-      wrapper.vm.selectedTableKey = 'parameters'
-      await nextTick()
+      await openTable(wrapper, 'parameters')
       expect(wrapper.vm.currentTable.key).toBe('parameters')
-    })
-
-    test('currentTable falls back to first when key missing', async () => {
-      const wrapper = createWrapper({ execution: buildExecution() })
+      wrapper.vm.selectedTabKey = 'does-not-exist'
       await nextTick()
-      wrapper.vm.selectedTableKey = 'does-not-exist'
-      await nextTick()
-      expect(wrapper.vm.currentTable.key).toBe(wrapper.vm.instanceTables[0].key)
+      expect(wrapper.vm.currentTable.key).toBe('products')
     })
 
-    test('currentTable empty placeholder when no tables', () => {
-      const wrapper = createWrapper()
-      expect(wrapper.vm.currentTable.key).toBe('')
+    test('is empty without tables', () => {
+      expect(createWrapper().vm.currentTable.key).toBe('')
     })
 
-    test('windowing slices items and loadMoreWindow grows', async () => {
+    test('shows its rows in windows of 200', async () => {
       const big = Array.from({ length: 450 }, (_, i) => ({ id: i, name: `n${i}` }))
       const wrapper = createWrapper({
         execution: {
@@ -403,693 +280,535 @@ describe('ExecutionDataView', () => {
           },
         },
       })
-      await nextTick()
-      wrapper.vm.selectedTableKey = 'products'
-      await nextTick()
-      expect(wrapper.vm.windowedCurrentItems.length).toBe(200)
+      await openTable(wrapper, 'products')
+      expect(wrapper.vm.windowedCurrentItems).toHaveLength(200)
       expect(wrapper.vm.windowedHasMore).toBe(true)
       wrapper.vm.loadMoreWindow()
-      expect(wrapper.vm.windowedCurrentItems.length).toBe(400)
+      expect(wrapper.vm.windowedCurrentItems).toHaveLength(400)
+    })
+
+    test('counts every row and the ones that pass the search', async () => {
+      const wrapper = createWrapper({ execution: buildExecution() })
+      await openTable(wrapper, 'products')
+      expect(wrapper.vm.currentTotalCount).toBe(2)
+      expect(wrapper.vm.currentFilteredCount).toBe(2)
+    })
+
+    test('sorts its rows by the column picked, on every row', async () => {
+      const wrapper = createWrapper({ execution: buildExecution() })
+      await openTable(wrapper, 'products')
+      wrapper.vm.currentSort = { key: 'qty', direction: 'desc' }
+      await nextTick()
+      expect(wrapper.vm.windowedCurrentItems.map((r: any) => r.name)).toEqual(['B', 'A'])
+    })
+
+    test('each table keeps its own search and filters', async () => {
+      vi.useFakeTimers()
+      const wrapper = createWrapper({ execution: buildExecution() })
+      await openTable(wrapper, 'products')
+      wrapper.vm.currentSearch = 'A'
+      expect(wrapper.vm.currentTableState.searchValue).toBe('A')
+      vi.advanceTimersByTime(300)
+      expect(wrapper.vm.currentTableState.debouncedSearchValue).toBe('A')
+      wrapper.vm.currentFilters = [{ id: 'f1', field: 'name', operator: 'is', value: 'A' }]
+      wrapper.vm.selectedTableKey = 'parameters'
+      await nextTick()
+      expect(wrapper.vm.currentSearch).toBe('')
+      expect(wrapper.vm.currentFilters).toEqual([])
+      vi.useRealTimers()
+    })
+
+    test('builds the columns from the table headers', async () => {
+      const wrapper = createWrapper({ execution: buildExecution() })
+      await openTable(wrapper, 'products')
+      const columns = wrapper.vm.currentColumns
+      expect(columns.map((c: any) => c.key)).toEqual(['name', 'qty'])
+      expect(columns.find((c: any) => c.key === 'qty').type).toBe('number')
     })
   })
 
-  describe('master table match', () => {
-    const matchExec = () => buildExecution()
-    const matches = [
-      {
-        tableKey: 'products',
-        masterTableTitle: 'Master Products',
-        hasDifferences: true,
-        diffSummary: { onlyInInstance: 1, onlyInMaster: 2, different: 3 },
-        showReplaceMasterOption: true,
-        userChoice: 'use_master',
-      },
-    ]
+  describe('row states and values', () => {
+    test('a cell shows its pending value', async () => {
+      tableChangesMock.getCurrentValue = vi.fn(() => 99)
+      const wrapper = createWrapper({ execution: buildExecution() })
+      await openTable(wrapper, 'products')
+      expect(wrapper.vm.cellValue({ id: 1, qty: 5 }, 'qty')).toBe(99)
+    })
 
-    test('getMatchForTable returns match or null', () => {
+    test('a row is deleted, new, modified or plain', async () => {
+      const wrapper = createWrapper({ execution: buildExecution() })
+      await openTable(wrapper, 'products')
+      tableChangesMock.getRowClass = vi.fn(() => 'row-deleted')
+      expect(wrapper.vm.rowState({ id: 1 })).toBe('deleted')
+      tableChangesMock.getRowClass = vi.fn(() => 'row-new')
+      expect(wrapper.vm.rowState({ id: 1 })).toBe('new')
+      tableChangesMock.getRowClass = vi.fn(() => '')
+      tableChangesMock.isRowModified = vi.fn(() => true)
+      expect(wrapper.vm.rowState({ id: 1 })).toBe('modified')
+      tableChangesMock.isRowModified = vi.fn(() => false)
+      expect(wrapper.vm.rowState({ id: 1 })).toBeUndefined()
+    })
+
+    test('without Excel mode rows have no state and cells no pending value', async () => {
+      tableChangesMock.getCurrentValue = vi.fn(() => 99)
+      const wrapper = createWrapper({ execution: buildExecution(), enableExcelMode: false })
+      await openTable(wrapper, 'products')
+      expect(wrapper.vm.rowState({ id: 1 })).toBeUndefined()
+      expect(wrapper.vm.cellValue({ id: 1, qty: 5 }, 'qty')).toBe(5)
+    })
+
+    test('the table is not editable read-only', async () => {
+      const wrapper = createWrapper({ execution: buildExecution(), readOnly: true })
+      await openTable(wrapper, 'products')
+      expect(wrapper.vm.isEditableTable).toBe(false)
+    })
+  })
+
+  describe('editing in Excel mode', () => {
+    const editing = async () => {
+      const execution = buildExecution()
+      const wrapper = createWrapper({ execution })
+      await openTable(wrapper, 'products')
+      return { wrapper, execution }
+    }
+
+    test('a cell edit is recorded with the type of its column', async () => {
+      const { wrapper } = await editing()
+      wrapper.vm.onCellChange({ id: 1, name: 'A', qty: 5 }, 'qty', '8')
+      const [table, rowId, key, oldValue, newValue] = tableChangesMock.recordChange.mock.calls[0]
+      expect([table, rowId, key, oldValue, newValue]).toEqual(['products', 1, 'qty', 5, 8])
+    })
+
+    test('an edit on an added row changes that row', async () => {
+      const { wrapper } = await editing()
+      wrapper.vm.onCellChange({ id: 'create-products-0-1', qty: 1 }, 'qty', '9')
+      expect(tableChangesMock.updateCreateField).toHaveBeenCalledWith('products', 'create-products-0-1', 'qty', 9)
+      expect(tableChangesMock.recordChange).not.toHaveBeenCalled()
+    })
+
+    test('adding a row stages it with the types of its columns', async () => {
+      const { wrapper } = await editing()
+      wrapper.vm.addRow({ name: 'C', qty: '3' })
+      expect(tableChangesMock.recordCreate).toHaveBeenCalledWith('products', { name: 'C', qty: 3 }, 'Products')
+    })
+
+    test('deleting rows marks them and clears the selection', async () => {
+      const { wrapper } = await editing()
+      wrapper.vm.selectedIds = [1, 2]
+      wrapper.vm.deleteRows([2])
+      expect(tableChangesMock.recordDelete).toHaveBeenCalledTimes(1)
+      expect(tableChangesMock.recordDelete.mock.calls[0].slice(0, 2)).toEqual(['products', 2])
+      expect(wrapper.vm.selectedIds).toEqual([])
+    })
+
+    test('restoring rows takes back their deletion', async () => {
+      const { wrapper } = await editing()
+      wrapper.vm.restoreRows([2])
+      expect(tableChangesMock.revertDelete).toHaveBeenCalledWith('products', 2)
+    })
+
+    test('a bulk edit changes every selected row that is not deleted', async () => {
+      tableChangesMock.getRowClass = vi.fn((_table: string, row: any) => (row.id === 2 ? 'row-deleted' : ''))
+      const { wrapper } = await editing()
+      wrapper.vm.bulkEditRows([1, 2], { qty: '4' })
+      expect(tableChangesMock.recordChange).toHaveBeenCalledTimes(1)
+      expect(tableChangesMock.recordChange.mock.calls[0].slice(0, 5)).toEqual(['products', 1, 'qty', 5, 4])
+    })
+
+    test('the selection holds the ids of the current rows', async () => {
+      const { wrapper } = await editing()
+      wrapper.vm.selectedIds = [2]
+      expect(wrapper.vm.selectedItems.map((r: any) => r.name)).toEqual(['B'])
+    })
+  })
+
+  describe('editing without Excel mode', () => {
+    const direct = async () => {
+      const execution = buildExecution()
+      const wrapper = createWrapper({ execution, enableExcelMode: false })
+      await openTable(wrapper, 'products')
+      return { wrapper, execution }
+    }
+
+    test('adding a row puts it in the data and emits save-changes', async () => {
+      const { wrapper, execution } = await direct()
+      wrapper.vm.addRow({ name: 'C', qty: '3' })
+      expect(execution.instance.data.products).toHaveLength(3)
+      expect(execution.instance.data.products[2]).toMatchObject({ name: 'C', qty: 3 })
+      expect(wrapper.emitted('save-changes')).toBeTruthy()
+    })
+
+    test('deleting rows removes them from the data', async () => {
+      const { wrapper, execution } = await direct()
+      wrapper.vm.deleteRows([1])
+      expect(execution.instance.data.products.map((r: any) => r.id)).toEqual([2])
+      expect(wrapper.emitted('save-changes')).toBeTruthy()
+    })
+
+    test('cell edits are not recorded', async () => {
+      const { wrapper } = await direct()
+      wrapper.vm.handleCellChange('products', 1, 'qty', 5, 8)
+      expect(tableChangesMock.recordChange).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('options of the references', () => {
+    test('a column without a reference offers its own options', async () => {
+      const wrapper = createWrapper({ execution: buildExecution() })
+      await openTable(wrapper, 'products')
+      await wrapper.vm.loadOptions({ key: 'name', title: 'Name', type: 'list', options: [{ value: 'A', label: 'A' }] })
+      expect(wrapper.vm.optionsFor({ key: 'name' })).toEqual([{ value: 'A', label: 'A' }])
+    })
+
+    test('the tables of the instance are found by their name, as written or normalized', async () => {
       const wrapper = createWrapper({
-        execution: matchExec(),
-        masterTableMatches: matches,
+        execution: {
+          instance: { data: { 'Shift Swaps': [{ id: 1 }], products: [{ id: 1 }] }, schema: { properties: {} } },
+        },
       })
+      expect(await wrapper.vm.loadTableDataForCoreTable('products')).toHaveLength(1)
+      expect(await wrapper.vm.loadTableDataForCoreTable('shift_swaps')).toHaveLength(1)
+      expect(await wrapper.vm.loadTableDataForCoreTable('missing')).toEqual([])
+      expect(wrapper.vm.tableDataForCoreTable.shift_swaps).toBeTruthy()
+    })
+  })
+
+  describe('tabs', () => {
+    test('each tab has its title, rows and pending changes', async () => {
+      tableChangesMock.getChangesForTable = vi.fn((key: string) =>
+        key === 'products' ? { '1': { qty: {}, name: {} } } : null,
+      )
+      tableChangesMock.getPendingDeletes = vi.fn((key: string) => (key === 'products' ? [{}] : []))
+      const wrapper = createWrapper({ execution: buildExecution() })
+      await nextTick()
+      const products = wrapper.vm.tableTabs.find((tab: any) => tab.key === 'products')
+      expect(products).toMatchObject({ label: 'Products', rows: 2, pending: 3 })
+    })
+
+    test('a tab shows its master comparison and its origin', async () => {
+      const wrapper = createWrapper({
+        execution: buildExecution(),
+        masterTableMatches: [{ tableKey: 'products', hasDifferences: true }],
+        externalEtlFlow: etlFlow({ products: { variant: 'edited_from_db', fixed: true } }),
+      })
+      await nextTick()
+      const products = wrapper.vm.tableTabs.find((tab: any) => tab.key === 'products')
+      expect(products.master).toBe('different')
+      expect(products.source).toBe('edited')
+    })
+  })
+
+  describe('master tables', () => {
+    const match = {
+      tableKey: 'products',
+      masterTableTitle: 'Master Products',
+      hasDifferences: true,
+      diffSummary: { onlyInInstance: 1, onlyInMaster: 2, different: 3 },
+      showReplaceMasterOption: true,
+    }
+
+    test('finds the match of a table', () => {
+      const wrapper = createWrapper({ execution: buildExecution(), masterTableMatches: [match] })
       expect(wrapper.vm.getMatchForTable('products')).toBeTruthy()
       expect(wrapper.vm.getMatchForTable('nope')).toBe(null)
     })
 
-    test('getMatchForTable null when no matches', () => {
-      const wrapper = createWrapper({ execution: matchExec() })
-      expect(wrapper.vm.getMatchForTable('products')).toBe(null)
+    test('the bar shows the differences and what can be done', async () => {
+      const wrapper = createWrapper({ execution: buildExecution(), masterTableMatches: [match] })
+      await openTable(wrapper, 'products')
+      expect(wrapper.vm.sourceMaster).toEqual({
+        state: 'ready',
+        name: 'Master Products',
+        added: 1,
+        removed: 2,
+        modified: 3,
+        canUseMaster: true,
+        canSaveMaster: true,
+      })
+      expect(wrapper.find('.strip-stub').exists()).toBe(true)
     })
 
-    test('hasAnyMatches reflects matches', () => {
-      const wrapper = createWrapper({
-        execution: matchExec(),
-        masterTableMatches: matches,
-      })
-      expect(wrapper.vm.hasAnyMatches).toBe(true)
+    test('is still comparing while the match loads', async () => {
+      const wrapper = createWrapper({ execution: buildExecution(), masterTableMatches: [match], masterTableLoading: true })
+      await openTable(wrapper, 'products')
+      expect(wrapper.vm.sourceMaster.state).toBe('comparing')
     })
 
-    test('confirm use master emits action and closes dialog', async () => {
+    test('with the ETL flow the master data is neither used nor saved from here', async () => {
       const wrapper = createWrapper({
-        execution: matchExec(),
-        masterTableMatches: matches,
+        execution: buildExecution(),
+        masterTableMatches: [match],
+        externalEtlFlow: etlFlow({}),
       })
-      await nextTick()
-      wrapper.vm.selectedTableKey = 'products'
-      await nextTick()
-      wrapper.vm.showUseMasterConfirmDialog = true
-      wrapper.vm.handleConfirmUseMaster()
-      const ev = wrapper.emitted('master-table-action')
-      expect(ev).toBeTruthy()
-      expect(ev![0]).toEqual(['products', 'use_master'])
-      expect(wrapper.vm.showUseMasterConfirmDialog).toBe(false)
+      await openTable(wrapper, 'products')
+      expect(wrapper.vm.sourceMaster).toMatchObject({ canUseMaster: false, canSaveMaster: false })
     })
 
-    test('confirm replace master emits action', async () => {
-      const wrapper = createWrapper({
-        execution: matchExec(),
-        masterTableMatches: matches,
-      })
-      await nextTick()
-      wrapper.vm.selectedTableKey = 'products'
-      await nextTick()
-      wrapper.vm.handleConfirmReplaceMaster()
-      const ev = wrapper.emitted('master-table-action')
-      expect(ev![0]).toEqual(['products', 'replace_master'])
-    })
-
-    test('handleShowComparison emits show-comparison', async () => {
-      const wrapper = createWrapper({
-        execution: matchExec(),
-        masterTableMatches: matches,
-      })
-      await nextTick()
-      wrapper.vm.selectedTableKey = 'products'
-      await nextTick()
+    test('using or saving the master data and comparing are asked to the parent', async () => {
+      const wrapper = createWrapper({ execution: buildExecution(), masterTableMatches: [match] })
+      await openTable(wrapper, 'products')
+      wrapper.vm.handleMasterTableAction('use_master')
+      wrapper.vm.handleMasterTableAction('replace_master')
       wrapper.vm.handleShowComparison()
-      expect(wrapper.emitted('show-comparison')![0]).toEqual(['products'])
+      expect(wrapper.emitted('master-table-action')).toEqual([
+        ['products', 'use_master'],
+        ['products', 'replace_master'],
+      ])
+      expect(wrapper.emitted('show-comparison')).toEqual([['products']])
     })
   })
 
-  describe('ETL flow computed and handlers', () => {
-    const etlExec = () => buildExecution()
-    const etlFlow = (variant: string, fixed: any = true) => ({
-      tableSwitches: { products: { variant, fixed } },
-      parameterSwitches: {},
-      parameterTableNames: new Set<string>(),
-    })
-
-    test('etlInfoIcon and etlInfoText for from_db', async () => {
-      const wrapper = createWrapper({
-        execution: etlExec(),
-        externalEtlFlow: etlFlow('from_db'),
-      })
-      await nextTick()
-      wrapper.vm.selectedTableKey = 'products'
-      await nextTick()
-      expect(wrapper.vm.etlInfoIcon).toBe('mdi-database')
-      expect(wrapper.vm.etlInfoText).toBe('externalEtl.switch.fromDbLabel')
-      expect(wrapper.vm.etlSwitchLabel).toBe('externalEtl.switch.fixTable')
-    })
-
-    test('etlInfoIcon variants', async () => {
-      for (const [variant, icon] of [
-        ['from_excel', 'mdi-file-excel'],
-        ['edited_from_db', 'mdi-database-edit'],
-        ['reuploaded', 'mdi-file-replace'],
+  describe('origin of the data (ETL)', () => {
+    test('the origin of each variant', async () => {
+      for (const [variant, origin] of [
+        ['from_db', 'database'],
+        ['from_excel', 'file'],
+        ['edited_from_db', 'edited'],
+        ['reuploaded', 'reuploaded'],
       ] as const) {
         const wrapper = createWrapper({
-          execution: etlExec(),
-          externalEtlFlow: etlFlow(variant),
+          execution: buildExecution(),
+          externalEtlFlow: etlFlow({ products: { variant, fixed: true } }),
         })
-        await nextTick()
-        wrapper.vm.selectedTableKey = 'products'
-        await nextTick()
-        expect(wrapper.vm.etlInfoIcon).toBe(icon)
+        await openTable(wrapper, 'products')
+        expect(wrapper.vm.sourceOrigin).toEqual({ variant: origin, perParameter: false })
       }
     })
 
-    test('etlInfoIcon default when no switch state', () => {
-      const wrapper = createWrapper({ execution: etlExec() })
-      expect(wrapper.vm.etlInfoIcon).toBe('mdi-table')
-      expect(wrapper.vm.etlInfoText).toBe('')
-      expect(wrapper.vm.etlSwitchLabel).toBe('')
+    test('no origin without the ETL flow', async () => {
+      const wrapper = createWrapper({ execution: buildExecution() })
+      await openTable(wrapper, 'products')
+      expect(wrapper.vm.sourceOrigin).toBe(null)
     })
 
-    test('etlSwitchModelValue true when fixed false', async () => {
-      const wrapper = createWrapper({
-        execution: etlExec(),
-        externalEtlFlow: etlFlow('from_db', false),
-      })
-      await nextTick()
-      wrapper.vm.selectedTableKey = 'products'
-      await nextTick()
-      expect(wrapper.vm.etlSwitchModelValue).toBe(true)
-    })
-
-    test('etlSwitchModelValue false when no state', () => {
-      const wrapper = createWrapper({ execution: etlExec() })
-      expect(wrapper.vm.etlSwitchModelValue).toBe(false)
-    })
-
-    test('handleEtlSwitchChange flips fixed', async () => {
-      const flow = etlFlow('from_db', true)
-      const wrapper = createWrapper({ execution: etlExec(), externalEtlFlow: flow })
-      await nextTick()
-      wrapper.vm.handleEtlSwitchChange('products', true)
+    test('a table from the database is static or updated with it', async () => {
+      const flow = etlFlow({ products: { variant: 'from_db', fixed: true } })
+      const wrapper = createWrapper({ execution: buildExecution(), externalEtlFlow: flow })
+      await openTable(wrapper, 'products')
+      expect(wrapper.vm.sourceChoice).toBe('static')
+      wrapper.vm.setSourceChoice('live')
       expect(flow.tableSwitches.products.fixed).toBe(false)
-      wrapper.vm.handleEtlSwitchChange('products', false)
+      expect(wrapper.vm.sourceChoice).toBe('live')
+    })
+
+    test('a table from a file uses the file or the database', async () => {
+      const flow = etlFlow({ products: { variant: 'from_excel', fixed: true } })
+      const wrapper = createWrapper({ execution: buildExecution(), externalEtlFlow: flow })
+      await openTable(wrapper, 'products')
+      expect(wrapper.vm.sourceChoice).toBe('file')
+      wrapper.vm.setSourceChoice('database')
+      expect(flow.tableSwitches.products.fixed).toBe(false)
+      wrapper.vm.setSourceChoice('file')
       expect(flow.tableSwitches.products.fixed).toBe(true)
     })
 
-    test('handleEtlSwitchChange no-op without flow or state', () => {
-      const wrapper = createWrapper({ execution: etlExec() })
-      expect(() => wrapper.vm.handleEtlSwitchChange('products', true)).not.toThrow()
-      const flow = etlFlow('from_db')
-      const w2 = createWrapper({ execution: etlExec(), externalEtlFlow: flow })
-      expect(() => w2.vm.handleEtlSwitchChange('missing', true)).not.toThrow()
-    })
-
-    test('handleEtlParameterChange writes parameterSwitches', () => {
-      const flow = etlFlow('from_db')
-      const wrapper = createWrapper({ execution: etlExec(), externalEtlFlow: flow })
-      wrapper.vm.handleEtlParameterChange('products.horizon', false)
-      expect(flow.parameterSwitches['products.horizon']).toBe(false)
-    })
-
-    test('isCurrentTableParameterTable reflects set membership', async () => {
-      const flow = {
-        tableSwitches: { parameters: { variant: 'from_db', fixed: true } },
-        parameterSwitches: {},
-        parameterTableNames: new Set(['parameters']),
-      }
-      const wrapper = createWrapper({ execution: etlExec(), externalEtlFlow: flow })
-      await nextTick()
-      wrapper.vm.selectedTableKey = 'parameters'
-      await nextTick()
+    test('a parameter table chooses its origin per parameter', async () => {
+      const flow = etlFlow({ parameters: { variant: 'from_db', fixed: true } }, {}, ['parameters'])
+      const wrapper = createWrapper({ execution: buildExecution(), externalEtlFlow: flow })
+      await openTable(wrapper, 'parameters')
       expect(wrapper.vm.isCurrentTableParameterTable).toBe(true)
+      expect(wrapper.vm.sourceOrigin).toEqual({ variant: 'database', perParameter: true })
     })
 
-    test('builds vertical parameter table when parameter table with etl', async () => {
-      const flow = {
-        tableSwitches: { parameters: { variant: 'from_db', fixed: true } },
-        parameterSwitches: { 'parameters.horizon': false },
-        parameterTableNames: new Set(['parameters']),
-      }
+    test('array parameter tables get a "from database" column', async () => {
+      const flow = etlFlow({ products: { variant: 'from_db', fixed: true } }, { 'products.A': false }, ['products'])
       const wrapper = createWrapper({ execution: buildExecution(), externalEtlFlow: flow })
       await nextTick()
-      const paramTable = wrapper.vm.instanceTables.find((t: any) => t.key === 'parameters')
-      expect(paramTable.isParameterTableVertical).toBe(true)
+      const table = wrapper.vm.instanceTables.find((t: any) => t.key === 'products')
+      expect(table.headers.some((h: any) => h.key === '__etl_from_db__')).toBe(true)
     })
 
-    test('injects parameter switch columns for array etl table', async () => {
-      const flow = {
-        tableSwitches: { products: { variant: 'from_db', fixed: true } },
-        parameterSwitches: { 'products.A': false },
-        parameterTableNames: new Set(['products']),
-      }
+    test('toggling a "from database" cell sets the switch of that parameter, not a change', async () => {
+      const flow = etlFlow({ products: { variant: 'from_db', fixed: true } }, { 'products.A': true }, ['products'])
       const wrapper = createWrapper({ execution: buildExecution(), externalEtlFlow: flow })
-      await nextTick()
-      const t = wrapper.vm.instanceTables.find((x: any) => x.key === 'products')
-      expect(t.headers.some((h: any) => h.key === '__etl_from_db__')).toBe(true)
+      await openTable(wrapper, 'products')
+      wrapper.vm.handleCellChange('products', 1, '__etl_from_db__', false, true)
+      expect(flow.parameterSwitches['products.A']).toBe(false)
+      expect(tableChangesMock.recordChange).not.toHaveBeenCalled()
     })
   })
 
-  describe('table data lookup helpers', () => {
-    test('tableDataForCoreTable returns array data with normalized keys', () => {
-      const wrapper = createWrapper({
-        execution: {
-          instance: {
-            data: { 'Operadores Intercambios': [{ id: 1 }], notArray: 5 },
-            schema: { properties: {} },
-          },
-        },
-      })
-      const out = wrapper.vm.tableDataForCoreTable
-      expect(out['Operadores Intercambios']).toBeTruthy()
-      // normalized duplicate key added for the array table
-      expect(out['operadores_intercambios']).toBeTruthy()
-      // non-array values are passed through unchanged (no normalized dup)
-      expect(out.notArray).toBe(5)
+  describe('parameters', () => {
+    test('an object table lists its fields with their values', async () => {
+      tableChangesMock.isCellModified = vi.fn((_t: string, _r: unknown, key: string) => key === 'factor')
+      const wrapper = createWrapper({ execution: buildExecution() })
+      await openTable(wrapper, 'parameters')
+      const rows = wrapper.vm.parameterRows
+      expect(rows.map((r: any) => [r.id, r.label, r.value, r.modified])).toEqual([
+        ['horizon', 'Horizon', 10, false],
+        ['factor', 'Factor', 2.5, true],
+      ])
+      expect(rows[0].column.type).toBe('number')
     })
 
-    test('loadTableDataForCoreTable finds by exact and normalized name', async () => {
-      const wrapper = createWrapper({
-        execution: {
-          instance: {
-            data: { products: [{ id: 1 }] },
-            schema: { properties: {} },
-          },
-        },
+    test('editing a field of an object table records a change of its single row', async () => {
+      const wrapper = createWrapper({ execution: buildExecution() })
+      await openTable(wrapper, 'parameters')
+      wrapper.vm.setParameterValue('horizon', '12')
+      const call = tableChangesMock.recordChange.mock.calls[0]
+      expect(call.slice(0, 5)).toEqual(['parameters', '__object__', 'horizon', 10, 12])
+      wrapper.vm.revertParameter('horizon')
+      expect(tableChangesMock.revertChange).toHaveBeenCalledWith('parameters', '__object__', 'horizon')
+    })
+
+    describe('loaded through the ETL', () => {
+      const vertical = (variant = 'from_db', switches: Record<string, any> = { 'parameters.horizon': false, 'parameters.factor': true }) => {
+        const flow = etlFlow({ parameters: { variant, fixed: true } }, switches, ['parameters'])
+        const wrapper = createWrapper({ execution: buildExecution(), externalEtlFlow: flow })
+        return { wrapper, flow }
+      }
+
+      test('each parameter is a row with a "from database" switch', async () => {
+        const { wrapper } = vertical()
+        await openTable(wrapper, 'parameters')
+        expect(wrapper.vm.currentTable.isParameterTableVertical).toBe(true)
+        const rows = wrapper.vm.parameterRows
+        expect(rows.find((r: any) => r.id === 'horizon').source).toEqual({ mode: 'switch', fromDatabase: true, disabled: false })
+        expect(rows.find((r: any) => r.id === 'factor').source).toEqual({ mode: 'switch', fromDatabase: false, disabled: false })
       })
-      expect(await wrapper.vm.loadTableDataForCoreTable('products')).toHaveLength(1)
-      expect(await wrapper.vm.loadTableDataForCoreTable('missing')).toEqual([])
+
+      test('a reuploaded table offers default, database or fixed', async () => {
+        const { wrapper } = vertical('reuploaded', { 'parameters.horizon': null, 'parameters.factor': true })
+        await openTable(wrapper, 'parameters')
+        const rows = wrapper.vm.parameterRows
+        expect(rows.find((r: any) => r.id === 'horizon').source).toMatchObject({ mode: 'choice', value: 'default' })
+        expect(rows.find((r: any) => r.id === 'factor').source).toMatchObject({ mode: 'choice', value: 'fixed' })
+      })
+
+      test('editing a value records it typed and stops reading it from the database', async () => {
+        const { wrapper, flow } = vertical()
+        await openTable(wrapper, 'parameters')
+        wrapper.vm.setParameterValue('horizon', '15')
+        expect(tableChangesMock.recordChange.mock.calls[0].slice(0, 5)).toEqual(['parameters', 'horizon', 'value', 10, 15])
+        expect(flow.parameterSwitches['parameters.horizon']).toBe(true)
+      })
+
+      test('the switch and the choices set the origin of the parameter', async () => {
+        const { wrapper, flow } = vertical()
+        await openTable(wrapper, 'parameters')
+        wrapper.vm.setParameterSource('factor', true)
+        expect(flow.parameterSwitches['parameters.factor']).toBe(false)
+
+        const reuploaded = vertical('reuploaded', { 'parameters.horizon': null })
+        await openTable(reuploaded.wrapper, 'parameters')
+        reuploaded.wrapper.vm.setParameterSource('horizon', 'fixed')
+        expect(reuploaded.flow.parameterSwitches['parameters.horizon']).toBe(true)
+        reuploaded.wrapper.vm.setParameterSource('horizon', 'database')
+        expect(reuploaded.flow.parameterSwitches['parameters.horizon']).toBe(false)
+      })
+
+      test('reverting a parameter takes back its value', async () => {
+        const { wrapper } = vertical()
+        await openTable(wrapper, 'parameters')
+        wrapper.vm.revertParameter('horizon')
+        expect(tableChangesMock.revertChange).toHaveBeenCalledWith('parameters', 'horizon', 'value')
+      })
+
+      test('a parameter that cannot come from the database has its switch disabled', async () => {
+        const execution: any = buildExecution()
+        execution.instance.schema.properties.parameters.properties.factor.allow_load_from_db = false
+        const flow = etlFlow({ parameters: { variant: 'from_db', fixed: true } }, {}, ['parameters'])
+        const wrapper = createWrapper({ execution, externalEtlFlow: flow })
+        await openTable(wrapper, 'parameters')
+        const factor = wrapper.vm.parameterRows.find((r: any) => r.id === 'factor')
+        expect(factor.source.disabled).toBe(true)
+        expect(wrapper.vm.cellDisabled({ __etl_from_db_disabled__: true }, '__etl_from_db__')).toBe(true)
+      })
     })
   })
 
-  describe('formFields and getOperatorText', () => {
-    test('formFields maps headers and filters hidden ones', async () => {
+  describe('review of the pending changes', () => {
+    test('groups the changes of every table', async () => {
+      tableChangesMock.getFullGroupedChanges = vi.fn(() => [
+        {
+          tableKey: 'products',
+          tableTitle: 'Products',
+          changes: [{ rowId: '1', fields: [{ fieldKey: 'qty', oldValue: 5, newValue: 6 }] }],
+          creates: [{ tempId: 'create-products-0-1', data: { name: 'C', qty: 1 } }],
+          deletes: [{ rowId: '2' }],
+        },
+      ])
       const wrapper = createWrapper({ execution: buildExecution() })
       await nextTick()
-      wrapper.vm.selectedTableKey = 'products'
-      await nextTick()
-      const fields = wrapper.vm.formFields
-      expect(fields.some((f: any) => f.key === 'selection')).toBe(false)
-      expect(fields.some((f: any) => f.key === 'name')).toBe(true)
+      const [group] = wrapper.vm.pendingGroups
+      expect(group.tableKey).toBe('products')
+      expect(group.items.map((item: any) => [item.kind, item.label])).toEqual([
+        ['modified', 'Name A'],
+        ['new', 'Name C'],
+        ['deleted', 'Name B'],
+      ])
     })
 
-    test('getOperatorText delegates to util', () => {
-      const wrapper = createWrapper()
-      expect(typeof wrapper.vm.getOperatorText('equals')).toBe('string')
-    })
-  })
-
-  describe('search / filter / selection handlers', () => {
-    const exec = () => buildExecution()
-
-    test('handleSearch sets searchValue and debounces', async () => {
-      vi.useFakeTimers()
-      const wrapper = createWrapper({ execution: exec() })
-      await nextTick()
-      wrapper.vm.selectedTableKey = 'products'
-      await nextTick()
-      wrapper.vm.handleSearch('A')
-      expect(wrapper.vm.currentTableState.searchValue).toBe('A')
-      vi.advanceTimersByTime(300)
-      expect(wrapper.vm.currentTableState.debouncedSearchValue).toBe('A')
-      vi.useRealTimers()
-    })
-
-    test('handleAddFilter / handleRemoveFilter / handleClearAllFilters', async () => {
-      const wrapper = createWrapper({ execution: exec() })
-      await nextTick()
-      wrapper.vm.selectedTableKey = 'products'
-      await nextTick()
-      wrapper.vm.handleAddFilter({ id: 'f1', field: 'name' })
-      expect(wrapper.vm.currentTableState.activeFilters).toHaveLength(1)
-      wrapper.vm.handleRemoveFilter('f1')
-      expect(wrapper.vm.currentTableState.activeFilters).toHaveLength(0)
-      wrapper.vm.handleAddFilter({ id: 'f2' })
-      wrapper.vm.handleClearAllFilters()
-      expect(wrapper.vm.currentTableState.activeFilters).toHaveLength(0)
-    })
-
-    test('handleToggleFiltersPanel is a no-op', () => {
-      const wrapper = createWrapper()
-      expect(() => wrapper.vm.handleToggleFiltersPanel(true)).not.toThrow()
-    })
-
-    test('select item toggles selection; select-all and clear', () => {
-      const wrapper = createWrapper()
-      wrapper.vm.handleSelectItem({ id: 1 })
-      expect(wrapper.vm.selectedItems).toHaveLength(1)
-      wrapper.vm.handleSelectItem({ id: 1 })
-      expect(wrapper.vm.selectedItems).toHaveLength(0)
-      wrapper.vm.handleSelectAll([{ id: 1 }, { id: 2 }])
-      expect(wrapper.vm.selectedItems).toHaveLength(2)
-      wrapper.vm.handleClearSelection()
-      expect(wrapper.vm.selectedItems).toHaveLength(0)
-    })
-  })
-
-  describe('CRUD handlers (non-excel mode)', () => {
-    const makeWrapper = async () => {
+    test('reverts a table, a row of each kind, a field and everything', async () => {
+      tableChangesMock.revertRowChanges = vi.fn(() => ({ qty: { oldValue: 1 }, name: { oldValue: 'orig' } }))
+      tableChangesMock.revertChange = vi.fn(() => ({ oldValue: 5 }))
+      tableChangesMock.getAllChanges = vi.fn(() => ({ products: { '2': { qty: { oldValue: 50 } } } }))
       const execution = buildExecution()
-      const wrapper = createWrapper({ execution, enableExcelMode: false })
+      const wrapper = createWrapper({ execution })
       await nextTick()
-      wrapper.vm.selectedTableKey = 'products'
+      wrapper.vm.revertTable('products')
+      expect(tableChangesMock.revertTableChanges).toHaveBeenCalledWith('products')
+      expect(tableChangesMock.clearCreatesForTable).toHaveBeenCalledWith('products')
+      expect(tableChangesMock.clearDeletesForTable).toHaveBeenCalledWith('products')
+      wrapper.vm.revertRow('products', 'create-products-0-1', 'new')
+      expect(tableChangesMock.revertCreate).toHaveBeenCalledWith('products', 'create-products-0-1')
+      wrapper.vm.revertRow('products', 2, 'deleted')
+      expect(tableChangesMock.revertDelete).toHaveBeenCalledWith('products', 2)
+      wrapper.vm.revertRow('products', 1, 'modified')
+      expect(execution.instance.data.products[0]).toMatchObject({ qty: 1, name: 'orig' })
+      wrapper.vm.handleRevertChange('products', '1', 'qty')
+      expect(execution.instance.data.products[0].qty).toBe(5)
+      wrapper.vm.handleRevertAll()
+      expect(execution.instance.data.products[1].qty).toBe(50)
+      expect(tableChangesMock.clearAllChanges).toHaveBeenCalled()
+    })
+
+    test('a value edited in the review is recorded, or changes the added row', async () => {
+      const wrapper = createWrapper({ execution: buildExecution() })
       await nextTick()
-      return { wrapper, execution }
-    }
-
-    test('handleAddItem opens modal', () => {
-      const wrapper = createWrapper()
-      wrapper.vm.handleAddItem()
-      expect(wrapper.vm.showAddEditModal).toBe(true)
-      expect(wrapper.vm.isEditing).toBe(false)
+      wrapper.vm.updateReviewField('products', 1, 'qty', '12')
+      expect(tableChangesMock.recordChange.mock.calls[0].slice(0, 5)).toEqual(['products', '1', 'qty', 5, 12])
+      wrapper.vm.updateReviewField('products', 'create-products-0-1', 'qty', 3)
+      expect(tableChangesMock.updateCreateField).toHaveBeenCalledWith('products', 'create-products-0-1', 'qty', 3)
     })
 
-    test('handleEditItem populates form data', () => {
-      const wrapper = createWrapper()
-      wrapper.vm.handleEditItem({ id: 5, name: 'X' })
-      expect(wrapper.vm.isEditing).toBe(true)
-      expect(wrapper.vm.formData.name).toBe('X')
+    test('going to a change opens its table and clears what hides it', async () => {
+      const wrapper = createWrapper({ execution: buildExecution() })
+      await openTable(wrapper, 'parameters')
+      const state = wrapper.vm.getTableState('products')
+      state.searchValue = 'zzz'
+      state.debouncedSearchValue = 'zzz'
+      state.activeFilters = [{ id: 'f', field: 'name', operator: 'is', value: 'X' }]
+      await wrapper.vm.goToChange('products', '2', 'qty')
+      expect(wrapper.vm.currentTable.key).toBe('products')
+      expect(state.debouncedSearchValue).toBe('')
+      expect(state.activeFilters).toEqual([])
+      expect(wrapper.vm.highlightedRowId).toBe(2)
     })
 
-    test('handleSaveItem adds row and emits save-changes', async () => {
-      const { wrapper, execution } = await makeWrapper()
-      wrapper.vm.isEditing = false
-      wrapper.vm.handleSaveItem({ name: 'C', qty: '3' })
-      expect(execution.instance.data.products).toHaveLength(3)
-      expect(wrapper.emitted('save-changes')).toBeTruthy()
-    })
-
-    test('handleSaveItem edits existing row', async () => {
-      const { wrapper, execution } = await makeWrapper()
-      wrapper.vm.isEditing = true
-      wrapper.vm.handleSaveItem({ id: 1, name: 'Z', qty: '9' })
-      const row = execution.instance.data.products.find((r: any) => r.id === 1)
-      expect(row.name).toBe('Z')
-      expect(row.qty).toBe(9)
-    })
-
-    test('handleConfirmDelete removes row and emits', async () => {
-      const { wrapper, execution } = await makeWrapper()
-      wrapper.vm.handleDeleteItem({ id: 1, name: 'A' })
-      expect(wrapper.vm.showDeleteDialog).toBe(true)
-      wrapper.vm.handleConfirmDelete()
-      expect(execution.instance.data.products.find((r: any) => r.id === 1)).toBeUndefined()
-    })
-
-    test('handleConfirmBulkDelete removes selected', async () => {
-      const { wrapper, execution } = await makeWrapper()
-      wrapper.vm.handleSelectAll([{ id: 1 }, { id: 2 }])
-      wrapper.vm.handleBulkDelete()
-      expect(wrapper.vm.showBulkDeleteDialog).toBe(true)
-      wrapper.vm.handleConfirmBulkDelete()
-      expect(execution.instance.data.products).toHaveLength(0)
-    })
-
-    test('handleBulkDelete no-op when no selection', () => {
-      const wrapper = createWrapper()
-      wrapper.vm.handleBulkDelete()
-      expect(wrapper.vm.showBulkDeleteDialog).toBe(false)
-    })
-  })
-
-  describe('CRUD handlers (excel mode)', () => {
-    const makeWrapper = async () => {
-      const execution = buildExecution()
-      const wrapper = createWrapper({ execution, enableExcelMode: true })
-      await nextTick()
-      wrapper.vm.selectedTableKey = 'products'
-      await nextTick()
-      return { wrapper, execution }
-    }
-
-    test('handleSaveItem stages create via recordCreate', async () => {
-      const { wrapper } = await makeWrapper()
-      wrapper.vm.isEditing = false
-      wrapper.vm.handleSaveItem({ name: 'C', qty: 3 })
-      expect(tableChangesMock.recordCreate).toHaveBeenCalled()
-      expect(wrapper.emitted('pending-changes-update')).toBeTruthy()
-    })
-
-    test('handleConfirmDelete stages delete via recordDelete', async () => {
-      const { wrapper } = await makeWrapper()
-      wrapper.vm.handleDeleteItem({ id: 1 })
-      wrapper.vm.handleConfirmDelete()
-      expect(tableChangesMock.recordDelete).toHaveBeenCalled()
-    })
-
-    test('handleConfirmBulkDelete stages deletes', async () => {
-      const { wrapper } = await makeWrapper()
-      wrapper.vm.handleSelectAll([{ id: 1 }, { id: 2 }])
-      wrapper.vm.handleConfirmBulkDelete()
-      expect(tableChangesMock.recordDelete).toHaveBeenCalledTimes(2)
-    })
-  })
-
-  describe('inline editing', () => {
-    const makeWrapper = async (excel = false) => {
-      const execution = buildExecution()
-      const wrapper = createWrapper({ execution, enableExcelMode: excel })
-      await nextTick()
-      wrapper.vm.selectedTableKey = 'products'
-      await nextTick()
-      return { wrapper, execution }
-    }
-
-    test('startInlineEdit sets editing state', async () => {
-      const { wrapper } = await makeWrapper()
-      wrapper.vm.startInlineEdit({ id: 1, name: 'A' })
-      expect(wrapper.vm.editingRowId).toBe(1)
-      expect(wrapper.vm.isEditingAnyRow).toBe(true)
-    })
-
-    test('startInlineEdit no-op when same row', async () => {
-      const { wrapper } = await makeWrapper()
-      wrapper.vm.startInlineEdit({ id: 1, name: 'A' })
-      wrapper.vm.editingData.name = 'changed'
-      wrapper.vm.startInlineEdit({ id: 1, name: 'A' })
-      expect(wrapper.vm.editingData.name).toBe('changed')
-    })
-
-    test('startInlineEdit overlays pending changes in excel mode', async () => {
-      tableChangesMock.getChangesForTable = vi.fn(() => ({
-        '1': { name: { newValue: 'OVERLAY', oldValue: 'A' } },
-      }))
-      const { wrapper } = await makeWrapper(true)
-      wrapper.vm.startInlineEdit({ id: 1, name: 'A' })
-      expect(wrapper.vm.editingData.name).toBe('OVERLAY')
-    })
-
-    test('updateInlineField mutates editingData', () => {
-      const wrapper = createWrapper()
-      wrapper.vm.updateInlineField('foo', 42)
-      expect(wrapper.vm.editingData.foo).toBe(42)
-    })
-
-    test('cancelInlineEdit clears state', async () => {
-      const { wrapper } = await makeWrapper()
-      wrapper.vm.startInlineEdit({ id: 1 })
-      wrapper.vm.cancelInlineEdit()
-      expect(wrapper.vm.editingRowId).toBe(null)
-    })
-
-    test('saveInlineEdit updates array row (non-excel)', async () => {
-      const { wrapper, execution } = await makeWrapper(false)
-      wrapper.vm.startInlineEdit({ id: 1, name: 'A', qty: 5 })
-      wrapper.vm.editingData.qty = '99'
-      wrapper.vm.saveInlineEdit()
-      const row = execution.instance.data.products.find((r: any) => r.id === 1)
-      expect(row.qty).toBe(99)
-      expect(wrapper.vm.editingRowId).toBe(null)
-    })
-
-    test('saveInlineEdit on object/parameter table', async () => {
-      const execution = buildExecution()
-      const wrapper = createWrapper({ execution, enableExcelMode: false })
-      await nextTick()
-      wrapper.vm.selectedTableKey = 'parameters'
-      await nextTick()
-      wrapper.vm.startInlineEdit({ id: '__object__', horizon: 10, factor: 2.5 })
-      wrapper.vm.editingData.horizon = '42'
-      wrapper.vm.saveInlineEdit()
-      expect(execution.instance.data.parameters.horizon).toBe(42)
-    })
-
-    test('saveInlineEdit no-op in excel mode (changes stay staged)', async () => {
-      const { wrapper, execution } = await makeWrapper(true)
-      wrapper.vm.startInlineEdit({ id: 1, name: 'A' })
-      wrapper.vm.saveInlineEdit()
-      // No save-changes emitted in excel mode here
-      expect(wrapper.vm.editingRowId).toBe(null)
-      expect(execution.instance.data.products[0].name).toBe('A')
-    })
-  })
-
-  describe('cell change and modified helpers', () => {
-    const makeWrapper = async (excel = true, flow: any = null) => {
-      const execution = buildExecution()
-      const wrapper = createWrapper({
-        execution,
-        enableExcelMode: excel,
-        externalEtlFlow: flow,
-      })
-      await nextTick()
-      wrapper.vm.selectedTableKey = 'products'
-      await nextTick()
-      return { wrapper, execution }
-    }
-
-    test('handleCellChange records change and emits', async () => {
-      const { wrapper } = await makeWrapper(true)
-      wrapper.vm.handleCellChange('products', 1, 'qty', 5, '8')
-      expect(tableChangesMock.recordChange).toHaveBeenCalled()
-      const args = tableChangesMock.recordChange.mock.calls[0]
-      // qty is integer per schema -> coerced to number 8
-      expect(args[4]).toBe(8)
-      expect(wrapper.emitted('pending-changes-update')).toBeTruthy()
-    })
-
-    test('handleCellChange no-op when not excel mode', async () => {
-      const { wrapper } = await makeWrapper(false)
-      wrapper.vm.handleCellChange('products', 1, 'qty', 5, 8)
-      expect(tableChangesMock.recordChange).not.toHaveBeenCalled()
-    })
-
-    test('handleCellChange routes ETL switch columns to parameter handler', async () => {
-      const flow = {
-        tableSwitches: { products: { variant: 'from_db', fixed: true } },
-        parameterSwitches: {},
-        parameterTableNames: new Set(['products']),
-      }
-      const { wrapper } = await makeWrapper(true, flow)
-      // a product row named 'A' -> paramKey products.A
-      wrapper.vm.handleCellChange('products', 1, '__etl_from_db__', false, true)
-      expect(tableChangesMock.recordChange).not.toHaveBeenCalled()
-    })
-
-    test('handleCellChange on vertical parameter "value" updates ETL switch + editing row', async () => {
-      const flow = {
-        tableSwitches: { parameters: { variant: 'from_db', fixed: true } },
-        parameterSwitches: { 'parameters.horizon': false },
-        parameterTableNames: new Set(['parameters']),
-      }
-      const execution = buildExecution()
-      const wrapper = createWrapper({
-        execution,
-        enableExcelMode: true,
-        externalEtlFlow: flow,
-      })
-      await nextTick()
-      wrapper.vm.selectedTableKey = 'parameters'
-      await nextTick()
-      // begin editing the 'horizon' parameter row so the editingData mirror runs
-      wrapper.vm.startInlineEdit({ id: 'horizon', parameter: 'horizon', value: 10 })
-      wrapper.vm.handleCellChange('parameters', 'horizon', 'value', 10, '15')
-      expect(tableChangesMock.recordChange).toHaveBeenCalled()
-      expect(wrapper.vm.editingData.__etl_from_db__).toBe(false)
-    })
-
-    test('handleModalUpdateChange on vertical parameter resolves field type', async () => {
-      const flow = {
-        tableSwitches: { parameters: { variant: 'from_db', fixed: true } },
-        parameterSwitches: { 'parameters.horizon': false },
-        parameterTableNames: new Set(['parameters']),
-      }
-      const execution = buildExecution()
-      const wrapper = createWrapper({ execution, externalEtlFlow: flow })
-      await nextTick()
-      wrapper.vm.selectedTableKey = 'parameters'
-      await nextTick()
-      wrapper.vm.handleModalUpdateChange('parameters', 'horizon', 'value', '20')
-      expect(tableChangesMock.recordChange).toHaveBeenCalled()
-      const args = tableChangesMock.recordChange.mock.calls.at(-1)
-      // horizon is integer -> coerced to number 20
-      expect(args[4]).toBe(20)
-    })
-
-    test('isCellModified false when not excel', async () => {
-      const { wrapper } = await makeWrapper(false)
-      expect(wrapper.vm.isCellModified(1, 'qty')).toBe(false)
-    })
-
-    test('isCellModified delegates in excel mode', async () => {
-      tableChangesMock.isCellModified = vi.fn(() => true)
-      const { wrapper } = await makeWrapper(true)
-      expect(wrapper.vm.isCellModified(1, 'qty')).toBe(true)
-    })
-
-    test('getModifiedValue returns staged value', async () => {
-      tableChangesMock.getChangesForTable = vi.fn(() => ({
-        '1': { qty: { newValue: 77 } },
-      }))
-      const { wrapper } = await makeWrapper(true)
-      expect(wrapper.vm.getModifiedValue(1, 'qty')).toBe(77)
-    })
-
-    test('getModifiedValue undefined when not excel', async () => {
-      const { wrapper } = await makeWrapper(false)
-      expect(wrapper.vm.getModifiedValue(1, 'qty')).toBeUndefined()
-    })
-
-    test('getRowClass delegates in excel mode', async () => {
-      tableChangesMock.getRowClass = vi.fn(() => 'row-new')
-      const { wrapper } = await makeWrapper(true)
-      expect(wrapper.vm.getRowClass({ id: 1 })).toBe('row-new')
-    })
-
-    test('getRowClass empty when not excel or no item', async () => {
-      const { wrapper } = await makeWrapper(false)
-      expect(wrapper.vm.getRowClass({ id: 1 })).toBe('')
-    })
-  })
-
-  describe('pending changes modal handlers', () => {
-    test('openPendingChangesModal / handleClose toggles visibility', () => {
+    test('opens with the review button', () => {
       const wrapper = createWrapper()
       wrapper.vm.openPendingChangesModal()
       expect(wrapper.vm.showPendingChangesModal).toBe(true)
-      wrapper.vm.handleClosePendingChangesModal()
-      expect(wrapper.vm.showPendingChangesModal).toBe(false)
     })
 
-    test('hasPendingChanges and pendingChangesCount computed', () => {
+    test('counts the pending changes', () => {
       tableChangesMock.hasChanges = { value: true }
       tableChangesMock.totalChangesCount = { value: 4 }
       const wrapper = createWrapper()
       expect(wrapper.vm.hasPendingChanges).toBe(true)
       expect(wrapper.vm.pendingChangesCount).toBe(4)
     })
-
-    test('handleModalUpdateChange records change', async () => {
-      const execution = buildExecution()
-      const wrapper = createWrapper({ execution })
-      await nextTick()
-      wrapper.vm.handleModalUpdateChange('products', '1', 'qty', '12')
-      expect(tableChangesMock.recordChange).toHaveBeenCalled()
-    })
-
-    test('handleRevertChange reverts and emits', async () => {
-      tableChangesMock.revertChange = vi.fn(() => ({ oldValue: 5 }))
-      const execution = buildExecution()
-      const wrapper = createWrapper({ execution })
-      await nextTick()
-      wrapper.vm.handleRevertChange('products', '1', 'qty')
-      expect(execution.instance.data.products.find((r: any) => r.id === 1).qty).toBe(5)
-      expect(wrapper.emitted('pending-changes-update')).toBeTruthy()
-    })
-
-    test('handleRevertRow reverts row fields', async () => {
-      tableChangesMock.revertRowChanges = vi.fn(() => ({
-        qty: { oldValue: 1 },
-        name: { oldValue: 'orig' },
-      }))
-      const execution = buildExecution()
-      const wrapper = createWrapper({ execution })
-      await nextTick()
-      wrapper.vm.handleRevertRow('products', '1')
-      const row = execution.instance.data.products.find((r: any) => r.id === 1)
-      expect(row.qty).toBe(1)
-      expect(row.name).toBe('orig')
-    })
-
-    test('handleRevertTable reverts all rows', async () => {
-      tableChangesMock.revertTableChanges = vi.fn(() => ({
-        '1': { qty: { oldValue: 100 } },
-      }))
-      const execution = buildExecution()
-      const wrapper = createWrapper({ execution })
-      await nextTick()
-      wrapper.vm.handleRevertTable('products')
-      expect(execution.instance.data.products.find((r: any) => r.id === 1).qty).toBe(100)
-    })
-
-    test('handleRevertAll reverts using getAllChanges and clears', async () => {
-      tableChangesMock.getAllChanges = vi.fn(() => ({
-        products: { '1': { qty: { oldValue: 50 } } },
-      }))
-      const execution = buildExecution()
-      const wrapper = createWrapper({ execution })
-      await nextTick()
-      wrapper.vm.handleRevertAll()
-      expect(execution.instance.data.products.find((r: any) => r.id === 1).qty).toBe(50)
-      expect(tableChangesMock.clearAllChanges).toHaveBeenCalled()
-      expect(wrapper.emitted('pending-changes-update')).toBeTruthy()
-    })
   })
 
-  describe('handleSaveAllChanges', () => {
-    test('errors when no instance data', async () => {
-      const wrapper = createWrapper({
-        execution: { instance: { schema: { properties: {} } } },
-      })
+  describe('applying the pending changes', () => {
+    test('fails without instance data', async () => {
+      const wrapper = createWrapper({ execution: { instance: { schema: { properties: {} } } } })
       await wrapper.vm.handleSaveAllChanges()
       expect(wrapper.vm.saveValidationError).toBeTruthy()
     })
 
-    test('applies changes, passes validation, emits save-changes', async () => {
+    test('applies them, validates the data and emits save-changes', async () => {
       tableChangesMock.modifiedTableKeys = { value: ['products'] }
       tableChangesMock.getChangesForTable = vi.fn((key: string) =>
         key === 'products' ? { '1': { qty: { newValue: 42 } } } : null,
@@ -1097,6 +816,7 @@ describe('ExecutionDataView', () => {
       const execution = buildExecution()
       const wrapper = createWrapper({ execution })
       await nextTick()
+      wrapper.vm.openPendingChangesModal()
       await wrapper.vm.handleSaveAllChanges()
       await flushPromises()
       expect(execution.instance.checkSchema).toHaveBeenCalled()
@@ -1105,10 +825,8 @@ describe('ExecutionDataView', () => {
       expect(wrapper.vm.showPendingChangesModal).toBe(false)
     })
 
-    test('rolls back on validation errors', async () => {
-      const execution = buildExecution({
-        checkSchema: vi.fn(async () => [{ message: 'bad' }]),
-      })
+    test('keeps the data when it does not pass the schema', async () => {
+      const execution = buildExecution({ checkSchema: vi.fn(async () => [{ message: 'bad' }]) })
       const wrapper = createWrapper({ execution })
       await nextTick()
       await wrapper.vm.handleSaveAllChanges()
@@ -1117,7 +835,7 @@ describe('ExecutionDataView', () => {
       expect(wrapper.emitted('save-changes')).toBeFalsy()
     })
 
-    test('catches thrown error during save', async () => {
+    test('says what failed', async () => {
       const execution = buildExecution({
         checkSchema: vi.fn(async () => {
           throw new Error('boom')
@@ -1131,16 +849,10 @@ describe('ExecutionDataView', () => {
       expect(wrapper.vm.savingChanges).toBe(false)
     })
 
-    test('applies ETL table switch transitions after save', async () => {
+    test('an edited table from the database becomes "edited from the database"', async () => {
       tableChangesMock.modifiedTableKeys = { value: ['products'] }
-      tableChangesMock.getChangesForTable = vi.fn(() => ({
-        '1': { qty: { newValue: 3 } },
-      }))
-      const flow = {
-        tableSwitches: { products: { variant: 'from_db', fixed: true } },
-        parameterSwitches: {},
-        parameterTableNames: new Set<string>(),
-      }
+      tableChangesMock.getChangesForTable = vi.fn(() => ({ '1': { qty: { newValue: 3 } } }))
+      const flow = etlFlow({ products: { variant: 'from_db', fixed: true } })
       const execution = buildExecution()
       const wrapper = createWrapper({ execution, externalEtlFlow: flow })
       await nextTick()
@@ -1150,25 +862,13 @@ describe('ExecutionDataView', () => {
     })
   })
 
-  describe('modal computed data', () => {
-    test('getRowIdentifiers / getRowsData / getTableHeaders build maps', async () => {
-      const execution = buildExecution()
-      const wrapper = createWrapper({ execution })
-      await nextTick()
-      const ids = wrapper.vm.getRowIdentifiers
-      expect(ids.products['1']).toBe('A') // name used as identifier
-      const rows = wrapper.vm.getRowsData
-      expect(rows.products['1'].name).toBe('A')
-      const headers = wrapper.vm.getTableHeaders
-      expect(headers.products.some((h: any) => h.key === 'selection')).toBe(false)
-      // integer header type mapped to number
-      expect(headers.products.find((h: any) => h.key === 'qty')?.type).toBe('number')
-    })
-  })
-
-  describe('exposed API', () => {
-    test('exposes pending-change helpers', () => {
+  describe('exposed', () => {
+    test('toggles the full screen and gives the pending-change helpers', () => {
       const wrapper = createWrapper()
+      expect(wrapper.vm.fullscreen).toBe(false)
+      wrapper.vm.toggleFullscreen()
+      expect(wrapper.vm.fullscreen).toBe(true)
+      expect(typeof wrapper.vm.saveAllChanges).toBe('function')
       expect(typeof wrapper.vm.openPendingChangesModal).toBe('function')
       expect(typeof wrapper.vm.clearAllChanges).toBe('function')
     })

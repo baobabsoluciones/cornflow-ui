@@ -1,108 +1,85 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount } from '@vue/test-utils'
-import { createVuetify } from 'vuetify'
-import * as components from 'vuetify/components'
-import * as directives from 'vuetify/directives'
+import { describe, test, expect, afterEach } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
 import ForceRetryConfirmDialog from '@cornflow-ui/core/components/core/table/ForceRetryConfirmDialog.vue'
 
-// Stub v-dialog so the card content renders inline (no jsdom overlay errors)
-const dialogStub = {
-  name: 'v-dialog',
-  props: ['modelValue'],
-  template: '<div class="v-dialog-stub"><slot /></div>',
-}
+const i18n = createI18n({
+  legacy: false,
+  locale: 'en',
+  missingWarn: false,
+  fallbackWarn: false,
+  messages: {
+    en: {
+      table: {
+        forceRetry: {
+          title: 'Force retry?',
+          accept: 'Accept',
+          reject: 'Reject',
+        },
+      },
+    },
+  },
+})
 
+// CoreDialog teleports to the body: the dialog is queried from the document.
 describe('ForceRetryConfirmDialog', () => {
-  let vuetify: any
   let wrapper: any
 
-  beforeEach(() => {
-    vuetify = createVuetify({ components, directives })
-  })
-
   afterEach(() => {
-    if (wrapper) wrapper.unmount()
+    wrapper?.unmount()
+    wrapper = null
   })
 
-  const createWrapper = (props = {}) => {
-    const i18n = createI18n({
-      legacy: false,
-      locale: 'en',
-      messages: {
-        en: {
-          table: {
-            forceRetry: {
-              title: 'Force retry?',
-              accept: 'Accept',
-              reject: 'Reject',
-            },
-          },
-        },
-      },
+  const mountDialog = async (props = {}) => {
+    wrapper = mount(ForceRetryConfirmDialog, {
+      props: { modelValue: true, message: 'Other tables use these rows.', ...props },
+      global: { plugins: [i18n] },
+      attachTo: document.body,
     })
-    return mount(ForceRetryConfirmDialog, {
-      props: { modelValue: true, message: 'Some error', ...props },
-      global: {
-        plugins: [vuetify, i18n],
-        stubs: {
-          'v-dialog': dialogStub,
-          'v-icon': true,
-          CoreButton: {
-            name: 'CoreButton',
-            props: ['text', 'loading', 'disabled'],
-            template:
-              '<button class="core-button-stub" :disabled="disabled" @click="$emit(\'click\')">{{ text }}</button>',
-          },
-        },
-      },
-    })
+    await flushPromises()
+    const buttons = Array.from(
+      document.body.querySelectorAll<HTMLButtonElement>('.core-dialog__actions button'),
+    )
+    return { cancel: buttons[0], confirm: buttons[1] }
   }
 
-  test('renders title and message', () => {
-    wrapper = createWrapper({ message: 'Cannot overwrite' })
-    expect(wrapper.text()).toContain('Force retry?')
-    expect(wrapper.find('.force-retry-confirm-dialog__message').text()).toBe(
-      'Cannot overwrite',
+  test('shows the server message with the force-retry texts', async () => {
+    const { cancel, confirm } = await mountDialog()
+    expect(document.body.querySelector('.core-dialog')?.textContent).toContain('Force retry?')
+    expect(document.body.querySelector('.core-confirm-dialog__message')?.textContent).toBe(
+      'Other tables use these rows.',
     )
+    expect(confirm.textContent).toContain('Accept')
+    expect(cancel.textContent).toContain('Reject')
   })
 
-  test('renders accept and reject buttons via i18n', () => {
-    wrapper = createWrapper()
-    const btns = wrapper.findAll('.core-button-stub')
-    expect(btns[0].text()).toBe('Reject')
-    expect(btns[1].text()).toBe('Accept')
+  test('going ahead is the destructive action', async () => {
+    const { confirm } = await mountDialog()
+    expect(confirm.classList).toContain('core-button--tone-danger')
   })
 
-  test('clicking accept emits confirm', async () => {
-    wrapper = createWrapper()
-    await wrapper.findAll('.core-button-stub')[1].trigger('click')
-    expect(wrapper.emitted('confirm')).toBeTruthy()
+  test('confirming emits confirm', async () => {
+    const { confirm } = await mountDialog()
+    confirm.click()
+    expect(wrapper.emitted('confirm')).toHaveLength(1)
+    expect(wrapper.emitted('cancel')).toBeUndefined()
   })
 
-  test('clicking reject emits cancel and update:modelValue false', async () => {
-    wrapper = createWrapper()
-    await wrapper.findAll('.core-button-stub')[0].trigger('click')
+  test('rejecting emits cancel and closes', async () => {
+    const { cancel } = await mountDialog()
+    cancel.click()
     expect(wrapper.emitted('cancel')).toBeTruthy()
-    expect(wrapper.emitted('update:modelValue')![0]).toEqual([false])
+    expect(wrapper.emitted('update:modelValue')).toContainEqual([false])
   })
 
-  test('close icon button triggers cancel', async () => {
-    wrapper = createWrapper()
-    // the close v-btn is rendered as real vuetify button
-    await wrapper.find('button.force-retry-confirm-dialog__close').trigger('click')
-    expect(wrapper.emitted('cancel')).toBeTruthy()
+  test('while retrying the confirm button spins and nothing can be rejected', async () => {
+    const { cancel, confirm } = await mountDialog({ loading: true })
+    expect(confirm.querySelector('.core-spinner')).not.toBeNull()
+    expect(cancel.disabled).toBe(true)
   })
 
-  test('buttons disabled while loading', () => {
-    wrapper = createWrapper({ loading: true })
-    const btns = wrapper.findAll('.core-button-stub')
-    expect(btns[0].attributes('disabled')).toBeDefined()
-    expect(btns[1].attributes('disabled')).toBeDefined()
-  })
-
-  test('loading defaults to false', () => {
-    wrapper = createWrapper()
-    expect((wrapper.vm as any).loading).toBe(false)
+  test('is closed without an offer', async () => {
+    await mountDialog({ modelValue: false })
+    expect(document.body.querySelector('.core-confirm-dialog__message')).toBeNull()
   })
 })

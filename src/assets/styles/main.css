@@ -26,8 +26,8 @@
    ========================================================================== */
 .view-container {
   padding: 24px 40px 16px 40px;
-  height: calc(100vh - 40px - var(--app-top-offset, 0px));
-  max-height: calc(100vh - 40px - var(--app-top-offset, 0px));
+  height: calc(100vh - var(--bottom-bar-height) - var(--app-top-offset, 0px));
+  max-height: calc(100vh - var(--bottom-bar-height) - var(--app-top-offset, 0px));
   overflow-y: auto;
   overflow-x: hidden;
   display: flex;

@@ -7,6 +7,8 @@ import type {
   ExecutionsListEndpoint,
 } from '@cornflow-ui/core/types/executionFilters'
 import type { SchemaOverrides } from '@cornflow-ui/core/utils/schemaOverrides'
+import type { ProposeExecutionName } from '@cornflow-ui/core/composables/create-execution/executionName'
+import type { ExecutionSummaryResolver } from '@cornflow-ui/core/types/executionSummary'
 
 /**
  * Definition for an app-specific section (top-level or subsection).
@@ -200,27 +202,8 @@ export type MasterTableMatchingConfig = {
   compareStrategies: Record<string, MasterTableCompareStrategy>
 }
 
-/**
- * A parameter field shown in the ETL “alternative parameters” column of the load instance step.
- * Each field maps to a cell in instance.data via `instancePath` (`tableName.column`).
- * Used in `etl.alternativeParameterFields` in `src/app/config.ts`.
- */
-export interface LoadInstanceAlternativeParamField {
-  /** Stable id for the form model (unique within the list). */
-  id: string
-  /** i18n key for the field label. */
-  titleKey: string
-  /** Optional i18n key for placeholder text. */
-  placeholderKey?: string
-  type: 'date' | 'text' | 'number'
-  /**
-   * Target location in instance.data: `tableName.column`, e.g. `parameters.start_date`.
-   * Multiple fields with the same table name are merged into one row (first row per table).
-   */
-  instancePath: string
-  /** When true, “Load parameters” is disabled until the value is set. Default true. */
-  required?: boolean
-}
+/** Layout of the sign-in page: the login background behind a card, or a brand panel beside the form. */
+export type LoginLayout = 'photo' | 'brand'
 
 /**
  * Application configuration factory.
@@ -243,9 +226,6 @@ const createAppConfig = () => ({
        * - enableLoadFromDb: show “Obtener todos los datos de base de datos” button alongside
        *   “Cargar archivos”. Clicking it calls POST /etl/ with no files (just schema if sendSchema).
        *   Continue is always blocked until the user loads data via either button.
-       * - alternativeParameterFields: show a form column next to the dropzone so users can
-       *   fill in parameters that are sent as an XLSX to the ETL endpoint instead of uploading.
-       *   See README “ETL — load instance step” for full details.
        */
       etl: {
         useEtlBackend: false,
@@ -253,10 +233,20 @@ const createAppConfig = () => ({
         enableEtlMetadataAndReview: false,
         sendSchema: false,
         enableLoadFromDb: false,
-        alternativeParameterFields: [] as LoadInstanceAlternativeParamField[],
       },
       showTablesWithoutSchema: false,
       showOpenIdUsername: true,
+      /**
+       * Sign-in page. `layout`: 'photo' (the app's login background, the form on a card) or
+       * 'brand' (a panel in the primary colour, with the company logo, the app name and
+       * `description`, beside the form). `subtitle` goes under the title; without it the page
+       * shows a generic one. Both are texts or i18n keys.
+       */
+      login: {
+        layout: 'photo' as LoginLayout,
+        subtitle: '',
+        description: '',
+      },
       /**
        * Optional columns of the project executions table. `showSolver` is the odd one out:
        * the solver column is shown unless it is explicitly set to false, so deployments with
@@ -329,7 +319,6 @@ const createAppConfig = () => ({
       },
 
       sectionTitles: {
-        executions: null as string | null,
         masterData: null as string | null,
         inputData: null as string | null,
         results: null as string | null,
@@ -362,6 +351,12 @@ const createAppConfig = () => ({
 
       enableWarnings: false,
 
+      /**
+       * When true, users may switch to dark mode (or follow the system's) in their settings. Turn it
+       * on once the app's own screens and dashboards read well on dark surfaces.
+       */
+      enableDarkMode: false,
+
       enableSolutionRecalculation: false,
 
       enableMasterTableMatching: false,
@@ -382,9 +377,8 @@ const createAppConfig = () => ({
         enableEditAllMasterTables: false,
 
       /**
-       * When true, if any instance-check table marked with is_warning=false in the schema
-       * contains rows after checks run, the user is blocked from advancing to the next step.
-       * Requires the parent stepper to listen to the 'blocking-errors' emit from CreateExecutionCheckData.
+       * When true, the errors of the data checks (a check table marked with is_warning=false in
+       * the schema that has rows) stop the launch of the execution.
        */
       enableBlockAdvanceOnCheckErrors: false,
 
@@ -433,6 +427,25 @@ const createAppConfig = () => ({
         },
       },
 
+      /**
+       * The "create execution" screen. See docs/create-execution-flows.md.
+       * - `component`: the app's own flow instead of core's page, e.g.
+       *   `() => import('@/app/views/MyCreateExecutionView.vue')`. It is built with
+       *   `useExecutionDraft` and the create-execution blocks, so it keeps every call to the backend.
+       * - `proposeName`: the rule that names the execution when its data is loaded; by default the
+       *   first file's name, or "Data of <date>", followed by the load filters.
+       */
+      createExecution: {
+        component: null as (() => Promise<unknown>) | null,
+        proposeName: null as ProposeExecutionName | null,
+      },
+
+      /**
+       * Developer tools on the "create execution" screen: creating an execution with an uploaded
+       * solution instead of running the solver.
+       */
+      isDeveloperMode: false,
+
       // Overridden from schema config when user enters the app (see general store setSchema + applySchemaConfigToAppConfig)
       solverConfig: {
         showSolverStep: true,
@@ -455,6 +468,18 @@ const createAppConfig = () => ({
         },
       ],
       fileProcessors: {},
+
+      /**
+       * The app's own summary of the loaded execution, the strip at the head of the views of an
+       * execution (input data, results, dashboards). By default it shows the creation date and
+       * the solver under the name, and the execution's state as a badge. A function here gets the
+       * execution and that default, and returns the `meta` line and/or the `badges` it shows
+       * instead, e.g. a badge for the kind of run read from `execution.config`:
+       *   executionSummary: (execution, defaults) => ({
+       *     badges: [{ label: execution.config.mode, tone: 'info' }, ...defaults.badges],
+       *   })
+       */
+      executionSummary: null as ExecutionSummaryResolver | null,
 
       // File extensions the instance upload accepts. Empty means the default
       // (json, xlsx, csv); narrow it to e.g. ['xlsx'] where only Excel is ever received.

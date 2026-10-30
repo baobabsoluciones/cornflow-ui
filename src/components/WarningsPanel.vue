@@ -1,133 +1,166 @@
+<!--
+  WarningsPanel: the bell under the help button, with `enableWarnings`. It is marked while the
+  store holds warnings, and opens them in a panel that can download them all.
+-->
 <template>
-  <div>
-    <v-btn
-      fab
-      icon
-      rounded
-      density="compact"
-      style="position: fixed; right: 0; top: 52px"
-      @click="open = !open"
-    >
-      <v-icon size="20" :color="hasWarnings ? 'warning' : undefined">
-        {{ hasWarnings ? 'mdi-bell-badge' : 'mdi-bell-outline' }}
-      </v-icon>
-    </v-btn>
-
-    <v-card
-      v-if="open"
-      style="
-        position: fixed;
-        right: 40px;
-        top: 50px;
-        width: 360px;
-        max-height: 480px;
-        z-index: 900;
-        display: flex;
-        flex-direction: column;
-      "
-      elevation="6"
-      rounded="lg"
-    >
-      <v-card-title
-        class="d-flex align-center justify-space-between py-3 px-4"
-        style="
-          font-size: 0.95rem;
-          font-weight: 600;
-          background-color: var(--primary);
-          color: white;
-          border-radius: inherit;
-          border-bottom-left-radius: 0;
-          border-bottom-right-radius: 0;
-          flex-shrink: 0;
-        "
+  <CorePopover v-model:open="open" side="left" align="start" :width="360">
+    <template #trigger>
+      <button
+        type="button"
+        :class="['warnings-panel__trigger', { 'has-warnings': hasWarnings }]"
+        :aria-label="t('warnings.title')"
+        :title="t('warnings.title')"
+        data-testid="warnings-trigger"
       >
-        <span>{{ $t('warnings.title') }}</span>
-        <div class="d-flex align-center" style="gap: 4px">
-          <v-btn
-            v-if="hasWarnings"
-            density="compact"
-            variant="text"
-            size="small"
-            color="white"
-            :loading="downloading"
-            style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; min-width: 0"
-            @click="download"
-          >
-            <v-icon size="14" class="mr-1">mdi-download</v-icon>
-            {{ $t('warnings.downloadAll') }}
-          </v-btn>
-          <v-btn
-            icon
-            density="compact"
-            variant="text"
-            color="white"
-            size="x-small"
-            @click="open = false"
-          >
-            <v-icon size="16">mdi-close</v-icon>
-          </v-btn>
-        </div>
-      </v-card-title>
-
-      <div style="overflow-y: auto; flex: 1; padding: 10px; display: flex; flex-direction: column; gap: 6px">
-        <div v-if="warnings.length === 0" class="text-center py-4" style="font-size: 0.82rem; color: grey">
-          {{ $t('warnings.noWarnings') }}
-        </div>
-
-        <div
-          v-for="(warning, i) in warnings"
-          :key="i"
-          style="
-            font-size: 0.82rem;
-            line-height: 1.5;
-            padding: 8px 10px;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            background: #fafafa;
-            word-break: break-word;
-            white-space: pre-wrap;
-          "
-        >
+        <CoreIcon :name="hasWarnings ? 'mdi-bell-badge' : 'mdi-bell-outline'" :size="20" />
+      </button>
+    </template>
+    <section class="warnings-panel" data-testid="warnings-panel">
+      <header class="warnings-panel__head">
+        <span class="warnings-panel__title">{{ t('warnings.title') }}</span>
+        <CoreButton
+          v-if="hasWarnings"
+          variant="text"
+          size="small"
+          icon="mdi-download"
+          :text="t('warnings.downloadAll')"
+          :loading="downloading"
+          data-testid="warnings-download"
+          @click="download"
+        />
+      </header>
+      <p v-if="!hasWarnings" class="warnings-panel__empty">{{ t('warnings.noWarnings') }}</p>
+      <ul v-else class="warnings-panel__list">
+        <li v-for="(warning, index) in warnings" :key="index" class="warnings-panel__item">
           {{ warning.message }}
-        </div>
-      </div>
-    </v-card>
-  </div>
+        </li>
+      </ul>
+    </section>
+  </CorePopover>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue'
-import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+<script setup lang="ts">
+import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
+import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
+import CorePopover from '@cornflow-ui/core/components/core/CorePopover.vue'
 import WarningsRepository from '@cornflow-ui/core/repositories/WarningsRepository'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 
-const repo = new WarningsRepository()
+defineOptions({ name: 'WarningsPanel' })
 
-export default defineComponent({
-  name: 'WarningsPanel',
-  data: () => ({
-    open: false,
-    downloading: false,
-    store: useGeneralStore(),
-  }),
-  computed: {
-    warnings() {
-      return this.store.getWarnings
-    },
-    hasWarnings() {
-      return this.warnings.length > 0
-    },
-  },
-  methods: {
-    async download() {
-      this.downloading = true
-      try {
-        await repo.downloadWarnings()
-      } catch {
-        // silently fail
-      } finally {
-        this.downloading = false
-      }
-    },
-  },
-})
+const repository = new WarningsRepository()
+const { t } = useI18n()
+const store = useGeneralStore()
+
+const open = ref(false)
+const downloading = ref(false)
+
+const warnings = computed<{ message: string }[]>(() => store.getWarnings)
+const hasWarnings = computed(() => warnings.value.length > 0)
+
+/** Downloads every warning; a failed download leaves the panel as it was. */
+async function download() {
+  downloading.value = true
+  try {
+    await repository.downloadWarnings()
+  } catch {
+    // Nothing to tell: the warnings are still on screen.
+  } finally {
+    downloading.value = false
+  }
+}
 </script>
+
+<style scoped>
+.warnings-panel__trigger {
+  position: fixed;
+  top: calc(var(--app-top-offset, 0px) + var(--spacing) * 4 + 44px);
+  right: calc(var(--spacing) * 3);
+  z-index: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+.warnings-panel__trigger.has-warnings {
+  color: var(--color-warning-strong);
+}
+
+.warnings-panel__trigger:hover,
+.warnings-panel__trigger[data-state='open'] {
+  background: var(--color-surface-hover);
+}
+
+.warnings-panel__trigger:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.warnings-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: 480px;
+  font-family: var(--font-sans);
+}
+
+.warnings-panel__head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--spacing) * 2);
+  padding: calc(var(--spacing) * 1) calc(var(--spacing) * 1) calc(var(--spacing) * 2)
+    calc(var(--spacing) * 2);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.warnings-panel__title {
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+.warnings-panel__empty {
+  margin: 0;
+  padding: calc(var(--spacing) * 5) calc(var(--spacing) * 2);
+  font-size: var(--text-md);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.warnings-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 1.5);
+  margin: 0;
+  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 0.5) calc(var(--spacing) * 1);
+  overflow-y: auto;
+  list-style: none;
+}
+
+.warnings-panel__item {
+  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 2.5);
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-md);
+  background: var(--color-warning-soft);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+  color: var(--color-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+</style>

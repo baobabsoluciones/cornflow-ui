@@ -15,17 +15,51 @@ body {
   --color-primary-light: var(--primary-light, #77afdd);
   --color-primary-soft: var(--primary-light-variant, #cbebf5);
   --color-on-primary: #ffffff;
+  /* Tint of the primary for selected rows, open chips and active filters. */
+  --color-primary-subtle: color-mix(in srgb, var(--color-primary) 10%, #ffffff);
   --color-secondary: var(--secondary, #f7be68);
-  --color-success: var(--success, #3b7b5e);
-  --color-warning: var(--warning, #dea727);
-  --color-danger: var(--danger, #f44336);
-  --color-danger-strong: var(--danger-variant, #b43c31);
   --color-text: var(--title, #404040);
   --color-text-muted: var(--subtitle, #6e6e6e);
+  --color-text-subtle: #8a949c;
   --color-background: var(--background, #e6e7e8);
   --color-surface: #ffffff;
+  --color-surface-muted: #f5f6f7;
+  --color-surface-hover: #f2f4f7;
+  --color-inverse: var(--inverse, #263238);
+  --color-on-inverse: #ffffff;
   --color-border: #dcdfe4;
+  --color-border-subtle: rgba(0, 0, 0, 0.08);
+  --color-border-input: #e0e0e0;
+  --color-border-strong: #bdbdbd;
+  --color-divider: #ededed;
   --color-disabled: var(--disabled, #f2f4f7);
+  /* baobab's symbol (`BaobabMark`), in the brand's colour: it does not follow the app's palette. */
+  --color-baobab-mark: #333333;
+
+  /*
+    Tones: each has a base colour, a soft background, a border for that background and the text
+    that reads on it. Soft and border mix the base with white, so they follow the app's palette.
+  */
+  --color-success: var(--success, #3b7b5e);
+  --color-success-soft: color-mix(in srgb, var(--color-success) 12%, #ffffff);
+  --color-success-border: color-mix(in srgb, var(--color-success) 35%, #ffffff);
+  --color-success-strong: color-mix(in srgb, var(--color-success) 85%, #000000);
+  --color-warning: var(--warning, #dea727);
+  --color-warning-soft: color-mix(in srgb, var(--color-warning) 16%, #ffffff);
+  --color-warning-border: color-mix(in srgb, var(--color-warning) 50%, #ffffff);
+  --color-warning-strong: color-mix(in srgb, var(--color-warning) 55%, #000000);
+  --color-danger: var(--danger, #f44336);
+  --color-danger-soft: color-mix(in srgb, var(--color-danger) 12%, #ffffff);
+  --color-danger-border: color-mix(in srgb, var(--color-danger) 40%, #ffffff);
+  --color-danger-strong: var(--danger-variant, #b43c31);
+  --color-info: var(--info, var(--color-primary));
+  --color-info-soft: color-mix(in srgb, var(--color-info) 10%, #ffffff);
+  --color-info-border: color-mix(in srgb, var(--color-info) 30%, #ffffff);
+  --color-info-strong: color-mix(in srgb, var(--color-info) 85%, #000000);
+  --color-neutral: #5c6670;
+  --color-neutral-soft: #eef0f2;
+  --color-neutral-border: #d9dde1;
+  --color-neutral-strong: #4a535b;
 
   /* Type */
   --font-sans: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -57,4 +91,88 @@ body {
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 16px 40px rgba(15, 23, 32, 0.18);
+
+  /*
+    Height of the bar at the foot of the window (the execution tabs) and of the side menu's user
+    row beside it, so their top lines meet. The views leave it free under them.
+  */
+  --bottom-bar-height: 48px;
+
+  /* Layers of what opens over the page; above Vuetify's overlays while both live together. */
+  --z-popover: 2500;
+  --z-dialog: 2600;
+  --z-toast: 2700;
+  --color-scrim: rgba(15, 23, 32, 0.5);
+
+  /* Motion */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/*
+  Dark mode (`data-theme="dark"` on `body`, see `plugins/theme.ts`): dark surfaces and light text.
+  The primary and the tones keep the app's palette, lightened so they read on the dark surfaces;
+  their soft backgrounds and borders mix with the surface instead of white. The app variables that
+  older screens read directly (`--title`, `--background`…) are dark too.
+*/
+body[data-theme='dark'] {
+  color-scheme: dark;
+
+  --title: #e6e8eb;
+  --subtitle: #a3abb3;
+  --background: #121417;
+  --background-variant: #1b1f24;
+  /* The links of the app's stylesheet (`main.css`), lightened as the primary is. */
+  --primary-variant: color-mix(in srgb, var(--primary, #1b5e8a) 70%, #ffffff);
+  --primary-light-variant: color-mix(in srgb, var(--primary, #1b5e8a) 30%, #1b1f24);
+  --disabled: #252a30;
+
+  --color-primary: color-mix(in srgb, var(--primary, #1b5e8a) 70%, #ffffff);
+  --color-primary-light: color-mix(in srgb, var(--primary, #1b5e8a) 45%, #ffffff);
+  --color-primary-soft: color-mix(in srgb, var(--primary, #1b5e8a) 30%, var(--color-surface));
+  --color-primary-subtle: color-mix(in srgb, var(--color-primary) 18%, var(--color-surface));
+  --color-text: #e6e8eb;
+  --color-text-muted: #a3abb3;
+  --color-text-subtle: #7d868f;
+  --color-background: #121417;
+  --color-surface: #1b1f24;
+  --color-surface-muted: #22272d;
+  --color-surface-hover: #2a3037;
+  --color-inverse: #e6e8eb;
+  --color-on-inverse: #1b1f24;
+  --color-border: #343b43;
+  --color-border-subtle: rgba(255, 255, 255, 0.08);
+  --color-border-input: #3a424b;
+  --color-border-strong: #56606b;
+  --color-divider: #2b3138;
+  --color-disabled: #252a30;
+  /* baobab's symbol in the brand's light version. */
+  --color-baobab-mark: #f6f6f6;
+
+  --color-success: color-mix(in srgb, var(--success, #3b7b5e) 75%, #ffffff);
+  --color-success-soft: color-mix(in srgb, var(--color-success) 18%, var(--color-surface));
+  --color-success-border: color-mix(in srgb, var(--color-success) 40%, var(--color-surface));
+  --color-success-strong: color-mix(in srgb, var(--color-success) 70%, #ffffff);
+  --color-warning-soft: color-mix(in srgb, var(--color-warning) 18%, var(--color-surface));
+  --color-warning-border: color-mix(in srgb, var(--color-warning) 45%, var(--color-surface));
+  --color-warning-strong: color-mix(in srgb, var(--color-warning) 75%, #ffffff);
+  --color-danger: color-mix(in srgb, var(--danger, #f44336) 85%, #ffffff);
+  --color-danger-soft: color-mix(in srgb, var(--color-danger) 18%, var(--color-surface));
+  --color-danger-border: color-mix(in srgb, var(--color-danger) 45%, var(--color-surface));
+  --color-danger-strong: color-mix(in srgb, var(--color-danger) 70%, #ffffff);
+  --color-info-soft: color-mix(in srgb, var(--color-info) 18%, var(--color-surface));
+  --color-info-border: color-mix(in srgb, var(--color-info) 40%, var(--color-surface));
+  --color-info-strong: color-mix(in srgb, var(--color-info) 70%, #ffffff);
+  --color-neutral: #8a949c;
+  --color-neutral-soft: #2a3037;
+  --color-neutral-border: #3a424b;
+  --color-neutral-strong: #c3c9cf;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.55);
+  --shadow-xl: 0 16px 40px rgba(0, 0, 0, 0.6);
+  --color-scrim: rgba(0, 0, 0, 0.6);
 }

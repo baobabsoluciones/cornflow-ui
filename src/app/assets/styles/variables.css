@@ -15,6 +15,8 @@ body {
   --accent: #1b5e8a;
   --dark-accent: #181926;
   --disabled: #f2f4f7;
+  /* Dark background of the selection bar and the notifications. */
+  --inverse: #263238;
 
   /* Base colors general charts*/
   --general-color-1: #5b9bd5;

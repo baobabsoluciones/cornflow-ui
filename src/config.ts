@@ -40,7 +40,6 @@ const config = {
   useHashMode: parseBoolean(import.meta.env.VITE_APP_USE_HASH_MODE) ?? false,
   defaultLanguage: '',
   isDeveloperMode: false,
-  enableSignup: false,
   valuesJsonPath: '/values.json',
   auth: {
     type: 'cornflow',
@@ -74,7 +73,6 @@ const config = {
         this.useHashMode = parseBoolean(values.useHashMode) ?? config.useHashMode;
         this.defaultLanguage = values.defaultLanguage || config.defaultLanguage;
         this.isDeveloperMode = parseBoolean(values.isDeveloperMode) ?? config.isDeveloperMode;
-        this.enableSignup = parseBoolean(values.enableSignup) ?? config.enableSignup;
         
         // More detailed auth configuration
         if (values.auth_type === 'cognito' && values.cognito) {
@@ -108,7 +106,6 @@ const config = {
         this.useHashMode = parseBoolean(import.meta.env.VITE_APP_USE_HASH_MODE) ?? config.useHashMode;
         this.defaultLanguage = import.meta.env.VITE_APP_DEFAULT_LANGUAGE || config.defaultLanguage;
         this.isDeveloperMode = parseBoolean(import.meta.env.VITE_APP_IS_DEVELOPER_MODE) ?? config.isDeveloperMode;
-        this.enableSignup = parseBoolean(import.meta.env.VITE_APP_ENABLE_SIGNUP) ?? config.enableSignup;
         
         this.auth = buildAuthFromEnv();
       }
@@ -124,7 +121,6 @@ const config = {
       this.useHashMode = parseBoolean(import.meta.env.VITE_APP_USE_HASH_MODE) ?? false;
       this.defaultLanguage = import.meta.env.VITE_APP_DEFAULT_LANGUAGE || '';
       this.isDeveloperMode = parseBoolean(import.meta.env.VITE_APP_IS_DEVELOPER_MODE) ?? false;
-      this.enableSignup = parseBoolean(import.meta.env.VITE_APP_ENABLE_SIGNUP) ?? false;
       
       this.auth = buildAuthFromEnv();
     }

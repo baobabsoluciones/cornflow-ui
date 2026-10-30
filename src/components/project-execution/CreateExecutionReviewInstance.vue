@@ -1,152 +1,78 @@
 <template>
   <div class="review-instance-wrapper">
-    <!-- Loading overlay for master table matching -->
-    <div
-      v-if="isMasterTableMatchingEnabled && isMasterTableLoading"
-      class="master-table-loading-overlay"
-    >
-      <div class="loading-content">
-        <v-progress-circular indeterminate color="primary" size="40" />
-        <span class="loading-text">{{ $t('masterTableMatch.loading') }}</span>
-      </div>
-    </div>
-
-    <!-- Normal view with maximize button -->
-    <div class="review-instance-container">
-      <div v-if="!isMaximized" class="review-instance-header">
-        <div class="header-buttons">
-          <CoreDropdownMenu :items="excelActionItems" />
-          <input
-            ref="fileInput"
-            type="file"
-            accept=".xlsx,.xls"
-            style="display: none"
-            @change="handleFileUpload"
-            :key="'file-input-normal'"
-          />
-          <v-btn
-            icon="mdi-window-maximize"
-            variant="text"
-            size="small"
-            class="maximize-button"
-            @click="toggleMaximize"
-            :title="$t('projectExecution.maximize')"
-          />
-        </div>
-      </div>
-      <ExecutionDataView
-        ref="executionDataViewRef"
-        :execution="newExecution"
-        :can-check-data="false"
-        :checks-finished="false"
-        :checks-error="false"
-        :master-table-matches="masterTableMatchesWithCanReplace"
-        :master-table-loading="isMasterTableLoading"
-        :enable-excel-mode="true"
-        :external-etl-flow="externalEtlFlow"
-        @save-changes="handleSaveChanges"
-        @master-table-action="handleMasterTableChoice"
-        @show-comparison="handleShowComparison"
-        @pending-changes-update="handlePendingChangesUpdate"
+    <div v-if="showToolbar" class="review-instance-header">
+      <CoreButton
+        variant="outlined"
+        size="small"
+        icon="mdi-microsoft-excel"
+        :text="t('projectExecution.downloadExcel')"
+        @click="downloadExcel"
       />
-      <!-- Error Alert - Show validation errors if any (below the table) -->
-      <v-alert
-        v-if="instanceErrors"
-        type="error"
-        variant="tonal"
-        density="comfortable"
-        class="mt-3"
-        :model-value="true"
-      >
-        <div v-html="instanceErrors"></div>
-      </v-alert>
-      <!-- Force retry dialog when overwrite (replace master) returns offer_force_retry (teleported so it is always on top and clickable) -->
-      <Teleport to="body">
-        <ForceRetryConfirmDialog
-          v-if="hasValidForceRetryOffer"
-          :model-value="hasValidForceRetryOffer"
-          :message="forceRetryOfferValue?.message ?? ''"
-          :loading="forceRetryLoadingValue"
-          @confirm="handleForceRetryConfirm"
-          @cancel="masterTableMatch.rejectForceRetry"
-          @update:model-value="
-            (v) => {
-              if (!v) masterTableMatch.rejectForceRetry()
-            }
-          "
-        />
-      </Teleport>
+      <CoreButton
+        variant="outlined"
+        size="small"
+        icon="mdi-file-arrow-up-down"
+        :text="t('projectExecution.uploadExcel')"
+        @click="uploadExcel"
+      />
+      <CoreButton
+        variant="icon"
+        size="small"
+        icon="mdi-fullscreen"
+        :aria-label="t('projectExecution.maximize')"
+        :title="t('projectExecution.maximize')"
+        @click="toggleMaximize"
+      />
     </div>
+    <input
+      ref="fileInput"
+      type="file"
+      accept=".xlsx,.xls"
+      hidden
+      @change="handleFileUpload"
+    />
+    <ExecutionDataView
+      ref="executionDataViewRef"
+      :execution="newExecution"
+      :master-table-matches="masterTableMatchesWithCanReplace"
+      :master-table-loading="isMasterTableMatchingEnabled && isMasterTableLoading"
+      :enable-excel-mode="true"
+      :external-etl-flow="externalEtlFlow"
+      @save-changes="handleSaveChanges"
+      @master-table-action="handleMasterTableChoice"
+      @show-comparison="handleShowComparison"
+    />
+    <!-- Validation errors of the data, below the table -->
+    <CoreAlert v-if="instanceErrors" tone="error" class="review-instance-errors">
+      <span v-html="instanceErrors" />
+    </CoreAlert>
+    <!-- Replacing a master table that other data depends on (offer_force_retry) -->
+    <ForceRetryConfirmDialog
+      :model-value="hasValidForceRetryOffer"
+      :message="forceRetryOfferValue?.message ?? ''"
+      :loading="forceRetryLoadingValue"
+      @confirm="handleForceRetryConfirm"
+      @cancel="masterTableMatch.rejectForceRetry"
+      @update:model-value="
+        (v) => {
+          if (!v) masterTableMatch.rejectForceRetry()
+        }
+      "
+    />
 
-    <!-- Fullscreen overlay - Teleported to body to avoid stacking context issues -->
-    <Teleport to="body">
-      <transition name="fade">
-        <div
-          v-if="isMaximized"
-          class="fullscreen-overlay"
-          @click.self="toggleMaximize"
-        >
-          <div class="fullscreen-content">
-            <div class="fullscreen-header">
-              <h2 class="fullscreen-title">
-                {{ $t('projectExecution.steps.step4.titleContent') }}
-              </h2>
-              <div class="fullscreen-header-buttons">
-                <CoreDropdownMenu :items="excelActionItems" />
-                <input
-                  ref="fileInputFullscreen"
-                  type="file"
-                  accept=".xlsx,.xls"
-                  style="display: none"
-                  @change="handleFileUpload"
-                  :key="'file-input-fullscreen'"
-                />
-                <v-btn
-                  icon="mdi-window-restore"
-                  variant="text"
-                  size="small"
-                  class="minimize-button"
-                  @click="toggleMaximize"
-                  :title="$t('projectExecution.minimize')"
-                />
-              </div>
-            </div>
-            <div class="fullscreen-body">
-              <ExecutionDataView
-                :execution="newExecution"
-                :can-check-data="false"
-                :checks-finished="false"
-                :checks-error="false"
-                :master-table-matches="masterTableMatchesWithCanReplace"
-                :enable-excel-mode="true"
-                :external-etl-flow="externalEtlFlow"
-                @save-changes="handleSaveChanges"
-                @master-table-action="handleMasterTableChoice"
-                @show-comparison="handleShowComparison"
-                @pending-changes-update="handlePendingChangesUpdate"
-              />
-            </div>
-          </div>
-        </div>
-      </transition>
-    </Teleport>
-
-    <!-- Data comparison modal (only shown when master table matching is enabled) -->
-    <DataComparisonModal
+    <DataComparisonDialog
       v-if="isMasterTableMatchingEnabled && selectedMatchForComparison"
-      v-model="showComparisonModal"
-      :table-name="selectedMatchForComparison.tableName"
-      :master-table-title="selectedMatchForComparison.masterTableTitle"
-      :instance-data="effectiveInstanceDataForComparison"
-      :master-data="selectedMatchForComparison.masterData"
-      :diff-summary="selectedMatchForComparison.diffSummary"
-      :master-table-config="selectedMatchForComparison.masterTableConfig"
-      :full-instance-data="selectedMatchForComparison.fullInstanceData"
-      :instance-schema-columns="selectedMatchForComparison.instanceSchemaColumns"
-      :allow-row-restore="true"
-      :allow-row-delete="true"
-      @restore-master-row="handleRestoreMasterRow"
-      @delete-instance-row="handleDeleteInstanceRow"
+      v-model:open="showComparisonModal"
+      :table-title="selectedMatchForComparison.masterTableTitle"
+      :columns="comparisonColumns"
+      :lines="comparisonLines"
+      :loaded-count="selectedMatchForComparison.diffSummary?.totalInstance ?? comparisonLines.length"
+      :master-count="selectedMatchForComparison.diffSummary?.totalMaster ?? 0"
+      :pending-count="comparisonPendingCount"
+      allow-restore
+      allow-delete
+      @restore="(line) => handleRestoreMasterRow(line.masterRow)"
+      @delete="(line) => handleDeleteInstanceRow(line.loadedRow)"
     />
   </div>
 </template>
@@ -155,9 +81,11 @@
 import { computed, ref, inject, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ExecutionDataView from '@cornflow-ui/core/components/project-execution/ExecutionDataView.vue'
-import CoreDropdownMenu from '@cornflow-ui/core/components/core/CoreDropdownMenu.vue'
-import DataComparisonModal from '@cornflow-ui/core/components/project-execution/DataComparisonModal.vue'
-import { useFullscreen } from '@cornflow-ui/core/composables/useFullscreen'
+import CoreAlert from '@cornflow-ui/core/components/core/CoreAlert.vue'
+import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
+import DataComparisonDialog from '@cornflow-ui/core/components/core/data-table/DataComparisonDialog.vue'
+import { columnsFromHeaders, formatColumnKey } from '@cornflow-ui/core/utils/dataTable'
+import { comparisonLinesFrom } from '@cornflow-ui/core/utils/dataComparison'
 import {
   useExecutionExcel,
   type NewExecution,
@@ -179,24 +107,23 @@ import type { ExternalEtlFlowState } from '@cornflow-ui/core/types/etlFlow'
 interface Props {
   newExecution: NewExecution
   instanceErrors?: string | null
-  isEditMode?: boolean
   externalEtlFlow?: ExternalEtlFlowState | null
-  /** When true, we are on the review-instance step (used to clear stale force-retry dialog when entering the step). */
-  isStepActive?: boolean
+  /**
+   * Show the floating Excel menu and maximize button. A screen that offers them in its own header
+   * turns it off and calls the exposed `downloadExcel`, `uploadExcel` and `toggleMaximize`.
+   */
+  showToolbar?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   instanceErrors: null,
-  isEditMode: false,
   externalEtlFlow: null,
-  isStepActive: false,
+  showToolbar: true,
 })
 
 const emit = defineEmits<{
   (e: 'update:instance', instance: Instance): void
   (e: 'update:instanceErrors', errors: string | null): void
-  (e: 'master-tables-updated', tables: string[]): void
-  (e: 'has-pending-changes', hasChanges: boolean): void
 }>()
 
 // Table changes composable for tracking pending changes
@@ -208,7 +135,6 @@ const showSnackbar = inject('showSnackbar') as
   | undefined
 
 const { t } = useI18n()
-const { isMaximized, toggleMaximize } = useFullscreen()
 
 // Check if master table matching feature is enabled
 const isMasterTableMatchingEnabled = computed(() => {
@@ -218,18 +144,10 @@ const isMasterTableMatchingEnabled = computed(() => {
 // Master table match composable
 const masterTableMatch = useMasterTableMatch()
 
-// Clear any stale force-retry dialog when entering this step (e.g. from a previous replace_master that returned offer_force_retry)
+// A force-retry offer left by an earlier replace_master (offer_force_retry) does not carry over
 onMounted(() => {
   masterTableMatch.rejectForceRetry()
 })
-
-// When step becomes active (e.g. user navigates to this step; component may already be mounted if step content uses v-show), clear dialog
-watch(
-  () => props.isStepActive,
-  (active) => {
-    if (active) masterTableMatch.rejectForceRetry()
-  },
-)
 
 // Unwrap refs for ForceRetryConfirmDialog (composable returns refs; template would see Ref object as truthy and offer.match would be undefined)
 const forceRetryOfferValue = computed(
@@ -441,7 +359,6 @@ const handleReplaceMasterChoice = async (tableKey: string) => {
     )
 
     if (result.masterTablesUpdated.length > 0) {
-      emit('master-tables-updated', result.masterTablesUpdated)
       masterTableMatch.updateMatchAfterAction(tableKey, 'replace_master')
 
       if (showSnackbar) {
@@ -476,10 +393,9 @@ const handleForceRetryConfirm = async () => {
   const { tableKey, tableName } = offer.match
   try {
     const replaced = await masterTableMatch.acceptForceRetry()
-    if (replaced && showSnackbar) {
+    if (replaced) {
       masterTableMatch.updateMatchAfterAction(tableKey, 'replace_master')
-      emit('master-tables-updated', [tableName])
-      showSnackbar(
+      showSnackbar?.(
         t('masterTableMatch.messages.masterTableUpdated', {
           tableName,
         }),
@@ -610,20 +526,11 @@ const handleDeleteInstanceRow = (row: any) => {
   }
 }
 
-// Clear errors handler
-const clearErrors = () => {
-  instanceErrors.value = null
-  emit('update:instanceErrors', null)
-}
-
-// Use a single file input ref that works for both views
 const fileInput = ref<HTMLInputElement>()
-const fileInputFullscreen = ref<HTMLInputElement>()
+const getActiveFileInput = () => fileInput.value
 
-// Get the active file input based on view mode
-const getActiveFileInput = () => {
-  return isMaximized.value ? fileInputFullscreen.value : fileInput.value
-}
+/** Shows the table over the whole window, or back in its place. */
+const toggleMaximize = () => executionDataViewRef.value?.toggleFullscreen()
 
 // Handle instance update callback (e.g. from Excel re-upload)
 const handleInstanceUpdate = (instance: Instance) => {
@@ -642,10 +549,18 @@ const handleInstanceUpdate = (instance: Instance) => {
       }
     }
   }
-  emit('update:instance', {
-    ...props.newExecution.instance!,
-    data: instance.data,
-  } as Instance)
+  // The workbook is new data: a new instance, so the launch does not reuse the one already stored
+  const schemas = generalStore.getSchemaConfig
+  emit(
+    'update:instance',
+    new Instance(
+      null,
+      instance.data,
+      schemas.instanceSchema,
+      schemas.instanceChecksSchema,
+      generalStore.getSchemaName,
+    ),
+  )
 }
 
 const { downloadExcel, handleFileUpload } =
@@ -654,26 +569,54 @@ const { downloadExcel, handleFileUpload } =
     handleInstanceUpdate,
   )
 
-// Excel action items for dropdown menu
-const excelActionItems = computed(() => [
-  {
-    id: 'download-excel',
-    title: t('projectExecution.downloadExcel'),
-    icon: 'mdi-microsoft-excel',
-    action: downloadExcel,
-  },
-  {
-    id: 'upload-excel',
-    title: t('projectExecution.uploadExcel'),
-    icon: 'mdi-file-arrow-up-down',
-    action: () => {
-      const activeInput = getActiveFileInput()
-      if (activeInput) {
-        activeInput.click()
-      }
-    },
-  },
-])
+// ── The comparison with the master table ────────────────────────────────────
+
+const comparisonLines = computed(() => {
+  const match = selectedMatchForComparison.value
+  if (!showComparisonModal.value || !match) return []
+  return comparisonLinesFrom({
+    tableKey: match.tableKey,
+    instanceRows: effectiveInstanceDataForComparison.value,
+    masterRows: match.masterData ?? [],
+    masterTableConfig: match.masterTableConfig,
+    fullInstanceData: match.fullInstanceData,
+    instanceSchemaColumns: match.instanceSchemaColumns,
+  })
+})
+
+/** Columns of the compared table: the instance schema's, else the keys of its rows. */
+const comparisonColumns = computed(() => {
+  const match = selectedMatchForComparison.value
+  if (!match) return []
+  const schema = (props.newExecution.instance as any)?.schema?.properties?.[match.tableKey]?.items
+  if (schema?.properties) {
+    return columnsFromHeaders(
+      Object.entries(schema.properties).map(([key, prop]: [string, any]) => ({
+        key,
+        title: prop?.title,
+        type: prop?.type === 'integer' ? 'number' : prop?.format ?? prop?.type,
+      })),
+    )
+  }
+  const keys = new Set<string>()
+  for (const line of comparisonLines.value) {
+    Object.keys(line.loaded ?? line.master ?? {}).forEach((key) => keys.add(key))
+  }
+  return [...keys]
+    .filter((key) => key !== 'id' && !key.startsWith('__'))
+    .map((key) => ({ key, title: formatColumnKey(key), type: 'text' as const }))
+})
+
+const comparisonPendingCount = computed(() => {
+  const key = selectedMatchForComparison.value?.tableKey
+  if (!key) return 0
+  const edits = tableChanges.getChangesForTable(key) ?? {}
+  return (
+    Object.values(edits).reduce((sum, row) => sum + Object.keys(row).length, 0) +
+    tableChanges.getPendingCreates(key).length +
+    tableChanges.getPendingDeletes(key).length
+  )
+})
 
 const handleSaveChanges = async (data: object) => {
   if (!props.newExecution.instance) {
@@ -743,216 +686,54 @@ const executionDataViewRef = ref<InstanceType<typeof ExecutionDataView> | null>(
   null,
 )
 
-// Handle pending changes update from ExecutionDataView
-const handlePendingChangesUpdate = (
-  hasChanges: boolean,
-  changesCount: number,
-) => {
-  emit('has-pending-changes', hasChanges)
-}
-
 // Check if there are pending changes
 const hasPendingChanges = computed(() => {
   return tableChanges.hasChanges.value
 })
 
 // Expose methods for parent component
+/**
+ * Applies the pending edits as "Save all changes" does. Resolves false when there was nothing to
+ * apply into or the edited data breaks the schema (the edits stay pending and the error shows).
+ */
+async function applyPendingChanges(): Promise<boolean> {
+  if (!tableChanges.hasChanges.value) return true
+  const view = executionDataViewRef.value
+  return view ? view.saveAllChanges() : false
+}
+
+/** Opens the file picker of "Upload Excel": the picked workbook replaces the data. */
+function uploadExcel() {
+  getActiveFileInput()?.click()
+}
+
 defineExpose({
   hasPendingChanges,
   clearPendingChanges: tableChanges.clearAllChanges,
+  applyPendingChanges,
+  downloadExcel,
+  uploadExcel,
+  toggleMaximize,
 })
 </script>
 
 <style scoped>
 .review-instance-wrapper {
-  position: relative;
-  width: 100%;
-}
-
-/* Loading overlay for master table matching */
-.master-table-loading-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(255, 255, 255, 0.85);
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-}
-
-.loading-content {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
-
-.loading-text {
-  color: var(--subtitle);
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.review-instance-container {
-  width: 100%;
-  margin-top: 1rem;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-}
-
-.review-instance-container :deep(.execution-data-view) {
-  flex: 0 1 auto;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  gap: calc(var(--spacing) * 3);
+  height: 100%;
+  min-height: 0;
 }
 
 .review-instance-header {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 20;
-}
-
-.header-buttons {
   display: flex;
-  gap: 4px;
-  align-items: center;
-  margin-top: -95px;
+  justify-content: flex-end;
+  gap: calc(var(--spacing) * 2);
 }
 
-.maximize-button {
-  background: transparent !important;
-  box-shadow: none !important;
-  color: var(--subtitle);
-}
-
-@media (max-width: 1500px) {
-  .header-buttons {
-    margin-top: -110px;
-  }
-}
-
-.maximize-button:hover {
-  background-color: transparent !important;
-  color: var(--title);
-}
-</style>
-
-<!-- Fullscreen overlay styles - not scoped because it's teleported to body -->
-<style>
-.fullscreen-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 10000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-}
-
-.fullscreen-content {
-  width: 100%;
-  height: 100%;
-  background-color: white;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  overflow: hidden;
-}
-
-.fullscreen-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 24px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
-  flex-shrink: 0;
-}
-
-.fullscreen-header-buttons {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.fullscreen-title {
-  font-size: 18px;
-  font-weight: 500;
-  color: var(--title);
-  margin: 0;
-}
-
-.minimize-button {
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
-.minimize-button:hover {
-  background-color: rgba(0, 0, 0, 0.1);
-}
-
-.fullscreen-body {
+.review-instance-wrapper > :deep(.execution-data-view) {
   flex: 1;
-  overflow: auto;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
   min-height: 0;
-}
-
-.fullscreen-body :deep(.execution-data-view) {
-  flex: 0 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-/* Ensure Vuetify dialogs appear above the fullscreen overlay */
-/* These styles target dialogs that are rendered in body alongside the overlay */
-body.fullscreen-overlay-active .v-overlay,
-body.fullscreen-overlay-active .v-dialog,
-body.fullscreen-overlay-active .v-overlay__content {
-  z-index: 10001 !important;
-}
-
-/* Ensure Vuetify menu components also appear above */
-body.fullscreen-overlay-active .v-menu__content,
-body.fullscreen-overlay-active .v-select__menu {
-  z-index: 10001 !important;
-}
-
-/* Transition animations */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-.fade-enter-active .fullscreen-content,
-.fade-leave-active .fullscreen-content {
-  transition:
-    transform 0.3s ease,
-    opacity 0.3s ease;
-}
-
-.fade-enter-from .fullscreen-content,
-.fade-leave-to .fullscreen-content {
-  transform: scale(0.95);
-  opacity: 0;
 }
 </style>

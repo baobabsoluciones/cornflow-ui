@@ -12,7 +12,7 @@ function appParameters() {
   return {
     valuesJsonPath: '/values.json',
     enableRecalculationOnMasterEdit: true,
-    etl: { useEtlBackend: false, sendSchema: false, alternativeParameterFields: [] },
+    etl: { useEtlBackend: false, sendSchema: false, sendInstanceFilesAsZip: false },
     executionSolvers: ['solver_a', 'solver_b'],
     showExtraProjectExecutionColumns: { showSolver: true, showUserName: false },
     agent: { enabled: false, runtime: { adapter: new Adapter('list') } },
@@ -64,7 +64,7 @@ describe('schemaOverrides', () => {
       expect(resolved.etl).toEqual({
         useEtlBackend: true,
         sendSchema: false,
-        alternativeParameterFields: [],
+        sendInstanceFilesAsZip: false,
       })
       expect(resolved.executionSolvers).toEqual(['solver_c'])
       expect(resolved.showExtraProjectExecutionColumns).toEqual(

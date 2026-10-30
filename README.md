@@ -6,6 +6,101 @@ Cornflow-UI is a Vue.js application that serves as the user interface for Cornfl
 
 Cornflow-UI follows a modular architecture organized into distinct functional areas. The application structure is designed to be flexible and adaptable to different optimization problems while maintaining consistency across implementations.
 
+## Side menu
+
+- The menu takes the full height of the window; the execution tab bar starts where it ends.
+- It heads with **New execution**, a button filled in the app's primary colour, for a user who may
+  create executions (the `project-execution` view). It starts a new execution afresh.
+- It keeps apart what belongs to the loaded execution from what is the same for all of them. The
+  loaded execution heads a block that holds its own groups: its input data, its results with the
+  dashboards, and the app sections that need an execution (`requiresSelectedExecution`). The
+  other groups follow, below a divider, the history first.
+- **Folded** (default): a 56 px rail with the app's icon (with several DAGs, the initial of the
+  active one on it), a round "+" for a new execution, the loaded execution (a dot in the colour of
+  its state) boxed with the icons of its groups, one icon per shared group, and the user's
+  initial. Resting the pointer on it opens the whole menu over the content; it folds again when
+  the pointer leaves. Clicking an icon pins it open.
+- **Expanded** (250 px; pinned, the content moves aside):
+  - the full logo and the pin, which keeps the menu open or lets it fold again. Below, in one
+    line, the app name and, with several DAGs, the active one (its label from `schemaLabels`); for
+    a user who may switch DAG, that line is a pill that opens the module selector (see
+    [Module selector and top bar](#module-selector-and-top-bar));
+  - **New execution**, to the screen that creates one;
+  - **Loaded execution**: the selected execution with its date and state. It opens the DAG's
+    five latest executions (a dot in the colour of each state) to switch to, and "See full
+    history". Picking one loads it if needed and selects its tab, as "Load" does in the history.
+    Its groups follow inside the same block; with none loaded, the block says what will show
+    there;
+  - the shared groups;
+  - the user (to the user settings) and "Log out", which asks first.
+- The groups are an accordion, one open at a time. An open group lists its pages, one level: a
+  group of tables is one page, whose tables show as its tabs. The group of the current page opens
+  on its own; closed, it shows a dot when it holds the current page, and how many pages it has.
+- **Narrow screens** (768 px or less): pinned, the menu lies over the content with a scrim, and
+  closes with the X.
+- **Groups**, in order: the history of executions (a page of its own), the entries of premium
+  modules, the app's sections (`appSections`), master data (one group per schema section, or a single
+  "Master data"), and, with an execution selected, its input data and results with the
+  dashboards; last, administration for admins when roles management is on. Each one is gated by
+  the user's roles and the active DAG.
+- **Location**: `components/AppDrawer.vue`, `components/app-drawer/DrawerGroup.vue` (a group
+  and its pages), `components/app-drawer/DrawerExecutionList.vue`,
+  `composables/navigation/useDrawerSections.ts` (the groups and their scope) and
+  `composables/navigation/useDrawerExecutions.ts` (the loaded and latest executions).
+
+### Execution tab bar
+
+At the foot of the app, from where the side menu ends, a tab per loaded execution
+(`components/ExecutionTabBar.vue`):
+
+- Each tab has a dot in the colour of the execution's state, as the side menu shows it: a finished
+  execution reads as its solution ("Optimal"), any other as its own state; a running one shows a
+  spinner. The selected tab is marked; clicking it again deselects it.
+- The × closes a tab; closing the selected one deselects its execution, as clicking it again does.
+  A new execution starts from the side menu ("New execution").
+- Premium modules may decorate the tabs (`decorateExecutionTabs`), e.g. the ⭐ of the current plan.
+
+### Execution summary
+
+The views of the loaded execution (input data, results, dashboard) carry a summary of it beside
+their title (`components/ExecutionSummary.vue`): its name, the date it was created and its solver
+under the name (the solver only where `showExtraProjectExecutionColumns.showSolver` is not
+`false`), and its state as a badge, as the tab bar reads it. Resting the pointer on the name opens
+the execution's details, as in the history.
+
+An app says something else with `parameters.executionSummary` in `src/app/config.ts`: a function
+that gets the loaded execution and the core's summary, and returns the `meta` line and/or the
+`badges` it shows instead (`types/executionSummary.ts`); what it leaves out keeps the core's. Each
+badge is a `label`, a `tone` (`neutral`, `primary`, `info`, `success`, `warning`, `danger`) and an
+optional `title` (its tooltip):
+
+```ts
+executionSummary: (execution, defaults) => ({
+  meta: `${execution.config.days} days · ${defaults.meta}`,
+  badges: [
+    { label: execution.config.mode === 'week' ? 'Strategic' : 'Operational', tone: 'info' },
+    ...defaults.badges,
+  ],
+}),
+```
+
+The app's own views of the execution (`dashboardRoutes`, `appSections`) place it beside their
+title with `<ExecutionSummary />` (`@cornflow-ui/core/components/ExecutionSummary.vue`). As a
+parameter, a DAG can set its own (`schemaOverrides`).
+
+## User settings
+
+The user's own page (`views/UserSettingsView.vue`, reached from the user at the foot of the side
+menu), a card per subject:
+
+- **Account**: the name, e-mail, user name and roles of who is signed in.
+- **Appearance**, when the app offers dark mode (`enableDarkMode`): light, dark or as the system
+  is (see [Dark mode](#dark-mode)).
+- **Language** of the app, among the ones it offers (`languages` in the app config).
+- **Password**, when the app signs in with Cornflow (`auth.type: 'cornflow'`): the new one twice,
+  with what it needs ticked as it is typed (at least 5 characters; upper and lower case letters,
+  numbers and a special character; no spaces; both the same). It is sent once it meets all of it.
+
 ## Execution management section
 
 The execution management section handles the complete lifecycle of optimization executions, from creation to historical tracking.
@@ -20,16 +115,33 @@ The execution management section handles the complete lifecycle of optimization 
   - Execution metadata display (creation date, solver used, status, etc.)
 - **Location**: `HistoryExecutionView.vue`
 
-The history is a card with a filter bar, the number of executions and one table whose rows are
-grouped by day:
+The history is a list and a detail side by side. The list has the filters, the number of
+executions and the executions grouped by day; the detail shows the selected one (the newest when the
+history opens):
 
 ```
-[🔍 Search execution…] [🏭 Plant: All ▾] [📅 Date: Last 30 days ▾] [◎ Execution state: Running ✕] [+ Add filter]
-Clear filters
-12 executions
-Time · End · User · Name · …
-Thursday, 15 October 2026 · 3 executions
+List                                                           Detail
+[🔍 Search by name or description]                             Plan week 42 · adjustment         ☆ 🗑
+[📅 Date Last 30 days ▾] [Plant All ▾] [+ Add filter]          [Replanning]
+11 executions                                 Clear filters    EXECUTION  ✓ Success
+TODAY · 21 OCT  3                                              SOLUTION   ✓ Optimal
+✓ Plan week 42 · adjustment [Replanning] After line 2   10:48  [Load execution] [Download Excel]
+  • Optimal · admin · mip_solver · ⏱ 3 min 00 s                PROGRESS  ✓ Queued ── ✓ Execution ── ✓ Success
+                                                               EXECUTION DATA · EXECUTION PARAMETERS
 ```
+
+- **A row** shows the execution state, the name with its "replanning" and "current plan" tags, the
+  description and the time; under them, the solution state, the user, the solver and the duration. Load and Excel are on the row when
+  the pointer is on it, and resting the pointer opens a summary of the execution beside the list.
+- **The detail** has, next to the name, "mark as current plan" (when the latest-plan module is
+  on) and delete (after a confirmation); then the execution and solution states with their
+  explanation, the server's message when the execution failed, load and download Excel, the progress (queued, running with the
+  time used of its limit, and how it ended), its data and the parameters it was launched with
+  (`configFields`, with their titles; a parameter fed by a frontend-automation table shows the name,
+  not the id). The data rows follow `showExtraProjectExecutionColumns`: user name or full name,
+  finish time, solver and time limit appear only where the app shows them.
+- **Narrow screens** (under 860px): the list takes the whole width, and selecting an execution
+  replaces it with the detail and a "Back to the list".
 
 - **Search**: keeps the executions whose name or description contains the text.
 - **Table filters** (`executionFilters`, see below): one chip each, always there.
@@ -46,7 +158,10 @@ when it comes back full, the history says so and asks to narrow the date.
 
 The chips are generic components (`components/core/filters/`: `FilterChip`, `DateFilterChip`,
 `AddFilterMenu`); the filters on the loaded list live in
-`composables/project-execution/useExecutionHistoryFilters.ts`.
+`composables/project-execution/useExecutionHistoryFilters.ts`. The list and the detail are
+`components/project-execution/` (`ExecutionList`, `ExecutionListItem`, `ExecutionDetailHeader`,
+`ExecutionStateBadge`), and what they show of an execution comes from
+`composables/project-execution/useExecutionDetails.ts`.
 
 ### Execution history filters (optional)
 
@@ -87,18 +202,36 @@ declared with `schemas` only offers its rows on those DAGs). A DAG switch loads 
 a filter keeps its value while the new DAG still offers it, and goes back to "All" otherwise. A DAG
 can declare its own filters, or none, in `schemaOverrides` (see [Several DAGs in one application](#several-dags-in-one-application)).
 
-### Project execution
+### Create execution
 
-- **Purpose**: Step-by-step execution creation workflow
+- **Purpose**: bring the data of a new execution in, review it, check it, set its parameters and
+  launch it.
+- **Flows** (`createExecution` in `src/app/config.ts`, see
+  [docs/create-execution-flows.md](docs/create-execution-flows.md)):
+  - **Core's page** (default): one page, the data card on the left and the launch panel on the
+    right.
+  - **The app's own** (`component`), built with the same logic (`useExecutionDraft`) and blocks.
 - **Features**:
-  - Multi-step execution creation process
-  - Pre-ETL parameters, asked in the load step itself when the config schema declares any - see [Pre-ETL parameters](#pre-etl-parameters-pre_etl)
-  - Instance file upload and validation
-  - Solver configuration (when enabled)
-  - Parameter configuration (when enabled)
-  - Execution review and confirmation
-- **Location**: `ProjectExecutionView.vue`
-- **Configuration**: Controlled by `executionSolvers`, `solverConfig`, and `configFieldsConfig` in `src/app/config.ts`
+  - Data from one or several files, or from the database through the ETL (files replace the
+    tables with the same name)
+  - Load filters (pre-ETL parameters) asked before the data is brought - see
+    [Pre-ETL parameters](#pre-etl-parameters-pre_etl)
+  - Schema errors grouped by table in plain words, with a download of all of them
+  - Review and edit of the tables, comparison with master tables, ETL origin switches; the table
+    fills the data card, and the card's header has the Excel menu (download the data, or
+    overwrite it with a workbook) and "Maximize"
+  - Data checks, out of date as soon as the data changes; optionally blocking. Each check reads as
+    one line with what it found, and its detail is a table titled from the checks schema (a check
+    or column without `title` shows its key in words)
+  - Parameters: the ones to decide on first, the ones with a default under "Advanced"
+  - What is still missing to launch, each item taking the user to it
+  - A proposed name, the launched execution followed live, a draft kept when leaving half done,
+    and relaunching an execution with changes
+- **Location**: `CreateExecutionView.vue`, `components/create-execution/`,
+  `composables/create-execution/`
+- **Configuration**: `createExecution`, `executionSolvers`, `solverConfig`, `configFieldsConfig`,
+  `configFields`, `etl`, `enableBlockAdvanceOnCheckErrors` and `isDeveloperMode` in
+  `src/app/config.ts` - see [Create execution configuration](#create-execution-configuration)
 
 ### Master table matching (instance synchronization)
 
@@ -136,17 +269,23 @@ Examples of matched table names:
 
 #### Visual indicators
 
-- Tables with master table matches display a badge in the tab header
-- Different colors indicate synchronization status (green = identical, orange = has differences)
-- Difference summary shows counts of added, removed, and modified rows
+- The tab of a table with a master table shows whether it is identical to it or has differences
+  (a spinner while comparing, an alert when the comparison failed).
+- A bar over the table names the master table and counts the rows only in the loaded data (+),
+  only in the master (−) and modified (✎), or says "Identical". Its menu offers "Use master data"
+  and "Save to master", each after a confirmation.
 
-#### Data comparison modal
+#### Data comparison
 
-Users can open a detailed comparison view showing:
+"Compare" opens the comparison of the table with its master:
 
-- **Summary tab**: Overview of data counts and differences
-- **Side by side tab**: Both datasets displayed in parallel
-- **Changes tab**: Detailed list of all differences with field-level comparison
+- **Summary**: the rows on each side and four cards (new, removed, modified, identical).
+- **Side by side**: the loaded rows and the master rows aligned row by row, the cells that differ
+  tinted. Each row can be removed from the loaded data or restored from the master.
+- **Changes**: one card per row that differs, filtered by kind; a modified field shows the master
+  value struck through and the loaded one.
+
+What is done here stays as pending changes of the table, reviewed and applied like any other edit.
 
 #### Configuration
 
@@ -208,8 +347,9 @@ When uploading data with `factoria_nombre = "Factory A"`, the system:
 #### Implementation details
 
 - **Composable**: `useMasterTableMatch.ts` manages detection, comparison, and synchronization
-- **Components**: `DataComparisonModal.vue` displays the comparison interface
-- **Integration**: `ExecutionDataView.vue` renders match indicators and action buttons
+- **Components**: `DataComparisonDialog.vue` displays the comparison (its lines come from
+  `utils/dataComparison.ts`); `TableSourceStrip.vue` is the bar over the table
+- **Integration**: `ExecutionDataView.vue` renders the match indicators and the bar
 
 ## Configuration tables section (optional)
 
@@ -309,13 +449,13 @@ The `required` array in each table definition lists property names that must be 
 
 For `type: "string"`, the optional `format` property controls the input and display:
 
-| `format`    | Input in modal / table                   | Description            |
+| `format`    | Input in the table                       | Description            |
 | ----------- | ---------------------------------------- | ---------------------- |
 | `date`      | Date picker / `type="date"`              | Date only (YYYY-MM-DD) |
 | `date-time` | Datetime input / `type="datetime-local"` | Date and time          |
 | `time`      | Time input / `type="time"`               | Time (HH:mm)           |
 
-These apply in the **add/edit modal** and in **inline table editing** (including the pending-changes review modal).
+These apply when editing a cell, in the row being added, in bulk edit and in the review of the pending changes. The table shows the values in the user's format (27/10/2026, 27/10/2026 14:30).
 
 Example:
 
@@ -410,8 +550,8 @@ Example in `paths`:
 - **Multi-language support**: Titles and descriptions support multiple languages
 - **Foreign key relationships**: Automatic handling of foreign key dependencies
 - **Bulk operations**: Support for bulk upload, update, and delete operations
-- **Advanced filtering**: Dynamic filter generation based on field types; list query parameters (section 3.1) support date range filters (“Desde” / “Hasta”) when the path defines `datetime_gte` / `datetime_lte` with `symmetric`
-- **Inline editing**: Direct table cell editing capabilities
+- **Filters**: a filter per column, edited by its type (text, number range, dates, list of values, yes/no); list query parameters (section 3.1) take the filters they can apply, and date range filters (“Desde” / “Hasta”) when the path defines `datetime_gte` / `datetime_lte` with `symmetric`. The rest apply to the loaded rows
+- **Editing**: cell by cell, like a spreadsheet; the changes stay pending until they are reviewed and saved (see [Data tables](#data-tables))
 - **Export functionality**: Excel export for all table data
 
 #### Navigation hierarchy (sections and groups)
@@ -559,8 +699,8 @@ used for now: they get no options, and the browser console says which table is m
 - **Repository**: `SchemaRepository.ts` fetches the schema and returns both table config and `available_automations.sections`; the store keeps sections in `masterDataSections`.
 - **Utils**: `schemaUtils.ts` transforms the schema (including sections and per-table `section` from table/group) into the internal config format.
 - **Service**: `FrontendAutomationService.ts` provides `getMasterDataNavigationWithSections()` to build section → group → table navigation; schema-defined sections are ordered above the default "Master data" block.
-- **Drawer**: `AppDrawer.vue` uses schema sections when present (`masterDataSectionsForDrawer`) and falls back to a single "Master data" section when no schema sections exist. It merges in config-driven sub-sections from `frontendAutomationSectionSubsections` (see [Sub-sections within frontend-automation sections](#sub-sections-within-frontend-automation-sections)).
-- **Component**: `CoreTable.vue` renders the dynamic table interface.
+- **Drawer**: `useDrawerSections.ts` makes one group per schema section when there are any, and a single "Master data" group otherwise. It merges in config-driven sub-sections from `frontendAutomationSectionSubsections` (see [Sub-sections within frontend-automation sections](#sub-sections-within-frontend-automation-sections)).
+- **Component**: `SectionDataTable.vue` renders each table with `CoreDataTable` (see [Data tables](#data-tables)).
 - **View**: `SectionView.vue` manages table display and navigation.
 - **Section sub-sections**: Routes for config-defined sub-sections use `configuration/section/:sectionId/:subsectionKey`; `ConfigurationSectionSubsectionView.vue` (in `src/app/views/`) loads and renders the component from config.
 
@@ -700,8 +840,8 @@ schemaLabels: { planning_dag: 'Planning', stock_dag: 'Stock' },
 
 | DAGs granted | What the user sees |
 | --- | --- |
-| One | The application on that DAG, with no selector. The drawer shows the DAG next to the application name |
-| Several | A module selector in the top bar. The session starts on the DAG picked earlier in the session, else `schema`, else the first granted |
+| One | The application on that DAG, with no selector |
+| Several | The header of the side menu is the module selector. The session starts on the DAG picked earlier in the session, else `schema`, else the first granted |
 | None | A message saying the user has no access to any module |
 
 ⚠️ **The backend decides.** Cornflow grants every DAG to every user unless the deployment runs with
@@ -749,8 +889,9 @@ core: {
   key by key (`etl: { useEtlBackend: true }` keeps the rest of `etl`); arrays and any other value
   replace the app's. A DAG without an entry works with the app's `parameters`.
 - `dashboardLayout` and `instanceDashboardLayout` replace the app's layouts on that DAG.
-- `valuesJsonPath`, `schemaLabels`, `enableRolesManagement`, `allowEditRoles` and
-  `showOpenIdUsername` apply to the whole application: a DAG entry cannot set them. A key the app's
+- `valuesJsonPath`, `schemaLabels`, `enableRolesManagement`, `allowEditRoles`,
+  `showOpenIdUsername` and `enableDarkMode` apply to the whole application: a DAG entry cannot set
+  them. A key the app's
   `parameters` does not declare is ignored too. Both log a console warning naming the DAG.
 - The schema config in Cornflow still sets the solver and the config fields on top of the DAG's
   settings, as it does for a single DAG.
@@ -760,17 +901,22 @@ core: {
 - The Instance, Solution and Experiment classes are shared by every DAG. Logic that differs per DAG
   in them reads the active DAG (`useGeneralStore().getSchemaName`).
 
-The drawer shows the active DAG next to the application name.
+The side menu shows the active DAG beside the application name, with its label from
+`schemaLabels`; folded, the app's icon carries its initial.
 
-### Top bar and modules
+### Module selector and top bar
+
+For a user who may switch DAG, the line under the logo in the side menu (the app name and the
+active DAG) is the module selector: it lists the DAGs, the active one checked. Picking another switches at
+once, unless the switch would discard work (executions open in tabs, or an execution being created):
+then it asks first. After the switch, a view the new DAG doesn't have is left for its default view.
+The logic is in `composables/navigation/useSchemaSwitch.ts`.
 
 The top of the layout is a fixed stack, in this order: the top bar, the staging notice and the
 global banners of premium modules (`app-banners`), which keep their own `position: fixed` and land
 below the other two. The views start below the whole stack. The top bar is a light band tinted with
-the app's primary colour and only shows while it has something in it: the module selector, for users
-who may switch DAG, and what premium modules mount with the `app-top-bar` slot of
-`globalComponents`. The selector shows the modules side by side, up to four; with more, the module is
-picked from a menu. Premium modules also get:
+the app's primary colour and only shows while it has something in it: what premium modules mount
+with the `app-top-bar` slot of `globalComponents`. Premium modules also get:
 
 - an `onActiveSchemaChanged(schema, ctx)` hook, to reset what they keep per DAG;
 - `ctx.getActiveSchema()` in the extension context;
@@ -791,7 +937,7 @@ The application processes schemas through several layers:
 1. **API Layer**: `SchemaRepository.ts` fetches schema data from backend
 2. **Transformation**: `schemaUtils.ts` converts schemas to internal format
 3. **Service Layer**: `FrontendAutomationService.ts` provides utility functions
-4. **Component Layer**: `CoreTable.vue` renders dynamic interfaces
+4. **Component Layer**: `CoreDataTable.vue` renders the tables (through `SectionDataTable.vue` and `ExecutionDataView.vue`)
 5. **View Layer**: `SectionView.vue` manages navigation and display
 
 ### Dynamic route generation
@@ -811,7 +957,7 @@ Unlike `dashboardPages` / `instanceDashboardPages` (which add subsections inside
 - **Configuration**: In `createAppConfig()`, set the `appSections` array. Each entry has `path`, `name`, `titleKey`, `icon`, `component` (lazy import), and optional `subPages` with the same shape.
 - **Gating**: optional `roles` (role names) and `schemas` (DAG names) show an entry only to users with one of those roles, and only while the session works on one of those DAGs. They gate the drawer entry and the route (the route goes to the forbidden page).
 - **Router**: Routes are registered via `getAppSectionRoutes()` (used in `src/router/index.ts`).
-- **Drawer**: Menu items are built from `getAppSections()` in `AppDrawer.vue` (title resolved with i18n from `titleKey`).
+- **Drawer**: Menu items are built from `getAppSections()` in `useDrawerSections.ts` (title resolved with i18n from `titleKey`).
 
 Example: one section with one view (e.g. Agent), or multiple sections with subsections, without touching the router or drawer code.
 
@@ -894,7 +1040,6 @@ VITE_APP_IS_STAGING_ENVIRONMENT=false      # true/false (also accepts 1/0)
 VITE_APP_USE_HASH_MODE=false               # true/false (also accepts 1/0)
 VITE_APP_DEFAULT_LANGUAGE=en               # en, es, fr
 VITE_APP_IS_DEVELOPER_MODE=false           # true/false (also accepts 1/0)
-VITE_APP_ENABLE_SIGNUP=false               # true/false (also accepts 1/0)
 
 # Authentication configuration
 VITE_APP_AUTH_TYPE=cornflow                # Options: cornflow, azure, cognito
@@ -921,7 +1066,6 @@ Copy `public/values.template.json` to `public/values.json` and configure your va
   "useHashMode": false,
   "defaultLanguage": "en",
   "isDeveloperMode": false,
-  "enableSignup": false,
   "auth_type": "cornflow",
   "cognito": {
     "region": "your-region",
@@ -1020,11 +1164,14 @@ This file contains **internal application-specific configuration** that is part 
 | `enableAutoInstanceDashboard` | `boolean`  | Auto-generate dashboards for instance tables          |
 | `enableAutoSolutionDashboard` | `boolean`  | Auto-generate dashboards for solution tables          |
 | `enableMasterTableMatching`   | `boolean`  | Enable master table matching during instance review   |
+| `enableDarkMode`              | `boolean`  | Users may switch to dark mode in their settings (see [Dark mode](#dark-mode)) |
 | `executionSolvers`            | `string[]` | List of available solvers for execution               |
 | `instanceFileFormats`         | `string[]` | File extensions the instance upload accepts. Empty or absent means the default (`json`, `xlsx`, `csv`). |
 | `executionFilters`            | `ExecutionFilter[]` | Filters of the execution history, fed by frontend-automation tables. Empty means date filters only. See [Execution history filters](#execution-history-filters-optional) |
+| `executionSummary`            | `ExecutionSummaryResolver` \| `null` | The app's own summary of the loaded execution; `null` means the core's. See [Execution summary](#execution-summary) |
 | `executionsListEndpoint`      | `{ path, isExternal }` \| `null` | Endpoint of the executions list; `null` means Cornflow's `GET /execution/` |
 | `schemaLabels`                | `Record<string, string>` | Text of each DAG in the module selector, by DAG name. See [Several DAGs](#several-dags-in-one-application) |
+| `login`                       | `{ layout, subtitle, description }` | Sign-in page: `layout` is `'photo'` (default) or `'brand'`. See [Sign-in page](#sign-in-page) |
 
 #### showExtraProjectExecutionColumns
 
@@ -1054,7 +1201,6 @@ Customize navigation section titles using i18n keys. See [Custom section titles]
 
 | Property     | Type             | Description                                                                |
 | ------------ | ---------------- | -------------------------------------------------------------------------- |
-| `executions` | `string \| null` | Custom i18n key for executions section (default: `navigation.executions`)  |
 | `masterData` | `string \| null` | Custom i18n key for master data section (default: `navigation.masterData`) |
 | `inputData`  | `string \| null` | Custom i18n key for input data section (default: `navigation.inputData`)   |
 | `results`    | `string \| null` | Custom i18n key for results section (default: `navigation.results`)        |
@@ -1065,17 +1211,17 @@ Controls the solver selection step. See [Solver step documentation](#solver-step
 
 | Property         | Type      | Description                                      |
 | ---------------- | --------- | ------------------------------------------------ |
-| `showSolverStep` | `boolean` | Show solver selection step in execution creation |
-| `defaultSolver`  | `string`  | Default solver when step is skipped              |
+| `showSolverStep` | `boolean` | Let the user pick the solver when creating an execution |
+| `defaultSolver`  | `string`  | Solver used when it is not asked, and picked to start with |
 
 #### configFieldsConfig
 
-Controls the configuration fields step. See [Config fields documentation](#configuration-parameters-step-configfieldsconfig) for details.
+Controls the parameters of a new execution. See [Parameters: configFieldsConfig](#parameters-configfieldsconfig) for details.
 
 | Property               | Type      | Description                                         |
 | ---------------------- | --------- | --------------------------------------------------- |
-| `showConfigFieldsStep` | `boolean` | Show config fields step in execution creation       |
-| `autoLoadValues`       | `boolean` | Auto-load values from instance when step is skipped |
+| `showConfigFieldsStep` | `boolean` | Show the parameters when creating an execution      |
+| `autoLoadValues`       | `boolean` | With them hidden, take their values from the instance or their default |
 
 #### tableDashboards
 
@@ -1095,12 +1241,18 @@ Maps status codes to display properties. Each state entry contains:
 | `color`      | `string` | Color identifier for the status chip |
 | `messageKey` | `string` | i18n key for the tooltip message     |
 | `codeKey`    | `string` | i18n key for the status label        |
+| `icon`       | `string` | Optional `mdi-*` icon of the state   |
+
+The colour gives the tone: `green` success, `orange` warning, `red` danger, `purple` primary,
+`blue` info and `grey` neutral. Without `icon` each tone has its own. Running (`0`) and queued
+(`-7`) executions look the same in every app, a spinner and a clock, whatever their colour.
 
 ## 2.2. App folder configuration
 
 Inside the app folder, there are several changes that can be done to configurate your client project. This folder is meant to be for all customizations done for the client.
 
-- `assets/logo`: This directory should contain the logo images for the application. The name should be the same as the default ones (logo.png and full_logo.png)
+- `assets/logo`: This directory should contain the logo images for the application. The name should be the same as the default ones (logo.png and full_logo.png; company_logo.png, light on dark, for the `brand` sign-in page)
+- `assets/login_background.png`: the background of the `photo` sign-in page (see [Sign-in page](#sign-in-page)).
 - `app/assets/style/variables.css`: This file should define the main colors of the application. Mantain the variable names and only change the colors. The core's design tokens and the Vuetify theme take their colours from these variables (see [Design tokens](#design-tokens)).
 - `models`: This directory should define the instance, solution, experiment, and execution models for the application. It always extends the main classes but methods can be overwritten.
 - `views`: This directory should contain all the custom views needed for the application.
@@ -1133,14 +1285,100 @@ imports it, so an application gets the tokens with the core's stylesheet.
 The tokens are declared on `body`, where the app variables live. Their names follow Tailwind 4's
 theme variables.
 
-**Vuetify.** When the app starts, the Vuetify theme's `primary` is set to the app's
-`--color-primary` (`applyTokensToTheme` in `src/plugins/vuetify.ts`), so Vuetify components with
-`color="primary"` paint with the same colour as the core's own components. The token has to be a
-hex colour; otherwise the theme keeps its default with a console warning.
+**Vuetify.** When the app starts, and on each change between light and dark, the Vuetify theme's
+`primary` is set to the app's `--color-primary` (`applyTokensToTheme` in `src/plugins/vuetify.ts`),
+so Vuetify components with `color="primary"` paint with the same colour as the core's own
+components. A token written otherwise than in hex (a `color-mix`) is read as the colour the browser
+computes; a token that is not a colour leaves the theme's default, with a console warning.
 
-**Catalog.** `npm run catalog` opens the component catalog (`dev/catalog/`): the tokens and, as they
-are added, every core component with its variants and states. It is a development page and is not
-part of the package.
+### Dark mode
+
+With `enableDarkMode` in the app's parameters, each user picks light, dark or the system's in their
+settings ("Appearance"); the choice stays in the browser (`plugins/theme.ts`). Dark puts
+`data-theme="dark"` on `body`, which swaps the colour tokens for dark ones (`tokens.css`), and
+switches Vuetify to its dark theme.
+
+- The dark tokens keep the app's palette: the primary and the tones are lightened so they read on
+  dark surfaces, and their soft backgrounds and borders mix with the surface instead of white.
+- The app variables that older screens read directly (`--title`, `--subtitle`, `--background`…)
+  are dark too. `--primary` is the app's own: a screen that paints text with it, instead of
+  `--color-primary`, keeps the darker colour.
+- The flag is off by default, and applies to the whole application (a DAG cannot set it): turn it
+  on once the app's own screens and dashboards read well on dark surfaces. The catalog has a
+  light/dark switch to review the core's components in both.
+
+**Catalog.** `npm run catalog` opens the component catalog (`dev/catalog/`): the tokens and every
+core component with its variants and states. It is a development page and is not part of the
+package. Every component styled with the tokens has a block there that names it
+(`tests/unit/core/catalog.spec.ts` checks it), so a new component comes with its block.
+
+### Core components
+
+The core's own components live in `src/components/core/` and are written without Vuetify: they
+take their look from the tokens, with the styles inside each component.
+
+| Component | What it is |
+| --- | --- |
+| `CoreIcon`, `CoreSpinner` | A Material Design Icons glyph (`mdi-*`); a loading ring |
+| `CoreButton` | Filled, outlined, text and icon buttons, in five sizes, with `loading` |
+| `CoreTextField`, `CoreSelect` | A text box (text, numbers, dates, times, passwords, several lines) and a dropdown, in three sizes |
+| `CoreCheckbox`, `CoreSwitch` | A checkbox (with an indeterminate state) and an on/off switch |
+| `CoreSegmentedControl` | Joined buttons where one is picked, to switch views or modes |
+| `CoreMultiSelect` | A dropdown to pick several options, with a search box when the list is long |
+| `CoreBadge` | A short status or tag, as a pill or a dot, in a tone |
+| `CoreAlert` | A message inside the page (error, warning, info, success) with an optional action |
+| `CoreEmptyState`, `CoreSkeleton`, `CoreProgressBar` | Empty and loading states, progress |
+| `CoreDescriptionList`, `CoreTimeline` | Label/value pairs; the steps of a process |
+| `CorePopover`, `CorePopoverPanel`, `CoreMenu` | A floating panel and the list inside it |
+| `CoreDialog`, `table/CoreConfirmDialog` | A modal dialog; a confirmation |
+| `CoreHoverCard` | A preview that opens when the pointer rests on its trigger |
+| `CoreSnackbar` | The app's toast (`showSnackbar`) |
+| `table/CoreSearchInput`, `filters/*` | The search box and the filter chips |
+| `CoreTitleView` | The title of a view, with an `actions` slot |
+
+### Data tables
+
+Every table of data (master data, the input data and results of an execution, the review of a new
+execution and the checks) is a `CoreDataTable` (`src/components/core/data-table/`):
+
+| Piece | What it is |
+| --- | --- |
+| `CoreDataTable` | The card: tabs and source bar (slots), toolbar, grid, footer with the row count and the pending changes, the selection bar and the bulk dialogs |
+| `CoreDataGrid`, `DataGridEditor` | The grid: only the visible rows are drawn; sort, resize and fit columns, density, first column fixed; a cell is picked with a click or the arrows and edited with Enter, F2, a double click or by typing; Delete empties it |
+| `DataTableTabs` | The tables of a group, with their row count, pending changes, check level, master comparison and data origin |
+| `filters/ConditionFilterChip` | A column filter as a chip, always visible, with an editor by type |
+| `PendingChangesPanel` | The review of the pending changes beside the table, expandable to a dialog where the values can be corrected |
+| `BulkEditDialog`, `BulkUploadDialog`, `RelaunchDialog` | Set fields in the selected rows; upload a file (modes, progress); launch an edited execution as a new one |
+| `TableSourceStrip`, `DataComparisonDialog` | Data origin and master-table comparison of a table |
+| `ParametersTable`, `MessageList` | A table of one record as a list of its fields; a check that only returns sentences |
+
+The table shows and edits; the screen owns the data. It gets the rows already filtered and in order
+and is told the search, the filters, the order and the selection (`v-model`), so a table can filter
+on the server or in the browser. `useDataTableRows` filters, searches and sorts rows held in the
+browser; `useDataTableChanges` and `pendingChangeGroups` connect a table and the review to the
+pending changes (`useTableChanges`). The model (`DataColumn`, `DataFilter`…) is in `types.ts`, the
+formatting and parsing of values in `utils/dataTable.ts`.
+
+A table of one record (the parameters of the master data or of an instance) shows as a list of its
+fields. A yes/no column whose property in the table schema has `"pinsRow": true` pins its row: it
+shows as a switch, and the rows where it is on are highlighted. The catalog has every piece ("Data
+tables").
+
+The create-execution screen has blocks of its own in `src/components/create-execution/` (the data
+card, the launch panel, the checks, the parameters…), built with the `Core*` components and fed by
+`useExecutionDraft`; an app composes them into a flow of its own - see
+[docs/create-execution-flows.md](docs/create-execution-flows.md).
+
+Overlays (popover, menu, dialog, hover card) are built on [Reka UI](https://reka-ui.com), which
+gives focus handling, keyboard and ARIA without styles. The views use the `Core*` components, not
+Reka directly.
+
+Tones (`neutral`, `primary`, `info`, `success`, `warning`, `danger`) have four tokens each:
+`--color-<tone>` and its `-soft`, `-border` and `-strong` variants (see `tokens.css`). Overlays sit
+above Vuetify's with `--z-popover`, `--z-dialog` and `--z-toast`.
+The execution tab bar at the foot of the window is `--bottom-bar-height` tall, as is the side
+menu's user row beside it; an app view that fills the window leaves it free:
+`height: calc(100vh - var(--bottom-bar-height))`.
 
 ## 3. Important disclaimer
 
@@ -1158,7 +1396,6 @@ It's important not to edit any other file or folders. Only the folders, files an
 | **Hash Mode**           | Router mode (hash vs history) | `VITE_APP_USE_HASH_MODE`          | `useHashMode`          | `true`/`false` (accepts `1`/`0`) |
 | **Default Language**    | UI language                   | `VITE_APP_DEFAULT_LANGUAGE`       | `defaultLanguage`      | A visible core language (`en`, `es`, `fr`) |
 | **Developer Mode**      | Enable dev features           | `VITE_APP_IS_DEVELOPER_MODE`      | `isDeveloperMode`      | `true`/`false` (accepts `1`/`0`) |
-| **Enable Signup**       | Show registration option      | `VITE_APP_ENABLE_SIGNUP`          | `enableSignup`         | `true`/`false` (accepts `1`/`0`) |
 | **External App**        | API URL prefix mode           | `VITE_APP_EXTERNAL_APP`           | `hasExternalApp`       | `true`/`false` (accepts `1`/`0`) |
 | **Staging Environment** | Show staging banner           | `VITE_APP_IS_STAGING_ENVIRONMENT` | `isStagingEnvironment` | `true`/`false` (accepts `1`/`0`) |
 
@@ -1245,6 +1482,35 @@ VITE_APP_AUTH_DOMAIN=your_cognito_domain
 VITE_APP_AUTH_PROVIDERS=google,microsoft
 ```
 
+#### Sign-in page
+
+The sign-in page has two layouts, picked with `login.layout` in the app config (`core.parameters`):
+
+| `layout` | What it shows |
+| --- | --- |
+| `photo` (default) | `assets/login_background.png` fills the window. The form sits on a white card on the right; the app's full logo (`full_logo.png`) and the product mark sit on a small card at the bottom left |
+| `brand` | A panel in the app's primary colour on the left, with the company logo (`company_logo.png`, shown in white), the app name and `login.description`; the form on the right |
+
+```ts
+parameters: {
+  login: {
+    layout: 'brand',
+    subtitle: 'login.subtitle', // under the title; an i18n key or the text itself
+    description: 'login.description', // brand layout only; an i18n key or the text itself
+  },
+}
+```
+
+- The title is the app name (`VITE_APP_NAME` / `name`), its first word in bold.
+- Without `subtitle` the page says "Sign in to continue."; without `description` the brand panel
+  shows none.
+- The form always signs in against Cornflow. The Microsoft and Google buttons are always there and
+  go through the deployment's external auth (Azure, or Cognito with `VITE_APP_AUTH_PROVIDERS`); on a
+  deployment without them configured, picking one says so.
+- The footer offers the app's languages (`languages` in the app config) when it has more than one.
+- **Location**: `components/SignInLanding.vue` (the layouts), `components/sign-in/SignInForm.vue`,
+  `components/sign-in/SignInLanguages.vue` and `composables/sign-in/useSignIn.ts`.
+
 ### Dashboard preferences
 
 To save dashboard preferences for a single execution, including filters, checks, and date ranges, utilize the `setDashboardPreference` method from the `LoadedExecution.ts` class. Subsequently, retrieve these preferences using the `getDashboardPreference` method. The data type is custom, allowing for flexible usage as needed.
@@ -1323,11 +1589,10 @@ The application allows customization of navigation section titles through i18n k
 
 #### Default section titles
 
-The application has four main navigation sections with default titles:
+The application has three main navigation sections with default titles:
 
 | Section Key  | English Default      | Spanish Default         | French Default           |
 | ------------ | -------------------- | ----------------------- | ------------------------ |
-| `executions` | Executions           | Ejecuciones             | Exécutions               |
 | `masterData` | Configuration tables | Tablas de configuración | Données de configuration |
 | `inputData`  | Input data           | Datos de entrada        | Données d'entrée         |
 | `results`    | Results              | Resultados              | Résultats                |
@@ -1342,7 +1607,6 @@ Add custom translations in your app's locale files (`src/app/plugins/locales/*.t
 // src/app/plugins/locales/en.ts
 export default {
   sectionTitles: {
-    executions: 'Plans', // Custom title for executions
     masterData: 'Master Data', // Custom title for configuration
     inputData: 'Inputs', // Custom title for input data
     results: 'Outputs', // Custom title for results
@@ -1352,7 +1616,6 @@ export default {
 // src/app/plugins/locales/es.ts
 export default {
   sectionTitles: {
-    executions: 'Planes',
     masterData: 'Datos Maestros',
     inputData: 'Entradas',
     results: 'Salidas',
@@ -1367,7 +1630,6 @@ You can also point to specific translation keys in `src/app/config.ts`:
 ```typescript
 parameters: {
   sectionTitles: {
-    executions: 'myApp.nav.plans',      // Use custom i18n key
     masterData: null,                    // Use default (navigation.masterData)
     inputData: 'myApp.nav.inputs',      // Use custom i18n key
     results: null,                       // Use default (navigation.results)
@@ -1527,35 +1789,41 @@ For example, in a scheduling application, one file might contain employee data, 
 
 The system automatically detects files that match the configured prefixes and processes them using the corresponding methods before merging all the processed parts into the final instance. Files that don't match any configured prefix are processed using the standard method.
 
-### Create project execution steps customization
+<a id="create-execution-configuration"></a>
 
-#### Solver step: solverConfig
+### Create execution configuration
 
-Controls the solver selection step and default solver for executions.
+#### Flow: createExecution
 
-- `showSolverStep` (boolean):
-  - If true, shows the solver selection step to the user.
-  - If false, skips the step and uses the value in `defaultSolver` automatically.
-- `defaultSolver` (string):
-  - The solver to use if `showSolverStep` is false.
-  - Used in the execution config as `newExecution.config.solver`.
+- `component` (lazy component, optional): the app's own flow instead of core's page, e.g.
+  `() => import('@/app/views/MyCreateExecutionView.vue')`.
+- `proposeName` (function, optional): how the execution is named when its data is loaded; by
+  default the first file's name, or "Data of <date>", followed by the load filters.
 
-#### Configuration parameters step: configFieldsConfig
+See [docs/create-execution-flows.md](docs/create-execution-flows.md) for building a flow of your own.
 
-Controls the config fields step and value loading for execution parameters.
+#### Solver: solverConfig
 
-- `showConfigFieldsStep` (boolean):
-  - If true, shows the config fields step to the user.
-  - If false, skips the step and loads values automatically from the instance or defaults.
-- `autoLoadValues` (boolean):
-  - If true, loads config field values from the instance (or default) when the step is skipped.
-  - Used in ProjectExecutionView.vue to call value loading after the instance is loaded or before steps that need config values.
+- `showSolverStep` (boolean): whether the user picks the solver: a choice under the parameters'
+  "Advanced", shown only when there is more than one solver.
+- `defaultSolver` (string): the solver used when it is not asked, and the one picked to start
+  with. It goes in the execution config as `config.solver`.
 
-With the step shown, loading the data fills the fields that declare a `source` with the value the
-loaded file has for them, and the user can still change it. The step tags those fields "From the
+#### Parameters: configFieldsConfig
+
+- `showConfigFieldsStep` (boolean): whether the launch panel shows the parameters.
+- `autoLoadValues` (boolean): with the parameters hidden, their values are settled from the loaded
+  instance (fields with a `source`) or their default.
+
+With the parameters shown, loading the data fills the fields that declare a `source` with the value
+the loaded file has for them, and the user can still change it; those fields are tagged "From the
 file". A field the file does not have keeps its value (its default, until the user types one).
 
-#### Configuration parameters step: configFields
+The parameters to decide on (required, or without a default) come first and the ones
+with a default are folded under "Advanced" with a summary of their values. Only the required ones
+(the config schema's root `required`) stop the launch.
+
+#### Parameters: configFields
 
 Defines the configuration fields for execution parameters. Each field can have:
 
@@ -1576,7 +1844,7 @@ Defines the configuration fields for execution parameters. Each field can have:
 - `options` (Array<{label: string, value: any}>, for select type): Options for select fields.
 - `joinFrom` (string, from the schema): Set from `"join_from": "<table>.<column>"`. The field is a select whose options are the rows of that frontend-automation table. See [Selectors fed by frontend-automation tables](#selectors-fed-by-frontend-automation-tables).
 - `preEtl` (boolean, from the schema): Set from `"pre_etl": true`. See [Pre-ETL parameters](#pre-etl-parameters-pre_etl).
-- `required` (boolean, from the schema): Set when the config schema's root `required` lists the key. Only the pre-ETL step reads it, to decide what blocks **Continue**.
+- `required` (boolean, from the schema): Set when the config schema's root `required` lists the key. A required parameter or load filter that is empty stops the launch or the load.
 
 **Fields derived from the backend schema.** Once the app has the schema from `GET /schema/<name>/`, `getExecutionConfigFromSchemaConfig` (in `schemaUtils.ts`) rebuilds `configFields` from `schema.config.properties`, so the backend schema is the source of truth for which fields exist and how they look. The fields `src/app/config.ts` declares with a `source` or a `default` say something the schema cannot (where this app reads the value, or what it sends when nothing else does), so `mergeAppConfigFields` keeps them on top: their properties win over those of the schema field with the same key, and they are kept even when the schema has no such property. The rest of the fields declared in `src/app/config.ts` give way to the schema. When a field with a `source` finds no value in the loaded instance, the browser console says so. The mapping:
 
@@ -1624,40 +1892,56 @@ config JSON schema:
 }
 ```
 
-The wizard shows it as a select with one option per row of the `plants` frontend-automation table:
+It is shown as a select with one option per row of the `plants` frontend-automation table:
 the text is the row's `name`, and the value it stores in the config (and sends to the ETL) is the
 row's `id`. See [Selectors fed by frontend-automation tables](#selectors-fed-by-frontend-automation-tables);
 without frontend automation the select has no options.
 
-**Where they are asked.** In the load-instance step itself, before choosing where the data comes
-from, so they read as part of loading rather than as a separate stage:
+**Several values.** A parameter of `"type": "array"` with `join_from` (or with `items.enum`) is a
+select of several: the user picks any number of rows, and the config stores the list of their
+`id`s. With nothing picked it is empty, like any other value, and is not sent:
 
+```json
+{
+  "properties": {
+    "product_ids": {
+      "type": "array",
+      "items": { "type": "integer" },
+      "pre_etl": true,
+      "join_from": "products.code"
+    }
+  }
+}
 ```
-DATA THE INSTANCE WILL BE LOADED WITH
-Plant         [Plant A ▾]                   ← join_from
-Mode          [ Operative ][ Strategic ]    ← a select with up to 3 options shows them as cards
-Date          [01/09/2026]
-Data source   [ Master tables ][ File ][ Parameters ]
-              (the dropzone, the master-tables summary or the parameters form)
-                                              ✓ Data loaded   [ Load instance ]
-```
 
-- **Data source**: the file is always offered; master tables when `etl.useEtlBackend` and
-  `etl.enableLoadFromDb` are set, and the parameters form when `etl.alternativeParameterFields` has
-  fields. With only the file there is nothing to pick and the dropzone takes the row.
-- **One button** loads from the picked source.
+The ETL gets a list in its form field as the items separated by commas (`3,7,12`).
 
-Each parameter takes a row, with its name on the left; the parameters step uses the same rows.
+**Where they are asked.** Before the data is brought, so they read as part of loading rather than
+as a separate stage: the data card, while empty, shows them in a grid, above "Upload files" and "Get data"
+when the database is offered, and in the drop zone otherwise (the ETL gets them with the
+files too). Once loaded they become text in the card's header ("North plant · since 01/10/2026 · 4 tables ·
+58 rows") and are changed with **Load filters**, which brings the data again.
 
-The section is shown whenever the config schema marks at least one parameter with `pre_etl: true`. In
-edit mode there is no load step at all -- the instance already exists -- so those parameters go back
-to the regular parameters step.
+Where the data comes from: files are always offered, and the database when `etl.useEtlBackend`
+and `etl.enableLoadFromDb` are set (and the ETL module is enabled). Files picked together with
+the database replace the tables with the same name and the database fills in the rest.
 
-**Nothing is asked twice.** While the load step is asking for them, they are removed from the regular parameters step. Offering them again there would mislead: by then the data has already been loaded with them, and a new value would not reload it. If every config parameter is pre-ETL, the regular step is dropped rather than shown empty.
+A relaunch has no load at all -- the instance already exists -- so those parameters go back to the
+regular parameters.
 
-**What blocks what.** A missing required pre-ETL value disables the **load** button, not **Continue**. Loading is the point of no return: once the data is in, filtering it differently means loading it again. **Continue** keeps its usual condition, an instance being loaded.
+**Nothing is asked twice.** While they are asked as load filters, they are left out of the regular
+parameters: by then the data has already been loaded with them, and a new value there would not
+reload it.
 
-**Changing one after loading.** The loaded instance is kept -- throwing away a load over a keystroke would be worse -- but a warning appears under the parameters saying the loaded data was not filtered with the new value, with a **Load again** button. The new value still reaches the data checks and the execution.
+**What blocks what.** A missing required pre-ETL value disables the **load** button ("Get data"),
+not the launch: loading is the point of no return, and once the data is in,
+filtering it differently means loading it again.
+
+**Changing one after loading.** The loaded instance is kept -- throwing away a load over a
+keystroke would be worse -- but the user is told the data was not brought with the new value:
+"You changed the filters" in the data card and "Reload the data with the current filters" in
+what is missing. The new value still
+reaches the data checks and the execution.
 
 **Required vs optional.** A parameter is mandatory only when the config schema's root `required` lists it. A nullable one such as `date` can be left blank on purpose - that is how the backend is told to resolve it itself. For the same reason an empty value is never appended to the ETL form: a loose form field cannot carry `null`, so leaving the key out is what says "not given".
 
@@ -1671,24 +1955,35 @@ to the regular parameters step.
 
 **Labels.** The fields use the `configParams.<key>` translation keys like any other config parameter, so a new pre-ETL parameter needs its label added in `src/app/plugins/locales/`.
 
-Implementation: `CreateExecutionLoadInstance.vue` (the parameters, the data source, the load button and the changed-after-load warning), `CreateExecutionConfigParams.vue` (`scope` prop: `'preEtl' | 'standard' | 'all'`, and `layout`: `'stack' | 'grid' | 'form'`), `components/core/OptionCards.vue`, `ProjectExecutionView.vue` (`preEtlAskedInLoadStep`, `configParamsScope`), `schemaUtils.ts` (`getPreEtlConfigFields`, `pickPreEtlConfigValues`), `useInstanceProcessing.ts`, `InstanceRepository.ts`.
+Implementation: `useExecutionDraft.ts` (`loadFilterFields`, `filtersChanged`), `ExecutionDataCard.vue`, `LoadFiltersForm.vue`, `schemaUtils.ts` (`getPreEtlConfigFields`, `pickPreEtlConfigValues`), `useInstanceProcessing.ts`, `InstanceRepository.ts`.
 
-#### Instance editing: allowEditInstance
+#### Data checks: enableBlockAdvanceOnCheckErrors
 
-Controls whether users can edit existing instances from the input data section.
+The data checks run when the user asks (**Check**): the instance is stored, the checks run with the
+execution config (`POST /data-check/instance/<id>/`) and the result shows one group per check table.
+Editing the data afterwards marks them out of date. They are optional: launching without them only
+shows a note. With `enableBlockAdvanceOnCheckErrors`, rows in a check table whose schema has
+`is_warning: false` stop the launch until they are fixed.
 
-- `allowEditInstance` (boolean):
-  - If true, adds an "Edit input data" option in the dropdown menu when viewing input data tables.
-  - When clicked, redirects to the project execution view in edit mode, skipping the instance loading step and starting directly at the "Review instance" step with the currently selected execution's instance.
-  - If false, the edit option is not available.
+#### Developer mode: isDeveloperMode
 
-#### Implementation in ProjectExecutionView.vue:
+With `isDeveloperMode` the launch has a menu with "Upload a solution instead of resolving": the
+execution is created without running the solver (`?run=0`) and gets the uploaded solution (JSON,
+XLSX or CSV), checked against the solution schema.
 
-- `solverConfig` is used to determine if the solver step is shown and to set the default solver.
-- `configFieldsConfig` is used to determine if the config fields step is shown and to auto-load values.
-- `configFields` is used to render the config fields step, auto-load values from the instance, and display the config summary in the confirmation step.
-- a `preEtl` flag on a config field moves it into the load step, next to the upload, and sends it to the ETL - see [Pre-ETL parameters](#pre-etl-parameters-pre_etl).
-- `allowEditInstance` enables instance editing functionality in SectionView.vue for input data sections.
+#### Relaunching an execution: allowEditInstance
+
+- `allowEditInstance` (boolean): adds "Create a new execution from the current input data" to the
+  menu of the input data tables. It opens the create-execution screen with an editable copy of the
+  selected execution's data, parameters and description, named after it ("Plan 42 · with
+  changes").
+
+#### Leaving half done
+
+Leaving the page with something loaded or typed asks first: save a draft and leave, leave without
+saving, or stay. The draft is kept in the browser (IndexedDB, one per DAG and user) and offered
+when the user comes back. It keeps the data, the unapplied edits and, after an ETL load, the ETL
+review with its origin switches, still to be sent to the backend.
 
 ## Router configuration
 

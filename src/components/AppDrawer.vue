@@ -1,916 +1,1011 @@
-<template>
-  <div :style="$attrs.style as any">
-    <Suspense>
-      <MAppDrawer
-        :visible="true"
-        :width="250"
-        :rail="mini"
-        :expand-on-hover="hover"
-        @update:rail="handleRailUpdate"
-        style="position: fixed !important"
-      >
-        <template #logo>
-          <div class="mt-2 logo-container">
-            <div class="d-flex align-center justify-space-between">
-              <div class="d-flex align-center">
-                <v-img
-                  position="left"
-                  height="30"
-                  class="ml-3"
-                  v-if="mini"
-                  :src="mainLogo"
-                />
-                <v-img
-                  height="30"
-                  position="left"
-                  class="ml-3"
-                  v-else
-                  :src="fullLogo"
-                />
-              </div>
+<!--
+  AppDrawer: the side menu, the full height of the window.
 
-              <!-- Pin/Unpin button -->
-              <v-btn
-                v-if="!mini"
-                icon
-                size="small"
-                variant="text"
-                class="pin-button mr-2"
-                @click="togglePin"
-                :title="isPinned ? 'Unpin drawer' : 'Pin drawer'"
-              >
-                <v-icon
-                  :icon="isPinned ? 'mdi-pin' : 'mdi-pin-outline'"
-                  :color="isPinned ? 'var(--primary)' : 'var(--subtitle)'"
-                  size="18"
-                />
-              </v-btn>
-            </div>
-            <!-- App name below the logo -->
-            <div v-if="!mini" class="app-name ml-3 mt-1">
-              {{ appName }}
-            </div>
-          </div>
-        </template>
-        <template #user>
-          <div
-            class="user-container"
-            v-if="user && user.name"
-            @click="navigateTo('user-settings')"
-          >
-            <div class="avatar" :style="{ backgroundColor: 'var(--primary)' }">
-              {{ user.name[0].toUpperCase() }}
-            </div>
-            <div v-if="!mini" class="user-info">
-              <div class="user-detail">{{ user.name }}</div>
-              <div class="user-detail">{{ user.email }}</div>
-            </div>
-          </div>
-        </template>
-        <template #menu>
-          <template v-for="section in allSections" :key="section.title">
-            <v-list-item
-              :base-color="'var(--title)'"
-              :color="'var(--accent)'"
-              :class="{
-                'non-clickable': !section.to,
-                'page-selected': isSectionActive(section),
-                'mini-header': mini && !section.to,
-              }"
-              :to="section.to || undefined"
-              :prepend-icon="mini && section.icon ? section.icon : undefined"
-              :disabled="mini && !section.to"
-            >
-              <template v-if="!mini" #default>
-                <div class="d-flex align-center">
-                  <v-icon v-if="section.icon" left>{{ section.icon }}</v-icon>
-                  <h4 class="ml-4">{{ section.title }}</h4>
-                </div>
-              </template>
-            </v-list-item>
-            <template v-if="section.subPages">
-              <v-list class="subpages" :class="{ 'mini-subpages': mini }">
-                <v-list-item
-                  :base-color="'var(--subtitle)'"
-                  :color="'var(--accent)'"
-                  v-for="subPage in section.subPages"
-                  :key="subPage.title"
-                  :to="subPage.to"
-                  :prepend-icon="mini ? subPage.icon : undefined"
-                  :class="{
-                    'page-selected': isSubPageItemActive(subPage),
-                  }"
-                >
-                  <template v-if="!mini" #default>
-                    <div class="d-flex align-center">
-                      <v-icon v-if="subPage.icon">{{ subPage.icon }}</v-icon>
-                      <span class="ml-4 subpage-title">{{
-                        subPage.title
-                      }}</span>
-                    </div>
-                  </template>
-                </v-list-item>
-              </v-list>
-            </template>
-            <v-divider
-              class="mb-1 mt-1"
-              v-if="section !== allSections[allSections.length - 1]"
-            ></v-divider>
-          </template>
-        </template>
-        <template #actions>
-          <template v-for="action in actions" :key="action.title">
-            <v-list-item
-              :base-color="'var(--title)'"
-              :color="'var(--accent)'"
-              @click="action.action"
-            >
-              <div class="d-flex align-center">
-                <v-icon v-if="action.icon" left>{{ action.icon }}</v-icon>
-                <h4 class="ml-4" v-if="!mini">{{ action.title }}</h4>
-              </div>
-            </v-list-item>
-          </template>
-        </template>
-      </MAppDrawer>
-    </Suspense>
-  </div>
-  <MBaseModal
-    v-model="confirmSignOutModal"
-    :closeOnOutsideClick="false"
-    :title="t('logOut.title')"
-    :buttons="[
-      {
-        text: t('logOut.accept'),
-        action: 'save',
-        class: 'primary-btn',
-      },
-      {
-        text: t('logOut.cancel'),
-        action: 'cancel',
-        class: 'secondary-btn',
-      },
-    ]"
-    @save="signOut"
-    @cancel="confirmSignOutModal = false"
-    @close="confirmSignOutModal = false"
+  It heads with "New execution", filled in the app's primary colour, for a user who may create one;
+  it starts a new one afresh.
+  Then it keeps apart what belongs to the loaded execution from what is the same for all of them:
+  the loaded execution heads a block that holds its own groups (its input data, its results and
+  dashboards, the app sections that need an execution); the rest of the groups follow, below a
+  divider, the history first.
+
+  - Folded (default): a 56 px rail with the logo (with several DAGs, the initial of the active one
+    on it), a round "+" to create an execution, the loaded execution (a dot in the colour of its
+    state) boxed with the icons of its groups, then one icon per shared group. Resting the pointer
+    on it opens the whole menu over the content; it folds again when the pointer leaves. The pin
+    keeps it open.
+  - Expanded: 250 px. The full logo and the pin; below, in one line, the app name and, with
+    several DAGs, the active one (its label from `schemaLabels`). For a user who may switch DAG,
+    that line is the module selector, which lists the DAGs to switch to; the loaded execution, with its latest ones to switch to, and its groups; the shared
+    groups; the user with "Log out". The groups are an accordion, one open at a time. Pinned, the
+    content moves aside (`isDrawerPinned` in the store).
+  - Narrow screens: pinned, it lies over the content with a scrim, and closes with the X.
+
+  The groups and their pages come from `useDrawerSections`, the executions from
+  `useDrawerExecutions`.
+-->
+<template>
+  <div
+    v-if="pinned && isNarrow"
+    class="app-drawer__scrim"
+    data-testid="app-drawer-scrim"
+    @click="setPinned(false)"
+  />
+  <aside
+    v-bind="$attrs"
+    class="app-drawer"
+    :class="{ 'is-expanded': expanded, 'is-floating': floating, 'is-overlay': pinned && isNarrow }"
+    :aria-label="$t('drawer.label')"
+    data-testid="app-drawer"
+    @pointerenter="onPointerEnter"
+    @pointerleave="onPointerLeave"
   >
-    <template #content>
-      <v-row class="d-flex justify-center pr-2 pl-2 pb-5 pt-3">
-        <span> {{ t('logOut.message') }}</span>
-      </v-row>
+    <!-- Expanded: pinned, or opened by the pointer -->
+    <div v-if="expanded" class="app-drawer__panel">
+      <header class="app-drawer__head">
+        <div class="app-drawer__head-row">
+          <img class="app-drawer__logo" :src="fullLogo" alt="" />
+          <CoreButton
+            variant="icon"
+            :icon="pinButton.icon"
+            :aria-label="pinButton.label"
+            :title="pinButton.label"
+            data-testid="app-drawer-pin"
+            @click="togglePin"
+          />
+        </div>
+        <CorePopover v-if="showContext && modules.canSwitch" v-model:open="moduleMenuOpen" align="start" :width="226">
+          <template #trigger>
+            <button type="button" class="app-drawer__context is-switcher" data-testid="app-drawer-module">
+              <span v-if="appName" class="app-drawer__app-name">{{ appName }}</span>
+              <span class="app-drawer__module">{{ moduleName }}</span>
+              <CoreIcon :name="moduleMenuOpen ? 'mdi-chevron-up' : 'mdi-chevron-down'" :size="16" />
+            </button>
+          </template>
+          <CoreMenu :title="$t('modules.label')" selectable :items="moduleItems" @select="pickModule" />
+        </CorePopover>
+        <span v-else-if="showContext" class="app-drawer__context">
+          <span v-if="appName" class="app-drawer__app-name">{{ appName }}</span>
+          <span v-if="moduleName" class="app-drawer__module">{{ moduleName }}</span>
+        </span>
+      </header>
+
+      <nav class="app-drawer__nav" :aria-label="$t('drawer.label')">
+        <RouterLink
+          v-if="canCreateExecution"
+          to="/project-execution"
+          class="app-drawer__create"
+          data-testid="app-drawer-new-execution"
+          @click="startExecution"
+        >
+          <CoreIcon name="mdi-plus" :size="18" />
+          <span>{{ $t('drawer.newExecution') }}</span>
+        </RouterLink>
+        <section class="app-drawer__execution" data-testid="app-drawer-execution-block">
+          <span class="app-drawer__label">{{ $t('drawer.loadedExecution') }}</span>
+          <CorePopover v-model:open="selectorOpen" align="start" :width="226">
+            <template #trigger>
+              <button type="button" class="app-drawer__selector" data-testid="app-drawer-execution">
+                <span class="app-drawer__selector-text">
+                  <template v-if="executions.loaded">
+                    <span class="app-drawer__selector-name">{{ executions.loaded.name }}</span>
+                    <span class="app-drawer__selector-meta">
+                      <span>{{ executions.loaded.date }}</span>
+                      <CoreBadge
+                        size="sm"
+                        :tone="executions.loaded.status.tone"
+                        :spin="executions.loaded.status.spin"
+                        :label="executions.loaded.status.label"
+                      />
+                    </span>
+                  </template>
+                  <template v-else>
+                    <span class="app-drawer__selector-name is-empty">{{ $t('drawer.noExecution') }}</span>
+                    <span class="app-drawer__selector-meta">{{ $t('drawer.pickExecution') }}</span>
+                  </template>
+                </span>
+                <CoreIcon :name="selectorOpen ? 'mdi-chevron-up' : 'mdi-chevron-down'" :size="18" />
+              </button>
+            </template>
+            <DrawerExecutionList
+              :loaded="executions.loaded"
+              :latest="executions.latest"
+              :loading="executions.loadingRecent"
+              :opening="executions.opening"
+              @open="openExecution"
+              @history="goToHistory"
+            />
+          </CorePopover>
+          <div v-if="executionSections.length" class="app-drawer__execution-groups">
+            <DrawerGroup
+              v-for="section in executionSections"
+              :key="section.key"
+              :section="section"
+              :open="openKey === section.key"
+              @toggle="toggleGroup"
+              @navigate="closeOnNarrow"
+            />
+          </div>
+          <p v-else-if="!executions.loaded" class="app-drawer__hint">{{ $t('drawer.executionHint') }}</p>
+        </section>
+
+        <section v-if="generalSections.length" class="app-drawer__general" data-testid="app-drawer-general-block">
+          <DrawerGroup
+            v-for="section in generalSections"
+            :key="section.key"
+            :section="section"
+            :open="openKey === section.key"
+            @toggle="toggleGroup"
+            @navigate="closeOnNarrow"
+          />
+        </section>
+      </nav>
+
+      <footer v-if="user" class="app-drawer__user">
+        <button type="button" class="app-drawer__user-link" :title="$t('drawer.userSettings')" @click="goToSettings">
+          <span class="app-drawer__avatar">{{ user.initial }}</span>
+          <span class="app-drawer__user-text">
+            <span class="app-drawer__user-name">{{ user.name }}</span>
+            <span class="app-drawer__user-email">{{ user.email }}</span>
+          </span>
+        </button>
+        <CoreButton
+          variant="icon"
+          icon="mdi-logout"
+          :aria-label="$t('drawer.logout')"
+          :title="$t('drawer.logout')"
+          data-testid="app-drawer-logout"
+          @click="confirmSignOut = true"
+        />
+      </footer>
+    </div>
+
+    <!-- Folded rail -->
+    <template v-else>
+      <div class="app-drawer__rail-logo">
+        <img class="app-drawer__mark" :src="mainLogo" alt="" />
+        <span v-if="moduleName" class="app-drawer__rail-module" :title="moduleName">{{ moduleName[0] }}</span>
+      </div>
+
+      <nav class="app-drawer__rail" :aria-label="$t('drawer.label')">
+        <RouterLink
+          v-if="canCreateExecution"
+          to="/project-execution"
+          class="app-drawer__rail-button is-create"
+          :aria-label="$t('drawer.newExecution')"
+          :title="$t('drawer.newExecution')"
+          data-testid="app-drawer-rail-new-execution"
+          @click="startExecution"
+        >
+          <CoreIcon name="mdi-plus" :size="18" />
+        </RouterLink>
+        <div
+          v-for="block in railBlocks"
+          :key="block.key"
+          class="app-drawer__rail-block"
+          :class="`is-${block.key}`"
+        >
+          <button
+            v-if="block.key === 'execution'"
+            type="button"
+            class="app-drawer__rail-button is-boxed"
+            :aria-label="$t('drawer.loadedExecution')"
+            data-testid="app-drawer-rail-execution"
+            @click="pinOn(null)"
+          >
+            <CoreIcon name="mdi-play-box-outline" :size="20" />
+            <span
+              v-if="executions.loaded"
+              class="app-drawer__rail-dot"
+              :class="`is-${executions.loaded.status.tone}`"
+            />
+          </button>
+          <template v-for="section in block.sections" :key="section.key">
+            <RouterLink
+              v-if="!hasPages(section) && section.to"
+              :to="section.to"
+              class="app-drawer__rail-button"
+              :class="{ 'is-active': isActive(section) }"
+              :aria-label="section.title"
+            >
+              <CoreIcon :name="section.icon || 'mdi-circle-small'" :size="20" />
+            </RouterLink>
+            <button
+              v-else
+              type="button"
+              class="app-drawer__rail-button"
+              :class="{ 'is-active': isActive(section) }"
+              :aria-label="section.title"
+              @click="pinOn(section.key)"
+            >
+              <CoreIcon :name="section.icon || 'mdi-circle-small'" :size="20" />
+            </button>
+          </template>
+        </div>
+      </nav>
+
+      <div v-if="user" class="app-drawer__rail-user">
+        <button type="button" class="app-drawer__avatar is-button" :aria-label="user.name" @click="goToSettings">
+          {{ user.initial }}
+        </button>
+      </div>
     </template>
-  </MBaseModal>
+  </aside>
+
+  <CoreConfirmDialog
+    :model-value="modules.confirming"
+    :title="$t('modules.switchTitle')"
+    :message="$t('modules.switchMessage')"
+    :confirm-text="$t('modules.confirm')"
+    :cancel-text="$t('modules.cancel')"
+    icon="mdi-swap-horizontal"
+    :persistent="false"
+    data-testid="app-drawer-module-dialog"
+    @confirm="modules.confirm()"
+    @cancel="modules.cancel()"
+  />
+
+  <CoreConfirmDialog
+    v-model="confirmSignOut"
+    :title="$t('logOut.title')"
+    :message="$t('logOut.message')"
+    :confirm-text="$t('logOut.accept')"
+    :cancel-text="$t('logOut.cancel')"
+    icon="mdi-logout"
+    :persistent="false"
+    data-testid="app-drawer-logout-dialog"
+    @confirm="signOut"
+  />
 </template>
 
-<script lang="ts">
-import { defineComponent, inject } from 'vue'
+<script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import CoreBadge from '@cornflow-ui/core/components/core/CoreBadge.vue'
+import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
+import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
+import CoreMenu from '@cornflow-ui/core/components/core/CoreMenu.vue'
+import CorePopover from '@cornflow-ui/core/components/core/CorePopover.vue'
+import CoreConfirmDialog from '@cornflow-ui/core/components/core/table/CoreConfirmDialog.vue'
+import DrawerExecutionList from '@cornflow-ui/core/components/app-drawer/DrawerExecutionList.vue'
+import DrawerGroup from '@cornflow-ui/core/components/app-drawer/DrawerGroup.vue'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import getAuthService from '@cornflow-ui/core/services/AuthServiceFactory'
-import appConfig from '@/app/config'
-import { getAppParameters } from '@cornflow-ui/core/utils/appParameters'
+import { showSnackbar } from '@cornflow-ui/core/services/SnackbarService'
 import config from '@cornflow-ui/core/config'
 import { mainLogo, fullLogo } from '@cornflow-ui/core/utils/assets'
+import { getAppParameters } from '@cornflow-ui/core/utils/appParameters'
 import {
-  getNavigationItemsFromConfig,
-  getMasterDataNavigationWithSections,
-  filterValidationTablesWithData,
-  enrichConfigWithChecksData,
-  enrichConfigWithTablesWithoutSchema,
-} from '@cornflow-ui/core/services/FrontendAutomationService'
-import { applyKpiDisplayMode } from '@cornflow-ui/core/utils/kpiTableUtils'
-import { resolveTitleWithLocale } from '@cornflow-ui/core/utils/i18nUtils'
-import { useSectionTitles } from '@cornflow-ui/core/composables/useSectionTitles'
-import { isViewAllowed } from '@/app/rolesConfig'
-import { getPremiumDrawerSections } from '@cornflow-ui/core/plugins/extensions'
-import { readSchemaLabels } from '@cornflow-ui/core/utils/schemaLabels'
-import { isEntryVisibleFor } from '@cornflow-ui/core/utils/navigationGating'
+  isPageActive,
+  useDrawerSections,
+  type DrawerPage,
+  type DrawerSection,
+} from '@cornflow-ui/core/composables/navigation/useDrawerSections'
+import {
+  useDrawerExecutions,
+  type DrawerExecution,
+} from '@cornflow-ui/core/composables/navigation/useDrawerExecutions'
+import { useSchemaSwitch } from '@cornflow-ui/core/composables/navigation/useSchemaSwitch'
 
-export default defineComponent({
-  name: 'CoreAppDrawer',
-  components: {},
-  props: {},
-  inheritAttrs: false,
-  setup() {
-    const { t, te } = useI18n()
-    const { getSectionTitle } = useSectionTitles()
-    return { t, te, getSectionTitle }
-  },
-  data: () => ({
-    model: 1,
-    mini: true,
-    hover: true,
-    isPinned: false, // New state to track if drawer is pinned
-    store: useGeneralStore(),
-    confirmSignOutModal: false,
-    auth: null,
-    showSnackbar: null,
-    mainLogo,
-    fullLogo,
-  }),
-  async created() {
-    this.showSnackbar = inject('showSnackbar')
-    this.auth = await getAuthService()
-  },
-  computed: {
-    appName() {
-      const name = config.name || 'Application'
-      if (!this.store.isMultiSchemaDeployment || this.store.noSchemaAccess) {
-        return name
-      }
-      // With several DAGs, say which one the session is on.
-      const schema = this.store.getSchemaName
-      const label = readSchemaLabels()[schema]
-      const moduleName = label && this.te(label) ? this.t(label) : label || schema
-      return `${name} · ${moduleName}`
-    },
-    /** Who is looking and on which DAG, to gate app sections and dashboard pages. */
-    navigationViewer() {
-      return {
-        roleNames: this.currentUserRoleNames,
-        schema: this.store.getSchemaName,
-      }
-    },
-    isAdmin() {
-      const user = this.store.getUser
-      return user?.roles?.some((r: { name: string }) => r.name === 'admin') ?? false
-    },
-    currentUserRoleNames() {
-      const user = this.store.getUser
-      return user?.roles?.map((r: { name: string }) => r.name) ?? []
-    },
-    user() {
-      return {
-        name: getAppParameters().showOpenIdUsername
-          ? this.store.getUser.fullName
-          : this.store.getUser.username,
-        email: this.store.getUser.email,
-      }
-    },
-    hasSelectedExecution() {
-      return this.store.selectedExecution !== null
-    },
-    // Main executions section (always visible)
-    executionsSection() {
-      return {
-        title: this.getSectionTitle('executions'),
-        icon: 'mdi-chart-timeline-variant',
-        subPages: [
-          {
-            title: this.$t('versionHistory.title'),
-            icon: 'mdi-history',
-            to: '/history-execution',
-          },
-          {
-            title: this.$t('projectExecution.title'),
-            icon: 'mdi-play-circle-outline',
-            to: '/project-execution',
-          },
-        ],
-      }
-    },
-    // When schema defines sections (available_automations.sections), these go above the default Master data block.
-    masterDataSectionsForDrawer() {
-      const sections = this.store.masterDataSections
-      const configurations = this.store.getConfigurations
-      const masterDataConfig = configurations?.masterData || {}
+defineOptions({ name: 'CoreAppDrawer', inheritAttrs: false })
 
-      if (
-        !sections ||
-        sections.length === 0 ||
-        Object.keys(masterDataConfig).length === 0
-      ) {
-        return []
-      }
+/** Below this width the pinned menu lies over the content instead of moving it aside. */
+const NARROW_QUERY = '(max-width: 768px)'
+/** ms the pointer rests on the rail before the menu opens, and is away before it folds. */
+const OPEN_DELAY = 100
+const CLOSE_DELAY = 200
 
-      const locale = this.$i18n?.locale ?? 'en'
-      const navWithSections = getMasterDataNavigationWithSections(
-        masterDataConfig,
-        sections,
-        '/configuration',
-        this.store.masterDataGroups ?? undefined,
-      )
+const store = useGeneralStore()
+const route = useRoute()
+const router = useRouter()
+const { t } = useI18n()
+const { sections, canCreateExecution } = useDrawerSections()
+const executions = reactive(useDrawerExecutions())
+const modules = reactive(useSchemaSwitch())
 
-      return navWithSections.map((block) => {
-        const subPages = [...(block.subPages || [])]
-        if (block.sectionId) {
-          const extraSubsections = appConfig
-            .getFrontendAutomationSectionSubsections(block.sectionId)
-            .filter((def) => isEntryVisibleFor(def, this.navigationViewer))
-          extraSubsections.forEach((def) => {
-            subPages.push({
-              title: this.$t(def.titleKey),
-              icon: def.icon,
-              to: `/configuration/section/${block.sectionId}/${def.path}`,
-            })
-          })
-        }
-        return {
-          title:
-            block.sectionId === null
-              ? this.getSectionTitle('masterData')
-              : resolveTitleWithLocale(block.title, locale, block.sectionId),
-          icon: block.icon,
-          subPages,
-        }
-      })
-    },
-    // Single master data section (used when schema does not define sections)
-    masterDataSection() {
-      if (this.masterDataSectionsForDrawer.length > 0) {
-        return null
-      }
+const pinned = computed(() => Boolean(store.isDrawerPinned))
+/** Opened by the pointer resting on it. */
+const hovering = ref(false)
+const expanded = computed(() => pinned.value || hovering.value)
+const floating = computed(() => hovering.value && !pinned.value)
+const selectorOpen = ref(false)
+const moduleMenuOpen = ref(false)
+const confirmSignOut = ref(false)
+const openKey = ref<string | null>(null)
 
-      const configurations = this.store.getConfigurations
-      const masterDataConfig = configurations?.masterData || {}
+// ── Layout ───────────────────────────────────────────────────────────────────
 
-      const navigationItems = getNavigationItemsFromConfig(
-        masterDataConfig,
-        '/configuration',
-      )
-
-      const hasData = Object.keys(masterDataConfig).length > 0
-
-      return hasData
-        ? {
-            title: this.getSectionTitle('masterData'),
-            icon: 'mdi-database',
-            subPages: navigationItems,
-          }
-        : null
-    },
-    // Input data section (only visible when execution is selected)
-    inputDataSection() {
-      if (!this.hasSelectedExecution) return null
-
-      const configurations = this.store.getConfigurations
-      let inputDataConfig = configurations?.inputData || {}
-
-      if (this.store.selectedExecution) {
-        const instanceData =
-          this.store.selectedExecution.experiment?.instance ||
-          this.store.selectedExecution.instance
-        const locale = this.$i18n?.locale ?? 'en'
-        inputDataConfig = enrichConfigWithChecksData(
-          inputDataConfig,
-          instanceData,
-          locale,
-        )
-        inputDataConfig = filterValidationTablesWithData(
-          inputDataConfig,
-          instanceData,
-        )
-        if (getAppParameters().showTablesWithoutSchema === true) {
-          inputDataConfig = enrichConfigWithTablesWithoutSchema(
-            inputDataConfig,
-            instanceData,
-            'instance',
-            locale,
-          )
-        }
-      }
-
-      const navigationItems = getNavigationItemsFromConfig(
-        inputDataConfig,
-        '/input-data',
-      )
-
-      const hasData = Object.keys(inputDataConfig).length > 0
-      const subPages = []
-
-      // Add input data tables if available
-      if (hasData) {
-        subPages.push(...navigationItems)
-      } else {
-        // Fallback to old structure
-        subPages.push({
-          title: this.$t('inputOutputData.inputTitle'),
-          icon: 'mdi-table-arrow-left',
-          to: '/input-data',
-        })
-      }
-
-      // Add instance dashboard pages if available
-      if (this.store.appInstanceDashboardPages.length > 0) {
-        this.store.appInstanceDashboardPages
-          .filter((page) => isEntryVisibleFor(page, this.navigationViewer))
-          .forEach((page) => {
-            subPages.push(page)
-          })
-      }
-
-      return {
-        title: this.getSectionTitle('inputData'),
-        icon: 'mdi-application-cog',
-        subPages: subPages,
-      }
-    },
-    // Results section (only visible when execution is selected)
-    resultsSection() {
-      if (!this.hasSelectedExecution) return null
-
-      const configurations = this.store.getConfigurations
-      let resultsDataConfig = configurations?.resultsData || {}
-
-      if (this.store.selectedExecution) {
-        const solutionData =
-          this.store.selectedExecution.experiment?.solution ||
-          this.store.selectedExecution.solution
-        const locale = this.$i18n?.locale ?? 'en'
-        resultsDataConfig = enrichConfigWithChecksData(
-          resultsDataConfig,
-          solutionData,
-          locale,
-        )
-        resultsDataConfig = filterValidationTablesWithData(
-          resultsDataConfig,
-          solutionData,
-        )
-        if (getAppParameters().showTablesWithoutSchema === true) {
-          resultsDataConfig = enrichConfigWithTablesWithoutSchema(
-            resultsDataConfig,
-            solutionData,
-            'solution',
-            locale,
-          )
-        }
-
-        const kpiMode =
-          getAppParameters()?.kpiTablesDisplayMode ?? 'disabled'
-        if (kpiMode !== 'disabled' && solutionData) {
-          const rawKpis = solutionData.rawKpis ?? null
-          resultsDataConfig = applyKpiDisplayMode(
-            resultsDataConfig,
-            rawKpis,
-            kpiMode,
-            locale,
-          )
-        }
-      }
-
-      const navigationItems = getNavigationItemsFromConfig(
-        resultsDataConfig,
-        '/results',
-      )
-
-      const subPages = []
-
-      // Add solution data tables if available
-      if (Object.keys(resultsDataConfig).length > 0) {
-        subPages.push(...navigationItems)
-      } else {
-        // Fallback to old structure
-        subPages.push({
-          title: this.$t('inputOutputData.outputTitle'),
-          icon: 'mdi-table-arrow-right',
-          to: '/output-data',
-        })
-      }
-
-      // Add dashboard if configured
-      if (getAppParameters().showDashboardMainView) {
-        subPages.push({
-          title: 'Dashboard',
-          icon: 'mdi-view-dashboard',
-          to: '/dashboard',
-        })
-      }
-
-      // Add dashboard pages if available
-      if (this.store.appDashboardPages.length > 0) {
-        this.store.appDashboardPages
-          .filter((page) => isEntryVisibleFor(page, this.navigationViewer))
-          .forEach((page) => {
-            subPages.push(page)
-          })
-      }
-
-      return {
-        title: this.getSectionTitle('results'),
-        icon: 'mdi-chart-box',
-        subPages: subPages,
-      }
-    },
-    // App-specific sections (from config: e.g. Agent). Built dynamically like dashboard/instanceDashboard.
-    appSections() {
-      const items = appConfig.getAppSections()
-      const isVisible = (entry) =>
-        (!entry.requiresSelectedExecution || this.hasSelectedExecution) &&
-        isEntryVisibleFor(entry, this.navigationViewer)
-
-      return items
-        .filter(isVisible)
-        .map((s) => ({
-          title: this.$t(s.titleKey),
-          icon: s.icon,
-          to: s.to,
-          subPages: s.subPages
-            ?.filter(isVisible)
-            .map((sub) => ({
-              title: this.$t(sub.titleKey),
-              icon: sub.icon,
-              to: sub.to,
-            })),
-        }))
-        .filter((s) => s.to != null || (s.subPages?.length ?? 0) > 0)
-    },
-    /**
-     * Drawer entries contributed by premium modules (enterprise). Empty when none registered.
-     * Maps the declarative PremiumDrawerSection (i18n keys) to the resolved drawer item shape.
-     */
-    premiumDrawerSections() {
-      return getPremiumDrawerSections()
-        .map((s) => ({
-          title: this.$t(s.titleKey),
-          icon: s.icon,
-          to: s.to,
-          subPages: s.subPages?.map((sub) => ({
-            title: this.$t(sub.titleKey),
-            icon: sub.icon,
-            to: sub.to,
-          })),
-        }))
-        .filter((s) => s.to != null || (s.subPages?.length ?? 0) > 0)
-    },
-    // Admin section (only visible to admins when enableRolesManagement is true)
-    adminSection() {
-      if (!this.isAdmin) return null
-      if (!getAppParameters().enableRolesManagement) return null
-      return {
-        title: this.$t('rolesManagement.adminSection'),
-        icon: 'mdi-shield-account',
-        subPages: [
-          {
-            title: this.$t('rolesManagement.title'),
-            icon: 'mdi-account-key',
-            to: '/roles-management',
-          },
-        ],
-      }
-    },
-    // All sections combined
-    allSections() {
-      const roleNames = this.currentUserRoleNames
-      const allowed = (viewId) => isViewAllowed(roleNames, viewId)
-      const sections = []
-
-      // Add executions section (filter sub-pages by role; skip section if no pages remain)
-      const execSub = this.executionsSection.subPages?.filter((p) => {
-        if (p.to === '/history-execution') return allowed('history-execution')
-        if (p.to === '/project-execution') return allowed('project-execution')
-        return true
-      })
-      if (execSub && execSub.length > 0) {
-        sections.push({ ...this.executionsSection, subPages: execSub })
-      }
-
-      // Premium modules (enterprise) inject their drawer entries here (e.g. Agent).
-      this.premiumDrawerSections.forEach((section) => sections.push(section))
-
-      this.appSections.forEach((section) => sections.push(section))
-
-      // Add master data: schema-defined sections first (on top), then single Master data section if no schema sections
-      if (allowed('configuration')) {
-        this.masterDataSectionsForDrawer.forEach((section) =>
-          sections.push(section),
-        )
-        if (this.masterDataSection) {
-          sections.push(this.masterDataSection)
-        }
-      }
-
-      // Add input data section if execution is selected and role allows it
-      if (this.inputDataSection && allowed('input-data')) {
-        sections.push(this.inputDataSection)
-      }
-
-      // Add results section if execution is selected and role allows it
-      if (this.resultsSection && allowed('results')) {
-        sections.push(this.resultsSection)
-      }
-
-      // Add admin section for admin users
-      if (this.adminSection) {
-        sections.push(this.adminSection)
-      }
-
-      return sections
-    },
-    actions() {
-      return [
-        {
-          title: 'Logout',
-          icon: 'mdi-logout',
-          action: this.confirmSignOut,
-        },
-      ]
-    },
-  },
-  methods: {
-    confirmSignOut() {
-      this.confirmSignOutModal = true
-    },
-    async signOut() {
-      try {
-        await this.auth.logout()
-        this.$router.push('/sign-in')
-        if (this.showSnackbar) {
-          this.showSnackbar(
-            this.$t('logOut.snackbar_message_success'),
-            'success',
-          )
-        }
-      } catch (error) {
-        console.error('Logout error:', error)
-        if (this.showSnackbar) {
-          this.showSnackbar(this.$t('logOut.snackbar_message_error'), 'error')
-        }
-      }
-    },
-    isSectionActive(section) {
-      const currentPath = this.$route.path
-
-      // Only mark section as active if the route matches exactly its to property
-      // Don't mark it active just because a subPage is active
-      if (section.to) {
-        return currentPath === section.to
-      }
-
-      // If section has no to property, don't mark it as active
-      return false
-    },
-    isSubPageActive(subPages) {
-      if (!subPages) return false
-
-      // Check if current route matches or starts with any subPage route
-      return subPages.some((subPage) => {
-        return this.isSubPageItemActive(subPage)
-      })
-    },
-    isSubPageItemActive(subPage) {
-      if (!subPage) return false
-      const currentPath = this.$route.path
-
-      // Check if this subPage itself matches the current route
-      if (subPage.to) {
-        // Exact match
-        if (currentPath === subPage.to) return true
-
-        // Check if current path starts with subPage.to (for nested routes)
-        if (currentPath.startsWith(subPage.to)) {
-          const nextChar = currentPath[subPage.to.length]
-          if (!nextChar || nextChar === '/') {
-            return true
-          }
-        }
-      }
-
-      // Recursively check if any nested subPages are active
-      if (subPage.subPages && subPage.subPages.length > 0) {
-        return this.isSubPageActive(subPage.subPages)
-      }
-
-      return false
-    },
-    navigateTo(path) {
-      // Ensure the path is absolute to avoid relative navigation issues
-      const absolutePath = path.startsWith('/') ? path : `/${path}`
-      this.$router.push(absolutePath)
-    },
-    togglePin() {
-      this.isPinned = !this.isPinned
-      // Update the store state
-      this.store.setDrawerPinned(this.isPinned)
-
-      if (this.isPinned) {
-        // When pinned, expand drawer and disable hover
-        this.mini = false
-        this.hover = false
-      } else {
-        // When unpinned, minimize drawer and enable hover
-        this.mini = true
-        this.hover = true
-      }
-    },
-    handleRailUpdate(newRailState) {
-      // Only update mini state if not pinned
-      if (!this.isPinned) {
-        this.mini = newRailState
-      }
-    },
-  },
+const isNarrow = ref(false)
+let narrowQuery: MediaQueryList | null = null
+const onNarrowChange = (event: MediaQueryListEvent) => (isNarrow.value = event.matches)
+onMounted(() => {
+  if (typeof globalThis.matchMedia !== 'function') return
+  narrowQuery = globalThis.matchMedia(NARROW_QUERY)
+  isNarrow.value = narrowQuery.matches
+  narrowQuery.addEventListener?.('change', onNarrowChange)
 })
+onBeforeUnmount(() => narrowQuery?.removeEventListener?.('change', onNarrowChange))
+
+function setPinned(value: boolean) {
+  store.setDrawerPinned(value)
+  if (!value) hovering.value = false
+}
+
+/** Pins the menu open, on the given group. */
+function pinOn(key: string | null) {
+  if (key) openKey.value = key
+  setPinned(true)
+}
+
+function closeOnNarrow() {
+  if (isNarrow.value) setPinned(false)
+}
+
+const pinButton = computed(() => {
+  if (pinned.value && isNarrow.value) return { icon: 'mdi-close', label: t('drawer.close') }
+  if (pinned.value) return { icon: 'mdi-pin', label: t('drawer.unpin') }
+  return { icon: 'mdi-pin-outline', label: t('drawer.pin') }
+})
+
+function togglePin() {
+  setPinned(!pinned.value)
+}
+
+// ── Hover ────────────────────────────────────────────────────────────────────
+
+let pointerInside = false
+let hoverTimer: ReturnType<typeof setTimeout> | undefined
+
+function onPointerEnter(event: PointerEvent) {
+  if (event.pointerType !== 'mouse') return
+  pointerInside = true
+  clearTimeout(hoverTimer)
+  if (!hovering.value) hoverTimer = setTimeout(() => (hovering.value = true), OPEN_DELAY)
+}
+
+function onPointerLeave(event: PointerEvent) {
+  if (event.pointerType !== 'mouse') return
+  pointerInside = false
+  clearTimeout(hoverTimer)
+  hoverTimer = setTimeout(fold, CLOSE_DELAY)
+}
+
+/** Something of the menu open outside it: a selector or a dialog. */
+const holdsOpen = computed(
+  () => selectorOpen.value || moduleMenuOpen.value || confirmSignOut.value || modules.confirming,
+)
+
+/** Folds the menu the pointer opened, unless the pointer is on it or it holds something open. */
+function fold() {
+  if (pointerInside || holdsOpen.value) return
+  hovering.value = false
+}
+
+// Once what it held open closes, the menu folds if the pointer is not on it.
+watch(holdsOpen, (held) => {
+  if (!held) fold()
+})
+
+onBeforeUnmount(() => clearTimeout(hoverTimer))
+
+// ── Header and user ──────────────────────────────────────────────────────────
+
+const appName = computed(() => config.name || '')
+
+/** With several DAGs, the one the session is on. */
+const moduleName = computed(() =>
+  store.isMultiSchemaDeployment && !store.noSchemaAccess && modules.current
+    ? modules.schemaLabel(modules.current)
+    : '',
+)
+
+const showContext = computed(() => Boolean(appName.value || moduleName.value))
+
+const moduleItems = computed(() =>
+  modules.schemas.map((schema: string) => ({
+    key: schema,
+    label: modules.schemaLabel(schema),
+    selected: schema === modules.current,
+    testId: `app-drawer-module-${schema}`,
+  })),
+)
+
+function pickModule(item: { key: string }) {
+  moduleMenuOpen.value = false
+  void modules.request(item.key)
+}
+
+const user = computed(() => {
+  const account = store.getUser
+  const name = getAppParameters().showOpenIdUsername ? account?.fullName : account?.username
+  if (!name) return null
+  return { name, email: account?.email ?? '', initial: String(name)[0].toUpperCase() }
+})
+
+// ── Groups ───────────────────────────────────────────────────────────────────
+
+const executionSections = computed(() => sections.value.filter((s) => s.scope === 'execution'))
+const generalSections = computed(() => sections.value.filter((s) => s.scope === 'general'))
+
+/** The rail: the loaded execution boxed with its groups, then the shared ones. */
+const railBlocks = computed(() => [
+  { key: 'execution', sections: executionSections.value },
+  { key: 'general', sections: generalSections.value },
+])
+
+const hasPages = (section: DrawerSection) => (section.subPages?.length ?? 0) > 0
+const isActive = (page: DrawerPage) => isPageActive(page, route.path)
+
+function toggleGroup(key: string) {
+  openKey.value = openKey.value === key ? null : key
+}
+
+// The group holding the current page opens when the page changes.
+watch(
+  () => [route.path, sections.value.map((s) => s.key).join('|')],
+  () => {
+    const current = sections.value.find((s) => hasPages(s) && isActive(s))
+    if (current) openKey.value = current.key
+  },
+  { immediate: true },
+)
+
+// ── Executions ───────────────────────────────────────────────────────────────
+
+// The latest executions: once the DAG is known, again when the loaded one changes, and each time
+// the selector opens.
+watch(
+  () => [store.getSchemaName, store.selectedExecution?.executionId],
+  ([schema]) => {
+    if (schema) void executions.refresh()
+  },
+  { immediate: true },
+)
+
+watch(selectorOpen, (open) => {
+  if (open) void executions.refresh()
+})
+
+async function openExecution(execution: DrawerExecution) {
+  if (await executions.open(execution)) selectorOpen.value = false
+}
+
+function goToHistory() {
+  selectorOpen.value = false
+  closeOnNarrow()
+  void router.push('/history-execution')
+}
+
+/** A new execution starts afresh: the views kept alive, the create screen among them, reset. */
+function startExecution() {
+  store.incrementUploadComponentKey()
+  closeOnNarrow()
+}
+
+function goToSettings() {
+  closeOnNarrow()
+  void router.push('/user-settings')
+}
+
+async function signOut() {
+  confirmSignOut.value = false
+  try {
+    const auth = await getAuthService()
+    await auth.logout()
+    void router.push('/sign-in')
+    showSnackbar(t('logOut.snackbar_message_success'), 'success')
+  } catch (error) {
+    console.error('Logout error:', error)
+    showSnackbar(t('logOut.snackbar_message_error'), 'error')
+  }
+}
 </script>
 
 <style scoped>
-.subpages {
-  padding-left: 1em;
-}
-
-.mini-subpages {
-  padding-left: 0;
-}
-
-.v-list-item {
-  min-height: 48px !important;
-  height: 48px;
-}
-
-/* Reduce padding and height for main sections */
-.v-list-item:not(.subpages .v-list-item) {
-  min-height: 40px !important;
-  height: 40px;
-  padding-top: 4px !important;
-  padding-bottom: 4px !important;
-}
-
-.subpages .v-list-item {
-  min-height: 36px !important;
-  height: 36px;
-  padding-top: 4px;
-  padding-bottom: 4px;
-}
-
-.mini-subpages .v-list-item {
-  padding-left: 20px !important;
-  padding-right: 12px;
-  min-height: 36px !important;
-  height: 36px;
-  padding-top: 4px;
-  padding-bottom: 4px;
-  font-size: 0.85rem;
-}
-
-.mini-subpages .subpage-title {
-  display: none !important;
-}
-
-.subpage-title {
-  font-size: 0.85rem;
-}
-
-/* Smaller icons for subsections */
-.subpages .v-icon {
-  font-size: 20px !important;
-  width: 20px;
-  height: 20px;
-}
-
-.subpages .d-flex.align-center {
-  min-height: 36px;
-  align-items: center;
-}
-
-.mini-subpages .d-flex.align-center {
-  min-height: 36px;
-  align-items: center;
-}
-
-.v-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.user-container {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  height: 30px !important;
-}
-
-.avatar {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  margin-right: 10px;
-  margin-left: 12px;
-  flex-shrink: 0;
-}
-
-.user-info {
+/* Above the execution tab bar, which starts where the menu ends, so the open menu covers it. */
+.app-drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 906;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  flex-grow: 1;
+  width: 56px;
+  border-right: 1px solid var(--color-divider);
+  background: var(--color-surface);
+  font-family: var(--font-sans);
+  color: var(--color-text);
   overflow: hidden;
+  transition: width var(--duration-base) var(--ease-standard);
 }
 
-.user-detail {
-  font-size: 0.8em;
-  color: var(--subtitle);
-  margin-right: 5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.app-drawer.is-expanded {
+  width: 250px;
 }
 
-.d-flex.align-center {
+.app-drawer.is-floating {
+  box-shadow: var(--shadow-xl);
+}
+
+.app-drawer.is-overlay {
+  width: min(288px, 85vw);
+  box-shadow: var(--shadow-xl);
+}
+
+.app-drawer__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 905;
+  background: var(--color-scrim);
+}
+
+/* ── Expanded ────────────────────────────────────────────────────────────── */
+
+/* As wide as the open menu from the start, so it does not reflow while the menu widens. */
+.app-drawer__panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  width: 250px;
+}
+
+.app-drawer.is-overlay .app-drawer__panel {
   width: 100%;
-  min-height: 48px;
-  align-items: center;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-h4 {
-  font-size: 0.9em !important;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin: 0;
-  line-height: 1.2;
-  transition: opacity 0.3s ease;
-}
-
-.v-list-item__content {
-  transition: all 0.3s ease;
-}
-
-.page-selected {
-  color: rgb(var(--v-theme-primary)) !important;
-}
-
-.page-selected :deep(.v-list-item__prepend > .v-icon),
-.page-selected :deep(.v-icon) {
-  color: rgb(var(--v-theme-primary)) !important;
-}
-
-/* Background for selected items */
-:deep(.page-selected.v-list-item) {
-  background-color: rgba(var(--v-theme-primary), 0.08) !important;
-}
-
-/* Background for selected subpages */
-.subpages :deep(.page-selected.v-list-item) {
-  background-color: rgba(var(--v-theme-primary), 0.08) !important;
-}
-
-.non-clickable {
-  color: var(--primary-variant) !important;
-}
-
-/* Override Vuetify's default opacity for icons in clickable items */
-/* Ensure subpages in mini mode maintain full opacity */
-.mini-subpages :deep(.v-list-item .v-list-item__prepend > .v-icon) {
-  opacity: 1 !important;
-}
-
-.mini-subpages :deep(.v-list-item .v-list-item__append > .v-icon) {
-  opacity: 1 !important;
-}
-
-/* Mini header styles for parent items (non-clickable) */
-.mini-header {
-  cursor: default !important;
-  opacity: 0.6 !important;
-}
-
-.mini-header:hover {
-  background-color: transparent !important;
-}
-
-.mini-header .v-list-item__prepend > .v-icon {
-  opacity: 0.6 !important;
-  cursor: default !important;
-}
-
-.mini-header .v-list-item__append > .v-icon {
-  opacity: 0.6 !important;
-  cursor: default !important;
-}
-
-/* Pin button styles */
-.pin-button {
-  opacity: 0.7;
-  transition: opacity 0.2s ease;
-}
-
-.pin-button:hover {
-  opacity: 1;
-  background-color: rgba(var(--v-theme-on-surface), 0.04) !important;
-}
-
-/* Logo container styles */
-.logo-container {
+/* As tall as the rail's logo, with the icon where the rail has it, so nothing jumps on opening. */
+.app-drawer__head {
+  flex: none;
   display: flex;
   flex-direction: column;
-  min-height: 105px;
+  align-items: flex-start;
+  padding-bottom: calc(var(--spacing) * 2.5);
+  border-bottom: 1px solid var(--color-divider);
 }
 
-/* App name styles */
-.app-name {
-  font-size: 0.85rem;
-  color: var(--secondary);
-  font-weight: 450;
+/* As tall as the rail's logo, so the logo takes its place on opening. */
+.app-drawer__head-row {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  height: 56px;
+  padding: 0 calc(var(--spacing) * 2) 0 calc(var(--spacing) * 4);
+}
+
+.app-drawer__logo {
+  flex: 1;
+  min-width: 0;
+  display: block;
+  height: 28px;
+  object-fit: contain;
+  object-position: left;
+}
+
+/* The app name and the active DAG, in one line; for a user who may switch DAG, a pill to do it. */
+.app-drawer__context {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 1);
+  max-width: calc(100% - var(--spacing) * 6);
+  margin: calc(var(--spacing) * -1) calc(var(--spacing) * 3) 0;
+  padding: 0 calc(var(--spacing) * 1);
+  font-size: var(--text-sm);
+  line-height: 1.4;
   white-space: nowrap;
+}
+
+.app-drawer__context.is-switcher {
+  height: 28px;
+  padding: 0 calc(var(--spacing) * 2) 0 calc(var(--spacing) * 3);
+  border: 1px solid var(--color-border-input);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  font-family: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.app-drawer__context.is-switcher:hover {
+  border-color: var(--color-border-strong);
+}
+
+.app-drawer__context .core-icon {
+  flex: none;
+  color: var(--color-text-subtle);
+}
+
+.app-drawer__app-name,
+.app-drawer__module {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.app-drawer__app-name {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+/* With the DAG beside it, the name keeps most of the line and the DAG gets the rest. */
+.app-drawer__app-name:has(+ .app-drawer__module) {
+  flex: none;
+  max-width: 60%;
+}
+
+.app-drawer__module {
+  color: var(--color-text-muted);
+}
+
+.app-drawer__app-name + .app-drawer__module::before {
+  content: '·';
+  margin-right: calc(var(--spacing) * 1);
+  color: var(--color-text-subtle);
+}
+
+.app-drawer__nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: calc(var(--spacing) * 2);
+}
+
+/* Creating an execution heads the menu, filled in the app's primary colour. */
+.app-drawer__create {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--spacing) * 1.5);
+  height: 40px;
+  margin: calc(var(--spacing) * 3) calc(var(--spacing) * 2.5) 0;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+  font-size: var(--text-md);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+}
+
+/* The app's stylesheet colours every link (`!important`), so the label and icon take theirs. */
+.app-drawer__create > *,
+.app-drawer__rail-button.is-create > * {
+  color: var(--color-on-primary);
+}
+
+.app-drawer__create:hover,
+.app-drawer__rail-button.is-create:hover {
+  filter: brightness(0.92);
+}
+
+.app-drawer__create:focus-visible,
+.app-drawer__rail-button.is-create:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* The loaded execution and its groups, boxed together. */
+.app-drawer__execution {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 1.5);
+  margin: calc(var(--spacing) * 3) calc(var(--spacing) * 2.5) 0;
+  padding: calc(var(--spacing) * 2.5) calc(var(--spacing) * 2.5) calc(var(--spacing) * 2.5);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-muted);
+  overflow: hidden;
+}
+
+.app-drawer__execution-groups {
+  margin: calc(var(--spacing) * 1) calc(var(--spacing) * -2.5) calc(var(--spacing) * -2.5);
+  padding: calc(var(--spacing) * 1) 0;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.app-drawer__hint {
+  margin: 0;
+  padding: 0 2px;
+  font-size: var(--text-xs);
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.app-drawer__general {
+  display: flex;
+  flex-direction: column;
+  margin-top: calc(var(--spacing) * 3);
+  padding-top: calc(var(--spacing) * 2);
+  border-top: 1px solid var(--color-divider);
+}
+
+.app-drawer__label {
+  padding-left: 2px;
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+.app-drawer__selector {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  width: 100%;
+  padding: calc(var(--spacing) * 1.75) calc(var(--spacing) * 2) calc(var(--spacing) * 1.75) calc(var(--spacing) * 2.5);
+  border: 1px solid var(--color-border-input);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.app-drawer__selector:hover {
+  border-color: var(--color-border-strong);
+}
+
+.app-drawer__selector > .core-icon {
+  flex: none;
+  color: var(--color-text-subtle);
+}
+
+.app-drawer__selector-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.app-drawer__selector-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-md);
+  font-weight: var(--font-weight-medium);
+}
+
+.app-drawer__selector-name.is-empty {
+  color: var(--color-text-muted);
+}
+
+.app-drawer__selector-meta {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 1.5);
+  white-space: nowrap;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.app-drawer__user {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 1);
+  box-sizing: border-box;
+  height: var(--bottom-bar-height);
+  padding: 0 calc(var(--spacing) * 2) 0 calc(var(--spacing) * 3);
+  border-top: 1px solid var(--color-divider);
+}
+
+.app-drawer__user-link {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2.5);
+  padding: calc(var(--spacing) * 1);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.app-drawer__user-link:hover {
+  background: var(--color-surface-hover);
+}
+
+.app-drawer__avatar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-on-primary);
+}
+
+.app-drawer__avatar.is-button {
+  cursor: pointer;
+}
+
+.app-drawer__user-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.app-drawer__user-name,
+.app-drawer__user-email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-drawer__user-name {
+  font-size: var(--text-sm);
+}
+
+.app-drawer__user-email {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* ── Folded rail ─────────────────────────────────────────────────────────── */
+
+.app-drawer__rail-logo {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 56px;
+}
+
+/* The initial of the active DAG, on the corner of the icon. */
+.app-drawer__rail-module {
+  position: absolute;
+  right: 6px;
+  bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border: 2px solid var(--color-surface);
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  font-size: 9px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  color: var(--color-on-primary);
+  text-transform: uppercase;
+}
+
+.app-drawer__mark {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.app-drawer__rail {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--spacing) * 3);
+  padding: calc(var(--spacing) * 1) 0 calc(var(--spacing) * 2);
+  border-top: 1px solid var(--color-divider);
+}
+
+.app-drawer__rail-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--spacing) * 1);
+}
+
+/* The loaded execution and its groups, boxed together as in the expanded menu. */
+.app-drawer__rail-block.is-execution {
+  margin-top: calc(var(--spacing) * 1);
+  padding: calc(var(--spacing) * 1);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-muted);
+}
+
+.app-drawer__rail-button {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.app-drawer__rail-button:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-primary);
+}
+
+.app-drawer__rail-button.is-boxed {
+  border: 1px solid var(--color-border-input);
+  background: var(--color-surface);
+  color: var(--color-primary);
+}
+
+.app-drawer__rail-button.is-active {
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+}
+
+/* Smaller than the other buttons of the rail: filled, it weighs more than their icons. */
+.app-drawer__rail-button.is-create {
+  width: 32px;
+  height: 32px;
+  margin-top: calc(var(--spacing) * 2);
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.app-drawer__rail-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--color-surface);
+  border-radius: var(--radius-full);
+  background: var(--color-neutral);
+}
+
+.app-drawer__rail-dot.is-success {
+  background: var(--color-success);
+}
+
+.app-drawer__rail-dot.is-warning {
+  background: var(--color-warning);
+}
+
+.app-drawer__rail-dot.is-danger {
+  background: var(--color-danger);
+}
+
+.app-drawer__rail-dot.is-primary {
+  background: var(--color-primary);
+}
+
+.app-drawer__rail-dot.is-info {
+  background: var(--color-info);
+}
+
+.app-drawer__rail-user {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: var(--bottom-bar-height);
+  border-top: 1px solid var(--color-divider);
 }
 </style>

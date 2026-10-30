@@ -3,9 +3,8 @@ import { describe, test, expect, vi, beforeEach } from 'vitest'
 /**
  * Complements useInstanceProcessing.unwrapEtlResponse.spec.ts.
  *
- * Covers the exported `buildInstanceDataFromAlternativeFields` helper and the
- * `useInstanceProcessing` composable (processFiles, processInstanceData,
- * processFromDb, resetState + state/computeds). All heavy dependencies (store,
+ * Covers the `useInstanceProcessing` composable (processFiles, processFromDb, resetState +
+ * state/computeds). All heavy dependencies (store,
  * file processors, Instance model, excel/schema utils) are mocked so the tests
  * exercise the composable's own branching logic without real I/O.
  */
@@ -74,14 +73,11 @@ vi.mock('@/app/models/Instance', () => ({
   Instance: FakeInstance,
 }))
 
-// data_io.buildExcelBuffer
-const mockBuildExcelBuffer = vi.fn(async () => ({ bytes: new Uint8Array([1, 2, 3]) }))
-vi.mock('@cornflow-ui/core/utils/data_io', () => ({
-  buildExcelBuffer: (...args: any[]) => mockBuildExcelBuffer(...args),
-}))
+// data_io: reached through the file pre-processing; the real module drags in i18n, which this
+// suite mocks.
+vi.mock('@cornflow-ui/core/utils/data_io', () => ({}))
 
 // schemaUtils
-const mockBuildAlternative = vi.fn(() => ({ built: true }))
 // The whole module is replaced (importing it for real drags in i18n, which this suite
 // mocks). `pickPreEtlConfigValues` is reproduced here only so the call reads naturally;
 // what these tests check is the wiring — which arguments the composable hands it and
@@ -99,11 +95,6 @@ const mockPickPreEtlConfigValues = vi.fn(
   },
 )
 vi.mock('@cornflow-ui/core/utils/schemaUtils', () => ({
-  buildAlternativeParameterInstanceData: (...args: any[]) =>
-    mockBuildAlternative(...args),
-  convertParameterNameValueArraysToObjectsForInstance: vi.fn((data: any) => data),
-  getInstanceSchemaRootForTables: vi.fn(() => null),
-  patchInstanceSchemaRootForParameterTableEtlExport: vi.fn(() => null),
   pickPreEtlConfigValues: (...args: any[]) =>
     (mockPickPreEtlConfigValues as any)(...args),
 }))
@@ -134,10 +125,7 @@ vi.mock('@cornflow-ui/core/plugins/extensions', async (orig) => ({
   }),
 }))
 
-import {
-  useInstanceProcessing,
-  buildInstanceDataFromAlternativeFields,
-} from '@cornflow-ui/core/composables/useInstanceProcessing'
+import { useInstanceProcessing } from '@cornflow-ui/core/composables/useInstanceProcessing'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -174,34 +162,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   ctrl.nextCheckSchemaResult = []
   ctrl.checkSchemaThrows = false
-  mockBuildExcelBuffer.mockResolvedValue({ bytes: new Uint8Array([1, 2, 3]) })
-  mockBuildAlternative.mockReturnValue({ built: true })
   storeState = makeStore()
-})
-
-// ─── buildInstanceDataFromAlternativeFields ─────────────────────────────────────
-
-describe('buildInstanceDataFromAlternativeFields', () => {
-  test('delegates to buildAlternativeParameterInstanceData with provided masterDataTables', () => {
-    const fields: any = [{ table: 't', key: 'k' }]
-    const values = { k: 1 }
-    const ctx = { instanceSchema: { s: 1 }, masterDataTables: { md: 2 } }
-
-    const out = buildInstanceDataFromAlternativeFields(fields, values, ctx)
-
-    expect(out).toEqual({ built: true })
-    expect(mockBuildAlternative).toHaveBeenCalledWith(
-      fields,
-      values,
-      ctx.instanceSchema,
-      ctx.masterDataTables,
-    )
-  })
-
-  test('passes null when masterDataTables is omitted', () => {
-    buildInstanceDataFromAlternativeFields([], {}, { instanceSchema: {} })
-    expect(mockBuildAlternative).toHaveBeenCalledWith([], {}, {}, null)
-  })
 })
 
 // ─── composable: initial state & computeds ───────────────────────────────────────
@@ -489,104 +450,6 @@ describe('useInstanceProcessing - processFiles (ETL backend)', () => {
     expect(result.success).toBe(true)
     expect(mockNeedsSpecialProcessing).toHaveBeenCalled()
     expect(mockUseEtlBackend).toHaveBeenCalled()
-  })
-})
-
-// ─── composable: processInstanceData ─────────────────────────────────────────────
-
-describe('useInstanceProcessing - processInstanceData', () => {
-  test('returns error for empty data object', async () => {
-    const { processInstanceData } = useInstanceProcessing()
-    const result = await processInstanceData({})
-
-    expect(result.success).toBe(false)
-    expect(result.errors).toContain('noParametersDataError')
-  })
-
-  test('returns error for null data', async () => {
-    const { processInstanceData } = useInstanceProcessing()
-    const result = await processInstanceData(null as any)
-
-    expect(result.success).toBe(false)
-    expect(result.errors).toContain('noParametersDataError')
-  })
-
-  test('builds an Instance directly when ETL is disabled (frontend path)', async () => {
-    const { processInstanceData } = useInstanceProcessing()
-    const result = await processInstanceData({ table_a: [{ id: 1 }] })
-
-    expect(result.success).toBe(true)
-    expect(result.instance).toBeInstanceOf(FakeInstance)
-  })
-
-  test('frontend path returns validation error when checkSchema fails', async () => {
-    ctrl.nextCheckSchemaResult = [{ instancePath: '/y', message: 'nope' }]
-    const { processInstanceData } = useInstanceProcessing()
-    const result = await processInstanceData({ table_a: [{ id: 1 }] })
-
-    expect(result.success).toBe(false)
-    expect(result.errors).toContain('VALIDATION:')
-  })
-
-  test('ETL path: error when no visible sheets', async () => {
-    storeState = makeStore({
-      parameters: {
-        etl: {
-          enableEtlMetadataAndReview: false,
-          useEtlBackend: true,
-          enableLoadFromDb: false,
-        },
-        fileProcessors: {},
-      },
-    })
-    // empty data passes the initial non-empty guard via a hidden-only object?
-    // Use a key whose normalized value is an empty array with no required headers.
-    const { processInstanceData } = useInstanceProcessing()
-    const result = await processInstanceData({ emptyTable: [] })
-
-    expect(result.success).toBe(false)
-    expect(result.errors).toContain('noParametersSheetsError')
-  })
-
-  test('ETL path: builds xlsx and sends to backend on success', async () => {
-    storeState = makeStore({
-      parameters: {
-        etl: {
-          enableEtlMetadataAndReview: false,
-          useEtlBackend: true,
-          enableLoadFromDb: false,
-        },
-        fileProcessors: {},
-      },
-    })
-    mockUseEtlBackend.mockResolvedValue({ data: { table_a: [{ id: 1 }] } })
-
-    const { processInstanceData } = useInstanceProcessing()
-    const result = await processInstanceData({ table_a: [{ id: 1 }] })
-
-    expect(result.success).toBe(true)
-    expect(mockBuildExcelBuffer).toHaveBeenCalled()
-    expect(mockUseEtlBackend).toHaveBeenCalled()
-  })
-
-  test('ETL path: error when built xlsx file is empty', async () => {
-    storeState = makeStore({
-      parameters: {
-        etl: {
-          enableEtlMetadataAndReview: false,
-          useEtlBackend: true,
-          enableLoadFromDb: false,
-        },
-        fileProcessors: {},
-      },
-    })
-    mockBuildExcelBuffer.mockResolvedValue({ bytes: new Uint8Array([]) })
-
-    const { processInstanceData } = useInstanceProcessing()
-    const result = await processInstanceData({ table_a: [{ id: 1 }] })
-
-    expect(result.success).toBe(false)
-    expect(result.errors).toContain('noParametersSheetsError')
   })
 })
 

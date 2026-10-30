@@ -644,7 +644,7 @@ export function isTableSchemaVisible(tableSchema: unknown): boolean {
   return (tableSchema as any).visible !== false
 }
 
-/** Single type string for table headers / CoreModal (matches `FieldConfig.type` primitives). */
+/** Single type string for table headers and form fields (matches `FieldConfig.type` primitives). */
 export type JsonSchemaNormalizedUiType =
   | 'string'
   | 'number'
@@ -655,7 +655,7 @@ export type JsonSchemaNormalizedUiType =
 
 /**
  * JSON Schema allows `type` as an array (e.g. `["integer", "number", "null"]`). The UI
- * (CoreModal add/edit, CoreTable metadata) expects a single string `FieldConfig.type`;
+ * (table columns and form fields) expects a single string `FieldConfig.type`;
  * unknown compound types would otherwise render no input control (empty grid cell).
  */
 export function normalizeJsonSchemaPropertyTypeForUi(
@@ -919,304 +919,6 @@ export function pickInstanceDataForEtlPayload(
     out[key] = value
   }
   return out
-}
-
-/**
- * Master-data / frontend-automation table config for a key (exact or normalized match).
- */
-export function getMasterDataTableConfigForKey(
-  masterData: Record<string, any> | null | undefined,
-  tableKey: string,
-): any {
-  if (!masterData || typeof masterData !== 'object' || !tableKey) return null
-  if (masterData[tableKey]?.get_list) return masterData[tableKey]
-  const target = normalizeSchemaTableKeyForLookup(tableKey)
-  for (const k of Object.keys(masterData)) {
-    if (
-      normalizeSchemaTableKeyForLookup(k) === target &&
-      masterData[k]?.get_list
-    ) {
-      return masterData[k]
-    }
-  }
-  return null
-}
-
-function parseAlternativeInstancePath(instancePath: string): {
-  table: string
-  column: string
-} | null {
-  const dot = instancePath.indexOf('.')
-  if (dot <= 0 || dot === instancePath.length - 1) return null
-  return {
-    table: instancePath.slice(0, dot),
-    column: instancePath.slice(dot + 1),
-  }
-}
-
-function arrayItemsImplyNameValueRows(itemsSchema: any): boolean {
-  const p = itemsSchema?.properties
-  if (!p || typeof p !== 'object') return false
-  const keys = Object.keys(p).filter((k) => {
-    const prop = p[k]
-    return prop != null && prop.visible !== false
-  })
-  if (keys.length !== 2) return false
-  return keys.includes('name') && keys.includes('value')
-}
-
-/** First row of an EAV payload: exactly `name` and `value`. */
-function isNameValueDataRow(row: unknown): boolean {
-  if (!row || typeof row !== 'object' || Array.isArray(row)) return false
-  const o = row as Record<string, unknown>
-  const keys = Object.keys(o).filter((k) => o[k] !== undefined)
-  return keys.length === 2 && keys.includes('name') && keys.includes('value')
-}
-
-export type AlternativeParameterPayloadShape =
-  | 'object'
-  | 'arrayWide'
-  | 'arrayNameValue'
-
-/**
- * How instance.data[tableKey] should be shaped for alternative parameter fields:
- * - `object`: single object `{ col: val, ... }` (instance schema parameter object / type object).
- * - `arrayWide`: `[{ col: val, ... }]` (tabular array; Excel = header row + data rows).
- * - `arrayNameValue`: `[{ name, value }, ...]` (EAV rows).
- *
- * Uses instance JSON Schema first, then frontend-automation `get_list.response_schema` / flags.
- */
-/** Payload shape for an `array`-typed schema: name/value EAV rows vs. wide rows. */
-function arrayPayloadShape(itemsSchema: any): AlternativeParameterPayloadShape {
-  return arrayItemsImplyNameValueRows(itemsSchema) ? 'arrayNameValue' : 'arrayWide'
-}
-
-/**
- * Payload shape inferred from the instance JSON Schema for the table, or null
- * when the instance schema does not describe the table well enough.
- */
-function payloadShapeFromInstanceSchema(
-  inst: any,
-): AlternativeParameterPayloadShape | null {
-  if (!inst) return null
-  /**
-   * Parameter tables are `type: object` in the instance schema (one keyed object in API data).
-   * ETL Excel uses a **horizontal** sheet (header row + data rows); `schemaDataToTable` only does that
-   * for `type: array` tables — see `patchInstanceSchemaRootForParameterTableEtlExport`.
-   */
-  if (isParameterTableSchema(inst)) return 'object'
-  if (inst.type === 'object' && inst.properties) return 'object'
-  if (inst.type === 'array' && inst.items) return arrayPayloadShape(inst.items)
-  return null
-}
-
-/**
- * Payload shape inferred from the frontend-automation table config, or null when
- * the config does not determine a shape.
- */
-function payloadShapeFromAutomationConfig(
-  automationTableConfig: any,
-): AlternativeParameterPayloadShape | null {
-  if (automationTableConfig?.isParameterTable === true) return 'object'
-  if (isParameterTableAutomationConfig(automationTableConfig)) return 'object'
-
-  const rs = automationTableConfig?.get_list?.response_schema
-  if (rs && isParameterTableSchema(rs)) return 'object'
-  if (rs?.type === 'array' && rs.items) return arrayPayloadShape(rs.items)
-  return null
-}
-
-export function resolveAlternativeParameterPayloadShapeForTable(
-  tableKey: string,
-  instanceSchema: any,
-  automationTableConfig: any,
-): AlternativeParameterPayloadShape {
-  const inst = getInstanceTableJsonSchemaForKey(tableKey, instanceSchema)
-  const fromInstance = payloadShapeFromInstanceSchema(inst)
-  if (fromInstance) return fromInstance
-
-  const fromAutomation = payloadShapeFromAutomationConfig(automationTableConfig)
-  if (fromAutomation) return fromAutomation
-
-  return 'arrayWide'
-}
-
-function normalizeAlternativeFieldValue(
-  field: { type: string },
-  raw: unknown,
-): unknown {
-  let v = raw
-  if (field.type === 'number' && v !== '' && v !== null && v !== undefined) {
-    const n = typeof v === 'number' ? v : Number(v)
-    v = Number.isFinite(n) ? n : v
-  }
-  return v
-}
-
-export interface AlternativeParameterFieldInput {
-  id: string
-  instancePath: string
-  type: string
-}
-
-/**
- * Builds partial `instance.data` for the “load parameters” flow from form fields,
- * matching instance schema and (when needed) master-data automation config.
- */
-/** Groups fields by their instance-path table, skipping unparseable paths. */
-function groupAlternativeFieldsByTable(
-  fields: AlternativeParameterFieldInput[],
-): Record<string, AlternativeParameterFieldInput[]> {
-  const byTable: Record<string, AlternativeParameterFieldInput[]> = {}
-  for (const f of fields) {
-    const p = parseAlternativeInstancePath(f.instancePath)
-    if (!p) continue
-    if (!byTable[p.table]) byTable[p.table] = []
-    byTable[p.table].push(f)
-  }
-  return byTable
-}
-
-/** Builds a single wide `{ column: value }` row from a table's fields. */
-function buildAlternativeWideRow(
-  tableFields: AlternativeParameterFieldInput[],
-  values: Record<string, unknown>,
-): Record<string, any> {
-  const row: Record<string, any> = {}
-  for (const f of tableFields) {
-    const p = parseAlternativeInstancePath(f.instancePath)
-    row[p.column] = normalizeAlternativeFieldValue(f, values[f.id])
-  }
-  return row
-}
-
-/** Builds `{ name, value }[]` EAV rows from a table's fields. */
-function buildAlternativeNameValueRows(
-  tableFields: AlternativeParameterFieldInput[],
-  values: Record<string, unknown>,
-): { name: string; value: unknown }[] {
-  return tableFields.map((f) => {
-    const p = parseAlternativeInstancePath(f.instancePath)
-    return {
-      name: p.column,
-      value: normalizeAlternativeFieldValue(f, values[f.id]),
-    }
-  })
-}
-
-export function buildAlternativeParameterInstanceData(
-  fields: AlternativeParameterFieldInput[],
-  values: Record<string, unknown>,
-  instanceSchema: any,
-  masterDataTables: Record<string, any> | null | undefined,
-): Record<string, any> {
-  const byTable = groupAlternativeFieldsByTable(fields)
-
-  const out: Record<string, any> = {}
-
-  for (const [table, tableFields] of Object.entries(byTable)) {
-    const automationTable = getMasterDataTableConfigForKey(
-      masterDataTables ?? null,
-      table,
-    )
-    const shape = resolveAlternativeParameterPayloadShapeForTable(
-      table,
-      instanceSchema,
-      automationTable,
-    )
-
-    if (shape === 'object') {
-      out[table] = buildAlternativeWideRow(tableFields, values)
-    } else if (shape === 'arrayNameValue') {
-      out[table] = buildAlternativeNameValueRows(tableFields, values)
-    } else {
-      out[table] = [buildAlternativeWideRow(tableFields, values)]
-    }
-  }
-
-  return out
-}
-
-/**
- * Merges `[{ name, value }]` arrays back into `{ [name]: value }` for tables that are parameter objects
- * in the instance schema (client-side validation / Instance constructor).
- */
-export function convertParameterNameValueArraysToObjectsForInstance(
-  data: Record<string, any>,
-  instanceSchema: any,
-): Record<string, any> {
-  if (!data || typeof data !== 'object') return data
-  const out: Record<string, any> = { ...data }
-  for (const [key, val] of Object.entries(data)) {
-    if (!Array.isArray(val) || val.length === 0) continue
-    const first = val[0]
-    if (
-      !first ||
-      typeof first !== 'object' ||
-      !Object.hasOwn(first, 'name') ||
-      !Object.hasOwn(first, 'value')
-    ) {
-      continue
-    }
-    const tableSchema = getInstanceTableJsonSchemaForKey(key, instanceSchema)
-    if (!isParameterTableSchema(tableSchema)) continue
-    const obj: Record<string, any> = {}
-    for (const row of val) {
-      if (row && typeof row === 'object' && row.name != null) {
-        obj[String(row.name)] = row.value
-      }
-    }
-    out[key] = obj
-  }
-  return out
-}
-
-/**
- * Instance schema often declares parameter tables as `type: object`, but `schemaDataToTable` writes
- * **horizontal** sheets only for `type: array` (header row + data rows). Object-typed sheets use a
- * vertical key-value layout, which ETL may reject. This patch rewrites parameter-table properties to
- * `type: array` + `items: { type: object, properties }` so export matches a normal table (e.g. `start_date` | `end_date`).
- * When data is already `[{ name, value }, …]` (schema-resolved EAV), keeps the name/value column layout.
- */
-export function patchInstanceSchemaRootForParameterTableEtlExport(
-  data: Record<string, any>,
-  root: { properties?: Record<string, any> } | null,
-): { properties?: Record<string, any> } | null {
-  if (!root?.properties) return root
-  const props = { ...root.properties }
-  let changed = false
-  for (const [key, val] of Object.entries(data)) {
-    const orig = props[key]
-    if (!orig || !isParameterTableSchema(orig)) continue
-
-    if (Array.isArray(val) && val.length > 0 && isNameValueDataRow(val[0])) {
-      props[key] = {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            name: { type: 'string' },
-            value: {},
-          },
-        },
-      }
-      changed = true
-      continue
-    }
-
-    props[key] = {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: orig.properties ? { ...orig.properties } : {},
-        ...(Array.isArray(orig.required) && orig.required.length > 0
-          ? { required: [...orig.required] }
-          : {}),
-      },
-    }
-    changed = true
-  }
-  return changed ? { ...root, properties: props } : root
 }
 
 /**
@@ -1601,6 +1303,7 @@ function convertJsonSchemaItemToSchema(itemSchema: any): any {
         ...(prop.frontendReadOnly && {
           frontendReadOnly: prop.frontendReadOnly,
         }),
+        ...(prop.pinsRow && { pinsRow: true }),
         ...(prop.description && { description: prop.description }),
         ...(prop.minimum !== undefined && { minimum: prop.minimum }),
         ...(prop.maximum !== undefined && { maximum: prop.maximum }),
@@ -1779,7 +1482,7 @@ export interface ExecutionConfigField {
   /**
    * True when the schema property carries `"pre_etl": true`. Such a parameter is
    * needed *before* the instance exists, because the ETL backend filters the data
-   * with it, so the wizard asks for it in its own step ahead of the instance load
+   * with it, so the create-execution screen asks for it ahead of the instance load
    * and sends it in the `POST /external/etl/` form.
    */
   preEtl?: boolean
@@ -1799,6 +1502,11 @@ export interface ExecutionConfigField {
    * are the rows of that frontend-automation table (value: the row's `id`; text: the column).
    */
   joinFrom?: string
+  /**
+   * A select of a schema `"type": "array"` (options from `join_from` or `items.enum`): several
+   * options can be picked, and the value is the list of them.
+   */
+  multiple?: boolean
 }
 
 /** Resolves solver list and default from the `solver` schema property. */
@@ -1891,7 +1599,8 @@ function buildExecutionConfigField(
     field.joinFrom = prop.join_from
     field.icon = DEFAULT_FIELD_ICONS.select
   }
-  applyEnumOptionsToField(field, prop)
+  applyEnumOptionsToField(field, schemaType === 'array' ? (prop.items ?? {}) : prop)
+  if (schemaType === 'array' && field.type === 'select') field.multiple = true
   applyDateFieldOverrides(field, prop, fieldType)
   applyTimeFieldOverrides(field, prop, fieldType, key)
 
@@ -1973,10 +1682,11 @@ export function getPreEtlConfigFields(
  * to the `POST /external/etl/` form as loose fields (agreed contract: one form field
  * per parameter, not a single JSON blob).
  *
- * Empty values are dropped rather than sent blank: a loose form field cannot carry
- * `null`, and for a nullable parameter such as `date` an empty string would be
- * indistinguishable from "the user left it blank", which the backend answers by
- * anchoring the run itself instead of to a given day.
+ * Empty values (an empty list included) are dropped rather than sent blank: a loose form
+ * field cannot carry `null`, and for a nullable parameter such as `date` an empty string
+ * would be indistinguishable from "the user left it blank", which the backend answers by
+ * anchoring the run itself instead of to a given day. A list goes as it is; the form field
+ * carries it as its items separated by commas (`1,2,3`).
  */
 export function pickPreEtlConfigValues(
   config: Record<string, any> | null | undefined,
@@ -1987,6 +1697,7 @@ export function pickPreEtlConfigValues(
   for (const field of getPreEtlConfigFields(configFields)) {
     const value = config[field.key]
     if (value === null || value === undefined || value === '') continue
+    if (Array.isArray(value) && value.length === 0) continue
     values[field.key] = value
   }
   return values

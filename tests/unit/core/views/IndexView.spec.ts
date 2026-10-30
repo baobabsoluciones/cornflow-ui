@@ -11,6 +11,7 @@ import {
   setTopBannerOffset,
   resetTopBannerOffsets,
 } from '@cornflow-ui/core/plugins/layoutOffsets'
+import { registerPremiumModules } from '@cornflow-ui/core/plugins/extensions'
 
 // Mock AuthService
 const mockAuthService = vi.hoisted(() => ({
@@ -55,22 +56,16 @@ vi.mock('@cornflow-ui/core/components/AppView.vue', () => ({
   }
 }))
 
-vi.mock('@cornflow-ui/core/components/core/ModuleSwitcher.vue', () => ({
-  default: {
-    name: 'CoreModuleSwitcher',
-    setup: () => () => h('div', { 'data-testid': 'module-switcher' })
-  }
-}))
-
-// Mock Mango UI components
-vi.mock('mango-vue', () => ({
-  MAppBarTab: {
-    name: 'MAppBarTab',
-    props: ['tabs', 'createTitle'],
-    emits: ['close', 'create', 'select'],
-    setup: (props: any, { slots }: any) => () => h('div', { 'data-testid': 'm-app-bar-tab' }, slots.actions?.())
-  }
-}))
+/** A premium module that mounts something in the top bar. */
+const topBarModule = {
+  id: 'top-bar-item',
+  globalComponents: [
+    {
+      slot: 'app-top-bar' as const,
+      component: { name: 'TopBarItem', setup: () => () => h('div', { 'data-testid': 'top-bar-item' }) },
+    },
+  ],
+}
 
 const createWrapper = async (isAuthenticated = true, isStagingEnvironment = false) => {
   const vuetify = createVuetify()
@@ -99,7 +94,6 @@ const createWrapper = async (isAuthenticated = true, isStagingEnvironment = fals
     messages: {
       en: {
         projectExecution: {
-          create: 'Create',
           stagingWarning: 'This is a staging environment'
         }
       }
@@ -115,25 +109,22 @@ const createWrapper = async (isAuthenticated = true, isStagingEnvironment = fals
     { executionId: 2, name: 'Test Execution 2', state: 1 }
   ]
   
-  // Create modifiable tabs for testing
   const mockTabs = [
-    { value: 1, text: 'Test Execution 1', icon: 'mdi-checkbox-marked', loading: false, selected: false, isLatestPlan: false },
-    { value: 2, text: 'Test Execution 2', icon: 'mdi-checkbox-marked', loading: false, selected: true, isLatestPlan: false }
+    { value: 1, text: 'Test Execution 1', state: 1, solutionStatusCode: null },
+    { value: 2, text: 'Test Execution 2', state: 0, solutionStatusCode: null }
   ]
-  
+
   // Mock the getter using Object.defineProperty for better control
   Object.defineProperty(generalStore, 'getLoadedExecutionTabs', {
     get: () => mockTabs,
     configurable: true
   })
   
-  generalStore.tabBarKey = 1
   generalStore.selectedExecution = { executionId: 2 }
   generalStore.initializeData = vi.fn()
   generalStore.removeLoadedExecution = vi.fn()
   generalStore.incrementUploadComponentKey = vi.fn()
   generalStore.setSelectedExecution = vi.fn()
-  generalStore.incrementTabBarKey = vi.fn()
 
   // Mock AuthService
   mockAuthService.isAuthenticated.mockReturnValue(isAuthenticated)
@@ -168,10 +159,7 @@ const createWrapper = async (isAuthenticated = true, isStagingEnvironment = fals
             return h('div', {}, children)
           }
         },
-        'v-img': {
-          setup: () => () => h('div', { 'data-testid': 'v-img' })
-        },
-        'Vue3Marquee': {
+'Vue3Marquee': {
           setup: () => () => h('div', { 'data-testid': 'marquee' })
         },
         'CoreAppDrawer': {
@@ -179,13 +167,6 @@ const createWrapper = async (isAuthenticated = true, isStagingEnvironment = fals
         },
         'CoreAppView': {
           setup: (_, { slots }) => () => h('div', { 'data-testid': 'app-view' }, ['Powered by baobab soluciones', slots.default?.()])
-        },
-        'MAppBarTab': {
-          name: 'MAppBarTab',
-          props: ['tabs', 'createTitle'],
-          setup: (_, { slots }) => () => h('div', { 'data-testid': 'm-app-bar-tab' }, [
-            slots.actions?.()
-          ])
         }
       }
     }
@@ -209,7 +190,7 @@ describe('IndexView', () => {
 
       expect(wrapper.find('[data-testid="app-drawer"]').exists()).toBe(true)
       expect(wrapper.find('[data-testid="app-view"]').exists()).toBe(true)
-      expect(wrapper.find('[data-testid="m-app-bar-tab"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="execution-tab-bar"]').exists()).toBe(true)
     })
 
     test('renders staging warning when isStagingEnvironment is true', async () => {
@@ -229,37 +210,35 @@ describe('IndexView', () => {
     test('renders baobab logo and powered by text', async () => {
       const { wrapper } = await createWrapper()
 
-      expect(wrapper.find('[data-testid="v-img"]').exists()).toBe(true)
-      expect(wrapper.text()).toContain('Powered by')
+      expect(wrapper.find('.powered-by__logo').exists()).toBe(true)
+      expect(wrapper.find('.powered-by').text()).toContain('Powered by')
       expect(wrapper.text()).toContain('baobab soluciones')
     })
   })
 
-  describe('Component Props', () => {
-    test('passes correct props to MAppBarTab', async () => {
-      const { wrapper, generalStore } = await createWrapper()
-      const appBarTab = wrapper.findComponent({ name: 'MAppBarTab' })
+  describe('Execution tab bar', () => {
+    test('has a tab per loaded execution, the selected one marked', async () => {
+      const { wrapper } = await createWrapper()
+      const bar = wrapper.findComponent({ name: 'CoreExecutionTabBar' })
 
-      expect(appBarTab.props('tabs')).toEqual(generalStore.getLoadedExecutionTabs)
-      expect(appBarTab.props('createTitle')).toBe('Create')
-      // The key is used for Vue's reactivity, we can verify the component exists and has the right props
-      expect(appBarTab.exists()).toBe(true)
+      expect(bar.props('tabs').map((tab: any) => [tab.id, tab.name])).toEqual([
+        [1, 'Test Execution 1'],
+        [2, 'Test Execution 2'],
+      ])
+      expect(bar.props('selected')).toBe(2)
+      expect(wrapper.find('[data-testid="execution-tab-2"]').attributes('aria-selected')).toBe('true')
+    })
+
+    test('a running execution shows a spinner instead of the dot of its state', async () => {
+      const { wrapper } = await createWrapper()
+      const [finished, running] = wrapper.findComponent({ name: 'CoreExecutionTabBar' }).props('tabs')
+
+      expect(finished.status.spin).toBe(false)
+      expect(running.status.spin).toBe(true)
     })
   })
 
   describe('Computed Properties', () => {
-    test('tabsData computed returns store tabs', async () => {
-      const { wrapper, generalStore } = await createWrapper()
-      
-      expect(wrapper.vm.tabsData).toEqual(generalStore.getLoadedExecutionTabs)
-    })
-
-    test('tabsKey computed returns store tab bar key', async () => {
-      const { wrapper, generalStore } = await createWrapper()
-      
-      expect(wrapper.vm.tabsKey).toBe(generalStore.tabBarKey)
-    })
-
     test('showStagingWarning computed returns config value', async () => {
       const { wrapper } = await createWrapper(true, true)
       
@@ -268,24 +247,28 @@ describe('IndexView', () => {
   })
 
   describe('Event Handlers', () => {
-    test('removeTab calls store removeLoadedExecution', async () => {
+    test('closing a tab that is not selected keeps the selected execution', async () => {
       const { wrapper, generalStore } = await createWrapper()
-      
-      await wrapper.vm.removeTab(1)
-      
-      expect(generalStore.removeLoadedExecution).toHaveBeenCalledWith(1)
+
+      await wrapper.vm.removeTab(0)
+
+      expect(generalStore.removeLoadedExecution).toHaveBeenCalledWith(0)
+      expect(generalStore.setSelectedExecution).not.toHaveBeenCalled()
     })
 
-    test('createTab navigates to project-execution and increments key', async () => {
+    test('closing the selected tab deselects it and leaves a view that needs it', async () => {
       const { wrapper, generalStore, router } = await createWrapper()
-      const pushSpy = vi.spyOn(router, 'push')
-      
-      await wrapper.vm.createTab()
+      await router.push('/output-data')
       await router.isReady()
-      
-      expect(pushSpy).toHaveBeenCalledWith({ path: 'project-execution' })
-      expect(generalStore.incrementUploadComponentKey).toHaveBeenCalled()
+      const pushSpy = vi.spyOn(router, 'push')
+
+      await wrapper.vm.removeTab(1)
+
+      expect(generalStore.removeLoadedExecution).toHaveBeenCalledWith(1)
+      expect(generalStore.setSelectedExecution).toHaveBeenCalledWith(null)
+      expect(pushSpy).toHaveBeenCalledWith('/history-execution')
     })
+
 
     describe('selectTab', () => {
       test('deselects tab when same execution is selected and on project-execution route', async () => {
@@ -293,97 +276,63 @@ describe('IndexView', () => {
         await router.push('/project-execution')
         await router.isReady()
         
-        const executionTab = { value: 2 }
         
-        await wrapper.vm.selectTab(executionTab)
+        await wrapper.vm.selectTab(2)
         
         expect(generalStore.setSelectedExecution).toHaveBeenCalledWith(null)
-        // When deselecting on project-execution route, it should not navigate (only navigates on specific routes)
-        expect(generalStore.incrementTabBarKey).toHaveBeenCalled()
-      })
+})
 
       test('deselects tab when same execution is selected and on history-execution route', async () => {
         const { wrapper, generalStore, router } = await createWrapper()
         await router.push('/history-execution')
         await router.isReady()
         
-        const executionTab = { value: 2 }
         
-        await wrapper.vm.selectTab(executionTab)
+        await wrapper.vm.selectTab(2)
         
         expect(generalStore.setSelectedExecution).toHaveBeenCalledWith(null)
-        // When deselecting on history-execution route, it should not navigate (only navigates on specific routes)
-        expect(generalStore.incrementTabBarKey).toHaveBeenCalled()
-      })
+})
 
       test('navigates to history-execution when deselecting on output-data route', async () => {
         const { wrapper, generalStore, router } = await createWrapper()
         await router.push('/output-data')
         await router.isReady()
         
-        const executionTab = { value: 2 }
         const pushSpy = vi.spyOn(router, 'push')
         
-        await wrapper.vm.selectTab(executionTab)
+        await wrapper.vm.selectTab(2)
         
         expect(generalStore.setSelectedExecution).toHaveBeenCalledWith(null)
         expect(pushSpy).toHaveBeenCalledWith('/history-execution')
-        expect(generalStore.incrementTabBarKey).toHaveBeenCalled()
-      })
+})
 
       test('selects different execution from project-execution', async () => {
         const { wrapper, generalStore } = await createWrapper()
         
-        const executionTab = { value: 3 }
         
-        await wrapper.vm.selectTab(executionTab)
+        await wrapper.vm.selectTab(3)
         
         expect(generalStore.setSelectedExecution).toHaveBeenCalledWith(3)
-        // Component doesn't navigate when selecting - it only updates state
-        expect(generalStore.incrementTabBarKey).toHaveBeenCalled()
-      })
+})
 
       test('selects different execution from history-execution', async () => {
         const { wrapper, generalStore } = await createWrapper()
         
-        const executionTab = { value: 3 }
         
-        await wrapper.vm.selectTab(executionTab)
+        await wrapper.vm.selectTab(3)
         
         expect(generalStore.setSelectedExecution).toHaveBeenCalledWith(3)
-        // Component doesn't navigate when selecting - it only updates state
-        expect(generalStore.incrementTabBarKey).toHaveBeenCalled()
-      })
+})
 
       test('selects different execution on other routes', async () => {
         const { wrapper, generalStore } = await createWrapper()
         
-        const executionTab = { value: 3 }
         
-        await wrapper.vm.selectTab(executionTab)
+        await wrapper.vm.selectTab(3)
         
         expect(generalStore.setSelectedExecution).toHaveBeenCalledWith(3)
-        // Component doesn't navigate or increment upload key - it only updates state
-        expect(generalStore.incrementTabBarKey).toHaveBeenCalled()
-      })
-
-      test('updates tab selection states correctly', async () => {
-        const { wrapper, generalStore } = await createWrapper()
-        
-        // Change the selectedExecution to something different to test selection
-        generalStore.selectedExecution = { executionId: 999 }
-        
-        // Select the first tab (value: 1)
-        const executionTab = { value: 1 }
-        
-        await wrapper.vm.selectTab(executionTab)
-        await wrapper.vm.$nextTick()
-        
-        // Check that tabs are updated correctly - first tab should be selected
-        expect(generalStore.getLoadedExecutionTabs[0].selected).toBe(true)
-        expect(generalStore.getLoadedExecutionTabs[1].selected).toBe(false)
-      })
-    })
+})
+})
   })
 
   describe('Authentication Initialization', () => {
@@ -401,16 +350,10 @@ describe('IndexView', () => {
   })
 
   describe('Exposed Properties', () => {
-    test('exposes tabsData and tabsKey', async () => {
-      const { wrapper, generalStore } = await createWrapper()
-      
-      // Access exposed properties through wrapper.vm
-      expect(wrapper.vm.tabsData).toBeDefined()
-      expect(wrapper.vm.tabsKey).toBeDefined()
-      
-      // Verify the exposed properties match the store values
-      expect(wrapper.vm.tabsData).toEqual(generalStore.getLoadedExecutionTabs)
-      expect(wrapper.vm.tabsKey).toBe(generalStore.tabBarKey)
+    test('exposes the execution tabs', async () => {
+      const { wrapper } = await createWrapper()
+
+      expect(wrapper.vm.executionTabs.map((tab: any) => tab.id)).toEqual([1, 2])
     })
   })
 
@@ -419,7 +362,7 @@ describe('IndexView', () => {
       const { wrapper } = await createWrapper()
       
       expect(wrapper.find('.app-drawer').exists()).toBe(true)
-      expect(wrapper.find('.tab-container').exists()).toBe(true)
+      expect(wrapper.find('.execution-tabs').exists()).toBe(true)
     })
 
     test('applies correct styling for staging warning', async () => {
@@ -437,10 +380,9 @@ describe('IndexView', () => {
       generalStore.selectedExecution = null
       await wrapper.vm.$nextTick()
       
-      const executionTab = { value: 3 }
       
       await expect(async () => {
-        await wrapper.vm.selectTab(executionTab)
+        await wrapper.vm.selectTab(3)
       }).not.toThrow()
     })
 
@@ -449,10 +391,9 @@ describe('IndexView', () => {
       generalStore.selectedExecution = { executionId: undefined }
       await wrapper.vm.$nextTick()
       
-      const executionTab = { value: 3 }
       
       await expect(async () => {
-        await wrapper.vm.selectTab(executionTab)
+        await wrapper.vm.selectTab(3)
       }).not.toThrow()
     })
 
@@ -461,10 +402,9 @@ describe('IndexView', () => {
       generalStore.loadedExecutions = []
       await wrapper.vm.$nextTick()
       
-      const executionTab = { value: 3 }
       
       await expect(async () => {
-        await wrapper.vm.selectTab(executionTab)
+        await wrapper.vm.selectTab(3)
       }).not.toThrow()
     })
   })
@@ -472,6 +412,7 @@ describe('IndexView', () => {
   describe('Top bar', () => {
     afterEach(() => {
       mockConfig.schemas = []
+      registerPremiumModules([])
       resetTopBannerOffsets()
     })
 
@@ -484,37 +425,31 @@ describe('IndexView', () => {
       )
     })
 
-    test('shows the module switcher to a user who may switch DAG, and reserves its height', async () => {
-      mockConfig.schemas = ['planning_dag', 'stock_dag']
-      const { wrapper, generalStore } = await createWrapper()
-
-      generalStore.availableSchemas = ['planning_dag', 'stock_dag']
-      await wrapper.vm.$nextTick()
+    test('shows what premium modules mount in it, and reserves its height', async () => {
+      registerPremiumModules([topBarModule])
+      const { wrapper } = await createWrapper()
 
       expect(wrapper.find('[data-testid="app-top-bar"]').exists()).toBe(true)
-      expect(wrapper.find('[data-testid="module-switcher"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="top-bar-item"]').exists()).toBe(true)
       expect(wrapper.find('.main-content').attributes('style')).toContain(
         '--app-top-offset: 56px',
       )
     })
 
-    test('is not rendered for a user with a single DAG of a multi-DAG deployment', async () => {
+    test('is not rendered for a user who may switch DAG: the module selector is in the side menu', async () => {
       mockConfig.schemas = ['planning_dag', 'stock_dag']
       const { wrapper, generalStore } = await createWrapper()
 
-      generalStore.availableSchemas = ['planning_dag']
+      generalStore.availableSchemas = ['planning_dag', 'stock_dag']
       await wrapper.vm.$nextTick()
 
       expect(wrapper.find('[data-testid="app-top-bar"]').exists()).toBe(false)
     })
 
     test('goes first in the fixed top stack, above the staging notice and the banners', async () => {
-      mockConfig.schemas = ['planning_dag', 'stock_dag']
+      registerPremiumModules([topBarModule])
       setTopBannerOffset('some-banner', 48)
-      const { wrapper, generalStore } = await createWrapper(true, true)
-
-      generalStore.availableSchemas = ['planning_dag', 'stock_dag']
-      await wrapper.vm.$nextTick()
+      const { wrapper } = await createWrapper(true, true)
 
       const stack = wrapper.find('[data-testid="app-top-stack"]')
       const parts = stack.element.children
@@ -554,9 +489,7 @@ describe('IndexView', () => {
       generalStore.selectedExecution = { executionId: 5 }
       await wrapper.vm.$nextTick()
       
-      const executionTab = { value: 5 }
-      
-      await wrapper.vm.selectTab(executionTab)
+      await wrapper.vm.selectTab(5)
       
       expect(generalStore.setSelectedExecution).toHaveBeenCalledWith(null)
     })
@@ -566,9 +499,7 @@ describe('IndexView', () => {
       generalStore.selectedExecution = { executionId: 5 }
       await wrapper.vm.$nextTick()
       
-      const executionTab = { value: 7 }
-      
-      await wrapper.vm.selectTab(executionTab)
+      await wrapper.vm.selectTab(7)
       
       expect(generalStore.setSelectedExecution).toHaveBeenCalledWith(7)
     })

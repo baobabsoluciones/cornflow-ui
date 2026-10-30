@@ -1,121 +1,60 @@
 <!--
-/**
- * CoreConfirmDialog component
- *
- * A reusable confirmation dialog component that maintains consistent look and feel with CoreModal.
- *
- * Features:
- * - Consistent header styling with close button
- * - Customizable title and message
- * - Configurable action buttons
- * - Loading states for actions
- * - Responsive layout
- * - i18n support
- *
- * Props:
- * - modelValue (Boolean): Controls dialog visibility
- * - title (String): Dialog title
- * - message (String): Confirmation message
- * - confirmText (String): Confirm button text
- * - cancelText (String): Cancel button text
- * - confirmColor (String): Confirm button color
- * - loading (Boolean): Loading state for confirm button
- * - persistent (Boolean): Prevent closing by clicking outside
- *
- * Usage examples:
- *
- * Basic confirmation:
- * <CoreConfirmDialog
- *   v-model="showDialog"
- *   title="Confirm Delete"
- *   message="Are you sure you want to delete this item?"
- *   confirm-text="Delete"
- *   cancel-text="Cancel"
- *   confirm-color="var(--danger)"
- *   @confirm="handleConfirm"
- *   @cancel="handleCancel"
- * />
- *
- * With loading state:
- * <CoreConfirmDialog
- *   v-model="showDialog"
- *   title="Confirm Action"
- *   message="This action cannot be undone."
- *   :loading="processing"
- *   @confirm="handleConfirm"
- *   @cancel="handleCancel"
- * />
- *
- * Events:
- * - @confirm: Emitted when confirm button is clicked
- * - @cancel: Emitted when cancel button is clicked or dialog is closed
- * - @update:modelValue: Emitted when dialog visibility changes
- */
+  CoreConfirmDialog: asks the user to confirm an action, with a cancel and a confirm button.
+
+  - `confirmColor`: a CSS colour for the confirm button; a danger colour (`var(--danger)`) makes it
+    the destructive button and tints the icon.
+  - `loading`: the confirm button shows a spinner and `loadingMessage` appears under the message.
+  - `persistent` (default): Escape and a click outside do not close it.
+
+  <CoreConfirmDialog v-model="open" :title="$t('table.confirmDelete')" :message="$t('table.deleteMessage')"
+    :confirm-text="$t('table.delete')" confirm-color="var(--danger)" icon="mdi-delete-outline"
+    :loading="deleting" @confirm="remove" @cancel="open = false" />
 -->
-
 <template>
-  <v-dialog
-    :model-value="modelValue && modelValue === true"
-    @update:model-value="emit('update:modelValue', $event)"
-    max-width="480px"
-    :persistent="persistent"
-    class="core-confirm-dialog"
+  <CoreDialog
+    :model-value="modelValue === true"
+    :title="title"
+    :icon="icon"
+    :tone="isDanger ? 'danger' : 'primary'"
+    :width="480"
+    :persistent="persistent || loading"
+    closable
+    @update:model-value="!$event && handleCancel()"
   >
-    <v-card class="core-modal-base__card core-confirm-dialog__card">
-      <!-- Header -->
-      <v-card-title class="core-modal-base__header core-confirm-dialog__header">
-        <span class="core-modal-base__title core-confirm-dialog__title">{{
-          title
-        }}</span>
-        <v-btn
-          icon="mdi-close"
-          variant="text"
-          size="small"
-          class="core-modal-base__close core-confirm-dialog__close"
-          @click="handleCancel"
-        />
-      </v-card-title>
-
-      <!-- Content -->
-      <v-card-text
-        class="core-modal-base__content core-confirm-dialog__content"
-      >
-        <p class="core-confirm-dialog__message">{{ message }}</p>
-        <p v-if="loading && loadingMessage" class="core-confirm-dialog__loading-message">
-          {{ loadingMessage }}
-        </p>
-      </v-card-text>
-
-      <!-- Actions -->
-      <v-card-actions
-        class="core-modal-base__actions core-confirm-dialog__actions"
-      >
-        <v-spacer />
-        <CoreButton
-          :text="cancelText"
-          variant="text"
-          color="grey"
-          size="small"
-          @click="handleCancel"
-        />
-        <CoreButton
-          :text="confirmText"
-          variant="filled"
-          :background-color="confirmColor"
-          :loading="loading"
-          :disabled="loading"
-          size="small"
-          @click="handleConfirm"
-        />
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+    <p class="core-confirm-dialog__message">{{ message }}</p>
+    <p
+      v-if="loading && loadingMessage"
+      class="core-confirm-dialog__loading-message"
+    >
+      {{ loadingMessage }}
+    </p>
+    <template #actions>
+      <CoreButton
+        :text="cancelText"
+        variant="outlined"
+        size="small"
+        :disabled="loading"
+        @click="handleCancel"
+      />
+      <CoreButton
+        :text="confirmText"
+        variant="filled"
+        size="small"
+        :icon="icon || null"
+        :color="isDanger ? 'danger' : 'primary'"
+        :background-color="isDanger ? null : confirmColor"
+        :loading="loading"
+        @click="handleConfirm"
+      />
+    </template>
+  </CoreDialog>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
+import CoreDialog from '@cornflow-ui/core/components/core/CoreDialog.vue'
 
-// Props
 interface Props {
   modelValue: boolean
   title: string
@@ -123,6 +62,8 @@ interface Props {
   confirmText?: string
   cancelText?: string
   confirmColor?: string
+  /** Icon of the title and the confirm button (e.g. `mdi-delete-outline`). */
+  icon?: string
   loading?: boolean
   /** Shown below the message when loading is true (e.g. "Deleting, please wait...") */
   loadingMessage?: string
@@ -133,19 +74,20 @@ const props = withDefaults(defineProps<Props>(), {
   confirmText: 'Confirm',
   cancelText: 'Cancel',
   confirmColor: 'var(--primary)',
+  icon: '',
   loading: false,
   loadingMessage: '',
   persistent: true,
 })
 
-// Emits
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
   confirm: []
   cancel: []
 }>()
 
-// Methods
+const isDanger = computed(() => /danger|error/.test(props.confirmColor))
+
 const handleConfirm = () => {
   emit('confirm')
 }
@@ -156,7 +98,14 @@ const handleCancel = () => {
 }
 </script>
 
-<style>
-@import '@cornflow-ui/core/assets/styles/components/core/CoreModalBase.css';
-@import '@cornflow-ui/core/assets/styles/components/core/CoreConfirmDialog.css';
+<style scoped>
+.core-confirm-dialog__message {
+  margin: 0;
+}
+
+.core-confirm-dialog__loading-message {
+  margin: calc(var(--spacing) * 2) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-subtle);
+}
 </style>

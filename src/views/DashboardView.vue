@@ -1,79 +1,66 @@
 <template>
   <div class="view-container">
-    <div class="d-flex align-end">
-      <MTitleView
-        :icon="'mdi-table-arrow-left'"
-        :title="title"
-        :description="description"
-      />
-      <ExecutionInfoMenu
-        v-if="selectedExecution"
-        :selectedExecution="selectedExecution"
-      />
-    </div>
-    <ExecutionInfoCard :selectedExecution="selectedExecution">
-    </ExecutionInfoCard>
+    <CoreTitleView icon="mdi-table-arrow-left" title="Dashboard">
+      <template v-if="selectedExecution" #actions>
+        <CoreExecutionSummary />
+      </template>
+    </CoreTitleView>
+    <CoreEmptyState
+      v-if="!selectedExecution"
+      class="dashboard-view__empty"
+      icon="mdi-alert-circle-outline"
+      :title="$t('projectExecution.infoCard.noExecutionSelected')"
+      :text="$t('projectExecution.infoCard.loadExecutionMessage')"
+      :action-label="$t('projectExecution.infoCard.loadFromHistory')"
+      data-testid="dashboard-no-execution"
+      @action="router.push('/history-execution')"
+    />
+    <CoreEmptyState
+      v-else-if="isExecutionActive(selectedExecution.state)"
+      class="dashboard-view__empty"
+      icon="mdi-progress-clock"
+      :title="$t('projectExecution.infoCard.executionCreated')"
+      :text="$t('projectExecution.infoCard.solutionWillLoadMessage')"
+      data-testid="dashboard-running"
+    />
     <DashboardMain
       v-if="selectedExecution"
       :execution="selectedExecution"
       :dashboard-type="dashboardType"
-    >
-    </DashboardMain>
+    />
   </div>
 </template>
 
-<script>
-import ExecutionInfoCard from '@cornflow-ui/core/components/project-execution/ExecutionInfoCard.vue'
-import ExecutionInfoMenu from '@cornflow-ui/core/components/project-execution/ExecutionInfoMenu.vue'
-import DashboardMain from '@/app/components/DashboardMain.vue'
-import { useGeneralStore } from '@cornflow-ui/core/stores/general'
-import { inject } from 'vue'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import CoreEmptyState from '@cornflow-ui/core/components/core/CoreEmptyState.vue'
+import CoreTitleView from '@cornflow-ui/core/components/core/CoreTitleView.vue'
+import CoreExecutionSummary from '@cornflow-ui/core/components/ExecutionSummary.vue'
+import { isExecutionActive } from '@cornflow-ui/core/composables/project-execution/useExecutionStatus'
 import { getSectionType } from '@cornflow-ui/core/services/FrontendAutomationService'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import DashboardMain from '@/app/components/DashboardMain.vue'
 
-export default {
-  components: {
-    ExecutionInfoCard,
-    ExecutionInfoMenu,
-    DashboardMain,
-  },
-  data() {
-    return {
-      generalStore: useGeneralStore(),
-      showSnackbar: null,
-    }
-  },
-  created() {
-    this.showSnackbar = inject('showSnackbar')
-  },
-  computed: {
-    selectedExecution: {
-      get() {
-        return this.generalStore.selectedExecution
-      },
-      set(newValue) {
-        this.generalStore.selectedExecution = newValue
-      },
-    },
-    title() {
-      return 'Dashboard'
-    },
-    description() {
-      return this.selectedExecution ? this.selectedExecution.name || '' : ''
-    },
-    // Determine dashboard type based on route
-    dashboardType() {
-      const sectionType = getSectionType(this.$route.path)
-      return sectionType === 'input-data' ? 'instance' : 'solution'
-    },
-    // Check if this is an instance dashboard
-    isInstanceDashboard() {
-      return this.dashboardType === 'instance'
-    },
-  },
-  methods: {},
-}
+defineOptions({ name: 'DashboardView' })
+
+const generalStore = useGeneralStore()
+const route = useRoute()
+const router = useRouter()
+
+const selectedExecution = computed(() => generalStore.selectedExecution)
+
+/** The input data's dashboard or the results', by the route. */
+const dashboardType = computed(() =>
+  getSectionType(route.path) === 'input-data' ? 'instance' : 'solution',
+)
 </script>
+
 <style scoped>
+.dashboard-view__empty {
+  margin-top: calc(var(--spacing) * 6);
+}
+
 :deep(.v-table) {
   height: 55vh;
 }

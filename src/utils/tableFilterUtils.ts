@@ -2,6 +2,8 @@
  * Utility functions for table filtering and searching
  * Shared between ExecutionDataView and other table components
  */
+import type { DataFilter } from '@cornflow-ui/core/components/core/data-table/types'
+import { valuePassesFilter } from '@cornflow-ui/core/utils/dataTable'
 
 /**
  * Generate a cryptographically secure unique ID
@@ -38,90 +40,8 @@ export const isFrontendRowId = (value: unknown, tableKey: string): boolean => {
   )
 }
 
-export interface FilterCondition {
-  id: string
-  field: string
-  operator: string
-  value: string
-  value2?: string
-}
-
-/**
- * Column type for filter UI: JSON Schema often uses `type: string` with `format: date` or `date-time`.
- */
-export function getFilterFieldTypeFromSchemaProperty(prop: {
-  type?: string
-  format?: string
-}): string {
-  if (!prop) return 'string'
-  if (prop.format === 'date') return 'date'
-  if (prop.format === 'date-time' || prop.format === 'datetime') {
-    return 'date-time'
-  }
-  if (prop.type === 'integer') return 'number'
-  return prop.type || 'string'
-}
-
-/** Date columns use only a from/to range in the filter panel (no is/contains operators). */
-export function isDateLikeFieldType(fieldType: string): boolean {
-  return (
-    fieldType === 'date' ||
-    fieldType === 'date-time' ||
-    fieldType === 'datetime'
-  )
-}
-
-/**
- * Get available operators for a field type
- */
-export const getOperatorsForFieldType = (fieldType: string): string[] => {
-  switch (fieldType) {
-    case 'string':
-      return ['is', 'is_not', 'contains', 'has_any_value']
-    case 'number':
-    case 'integer':
-      return ['is', 'is_not', 'is_between', 'has_any_value']
-    case 'date':
-    case 'date-time':
-    case 'datetime':
-      return ['is_between']
-    case 'boolean':
-      return ['is', 'is_not']
-    default:
-      return ['is', 'is_not', 'has_any_value']
-  }
-}
-
-/**
- * Get translated text for an operator
- */
-export const getOperatorText = (
-  operator: string,
-  t: (key: string) => string,
-): string => {
-  const operatorTexts: Record<string, string> = {
-    is: t('table.filters.operators.is'),
-    is_not: t('table.filters.operators.is_not'),
-    contains: t('table.filters.operators.contains'),
-    is_between: t('table.filters.operators.is_between'),
-    has_any_value: t('table.filters.operators.has_any_value'),
-  }
-  return operatorTexts[operator] || operator
-}
-
-/**
- * Check if operator needs a value
- */
-export const operatorNeedsValue = (operator: string): boolean => {
-  return operator !== 'has_any_value'
-}
-
-/**
- * Check if operator needs a second value (for ranges)
- */
-export const operatorNeedsSecondValue = (operator: string): boolean => {
-  return operator === 'is_between'
-}
+/** A column filter: see `DataFilter`. */
+export type FilterCondition = DataFilter
 
 /**
  * Generate a unique filter ID
@@ -130,68 +50,11 @@ export const generateFilterId = (): string => {
   return generateSecureId('filter')
 }
 
-const applyIsBetweenFilter = (
-  raw: any,
-  a: any,
-  b: any,
-): boolean => {
-  const n = Number(raw)
-  const n1 = Number(a)
-  const n2 = Number(b)
-  if (!Number.isNaN(n) && !Number.isNaN(n1) && !Number.isNaN(n2) && String(raw).trim() !== '') {
-    return n >= n1 && n <= n2
-  }
-  const sv = String(raw ?? '')
-  const s1 = String(a ?? '').trim()
-  const s2 = String(b ?? '').trim()
-  if (!s1 && !s2) return true
-  if (s1 && s2) return sv >= s1 && sv <= s2
-  return s1 ? sv >= s1 : sv <= s2
-}
-
 /**
  * Apply a single filter to an item
  */
-export const applyFilterToItem = (
-  item: any,
-  filter: FilterCondition,
-): boolean => {
-  const fieldValue = item[filter.field]
-  const filterValue = filter.value
-  const filterValue2 = filter.value2
-
-  switch (filter.operator) {
-    case 'is':
-      return String(fieldValue) === String(filterValue)
-    case 'is_not':
-      return String(fieldValue) !== String(filterValue)
-    case 'contains':
-      return String(fieldValue)
-        .toLowerCase()
-        .includes(String(filterValue).toLowerCase())
-    case 'is_between':
-      return applyIsBetweenFilter(fieldValue, filterValue, filterValue2)
-    case 'has_any_value':
-      return (
-        fieldValue !== null && fieldValue !== undefined && fieldValue !== ''
-      )
-    default:
-      return true
-  }
-}
-
-/**
- * Apply search term to an item
- */
-export const itemMatchesSearch = (item: any, searchTerm: string): boolean => {
-  if (!searchTerm) return true
-
-  const lowerSearchTerm = searchTerm.toLowerCase()
-  return Object.values(item).some((value) => {
-    if (value === null || value === undefined) return false
-    return String(value).toLowerCase().includes(lowerSearchTerm)
-  })
-}
+export const applyFilterToItem = (item: any, filter: FilterCondition): boolean =>
+  valuePassesFilter(item[filter.field], filter)
 
 /**
  * Apply filters and search to a list of items.
@@ -233,8 +96,8 @@ export const applyFiltersAndSearch = (
 
 /**
  * True if any of the item's own values contains the (already lower-cased)
- * search term. Mirrors `itemMatchesSearch` but avoids the per-row
- * `Object.values()` allocation on the hot path.
+ * search term. Walks the keys with `for…in` rather than `Object.values()` so the
+ * hot path allocates no array per row.
  */
 const itemMatchesLowerSearch = (item: any, lowerSearch: string): boolean => {
   for (const key in item) {
