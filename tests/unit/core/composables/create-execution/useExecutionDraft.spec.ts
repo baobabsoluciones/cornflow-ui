@@ -39,7 +39,8 @@ vi.mock('@cornflow-ui/core/composables/create-execution/executionDraftStore', ()
   draftKey: (schema: string, user: string) => `${schema}:${user}`,
   readExecutionDraft: async (key: string) => drafts.get(key) ?? null,
   writeExecutionDraft: async (key: string, draft: any) => {
-    drafts.set(key, structuredClone(draft))
+    // IndexedDB clones files as they are; jsdom's File does not survive structuredClone
+    drafts.set(key, { ...structuredClone({ ...draft, files: [] }), files: [...draft.files] })
     return true
   },
   deleteExecutionDraft: async (key: string) => drafts.delete(key),
@@ -50,6 +51,7 @@ vi.mock('@cornflow-ui/core/composables/create-execution/solutionFile', () => ({
 
 import { useExecutionDraft } from '@cornflow-ui/core/composables/create-execution/useExecutionDraft'
 import { useTableChanges } from '@cornflow-ui/core/composables/useTableChanges'
+import { parseSolutionFile } from '@cornflow-ui/core/composables/create-execution/solutionFile'
 
 const configFields = [
   { key: 'timeLimit', title: 'f.time', type: 'number', default: 300, required: true },
@@ -530,5 +532,221 @@ describe('useExecutionDraft', () => {
       experiment: { instance: new FakeInstance('i9', { lines: [] }) },
     })
     expect(draft.execution.config.solver).toBe('mip')
+  })
+
+  test('a load that fails outright shows why', async () => {
+    processing.processFiles.mockRejectedValue(new Error('The file is not a workbook'))
+    const draft = setup()
+    draft.addFiles([file('a.xlsx')])
+    await draft.load()
+
+    expect(draft.loadStatus).toBe('error')
+    expect(draft.loadErrors?.groups[0].items).toEqual(['The file is not a workbook'])
+  })
+
+  test('picking a file again replaces the one with its name, and clears the errors of the last load', async () => {
+    processing.processFiles.mockRejectedValue(new Error('bad'))
+    const draft = setup()
+    draft.addFiles([file('a.json'), file('b.json')])
+    await draft.load()
+    expect(draft.loadStatus).toBe('error')
+
+    draft.addFiles([file('a.json')])
+
+    expect(draft.files.map((f) => f.name)).toEqual(['b.json', 'a.json'])
+    expect(draft.loadStatus).toBe('empty')
+    expect(draft.loadErrors).toBeNull()
+  })
+
+  test('a required parameter of several values is missing while nothing is picked', () => {
+    store.appConfig.parameters.configFields = [
+      { key: 'regions', title: 'f.regions', type: 'select', multiple: true, required: true, options: [{ value: 'n', label: 'North' }] },
+    ]
+    const draft = setup()
+    draft.setParameter('regions', [])
+    expect(draft.missing.map((m) => m.key)).toContain('param:regions')
+
+    draft.setParameter('regions', ['n'])
+    expect(draft.missing.map((m) => m.key)).not.toContain('param:regions')
+  })
+
+  describe('checks', () => {
+    const loaded = async () => {
+      processing.processFiles.mockResolvedValue(loadedOk())
+      const draft = setup()
+      draft.addFiles([file('a.json')])
+      await draft.load()
+      return draft
+    }
+
+    test('only warnings leave the data good to launch, and no findings is ok', async () => {
+      const draft = await loaded()
+      store.getInstanceDataChecksById.mockResolvedValueOnce(
+        new FakeInstance('i1', {}, null, null, null, { tight: [{ line: 'L1' }, { line: 'L2' }] }),
+      )
+      await draft.runChecks()
+      expect(draft.checks.status).toBe('warnings')
+      expect(draft.checks.results.map((r) => [r.key, r.kind])).toEqual([['tight', 'warning']])
+
+      store.getInstanceDataChecksById.mockResolvedValueOnce(new FakeInstance('i1', {}))
+      await draft.runChecks()
+      expect(draft.checks.status).toBe('ok')
+      expect(draft.checks.results).toEqual([])
+    })
+
+    test('errors come first, then the checks that found the most', async () => {
+      const draft = await loaded()
+      store.getInstanceDataChecksById.mockResolvedValueOnce(
+        new FakeInstance('i1', {}, null, null, null, {
+          tight: [{ line: 'L1' }, { line: 'L2' }],
+          missing: [{ product: 'P-1' }],
+        }),
+      )
+      await draft.runChecks()
+      expect(draft.checks.results.map((r) => r.key)).toEqual(['missing', 'tight'])
+    })
+
+    test.each([
+      ['the instance cannot be stored', () => store.createInstance.mockResolvedValueOnce(null), 'projectExecution.snackbar.instanceCreationError'],
+      ['the checks do not come back', () => store.getInstanceDataChecksById.mockResolvedValueOnce(null), 'projectExecution.snackbar.instanceDataChecksError'],
+    ])('when %s, nothing is checked and it says so', async (_, fail, message) => {
+      const draft = await loaded()
+      fail()
+      await draft.runChecks()
+
+      expect(draft.checks.status).toBe('none')
+      expect(draft.checks.checkedAt).toBeNull()
+      expect(snackbar).toHaveBeenCalledWith(message, 'error')
+    })
+
+    test('do not run before there is data', async () => {
+      const draft = setup()
+      await draft.runChecks()
+      expect(store.createInstance).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('an uploaded solution', () => {
+    const loadedForSolution = async () => {
+      processing.processFiles.mockResolvedValue(loadedOk())
+      const draft = setup()
+      draft.addFiles([file('a.json')])
+      await draft.load()
+      draft.setParameter('objective', 'cost')
+      draft.setSolutionMode(true)
+      return draft
+    }
+
+    test('that breaks the solution schema keeps the launch waiting, and says why', async () => {
+      vi.mocked(parseSolutionFile).mockResolvedValueOnce({
+        data: { plan: 'x' },
+        checkSchema: async () => [{ instancePath: '/plan', message: 'must be array' }],
+      } as any)
+      const draft = await loadedForSolution()
+      await draft.setSolutionFile(file('solution.json'))
+
+      expect(draft.solution.data).toBeNull()
+      expect(draft.solution.errors).toBeTruthy()
+      expect(draft.canLaunch).toBe(false)
+    })
+
+    test('that cannot be read keeps the launch waiting, and says why', async () => {
+      vi.mocked(parseSolutionFile).mockRejectedValueOnce(new Error('Not JSON'))
+      const draft = await loadedForSolution()
+      await draft.setSolutionFile(file('solution.json'))
+
+      expect(draft.solution.errors).toBe('Not JSON')
+      expect(draft.canLaunch).toBe(false)
+    })
+
+    test('turning the mode off drops the file', async () => {
+      const draft = await loadedForSolution()
+      await draft.setSolutionFile(file('solution.json'))
+      draft.setSolutionMode(false)
+
+      expect(draft.solution.file).toBeNull()
+      expect(draft.solution.data).toBeNull()
+      expect(draft.canLaunch).toBe(true)
+    })
+
+    test('that the backend does not take fails the launch, and says why', async () => {
+      const draft = await loadedForSolution()
+      await draft.setSolutionFile(file('solution.json'))
+      store.uploadSolutionData.mockResolvedValueOnce(false)
+
+      expect(await draft.launchExecution()).toBe(false)
+      expect(draft.launch.error).toBe('projectExecution.steps.step8.developerMode.uploadError')
+      expect(store.fetchLoadedExecution).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('drafts', () => {
+    test('a draft puts back the data, its edits not applied, the name and the parameters, and is then gone', async () => {
+      processing.processFiles.mockResolvedValue(loadedOk({ lines: [{ id: 'r1', cap: 1 }] }))
+      let draft = setup()
+      draft.addFiles([file('plan.json')])
+      await draft.load()
+      draft.setName('Week 44')
+      draft.setDescription('With overtime')
+      draft.setParameter('objective', 'cost')
+      useTableChanges().recordChange('lines', 'r1', 'cap', 1, 2)
+      expect(await draft.saveDraft()).toBe(true)
+
+      useTableChanges().clearAllChanges()
+      draft = setup()
+      const saved = await draft.readDraft()
+      expect(saved).toMatchObject({ name: 'Week 44', pendingChangesCount: 1, loadedFileNames: ['plan.json'] })
+      await draft.resumeDraft(saved!)
+
+      expect(draft.isLoaded).toBe(true)
+      expect(draft.execution.instance.data).toEqual({ lines: [{ id: 'r1', cap: 1 }] })
+      expect(draft.execution).toMatchObject({ name: 'Week 44', description: 'With overtime' })
+      expect(draft.execution.config).toMatchObject({ objective: 'cost', timeLimit: 300 })
+      expect(draft.pendingChangesCount).toBe(1)
+      expect(draft.filesChanged).toBe(false)
+      expect(draft.etlNeedsSync).toBe(false)
+      expect(await draft.readDraft()).toBeNull()
+    })
+
+    test('a draft saved before loading keeps the picked files only', async () => {
+      let draft = setup()
+      draft.addFiles([file('plan.json')])
+      await draft.saveDraft()
+
+      draft = setup()
+      await draft.resumeDraft((await draft.readDraft())!)
+
+      expect(draft.files.map((f) => f.name)).toEqual(['plan.json'])
+      expect(draft.isLoaded).toBe(false)
+      expect(draft.loadStatus).toBe('empty')
+    })
+
+    test('a draft of a relaunch is still a relaunch', async () => {
+      let draft = setup()
+      draft.startFrom({ name: 'Plan 42', config: {}, experiment: { instance: new FakeInstance('i9', { lines: [] }) } })
+      await draft.saveDraft()
+
+      draft = setup()
+      await draft.resumeDraft((await draft.readDraft())!)
+
+      expect(draft.fromExecution).toBe('Plan 42')
+    })
+
+    test('discarding it leaves none', async () => {
+      const draft = setup()
+      draft.addFiles([file('plan.json')])
+      await draft.saveDraft()
+      await draft.discardDraft()
+
+      expect(await draft.readDraft()).toBeNull()
+    })
+  })
+
+  test('a relaunch of an execution without its data leaves the screen empty', () => {
+    const draft = setup()
+    draft.startFrom({ name: 'Plan 42', config: {} })
+
+    expect(draft.isLoaded).toBe(false)
+    expect(draft.fromExecution).toBeNull()
   })
 })
