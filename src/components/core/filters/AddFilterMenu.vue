@@ -1,55 +1,38 @@
+<!--
+  AddFilterMenu: the "Add filter" chip. It opens the fields that can still be filtered, by group,
+  with a search box; picking one emits `add` with its key.
+-->
 <template>
-  <v-menu
-    v-model="open"
-    location="bottom end"
-    offset="6"
-    :close-on-content-click="false"
-  >
-    <template #activator="{ props: activator }">
+  <CorePopover v-model:open="open" :width="280">
+    <template #trigger>
       <button
         type="button"
         class="add-filter"
-        v-bind="{ ...activator, ...$attrs }"
+        :class="{ 'is-open': open }"
+        v-bind="$attrs"
       >
-        <v-icon size="18">mdi-plus</v-icon>
+        <CoreIcon name="mdi-plus" :size="16" />
         <span>{{ label }}</span>
       </button>
     </template>
-
-    <div class="filter-menu add-filter-menu">
-      <v-text-field
-        v-model="query"
-        class="add-filter-menu__search"
-        prepend-inner-icon="mdi-magnify"
-        :placeholder="searchPlaceholder"
-        variant="outlined"
-        density="compact"
-        hide-details
-        autofocus
-      />
-      <template v-for="group in visibleGroups" :key="group.key">
-        <div class="filter-menu__caption">{{ group.title }}</div>
-        <button
-          v-for="field in group.fields"
-          :key="field.key"
-          type="button"
-          class="filter-menu__option"
-          :data-testid="`add-filter-${field.key}`"
-          @click="add(field.key)"
-        >
-          <v-icon size="20" class="filter-menu__radio">{{ field.icon }}</v-icon>
-          <span class="filter-menu__title">{{ field.title }}</span>
-        </button>
-      </template>
-      <div v-if="visibleGroups.length === 0" class="add-filter-menu__empty">
-        {{ noMatchesText }}
-      </div>
-    </div>
-  </v-menu>
+    <CoreMenu
+      v-model:query="query"
+      :title="label"
+      :items="menuItems"
+      searchable
+      :search-placeholder="searchPlaceholder"
+      :empty-text="noMatchesText"
+      @select="add($event.key)"
+    />
+  </CorePopover>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
+import CoreMenu from '@cornflow-ui/core/components/core/CoreMenu.vue'
+import type { CoreMenuItem } from '@cornflow-ui/core/components/core/CoreMenu.vue'
+import CorePopover from '@cornflow-ui/core/components/core/CorePopover.vue'
 
 defineOptions({ name: 'CoreAddFilterMenu', inheritAttrs: false })
 
@@ -78,6 +61,10 @@ const emit = defineEmits<{ add: [key: string] }>()
 const open = ref(false)
 const query = ref('')
 
+watch(open, (isOpen) => {
+  if (!isOpen) query.value = ''
+})
+
 const visibleGroups = computed(() => {
   const text = query.value.trim().toLowerCase()
   return props.groups
@@ -90,10 +77,21 @@ const visibleGroups = computed(() => {
     .filter((group) => group.fields.length > 0)
 })
 
+const menuItems = computed<CoreMenuItem[]>(() =>
+  visibleGroups.value.flatMap((group) => [
+    { key: `group:${group.key}`, label: group.title, header: true },
+    ...group.fields.map((field) => ({
+      key: field.key,
+      label: field.title,
+      icon: field.icon,
+      testId: `add-filter-${field.key}`,
+    })),
+  ]),
+)
+
 function add(key: string) {
   emit('add', key)
   open.value = false
-  query.value = ''
 }
 </script>
 
@@ -101,41 +99,29 @@ function add(key: string) {
 .add-filter {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 44px;
-  padding: 0 16px 0 12px;
-  border: 1px solid var(--title);
-  border-radius: 10px;
-  background-color: #fff;
-  font-size: 0.9375rem;
-  font-weight: 700;
-  color: var(--title);
+  gap: calc(var(--spacing) * 1.5);
+  height: 32px;
+  box-sizing: border-box;
+  padding: 0 calc(var(--spacing) * 3) 0 calc(var(--spacing) * 2.5);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-primary);
   white-space: nowrap;
-  transition: background-color 0.15s ease;
+  cursor: pointer;
+  transition: background-color var(--duration-base) var(--ease-standard);
 }
 
-.add-filter:hover {
-  background-color: color-mix(in srgb, var(--primary) 6%, #fff);
+.add-filter:hover,
+.add-filter.is-open {
+  background: var(--color-primary-subtle);
 }
 
 .add-filter:focus-visible {
-  outline: 2px solid var(--primary);
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
-}
-</style>
-
-<style>
-.add-filter-menu {
-  min-width: 300px;
-}
-
-.add-filter-menu__search {
-  margin: 2px 4px 8px;
-}
-
-.add-filter-menu__empty {
-  padding: 12px;
-  font-size: 0.875rem;
-  color: var(--subtitle);
 }
 </style>

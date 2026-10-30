@@ -1,3 +1,7 @@
+<!--
+  DateFilterChip: the date filter of a list, with presets (today, last 7 days…) and a custom range
+  that asks for its first and last day without closing the menu.
+-->
 <template>
   <FilterChip
     v-bind="$attrs"
@@ -6,30 +10,33 @@
     :value="modelValue"
     :options="presetOptions"
     :keep-open-value="customValue"
+    :menu-width="300"
     @pick="emit('update:modelValue', $event)"
   >
     <template #after-options>
       <div v-if="modelValue === customValue" class="date-filter__range">
-        <v-text-field
-          :model-value="from"
-          type="date"
-          :label="fromLabel"
-          variant="outlined"
-          density="compact"
-          hide-details
-          data-testid="date-filter-from"
-          @update:model-value="emit('update:from', $event)"
-        />
-        <v-text-field
-          :model-value="to"
-          type="date"
-          :label="toLabel"
-          variant="outlined"
-          density="compact"
-          hide-details
-          data-testid="date-filter-to"
-          @update:model-value="emit('update:to', $event)"
-        />
+        <label class="date-filter__field">
+          <span class="date-filter__label">{{ fromLabel }}</span>
+          <CoreTextField
+            type="date"
+            size="small"
+            :model-value="from"
+            :max="to ?? undefined"
+            data-testid="date-filter-from"
+            @update:model-value="emit('update:from', String($event))"
+          />
+        </label>
+        <label class="date-filter__field">
+          <span class="date-filter__label">{{ toLabel }}</span>
+          <CoreTextField
+            type="date"
+            size="small"
+            :model-value="to"
+            :min="from ?? undefined"
+            data-testid="date-filter-to"
+            @update:model-value="emit('update:to', String($event))"
+          />
+        </label>
       </div>
     </template>
   </FilterChip>
@@ -37,6 +44,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import CoreTextField from '@cornflow-ui/core/components/core/CoreTextField.vue'
 import FilterChip from '@cornflow-ui/core/components/core/filters/FilterChip.vue'
 import { parseLocalDateKey } from '@cornflow-ui/core/utils/date'
 
@@ -84,11 +92,26 @@ const presetOptions = computed(() =>
 )
 </script>
 
-<style>
+<style scoped>
 .date-filter__range {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  padding: 8px 12px 4px;
+  gap: calc(var(--spacing) * 2);
+  margin-top: calc(var(--spacing) * 1.5);
+  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 1)
+    calc(var(--spacing) * 1);
+  border-top: 1px solid var(--color-divider);
+}
+
+.date-filter__field {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 1);
+  min-width: 0;
+}
+
+.date-filter__label {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }
 </style>

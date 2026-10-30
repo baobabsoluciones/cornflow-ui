@@ -1,108 +1,64 @@
 <!--
-/**
- * CoreSearchInput component
- *
- * A reusable search input component with consistent look and feel across the application.
- *
- * Features:
- * - Clean, modern design with search icon
- * - Keyboard shortcut support (⌘+K / Ctrl+K)
- * - Placeholder text with shortcut hint
- * - Debounced input for performance
- * - Clear button when text is present
- * - Responsive design
- * - Accessibility support
- *
- * Props:
- * - modelValue (String): Search text value
- * - placeholder (String): Placeholder text
- * - debounce (Number): Debounce delay in milliseconds
- * - showShortcut (Boolean): Show keyboard shortcut hint
- * - disabled (Boolean): Disable input
- * - clearable (Boolean): Show clear button
- *
- * Usage examples:
- *
- * Basic search:
- * <CoreSearchInput
- *   v-model="searchText"
- *   placeholder="Search..."
- *   @search="handleSearch"
- * />
- *
- * With keyboard shortcut:
- * <CoreSearchInput
- *   v-model="searchText"
- *   placeholder="Search"
- *   :show-shortcut="true"
- *   @search="handleSearch"
- * />
- *
- * With custom debounce:
- * <CoreSearchInput
- *   v-model="searchText"
- *   :debounce="500"
- *   @search="handleSearch"
- * />
- *
- * Events:
- * - @update:modelValue: Emitted when input value changes
- * - @search: Emitted after debounce delay with search text
- * - @clear: Emitted when clear button is clicked
- * - @focus: Emitted when input is focused
- * - @blur: Emitted when input loses focus
- */
+  CoreSearchInput: a search box.
+
+  - `update:modelValue` on every keystroke; `search` after `debounce` ms.
+  - ⌘K / Ctrl+K focuses it (with `showShortcut`, which also shows the hint while empty).
+  - Escape clears it; with `clearable`, a cross does too.
+  - `block` makes it take the full width; otherwise it stops at 320px.
+
+  <CoreSearchInput v-model="text" placeholder="Search…" @search="find" />
 -->
-
 <template>
-  <div class="core-search-input">
-    <div class="core-search-input__container">
-      <!-- Search Icon -->
-      <v-icon icon="mdi-magnify" class="core-search-input__icon" size="20" />
+  <div class="core-search-input" :class="{ 'core-search-input--block': block }">
+    <div
+      class="core-search-input__container"
+      :class="{ 'is-disabled': disabled }"
+    >
+      <CoreIcon name="mdi-magnify" :size="18" class="core-search-input__icon" />
 
-      <!-- Input Field -->
       <input
         ref="inputRef"
         :value="modelValue"
-        @input="handleInput"
-        @focus="handleFocus"
-        @blur="handleBlur"
-        @keydown="handleKeydown"
-        :placeholder="computedPlaceholder"
+        :placeholder="placeholder"
+        :aria-label="placeholder"
         :disabled="disabled"
         class="core-search-input__field"
         type="text"
         autocomplete="off"
         spellcheck="false"
+        @input="handleInput"
+        @focus="handleFocus"
+        @blur="handleBlur"
+        @keydown="handleKeydown"
       />
 
-      <!-- Keyboard Shortcut Hint -->
       <div
         v-if="showShortcut && !modelValue && !isFocused"
         class="core-search-input__shortcut"
+        aria-hidden="true"
       >
         <span class="core-search-input__shortcut-key">{{ shortcutKey }}</span>
-        <span class="core-search-input__shortcut-plus">+</span>
         <span class="core-search-input__shortcut-key">K</span>
       </div>
 
-      <!-- Clear Button -->
-      <v-btn
+      <button
         v-if="clearable && modelValue && modelValue.length > 0"
-        icon="mdi-close"
-        variant="text"
-        size="small"
+        type="button"
         class="core-search-input__clear"
+        :aria-label="$t('common.clear')"
+        :title="$t('common.clear')"
         @click="handleClear"
-      />
+      >
+        <CoreIcon name="mdi-close-circle" :size="16" />
+      </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
 
-// Props
 interface Props {
   modelValue?: string
   placeholder?: string
@@ -110,6 +66,7 @@ interface Props {
   showShortcut?: boolean
   disabled?: boolean
   clearable?: boolean
+  block?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -119,9 +76,9 @@ const props = withDefaults(defineProps<Props>(), {
   showShortcut: true,
   disabled: false,
   clearable: true,
+  block: false,
 })
 
-// Emits
 const emit = defineEmits<{
   'update:modelValue': [value: string]
   search: [value: string]
@@ -130,32 +87,21 @@ const emit = defineEmits<{
   blur: [event: FocusEvent]
 }>()
 
-// State
 const isFocused = ref(false)
 const debounceTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 const inputRef = ref<HTMLInputElement>()
 
-// Computed
-const computedPlaceholder = computed(() => {
-  return props.placeholder
-})
+const shortcutKey = computed(() =>
+  navigator.platform.toUpperCase().includes('MAC') ? '⌘' : 'Ctrl',
+)
 
-const shortcutKey = computed(() => {
-  // Detect if user is on Mac
-  return navigator.platform.toUpperCase().includes('MAC') ? '⌘' : 'Ctrl'
-})
-
-// Methods
 const handleInput = (event: Event) => {
-  const target = event.target as HTMLInputElement
-  const value = target.value
+  const value = (event.target as HTMLInputElement).value
   emit('update:modelValue', value)
 
-  // Debounced search
   if (debounceTimer.value) {
     clearTimeout(debounceTimer.value)
   }
-
   debounceTimer.value = setTimeout(() => {
     emit('search', value)
   }, props.debounce)
@@ -172,7 +118,6 @@ const handleBlur = (event: FocusEvent) => {
 }
 
 const handleKeydown = (event: KeyboardEvent) => {
-  // Handle Escape key to clear search
   if (event.key === 'Escape') {
     handleClear()
     ;(event.target as HTMLInputElement).blur()
@@ -180,7 +125,6 @@ const handleKeydown = (event: KeyboardEvent) => {
 }
 
 const handleGlobalKeydown = (event: KeyboardEvent) => {
-  // Handle Cmd+K / Ctrl+K shortcut
   if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
     event.preventDefault()
     focusInput()
@@ -192,7 +136,6 @@ const handleClear = () => {
   emit('clear')
   emit('search', '')
 
-  // Clear debounce timer
   if (debounceTimer.value) {
     clearTimeout(debounceTimer.value)
   }
@@ -202,19 +145,18 @@ const focusInput = () => {
   inputRef.value?.focus()
 }
 
-// Lifecycle
-onMounted(() => {
-  // Add global keyboard shortcut listener
-  if (props.showShortcut) {
-    document.addEventListener('keydown', handleGlobalKeydown)
-  }
-})
+// The shortcut listens on the document only while `showShortcut` is on.
+const listenForShortcut = (on: boolean) => {
+  if (on) document.addEventListener('keydown', handleGlobalKeydown)
+  else document.removeEventListener('keydown', handleGlobalKeydown)
+}
+
+watch(() => props.showShortcut, listenForShortcut)
+
+onMounted(() => listenForShortcut(props.showShortcut))
 
 onBeforeUnmount(() => {
-  // Clean up event listener and timer
-  if (props.showShortcut) {
-    document.removeEventListener('keydown', handleGlobalKeydown)
-  }
+  listenForShortcut(false)
   if (debounceTimer.value) {
     clearTimeout(debounceTimer.value)
   }
@@ -227,118 +169,86 @@ onBeforeUnmount(() => {
   max-width: 320px;
 }
 
+.core-search-input--block {
+  max-width: none;
+}
+
 .core-search-input__container {
-  position: relative;
   display: flex;
   align-items: center;
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 0 12px;
-  height: 40px;
-  transition: all 0.2s ease;
+  gap: calc(var(--spacing) * 2);
+  height: 36px;
+  box-sizing: border-box;
+  padding: 0 calc(var(--spacing) * 2.5) 0 calc(var(--spacing) * 3);
+  border: 1px solid var(--color-border-input);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-family: var(--font-sans);
+  transition: border-color var(--duration-base) var(--ease-standard);
 }
 
 .core-search-input__container:hover {
-  border-color: #bdbdbd;
+  border-color: var(--color-border-strong);
 }
 
 .core-search-input__container:focus-within {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(9, 132, 198, 0.1);
+  border-color: var(--color-primary);
+}
+
+.core-search-input__container.is-disabled {
+  background: var(--color-disabled);
+  opacity: 0.7;
 }
 
 .core-search-input__icon {
-  color: var(--subtitle);
-  margin-right: 8px;
-  flex-shrink: 0;
+  color: var(--color-text-muted);
 }
 
 .core-search-input__field {
   flex: 1;
-  border: none;
+  min-width: 0;
+  border: 0;
   outline: none;
   background: transparent;
-  font-size: 14px;
-  line-height: 1.4;
-  color: var(--title);
-  padding: 0;
-  margin: 0;
+  font: inherit;
+  font-size: var(--text-md);
+  color: var(--color-text);
 }
 
 .core-search-input__field::placeholder {
-  color: var(--subtitle);
-}
-
-.core-search-input__field:disabled {
-  color: var(--disabled);
-  cursor: not-allowed;
+  color: var(--color-text-subtle);
 }
 
 .core-search-input__shortcut {
   display: flex;
-  align-items: center;
   gap: 2px;
-  margin-left: 8px;
-  flex-shrink: 0;
 }
 
 .core-search-input__shortcut-key {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  background: var(--background);
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--subtitle);
-  padding: 0 4px;
-}
-
-.core-search-input__shortcut-plus {
-  font-size: 11px;
-  color: var(--subtitle);
-  font-weight: 500;
+  padding: 1px 5px;
+  border: 1px solid var(--color-border-input);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+  font-size: var(--text-xs);
+  color: var(--color-text-subtle);
 }
 
 .core-search-input__clear {
-  margin-left: 4px;
-  flex-shrink: 0;
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-subtle);
+  cursor: pointer;
 }
 
-.core-search-input__clear :deep(.v-btn__content) {
-  color: var(--subtitle);
+.core-search-input__clear:hover {
+  color: var(--color-text-muted);
 }
 
-.core-search-input__clear:hover :deep(.v-btn__content) {
-  color: var(--title);
+.core-search-input__clear:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-full);
 }
-
-/* Disabled state */
-.core-search-input__container:has(.core-search-input__field:disabled) {
-  background: var(--disabled);
-  border-color: #e0e0e0;
-  cursor: not-allowed;
-}
-
-.core-search-input__container:has(.core-search-input__field:disabled)
-  .core-search-input__icon {
-  color: var(--subtitle);
-}
-
-/* Responsive design */
-@media (max-width: 600px) {
-  .core-search-input {
-    max-width: 100%;
-  }
-
-  .core-search-input__shortcut {
-    display: none;
-  }
-}
-
-/* Light mode only - using variables.css colors */
 </style>
