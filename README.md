@@ -56,7 +56,8 @@ At the foot of the app, from where the side menu ends, a tab per loaded executio
 - Each tab has a dot in the colour of the execution's state, as the side menu shows it: a finished
   execution reads as its solution ("Optimal"), any other as its own state; a running one shows a
   spinner. The selected tab is marked; clicking it again deselects it.
-- The × closes a tab. A new execution starts from the side menu ("New execution").
+- The × closes a tab; closing the selected one deselects its execution, as clicking it again does.
+  A new execution starts from the side menu ("New execution").
 - Premium modules may decorate the tabs (`decorateExecutionTabs`), e.g. the ⭐ of the current plan.
 
 ## Execution management section

@@ -197,20 +197,28 @@ defineExpose({
   executionTabs,
   hasSelectedExecution,
 })
-const removeTab = (index) => {
-  generalStore.removeLoadedExecution(index)
+// No execution selected: a view that needs one is left for the history.
+const deselectExecution = () => {
+  generalStore.setSelectedExecution(null)
+  if (isOnInstanceDependentRoute(router.currentRoute.value.path)) {
+    router.push('/history-execution')
+  }
 }
 
-// Clicking the selected tab deselects it, and leaves a view that needs an execution.
+// Closing the selected tab deselects its execution too.
+const removeTab = (index) => {
+  const closesSelected = executionTabs.value[index]?.id === selectedExecutionId.value
+  generalStore.removeLoadedExecution(index)
+  if (closesSelected) deselectExecution()
+}
+
+// Clicking the selected tab deselects it.
 const selectTab = (executionId) => {
   if (generalStore.selectedExecution?.executionId !== executionId) {
     generalStore.setSelectedExecution(executionId)
     return
   }
-  generalStore.setSelectedExecution(null)
-  if (isOnInstanceDependentRoute(router.currentRoute.value.path)) {
-    router.push('/history-execution')
-  }
+  deselectExecution()
 }
 
 // Check if user is logged in

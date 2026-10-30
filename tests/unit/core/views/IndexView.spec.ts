@@ -247,12 +247,26 @@ describe('IndexView', () => {
   })
 
   describe('Event Handlers', () => {
-    test('removeTab calls store removeLoadedExecution', async () => {
+    test('closing a tab that is not selected keeps the selected execution', async () => {
       const { wrapper, generalStore } = await createWrapper()
-      
+
+      await wrapper.vm.removeTab(0)
+
+      expect(generalStore.removeLoadedExecution).toHaveBeenCalledWith(0)
+      expect(generalStore.setSelectedExecution).not.toHaveBeenCalled()
+    })
+
+    test('closing the selected tab deselects it and leaves a view that needs it', async () => {
+      const { wrapper, generalStore, router } = await createWrapper()
+      await router.push('/output-data')
+      await router.isReady()
+      const pushSpy = vi.spyOn(router, 'push')
+
       await wrapper.vm.removeTab(1)
-      
+
       expect(generalStore.removeLoadedExecution).toHaveBeenCalledWith(1)
+      expect(generalStore.setSelectedExecution).toHaveBeenCalledWith(null)
+      expect(pushSpy).toHaveBeenCalledWith('/history-execution')
     })
 
 
