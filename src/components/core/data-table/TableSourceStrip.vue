@@ -5,7 +5,7 @@
   - Origin: database, file, edited from the database or re-uploaded, each in its own tint. With
     `showSourceChoice`, a switch picks what the table uses: for a database table "Static mode" or
     "Update with DB"; otherwise "Excel" or "Database" (`v-model:sourceChoice`).
-  - Master: while comparing, a spinner; on error, Retry; when ready, the master's name, the rows
+  - Master: while comparing, a spinner; when ready, the master's name, the rows
     only in the loaded data (+N), only in the master (−N) and modified (✎N), "Compare" and a menu
     to use the master's data or save the loaded data to the master (each after a confirmation).
 
@@ -39,19 +39,6 @@
       <template v-if="master.state === 'comparing'">
         <CoreSpinner :size="14" />
         <span class="table-source__muted">{{ $t('dataTable.source.master.comparing') }}</span>
-      </template>
-
-      <template v-else-if="master.state === 'error'">
-        <CoreIcon name="mdi-alert-circle-outline" :size="16" class="table-source__error-icon" />
-        <span class="table-source__error">{{ $t('dataTable.source.master.error') }}</span>
-        <CoreButton
-          variant="text"
-          size="small"
-          icon="mdi-refresh"
-          :text="$t('dataTable.source.master.retry')"
-          data-testid="table-source-retry"
-          @click="emit('retry')"
-        />
       </template>
 
       <template v-else>
@@ -139,7 +126,7 @@ export interface TableOrigin {
 }
 
 export interface TableMasterComparison {
-  state: 'comparing' | 'error' | 'ready'
+  state: 'comparing' | 'ready'
   /** Title of the master table. */
   name: string
   /** Rows only in the loaded data. */
@@ -169,7 +156,6 @@ const emit = defineEmits<{
   compare: []
   'use-master': []
   'save-master': []
-  retry: []
 }>()
 
 const { t } = useI18n()
@@ -338,11 +324,6 @@ function confirm() {
 .table-source__name {
   font-weight: var(--font-weight-medium);
   color: var(--color-text);
-}
-
-.table-source__error-icon,
-.table-source__error {
-  color: var(--color-danger-strong);
 }
 
 .table-source__pills {

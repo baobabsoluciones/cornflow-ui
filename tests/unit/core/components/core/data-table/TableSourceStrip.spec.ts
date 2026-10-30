@@ -123,10 +123,4 @@ describe('TableSourceStrip', () => {
     expect(document.body.querySelector('[data-testid="table-source-use-master"]')).not.toBeNull()
     expect(document.body.querySelector('[data-testid="table-source-save-master"]')).not.toBeNull()
   })
-
-  test('a failed comparison can be retried', async () => {
-    const wrapper = mountStrip({ master: { ...ready, state: 'error' } })
-    await wrapper.find('[data-testid="table-source-retry"]').trigger('click')
-    expect(wrapper.emitted('retry')).toHaveLength(1)
-  })
 })

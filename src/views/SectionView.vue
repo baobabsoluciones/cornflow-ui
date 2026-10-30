@@ -309,7 +309,7 @@
           :groups="pendingGroups"
           :saving="masterTableSaving || recalculationSaving"
           :save-label="saveButtonLabel"
-          :banner="reviewBanner"
+          :validation-error="reviewValidationError"
           :overwrite="forceRetryOfferFromSaveAll ? { message: forceRetryOfferFromSaveAll.message } : null"
           @save="saveReview"
           @revert-all="tableChanges.clearAllChanges()"
@@ -1438,12 +1438,11 @@ const pendingGroups = computed(() =>
   ),
 )
 
-const reviewBanner = computed(() => {
-  const message = isConfigurationSection.value
+const reviewValidationError = computed(() =>
+  isConfigurationSection.value
     ? masterTableValidationError.value
-    : recalculationValidationError.value
-  return message ? { kind: 'validation' as const, message } : null
-})
+    : recalculationValidationError.value,
+)
 
 const clearReviewError = () => {
   masterTableValidationError.value = null

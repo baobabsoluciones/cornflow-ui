@@ -253,142 +253,24 @@ export default {
         'Ocurrió un error inesperado al recuperar la información de la ejecución',
     },
     steps: {
-      nameDescription: {
-        title: 'Nombre y descripción',
-        description: 'Nombra y describe la ejecución',
-        titleContent: 'Completa la siguiente información',
-        subtitleContent:
-          'Por favor, proporciona un nombre y una breve descripción para la ejecución que se va a crear. Esto ayudará a buscarla e identificarla. Te recomendamos que sean breves y lo más concisos posible',
-        nameTitleField: 'Nombre',
-        descriptionTitleField: 'Descripción',
-        namePlaceholder: 'Por favor, inserta un nombre',
-        descriptionPlaceholder: 'Por favor, inserta una descripción',
-      },
-      loadInstance: {
-        title: 'Cargar instancia',
-        description: 'Carga un archivo con los datos de la instancia',
-        titleContent: 'Cargar instancia',
-        subtitleContent:
-          'Selecciona uno o varios archivos para cargar los datos de la instancia. Cuando finalices la carga, pulsa el botón de abajo para cargar los datos de la instancia. Si se seleccionan varios archivos, los datos se combinarán en una sola instancia.',
-        loadInstance: {
-          dragAndDropDescription:
-            'Arrastra y suelta tu archivo / archivos de instancia aquí',
-          uploadFile: 'Subir archivo',
-          noSchemaError:
-            'No se encontró ningún esquema: ¿estás conectado al servidor?',
-          instanceSchemaError: 'La instancia no cumple con el esquema',
-          instanceLoaded: 'Instancia cargada con éxito',
-          instancesLoaded:
-            'Archivos combinados para crear la instancia y cargados con éxito',
-          warningTitle: 'Advertencia',
-          loadInstance: 'Cargar instancia',
-          selectedFiles: 'Archivos seleccionados',
-          invalidFileFormat:
-            'Formato de archivo no válido. Por favor, inténtalo de nuevo.',
-          unexpectedError:
-            'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.',
-          instanceLoadedWithErrors: 'Instancia cargada con errores',
-          noValidInstancesError:
-            'No se encontraron instancias válidas en los archivos cargados',
-          downloadExcel: 'Descargar excel',
-          downloadAllErrors: 'Descargar todos los errores',
-          showingErrorsTruncated:
-            'Mostrando los primeros {displayed} de {total} errores. Descarga la lista completa de errores para ver todos los errores.',
-          totalErrors: 'Hay {total} errores',
-          andMoreErrors: 'y {count} más',
-          errorsDownloadStarted: 'Descarga del archivo de errores iniciada',
-          errorsDownloadError: 'Error al descargar el archivo de errores',
-          noFilesSelectedError: 'Selecciona al menos un archivo',
-          optionalOrDivider: 'o',
-          loadFromDb: 'Obtener todos los datos de base de datos',
-        },
-      },
-      reviewInstance: {
-        title: 'Revisar instancia',
-        description: 'Revisa y edita los datos de la instancia',
-        titleContent: 'Revisar instancia',
-        subtitleContent:
-          'Revisa los datos de la instancia cargada y editalos si es necesario. Estos cambios no se van a guardar en el sistema hasta que no confirmes en el último paso.',
-      },
-      checkData: {
-        title: 'Verificar datos',
-        description: 'Verifica la consistencia de los datos',
-        titleContent: 'Verificar datos',
-        subtitleContent:
-          'Opcionalmente, puedes comprobar si los datos de la instancia tienen inconsistencias. Ten en cuenta que si no compruebas y corriges los datos si es necesario, es posible que la ejecución no pueda encontrar una solución',
-        check: 'Verificar datos',
-      },
-      selectSolver: {
-        title: 'Seleccionar solver',
-        description: 'Selecciona el solver a usar para la ejecución',
-        titleContent: 'Selecciona un solver',
-        subtitleContent:
-          'El solver que selecciones será el algoritmo utilizado para encontrar la solución',
-      },
-      configParams: {
-        title: 'Parámetros de ejecución',
-        description: 'Configura los parámetros de ejecución',
-        titleContent: 'Configurar parámetros de ejecución',
-        subtitleContent:
-          'Establece los parámetros que controlarán el comportamiento de la ejecución. Estos parámetros se pueden configurar según tus necesidades.',
-        timeLimitPlaceholder: 'Por favor, inserta un límite de tiempo',
-        time: 'Límite de tiempo',
-        secondsSuffix: 'seg',
-      },
-      solve: {
-        title: 'Confirmar',
-        description: 'Confirma los datos de la ejecución e inicia la ejecución',
-        titleContent: 'Confirmación de la resolución de la ejecución',
-        subtitleContent:
-          'Si eliges resolver la ejecución, el modelo se iniciará automáticamente y tardará el tiempo estimado en finalizar. Puedes acceder a su estado abriendo la pestaña con el nombre asignado en la barra horizontal inferior.',
-        resolve: 'Resolver',
-        successMessage:
-          'La ejecución se ha lanzado con éxito. Se ha abierto una nueva pestaña en la barra inferior. Puedes hacer clic en esta pestaña para abrirla.',
-        loadNewExecution: 'Cargar nueva ejecución',
-        developerMode: {
-          title: 'Modo desarrollador',
-          normalSolve: 'Resolver normalmente',
-          uploadSolution: 'Subir solución',
-          dragAndDropDescription:
-            'Arrastra y suelta un archivo de solución o haz clic para buscar',
-          uploadFile: 'Subir archivo de solución',
-          invalidFileFormat:
-            'Formato de archivo no válido. Por favor, sube un archivo JSON, XLSX o CSV.',
-          solutionSchemaError:
-            'El archivo de solución no coincide con el esquema requerido',
-          unsupportedFileFormat: 'Formato de archivo no soportado',
-          fileReadError: 'Error al leer el archivo',
-          noSolutionData: 'Por favor, sube un archivo de solución primero',
-          uploadError: 'Error al subir los datos de la solución',
-        },
-      },
       // Legacy step keys for backward compatibility
       step3: {
         loadInstance: {
-          noSchemaError:
-            'No se encontró ningún esquema: ¿estás conectado al servidor?',
           instanceSchemaError: 'La instancia no cumple con el esquema',
-          instanceLoaded: 'Instancia cargada con éxito',
-          selectedFiles: 'Archivos seleccionados',
           unexpectedError:
             'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.',
-          instanceLoadedWithErrors: 'Instancia cargada con errores',
           noValidInstancesError:
             'No se encontraron instancias válidas en los archivos cargados',
-          downloadExcel: 'Descargar excel',
-          showingErrorsTruncated:
-            'Mostrando los primeros {displayed} de {total} errores. Descarga la lista completa de errores para ver todos los errores.',
           errorsDownloadStarted: 'Descarga del archivo de errores iniciada',
           errorsDownloadError: 'Error al descargar el archivo de errores',
           noFilesSelectedError: 'Selecciona al menos un archivo',
+          unsupportedFileFormat: 'Formato de archivo no compatible',
+          fileReadError: 'Error al leer el archivo',
+          mergingError: 'Error al combinar los archivos',
         },
-      },
-      step4: {
-        titleContent: 'Revisar instancia',
       },
       step5: {
         title: 'Verificar datos',
-        check: 'Verificar datos',
       },
       step7: {
         timeLimitPlaceholder: 'Por favor, inserta un límite de tiempo',
@@ -428,19 +310,6 @@ export default {
       'Estás en un entorno de pruebas, destinado solamente a desarrollo y testeo. Para ejecuciones reales, por favor utiliza el entorno de producción.',
   },
   executionTable: {
-    date: 'Hora',
-    endDate: 'Fin',
-    userName: 'Usuario',
-    userFullName: 'Usuario',
-    name: 'Nombre',
-    description: 'Descripción',
-    state: 'Estado ejecución',
-    solver: 'Solver',
-    solution: 'Estado solución',
-    excel: 'Excel',
-    actions: 'Acciones',
-    deleteTitle: 'Eliminar ejecución',
-    deleteMessage: '¿Estás seguro de que quieres eliminar esta ejecución?',
     deleteButton: 'Eliminar',
     cancelButton: 'Cancelar',
     optimal: 'Óptimo',
@@ -535,6 +404,7 @@ export default {
     accept: 'Cerrar sesión',
     cancel: 'Cancelar',
     snackbar_message_success: 'Sesión cerrada con éxito',
+    snackbar_message_error: 'Algo salió mal, por favor inténtalo de nuevo.',
   },
   rules: {
     required: 'Requerido',
@@ -577,7 +447,6 @@ export default {
     custom: 'Rango personalizado',
     from: 'Desde',
     to: 'Hasta',
-    noData: 'No se encontraron datos para el rango de fechas seleccionado',
     loading: 'Cargando ejecuciones...',
     createNewExecution: 'Crear nueva ejecución',
     list: {
@@ -642,12 +511,6 @@ export default {
       'Se han detectado inconsistencias en la verificación de datos, lo que puede dar lugar a soluciones incorrectas o, en algunos casos, a la imposibilidad de encontrar una solución.',
     dataChecksSolutionMessage:
       'Se han detectado inconsistencias en la verificación de datos para la solución.',
-    dataChecksPassedMessage:
-      'La verificación de datos ha finalizado correctamente. No hay inconsistencias en los datos.',
-    dataChecksLoadingMessage:
-      'La verificación de datos está en curso. Por favor, espere...',
-    dataChecksFailedMessage:
-      'El proceso de verificación de datos ha fallado. Por favor, intente de nuevo o contacte con soporte.',
     parameter: 'Parámetro',
     value: 'Valor',
     key: 'Clave',
@@ -728,10 +591,6 @@ export default {
     downloadError: 'Error al descargar el archivo',
     downloadNoData: 'No hay datos para descargar',
     etlMetadataInfo: {
-      fromDbTooltip:
-        'Esta tabla contiene la información disponible en la base de datos en el momento de la ejecución.',
-      notFromDbTooltip:
-        'Esta tabla proviene de un fichero cargado por el usuario.',
       fromDbValueTooltip:
         'Este valor contiene la información disponible en la base de datos en el momento de la ejecución.',
       notFromDbValueTooltip:
@@ -747,96 +606,29 @@ export default {
     editAllMasterTables: 'Cargar todas las tablas maestras',
     editAllMasterTablesTitle: 'Cargar todas las tablas maestras',
     editAllMasterTablesSuccess: 'Tablas maestras actualizadas correctamente',
-    validationWarningTab: 'Esta tabla contiene advertencias',
-    validationErrorTab: 'Esta tabla contiene errores',
   },
   table: {
-    loading: 'Cargando datos...',
-    noDataAvailable: 'No hay datos disponibles para esta tabla',
-    loadingError: 'Error al cargar los datos de la tabla',
     apiNotSupported: 'API no disponible o operación no soportada',
-    searchPlaceholder: 'Buscar...',
     validationMessageColumn: 'Mensaje',
     groups: {
       inputTables: 'Datos de entrada',
       outputTables: 'Datos de la solución',
     },
-    actions: 'Acciones',
-    add: 'Añadir',
-    edit: 'Editar',
     delete: 'Eliminar',
-    bulkUpload: 'Carga masiva',
-    addItem: 'Añadir elemento',
-    editItem: 'Editar elemento',
     deleteItem: 'Eliminar elemento',
     confirmDelete: 'Eliminar elemento',
     deleteMessage: '¿Estás seguro de que quieres eliminar este elemento?',
-    cancel: 'Cancelar',
-    save: 'Guardar',
-    update: 'Actualizar',
     ok: 'Aceptar',
-    clickToEdit: 'Clic para editar',
-    fieldReadOnly: 'Este campo no se puede editar',
-    upload: 'Subir',
-    selectFile: 'Seleccionar archivo',
-    selectFiles: 'Seleccionar archivos',
-    multipleFileAccumulateHint:
-      'Puedes añadir más archivos en otra selección; se unen a la lista (si repites nombre, se sustituye).',
     dragAndDrop: 'Arrastra y suelta archivos aquí o haz clic para seleccionar',
-    supportedFormats: 'Formatos soportados:',
     filters: {
-      title: 'Filtros',
       noFilters: 'No hay filtros aplicados',
       addFirst: 'Añade tu primer filtro',
-      addCondition: 'Añadir condición',
-      field: 'Campo',
-      operator: 'Operador',
-      value: 'Valor',
-      valueTo: 'Hasta',
-      and: 'Y',
-      remove: 'Eliminar filtro',
-      clearAll: 'Limpiar todo',
-      removeAll: 'Eliminar todo',
-      apply: 'Aplicar filtros',
-      cancel: 'Cancelar',
-      dateFrom: 'Desde',
-      dateTo: 'Hasta',
-      reset: 'Restablecer',
       activeFilters: 'Filtros activos',
-      operators: {
-        is: 'es',
-        is_not: 'no es',
-        contains: 'contiene',
-        has_any_value: 'tiene algún valor',
-        is_greater_than: 'es mayor que',
-        is_less_than: 'es menor que',
-        is_between: 'está entre',
-        is_greater_than_or_equal: 'es mayor o igual que',
-        is_less_than_or_equal: 'es menor o igual que',
-      },
     },
-    maxFileSize: 'Tamaño máximo de archivo',
     downloadFullMessage: 'Descargar mensaje completo',
-    uploadMode: 'Modo de carga',
-    updateMode: 'Actualizar datos existentes',
-    updateModeDescription:
-      'Los registros existentes se actualizarán con los nuevos datos. Los registros nuevos se añadirán a la tabla.',
-    recommended: 'Recomendado',
-    addMode: 'Añadir a datos existentes',
-    addModeDescription:
-      'Agregar nuevos registros a los datos existentes de la tabla. Los registros actuales se conservarán.',
-    overwriteMode: 'Reemplazar todos los datos',
-    overwriteModeDescription:
-      'Reemplazar todos los datos existentes de la tabla con los registros cargados. Todos los datos actuales se eliminarán.',
-    itemAdded: 'Elemento añadido correctamente',
-    itemUpdated: 'Elemento actualizado correctamente',
-    itemDeleted: 'Elemento eliminado correctamente',
     itemsDeleted: 'Elementos eliminados correctamente',
-    bulkUploadSuccess: 'Carga masiva completada correctamente',
     messages: {
       itemCreated: 'Elemento creado correctamente',
-      itemUpdated: 'Elemento actualizado correctamente',
-      itemDeleted: 'Elemento eliminado correctamente',
       itemsDeleted: 'Elementos eliminados correctamente',
       bulkUploadSuccess: 'Carga masiva completada correctamente',
       errorSaving: 'Error al guardar el elemento',
@@ -854,41 +646,17 @@ export default {
       asyncUploadCompleted: 'Listo — {count} filas importadas',
       asyncUploadFailed: 'No se pudo procesar la carga',
       asyncUploadNotFound: 'Carga no encontrada',
+      invalidFileFormat: 'Formato de archivo inválido',
+      noValidDataFound: 'No se encontraron datos válidos en el archivo',
     },
-    downloadExcelTable: 'Descargar excel',
-    downloadExcelSuccess: 'Archivo excel descargado correctamente',
-    errorDownloadExcelTable: 'Error al descargar archivo excel',
     // Selection and bulk operations
-    selectedItems: '{count} seleccionados',
     clearSelection: 'Limpiar selección',
-    deleteSelected: 'Eliminar seleccionados',
-    confirmBulkDelete: 'Confirmar eliminación múltiple',
-    bulkDeleteMessage:
-      '¿Está seguro de que desea eliminar {count} elementos? Esta acción no se puede deshacer.',
-    deletingPleaseWait: 'Eliminando. Espere, por favor.',
     overwritingPleaseWait: 'Procesando los datos. Espere, por favor.',
-    uploadingPleaseWait: 'Subiendo datos… Espere, por favor.',
-    bulkDeleteSuccess: '{count} elementos eliminados correctamente',
-    bulkDeleteAllFailed: 'Error al eliminar todos los elementos seleccionados',
-    bulkDeletePartialFailed:
-      'Los elementos con IDs {ids} no se pudieron eliminar',
-    errorBulkDelete: 'Error durante la eliminación múltiple',
-    errorAdding: 'Error al añadir elemento',
-    errorUpdating: 'Error al actualizar elemento',
-    errorDeleting: 'Error al eliminar elemento',
-    errorBulkUpload: 'Error durante la carga masiva',
-    invalidFileFormat: 'Formato de archivo inválido',
     fileProcessingError: 'Error al procesar archivo',
-    noValidDataFound: 'No se encontraron datos válidos en el archivo',
     bulkEdit: 'Edición masiva',
-    bulkEditDescription: 'Editar {count} elementos seleccionados. Deja un campo en blanco para mantener los valores existentes sin cambios.',
-    bulkEditNoChange: 'Sin cambios',
-    bulkEditHint: 'Solo los campos rellenados se aplicarán a los elementos seleccionados.',
-    applyToSelected: 'Aplicar a seleccionados',
     bulkEditApplied: '{count} elementos actualizados correctamente',
     yes: 'Sí',
     no: 'No',
-    search: 'Buscar',
     forceRetry: {
       title: 'Confirmar sobrescritura',
       accept: 'Sobrescribir de todos modos',
@@ -901,19 +669,6 @@ export default {
     },
   },
   validation: {
-    required: 'Este campo es obligatorio',
-    email: 'Por favor, introduce una dirección de correo electrónico válida',
-    min: 'El valor mínimo es {min}',
-    max: 'El valor máximo es {max}',
-    minLength: 'La longitud mínima es de {length} caracteres',
-    maxLength: 'La longitud máxima es de {length} caracteres',
-    pattern: 'Formato inválido',
-    invalidNumber: 'Por favor, introduce un número válido',
-    integer: 'Por favor, introduce un número entero',
-    url: 'Por favor, introduce una URL válida',
-    date: 'Por favor, introduce una fecha válida',
-    phone: 'Por favor, introduce un número de teléfono válido',
-    alphanumeric: 'Solo se permiten letras y números',
     keywords: {
       type: 'Tipo',
       required: 'Requerido',
@@ -1015,40 +770,9 @@ export default {
     alertTitle: 'Coincidencias con tablas maestras detectadas',
     alertDescription:
       'Algunas tablas en los datos subidos coinciden con tablas maestras existentes. Por favor, elige cómo manejar cada coincidencia a continuación.',
-    hasDifferences: 'Tiene diferencias',
-    hasDifferencesWithMaster:
-      'Esta tabla tiene diferencias con la tabla maestra',
-    identical: 'Idénticas',
-    identicalToMaster: 'Esta tabla es idéntica a la tabla maestra',
-    viewDifferences: 'Comparar',
-    matchFoundWith: 'Coincide con maestro:',
-    matchFoundWithMaster: 'Coincide con tabla maestra: {masterTable}',
-    uploadedRows: 'Filas subidas',
-    masterRows: 'Filas en maestro',
-    newRows: 'Filas nuevas',
-    removedRows: 'Filas eliminadas',
-    modifiedRows: 'Filas modificadas',
-    identicalRows: 'Filas idénticas',
-    selectAction: 'Selecciona una acción:',
     option: {
       keepUploaded: {
-        title: 'Mantener datos subidos',
         short: 'Mantener',
-        description:
-          'Usar los datos subidos para esta ejecución sin modificar la tabla maestra.',
-      },
-      useMaster: {
-        title: 'Aplicar datos del maestro',
-        short: 'Aplicar maestro',
-        description:
-          'Usar los datos de la tabla maestra en lugar de los subidos para esta ejecución.',
-      },
-      replaceMaster: {
-        title: 'Guardar en tabla maestra',
-        short: 'Guardar en maestro',
-        description:
-          'Guardar los datos subidos en la tabla maestra. Esto afecta a todas las ejecuciones futuras.',
-        notAvailable: 'Esta operación no está disponible para esta tabla',
       },
     },
     messages: {
@@ -1066,94 +790,27 @@ export default {
       errorProcessingDependentField:
         'Error al procesar campo dependiente {fieldKey}',
     },
-    confirmUseMaster: {
-      title: 'Aplicar datos del maestro',
-      message:
-        '¿Quieres usar los datos de la tabla maestra para "{tableName}"? Los datos que has subido serán reemplazados por los del maestro solo para esta ejecución.',
-      confirm: 'Aplicar maestro',
-    },
-    confirmReplaceMaster: {
-      title: 'Guardar en tabla maestra',
-      message:
-        '¿Quieres guardar los datos subidos en la tabla maestra "{tableName}"? Esto modificará permanentemente la tabla maestra y afectará a todas las ejecuciones futuras.',
-      confirm: 'Guardar en maestro',
-    },
   },
   dataComparison: {
-    title: 'Comparación de datos: {tableName}',
-    subtitle: 'Comparando datos subidos con la tabla maestra "{masterTable}"',
-    loading: 'Cargando datos de comparación...',
-    uploadedData: 'Datos subidos',
-    masterData: 'Datos del maestro',
-    rows: 'filas',
-    newRows: 'Nuevas',
-    removedRows: 'Eliminadas',
-    modifiedRows: 'Modificadas',
-    identicalRows: 'Idénticas',
-    tabs: {
-      summary: 'Resumen',
-      sideBySide: 'Lado a lado',
-      changes: 'Cambios',
-    },
-    filter: {
-      all: 'Todos',
-      added: 'Añadidos',
-      removed: 'Eliminados',
-      modified: 'Modificados',
-    },
-    noChangesInFilter: 'No hay cambios en este filtro',
     restoreRow: 'Restaurar esta fila desde el maestro',
     restoreRowQueued:
       'Fila en cola para restaurar — revisa y guarda en la tabla',
     deleteRow: 'Eliminar esta fila de los datos subidos',
     deleteRowQueued: 'Fila en cola para eliminar — revisa y guarda en la tabla',
-    changeType: {
-      added: 'Fila añadida',
-      removed: 'Fila eliminada',
-      modified: 'Fila modificada',
-    },
   },
   pendingChanges: {
-    title: 'Cambios pendientes',
     subtitle: 'Revisa y confirma tus cambios antes de guardar',
-    changes: 'cambios',
     modifiedTables: 'Tablas modificadas',
-    modifiedRows: 'Filas modificadas',
-    modifiedRow: 'Fila modificada',
     totalChanges: 'Total de cambios',
-    noChanges: 'No hay cambios pendientes',
-    row: 'Fila',
     rowContext: 'Datos de la fila',
     changedFields: 'Campos modificados',
     originalValue: 'Valor original',
     newValue: 'Nuevo valor',
-    revert: 'Revertir',
     revertField: 'Revertir este cambio',
     revertRow: 'Revertir cambios de la fila',
     revertAllTable: 'Revertir todos los cambios de esta tabla',
-    revertAll: 'Revertir todo',
-    revertAllChanges: 'Revertir todos los cambios',
-    saveAllChanges: 'Guardar todos los cambios',
-    processingChanges: 'Se están procesando los cambios. Espere, por favor.',
-    confirmRevertAll: {
-      title: 'Revertir todos los cambios',
-      message:
-        '¿Estás seguro de que quieres revertir todos los cambios pendientes? Esta acción no se puede deshacer.',
-      confirm: 'Sí, revertir todo',
-    },
-    unsavedChangesWarning: {
-      title: 'Cambios sin guardar',
-      message:
-        'Tienes cambios sin guardar. Si sales ahora, tus cambios se perderán.',
-      stay: 'Quedarse',
-      leave: 'Salir de todos modos',
-    },
-    reviewChanges: 'Revisar cambios',
-    changesIndicator: '{count} cambios pendientes',
     changeStaged: 'Cambio añadido a pendientes. Se aplicará al guardar.',
     createReverted: 'Nueva fila eliminada. No hay cambios que guardar.',
-    newRow: 'Nueva fila',
-    deletedRow: 'Fila eliminada',
     saveErrorNoInstanceData:
       'No hay datos de instancia. No se pueden guardar los cambios.',
   },
@@ -1161,10 +818,6 @@ export default {
     clear: 'Limpiar',
     close: 'Cerrar',
     cancel: 'Cancelar',
-    file: 'archivo',
-    files: 'archivos',
-    error: 'error',
-    errors: 'errores',
   },
   configParams: {
     fromFile: 'Del archivo',
@@ -1296,31 +949,11 @@ export default {
   },
   externalEtl: {
     switch: {
-      fromDbLabel: 'Esta tabla se ha obtenido de la base de datos.',
-      fromExcelLabel:
-        'Esta tabla se ha subido desde un archivo en el paso anterior.',
-      editedFromDbLabel:
-        'Se han realizado cambios manuales y la tabla ya no es idéntica a la de base de datos.',
-      reuploadedLabel:
-        'Los datos de esta tabla proceden de un archivo Excel importado.',
-      fixTable: 'Fijar tabla',
-      replaceWithDb: 'Usar datos de la base de datos',
-      staticMode: 'Modo estático',
-      staticModeTooltip:
-        'La tabla se mantendrá tal como está y no se actualizará desde la base de datos al calcular la última solución.',
-      trackChanges: 'Actualizar con BD',
-      trackChangesTooltip:
-        'La tabla se actualizará con los últimos datos de la base de datos al calcular la última solución.',
-      useExcelData: 'Usar datos del Excel',
-      useDbData: 'Usar datos de la base de datos',
       default: 'Por defecto',
       fromDb: 'Desde base de datos',
       fixed: 'Fijado',
     },
     parameter: {
-      fromDb: 'Desde base de datos (se actualizará)',
-      fixed: 'Fijado (se mantiene el valor actual)',
-      cannotBeFromDb: 'Siempre proporcionado por el usuario',
       columnFromDb: 'Desde base de datos',
     },
   },
@@ -1432,8 +1065,6 @@ export default {
       },
       master: {
         comparing: 'Comparando con tablas maestras…',
-        error: 'Ha fallado la comparación con la maestra',
-        retry: 'Reintentar',
         matches: 'Maestra {name}',
         identical: 'Idénticas',
         identicalTitle: 'No hay diferencias con la maestra',
@@ -1490,7 +1121,6 @@ export default {
       message: 'Se eliminará la fila seleccionada. No se puede deshacer. | Se eliminarán las {count} filas seleccionadas. No se puede deshacer.',
       confirm: 'Eliminar',
       deleting: 'Eliminando…',
-      marked: '1 fila marcada para eliminar. | {count} filas marcadas para eliminar.',
     },
     messages: {
       errorTitle: 'No se han podido cargar los datos',
@@ -1523,16 +1153,13 @@ export default {
       review: 'Revisar cambios',
       summary: '1 cambio pendiente | {count} cambios pendientes',
       summaryTables: '1 cambio pendiente en {tables} tablas | {count} cambios pendientes en {tables} tablas',
-      staged: 'Cambio añadido a pendientes. Se aplicará al guardar.',
       title: 'Cambios pendientes',
       changes: '{n} cambio | {n} cambio | {n} cambios',
       tables: '{n} tabla | {n} tabla | {n} tablas',
       rowsAffected: '{n} fila afectada | {n} fila afectada | {n} filas afectadas',
       expand: 'Abrir en grande',
       closeBanner: 'Cerrar aviso',
-      retry: 'Reintentar',
       validationTitle: 'Los datos no cumplen el esquema',
-      serverTitle: 'Error del servidor',
       empty: 'No hay cambios pendientes',
       emptyText: 'Lo que edites en cualquier tabla aparecerá aquí.',
       emptyTextDialog: 'Los cambios que hagas en cualquier tabla aparecerán aquí antes de guardarlos.',
@@ -1708,6 +1335,7 @@ export default {
       parameter: 'Parámetro',
       value: 'Valor',
       source: 'Desde base de datos',
+      originOfValue: 'Origen',
       fromDatabase: 'Desde base de datos',
       revert: 'Revertir',
       choose: 'Elige…',
