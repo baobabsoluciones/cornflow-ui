@@ -2628,7 +2628,7 @@ test.describe('Version History Navigation', () => {
         console.log(`Verified tab contains execution name: "${executionName}"`);
       }
 
-      // Verify the expected number of execution tabs (excluding "Añadir nuevo" or similar add buttons)
+      // Verify the expected number of execution tabs (excluding "Nueva ejecución" or similar add buttons)
       let executionTabCount = 0;
       for (let i = 0; i < tabCount; i++) {
         const tabText = await allTabs.nth(i).textContent().catch(() => '');

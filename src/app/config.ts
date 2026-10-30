@@ -7,6 +7,7 @@ import type {
   ExecutionsListEndpoint,
 } from '@cornflow-ui/core/types/executionFilters'
 import type { SchemaOverrides } from '@cornflow-ui/core/utils/schemaOverrides'
+import type { ProposeExecutionName } from '@cornflow-ui/core/composables/create-execution/executionName'
 
 /**
  * Definition for an app-specific section (top-level or subsection).
@@ -184,6 +185,13 @@ function collectLoadingOnEnterAppRoutePrefixes(
   )
 }
 /** Declarative rules for master vs uploaded row matching and display normalization (per table key). */
+/**
+ * How the "create execution" screen is laid out:
+ * - `page`: one page, the data on the left and the launch panel on the right.
+ * - `wizard`: the step-by-step wizard (load, review, check, solver, parameters, name, confirm).
+ */
+export type CreateExecutionFlow = 'page' | 'wizard'
+
 export type MasterTableMatchingDictionaryRule = {
   sourceTable: string
   keyField: string
@@ -198,28 +206,6 @@ export type MasterTableCompareStrategy = {
 
 export type MasterTableMatchingConfig = {
   compareStrategies: Record<string, MasterTableCompareStrategy>
-}
-
-/**
- * A parameter field shown in the ETL “alternative parameters” column of the load instance step.
- * Each field maps to a cell in instance.data via `instancePath` (`tableName.column`).
- * Used in `etl.alternativeParameterFields` in `src/app/config.ts`.
- */
-export interface LoadInstanceAlternativeParamField {
-  /** Stable id for the form model (unique within the list). */
-  id: string
-  /** i18n key for the field label. */
-  titleKey: string
-  /** Optional i18n key for placeholder text. */
-  placeholderKey?: string
-  type: 'date' | 'text' | 'number'
-  /**
-   * Target location in instance.data: `tableName.column`, e.g. `parameters.start_date`.
-   * Multiple fields with the same table name are merged into one row (first row per table).
-   */
-  instancePath: string
-  /** When true, “Load parameters” is disabled until the value is set. Default true. */
-  required?: boolean
 }
 
 /**
@@ -243,9 +229,6 @@ const createAppConfig = () => ({
        * - enableLoadFromDb: show “Obtener todos los datos de base de datos” button alongside
        *   “Cargar archivos”. Clicking it calls POST /etl/ with no files (just schema if sendSchema).
        *   Continue is always blocked until the user loads data via either button.
-       * - alternativeParameterFields: show a form column next to the dropzone so users can
-       *   fill in parameters that are sent as an XLSX to the ETL endpoint instead of uploading.
-       *   See README “ETL — load instance step” for full details.
        */
       etl: {
         useEtlBackend: false,
@@ -253,7 +236,6 @@ const createAppConfig = () => ({
         enableEtlMetadataAndReview: false,
         sendSchema: false,
         enableLoadFromDb: false,
-        alternativeParameterFields: [] as LoadInstanceAlternativeParamField[],
       },
       showTablesWithoutSchema: false,
       showOpenIdUsername: true,
@@ -432,6 +414,27 @@ const createAppConfig = () => ({
           // },
         },
       },
+
+      /**
+       * The "create execution" screen. See docs/create-execution-flows.md.
+       * - `flow`: core's layout (`page` or `wizard`).
+       * - `component`: the app's own flow instead, e.g.
+       *   `() => import('@/app/views/MyCreateExecutionView.vue')`. It is built with
+       *   `useExecutionDraft` and the create-execution blocks, so it keeps every call to the backend.
+       * - `proposeName`: the rule that names the execution when its data is loaded; by default the
+       *   first file's name, or "Data of <date>", followed by the load filters.
+       */
+      createExecution: {
+        flow: 'page' as CreateExecutionFlow,
+        component: null as (() => Promise<unknown>) | null,
+        proposeName: null as ProposeExecutionName | null,
+      },
+
+      /**
+       * Developer tools on the "create execution" screen: creating an execution with an uploaded
+       * solution instead of running the solver.
+       */
+      isDeveloperMode: false,
 
       // Overridden from schema config when user enters the app (see general store setSchema + applySchemaConfigToAppConfig)
       solverConfig: {

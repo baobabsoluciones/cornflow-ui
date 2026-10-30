@@ -155,6 +155,10 @@ import { useRoute } from 'vue-router'
 import { useTableChanges } from '@cornflow-ui/core/composables/useTableChanges'
 import { useEtlFlowController } from '@cornflow-ui/core/composables/project-execution/useEtlFlowController'
 import { getPreEtlConfigFields } from '@cornflow-ui/core/utils/schemaUtils'
+import {
+  applySourceConfigFieldValues,
+  resolveAllConfigFieldValues,
+} from '@cornflow-ui/core/composables/create-execution/configFieldValues'
 
 export default {
   components: {
@@ -457,103 +461,21 @@ export default {
         }
       }
     },
-    async loadConfigFieldValues() {
-      const configFields =
-        this.generalStore.appConfig.parameters.configFields || []
-      const newConfig = { ...this.newExecution.config }
-
-      for (const field of configFields) {
-        const fieldValue = this.extractFieldValue(field)
-        this.setConfigFieldValue(newConfig, field, fieldValue)
-      }
-
-      this.newExecution.config = newConfig
+    loadConfigFieldValues() {
+      this.newExecution.config = resolveAllConfigFieldValues(
+        this.generalStore.appConfig.parameters.configFields || [],
+        this.newExecution.config,
+        this.newExecution.instance?.data,
+      )
     },
 
     /** Fields read from the loaded file (`source`) take the value the file has for them. */
     loadSourceConfigFieldValues() {
-      const fields = (
-        this.generalStore.appConfig.parameters.configFields || []
-      ).filter((field) => field.source)
-      if (fields.length === 0) return
-
-      const newConfig = { ...this.newExecution.config }
-      for (const field of fields) {
-        if (!this.hasValidDataSource(field)) continue
-        const value = this.getValueFromSource(
-          field,
-          this.newExecution.instance.data[field.source],
-        )
-        if (value !== undefined) {
-          newConfig[field.key] = this.convertValueByType(value, field.type)
-        }
-      }
-      this.newExecution.config = newConfig
-    },
-
-    extractFieldValue(field) {
-      if (!this.hasValidDataSource(field)) {
-        this.warnUnresolvedSourceField(field)
-        return field.default
-      }
-
-      const sourceData = this.newExecution.instance.data[field.source]
-      const value = this.getValueFromSource(field, sourceData)
-      if (value === undefined) this.warnUnresolvedSourceField(field)
-      return value
-    },
-
-    // A field with a `source` that finds nothing in the loaded instance is left out of the
-    // config (or gets its default), and the solver then runs on its own defaults; say so.
-    warnUnresolvedSourceField(field) {
-      if (!field.source || !this.newExecution.instance?.data) return
-      console.warn(
-        `Config field "${field.key}" found no value for "${field.param}" in instance table "${field.source}".`,
-      )
-    },
-
-    hasValidDataSource(field) {
-      return (
-        field.source &&
-        this.newExecution.instance?.data &&
-        this.newExecution.instance.data[field.source]
-      )
-    },
-
-    getValueFromSource(field, sourceData) {
-      if (field.lookupType === 'arrayByValue') {
-        return this.getArrayByValueLookup(field, sourceData)
-      }
-
-      if (Array.isArray(sourceData)) {
-        return undefined
-      }
-
-      return sourceData[field.param]
-    },
-
-    getArrayByValueLookup(field, arr) {
-      const found = arr.find(
-        (item) => item && item[field.lookupParam] === field.param,
-      )
-      return found ? found[field.lookupValue] : undefined
-    },
-
-    setConfigFieldValue(newConfig, field, value) {
-      if (value !== undefined) {
-        newConfig[field.key] = this.convertValueByType(value, field.type)
-      } else if (field.default !== undefined) {
-        newConfig[field.key] = field.default
-      }
-    },
-
-    convertValueByType(value, type) {
-      if (type === 'float') {
-        return Number.parseFloat(value)
-      } else if (type === 'number') {
-        return Number.parseInt(value)
-      }
-      return value
+      this.newExecution.config = applySourceConfigFieldValues(
+        this.generalStore.appConfig.parameters.configFields || [],
+        this.newExecution.config,
+        this.newExecution.instance?.data,
+      ).config
     },
 
     getExecutionSteps() {
@@ -785,20 +707,8 @@ export default {
 
       if (this.existingInstanceErrors) return true
 
-      const etl = this.generalStore.appConfig.parameters.etl
-
-      // When ETL is active (useEtlBackend, enableLoadFromDb or alternativeParameterFields),
-      // the user must always load data via one of the available buttons before continuing.
-      const isEtlMode =
-        etl?.useEtlBackend ||
-        etl?.enableLoadFromDb ||
-        (etl?.alternativeParameterFields?.length ?? 0) > 0
-
-      if (isEtlMode) {
-        return !this.newExecution.instance
-      }
-
-      // Default: file upload required
+      // Whatever the source (files, or the database through the ETL), the data has to be
+      // loaded with the load button before continuing.
       return !this.newExecution.instance
     },
     allConfigFields() {

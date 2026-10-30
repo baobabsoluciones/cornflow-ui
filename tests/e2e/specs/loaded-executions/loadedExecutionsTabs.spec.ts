@@ -6,7 +6,7 @@ import { ensureExecutionLoaded } from '../../helpers/executionHelpers';
  * Tests for the loaded executions tab bar functionality
  *
  * These tests verify that the tab bar at the bottom left of the screen
- * correctly displays the loaded execution tabs and the "Add new" button.
+ * correctly displays the loaded execution tabs and the "New execution" button.
  */
 test.describe('Loaded Executions Tab Bar', () => {
   test.beforeEach(async ({ page }) => {
@@ -15,10 +15,10 @@ test.describe('Loaded Executions Tab Bar', () => {
     await app.first().waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
   });
 
-  test('should always display the "Add new" tab button', async ({ page }) => {
-    // The "Add new" button is rendered as a tab element with role="tab"
-    // The button text is "Añadir nuevo" (Spanish) or "Add new" (English)
-    const addNewTab = page.getByRole('tab', { name: /Añadir nuevo|Add new/i });
+  test('should always display the "New execution" tab button', async ({ page }) => {
+    // The "New execution" button is rendered as a tab element with role="tab"
+    // The button text is "Nueva ejecución" (Spanish) or "New execution" (English)
+    const addNewTab = page.getByRole('tab', { name: /Nueva ejecución|New execution/i });
 
     // Wait for the tab to be visible
     await addNewTab.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
@@ -27,9 +27,9 @@ test.describe('Loaded Executions Tab Bar', () => {
     await expect(addNewTab).toBeVisible();
   });
 
-  test('should display "Add new" button when navigating to different views', async ({ page }) => {
-    // The "Add new" tab button
-    const addNewTab = page.getByRole('tab', { name: /Añadir nuevo|Add new/i });
+  test('should display "New execution" button when navigating to different views', async ({ page }) => {
+    // The "New execution" tab button
+    const addNewTab = page.getByRole('tab', { name: /Nueva ejecución|New execution/i });
 
     // First check on the initial view
     await addNewTab.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
@@ -48,9 +48,9 @@ test.describe('Loaded Executions Tab Bar', () => {
     await expect(addNewTab).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
   });
 
-  test('should navigate to project-execution when clicking "Add new" button', async ({ page }) => {
-    // Find the "Add new" tab
-    const addNewTab = page.getByRole('tab', { name: /Añadir nuevo|Add new/i });
+  test('should navigate to project-execution when clicking "New execution" button', async ({ page }) => {
+    // Find the "New execution" tab
+    const addNewTab = page.getByRole('tab', { name: /Nueva ejecución|New execution/i });
     await addNewTab.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
 
     // Click the tab
@@ -64,7 +64,7 @@ test.describe('Loaded Executions Tab Bar', () => {
     await expect(pageTitle).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
   });
 
-  test('should display tablist containing the "Add new" tab', async ({ page }) => {
+  test('should display tablist containing the "New execution" tab', async ({ page }) => {
     // The tab bar uses a tablist role
     const tablist = page.getByRole('tablist');
     await tablist.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
@@ -72,8 +72,8 @@ test.describe('Loaded Executions Tab Bar', () => {
     // Verify that the tablist is visible
     await expect(tablist).toBeVisible();
 
-    // Verify the "Add new" tab is inside the tablist
-    const addNewTab = tablist.getByRole('tab', { name: /Añadir nuevo|Add new/i });
+    // Verify the "New execution" tab is inside the tablist
+    const addNewTab = tablist.getByRole('tab', { name: /Nueva ejecución|New execution/i });
     await expect(addNewTab).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
   });
 
@@ -94,7 +94,7 @@ test.describe('Loaded Executions Tab Bar', () => {
     const actualExecutionTab = tablist
       .getByRole('tab')
       .filter({
-        hasNot: page.getByText(/Añadir nuevo|Add new/i),
+        hasNot: page.getByText(/Nueva ejecución|New execution/i),
       })
       .first();
 
@@ -103,7 +103,7 @@ test.describe('Loaded Executions Tab Bar', () => {
 
     const tabText = (await actualExecutionTab.textContent()) ?? '';
     const tabName = tabText
-      .replace(/Añadir nuevo|Add new/gi, '')
+      .replace(/Nueva ejecución|New execution/gi, '')
       .replace(/Actual/gi, '')
       .replace(/[✕xX]\s*$/, '')
       .replace(/\s+/g, ' ')
@@ -116,7 +116,7 @@ test.describe('Loaded Executions Tab Bar', () => {
       timeout: TIMEOUTS.FORM_LOAD,
     });
 
-    // Exactly one execution tab plus "Add new".
+    // Exactly one execution tab plus "New execution".
     const allTabs = tablist.getByRole('tab');
     await expect(allTabs).toHaveCount(2, { timeout: TIMEOUTS.FORM_LOAD });
 
@@ -162,12 +162,12 @@ test.describe('Loaded Executions Tab Bar', () => {
     const tablist = page.getByRole('tablist');
     await tablist.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
 
-    // Get all tabs and count execution tabs (excluding "Add new" tab)
+    // Get all tabs and count execution tabs (excluding "New execution" tab)
     const allTabs = tablist.getByRole('tab');
-    const addNewTab = tablist.getByRole('tab', { name: /Añadir nuevo|Add new/i });
+    const addNewTab = tablist.getByRole('tab', { name: /Nueva ejecución|New execution/i });
 
     const initialTabCount = await allTabs.count();
-    const initialExecutionTabCount = initialTabCount - 1; // Subtract 1 for "Add new" tab
+    const initialExecutionTabCount = initialTabCount - 1; // Subtract 1 for "New execution" tab
 
     // Close each execution tab one by one
     for (let i = 0; i < initialExecutionTabCount; i++) {
@@ -179,11 +179,11 @@ test.describe('Loaded Executions Tab Bar', () => {
       // Skip if no more execution tabs to close
       if (executionTabCount <= 0) break;
 
-      // Find the first execution tab that is NOT the "Add new" tab
-      // We look for tabs that don't match the "Add new" pattern
+      // Find the first execution tab that is NOT the "New execution" tab
+      // We look for tabs that don't match the "New execution" pattern
       const executionTab = tablist
         .getByRole('tab')
-        .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+        .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
         .first();
 
       await expect(executionTab).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
@@ -201,7 +201,7 @@ test.describe('Loaded Executions Tab Bar', () => {
       await expect(closedTab).not.toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
     }
 
-    // After closing all execution tabs, only the "Add new" tab should remain
+    // After closing all execution tabs, only the "New execution" tab should remain
     const finalTabCount = await allTabs.count();
     expect(finalTabCount).toBe(1);
     await expect(addNewTab).toBeVisible();

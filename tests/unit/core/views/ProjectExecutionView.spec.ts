@@ -1168,52 +1168,6 @@ describe('ProjectExecutionView', () => {
     })
   })
 
-  describe('config field value extraction', () => {
-    test('getArrayByValueLookup finds the matching entry value', () => {
-      const { wrapper } = createWrapper()
-      const arr = [
-        { code: 'a', val: 1 },
-        { code: 'b', val: 2 },
-      ]
-      const result = wrapper.vm.getArrayByValueLookup(
-        { lookupParam: 'code', param: 'b', lookupValue: 'val' },
-        arr,
-      )
-      expect(result).toBe(2)
-    })
-
-    test('getArrayByValueLookup returns undefined when not found', () => {
-      const { wrapper } = createWrapper()
-      const result = wrapper.vm.getArrayByValueLookup(
-        { lookupParam: 'code', param: 'z', lookupValue: 'val' },
-        [{ code: 'a', val: 1 }],
-      )
-      expect(result).toBeUndefined()
-    })
-
-    test('convertValueByType converts floats, numbers and passthrough', () => {
-      const { wrapper } = createWrapper()
-      expect(wrapper.vm.convertValueByType('1.5', 'float')).toBe(1.5)
-      expect(wrapper.vm.convertValueByType('3', 'number')).toBe(3)
-      expect(wrapper.vm.convertValueByType('keep', 'string')).toBe('keep')
-    })
-
-    test('hasValidDataSource reflects presence of source data', () => {
-      const { wrapper } = createWrapper()
-      wrapper.vm.newExecution.instance = { data: { src: { a: 1 } } }
-      expect(wrapper.vm.hasValidDataSource({ source: 'src' })).toBeTruthy()
-      expect(wrapper.vm.hasValidDataSource({ source: 'missing' })).toBeFalsy()
-    })
-
-    test('extractFieldValue falls back to default without a valid source', () => {
-      const { wrapper } = createWrapper()
-      wrapper.vm.newExecution.instance = { data: {} }
-      expect(
-        wrapper.vm.extractFieldValue({ source: 'x', default: 'def' }),
-      ).toBe('def')
-    })
-  })
-
   describe('exit confirmation flow', () => {
     test('hasProgressToLose is true when a name is set', () => {
       const { wrapper } = createWrapper()

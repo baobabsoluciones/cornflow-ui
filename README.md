@@ -107,18 +107,36 @@ declared with `schemas` only offers its rows on those DAGs). A DAG switch loads 
 a filter keeps its value while the new DAG still offers it, and goes back to "All" otherwise. A DAG
 can declare its own filters, or none, in `schemaOverrides` (see [Several DAGs in one application](#several-dags-in-one-application)).
 
-### Project execution
+### Create execution
 
-- **Purpose**: Step-by-step execution creation workflow
+- **Purpose**: bring the data of a new execution in, review it, check it, set its parameters and
+  launch it.
+- **Flows** (`createExecution` in `src/app/config.ts`, see
+  [docs/create-execution-flows.md](docs/create-execution-flows.md)):
+  - **Page** (default): one page, the data card on the left and the launch panel on the right.
+  - **Wizard**: the step-by-step wizard (`flow: 'wizard'`).
+  - **The app's own** (`component`), built with the same logic (`useExecutionDraft`) and blocks.
 - **Features**:
-  - Multi-step execution creation process
-  - Pre-ETL parameters, asked in the load step itself when the config schema declares any - see [Pre-ETL parameters](#pre-etl-parameters-pre_etl)
-  - Instance file upload and validation
-  - Solver configuration (when enabled)
-  - Parameter configuration (when enabled)
-  - Execution review and confirmation
-- **Location**: `ProjectExecutionView.vue`
-- **Configuration**: Controlled by `executionSolvers`, `solverConfig`, and `configFieldsConfig` in `src/app/config.ts`
+  - Data from one or several files, or from the database through the ETL (files replace the
+    tables with the same name)
+  - Load filters (pre-ETL parameters) asked before the data is brought - see
+    [Pre-ETL parameters](#pre-etl-parameters-pre_etl)
+  - Schema errors grouped by table in plain words, with a download of all of them
+  - Review and edit of the tables, comparison with master tables, ETL origin switches; on the page
+    the table fills the data card, and the card's header has the Excel menu (download the data, or
+    overwrite it with a workbook) and "Maximize"
+  - Data checks, out of date as soon as the data changes; optionally blocking. Each check reads as
+    one line with what it found, and its detail is a table titled from the checks schema (a check
+    or column without `title` shows its key in words)
+  - Parameters: the ones to decide on first, the ones with a default under "Advanced"
+  - What is still missing to launch, each item taking the user to it
+  - A proposed name, the launched execution followed live, a draft kept when leaving half done,
+    and relaunching an execution with changes
+- **Location**: `CreateExecutionView.vue` (page), `ProjectExecutionView.vue` (wizard),
+  `components/create-execution/`, `composables/create-execution/`
+- **Configuration**: `createExecution`, `executionSolvers`, `solverConfig`, `configFieldsConfig`,
+  `configFields`, `etl`, `enableBlockAdvanceOnCheckErrors` and `isDeveloperMode` in
+  `src/app/config.ts` - see [Create execution configuration](#create-execution-configuration)
 
 ### Master table matching (instance synchronization)
 
@@ -1178,6 +1196,7 @@ take their look from the tokens, with the styles inside each component.
 | `CoreIcon`, `CoreSpinner` | A Material Design Icons glyph (`mdi-*`); a loading ring |
 | `CoreButton` | Filled, outlined, text and icon buttons, in five sizes, with `loading` |
 | `CoreTextField`, `CoreSelect` | A text box (text, numbers, dates, passwords, several lines) and a dropdown, in three sizes |
+| `CoreMultiSelect` | A dropdown to pick several options, with a search box when the list is long |
 | `CoreBadge` | A short status or tag, as a pill or a dot, in a tone |
 | `CoreAlert` | A message inside the page (error, warning, info, success) with an optional action |
 | `CoreEmptyState`, `CoreSkeleton`, `CoreProgressBar` | Empty and loading states, progress |
@@ -1188,6 +1207,11 @@ take their look from the tokens, with the styles inside each component.
 | `CoreSnackbar` | The app's toast (`showSnackbar`) |
 | `table/CoreSearchInput`, `filters/*` | The search box and the filter chips |
 | `CoreTitleView` | The title of a view, with an `actions` slot |
+
+The create-execution screen has blocks of its own in `src/components/create-execution/` (the data
+card, the launch panel, the checks, the parameters…), built with the `Core*` components and fed by
+`useExecutionDraft`; an app composes them into a flow of its own - see
+[docs/create-execution-flows.md](docs/create-execution-flows.md).
 
 Overlays (popover, menu, dialog, hover card) are built on [Reka UI](https://reka-ui.com), which
 gives focus handling, keyboard and ARIA without styles. The views use the `Core*` components, not
@@ -1582,18 +1606,42 @@ For example, in a scheduling application, one file might contain employee data, 
 
 The system automatically detects files that match the configured prefixes and processes them using the corresponding methods before merging all the processed parts into the final instance. Files that don't match any configured prefix are processed using the standard method.
 
-### Create project execution steps customization
+<a id="create-execution-configuration"></a>
 
-#### Solver step: solverConfig
+### Create execution configuration
 
-Controls the solver selection step and default solver for executions.
+#### Flow: createExecution
 
-- `showSolverStep` (boolean):
-  - If true, shows the solver selection step to the user.
-  - If false, skips the step and uses the value in `defaultSolver` automatically.
-- `defaultSolver` (string):
-  - The solver to use if `showSolverStep` is false.
-  - Used in the execution config as `newExecution.config.solver`.
+- `flow` (`'page' | 'wizard'`, default `'page'`): core's layout.
+- `component` (lazy component, optional): the app's own flow instead, e.g.
+  `() => import('@/app/views/MyCreateExecutionView.vue')`.
+- `proposeName` (function, optional): how the execution is named when its data is loaded; by
+  default the first file's name, or "Data of <date>", followed by the load filters.
+
+See [docs/create-execution-flows.md](docs/create-execution-flows.md) for building a flow of your own.
+
+#### Solver: solverConfig
+
+- `showSolverStep` (boolean): whether the user picks the solver. On the page it is a choice under
+  the parameters' "Advanced", shown only when there is more than one solver; in the wizard it is a
+  step of its own.
+- `defaultSolver` (string): the solver used when it is not asked, and the one picked to start
+  with. It goes in the execution config as `config.solver`.
+
+#### Parameters: configFieldsConfig
+
+- `showConfigFieldsStep` (boolean): whether the parameters are shown (the launch panel's
+  parameters on the page, the parameters step in the wizard).
+- `autoLoadValues` (boolean): with the parameters hidden, their values are settled from the loaded
+  instance (fields with a `source`) or their default.
+
+With the parameters shown, loading the data fills the fields that declare a `source` with the value
+the loaded file has for them, and the user can still change it; those fields are tagged "From the
+file". A field the file does not have keeps its value (its default, until the user types one).
+
+On the page, the parameters to decide on (required, or without a default) come first and the ones
+with a default are folded under "Advanced" with a summary of their values. Only the required ones
+(the config schema's root `required`) stop the launch.
 
 #### Configuration parameters step: configFieldsConfig
 
@@ -1631,7 +1679,7 @@ Defines the configuration fields for execution parameters. Each field can have:
 - `options` (Array<{label: string, value: any}>, for select type): Options for select fields.
 - `joinFrom` (string, from the schema): Set from `"join_from": "<table>.<column>"`. The field is a select whose options are the rows of that frontend-automation table. See [Selectors fed by frontend-automation tables](#selectors-fed-by-frontend-automation-tables).
 - `preEtl` (boolean, from the schema): Set from `"pre_etl": true`. See [Pre-ETL parameters](#pre-etl-parameters-pre_etl).
-- `required` (boolean, from the schema): Set when the config schema's root `required` lists the key. Only the pre-ETL step reads it, to decide what blocks **Continue**.
+- `required` (boolean, from the schema): Set when the config schema's root `required` lists the key. On the page a required parameter or load filter that is empty stops the launch or the load; in the wizard it only gates the load (the parameters step asks for every field).
 
 **Fields derived from the backend schema.** Once the app has the schema from `GET /schema/<name>/`, `getExecutionConfigFromSchemaConfig` (in `schemaUtils.ts`) rebuilds `configFields` from `schema.config.properties`, so the backend schema is the source of truth for which fields exist and how they look. The fields `src/app/config.ts` declares with a `source` or a `default` say something the schema cannot (where this app reads the value, or what it sends when nothing else does), so `mergeAppConfigFields` keeps them on top: their properties win over those of the schema field with the same key, and they are kept even when the schema has no such property. The rest of the fields declared in `src/app/config.ts` give way to the schema. When a field with a `source` finds no value in the loaded instance, the browser console says so. The mapping:
 
@@ -1679,40 +1727,71 @@ config JSON schema:
 }
 ```
 
-The wizard shows it as a select with one option per row of the `plants` frontend-automation table:
+Both flows show it as a select with one option per row of the `plants` frontend-automation table:
 the text is the row's `name`, and the value it stores in the config (and sends to the ETL) is the
 row's `id`. See [Selectors fed by frontend-automation tables](#selectors-fed-by-frontend-automation-tables);
 without frontend automation the select has no options.
 
-**Where they are asked.** In the load-instance step itself, before choosing where the data comes
-from, so they read as part of loading rather than as a separate stage:
+**Several values.** A parameter of `"type": "array"` with `join_from` (or with `items.enum`) is a
+select of several: the user picks any number of rows, and the config stores the list of their
+`id`s. With nothing picked it is empty, like any other value, and is not sent:
+
+```json
+{
+  "properties": {
+    "product_ids": {
+      "type": "array",
+      "items": { "type": "integer" },
+      "pre_etl": true,
+      "join_from": "products.code"
+    }
+  }
+}
+```
+
+The ETL gets a list in its form field as the items separated by commas (`3,7,12`).
+
+**Where they are asked.** Before the data is brought, so they read as part of loading rather than
+as a separate stage:
+
+- **Page**: the data card, while empty, shows them in a grid, above "Upload files" and "Get data"
+  when the database is offered, and in the drop zone otherwise (the ETL gets them with the
+  files too). Once loaded they become text in the card's header ("North plant · since 01/10/2026 · 4 tables ·
+  58 rows") and are changed with **Load filters**, which brings the data again.
+- **Wizard**: the load-instance step, above the choice of where the data comes from:
 
 ```
 DATA THE INSTANCE WILL BE LOADED WITH
 Plant         [Plant A ▾]                   ← join_from
 Mode          [ Operative ][ Strategic ]    ← a select with up to 3 options shows them as cards
 Date          [01/09/2026]
-Data source   [ Master tables ][ File ][ Parameters ]
-              (the dropzone, the master-tables summary or the parameters form)
+Data source   [ Master tables ][ File ]
+              (the dropzone or the master-tables summary)
                                               ✓ Data loaded   [ Load instance ]
 ```
 
-- **Data source**: the file is always offered; master tables when `etl.useEtlBackend` and
-  `etl.enableLoadFromDb` are set, and the parameters form when `etl.alternativeParameterFields` has
-  fields. With only the file there is nothing to pick and the dropzone takes the row.
-- **One button** loads from the picked source.
+Where the data comes from: files are always offered, and the database when `etl.useEtlBackend`
+and `etl.enableLoadFromDb` are set (and the ETL module is enabled). On the page, files picked
+together with the database replace the tables with the same name and the database fills in the
+rest.
 
-Each parameter takes a row, with its name on the left; the parameters step uses the same rows.
+A relaunch has no load at all -- the instance already exists -- so those parameters go back to the
+regular parameters.
 
-The section is shown whenever the config schema marks at least one parameter with `pre_etl: true`. In
-edit mode there is no load step at all -- the instance already exists -- so those parameters go back
-to the regular parameters step.
+**Nothing is asked twice.** While they are asked as load filters, they are left out of the regular
+parameters: by then the data has already been loaded with them, and a new value there would not
+reload it. In the wizard, if every config parameter is pre-ETL, the parameters step is dropped
+rather than shown empty.
 
-**Nothing is asked twice.** While the load step is asking for them, they are removed from the regular parameters step. Offering them again there would mislead: by then the data has already been loaded with them, and a new value would not reload it. If every config parameter is pre-ETL, the regular step is dropped rather than shown empty.
+**What blocks what.** A missing required pre-ETL value disables the **load** button ("Get data",
+"Load instance"), not the launch: loading is the point of no return, and once the data is in,
+filtering it differently means loading it again.
 
-**What blocks what.** A missing required pre-ETL value disables the **load** button, not **Continue**. Loading is the point of no return: once the data is in, filtering it differently means loading it again. **Continue** keeps its usual condition, an instance being loaded.
-
-**Changing one after loading.** The loaded instance is kept -- throwing away a load over a keystroke would be worse -- but a warning appears under the parameters saying the loaded data was not filtered with the new value, with a **Load again** button. The new value still reaches the data checks and the execution.
+**Changing one after loading.** The loaded instance is kept -- throwing away a load over a
+keystroke would be worse -- but the user is told the data was not brought with the new value: on
+the page "You changed the filters" in the data card and "Reload the data with the current
+filters" in what is missing; in the wizard a warning with **Load again**. The new value still
+reaches the data checks and the execution.
 
 **Required vs optional.** A parameter is mandatory only when the config schema's root `required` lists it. A nullable one such as `date` can be left blank on purpose - that is how the backend is told to resolve it itself. For the same reason an empty value is never appended to the ETL form: a loose form field cannot carry `null`, so leaving the key out is what says "not given".
 
@@ -1726,24 +1805,35 @@ to the regular parameters step.
 
 **Labels.** The fields use the `configParams.<key>` translation keys like any other config parameter, so a new pre-ETL parameter needs its label added in `src/app/plugins/locales/`.
 
-Implementation: `CreateExecutionLoadInstance.vue` (the parameters, the data source, the load button and the changed-after-load warning), `CreateExecutionConfigParams.vue` (`scope` prop: `'preEtl' | 'standard' | 'all'`, and `layout`: `'stack' | 'grid' | 'form'`), `components/core/OptionCards.vue`, `ProjectExecutionView.vue` (`preEtlAskedInLoadStep`, `configParamsScope`), `schemaUtils.ts` (`getPreEtlConfigFields`, `pickPreEtlConfigValues`), `useInstanceProcessing.ts`, `InstanceRepository.ts`.
+Implementation: `useExecutionDraft.ts` (`loadFilterFields`, `filtersChanged`), `ExecutionDataCard.vue` and `LoadFiltersForm.vue` on the page; `CreateExecutionLoadInstance.vue`, `CreateExecutionConfigParams.vue` (`scope` prop: `'preEtl' | 'standard' | 'all'`, and `layout`: `'stack' | 'grid' | 'form'`), `components/core/OptionCards.vue` and `ProjectExecutionView.vue` (`preEtlAskedInLoadStep`, `configParamsScope`) in the wizard; `schemaUtils.ts` (`getPreEtlConfigFields`, `pickPreEtlConfigValues`), `useInstanceProcessing.ts`, `InstanceRepository.ts`.
 
-#### Instance editing: allowEditInstance
+#### Data checks: enableBlockAdvanceOnCheckErrors
 
-Controls whether users can edit existing instances from the input data section.
+The data checks run when the user asks (**Check**): the instance is stored, the checks run with the
+execution config (`POST /data-check/instance/<id>/`) and the result shows one group per check table.
+Editing the data afterwards marks them out of date. They are optional: launching without them only
+shows a note. With `enableBlockAdvanceOnCheckErrors`, rows in a check table whose schema has
+`is_warning: false` stop the launch until they are fixed.
 
-- `allowEditInstance` (boolean):
-  - If true, adds an "Edit input data" option in the dropdown menu when viewing input data tables.
-  - When clicked, redirects to the project execution view in edit mode, skipping the instance loading step and starting directly at the "Review instance" step with the currently selected execution's instance.
-  - If false, the edit option is not available.
+#### Developer mode: isDeveloperMode
 
-#### Implementation in ProjectExecutionView.vue:
+With `isDeveloperMode` the launch has a menu with "Upload a solution instead of resolving": the
+execution is created without running the solver (`?run=0`) and gets the uploaded solution (JSON,
+XLSX or CSV), checked against the solution schema.
 
-- `solverConfig` is used to determine if the solver step is shown and to set the default solver.
-- `configFieldsConfig` is used to determine if the config fields step is shown and to auto-load values.
-- `configFields` is used to render the config fields step, auto-load values from the instance, and display the config summary in the confirmation step.
-- a `preEtl` flag on a config field moves it into the load step, next to the upload, and sends it to the ETL - see [Pre-ETL parameters](#pre-etl-parameters-pre_etl).
-- `allowEditInstance` enables instance editing functionality in SectionView.vue for input data sections.
+#### Relaunching an execution: allowEditInstance
+
+- `allowEditInstance` (boolean): adds "Create a new execution from the current input data" to the
+  menu of the input data tables. It opens the create-execution screen with an editable copy of the
+  selected execution's data, parameters and description, named after it ("Plan 42 · with
+  changes"); the wizard starts at the review step.
+
+#### Leaving half done
+
+Leaving the page with something loaded or typed asks first: save a draft and leave, leave without
+saving, or stay. The draft is kept in the browser (IndexedDB, one per DAG and user) and offered
+when the user comes back. It keeps the data, the unapplied edits and, after an ETL load, the ETL
+review with its origin switches, still to be sent to the backend.
 
 ## Router configuration
 

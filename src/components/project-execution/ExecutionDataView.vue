@@ -1907,13 +1907,14 @@ function applyEtlParameterSwitchesAfterSave(
   }
 }
 
-// Handle save all changes from modal (apply edits + creates + deletes to JSON only; no API)
-const handleSaveAllChanges = async () => {
+// Handle save all changes from modal (apply edits + creates + deletes to JSON only; no API).
+// Resolves whether the changes were applied: a schema error keeps them pending.
+const handleSaveAllChanges = async (): Promise<boolean> => {
   saveValidationError.value = null
 
   if (!props.execution?.instance?.data) {
     saveValidationError.value = t('pendingChanges.saveErrorNoInstanceData')
-    return
+    return false
   }
 
   savingChanges.value = true
@@ -1957,7 +1958,7 @@ const handleSaveAllChanges = async () => {
         validationErrors,
         t,
       )
-      return
+      return false
     }
 
     // ETL: only after accepted save — mark DB-sourced tables as manually edited (same rules as useExternalEtlFlow.markTableEdited).
@@ -1969,9 +1970,11 @@ const handleSaveAllChanges = async () => {
     tableChanges.clearAllChanges()
     showPendingChangesModal.value = false
     emit('pending-changes-update', false, 0)
+    return true
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     saveValidationError.value = message
+    return false
   } finally {
     savingChanges.value = false
   }
@@ -2185,6 +2188,7 @@ defineExpose({
   hasPendingChanges,
   pendingChangesCount,
   openPendingChangesModal,
+  saveAllChanges: handleSaveAllChanges,
   clearAllChanges: tableChanges.clearAllChanges,
 })
 </script>

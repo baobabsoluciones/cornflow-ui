@@ -38,6 +38,13 @@ export interface ChangesSummary {
   timestamp: number
 }
 
+export interface TableChangesSnapshot {
+  pendingChanges: AllChanges
+  tableTitles: Record<string, string>
+  pendingCreates: Record<string, Array<{ tempId: string; data: Record<string, any> }>>
+  pendingDeletes: Record<string, Array<{ rowId: string; data?: Record<string, any> }>>
+}
+
 // Singleton state to share across components
 const pendingChanges = ref<AllChanges>({})
 const tableTitles = ref<Record<string, string>>({})
@@ -280,6 +287,25 @@ export function useTableChanges() {
     tableTitles.value = {}
     pendingCreates.value = {}
     pendingDeletes.value = {}
+  }
+
+  /** Plain copy of every pending edit, create and delete, to keep them aside (e.g. a draft). */
+  const snapshotState = (): TableChangesSnapshot =>
+    JSON.parse(
+      JSON.stringify({
+        pendingChanges: pendingChanges.value,
+        tableTitles: tableTitles.value,
+        pendingCreates: pendingCreates.value,
+        pendingDeletes: pendingDeletes.value,
+      }),
+    )
+
+  /** Puts back what `snapshotState` returned, replacing whatever is pending now. */
+  const restoreState = (snapshot: TableChangesSnapshot | null | undefined) => {
+    pendingChanges.value = snapshot?.pendingChanges ?? {}
+    tableTitles.value = snapshot?.tableTitles ?? {}
+    pendingCreates.value = snapshot?.pendingCreates ?? {}
+    pendingDeletes.value = snapshot?.pendingDeletes ?? {}
   }
 
   /**
@@ -718,6 +744,8 @@ export function useTableChanges() {
     revertRowChanges,
     revertTableChanges,
     clearAllChanges,
+    snapshotState,
+    restoreState,
     getChangesForTable,
     getAllChanges,
     isCellModified,

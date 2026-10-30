@@ -13,7 +13,7 @@
 
     <!-- Normal view with maximize button -->
     <div class="review-instance-container">
-      <div v-if="!isMaximized" class="review-instance-header">
+      <div v-if="!isMaximized && showToolbar" class="review-instance-header">
         <div class="header-buttons">
           <CoreDropdownMenu :items="excelActionItems" />
           <input
@@ -183,6 +183,11 @@ interface Props {
   externalEtlFlow?: ExternalEtlFlowState | null
   /** When true, we are on the review-instance step (used to clear stale force-retry dialog when entering the step). */
   isStepActive?: boolean
+  /**
+   * Show the floating Excel menu and maximize button. A screen that offers them in its own header
+   * turns it off and calls the exposed `downloadExcel`, `uploadExcel` and `toggleMaximize`.
+   */
+  showToolbar?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -190,6 +195,7 @@ const props = withDefaults(defineProps<Props>(), {
   isEditMode: false,
   externalEtlFlow: null,
   isStepActive: false,
+  showToolbar: true,
 })
 
 const emit = defineEmits<{
@@ -642,10 +648,18 @@ const handleInstanceUpdate = (instance: Instance) => {
       }
     }
   }
-  emit('update:instance', {
-    ...props.newExecution.instance!,
-    data: instance.data,
-  } as Instance)
+  // The workbook is new data: a new instance, so the launch does not reuse the one already stored
+  const schemas = generalStore.getSchemaConfig
+  emit(
+    'update:instance',
+    new Instance(
+      null,
+      instance.data,
+      schemas.instanceSchema,
+      schemas.instanceChecksSchema,
+      generalStore.getSchemaName,
+    ),
+  )
 }
 
 const { downloadExcel, handleFileUpload } =
@@ -666,12 +680,7 @@ const excelActionItems = computed(() => [
     id: 'upload-excel',
     title: t('projectExecution.uploadExcel'),
     icon: 'mdi-file-arrow-up-down',
-    action: () => {
-      const activeInput = getActiveFileInput()
-      if (activeInput) {
-        activeInput.click()
-      }
-    },
+    action: uploadExcel,
   },
 ])
 
@@ -757,9 +766,28 @@ const hasPendingChanges = computed(() => {
 })
 
 // Expose methods for parent component
+/**
+ * Applies the pending edits as "Save all changes" does. Resolves false when there was nothing to
+ * apply into or the edited data breaks the schema (the edits stay pending and the error shows).
+ */
+async function applyPendingChanges(): Promise<boolean> {
+  if (!tableChanges.hasChanges.value) return true
+  const view = executionDataViewRef.value
+  return view ? view.saveAllChanges() : false
+}
+
+/** Opens the file picker of "Upload Excel": the picked workbook replaces the data. */
+function uploadExcel() {
+  getActiveFileInput()?.click()
+}
+
 defineExpose({
   hasPendingChanges,
   clearPendingChanges: tableChanges.clearAllChanges,
+  applyPendingChanges,
+  downloadExcel,
+  uploadExcel,
+  toggleMaximize,
 })
 </script>
 

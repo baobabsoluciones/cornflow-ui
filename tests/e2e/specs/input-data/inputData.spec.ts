@@ -32,7 +32,7 @@ test.describe('Input Data Page', () => {
 
     const executionTab = tablist
       .getByRole('tab')
-      .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+      .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
       .first();
 
     await expect(executionTab).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
@@ -191,7 +191,7 @@ test.describe('Input Data Page', () => {
 
     const executionTab = tablist
       .getByRole('tab')
-      .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+      .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
       .first();
 
     await expect(executionTab).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
@@ -314,7 +314,7 @@ test.describe('Input Data Page', () => {
 
     const executionTab = tablist
       .getByRole('tab')
-      .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+      .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
       .first();
 
     await expect(executionTab).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
@@ -391,7 +391,7 @@ test.describe('Input Data Page', () => {
 
     const executionTab = tablist
       .getByRole('tab')
-      .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+      .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
       .first();
 
     await expect(executionTab).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
@@ -461,9 +461,9 @@ test.describe('Input Data Page', () => {
 
     console.log('Successfully navigated to edit instance page');
 
-    // Wait for the execution page to load (uses MFormSteps component)
-    const formSteps = page.locator('.m-form-steps, .view-container');
-    await formSteps.first().waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
+    // Wait for the create-execution page to load
+    const createExecution = page.locator('[data-testid="create-execution-view"], .view-container');
+    await createExecution.first().waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
 
     // Verify that the same execution tab is still selected
     const executionTablistAfterNav = page.getByRole('tablist');
@@ -471,7 +471,7 @@ test.describe('Input Data Page', () => {
 
     const selectedTabAfterNav = executionTablistAfterNav
       .getByRole('tab')
-      .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+      .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
       .first();
 
     await expect(selectedTabAfterNav).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });

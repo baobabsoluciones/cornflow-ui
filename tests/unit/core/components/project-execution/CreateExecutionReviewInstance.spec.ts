@@ -168,13 +168,17 @@ vi.mock('@cornflow-ui/core/composables/useFullscreen', () => ({
   }),
 }))
 
-// Mock useExecutionExcel composable
+// Mock useExecutionExcel composable; keeps the callback an uploaded workbook goes to
+const excelUpload = vi.hoisted(() => ({ onInstanceUpdate: null as null | ((instance: any) => void) }))
 vi.mock('@cornflow-ui/core/composables/project-execution/useExecutionExcel', () => ({
-  useExecutionExcel: () => ({
-    downloadExcel: vi.fn(),
-    handleFileUpload: vi.fn(),
-    triggerFileUpload: vi.fn(),
-  }),
+  useExecutionExcel: (_execution: unknown, onInstanceUpdate: (instance: any) => void) => {
+    excelUpload.onInstanceUpdate = onInstanceUpdate
+    return {
+      downloadExcel: vi.fn(),
+      handleFileUpload: vi.fn(),
+      triggerFileUpload: vi.fn(),
+    }
+  },
 }))
 
 // Mock Instance model
@@ -375,6 +379,18 @@ describe('CreateExecutionReviewInstance', () => {
   })
 
   describe('Event Handling', () => {
+    test('an uploaded workbook becomes a new instance, not the stored one with other data', async () => {
+      wrapper = createWrapper()
+
+      excelUpload.onInstanceUpdate!({ id: null, data: { orders: [{ id: 1 }] } })
+      await flushPromises()
+
+      const emittedInstance = wrapper.emitted('update:instance')[0][0]
+      expect(emittedInstance.id).toBeNull()
+      expect(emittedInstance.data).toEqual({ orders: [{ id: 1 }] })
+      expect(emittedInstance.checkSchema).toBeDefined()
+    })
+
     test('handles save-changes event from ExecutionDataView', async () => {
       wrapper = createWrapper()
 

@@ -1027,26 +1027,17 @@ describe('General Store', () => {
       consoleSpy.mockRestore()
     })
 
-    test('createExecution handles error and returns false', async () => {
+    test('createExecution passes on the error of the backend', async () => {
       const store = useGeneralStore()
-      const consoleError = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {})
       const execution = { id: '1', name: 'Test Execution' }
 
       mockExecutionRepository.createExecution.mockRejectedValue(
-        new Error('Failed to create'),
+        new Error('The orchestrator is not reachable'),
       )
 
-      const result = await store.createExecution(execution)
-
-      expect(result).toBe(false)
-      expect(consoleError).toHaveBeenCalledWith(
-        'Error creating execution',
-        expect.any(Error),
+      await expect(store.createExecution(execution)).rejects.toThrow(
+        'The orchestrator is not reachable',
       )
-
-      consoleError.mockRestore()
     })
 
     test('uploadSolutionData handles error', async () => {

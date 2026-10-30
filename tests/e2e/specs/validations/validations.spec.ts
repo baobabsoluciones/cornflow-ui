@@ -91,7 +91,7 @@ test.describe('Validations Page', () => {
 
     const executionTab = tablist
       .getByRole('tab')
-      .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+      .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
       .first();
 
     await expect(executionTab).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
@@ -149,7 +149,7 @@ test.describe('Validations Page', () => {
 
     const executionTab = tablist
       .getByRole('tab')
-      .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+      .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
       .first();
 
     await expect(executionTab).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
@@ -192,7 +192,7 @@ test.describe('Validations Page', () => {
 
     const selectedTabAfter = tablistAfter
       .getByRole('tab')
-      .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+      .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
       .first();
 
     await expect(selectedTabAfter).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
@@ -271,7 +271,7 @@ test.describe('Validations Page', () => {
 
     const executionTab = tablist
       .getByRole('tab')
-      .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+      .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
       .first();
 
     await expect(executionTab).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
@@ -356,7 +356,7 @@ test.describe('Validations Page', () => {
     // Confirm we are still on the same execution (data corresponds to selected instance)
     const selectedTabAfter = tablist
       .getByRole('tab')
-      .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+      .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
       .first();
     await expect(selectedTabAfter).toHaveAttribute('aria-selected', 'true');
   });
@@ -371,7 +371,7 @@ test.describe('Validations Page', () => {
 
     const executionTab = tablist
       .getByRole('tab')
-      .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+      .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
       .first();
 
     await expect(executionTab).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
@@ -457,7 +457,7 @@ test.describe('Validations Page', () => {
 
     const executionTab = tablist
       .getByRole('tab')
-      .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+      .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
       .first();
 
     await expect(executionTab).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
@@ -530,8 +530,8 @@ test.describe('Validations Page', () => {
       timeout: TIMEOUTS.NAVIGATION,
     });
 
-    const formSteps = page.locator('.m-form-steps, .view-container');
-    await formSteps
+    const createExecution = page.locator('[data-testid="create-execution-view"], .view-container');
+    await createExecution
       .first()
       .waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
 
@@ -540,7 +540,7 @@ test.describe('Validations Page', () => {
 
     const selectedTabAfter = tablistAfter
       .getByRole('tab')
-      .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+      .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
       .first();
 
     await expect(selectedTabAfter).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
@@ -564,7 +564,7 @@ test.describe('Validations Page', () => {
 
     const executionTab = tablist
       .getByRole('tab')
-      .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+      .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
       .first();
 
     await expect(executionTab).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });

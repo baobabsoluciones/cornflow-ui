@@ -43,6 +43,13 @@ export function useTableHeight() {
   }
 
   /**
+   * The closest ancestor marked `data-table-bounds`: a box of its own height (a card inside a
+   * page) the table has to fit in, instead of reaching the bottom of the window.
+   */
+  const getBoundsElement = (): HTMLElement | null =>
+    tableContainer.value?.parentElement?.closest<HTMLElement>('[data-table-bounds]') ?? null
+
+  /**
    * Find the closest scrollable parent to determine available space
    */
   const getScrollableParent = (): HTMLElement | null => {
@@ -80,10 +87,21 @@ export function useTableHeight() {
 
     const { isMaximized, fullscreenBody } = isInFullscreenMode()
     const containerRect = tableContainer.value.getBoundingClientRect()
+    const bounds = isMaximized ? null : getBoundsElement()
 
     let availableHeight: number
 
-    if (isMaximized && fullscreenBody) {
+    if (bounds) {
+      // Inside a box of its own height: down to its bottom edge, less its bottom padding and the
+      // table's own vertical padding (the height set is the scrolling area's).
+      const px = (value: string) => Number.parseFloat(value) || 0
+      const boundsPadding = px(getComputedStyle(bounds).paddingBottom)
+      const table = tableContainer.value.querySelector<HTMLElement>(':scope > .v-table')
+      const tableStyle = table ? getComputedStyle(table) : null
+      const tablePadding = tableStyle ? px(tableStyle.paddingTop) + px(tableStyle.paddingBottom) : 0
+      availableHeight =
+        bounds.getBoundingClientRect().bottom - boundsPadding - tablePadding - containerRect.top
+    } else if (isMaximized && fullscreenBody) {
       // Fullscreen mode: calculate based on the fullscreen-body container
       const fullscreenBodyRect = fullscreenBody.getBoundingClientRect()
       // Only account for the space from the table container to the bottom of fullscreen body
@@ -103,7 +121,8 @@ export function useTableHeight() {
     }
 
     // Apply constraints
-    const minHeight = getMinHeight()
+    // A box of its own height sets the room: a tall minimum would push the table out of it.
+    const minHeight = bounds ? 160 : getMinHeight()
     const maxHeight = isMaximized ? 2000 : 1500
 
     // Calculate the final height
@@ -255,6 +274,14 @@ export function useTableHeight() {
 
     // Observe the container
     resizeObserver.value.observe(tableContainer.value)
+
+    // In a box of its own height, whatever shows up above the table (a notice, a bar) grows the
+    // box's content and moves the table down without resizing it.
+    const bounds = getBoundsElement()
+    if (bounds) {
+      resizeObserver.value.observe(bounds)
+      for (const child of bounds.children) resizeObserver.value.observe(child)
+    }
 
     // Also observe parent containers for layout changes
     const scrollableParent = getScrollableParent()

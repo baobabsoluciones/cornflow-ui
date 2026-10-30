@@ -9,6 +9,9 @@ import CoreDialog from '@cornflow-ui/core/components/core/CoreDialog.vue'
 import CoreEmptyState from '@cornflow-ui/core/components/core/CoreEmptyState.vue'
 import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
 import CoreMenu from '@cornflow-ui/core/components/core/CoreMenu.vue'
+import CoreMultiSelect, {
+  pickedSummary,
+} from '@cornflow-ui/core/components/core/CoreMultiSelect.vue'
 import CoreProgressBar from '@cornflow-ui/core/components/core/CoreProgressBar.vue'
 import CoreSelect from '@cornflow-ui/core/components/core/CoreSelect.vue'
 import CoreTextField from '@cornflow-ui/core/components/core/CoreTextField.vue'
@@ -276,6 +279,26 @@ describe('CoreMenu', () => {
     expect(wrapper.emitted('select')?.[0][0]).toMatchObject({ key: 'north' })
   })
 
+  test('a choice of several marks every picked row as checked', () => {
+    const wrapper = mount(CoreMenu, {
+      props: {
+        items: [
+          { key: 'north', label: 'North', selected: true },
+          { key: 'south', label: 'South', selected: true },
+          { key: 'east', label: 'East' },
+        ],
+        multiple: true,
+      },
+    })
+    const rows = wrapper.findAll('.core-menu__item')
+    expect(rows.map((row) => row.attributes('role'))).toEqual([
+      'menuitemcheckbox',
+      'menuitemcheckbox',
+      'menuitemcheckbox',
+    ])
+    expect(rows.map((row) => row.attributes('aria-checked'))).toEqual(['true', 'true', 'false'])
+  })
+
   test('the arrows move between the rows that can be picked, from the search box down', async () => {
     const wrapper = mount(CoreMenu, {
       props: { items, searchable: true, searchPlaceholder: 'Search…' },
@@ -491,6 +514,76 @@ describe('CoreTextField', () => {
     const multiline = mount(CoreTextField, { props: { multiline: true, rows: 3, modelValue: 'Notes' } })
     expect(multiline.find('textarea').element.value).toBe('Notes')
     expect(multiline.find('textarea').attributes('rows')).toBe('3')
+  })
+})
+
+describe('CoreMultiSelect', () => {
+  const options = Array.from({ length: 8 }, (_, i) => ({ value: i + 1, label: `Item ${i + 1}` }))
+
+  /** Mounts it in the page and opens its list. */
+  async function open(props: Record<string, unknown>) {
+    const wrapper = mount(CoreMultiSelect, { props: { options, ...props }, attachTo: document.body })
+    await wrapper.find('button').trigger('click')
+    await flushPromises()
+    return wrapper
+  }
+
+  function rows() {
+    return Array.from(document.body.querySelectorAll<HTMLButtonElement>('.core-menu__item'))
+  }
+
+  test('the box shows the picked options, or the placeholder while there are none', () => {
+    const empty = mount(CoreMultiSelect, { props: { options, placeholder: 'All' } })
+    expect(empty.find('button').text()).toBe('All')
+    expect(empty.find('button').classes()).toContain('is-empty')
+
+    const picked = mount(CoreMultiSelect, { props: { options, modelValue: [5, 1, 3] } })
+    expect(picked.find('button').text()).toBe('Item 1, Item 3 +1')
+  })
+
+  test('picking adds or removes an option, in the order of the options, and keeps the list open', async () => {
+    const wrapper = await open({ modelValue: [3] })
+    expect(rows().filter((row) => row.getAttribute('aria-checked') === 'true')).toHaveLength(1)
+
+    rows()[0].click()
+    expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([[1, 3]])
+    rows()[2].click()
+    expect(wrapper.emitted('update:modelValue')?.[1]).toEqual([[]])
+    expect(rows()).toHaveLength(8)
+    wrapper.unmount()
+  })
+
+  test('the search box narrows the list, and the clear button unpicks everything', async () => {
+    const wrapper = await open({
+      modelValue: [2],
+      searchPlaceholder: 'Search',
+      noMatchesText: 'No match',
+      clearText: 'Clear',
+    })
+    const search = document.body.querySelector<HTMLInputElement>('.core-menu__search-input')!
+    search.value = 'item 8'
+    search.dispatchEvent(new Event('input'))
+    await flushPromises()
+    expect(rows().map((row) => row.textContent?.trim())).toEqual(['Item 8'])
+
+    const clear = Array.from(document.body.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === 'Clear',
+    )!
+    clear.click()
+    expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([[]])
+    wrapper.unmount()
+  })
+
+  test('a short list has no search box', async () => {
+    const wrapper = await open({ options: options.slice(0, 3) })
+    expect(document.body.querySelector('.core-menu__search')).toBeNull()
+    wrapper.unmount()
+  })
+
+  test('pickedSummary names the first picks and counts the rest', () => {
+    expect(pickedSummary([])).toBe('')
+    expect(pickedSummary(['A', 'B'])).toBe('A, B')
+    expect(pickedSummary(['A', 'B', 'C', 'D'])).toBe('A, B +2')
   })
 })
 

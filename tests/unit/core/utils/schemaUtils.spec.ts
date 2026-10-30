@@ -32,11 +32,6 @@ import {
   getSolutionSchemaRootForTables,
   getSolutionTableJsonSchemaForKey,
   pickInstanceDataForEtlPayload,
-  getMasterDataTableConfigForKey,
-  resolveAlternativeParameterPayloadShapeForTable,
-  buildAlternativeParameterInstanceData,
-  convertParameterNameValueArraysToObjectsForInstance,
-  patchInstanceSchemaRootForParameterTableEtlExport,
   isMasterDataParameterObjectTable,
   filterParameterObjectByVisibleProperties,
   stripInvisibleParameterPropertiesFromInstanceData,
@@ -594,147 +589,6 @@ describe('pickInstanceDataForEtlPayload', () => {
   })
 })
 
-describe('getMasterDataTableConfigForKey', () => {
-  const masterData = {
-    my_table: { get_list: {} },
-    'other-table': { get_list: {} },
-    no_get: {},
-  }
-  test('exact and normalized lookups, requires get_list', () => {
-    expect(getMasterDataTableConfigForKey(null, 'x')).toBeNull()
-    expect(getMasterDataTableConfigForKey(masterData, 'my_table')).toBe(masterData.my_table)
-    expect(getMasterDataTableConfigForKey(masterData, 'other_table')).toBe(
-      masterData['other-table'],
-    )
-    expect(getMasterDataTableConfigForKey(masterData, 'no_get')).toBeNull()
-    expect(getMasterDataTableConfigForKey(masterData, 'missing')).toBeNull()
-  })
-})
-
-// ─── Alternative parameter payload shape & build ─────────────────────────────
-
-describe('resolveAlternativeParameterPayloadShapeForTable', () => {
-  test('object from instance parameter table schema', () => {
-    const instanceSchema = {
-      instance: { properties: { params: { type: 'object', properties: { a: {} } } } },
-    }
-    expect(
-      resolveAlternativeParameterPayloadShapeForTable('params', instanceSchema, null),
-    ).toBe('object')
-  })
-  test('arrayNameValue for name/value array items', () => {
-    const instanceSchema = {
-      instance: {
-        properties: {
-          eav: {
-            type: 'array',
-            items: { properties: { name: {}, value: {} } },
-          },
-        },
-      },
-    }
-    expect(
-      resolveAlternativeParameterPayloadShapeForTable('eav', instanceSchema, null),
-    ).toBe('arrayNameValue')
-  })
-  test('arrayWide for generic array tables', () => {
-    const instanceSchema = {
-      instance: {
-        properties: { rows: { type: 'array', items: { properties: { a: {}, b: {}, c: {} } } } },
-      },
-    }
-    expect(
-      resolveAlternativeParameterPayloadShapeForTable('rows', instanceSchema, null),
-    ).toBe('arrayWide')
-  })
-  test('falls back to automation config then default arrayWide', () => {
-    expect(resolveAlternativeParameterPayloadShapeForTable('x', null, { isParameterTable: true })).toBe(
-      'object',
-    )
-    expect(resolveAlternativeParameterPayloadShapeForTable('x', null, null)).toBe('arrayWide')
-  })
-})
-
-describe('buildAlternativeParameterInstanceData', () => {
-  test('builds object, arrayWide and arrayNameValue shapes', () => {
-    const fields = [
-      { id: 'f1', instancePath: 'params.alpha', type: 'number' },
-      { id: 'f2', instancePath: 'rows.beta', type: 'string' },
-      { id: 'f3', instancePath: 'bad', type: 'string' },
-    ]
-    const values = { f1: '12', f2: 'hello' }
-    const instanceSchema = {
-      instance: {
-        properties: {
-          params: { type: 'object', properties: { alpha: {} } },
-          rows: { type: 'array', items: { properties: { beta: {}, gamma: {} } } },
-        },
-      },
-    }
-    const out = buildAlternativeParameterInstanceData(fields as any, values, instanceSchema, null)
-    expect(out.params).toEqual({ alpha: 12 })
-    expect(out.rows).toEqual([{ beta: 'hello' }])
-    expect(out.bad).toBeUndefined()
-  })
-})
-
-describe('convertParameterNameValueArraysToObjectsForInstance', () => {
-  test('converts name/value arrays for parameter tables only', () => {
-    const data = {
-      params: [
-        { name: 'a', value: 1 },
-        { name: 'b', value: 2 },
-      ],
-      notParam: [{ name: 'x', value: 9 }],
-      plain: [{ foo: 1 }],
-    }
-    const instanceSchema = {
-      instance: {
-        properties: {
-          params: { type: 'object', properties: { a: {} } },
-          notParam: { type: 'array', items: {} },
-        },
-      },
-    }
-    const out = convertParameterNameValueArraysToObjectsForInstance(data, instanceSchema)
-    expect(out.params).toEqual({ a: 1, b: 2 })
-    // notParam is not a parameter object table → unchanged
-    expect(Array.isArray(out.notParam)).toBe(true)
-    expect(out.plain).toBe(data.plain)
-  })
-  test('returns input for non-object', () => {
-    expect(convertParameterNameValueArraysToObjectsForInstance(null as any, {})).toBeNull()
-  })
-})
-
-describe('patchInstanceSchemaRootForParameterTableEtlExport', () => {
-  test('returns root when no properties', () => {
-    expect(patchInstanceSchemaRootForParameterTableEtlExport({}, null)).toBeNull()
-  })
-  test('rewrites parameter tables to array, name/value layout preserved', () => {
-    const root = {
-      properties: {
-        params: { type: 'object', properties: { start_date: {}, end_date: {} }, required: ['start_date'] },
-        eav: { type: 'object', properties: { x: {} } },
-        untouched: { type: 'array', items: {} },
-      },
-    }
-    const data = {
-      params: { start_date: '2020', end_date: '2021' },
-      eav: [{ name: 'k', value: 'v' }],
-      untouched: [],
-    }
-    const out = patchInstanceSchemaRootForParameterTableEtlExport(data, root) as any
-    expect(out.properties.params.type).toBe('array')
-    expect(out.properties.params.items.properties).toEqual({ start_date: {}, end_date: {} })
-    expect(out.properties.eav.items.properties).toEqual({
-      name: { type: 'string' },
-      value: {},
-    })
-    expect(out.properties.untouched).toBe(root.properties.untouched)
-  })
-})
-
 describe('isMasterDataParameterObjectTable', () => {
   test('uses automation config or instance schema', () => {
     expect(isMasterDataParameterObjectTable('t', null, null)).toBe(false)
@@ -1151,6 +1005,39 @@ describe('getExecutionConfigFromSchemaConfig', () => {
       required: true,
     })
   })
+  test('an array with join_from or items.enum is a select of several', () => {
+    const fields = getExecutionConfigFromSchemaConfig({
+      properties: {
+        product_ids: {
+          type: 'array',
+          items: { type: 'integer' },
+          pre_etl: true,
+          join_from: 'products.code',
+        },
+        shifts: { type: 'array', items: { type: 'string', enum: ['day', 'night'] } },
+        notes: { type: 'array', items: { type: 'string' } },
+      },
+    })!.configFields
+    const byKey = Object.fromEntries(fields.map((f) => [f.key, f]))
+
+    expect(byKey.product_ids).toMatchObject({
+      type: 'select',
+      multiple: true,
+      joinFrom: 'products.code',
+      preEtl: true,
+    })
+    expect(byKey.shifts).toMatchObject({
+      type: 'select',
+      multiple: true,
+      options: [
+        { value: 'day', label: 'day' },
+        { value: 'night', label: 'night' },
+      ],
+    })
+    // Without options to pick from, an array is not a select.
+    expect(byKey.notes.type).toBe('text')
+    expect(byKey.notes.multiple).toBeUndefined()
+  })
   test('ignores a join_from that is not <table>.<column>', () => {
     const fields = getExecutionConfigFromSchemaConfig({
       properties: { plant_id: { type: 'integer', join_from: 'plants' } },
@@ -1296,6 +1183,14 @@ describe('getPreEtlConfigFields / pickPreEtlConfigValues', () => {
     ).toEqual({ horizon_days: 1 })
     expect(pickPreEtlConfigValues({ date: '' }, fields)).toEqual({})
     expect(pickPreEtlConfigValues(null, fields)).toEqual({})
+  })
+
+  test('sends a list of picks as it is, and leaves an empty one out', () => {
+    const listFields = [{ key: 'product_ids', title: '', type: 'select', multiple: true, preEtl: true }]
+    expect(pickPreEtlConfigValues({ product_ids: [3, 7] }, listFields)).toEqual({
+      product_ids: [3, 7],
+    })
+    expect(pickPreEtlConfigValues({ product_ids: [] }, listFields)).toEqual({})
   })
 
   test('keeps falsy values that are real answers', () => {
