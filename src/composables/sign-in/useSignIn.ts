@@ -11,12 +11,11 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import config from '@cornflow-ui/core/config'
 import { getSpecificAuthService } from '@cornflow-ui/core/services/AuthServiceFactory'
+import type { SsoIdentityProvider } from '@cornflow-ui/core/interfaces/AuthProvider'
 import { googleLogo, microsoftLogo } from '@cornflow-ui/core/utils/assets'
 
-export type SsoProviderKey = 'microsoft' | 'google'
-
 export interface SsoProvider {
-  key: SsoProviderKey
+  key: SsoIdentityProvider
   name: string
   logo: string
 }
@@ -42,7 +41,7 @@ export function useSignIn() {
 
   const providers = PROVIDERS
 
-  const isConfigured = (provider: SsoProviderKey) =>
+  const isConfigured = (provider: SsoIdentityProvider) =>
     provider === 'microsoft' ? config.isMicrosoftConfigured() : config.isGoogleConfigured()
 
   async function submit() {
@@ -69,7 +68,7 @@ export function useSignIn() {
     }
   }
 
-  async function signInWith(provider: SsoProviderKey) {
+  async function signInWith(provider: SsoIdentityProvider) {
     if (!isConfigured(provider)) {
       showSnackbar?.(t(`logIn.${provider}_not_configured`), 'error')
       return
@@ -80,7 +79,8 @@ export function useSignIn() {
         showSnackbar?.(t(`logIn.${provider}_not_available`), 'error')
         return
       }
-      await authService.login()
+      if (authService.loginWith) await authService.loginWith(provider)
+      else await authService.login()
     } catch (error) {
       console.error(`${provider} login failed:`, error)
       showSnackbar?.(t('logIn.snackbar_message_error_server'), 'error')

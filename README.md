@@ -1446,9 +1446,9 @@ The application automatically converts these formats to proper boolean values.
 
 #### OAuth providers (Cognito only)
 
-- **Supported**: `google`, `microsoft`, `facebook`
+- **Supported**: `google` (the user pool's Google provider) and `microsoft` (its provider named `AzureAD`)
 - **Format**: Comma-separated string or array
-- **Behavior**: Only configured providers will work; others show error messages
+- **Behavior**: each sign-in button goes to its own provider; a button whose provider is not listed says so
 
 ## Advanced features
 

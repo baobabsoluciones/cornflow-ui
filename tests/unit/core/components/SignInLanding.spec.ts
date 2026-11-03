@@ -7,8 +7,8 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 const { auth, config, parameters, languages, i18nPlugin } = vi.hoisted(() => ({
   auth: {
     cornflow: { login: vi.fn() },
-    azure: { login: vi.fn() },
-    cognito: { login: vi.fn() },
+    azure: { login: vi.fn(), loginWith: vi.fn() },
+    cognito: { login: vi.fn(), loginWith: vi.fn() },
   },
   config: {
     name: 'Planner Pro',
@@ -184,15 +184,15 @@ describe('SignInLanding', () => {
       await wrapper.find('[data-testid="sign-in-google"]').trigger('click')
       await flushPromises()
       expect(snackbar).toHaveBeenCalledWith('logIn.google_not_configured', 'error')
-      expect(auth.azure.login).not.toHaveBeenCalled()
-      expect(auth.cognito.login).not.toHaveBeenCalled()
+      expect(auth.azure.loginWith).not.toHaveBeenCalled()
+      expect(auth.cognito.loginWith).not.toHaveBeenCalled()
     })
 
-    test('signs in through the external auth of the deployment', async () => {
+    test('signs in through the external auth of the deployment, with the provider picked', async () => {
       ;({ wrapper } = await mountPage())
       await wrapper.find('[data-testid="sign-in-microsoft"]').trigger('click')
       await flushPromises()
-      expect(auth.azure.login).toHaveBeenCalled()
+      expect(auth.azure.loginWith).toHaveBeenCalledWith('microsoft')
 
       config.auth.type = 'cognito'
       config.isGoogleConfigured.mockReturnValue(true)
@@ -200,7 +200,7 @@ describe('SignInLanding', () => {
       ;({ wrapper } = await mountPage())
       await wrapper.find('[data-testid="sign-in-google"]').trigger('click')
       await flushPromises()
-      expect(auth.cognito.login).toHaveBeenCalled()
+      expect(auth.cognito.loginWith).toHaveBeenCalledWith('google')
     })
 
     test('in the brand layout, side by side with their name only', async () => {

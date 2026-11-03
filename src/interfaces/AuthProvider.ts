@@ -1,5 +1,9 @@
+export type SsoIdentityProvider = 'microsoft' | 'google';
+
 export interface AuthProvider {
   login(username?: string, password?: string): Promise<boolean>;
+  /** Single sign-on with the identity provider the user picked (external auth only). */
+  loginWith?(provider: SsoIdentityProvider): Promise<boolean>;
   initialize(): Promise<void>;
   logout(): void;
   getToken(): string | null;

@@ -1,4 +1,4 @@
-import { AuthProvider } from '@cornflow-ui/core/interfaces/AuthProvider'
+import { AuthProvider, type SsoIdentityProvider } from '@cornflow-ui/core/interfaces/AuthProvider'
 import { PublicClientApplication, Configuration } from '@azure/msal-browser'
 import { Amplify } from 'aws-amplify'
 import { signInWithRedirect, signOut, fetchAuthSession } from 'aws-amplify/auth'
@@ -151,7 +151,16 @@ export class OpenIDAuthService implements AuthProvider {
     }
   }
 
-  async login(): Promise<boolean> {
+  /** Signs in with Microsoft. */
+  login(): Promise<boolean> {
+    return this.loginWith('microsoft');
+  }
+
+  /**
+   * Signs in through the external auth. Azure is Microsoft; Cognito sends the user to the
+   * identity provider picked: Google, or the pool's "AzureAD" provider for Microsoft.
+   */
+  async loginWith(identityProvider: SsoIdentityProvider): Promise<boolean> {
     try {
       // First clear any stale auth data before attempting login
       this.clearLocalStorageAuthData();
@@ -182,7 +191,9 @@ export class OpenIDAuthService implements AuthProvider {
         return true;
       } else if (this.provider === 'cognito') {
         this.loginAttempted = true;
-        await signInWithRedirect({ provider: { custom: 'AzureAD' } });
+        await signInWithRedirect({
+          provider: identityProvider === 'google' ? 'Google' : { custom: 'AzureAD' },
+        });
         return true;
       }
 
