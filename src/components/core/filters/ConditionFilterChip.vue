@@ -9,7 +9,7 @@
   - yes/no: one of the two, with their counts.
 
   "Apply" stays disabled until the filter is complete and valid; the editor says what is wrong
-  ("From" above "To"). A new filter (`isNew`) opens by itself, and closing it without applying
+  ("From" above "To"). Enter in a field applies too. A new filter (`isNew`) opens by itself, and closing it without applying
   removes it. A `fixed` filter (the date range a table is loaded with) has no cross: it shows
   "Any date" while empty and its editor offers "Reset" instead of "Remove".
 
@@ -31,7 +31,7 @@
     @remove="emit('remove', filter.id)"
   >
     <template #panel>
-      <div class="condition-filter" @keydown.enter="apply">
+      <div class="condition-filter" @keydown.enter="applyFromField">
         <div class="condition-filter__title">
           <CoreIcon :name="icon" :size="14" />
           {{ column.title }}
@@ -188,8 +188,9 @@ const chipText = computed(() => {
 })
 
 function removeOrReset() {
+  // An unapplied new filter is removed by closing it (the watch on `open`)
+  if (applied.value) emit('remove', props.filter.id)
   open.value = false
-  emit('remove', props.filter.id)
 }
 
 const TYPE_ICONS: Record<string, string> = {
@@ -240,6 +241,11 @@ function apply() {
   applied.value = true
   emit('apply', cloneFilter(draft.value))
   open.value = false
+}
+
+/** Enter in a field applies; on a button or a checkbox it is that control's own action. */
+function applyFromField(event: KeyboardEvent) {
+  if ((event.target as HTMLElement).tagName === 'INPUT') apply()
 }
 </script>
 

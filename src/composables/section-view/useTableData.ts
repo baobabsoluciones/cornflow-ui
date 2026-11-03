@@ -428,8 +428,13 @@ export function useTableData(
     return columnsFromHeaders(dynamicHeaders.value).find((c) => c.key === current.key)
   })
 
-  const sortedRows = <T extends Record<string, any>>(rows: T[]): T[] =>
-    sortRows(rows, sort.value, sortColumn.value, (row, key) => row[key])
+  /** Sorted by the values on screen: an edit not saved yet sorts by its new value. */
+  const sortedRows = <T extends Record<string, any>>(rows: T[]): T[] => {
+    const storageKey = normalizeTableKeyForStorage(tableKey.value)
+    return sortRows(rows, sort.value, sortColumn.value, (row, key) =>
+      tableChanges.getCurrentValue(storageKey, row.id, key, row[key]),
+    )
+  }
 
   /** When set, search text is sent as a get_list query param (not applied client-side). */
   const globalSearchParamName = computed(() => {

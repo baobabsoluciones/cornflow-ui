@@ -270,6 +270,32 @@ describe('useExecutionDraft', () => {
     expect(draft.missing.map((m) => m.key)).toContain('filters')
   })
 
+  test('the proposed name names the picks of a load filter of several values', async () => {
+    extensions.etlBackend = { useEtlBackend: vi.fn(), useEtlBackendFromDb: vi.fn() }
+    store.appConfig.parameters.etl = { useEtlBackend: true, enableLoadFromDb: true }
+    store.appConfig.parameters.configFields = [
+      ...configFields,
+      {
+        key: 'products',
+        title: 'f.products',
+        type: 'select',
+        multiple: true,
+        preEtl: true,
+        options: [
+          { value: 3, label: 'P-003' },
+          { value: 7, label: 'P-007' },
+          { value: 9, label: 'P-009' },
+        ],
+      },
+    ]
+    processing.processFromDb.mockResolvedValue(loadedOk())
+    const draft = setup()
+    draft.setFilter('products', [3, 7, 9])
+    await draft.load()
+
+    expect(draft.execution.name).toMatch(/ · P-003, P-007 \+1$/)
+  })
+
   test('the checks run on a stored instance and say what they found', async () => {
     processing.processFiles.mockResolvedValue(loadedOk())
     store.getInstanceDataChecksById.mockResolvedValue(
@@ -470,7 +496,7 @@ describe('useExecutionDraft', () => {
     )
   })
 
-  test('a failed ETL sync stops the launch', async () => {
+  test('a failed ETL sync stops the launch, and the panel says why', async () => {
     extensions.etlFlow = fakeEtlFlow()
     extensions.etlFlow.submitUpdate.mockRejectedValue(new Error('ETL down'))
     processing.processFiles.mockResolvedValue(etlLoaded())
@@ -481,7 +507,22 @@ describe('useExecutionDraft', () => {
 
     expect(await draft.launchExecution()).toBe(false)
     expect(store.createExecution).not.toHaveBeenCalled()
-    expect(snackbar).toHaveBeenCalledWith('ETL down', 'error')
+    expect(draft.launch.error).toBe('ETL down')
+    expect(draft.etlNeedsSync).toBe(true)
+  })
+
+  test('a failed ETL sync before the checks says why', async () => {
+    extensions.etlFlow = fakeEtlFlow()
+    extensions.etlFlow.submitUpdate.mockRejectedValue(new Error(''))
+    processing.processFiles.mockResolvedValue(etlLoaded())
+    const draft = setup()
+    draft.addFiles([file('a.xlsx')])
+    await draft.load()
+
+    await draft.runChecks()
+
+    expect(store.createInstance).not.toHaveBeenCalled()
+    expect(snackbar).toHaveBeenCalledWith('createExecution.snackbar.syncError', 'error')
   })
 
   test('a draft keeps the ETL review and its switches, still to be sent', async () => {
@@ -657,6 +698,36 @@ describe('useExecutionDraft', () => {
 
       expect(draft.solution.errors).toBe('Not JSON')
       expect(draft.canLaunch).toBe(false)
+    })
+
+    test('a file picked while the last one is read is the one that counts', async () => {
+      let finishFirst: (parsed: any) => void = () => {}
+      vi.mocked(parseSolutionFile)
+        .mockReturnValueOnce(new Promise((resolve) => (finishFirst = resolve)))
+        .mockResolvedValueOnce({ data: { plan: ['second'] }, checkSchema: async () => [] } as any)
+      const draft = await loadedForSolution()
+
+      const first = draft.setSolutionFile(file('first.json'))
+      await draft.setSolutionFile(file('second.json'))
+      finishFirst({ data: { plan: ['first'] }, checkSchema: async () => [] })
+      await first
+
+      expect(draft.solution.file?.name).toBe('second.json')
+      expect(draft.solution.data).toEqual({ plan: ['second'] })
+    })
+
+    test('dropping the file while it is read leaves no solution', async () => {
+      let finish: (parsed: any) => void = () => {}
+      vi.mocked(parseSolutionFile).mockReturnValueOnce(new Promise((resolve) => (finish = resolve)))
+      const draft = await loadedForSolution()
+
+      const reading = draft.setSolutionFile(file('solution.json'))
+      draft.setSolutionMode(false)
+      finish({ data: { plan: [] }, checkSchema: async () => [{ message: 'late' }] })
+      await reading
+
+      expect(draft.solution.data).toBeNull()
+      expect(draft.solution.errors).toBeNull()
     })
 
     test('turning the mode off drops the file', async () => {
