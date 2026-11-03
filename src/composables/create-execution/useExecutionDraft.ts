@@ -24,6 +24,7 @@ import { getPremiumEtlBackend } from '@cornflow-ui/core/plugins/extensions'
 import { showSnackbar } from '@cornflow-ui/core/services/SnackbarService'
 import { pickPreEtlConfigValues } from '@cornflow-ui/core/utils/schemaUtils'
 import { formatValidationErrors } from '@cornflow-ui/core/utils/errorFormatting'
+import { pickedSummary } from '@cornflow-ui/core/components/core/CoreMultiSelect.vue'
 import session from '@cornflow-ui/core/services/AuthService'
 import {
   applySourceConfigFieldValues,
@@ -433,8 +434,14 @@ export function useExecutionDraft() {
       .filter((field: any) => field.type === 'select' || field.options?.length)
       .map((field) => {
         const value = execution.config[field.key]
-        const option = (field.options ?? []).find((o: any) => o.value === value)
-        return option ? String(option.label) : ''
+        const labelOf = (v: unknown) =>
+          (field.options ?? []).find((o: any) => o.value === v)?.label
+        if (Array.isArray(value)) {
+          const labels = value.map(labelOf).filter((label) => label !== undefined)
+          return labels.length > 0 ? pickedSummary(labels.map(String)) : ''
+        }
+        const label = labelOf(value)
+        return label === undefined ? '' : String(label)
       })
   }
 

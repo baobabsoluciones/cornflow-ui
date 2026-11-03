@@ -270,6 +270,32 @@ describe('useExecutionDraft', () => {
     expect(draft.missing.map((m) => m.key)).toContain('filters')
   })
 
+  test('the proposed name names the picks of a load filter of several values', async () => {
+    extensions.etlBackend = { useEtlBackend: vi.fn(), useEtlBackendFromDb: vi.fn() }
+    store.appConfig.parameters.etl = { useEtlBackend: true, enableLoadFromDb: true }
+    store.appConfig.parameters.configFields = [
+      ...configFields,
+      {
+        key: 'products',
+        title: 'f.products',
+        type: 'select',
+        multiple: true,
+        preEtl: true,
+        options: [
+          { value: 3, label: 'P-003' },
+          { value: 7, label: 'P-007' },
+          { value: 9, label: 'P-009' },
+        ],
+      },
+    ]
+    processing.processFromDb.mockResolvedValue(loadedOk())
+    const draft = setup()
+    draft.setFilter('products', [3, 7, 9])
+    await draft.load()
+
+    expect(draft.execution.name).toMatch(/ · P-003, P-007 \+1$/)
+  })
+
   test('the checks run on a stored instance and say what they found', async () => {
     processing.processFiles.mockResolvedValue(loadedOk())
     store.getInstanceDataChecksById.mockResolvedValue(
