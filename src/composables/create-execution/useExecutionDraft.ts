@@ -13,6 +13,7 @@
 import { computed, markRaw, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ErrorObject } from 'ajv'
+import config from '@cornflow-ui/core/config'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import {
   useInstanceProcessing,
@@ -254,7 +255,10 @@ export function useExecutionDraft() {
     () => Boolean(parameters.value.solverConfig?.showSolverStep) && solvers.value.length > 1,
   )
 
-  const developerMode = computed(() => Boolean(parameters.value?.isDeveloperMode))
+  /** On in the app config, or for one deployment with `isDeveloperMode` in values.json. */
+  const developerMode = computed(() =>
+    Boolean(parameters.value?.isDeveloperMode || config.isDeveloperMode),
+  )
   const blockOnCheckErrors = computed(() =>
     Boolean(parameters.value.enableBlockAdvanceOnCheckErrors),
   )

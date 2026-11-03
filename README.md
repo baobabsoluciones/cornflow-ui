@@ -1276,9 +1276,10 @@ The application automatically converts these formats to proper boolean values.
 
 #### isDeveloperMode
 
-- **Purpose**: Enables developer features
-- **`true`**: Shows solution upload in execution creation
-- **`false`**: Standard user experience
+- **Purpose**: Turns on developer mode on the create-execution screen for this deployment (see
+  [Developer mode](#developer-mode-isdevelopermode)), without rebuilding the app
+- **`true`**: The launch offers "Upload a solution instead of resolving"
+- **`false`**: Developer mode follows `isDeveloperMode` of the app config
 
 #### hasExternalApp
 
@@ -1820,6 +1821,9 @@ shows a note. With `enableBlockAdvanceOnCheckErrors`, rows in a check table whos
 With `isDeveloperMode` the launch has a menu with "Upload a solution instead of resolving": the
 execution is created without running the solver (`?run=0`) and gets the uploaded solution (JSON,
 XLSX or CSV), checked against the solution schema.
+
+It is on when `isDeveloperMode` is true in `src/app/config.ts` (every deployment of the app) or in
+the deployment's `values.json` / `VITE_APP_IS_DEVELOPER_MODE` (that deployment only, e.g. pre).
 
 #### Relaunching an execution: allowEditInstance
 
