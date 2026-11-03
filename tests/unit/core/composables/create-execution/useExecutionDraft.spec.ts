@@ -496,7 +496,7 @@ describe('useExecutionDraft', () => {
     )
   })
 
-  test('a failed ETL sync stops the launch', async () => {
+  test('a failed ETL sync stops the launch, and the panel says why', async () => {
     extensions.etlFlow = fakeEtlFlow()
     extensions.etlFlow.submitUpdate.mockRejectedValue(new Error('ETL down'))
     processing.processFiles.mockResolvedValue(etlLoaded())
@@ -507,7 +507,22 @@ describe('useExecutionDraft', () => {
 
     expect(await draft.launchExecution()).toBe(false)
     expect(store.createExecution).not.toHaveBeenCalled()
-    expect(snackbar).toHaveBeenCalledWith('ETL down', 'error')
+    expect(draft.launch.error).toBe('ETL down')
+    expect(draft.etlNeedsSync).toBe(true)
+  })
+
+  test('a failed ETL sync before the checks says why', async () => {
+    extensions.etlFlow = fakeEtlFlow()
+    extensions.etlFlow.submitUpdate.mockRejectedValue(new Error(''))
+    processing.processFiles.mockResolvedValue(etlLoaded())
+    const draft = setup()
+    draft.addFiles([file('a.xlsx')])
+    await draft.load()
+
+    await draft.runChecks()
+
+    expect(store.createInstance).not.toHaveBeenCalled()
+    expect(snackbar).toHaveBeenCalledWith('createExecution.snackbar.syncError', 'error')
   })
 
   test('a draft keeps the ETL review and its switches, still to be sent', async () => {

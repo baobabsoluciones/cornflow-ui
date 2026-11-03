@@ -566,33 +566,32 @@ export function useExecutionDraft() {
     markChecksStale()
   }
 
-  async function syncEtl(): Promise<boolean> {
+  /** Sends the ETL review to the backend, whose result becomes the data; throws why it failed. */
+  async function syncEtl(): Promise<void> {
     if (!etlNeedsSync.value || !etlFlow.isActive.value || !execution.instance?.data) {
       etlNeedsSync.value = false
-      return true
+      return
     }
+    let result: Awaited<ReturnType<typeof etlFlow.submitUpdate>>
     try {
-      const { data, warning } = await etlFlow.submitUpdate(execution.instance.data)
-      const { Instance } = store.appConfig
-      const schemas = store.getSchemaConfig
-      execution.instance = new Instance(
-        null,
-        data,
-        schemas.instanceSchema,
-        schemas.instanceChecksSchema,
-        store.getSchemaName,
-      )
-      etlFlow.reset()
-      etlNeedsSync.value = false
-      if (warning) loadWarning.value = warning
-      return true
+      result = await etlFlow.submitUpdate(execution.instance.data)
     } catch (error) {
-      showSnackbar(
-        error instanceof Error ? error.message : t('createExecution.snackbar.syncError'),
-        'error',
+      throw new Error(
+        error instanceof Error && error.message ? error.message : t('createExecution.snackbar.syncError'),
       )
-      return false
     }
+    const { Instance } = store.appConfig
+    const schemas = store.getSchemaConfig
+    execution.instance = new Instance(
+      null,
+      result.data,
+      schemas.instanceSchema,
+      schemas.instanceChecksSchema,
+      store.getSchemaName,
+    )
+    etlFlow.reset()
+    etlNeedsSync.value = false
+    if (result.warning) loadWarning.value = result.warning
   }
 
   // ── Checks ─────────────────────────────────────────────────────────────────
@@ -632,7 +631,12 @@ export function useExecutionDraft() {
   async function runChecks() {
     if (!isLoaded.value || checks.status === 'running') return
     if (!(await applyPendingChanges())) return
-    if (!(await syncEtl())) return
+    try {
+      await syncEtl()
+    } catch (error) {
+      showSnackbar((error as Error).message, 'error')
+      return
+    }
 
     checks.status = 'running'
     try {
@@ -691,7 +695,7 @@ export function useExecutionDraft() {
       if (!(await applyPendingChanges())) return false
       if (etlNeedsSync.value) {
         launch.step = 'sync'
-        if (!(await syncEtl())) return false
+        await syncEtl()
       }
       launch.step = solution.enabled ? 'solution' : 'execution'
       const created = await store.createExecution(
