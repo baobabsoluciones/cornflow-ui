@@ -229,7 +229,6 @@ export default {
     },
   },
   projectExecution: {
-    title: 'Exécution du projet',
     maximize: 'Agrandir',
     snackbar: {
       instanceDataChecksError:
@@ -262,9 +261,6 @@ export default {
           fileReadError: 'Erreur lors de la lecture du fichier',
           mergingError: 'Erreur lors de la fusion des fichiers',
         },
-      },
-      step5: {
-        title: 'Vérifier les données',
       },
       step7: {
         timeLimitPlaceholder: 'Veuillez insérer une limite de temps',

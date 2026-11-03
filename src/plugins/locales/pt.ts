@@ -219,9 +219,7 @@ export default {
     },
   },
   projectExecution: {
-    title: 'Execução do projeto',
     maximize: 'Maximizar',
-    minimize: 'Minimizar',
     downloadExcel: 'Transferir dados',
     uploadExcel: 'Substituir dados',
     snackbar: {
@@ -253,9 +251,6 @@ export default {
           fileReadError: 'Erro ao ler o ficheiro',
           mergingError: 'Erro ao combinar os ficheiros',
         },
-      },
-      step5: {
-        title: 'Verificar dados',
       },
       step7: {
         timeLimitPlaceholder: 'Introduza um limite de tempo',
@@ -479,7 +474,6 @@ export default {
     },
   },
   inputOutputData: {
-    title: 'Gestão do projeto',
     inputTitle: 'Dados de entrada',
     outputTitle: 'Dados de saída',
     save: 'Guardar',

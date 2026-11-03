@@ -76,7 +76,6 @@ vi.mock('@/app/config', () => ({
 vi.mock('@cornflow-ui/core/utils/assets', () => ({
   mainLogo: 'logo.png',
   fullLogo: 'full_logo.png',
-  baobabLogoSmall: 'baobab_logo.png',
   companyLogo: 'company_logo.png',
   googleLogo: 'google_logo.png',
   microsoftLogo: 'microsoft_logo.png',

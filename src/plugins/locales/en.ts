@@ -231,9 +231,7 @@ export default {
     },
   },
   projectExecution: {
-    title: 'Project execution',
     maximize: 'Maximize',
-    minimize: 'Minimize',
     downloadExcel: 'Download data',
     uploadExcel: 'Overwrite data',
     snackbar: {
@@ -265,9 +263,6 @@ export default {
           fileReadError: 'Error reading file',
           mergingError: 'Error merging the files',
         },
-      },
-      step5: {
-        title: 'Check data',
       },
       step7: {
         timeLimitPlaceholder: 'Please insert a time limit',
@@ -490,7 +485,6 @@ export default {
     },
   },
   inputOutputData: {
-    title: 'Project management',
     inputTitle: 'Input data',
     outputTitle: 'Output data',
     save: 'Save',
