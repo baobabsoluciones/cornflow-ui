@@ -23,6 +23,7 @@ import type {
   PendingChangeItem,
 } from '@cornflow-ui/core/components/core/data-table/PendingChangesPanel.vue'
 import { cellText } from '@cornflow-ui/core/utils/dataTable'
+import { isTempId } from '@cornflow-ui/core/utils/tableCreateDependencies'
 
 /** A table whose changes the review shows: its key, title, columns and current rows. */
 export interface ReviewTable {
@@ -48,7 +49,7 @@ export function useDataTableChanges(
     createdRows.value.length ? [...createdRows.value, ...baseRows.value] : baseRows.value,
   )
 
-  const isCreated = (row: DataRow) => cellText(row.id).startsWith('create-')
+  const isCreated = (row: DataRow) => isTempId(row.id)
 
   const deletedIds = computed(() => new Set(changes.getPendingDeletes(tableKey.value)))
 

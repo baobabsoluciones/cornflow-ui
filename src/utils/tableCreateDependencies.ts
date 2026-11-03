@@ -1,14 +1,25 @@
 /**
- * Pure helpers for resolving create-time temp ids and ordering table saves by
- * their create dependencies. Extracted from SectionView.vue so the logic can
- * be unit-tested without mounting the view.
+ * Temporary ids of the rows added in the browser and not saved yet, and the order the saves of
+ * several tables need when the rows added in one refer to rows added in another.
  */
 
 import { parseJoinFrom, getListResponseRowProperties } from '@cornflow-ui/core/utils/schemaUtils'
 
+const TEMP_ID_PREFIX = 'create-'
+
+/** The temporary id of a row added to a table, `create-<tableKey>-<index>-<time>`. */
+export function newTempId(tableKey: string, index: number): string {
+  return `${TEMP_ID_PREFIX}${tableKey}-${index}-${Date.now()}`
+}
+
+/** Whether an id is the temporary id of a row added and not saved yet. */
+export function isTempId(id: unknown): id is string {
+  return typeof id === 'string' && id.startsWith(TEMP_ID_PREFIX)
+}
+
 /** Extracts the table key embedded in a `create-<tableKey>-<...>` temp id. */
 export function getTableKeyFromTempId(tempId: string): string | null {
-  if (typeof tempId !== 'string' || !tempId.startsWith('create-')) return null
+  if (!isTempId(tempId)) return null
   const parts = tempId.split('-')
   if (parts.length < 3) return null
   return parts.slice(1, -2).join('-') || null
@@ -90,8 +101,7 @@ export function resolveTempIdsInPayload(
   for (const key of Object.keys(out)) {
     const val = out[key]
     if (
-      typeof val !== 'string' ||
-      !val.startsWith('create-') ||
+      !isTempId(val) ||
       !(val in tempIdToRealId)
     )
       continue

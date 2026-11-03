@@ -8,6 +8,7 @@
  */
 
 import type { Ref, ComputedRef } from 'vue'
+import { isTempId } from '@cornflow-ui/core/utils/tableCreateDependencies'
 
 export interface FieldConfig {
   key?: string
@@ -43,10 +44,6 @@ function unwrapFields(
   }
   return value as Record<string, FieldConfig> | FieldConfig[]
 }
-
-/** A row created in the browser keeps its temporary id (`create-…`) until it is saved. */
-const isTempId = (value: any): boolean =>
-  typeof value === 'string' && value.startsWith('create-')
 
 const toInteger = (value: any): number => {
   const result =

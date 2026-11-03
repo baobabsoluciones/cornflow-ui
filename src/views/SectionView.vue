@@ -450,6 +450,7 @@ import {
   normalizeGetListResponseToRows,
 } from '@cornflow-ui/core/utils/schemaUtils'
 import {
+  isTempId,
   sortKeysByCreateDependency,
   resolveTempIdsInPayload,
 } from '@cornflow-ui/core/utils/tableCreateDependencies'
@@ -1467,7 +1468,7 @@ const updateReviewField = (
   field: string,
   value: unknown,
 ) => {
-  if (String(rowId).startsWith('create-')) {
+  if (isTempId(rowId)) {
     tableChanges.updateCreateField(key, String(rowId), field, value)
     return
   }

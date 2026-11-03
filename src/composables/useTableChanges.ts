@@ -4,6 +4,7 @@
  * across different tables before reviewing and saving them all at once.
  */
 import { ref, computed, readonly } from 'vue'
+import { isTempId, newTempId } from '@cornflow-ui/core/utils/tableCreateDependencies'
 
 // Type definitions
 export interface FieldChange {
@@ -321,7 +322,7 @@ export function useTableChanges() {
       pendingCreates.value[tableKey] = []
     }
     const index = pendingCreates.value[tableKey].length
-    const tempId = `create-${tableKey}-${index}-${Date.now()}`
+    const tempId = newTempId(tableKey, index)
     pendingCreates.value[tableKey].push({ tempId, data: { ...rowData } })
     if (tableTitle) {
       tableTitles.value[tableKey] = tableTitle
@@ -453,8 +454,7 @@ export function useTableChanges() {
     if (deletedIds.includes(String(item.id))) return 'row-deleted'
     const creates = pendingCreates.value[tableKey] ?? []
     if (creates.some((c) => c.tempId === item.id)) return 'row-new'
-    if (item.id != null && String(item.id).startsWith('create-'))
-      return 'row-new'
+    if (isTempId(item.id)) return 'row-new'
     return ''
   }
 

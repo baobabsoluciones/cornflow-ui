@@ -20,6 +20,7 @@ import { TableOperation } from '@cornflow-ui/core/types/table'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { useRecalculationController } from '@cornflow-ui/core/composables/section-view/useRecalculationController'
 import { useTableChanges } from '@cornflow-ui/core/composables/useTableChanges'
+import { isTempId } from '@cornflow-ui/core/utils/tableCreateDependencies'
 import type { Ref, ComputedRef } from 'vue'
 import {
   applyFiltersAndSearch as applyFiltersAndSearchUtil,
@@ -2258,7 +2259,7 @@ export function useTableData(
       const tableTitle = tableConfig.value?.title || rawKey
 
       tableChanges.setTableTitle(keyToUse, tableTitle)
-      if (cellText(rowId).startsWith('create-')) {
+      if (isTempId(rowId)) {
         tableChanges.updateCreateField(keyToUse, cellText(rowId), fieldKey, newValue)
         items.value = items.value.map((item: any) =>
           item.id === rowId ? { ...item, [fieldKey]: newValue } : item,

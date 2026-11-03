@@ -159,6 +159,7 @@ import {
   injectParameterSwitchColumns,
 } from '@cornflow-ui/core/utils/executionTableBuilders'
 import { useTableChanges } from '@cornflow-ui/core/composables/useTableChanges'
+import { isTempId } from '@cornflow-ui/core/utils/tableCreateDependencies'
 import { formatValidationErrorsWithTitle } from '@cornflow-ui/core/utils/errorFormatting'
 import {
   getMasterDataTableRankByDrawerHierarchy,
@@ -1273,7 +1274,7 @@ const sortedItems = computed<DataRow[]>(() => {
 const onCellChange = (row: DataRow, key: string, value: unknown) => {
   const tableKey = currentTable.value.key
   if (!tableKey) return
-  if (cellText(row.id).startsWith('create-')) {
+  if (isTempId(row.id)) {
     const [typed] = [convertDataTypesBasedOnSchema({ [key]: value }, tableKey)[key]]
     tableChanges.updateCreateField(tableKey, cellText(row.id), key, typed)
     return
@@ -1526,7 +1527,7 @@ const revertRow = (tableKey: string, rowId: string | number, kind: string) => {
 }
 
 const updateReviewField = (tableKey: string, rowId: string | number, key: string, value: unknown) => {
-  if (cellText(rowId).startsWith('create-')) {
+  if (isTempId(rowId)) {
     tableChanges.updateCreateField(tableKey, cellText(rowId), key, value)
     return
   }

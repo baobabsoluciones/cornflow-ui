@@ -101,6 +101,7 @@ import { formatValidationErrorsWithTitle } from '@cornflow-ui/core/utils/errorFo
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { getAppParameters } from '@cornflow-ui/core/utils/appParameters'
 import { useTableChanges } from '@cornflow-ui/core/composables/useTableChanges'
+import { isTempId } from '@cornflow-ui/core/utils/tableCreateDependencies'
 import { parameterRowsToParameterObject, buildRowMatchKey } from '@cornflow-ui/core/utils/schemaUtils'
 import type { ExternalEtlFlowState } from '@cornflow-ui/core/types/etlFlow'
 
@@ -512,7 +513,7 @@ const handleDeleteInstanceRow = (row: any) => {
   if (rowId == null) return
 
   const idStr = String(rowId)
-  if (idStr.startsWith('create-')) {
+  if (isTempId(idStr)) {
     // This is a pending-create row (restored from master but not yet saved) — cancel the restore
     tableChanges.revertCreate(tableKey, idStr)
   } else {
