@@ -1832,7 +1832,6 @@ Defines the configuration fields for execution parameters. Each field can have:
 - `title` (string): Translation key for the field label.
 - `placeholder` (string): Translation key of the hint an empty number, date or text field shows (parameters and load filters). A key with no text shows none.
 - `suffix` (string): Translation key for the field suffix (e.g., units).
-- `icon` (string): Material Design icon name.
 - `type` ('number' | 'float' | 'boolean' | 'text' | 'date' | 'select'): Field type.
 - `source` (string, optional): Table name in instance.data to get the value from (e.g., 'parameters').
 - `param` (string, optional): Key or ID to look up in the source table/array.

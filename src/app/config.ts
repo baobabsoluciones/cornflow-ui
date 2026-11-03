@@ -463,7 +463,6 @@ const createAppConfig = () => ({
           placeholder: 'projectExecution.steps.step7.timeLimitPlaceholder',
           suffix: 'projectExecution.steps.step7.secondsSuffix',
           // Optional: set minutes: true to use/display timeLimit in minutes.
-          icon: 'mdi-timer-sand',
           type: 'number',
         },
       ],

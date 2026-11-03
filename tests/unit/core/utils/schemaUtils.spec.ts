@@ -986,7 +986,6 @@ describe('getExecutionConfigFromSchemaConfig', () => {
 
     // `format: date` is what tells a date apart from any other string.
     expect(byKey.date.type).toBe('date')
-    expect(byKey.date.icon).toBe('mdi-calendar')
     expect(byKey.plain.type).toBe('text')
   })
   test('join_from makes the field a select fed by that frontend-automation table', () => {

@@ -1459,14 +1459,6 @@ const SCHEMA_TYPE_TO_FIELD_TYPE: Record<string, string> = {
   string: 'text',
 }
 
-const DEFAULT_FIELD_ICONS: Record<string, string> = {
-  boolean: 'mdi-toggle-switch',
-  number: 'mdi-numeric',
-  text: 'mdi-form-textbox',
-  select: 'mdi-format-list-checks',
-  date: 'mdi-calendar',
-}
-
 const CONFIG_FIELDS_EXCLUDED_KEYS = new Set(['solver', 'msg'])
 
 export interface ExecutionConfigField {
@@ -1474,7 +1466,6 @@ export interface ExecutionConfigField {
   title: string
   placeholder?: string
   suffix?: string
-  icon?: string
   type: string
   minutes?: boolean
   default?: unknown
@@ -1536,7 +1527,6 @@ function applyEnumOptionsToField(field: ExecutionConfigField, prop: any): void {
       value: String(v),
       label: String(v),
     }))
-    field.icon = DEFAULT_FIELD_ICONS.select
   }
 }
 
@@ -1553,10 +1543,9 @@ function applyDateFieldOverrides(
 ): void {
   if (fieldType !== 'text' || prop.format !== 'date') return
   field.type = 'date'
-  field.icon = DEFAULT_FIELD_ICONS.date
 }
 
-/** Applies time-related suffix/icon overrides for numeric time fields. */
+/** Applies the time suffix (seconds or minutes) to numeric time fields. */
 function applyTimeFieldOverrides(
   field: ExecutionConfigField,
   prop: any,
@@ -1572,7 +1561,6 @@ function applyTimeFieldOverrides(
   } else {
     field.suffix = 'configParams.minutesSuffix'
   }
-  field.icon = 'mdi-timer-sand'
 }
 
 /** Builds a single config field descriptor from a schema property. */
@@ -1588,7 +1576,6 @@ function buildExecutionConfigField(
     key,
     title: titleKey,
     placeholder: `${titleKey}Placeholder`,
-    icon: DEFAULT_FIELD_ICONS[fieldType] || 'mdi-tune',
     type: fieldType,
   }
 
@@ -1597,7 +1584,6 @@ function buildExecutionConfigField(
   if (typeof prop.join_from === 'string' && parseJoinFrom(prop.join_from)) {
     field.type = 'select'
     field.joinFrom = prop.join_from
-    field.icon = DEFAULT_FIELD_ICONS.select
   }
   applyEnumOptionsToField(field, schemaType === 'array' ? (prop.items ?? {}) : prop)
   if (schemaType === 'array' && field.type === 'select') field.multiple = true
