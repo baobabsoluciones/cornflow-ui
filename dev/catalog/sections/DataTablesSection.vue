@@ -9,7 +9,7 @@
     </p>
 
     <CatalogBlock
-      name="CoreDataTable · CoreDataGrid · DataGridEditor · DataTableTabs · ConditionFilterChip · PendingChangesPanel"
+      name="CoreDataTable · CoreDataGrid · DataGridEditor · DataTableTabs · ConditionFilterChip · PendingChangesPanel · PendingChangesDialog · PendingValidationBanner · PendingSavingOverlay · PendingRevertAllConfirm"
       api="title · columns · rows · cellValue · status · v-model:search/filters/sort/selected/density · editable · selectable · canAdd/canDelete/canBulkEdit/canBulkUpload · rowState · cellModified · pendingCount → cell-change, add-row, delete-rows, bulk-edit, upload, review"
       note="Click a cell and use the arrows; Enter, F2 or typing edits, Delete empties, Escape cancels. Edit a few cells, add a row, select rows, then Review changes."
     >

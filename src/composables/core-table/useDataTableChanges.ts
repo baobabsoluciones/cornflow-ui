@@ -21,7 +21,7 @@ import type {
 import type {
   PendingChangeGroup,
   PendingChangeItem,
-} from '@cornflow-ui/core/components/core/data-table/PendingChangesPanel.vue'
+} from '@cornflow-ui/core/components/core/data-table/pendingChanges'
 import { cellText } from '@cornflow-ui/core/utils/dataTable'
 import { isTempId } from '@cornflow-ui/core/utils/tableCreateDependencies'
 

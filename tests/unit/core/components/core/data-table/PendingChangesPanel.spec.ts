@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
 import PendingChangesPanel from '@cornflow-ui/core/components/core/data-table/PendingChangesPanel.vue'
-import type { PendingChangeGroup } from '@cornflow-ui/core/components/core/data-table/PendingChangesPanel.vue'
+import type { PendingChangeGroup } from '@cornflow-ui/core/components/core/data-table/pendingChanges'
 import type { DataColumn } from '@cornflow-ui/core/components/core/data-table/types'
 
 const i18n = createI18n({
@@ -203,7 +203,7 @@ describe('PendingChangesPanel', () => {
     expect(wrapper.text()).toContain('The data does not match the schema')
     expect(wrapper.text()).toContain('Row 12: too low.')
 
-    await wrapper.find('.pending-panel__banner-close').trigger('click')
+    await wrapper.find('.pending-banner__close').trigger('click')
     expect(wrapper.emitted('close-banner')).toHaveLength(1)
   })
 
