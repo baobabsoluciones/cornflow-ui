@@ -261,6 +261,25 @@ describe('OpenIDAuthService - Enhanced Coverage', () => {
       expect(result).toBe(false)
     })
 
+    test.each([
+      ['google', 'Google'],
+      ['microsoft', { custom: 'AzureAD' }],
+    ] as const)('on Cognito, signing in with %s goes to its identity provider', async (sso, provider) => {
+      cognitoService['initialized'] = true
+
+      expect(await cognitoService.loginWith(sso)).toBe(true)
+
+      expect(signInWithRedirect).toHaveBeenCalledWith({ provider })
+    })
+
+    test('on Cognito, login without a provider is Microsoft', async () => {
+      cognitoService['initialized'] = true
+
+      await cognitoService.login()
+
+      expect(signInWithRedirect).toHaveBeenCalledWith({ provider: { custom: 'AzureAD' } })
+    })
+
     test('handleAuthResponse processes successful authentication', async () => {
       const mockToken = createMockToken({ sub: 'test-user' })
       const mockResponse = {
