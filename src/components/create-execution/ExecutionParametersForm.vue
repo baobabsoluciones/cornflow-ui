@@ -89,7 +89,10 @@ import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
 import ParameterInput, {
   type ParameterFieldView,
 } from '@cornflow-ui/core/components/create-execution/ParameterInput.vue'
-import { isEmptyConfigValue } from '@cornflow-ui/core/composables/create-execution/configFieldValues'
+import {
+  configFieldPlaceholder,
+  isEmptyConfigValue,
+} from '@cornflow-ui/core/composables/create-execution/configFieldValues'
 import { pickedSummary } from '@cornflow-ui/core/components/core/CoreMultiSelect.vue'
 
 defineOptions({ name: 'ExecutionParametersForm' })
@@ -165,6 +168,7 @@ function viewOf(field: any): ParameterFieldView {
     options: options.map((o: any) => ({ value: o.value, label: String(o.label) })),
     multiple: Boolean(field.multiple),
     suffix,
+    placeholder: configFieldPlaceholder(field, t),
     required: Boolean(field.required),
     default: field.default,
   }
@@ -178,6 +182,7 @@ const solverField = computed<ParameterFieldView | null>(() =>
         type: 'options',
         options: props.solvers.map((s) => ({ value: s, label: s })),
         suffix: '',
+        placeholder: '',
         required: false,
         default: props.defaultSolver || props.solvers[0],
       }

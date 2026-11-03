@@ -152,7 +152,7 @@
 
     <CatalogBlock
       name="BulkEditDialog · BulkUploadDialog · RelaunchDialog"
-      api="open · columns · count · tableTitle → apply | operations · phase · progressText → upload | name · summary · busy → launch"
+      api="open · columns · count · tableTitle → apply | operations · phase · progressRows · errorText → upload | name · summary · busy → launch"
     >
       <CoreButton variant="outlined" text="Bulk edit" @click="bulkOpen = true" />
       <CoreButton variant="outlined" text="Bulk upload" @click="uploadOpen = true" />

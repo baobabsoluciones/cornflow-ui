@@ -38,7 +38,7 @@ import {
   normalizeJsonSchemaPropertyTypeForUi,
 } from '@cornflow-ui/core/utils/schemaUtils'
 import { isForceRetryOfferError } from '@cornflow-ui/core/repositories/TableRepository'
-import type { AsyncUploadStatusResponse } from '@cornflow-ui/core/types/frontendAutomation'
+import type { BulkUploadPhase } from '@cornflow-ui/core/components/core/data-table/BulkUploadDialog.vue'
 import {
   detectDelimiter,
   parseCsvContent as parseCsvWithDelimiter,
@@ -295,10 +295,20 @@ export function useTableData(
   const pendingOverwriteData = ref<any[] | null>(null)
   const forceRetryLoading = ref(false)
   const bulkDeleting = ref(false)
-  const uploading = ref(false)
   const downloading = ref(false)
-  // Progress text of the bulk upload dialog during an async upload (status + rows loaded).
-  const uploadProgressMessage = ref('')
+  /** Where the bulk upload stands, for its dialog. */
+  const uploadPhase = ref<BulkUploadPhase>('form')
+  /** Rows loaded so far by an async upload, or in all once the upload is done. */
+  const uploadedRows = ref<number | undefined>(undefined)
+  /** Why the last bulk upload failed. */
+  const uploadError = ref('')
+  // Each time the dialog opens it starts at the form.
+  watch(showBulkUploadModal, (open) => {
+    if (!open) return
+    uploadPhase.value = 'form'
+    uploadedRows.value = undefined
+    uploadError.value = ''
+  })
   const tableDataCache = ref<Record<string, any[]>>(sharedTableDataCache)
   // Cancel in-flight loadData when view is deactivated so we don't update state after navigate-away
   const loadIdRef = ref(0)
@@ -1331,31 +1341,9 @@ export function useTableData(
   }
 
   /**
-   * Build the bulk upload modal progress text from an async upload status.
-   * Mirrors the status→message mapping in the frontend-automation docs.
-   */
-  const buildAsyncUploadProgressMessage = (
-    status: AsyncUploadStatusResponse,
-  ): string => {
-    const rows = status.total_rows_loaded ?? 0
-    switch (status.status) {
-      case 'processing':
-        return t('table.messages.asyncUploadProcessing', { count: rows })
-      case 'completed':
-        return t('table.messages.asyncUploadCompleted', { count: rows })
-      case 'failed':
-        return status.error_message || t('table.messages.asyncUploadFailed')
-      case 'queued':
-      case 'downloading':
-      default:
-        return t('table.messages.asyncUploadQueued')
-    }
-  }
-
-  /**
    * Async bulk upload flow. When the table declares the async counterpart of the chosen
-   * operation, POST the raw (unprocessed) file, poll its status until terminal while updating
-   * the modal progress text, then reload on success or surface the error on failure.
+   * operation, POST the raw (unprocessed) file and poll its status until terminal: the dialog
+   * waits while it is queued, counts the rows while they load, and ends done or with the error.
    * Returns false when the table has no async op for this operation (caller falls back to the
    * synchronous, client-parsed path).
    */
@@ -1375,7 +1363,7 @@ export function useTableData(
 
     // Token so polling stops if the user navigates away mid-upload.
     const myPollId = ++pollIdRef.value
-    uploadProgressMessage.value = t('table.messages.asyncUploadQueued')
+    uploadPhase.value = 'waiting'
 
     const init = await repository.startAsyncBulkUpload(asyncOperation, file)
 
@@ -1384,7 +1372,12 @@ export function useTableData(
       {
         onProgress: (status) => {
           if (pollIdRef.value !== myPollId) return
-          uploadProgressMessage.value = buildAsyncUploadProgressMessage(status)
+          if (status.status === 'processing') {
+            uploadPhase.value = 'loading'
+            uploadedRows.value = status.total_rows_loaded ?? 0
+          } else if (status.status === 'queued' || status.status === 'downloading') {
+            uploadPhase.value = 'waiting'
+          }
         },
         shouldContinue: () => pollIdRef.value === myPollId,
       },
@@ -1394,28 +1387,22 @@ export function useTableData(
     if (pollIdRef.value !== myPollId) return true
 
     if (finalStatus.status === 'failed') {
-      const message =
-        finalStatus.error_message || t('table.messages.asyncUploadFailed')
-      error.value = message
-      showSnackbar(message, 'error')
+      uploadError.value = finalStatus.error_message || t('table.messages.asyncUploadFailed')
+      uploadPhase.value = 'error'
       return true
     }
 
     if (finalStatus.status === 'completed') {
       items.value = await fetchListEnriched(repository, tableConfig.value)
-      showBulkUploadModal.value = false
-      showSnackbar(
-        t('table.messages.asyncUploadCompleted', {
-          count: finalStatus.total_rows_loaded ?? 0,
-        }),
-        'success',
-      )
+      uploadedRows.value = finalStatus.total_rows_loaded ?? 0
+      uploadPhase.value = 'done'
       await maybeRequestMasterRecalculationPending()
       return true
     }
 
     // Non-terminal (e.g. cancelled before completion): just close the modal.
     showBulkUploadModal.value = false
+    uploadPhase.value = 'form'
     return true
   }
 
@@ -2113,14 +2100,14 @@ export function useTableData(
   }
 
   /**
-   * Handle a bulk upload error. Returns true when the error was converted into a
-   * force-retry offer (caller should stop); false when it was reported as a normal error.
+   * A failed bulk upload: an overwrite the server wants confirmed becomes the force-retry offer;
+   * any other error shows in the dialog.
    */
   const handleBulkUploadError = (
     err: unknown,
     operation: string,
     mappedData: any[] | null,
-  ): boolean => {
+  ) => {
     if (
       isForceRetryOfferError(err) &&
       operation === 'overwrite_all' &&
@@ -2132,16 +2119,13 @@ export function useTableData(
       }
       pendingOverwriteData.value = mappedData
       showBulkUploadModal.value = false
-      return true
+      uploadPhase.value = 'form'
+      return
     }
     console.error('Error in bulk upload:', err)
-    error.value =
-      err instanceof Error ? err.message : t('table.messages.errorBulkUpload')
-    showSnackbar(
-      err instanceof Error ? err.message : t('table.messages.errorBulkUpload'),
-      'error',
-    )
-    return false
+    uploadError.value =
+      err instanceof Error && err.message ? err.message : t('table.messages.errorBulkUpload')
+    uploadPhase.value = 'error'
   }
 
   const api = {
@@ -2332,8 +2316,9 @@ export function useTableData(
     forceRetryOffer,
     forceRetryLoading,
     bulkDeleting,
-    uploading,
-    uploadProgressMessage,
+    uploadPhase,
+    uploadedRows,
+    uploadError,
     downloading,
     loadTableData,
     tableData: tableDataCache,
@@ -2396,7 +2381,9 @@ export function useTableData(
         return
       }
 
-      uploading.value = true
+      uploadPhase.value = 'loading'
+      uploadedRows.value = undefined
+      uploadError.value = ''
       let mappedData: any[] | null = null
       try {
         // Get the first file (modal is set to multiple=false)
@@ -2421,8 +2408,8 @@ export function useTableData(
           }
           stageRecalculationBulkUpload(parsedData, uploadData.operation)
           showBulkUploadModal.value = false
+          uploadPhase.value = 'form'
           showSnackbar(t('table.messages.bulkUploadSuccess'), 'success')
-          uploading.value = false
           return
         }
 
@@ -2448,20 +2435,13 @@ export function useTableData(
 
         await persistBulkUpload(repository, uploadData.operation, mappedData)
 
-        // Reload data and close modal (enrich so joined columns show correctly)
+        // Reload the data (enriched, so joined columns show) and say how many rows went in
         items.value = await fetchListEnriched(repository, tableConfig.value)
-        showBulkUploadModal.value = false
-
-        // Show success message
-        showSnackbar(t('table.messages.bulkUploadSuccess'), 'success')
+        uploadedRows.value = mappedData.length
+        uploadPhase.value = 'done'
         await maybeRequestMasterRecalculationPending()
       } catch (err) {
-        if (handleBulkUploadError(err, uploadData.operation, mappedData)) {
-          return
-        }
-      } finally {
-        uploading.value = false
-        uploadProgressMessage.value = ''
+        handleBulkUploadError(err, uploadData.operation, mappedData)
       }
     },
     acceptForceRetry: async () => {

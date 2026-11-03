@@ -63,4 +63,9 @@ describe('ParameterInput', () => {
   test('a number shows its suffix', () => {
     expect(mountInput({ type: 'number', suffix: 'sec' }).text()).toContain('sec')
   })
+
+  test('an empty field shows its hint', () => {
+    const wrapper = mountInput({ type: 'number', placeholder: 'Days to plan (1 to 28)' })
+    expect(wrapper.find('input').attributes('placeholder')).toBe('Days to plan (1 to 28)')
+  })
 })

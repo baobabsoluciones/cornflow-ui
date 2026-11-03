@@ -260,7 +260,7 @@
         :operations="uploadOperations"
         :row-count="totalCount"
         :phase="uploadPhase"
-        :progress-text="uploadProgressText"
+        :progress-rows="uploadProgressRows"
         :error-text="uploadErrorText"
         @upload="emit('upload', $event)"
         @view-data="uploadOpen = false"
@@ -351,7 +351,8 @@ const props = withDefaults(
     stagesChanges?: boolean
     uploadOperations?: string[]
     uploadPhase?: 'form' | 'waiting' | 'loading' | 'done' | 'error'
-    uploadProgressText?: string
+    /** Rows the upload has loaded so far, or in all once done. */
+    uploadProgressRows?: number
     uploadErrorText?: string
     downloading?: boolean
     deleting?: boolean
@@ -395,7 +396,7 @@ const props = withDefaults(
     stagesChanges: true,
     uploadOperations: () => ['post_bulk'],
     uploadPhase: 'form',
-    uploadProgressText: '',
+    uploadProgressRows: undefined,
     uploadErrorText: '',
     downloading: false,
     deleting: false,
