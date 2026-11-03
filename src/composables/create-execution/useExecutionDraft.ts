@@ -24,6 +24,7 @@ import { getPremiumEtlBackend } from '@cornflow-ui/core/plugins/extensions'
 import { showSnackbar } from '@cornflow-ui/core/services/SnackbarService'
 import { pickPreEtlConfigValues } from '@cornflow-ui/core/utils/schemaUtils'
 import { formatValidationErrors } from '@cornflow-ui/core/utils/errorFormatting'
+import { pickedSummary } from '@cornflow-ui/core/components/core/CoreMultiSelect.vue'
 import session from '@cornflow-ui/core/services/AuthService'
 import {
   applySourceConfigFieldValues,
@@ -433,8 +434,14 @@ export function useExecutionDraft() {
       .filter((field: any) => field.type === 'select' || field.options?.length)
       .map((field) => {
         const value = execution.config[field.key]
-        const option = (field.options ?? []).find((o: any) => o.value === value)
-        return option ? String(option.label) : ''
+        const labelOf = (v: unknown) =>
+          (field.options ?? []).find((o: any) => o.value === v)?.label
+        if (Array.isArray(value)) {
+          const labels = value.map(labelOf).filter((label) => label !== undefined)
+          return labels.length > 0 ? pickedSummary(labels.map(String)) : ''
+        }
+        const label = labelOf(value)
+        return label === undefined ? '' : String(label)
       })
   }
 
@@ -559,33 +566,32 @@ export function useExecutionDraft() {
     markChecksStale()
   }
 
-  async function syncEtl(): Promise<boolean> {
+  /** Sends the ETL review to the backend, whose result becomes the data; throws why it failed. */
+  async function syncEtl(): Promise<void> {
     if (!etlNeedsSync.value || !etlFlow.isActive.value || !execution.instance?.data) {
       etlNeedsSync.value = false
-      return true
+      return
     }
+    let result: Awaited<ReturnType<typeof etlFlow.submitUpdate>>
     try {
-      const { data, warning } = await etlFlow.submitUpdate(execution.instance.data)
-      const { Instance } = store.appConfig
-      const schemas = store.getSchemaConfig
-      execution.instance = new Instance(
-        null,
-        data,
-        schemas.instanceSchema,
-        schemas.instanceChecksSchema,
-        store.getSchemaName,
-      )
-      etlFlow.reset()
-      etlNeedsSync.value = false
-      if (warning) loadWarning.value = warning
-      return true
+      result = await etlFlow.submitUpdate(execution.instance.data)
     } catch (error) {
-      showSnackbar(
-        error instanceof Error ? error.message : t('createExecution.snackbar.syncError'),
-        'error',
+      throw new Error(
+        error instanceof Error && error.message ? error.message : t('createExecution.snackbar.syncError'),
       )
-      return false
     }
+    const { Instance } = store.appConfig
+    const schemas = store.getSchemaConfig
+    execution.instance = new Instance(
+      null,
+      result.data,
+      schemas.instanceSchema,
+      schemas.instanceChecksSchema,
+      store.getSchemaName,
+    )
+    etlFlow.reset()
+    etlNeedsSync.value = false
+    if (result.warning) loadWarning.value = result.warning
   }
 
   // ── Checks ─────────────────────────────────────────────────────────────────
@@ -625,7 +631,12 @@ export function useExecutionDraft() {
   async function runChecks() {
     if (!isLoaded.value || checks.status === 'running') return
     if (!(await applyPendingChanges())) return
-    if (!(await syncEtl())) return
+    try {
+      await syncEtl()
+    } catch (error) {
+      showSnackbar((error as Error).message, 'error')
+      return
+    }
 
     checks.status = 'running'
     try {
@@ -657,16 +668,19 @@ export function useExecutionDraft() {
     solution.data = null
     solution.errors = null
     if (!file) return
+    // Another file picked (or none) while this one is read: its result no longer counts
+    const isCurrent = () => solution.file === file
     try {
       const parsed = await parseSolutionFile(file, t)
       const errors = await parsed.checkSchema()
+      if (!isCurrent()) return
       if (errors?.length) {
         solution.errors = formatValidationErrors(errors)
         return
       }
       solution.data = parsed.data
     } catch (error) {
-      solution.errors = error instanceof Error ? error.message : String(error)
+      if (isCurrent()) solution.errors = error instanceof Error ? error.message : String(error)
     }
   }
 
@@ -684,7 +698,7 @@ export function useExecutionDraft() {
       if (!(await applyPendingChanges())) return false
       if (etlNeedsSync.value) {
         launch.step = 'sync'
-        if (!(await syncEtl())) return false
+        await syncEtl()
       }
       launch.step = solution.enabled ? 'solution' : 'execution'
       const created = await store.createExecution(
