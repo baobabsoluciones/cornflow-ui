@@ -120,6 +120,13 @@ export function seedConfigFieldDefaults(
   return next
 }
 
+/** The hint an empty field shows: its `placeholder` translated, or '' when the key has no text. */
+export function configFieldPlaceholder(field: Field, t: (key: string) => string): string {
+  if (!field.placeholder) return ''
+  const text = t(field.placeholder)
+  return text === field.placeholder ? '' : text
+}
+
 export function isEmptyConfigValue(field: Field, value: unknown): boolean {
   if (field.type === 'boolean') return typeof value !== 'boolean'
   if (Array.isArray(value)) return value.length === 0

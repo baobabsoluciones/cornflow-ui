@@ -1665,7 +1665,7 @@ Defines the configuration fields for execution parameters. Each field can have:
 
 - `key` (string): Unique identifier for the field (used as config property).
 - `title` (string): Translation key for the field label.
-- `placeholder` (string): Translation key for the field placeholder.
+- `placeholder` (string): Translation key of the hint an empty number, date or text field shows (parameters and load filters). A key with no text shows none.
 - `suffix` (string): Translation key for the field suffix (e.g., units).
 - `icon` (string): Material Design icon name.
 - `type` ('number' | 'float' | 'boolean' | 'text' | 'date' | 'select'): Field type.
