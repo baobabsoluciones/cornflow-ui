@@ -332,7 +332,6 @@ async function go(item: MissingItem) {
     emit('go', 'data')
     return
   }
-  collapsed.value = false
   if (item.target.startsWith('param:')) showErrors.value = true
   flash(item.target)
   if (item.target === 'name') {
@@ -342,10 +341,6 @@ async function go(item: MissingItem) {
 }
 
 async function resolve() {
-  if (!props.draft.canLaunch) {
-    collapsed.value = false
-    return
-  }
   await props.draft.launchExecution()
   // Folded, the panel would hide why the launch failed.
   if (props.draft.launch.error) collapsed.value = false
