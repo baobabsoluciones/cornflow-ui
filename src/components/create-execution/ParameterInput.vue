@@ -70,6 +70,7 @@
     :integer="field.type === 'number'"
     :model-value="value as string | number | null | undefined"
     :suffix="field.suffix"
+    :placeholder="field.placeholder"
     :invalid="invalid"
     lazy
     @update:model-value="$emit('change', $event)"
@@ -91,6 +92,8 @@ export interface ParameterFieldView {
   /** Several options can be picked; the value is the list of them. */
   multiple?: boolean
   suffix: string
+  /** Hint of an empty number, date or text field. */
+  placeholder: string
   required: boolean
   default?: unknown
 }

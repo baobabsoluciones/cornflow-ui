@@ -581,10 +581,6 @@ export default {
     messages: {
       bulkUploadReferenceNotFound:
         'Ligne {row} : aucun enregistrement pour {fieldKey}="{fieldValue}" dans la table de référence « {tableName} ». Téléchargement annulé.',
-      asyncUploadQueued: 'En attente de démarrage…',
-      asyncUploadProcessing:
-        'Chargement des données — {count} lignes importées jusqu’à présent',
-      asyncUploadCompleted: 'Terminé — {count} lignes importées',
       asyncUploadFailed: 'Le téléchargement n’a pas pu être traité',
       asyncUploadNotFound: 'Téléchargement introuvable',
       invalidFileFormat: 'Format de fichier invalide',

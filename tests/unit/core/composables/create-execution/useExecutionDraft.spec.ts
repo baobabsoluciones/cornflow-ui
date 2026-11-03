@@ -51,6 +51,7 @@ vi.mock('@cornflow-ui/core/composables/create-execution/solutionFile', () => ({
 
 import { useExecutionDraft } from '@cornflow-ui/core/composables/create-execution/useExecutionDraft'
 import { useTableChanges } from '@cornflow-ui/core/composables/useTableChanges'
+import config from '@cornflow-ui/core/config'
 import { parseSolutionFile } from '@cornflow-ui/core/composables/create-execution/solutionFile'
 
 const configFields = [
@@ -665,6 +666,21 @@ describe('useExecutionDraft', () => {
       await draft.runChecks()
       expect(store.createInstance).not.toHaveBeenCalled()
     })
+  })
+
+  test('developer mode is on from the app config, or for one deployment from its values', () => {
+    expect(setup().developerMode).toBe(false)
+
+    store.appConfig.parameters.isDeveloperMode = true
+    expect(setup().developerMode).toBe(true)
+
+    store.appConfig.parameters.isDeveloperMode = false
+    config.isDeveloperMode = true
+    try {
+      expect(setup().developerMode).toBe(true)
+    } finally {
+      config.isDeveloperMode = false
+    }
   })
 
   describe('an uploaded solution', () => {

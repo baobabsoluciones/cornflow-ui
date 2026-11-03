@@ -282,6 +282,23 @@ describe('ExecutionParametersForm', () => {
     expect(wrapper.emitted('change')).toEqual([['objective', 'service']])
   })
 
+  test('a field shows the hint of its placeholder key, and none when the key has no text', () => {
+    const messages = { en: { f: { horizon: 'Horizon', horizonHint: 'Days to plan (1 to 28)' } } }
+    const wrapper = mount(ExecutionParametersForm, {
+      props: {
+        fields: [
+          { key: 'horizon', title: 'f.horizon', type: 'number', required: true, placeholder: 'f.horizonHint' },
+          { key: 'gap', title: 'f.gap', type: 'float', required: true, placeholder: 'f.gapHint' },
+        ],
+        values: {},
+      },
+      global: { plugins: [createI18n({ legacy: false, locale: 'en', messages, missingWarn: false, fallbackWarn: false })] },
+    })
+    const inputs = wrapper.findAll('input')
+    expect(inputs[0].attributes('placeholder')).toBe('Days to plan (1 to 28)')
+    expect(inputs[1].attributes('placeholder')).toBeFalsy()
+  })
+
   test('takes the options of a field fed by a table', async () => {
     const wrapper = mount(ExecutionParametersForm, {
       props: { fields: [{ key: 'plant', title: 'Plant', type: 'select', joinFrom: 'plants.name', required: true }], values: {} },
@@ -675,6 +692,19 @@ describe('ExecutionDataCard', () => {
     expect(wrapper.find('[data-testid="load-filters"]').exists()).toBe(true)
     await wrapper.find('[data-testid="data-card-get-data"]').trigger('click')
     expect(draft.load).toHaveBeenCalled()
+  })
+
+  test('a load filter typed in shows the hint of its placeholder key', () => {
+    const messages = { en: { f: { weekHint: 'First week, e.g. 2026-W44' } } }
+    const draft = makeDraft({
+      dataSourceMode: 'database-filtered',
+      loadFilterFields: [{ key: 'week', title: 'Week', type: 'text', placeholder: 'f.weekHint' }],
+    })
+    const wrapper = mount(ExecutionDataCard, {
+      props: { draft },
+      global: { plugins: [createI18n({ legacy: false, locale: 'en', messages, missingWarn: false, fallbackWarn: false })] },
+    })
+    expect(wrapper.find('[data-testid="load-filters"] input').attributes('placeholder')).toBe('First week, e.g. 2026-W44')
   })
 
   test('with files only, it still asks for the load filters the ETL gets with them', async () => {

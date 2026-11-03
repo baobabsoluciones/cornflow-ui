@@ -627,9 +627,6 @@ export default {
       fileProcessingError: 'Error processing file',
       bulkUploadReferenceNotFound:
         'Row {row}: no matching record for {fieldKey}="{fieldValue}" in reference table "{tableName}". Upload was cancelled.',
-      asyncUploadQueued: 'Waiting to start…',
-      asyncUploadProcessing: 'Loading data — {count} rows imported so far',
-      asyncUploadCompleted: 'Done — {count} rows imported',
       asyncUploadFailed: 'The upload could not be processed',
       asyncUploadNotFound: 'Upload not found',
       invalidFileFormat: 'Invalid file format',
