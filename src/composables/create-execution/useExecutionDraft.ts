@@ -25,7 +25,6 @@ import { useTableChanges } from '@cornflow-ui/core/composables/useTableChanges'
 import { getPremiumEtlBackend } from '@cornflow-ui/core/plugins/extensions'
 import { showSnackbar } from '@cornflow-ui/core/services/SnackbarService'
 import { pickPreEtlConfigValues } from '@cornflow-ui/core/utils/schemaUtils'
-import { formatValidationErrors } from '@cornflow-ui/core/utils/errorFormatting'
 import { pickedSummary } from '@cornflow-ui/core/components/core/CoreMultiSelect.vue'
 import session from '@cornflow-ui/core/services/AuthService'
 import {
@@ -39,7 +38,8 @@ import {
   proposeExecutionName,
   type ProposeExecutionName,
 } from './executionName'
-import { parseSolutionFile } from './solutionFile'
+import { checkResultsOf, type CheckResult } from './checkResults'
+import { useUploadedSolution } from './useUploadedSolution'
 import {
   deleteExecutionDraft,
   draftKey,
@@ -61,23 +61,6 @@ export type DataSourceMode =
   /** As `database`, with the load filters (`pre_etl` parameters) to fill first. */
   | 'database-filtered'
 
-export interface CheckColumn {
-  key: string
-  title: string
-}
-
-export interface CheckResult {
-  key: string
-  /** The check table's `title` in the checks schema, or its key in words. */
-  title: string
-  description: string
-  kind: 'error' | 'warning'
-  /** The columns of the check table, titled as the checks schema says. */
-  columns: CheckColumn[]
-  /** What the check found, one record per row of the check table. */
-  records: Record<string, unknown>[]
-}
-
 export type MissingTarget = 'data' | 'checks' | 'name' | `param:${string}`
 
 export interface MissingItem {
@@ -91,27 +74,6 @@ export interface DraftExecution {
   config: Record<string, any>
   name: string
   description: string
-}
-
-/** `capacity_by_line` → "Capacity by line": the name of a check table or column without a title. */
-function keyInWords(key: string): string {
-  const words = key.replaceAll('_', ' ').trim()
-  return words.charAt(0).toUpperCase() + words.slice(1)
-}
-
-/** The rows of a check table as records, and its columns: the schema's, then any others found. */
-function checkTable(rows: unknown[], itemProperties: Record<string, any>) {
-  const records = rows.map((row) =>
-    row && typeof row === 'object' ? (row as Record<string, unknown>) : { value: row },
-  )
-  const keys = [...Object.keys(itemProperties)]
-  for (const record of records) {
-    for (const key of Object.keys(record)) if (!keys.includes(key)) keys.push(key)
-  }
-  const columns = keys
-    .filter((key) => records.some((r) => key in r))
-    .map((key) => ({ key, title: itemProperties[key]?.title || keyInWords(key) }))
-  return { columns, records }
 }
 
 export function useExecutionDraft() {
@@ -160,12 +122,7 @@ export function useExecutionDraft() {
     error: null as string | null,
   })
 
-  const solution = reactive({
-    enabled: false,
-    file: null as File | null,
-    data: null as any,
-    errors: null as string | null,
-  })
+  const { solution, setSolutionFile, setSolutionMode } = useUploadedSolution()
 
   /** The ETL review has switches the backend has not been told about yet. */
   const etlNeedsSync = ref(false)
@@ -609,28 +566,6 @@ export function useExecutionDraft() {
     if (['ok', 'warnings', 'errors'].includes(checks.status)) checks.status = 'stale'
   }
 
-  function checkResultsOf(instance: any): CheckResult[] {
-    const properties = store.schemaConfig?.instanceChecksSchema?.properties ?? {}
-    const dataChecks = instance?.dataChecks ?? {}
-    return Object.entries<any>(properties)
-      .map(([key, prop]): CheckResult => {
-        const rows = Array.isArray(dataChecks[key]) ? dataChecks[key] : []
-        return {
-          key,
-          title: prop?.title || keyInWords(key),
-          description: prop?.description ?? '',
-          kind: prop?.is_warning === false ? 'error' : 'warning',
-          ...checkTable(rows, prop?.items?.properties ?? {}),
-        }
-      })
-      .filter((result) => result.records.length > 0)
-      // Errors first, then the checks that found the most.
-      .sort((a, b) => {
-        if (a.kind !== b.kind) return a.kind === 'error' ? -1 : 1
-        return b.records.length - a.records.length
-      })
-  }
-
   async function runChecks() {
     if (!isLoaded.value || checks.status === 'running') return
     if (!(await applyPendingChanges())) return
@@ -652,7 +587,10 @@ export function useExecutionDraft() {
       if (!checked) throw new Error(t('projectExecution.snackbar.instanceDataChecksError'))
 
       execution.instance = checked
-      checks.results = checkResultsOf(checked)
+      checks.results = checkResultsOf(
+        store.schemaConfig?.instanceChecksSchema?.properties ?? {},
+        checked.dataChecks ?? {},
+      )
       checks.checkedAt = new Date()
       checks.status = errorCount.value > 0 ? 'errors' : warningCount.value > 0 ? 'warnings' : 'ok'
     } catch (error) {
@@ -665,32 +603,6 @@ export function useExecutionDraft() {
   }
 
   // ── Launch ─────────────────────────────────────────────────────────────────
-
-  async function setSolutionFile(file: File | null) {
-    solution.file = file
-    solution.data = null
-    solution.errors = null
-    if (!file) return
-    // Another file picked (or none) while this one is read: its result no longer counts
-    const isCurrent = () => solution.file === file
-    try {
-      const parsed = await parseSolutionFile(file, t)
-      const errors = await parsed.checkSchema()
-      if (!isCurrent()) return
-      if (errors?.length) {
-        solution.errors = formatValidationErrors(errors)
-        return
-      }
-      solution.data = parsed.data
-    } catch (error) {
-      if (isCurrent()) solution.errors = error instanceof Error ? error.message : String(error)
-    }
-  }
-
-  function setSolutionMode(enabled: boolean) {
-    solution.enabled = enabled
-    if (!enabled) void setSolutionFile(null)
-  }
 
   /** Creates the execution and starts following it; resolves whether it was created. */
   async function launchExecution(): Promise<boolean> {

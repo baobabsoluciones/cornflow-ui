@@ -91,10 +91,8 @@ import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
 import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
 import CoreSpinner from '@cornflow-ui/core/components/core/CoreSpinner.vue'
 import ChecksDetailDialog from '@cornflow-ui/core/components/create-execution/ChecksDetailDialog.vue'
-import type {
-  CheckResult,
-  ChecksStatus,
-} from '@cornflow-ui/core/composables/create-execution/useExecutionDraft'
+import type { CheckResult } from '@cornflow-ui/core/composables/create-execution/checkResults'
+import type { ChecksStatus } from '@cornflow-ui/core/composables/create-execution/useExecutionDraft'
 
 defineOptions({ name: 'ChecksStatus' })
 

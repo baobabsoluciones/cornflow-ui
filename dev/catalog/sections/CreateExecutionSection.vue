@@ -133,7 +133,8 @@ import ExitCreateExecutionDialog from '@cornflow-ui/core/components/create-execu
 import LaunchPanel from '@cornflow-ui/core/components/create-execution/LaunchPanel.vue'
 import LaunchResult from '@cornflow-ui/core/components/create-execution/LaunchResult.vue'
 import LoadFiltersForm from '@cornflow-ui/core/components/create-execution/LoadFiltersForm.vue'
-import type { CheckResult, ChecksStatus as Status } from '@cornflow-ui/core/composables/create-execution/useExecutionDraft'
+import type { CheckResult } from '@cornflow-ui/core/composables/create-execution/checkResults'
+import type { ChecksStatus as Status } from '@cornflow-ui/core/composables/create-execution/useExecutionDraft'
 import CatalogBlock from '../CatalogBlock.vue'
 
 const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString()

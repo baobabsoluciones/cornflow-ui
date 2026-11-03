@@ -95,7 +95,7 @@ import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
 import CoreDialog from '@cornflow-ui/core/components/core/CoreDialog.vue'
 import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
 import CoreSearchInput from '@cornflow-ui/core/components/core/table/CoreSearchInput.vue'
-import type { CheckResult } from '@cornflow-ui/core/composables/create-execution/useExecutionDraft'
+import type { CheckResult } from '@cornflow-ui/core/composables/create-execution/checkResults'
 
 defineOptions({ name: 'ChecksDetailDialog' })
 
