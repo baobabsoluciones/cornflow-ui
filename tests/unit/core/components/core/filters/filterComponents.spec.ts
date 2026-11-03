@@ -3,6 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import FilterChip from '@cornflow-ui/core/components/core/filters/FilterChip.vue'
 import DateFilterChip from '@cornflow-ui/core/components/core/filters/DateFilterChip.vue'
 import AddFilterMenu from '@cornflow-ui/core/components/core/filters/AddFilterMenu.vue'
+import { createEnI18n } from '../data-table/i18nEn'
 
 // The menus open in a popover rendered at the end of the document (gone once the test unmounts).
 const menu = () => document.body.querySelector<HTMLElement>('.core-menu')
@@ -130,6 +131,7 @@ describe('DateFilterChip', () => {
         toLabel: 'To',
         ...props,
       },
+      global: { plugins: [createEnI18n()] },
       attachTo: document.body,
     })
 
@@ -153,7 +155,7 @@ describe('DateFilterChip', () => {
 
     await wrapper.setProps({ from: '2026-10-01', to: '2026-10-15' })
 
-    expect(wrapper.find('.filter-chip__value').text()).toContain('–')
+    expect(wrapper.find('.filter-chip__value').text()).toBe('10/1/2026 – 10/15/2026')
   })
 
   test('typing a day emits it', async () => {

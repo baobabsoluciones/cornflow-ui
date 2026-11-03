@@ -86,6 +86,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { formatTime } from '@cornflow-ui/core/utils/date'
 import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
 import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
 import CoreSpinner from '@cornflow-ui/core/components/core/CoreSpinner.vue'
@@ -116,7 +117,7 @@ defineEmits<{ run: [] }>()
 /** Checks listed in the panel; the rest are in the detail. */
 const MAX_LISTED = 6
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const count = (kind: CheckResult['kind']) =>
   props.results.filter((r) => r.kind === kind).reduce((n, r) => n + r.records.length, 0)
@@ -151,7 +152,7 @@ const icon = computed(
 
 const checkedText = computed(() => {
   if (!props.checkedAt) return t('createExecution.checks.checkedNow')
-  const time = props.checkedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const time = formatTime(props.checkedAt, locale.value)
   return t('createExecution.checks.checkedAt', { time })
 })
 

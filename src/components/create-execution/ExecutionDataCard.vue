@@ -251,6 +251,7 @@ import CreateExecutionReviewInstance from '@cornflow-ui/core/components/project-
 import { useErrorDownload } from '@cornflow-ui/core/composables/useErrorDownload'
 import { isEmptyConfigValue } from '@cornflow-ui/core/composables/create-execution/configFieldValues'
 import { pickedSummary } from '@cornflow-ui/core/components/core/CoreMultiSelect.vue'
+import { formatDay } from '@cornflow-ui/core/utils/date'
 import { showSnackbar } from '@cornflow-ui/core/services/SnackbarService'
 import { fileFormatNames } from '@cornflow-ui/core/utils/fileConstants'
 import type { ExecutionDraftController } from '@cornflow-ui/core/composables/create-execution/useExecutionDraft'
@@ -304,7 +305,7 @@ function filterSummary(): string[] {
       const value = props.draft.execution.config[field.key]
       if (isEmptyConfigValue(field, value)) return ''
       if (field.type === 'date') {
-        return t('createExecution.data.since', { date: String(value).split('-').reverse().join('/') })
+        return t('createExecution.data.since', { date: formatDay(String(value), locale.value) })
       }
       if (field.type === 'boolean') {
         const label = field.title ? t(field.title) : field.key

@@ -190,20 +190,22 @@ describe('executionName', () => {
         filterLabels: ['North plant', ''],
         fromExecution: null,
         date,
+        locale: 'en',
         t,
       }),
     ).toBe('Plan week 43 · North plant')
   })
 
-  test('without files, names the data by its date', () => {
-    expect(
-      proposeExecutionName({ fileNames: [], filterLabels: [], fromExecution: null, date, t }),
-    ).toBe('createExecution.name.fromDatabase{"date":"23/10/2026"}')
+  test('without files, names the data by its date, as the language writes it', () => {
+    const name = (locale: string) =>
+      proposeExecutionName({ fileNames: [], filterLabels: [], fromExecution: null, date, locale, t })
+    expect(name('es')).toBe('createExecution.name.fromDatabase{"date":"23/10/2026"}')
+    expect(name('en')).toBe('createExecution.name.fromDatabase{"date":"10/23/2026"}')
   })
 
   test('a relaunch keeps the name it comes from', () => {
     expect(
-      proposeExecutionName({ fileNames: [], filterLabels: [], fromExecution: 'Plan 42', date, t }),
+      proposeExecutionName({ fileNames: [], filterLabels: [], fromExecution: 'Plan 42', date, locale: 'en', t }),
     ).toBe('createExecution.name.relaunch{"name":"Plan 42"}')
   })
 })

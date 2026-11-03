@@ -25,6 +25,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { formatDay, formatTime } from '@cornflow-ui/core/utils/date'
 import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
 import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
 import type { ExecutionDraft } from '@cornflow-ui/core/composables/create-execution/executionDraftStore'
@@ -35,15 +36,15 @@ const props = defineProps<{ draft: ExecutionDraft }>()
 
 defineEmits<{ resume: []; discard: [] }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const meta = computed(() => {
   const saved = new Date(props.draft.savedAt)
-  const time = saved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const time = formatTime(saved, locale.value)
   const sameDay = saved.toDateString() === new Date().toDateString()
   const when = sameDay
     ? t('createExecution.draft.savedToday', { time })
-    : t('createExecution.draft.savedOn', { date: saved.toLocaleDateString(), time })
+    : t('createExecution.draft.savedOn', { date: formatDay(saved, locale.value), time })
   const parts = [props.draft.name || t('createExecution.draft.unnamed'), when]
   if (props.draft.pendingChangesCount > 0) parts.push(t('createExecution.draft.withChanges'))
   return parts.join(' · ')

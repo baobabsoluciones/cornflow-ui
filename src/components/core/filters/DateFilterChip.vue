@@ -44,9 +44,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import CoreTextField from '@cornflow-ui/core/components/core/CoreTextField.vue'
 import FilterChip from '@cornflow-ui/core/components/core/filters/FilterChip.vue'
-import { parseLocalDateKey } from '@cornflow-ui/core/utils/date'
+import { formatDay } from '@cornflow-ui/core/utils/date'
 
 defineOptions({ name: 'CoreDateFilterChip', inheritAttrs: false })
 
@@ -77,8 +78,7 @@ const emit = defineEmits<{
   'update:to': [value: string]
 }>()
 
-const formatDay = (day: string): string =>
-  parseLocalDateKey(day).toLocaleDateString()
+const { locale } = useI18n()
 
 /** The presets, with the custom one showing its range once both days are given. */
 const presetOptions = computed(() =>
@@ -86,7 +86,7 @@ const presetOptions = computed(() =>
     value: preset.value,
     title:
       preset.value === props.customValue && props.from && props.to
-        ? `${formatDay(props.from)} – ${formatDay(props.to)}`
+        ? `${formatDay(props.from, locale.value)} – ${formatDay(props.to, locale.value)}`
         : preset.label,
   })),
 )

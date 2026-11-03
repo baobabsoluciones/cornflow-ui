@@ -94,6 +94,7 @@ import {
   isEmptyConfigValue,
 } from '@cornflow-ui/core/composables/create-execution/configFieldValues'
 import { pickedSummary } from '@cornflow-ui/core/components/core/CoreMultiSelect.vue'
+import { formatNumber } from '@cornflow-ui/core/utils/dataTable'
 
 defineOptions({ name: 'ExecutionParametersForm' })
 
@@ -117,7 +118,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{ change: [key: string, value: unknown] }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const store = useGeneralStore()
 
 /** Options of the fields fed by a frontend-automation table (`joinFrom`), by key. */
@@ -216,7 +217,7 @@ function displayValue(field: ParameterFieldView, value: unknown): string {
     return labelOf(value) ?? '—'
   }
   if (value === null || value === undefined || value === '') return '—'
-  const text = typeof value === 'number' ? String(value).replace('.', ',') : String(value)
+  const text = typeof value === 'number' ? formatNumber(value, undefined, locale.value) : String(value)
   return field.suffix ? `${text} ${field.suffix}` : text
 }
 

@@ -40,6 +40,25 @@ export function parseLocalDateKey(value: string): Date {
   return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
 }
 
+const toDate = (value: string | Date): Date =>
+  value instanceof Date ? value : parseLocalDateKey(value)
+
+/**
+ * A day as the language writes it ("11/3/2026", "3/11/2026"…). A bare `YYYY-MM-DD` is read as a
+ * local day. Returns the value as given when it is not a date.
+ */
+export function formatDay(value: string | Date, locale: string): string {
+  const date = toDate(value)
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString(locale)
+}
+
+/** Hours and minutes as the language writes them ("09:30", "9:30 AM"…). */
+export function formatTime(value: string | Date, locale: string): string {
+  const date = toDate(value)
+  if (Number.isNaN(date.getTime())) return String(value)
+  return date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
+}
+
 /**
  * Local calendar day (`YYYY-MM-DD`) of a timestamp, in the user's timezone.
  * Returns an empty string for unparseable values.

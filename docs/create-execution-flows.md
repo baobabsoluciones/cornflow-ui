@@ -168,7 +168,7 @@ database, followed by the picked load filters ("· North plant"). A relaunch is 
 execution it comes from. A name the user typed is never replaced.
 
 An application changes the rule with `createExecution.proposeName`, a function that receives
-`{ fileNames, filterLabels, fromExecution, date, t }` and returns the name.
+`{ fileNames, filterLabels, fromExecution, date, locale, t }` and returns the name.
 
 ## Checklist for changing a flow (people and AI assistants)
 

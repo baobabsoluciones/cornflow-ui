@@ -4,6 +4,8 @@
  * `src/app/config.ts`.
  */
 
+import { formatDay } from '@cornflow-ui/core/utils/date'
+
 export interface ProposeNameContext {
   /** Names of the files the data was loaded from, in the order they were picked. */
   fileNames: string[]
@@ -13,6 +15,8 @@ export interface ProposeNameContext {
   fromExecution: string | null
   /** When the data was loaded. */
   date: Date
+  /** The app's language, for the date. */
+  locale: string
   t: (key: string, params?: Record<string, unknown>) => string
 }
 
@@ -24,11 +28,6 @@ export function humanizeFileName(fileName: string): string {
   return base ? base.charAt(0).toUpperCase() + base.slice(1) : ''
 }
 
-function formatDate(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`
-}
-
 /**
  * The first file's name, or "Data of <date>" when the data came from the database; followed by
  * the load filters. A relaunch keeps the original name and says it has changes.
@@ -38,6 +37,7 @@ export const proposeExecutionName: ProposeExecutionName = ({
   filterLabels,
   fromExecution,
   date,
+  locale,
   t,
 }) => {
   if (fromExecution) {
@@ -45,6 +45,6 @@ export const proposeExecutionName: ProposeExecutionName = ({
   }
   const base =
     (fileNames[0] && humanizeFileName(fileNames[0])) ||
-    t('createExecution.name.fromDatabase', { date: formatDate(date) })
+    t('createExecution.name.fromDatabase', { date: formatDay(date, locale) })
   return [base, ...filterLabels.filter(Boolean)].join(' · ')
 }

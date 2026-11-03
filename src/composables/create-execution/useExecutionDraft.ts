@@ -116,7 +116,7 @@ function checkTable(rows: unknown[], itemProperties: Record<string, any>) {
 
 export function useExecutionDraft() {
   const store = useGeneralStore()
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const instanceProcessing = useInstanceProcessing()
   const etlFlow = useEtlFlowController()
   const tableChanges = useTableChanges()
@@ -454,6 +454,7 @@ export function useExecutionDraft() {
       filterLabels: filterLabels(),
       fromExecution: fromExecution.value,
       date: new Date(),
+      locale: locale.value,
       t,
     })
     nameProposed.value = true

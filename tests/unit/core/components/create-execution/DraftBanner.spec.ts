@@ -40,7 +40,7 @@ describe('DraftBanner', () => {
 
   test('says a draft is waiting, with its name and the time it was saved today', () => {
     const wrapper = mountBanner()
-    const time = new Date(2026, 9, 30, 9, 15).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    const time = new Date(2026, 9, 30, 9, 15).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })
 
     expect(wrapper.text()).toContain('You have an unfinished execution')
     expect(meta(wrapper)).toBe(`Week 44 · saved today at ${time}`)
@@ -49,9 +49,8 @@ describe('DraftBanner', () => {
   test('gives the date of a draft saved another day', () => {
     const saved = new Date(2026, 9, 27, 18, 40)
     const wrapper = mountBanner({ savedAt: saved.toISOString() })
-    const time = saved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
-    expect(meta(wrapper)).toBe(`Week 44 · saved on ${saved.toLocaleDateString()} at ${time}`)
+    expect(meta(wrapper)).toBe('Week 44 · saved on 10/27/2026 at 06:40 PM')
   })
 
   test('names a draft without a name as unnamed, and says when it has edits not applied', () => {

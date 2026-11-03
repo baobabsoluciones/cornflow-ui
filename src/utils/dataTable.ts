@@ -41,7 +41,8 @@ function parseDate(value: unknown): Date | null {
   return Number.isNaN(date.getTime()) ? null : date
 }
 
-function formatNumber(value: unknown, decimals: number | undefined, locale: string): string {
+/** A number as the language writes it, with thousands separators and `decimals` when given. */
+export function formatNumber(value: unknown, decimals: number | undefined, locale: string): string {
   const number = typeof value === 'number' ? value : Number(value)
   if (Number.isNaN(number)) return cellText(value)
   return new Intl.NumberFormat(locale, {

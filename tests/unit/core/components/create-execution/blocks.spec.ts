@@ -266,10 +266,20 @@ describe('ExecutionParametersForm', () => {
     })
     const labels = () => wrapper.findAll('.parameters-form__label').map((l) => l.text())
     expect(labels()).toEqual(['Objective', 'Start'])
-    expect(wrapper.find('.parameters-form__advanced-summary').text()).toBe('— · 0,01 · Overtime: createexecution.parameters.no')
+    expect(wrapper.find('.parameters-form__advanced-summary').text()).toBe('— · 0.01 · Overtime: createexecution.parameters.no')
 
     await wrapper.find('[data-testid="parameters-advanced"]').trigger('click')
     expect(labels()).toEqual(['Objective', 'Start', 'createExecution.parameters.solver', 'Gap', 'Overtime'])
+  })
+
+  test('the summary writes numbers as the language does', () => {
+    const wrapper = mount(ExecutionParametersForm, {
+      props: { fields, values: { gap: 1234.5, overtime: false } },
+      global: {
+        plugins: [createI18n({ legacy: false, locale: 'es', messages: { es: {} }, missingWarn: false, fallbackWarn: false })],
+      },
+    })
+    expect(wrapper.find('.parameters-form__advanced-summary').text()).toContain('1.234,5')
   })
 
   test('picks an option and says a value came from the data', async () => {
