@@ -557,6 +557,17 @@ describe('useTableData — search, filters and sort', () => {
     expect(api.items.value[199].rank).toBe(100)
   })
 
+  test('the sort goes by the values on screen, edits not saved yet included', async () => {
+    const { api } = await mountLoaded(bigConfig, bigRows)
+
+    api.handleCellChange('table_a', 0, 'rank', 0, 1000)
+    api.sort.value = { key: 'rank', direction: 'desc' }
+    await nextTick()
+
+    expect(api.items.value[0].id).toBe(0)
+    expect(api.items.value[1].rank).toBe(299)
+  })
+
   test('totalCount counts every row and filteredCount the ones that pass the filters', async () => {
     const { api } = await mountLoaded(bigConfig, bigRows)
     expect(api.totalCount.value).toBe(300)
