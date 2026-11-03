@@ -87,7 +87,7 @@
     <CatalogBlock
       name="LaunchPanel"
       api="draft · v-model:collapsed → go, view, history"
-      note="Cannot launch and why; ready with unapplied changes and developer mode; launched; folded."
+      note="Cannot launch and why; ready with unapplied changes and developer mode; with an uploaded solution; launched; folded."
     >
       <div class="panel-row">
         <div v-for="sample in panelSamples" :key="sample.label" class="sample">
@@ -334,6 +334,18 @@ const panelSamples = [
       pendingChangesCount: 2,
       checks: { status: 'warnings', results: [warning], checkedAt },
       execution: { instance: {}, config: { ...parameterValues.value, objective: 'cost' }, name: 'Plan week 43', description: '' },
+    }),
+  },
+  {
+    label: 'developer mode · with an uploaded solution',
+    collapsed: false,
+    draft: sampleDraft({
+      isLoaded: true,
+      developerMode: true,
+      canLaunch: true,
+      solution: { enabled: true, file: new File(['{}'], 'solution_week_43.json'), data: { plan: [] }, errors: null },
+      checks: { status: 'ok', results: [], checkedAt },
+      execution: { instance: {}, config: {}, name: 'Plan week 43', description: '' },
     }),
   },
   {

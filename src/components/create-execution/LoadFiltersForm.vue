@@ -37,6 +37,7 @@
         :type="field.type === 'date' ? 'date' : field.type === 'number' || field.type === 'float' ? 'number' : 'text'"
         :integer="field.type === 'number'"
         :model-value="values[field.key]"
+        :placeholder="configFieldPlaceholder(field, t)"
         :invalid="isInvalid(field)"
         lazy
         @update:model-value="$emit('change', field.key, $event === '' ? null : $event)"
@@ -50,7 +51,10 @@ import { useI18n } from 'vue-i18n'
 import CoreMultiSelect from '@cornflow-ui/core/components/core/CoreMultiSelect.vue'
 import CoreSelect from '@cornflow-ui/core/components/core/CoreSelect.vue'
 import CoreTextField from '@cornflow-ui/core/components/core/CoreTextField.vue'
-import { isEmptyConfigValue } from '@cornflow-ui/core/composables/create-execution/configFieldValues'
+import {
+  configFieldPlaceholder,
+  isEmptyConfigValue,
+} from '@cornflow-ui/core/composables/create-execution/configFieldValues'
 
 defineOptions({ name: 'LoadFiltersForm' })
 

@@ -1,6 +1,7 @@
 import { describe, test, expect, vi } from 'vitest'
 import {
   applySourceConfigFieldValues,
+  configFieldPlaceholder,
   convertValueByType,
   getValueFromSource,
   hasValidDataSource,
@@ -105,6 +106,13 @@ describe('configFieldValues', () => {
     expect(isEmptyConfigValue({ type: 'boolean' } as any, false)).toBe(false)
     expect(isEmptyConfigValue({ type: 'text' } as any, '')).toBe(true)
     expect(isEmptyConfigValue({ type: 'number' } as any, 0)).toBe(false)
+  })
+
+  test('the placeholder is the text of its key, and none when the key has no text', () => {
+    const t = (key: string) => ({ 'f.horizonPlaceholder': 'Days to plan (1 to 28)' })[key] ?? key
+    expect(configFieldPlaceholder({ placeholder: 'f.horizonPlaceholder' } as any, t)).toBe('Days to plan (1 to 28)')
+    expect(configFieldPlaceholder({ placeholder: 'f.missingPlaceholder' } as any, t)).toBe('')
+    expect(configFieldPlaceholder({} as any, t)).toBe('')
   })
 
   test('a parameter of several values is empty while nothing is picked', () => {
