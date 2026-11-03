@@ -931,10 +931,6 @@ export default {
       fileProcessingError: 'Error al procesar archivo',
       bulkUploadReferenceNotFound:
         'Fila {row}: no existe ningún registro para {fieldKey}="{fieldValue}" en la tabla de referencia "{tableName}". La carga se ha cancelado.',
-      asyncUploadQueued: 'Esperando para empezar…',
-      asyncUploadProcessing:
-        'Cargando datos — {count} filas importadas hasta ahora',
-      asyncUploadCompleted: 'Listo — {count} filas importadas',
       asyncUploadFailed: 'No se pudo procesar la carga',
       asyncUploadNotFound: 'Carga no encontrada',
     },

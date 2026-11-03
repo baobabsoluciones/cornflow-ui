@@ -35,8 +35,9 @@ const makeTableData = (overrides: Record<string, any> = {}) => ({
   activeFilters: ref<any[]>([]),
   selectedItems: ref<any[]>([]),
   showBulkUploadModal: ref(false),
-  uploading: ref(false),
-  uploadProgressMessage: ref(''),
+  uploadPhase: ref('form'),
+  uploadedRows: ref<number | undefined>(undefined),
+  uploadError: ref(''),
   downloading: ref(false),
   bulkDeleting: ref(false),
   loadTableData: vi.fn(async () => [{ name: 'North' }, { name: 'South' }, { name: 'North' }]),
@@ -71,7 +72,7 @@ const CoreDataTableStub = {
   props: [
     'title', 'columns', 'rows', 'cellValue', 'status', 'filterable', 'editable', 'selectable',
     'canAdd', 'canDelete', 'selected', 'search', 'filters', 'optionsFor', 'dateRanges',
-    'dateRangeValues', 'pendingCount', 'totalCount', 'filteredCount', 'uploadPhase', 'rowPinned',
+    'dateRangeValues', 'pendingCount', 'totalCount', 'filteredCount', 'uploadPhase', 'uploadErrorText', 'uploadProgressRows', 'rowPinned',
   ],
   emits: [
     'update:search', 'update:filters', 'update:selected', 'cell-change', 'add-row', 'delete-rows',
@@ -272,8 +273,12 @@ describe('SectionDataTable', () => {
     expect(table(wrapper).props('totalCount')).toBe(500)
     expect(table(wrapper).props('filteredCount')).toBe(42)
     expect(table(wrapper).props('uploadPhase')).toBe('form')
-    data.uploading.value = true
+    data.uploadPhase.value = 'error'
+    data.uploadError.value = 'Row 3: no such plant'
+    data.uploadedRows.value = 12
     await flushPromises()
-    expect(table(wrapper).props('uploadPhase')).toBe('loading')
+    expect(table(wrapper).props('uploadPhase')).toBe('error')
+    expect(table(wrapper).props('uploadErrorText')).toBe('Row 3: no such plant')
+    expect(table(wrapper).props('uploadProgressRows')).toBe(12)
   })
 })

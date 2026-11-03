@@ -220,8 +220,6 @@ const props = withDefaults(
     /** Rows the table has now, for the warning of "Replace all data". */
     rowCount?: number
     phase?: BulkUploadPhase
-    /** Replaces the progress title (e.g. the status the server reports). */
-    progressText?: string
     progressRows?: number
     totalRows?: number
     errorText?: string
@@ -233,7 +231,6 @@ const props = withDefaults(
     maxSize: 0,
     rowCount: undefined,
     phase: 'form',
-    progressText: '',
     progressRows: undefined,
     totalRows: undefined,
     errorText: '',
@@ -417,7 +414,6 @@ const fileSummary = computed(() => {
 const rowsText = (rows: number | undefined) => formatNumber(rows ?? 0)
 
 const progressTitle = computed(() => {
-  if (props.progressText && busy.value) return props.progressText
   switch (props.phase) {
     case 'waiting':
       return t('dataTable.bulkUpload.progress.waiting')

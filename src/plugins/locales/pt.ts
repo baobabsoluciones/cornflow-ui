@@ -909,10 +909,6 @@ export default {
       fileProcessingError: 'Erro ao processar o ficheiro',
       bulkUploadReferenceNotFound:
         'Linha {row}: não existe nenhum registo correspondente para {fieldKey}="{fieldValue}" na tabela de referência "{tableName}". O carregamento foi cancelado.',
-      asyncUploadQueued: 'A aguardar início…',
-      asyncUploadProcessing:
-        'A carregar dados — {count} linhas importadas até ao momento',
-      asyncUploadCompleted: 'Concluído — {count} linhas importadas',
       asyncUploadFailed: 'Não foi possível processar o carregamento',
       asyncUploadNotFound: 'Carregamento não encontrado',
     },
