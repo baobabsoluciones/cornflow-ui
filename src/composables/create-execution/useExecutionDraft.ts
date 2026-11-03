@@ -668,16 +668,19 @@ export function useExecutionDraft() {
     solution.data = null
     solution.errors = null
     if (!file) return
+    // Another file picked (or none) while this one is read: its result no longer counts
+    const isCurrent = () => solution.file === file
     try {
       const parsed = await parseSolutionFile(file, t)
       const errors = await parsed.checkSchema()
+      if (!isCurrent()) return
       if (errors?.length) {
         solution.errors = formatValidationErrors(errors)
         return
       }
       solution.data = parsed.data
     } catch (error) {
-      solution.errors = error instanceof Error ? error.message : String(error)
+      if (isCurrent()) solution.errors = error instanceof Error ? error.message : String(error)
     }
   }
 

@@ -700,6 +700,36 @@ describe('useExecutionDraft', () => {
       expect(draft.canLaunch).toBe(false)
     })
 
+    test('a file picked while the last one is read is the one that counts', async () => {
+      let finishFirst: (parsed: any) => void = () => {}
+      vi.mocked(parseSolutionFile)
+        .mockReturnValueOnce(new Promise((resolve) => (finishFirst = resolve)))
+        .mockResolvedValueOnce({ data: { plan: ['second'] }, checkSchema: async () => [] } as any)
+      const draft = await loadedForSolution()
+
+      const first = draft.setSolutionFile(file('first.json'))
+      await draft.setSolutionFile(file('second.json'))
+      finishFirst({ data: { plan: ['first'] }, checkSchema: async () => [] })
+      await first
+
+      expect(draft.solution.file?.name).toBe('second.json')
+      expect(draft.solution.data).toEqual({ plan: ['second'] })
+    })
+
+    test('dropping the file while it is read leaves no solution', async () => {
+      let finish: (parsed: any) => void = () => {}
+      vi.mocked(parseSolutionFile).mockReturnValueOnce(new Promise((resolve) => (finish = resolve)))
+      const draft = await loadedForSolution()
+
+      const reading = draft.setSolutionFile(file('solution.json'))
+      draft.setSolutionMode(false)
+      finish({ data: { plan: [] }, checkSchema: async () => [{ message: 'late' }] })
+      await reading
+
+      expect(draft.solution.data).toBeNull()
+      expect(draft.solution.errors).toBeNull()
+    })
+
     test('turning the mode off drops the file', async () => {
       const draft = await loadedForSolution()
       await draft.setSolutionFile(file('solution.json'))
