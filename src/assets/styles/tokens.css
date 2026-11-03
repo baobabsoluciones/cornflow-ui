@@ -115,7 +115,7 @@ body {
   Dark mode (`data-theme="dark"` on `body`, see `plugins/theme.ts`): dark surfaces and light text.
   The primary and the tones keep the app's palette, lightened so they read on the dark surfaces;
   their soft backgrounds and borders mix with the surface instead of white. The app variables that
-  older screens read directly (`--title`, `--background`…) are dark too.
+  screens read directly (`--title`, `--background`…) are dark too.
 */
 body[data-theme='dark'] {
   color-scheme: dark;

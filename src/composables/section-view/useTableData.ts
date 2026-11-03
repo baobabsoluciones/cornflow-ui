@@ -1627,8 +1627,8 @@ export function useTableData(
     // No `deep: true`: this flow replaces `executionTableData.items.value`
     // wholesale when the execution changes (see `useExecutionTableData`),
     // and row-level edits go through `useTableChanges` (a separate reactive
-    // map). Deep-tracking 500k rows here used to freeze the UI on every
-    // section change.
+    // map). Deep-tracking 500k rows here would freeze the UI on every section
+    // change.
   )
 
   // Full filtered set for execution data (search + filters applied, no windowing).

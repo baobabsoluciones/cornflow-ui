@@ -269,9 +269,8 @@ watch(
 // Reactivity contract: this flow never mutates `instance.data` rows in place
 // — every edit goes through `useTableChanges` (a separate reactive map) and
 // only materialises as a new `Instance` on save via `handleSaveChanges`. So
-// watching the `instance?.data` *reference* (no `deep`) is enough; a deep
-// watcher used to traverse every nested cell of 500k-row tables on each
-// keystroke, which froze the UI.
+// watching the `instance?.data` *reference* (no `deep`) is enough, and a deep
+// watcher would traverse every nested cell of 500k-row tables on each keystroke.
 const runMasterTableMatchDetection = async () => {
   if (!isMasterTableMatchingEnabled.value) {
     masterTableMatch.reset()

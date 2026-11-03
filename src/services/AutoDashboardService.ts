@@ -784,7 +784,7 @@ function pickBestNumericColumns(
 /**
  * Shared time-series precondition for the line and area charts. Returns the
  * primary date column when the analysis supports a time-series chart, or null
- * when it does not (same guard both charts previously inlined).
+ * when it does not.
  */
 function resolveTimeSeriesDateColumn(analysis: TableAnalysis): string | null {
   if (

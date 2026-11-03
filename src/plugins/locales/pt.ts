@@ -237,7 +237,6 @@ export default {
         'Ocorreu um erro inesperado ao obter as informações da execução',
     },
     steps: {
-      // Legacy step keys for backward compatibility
       step3: {
         loadInstance: {
           instanceSchemaError: 'A instância não cumpre o esquema ',

@@ -249,7 +249,6 @@ export default {
         'An unexpected error occurred while retrieving the execution information',
     },
     steps: {
-      // Legacy step keys for backward compatibility
       step3: {
         loadInstance: {
           instanceSchemaError: 'Instance does not comply with schema ',

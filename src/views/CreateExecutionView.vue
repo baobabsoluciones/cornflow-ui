@@ -1,5 +1,5 @@
 <!--
-  CreateExecutionView: core's "create execution" flow on one page (`createExecution.flow: 'page'`).
+  CreateExecutionView: core's "create execution" flow on one page.
   The data card on the left (where the data comes from, then its tables) and the launch panel on
   the right (name, checks, parameters, what is missing, Resolve). Everything it does goes through
   `useExecutionDraft`; an app that wants a flow of its own builds it the same way

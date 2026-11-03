@@ -47,8 +47,8 @@ export interface ProcessingState {
 export function useInstanceProcessing() {
   const { t, locale: i18nLocale } = useI18n()
   const store = useGeneralStore()
-  // ETL backend injected by the premium `etl` module (§3.7); null if ETL is not enabled.
-  // The core no longer imports `useEtlStore` — it consumes the backend through the interface.
+  // ETL backend injected by the premium `etl` module (§3.7), used through its interface; null
+  // if ETL is not enabled.
   const etlBackend = getPremiumEtlBackend()
   const { processFileByPrefix, needsSpecialProcessing } = useFileProcessors()
   // Shared with the master-data uploads: a processed file has to look the same whichever

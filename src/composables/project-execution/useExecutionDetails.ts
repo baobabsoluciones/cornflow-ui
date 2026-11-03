@@ -2,9 +2,8 @@
  * What the history shows about one execution: its data (user, dates, duration, solver, time
  * limit), the parameters it was launched with (`configFields`), and the steps of its progress.
  *
- * The data rows follow `showExtraProjectExecutionColumns` of the app config, as the history list
- * did with its columns: user name or full name, finish time, solver and time limit appear only
- * where the app shows them.
+ * The data rows follow `showExtraProjectExecutionColumns` of the app config: user name or full
+ * name, finish time, solver and time limit appear only where the app shows them.
  */
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
