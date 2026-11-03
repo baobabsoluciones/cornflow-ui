@@ -145,7 +145,49 @@ describe('ConditionFilterChip', () => {
     await open(wrapper)
     buttonByText('Remove').click()
     await flushPromises()
-    expect(wrapper.emitted('remove')?.[0]).toEqual(['f1'])
+    expect(wrapper.emitted('remove')).toEqual([['f1']])
+  })
+
+  test('"Remove" on a new filter removes it once', async () => {
+    const wrapper = await mountChip({
+      filter: filterOf('name', { operator: 'contains' }),
+      column: { key: 'name', title: 'Name', type: 'text' },
+      isNew: true,
+    })
+    buttonByText('Remove').click()
+    await flushPromises()
+    expect(wrapper.emitted('remove')).toEqual([['f1']])
+  })
+
+  test('Enter in a field applies the filter', async () => {
+    const wrapper = await mountChip({
+      filter: filterOf('name', { operator: 'contains', value: 'nor' }),
+      column: { key: 'name', title: 'Name', type: 'text' },
+    })
+    await open(wrapper)
+    const value = inPanel<HTMLInputElement>('[data-testid="condition-filter-value"]')
+    await type(value, 'north')
+    value.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    await flushPromises()
+    expect(wrapper.emitted('apply')?.[0]?.[0]).toMatchObject({ value: 'north' })
+  })
+
+  test('Enter on a button is that button: it does not apply the filter first', async () => {
+    const wrapper = await mountChip({
+      filter: filterOf('kind', { operator: 'is_any_of', values: ['packing'] }),
+      column: { key: 'kind', title: 'Type', type: 'list' },
+      choices: [
+        { value: 'packing', label: 'Packing' },
+        { value: 'mixing', label: 'Mixing' },
+      ],
+    })
+    await open(wrapper)
+    const mixing = panel().querySelectorAll<HTMLButtonElement>('[role="checkbox"]')[1]
+    mixing.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    buttonByText('Remove').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    await flushPromises()
+    expect(wrapper.emitted('apply')).toBeUndefined()
+    expect(panel()).not.toBeNull()
   })
 
   test('a new filter opens by itself, and closing it without applying removes it', async () => {
