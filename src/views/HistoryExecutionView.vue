@@ -125,14 +125,14 @@
             class="history-empty"
             icon="mdi-history"
             :title="$t('versionHistory.list.emptyTitle')"
-            :text="$t('versionHistory.list.emptyText')"
+            :message="$t('versionHistory.list.emptyText')"
           />
           <CoreEmptyState
             v-else-if="filteredData.length === 0"
             class="history-empty"
             icon="mdi-filter-remove-outline"
             :title="$t('versionHistory.list.noResultsTitle')"
-            :text="$t('versionHistory.list.noResultsText')"
+            :message="$t('versionHistory.list.noResultsText')"
             :action-label="$t('versionHistory.filterBar.clear')"
             @action="clearFilters"
           />
@@ -188,7 +188,7 @@
           class="history-detail__empty"
           icon="mdi-cursor-default-click-outline"
           :title="$t('versionHistory.detail.noSelectionTitle')"
-          :text="$t('versionHistory.detail.noSelectionText')"
+          :message="$t('versionHistory.detail.noSelectionText')"
         />
         <template v-else>
           <div class="history-detail__section history-detail__section--head">
@@ -244,7 +244,7 @@
       "
       :confirm-text="$t('executionTable.deleteButton')"
       :cancel-text="$t('executionTable.cancelButton')"
-      confirm-color="var(--danger)"
+      tone="danger"
       icon="mdi-delete-outline"
       :loading="
         executionToDelete !== null &&

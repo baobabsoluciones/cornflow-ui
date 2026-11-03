@@ -10,7 +10,7 @@
       class="dashboard-view__empty"
       icon="mdi-alert-circle-outline"
       :title="$t('projectExecution.infoCard.noExecutionSelected')"
-      :text="$t('projectExecution.infoCard.loadExecutionMessage')"
+      :message="$t('projectExecution.infoCard.loadExecutionMessage')"
       :action-label="$t('projectExecution.infoCard.loadFromHistory')"
       data-testid="dashboard-no-execution"
       @action="router.push('/history-execution')"
@@ -20,7 +20,7 @@
       class="dashboard-view__empty"
       icon="mdi-progress-clock"
       :title="$t('projectExecution.infoCard.executionCreated')"
-      :text="$t('projectExecution.infoCard.solutionWillLoadMessage')"
+      :message="$t('projectExecution.infoCard.solutionWillLoadMessage')"
       data-testid="dashboard-running"
     />
     <DashboardMain

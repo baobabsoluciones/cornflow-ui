@@ -10,7 +10,7 @@
     :message="$t('rolesManagement.deleteRoleMessage', { name: role?.name })"
     :confirm-text="$t('rolesManagement.delete')"
     :cancel-text="$t('rolesManagement.cancel')"
-    confirm-color="var(--danger)"
+    tone="danger"
     icon="mdi-delete-outline"
     :loading="deleting"
     @update:model-value="$emit('update:modelValue', $event)"

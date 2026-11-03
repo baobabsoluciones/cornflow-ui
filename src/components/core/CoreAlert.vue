@@ -4,13 +4,13 @@
 
   Errors are announced at once (role "alert"); the other tones politely (role "status").
 
-  <CoreAlert tone="error" title="Server message" message="Column 'capacity' not found." />
+  <CoreAlert tone="danger" title="Server message" message="Column 'capacity' not found." />
   <CoreAlert tone="info" message="Only the 100 latest executions are listed." action-label="Last 7 days" @action="narrow" />
 -->
 <template>
   <div
     :class="['core-alert', `core-alert--${tone}`]"
-    :role="tone === 'error' ? 'alert' : 'status'"
+    :role="tone === 'danger' ? 'alert' : 'status'"
   >
     <CoreIcon
       :name="icon || DEFAULT_ICONS[tone]"
@@ -39,7 +39,7 @@ import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
 
 defineOptions({ name: 'CoreAlert' })
 
-type AlertTone = 'error' | 'warning' | 'info' | 'success'
+type AlertTone = 'danger' | 'warning' | 'info' | 'success'
 
 withDefaults(
   defineProps<{
@@ -56,7 +56,7 @@ withDefaults(
 const emit = defineEmits<{ action: [] }>()
 
 const DEFAULT_ICONS: Record<AlertTone, string> = {
-  error: 'mdi-alert-circle',
+  danger: 'mdi-alert-circle',
   warning: 'mdi-alert',
   info: 'mdi-information',
   success: 'mdi-check-circle',
@@ -83,7 +83,7 @@ const DEFAULT_ICONS: Record<AlertTone, string> = {
   line-height: 18px;
 }
 
-.core-alert--error {
+.core-alert--danger {
   --alert-base: var(--color-danger);
   --alert-soft: var(--color-danger-soft);
   --alert-border: var(--color-danger-border);

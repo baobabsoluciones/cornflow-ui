@@ -57,7 +57,7 @@
 
     <div v-if="validationError" class="pending-panel__banner">
       <CoreAlert
-        tone="error"
+        tone="danger"
         :title="$t('dataTable.pending.validationTitle')"
         :message="validationError"
       />
@@ -77,7 +77,7 @@
         v-if="!hasChanges"
         icon="mdi-check-circle-outline"
         :title="$t('dataTable.pending.empty')"
-        :text="$t('dataTable.pending.emptyText')"
+        :message="$t('dataTable.pending.emptyText')"
       />
       <section
         v-for="group in groups"
@@ -131,7 +131,7 @@
                   :label="$t(KINDS[item.kind].label)"
                   :tone="KINDS[item.kind].tone"
                   :icon="KINDS[item.kind].icon"
-                  size="sm"
+                  size="small"
                 />
                 <span
                   class="pending-panel__item-label"
@@ -216,7 +216,7 @@
           />
           <CoreButton
             size="small"
-            color="danger"
+            tone="danger"
             :text="$t('dataTable.pending.revertAllConfirm')"
             data-testid="pending-revert-all-confirm"
             @click="revertAll"
@@ -226,7 +226,7 @@
       <div v-else class="pending-panel__actions">
         <CoreButton
           variant="text"
-          color="danger"
+          tone="danger"
           icon="mdi-undo"
           :text="$t('dataTable.pending.revertAll')"
           :disabled="saving"
@@ -263,7 +263,7 @@
 
       <div v-if="validationError" class="pending-dialog__banner">
         <CoreAlert
-          tone="error"
+          tone="danger"
           :title="$t('dataTable.pending.validationTitle')"
           :message="validationError"
         />
@@ -282,7 +282,7 @@
         v-if="!hasChanges"
         icon="mdi-check-circle-outline"
         :title="$t('dataTable.pending.empty')"
-        :text="$t('dataTable.pending.emptyTextDialog')"
+        :message="$t('dataTable.pending.emptyTextDialog')"
       />
 
       <section
@@ -314,7 +314,7 @@
               :label="pill.label"
               :tone="KINDS[pill.kind].tone"
               :icon="KINDS[pill.kind].icon"
-              size="sm"
+              size="small"
             />
           </span>
           <span class="pending-panel__spacer" />
@@ -340,7 +340,7 @@
                 :label="$t(KINDS[item.kind].rowLabel)"
                 :tone="KINDS[item.kind].tone"
                 :icon="KINDS[item.kind].icon"
-                size="sm"
+                size="small"
               />
               <span class="pending-dialog__row-label">{{ item.label }}</span>
               <span class="pending-panel__spacer" />
@@ -448,13 +448,13 @@
           {{ $t('dataTable.pending.confirmRevertAll', totalChanges) }}
         </span>
         <CoreButton variant="text" :text="$t('dataTable.pending.no')" @click="confirming = false" />
-        <CoreButton color="danger" :text="$t('dataTable.pending.revertAllConfirm')" @click="revertAll" />
+        <CoreButton tone="danger" :text="$t('dataTable.pending.revertAllConfirm')" @click="revertAll" />
       </template>
       <template v-else>
         <CoreButton
           v-if="hasChanges"
           variant="text"
-          color="danger"
+          tone="danger"
           icon="mdi-undo"
           :text="$t('dataTable.pending.revertAllChanges')"
           :disabled="saving"
@@ -502,7 +502,7 @@
         @click="emit('cancel-overwrite')"
       />
       <CoreButton
-        color="danger"
+        tone="danger"
         :text="$t('dataTable.pending.overwriteConfirm')"
         data-testid="pending-overwrite-confirm"
         @click="emit('confirm-overwrite')"

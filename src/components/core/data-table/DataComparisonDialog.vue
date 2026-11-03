@@ -144,7 +144,7 @@
               {{ line.loaded ? show(valueIn(line.loaded, column.key), column) : '' }}
             </span>
             <span class="data-comparison__status">
-              <CoreBadge v-bind="statusBadge(line.status)" size="sm" />
+              <CoreBadge v-bind="statusBadge(line.status)" size="small" />
             </span>
             <span
               v-for="column in sideColumns"
@@ -186,14 +186,14 @@
           :data-testid="`comparison-change-${line.key}`"
         >
           <header class="data-comparison__change-head">
-            <CoreBadge v-bind="statusBadge(line.status)" size="sm" />
+            <CoreBadge v-bind="statusBadge(line.status)" size="small" />
             <span class="data-comparison__change-label">{{ rowLabel(line) }}</span>
             <span class="data-comparison__change-actions">
               <CoreButton
                 v-if="canDelete(line)"
                 variant="text"
                 size="small"
-                color="danger"
+                tone="danger"
                 icon="mdi-delete-outline"
                 :text="$t('dataTable.comparison.actions.removeShort')"
                 @click="emit('delete', line)"

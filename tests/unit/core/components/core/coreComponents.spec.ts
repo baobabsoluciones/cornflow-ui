@@ -60,7 +60,7 @@ describe('CoreButton', () => {
 
   test('takes the variant, size and tone', () => {
     const wrapper = mount(CoreButton, {
-      props: { text: 'Delete', variant: 'text', color: 'error', size: 'small' },
+      props: { text: 'Delete', variant: 'text', tone: 'danger', size: 'small' },
     })
     expect(wrapper.classes()).toEqual(
       expect.arrayContaining([
@@ -135,7 +135,7 @@ describe('CoreAlert', () => {
   test('an error is announced at once, with its title and message', () => {
     const wrapper = mount(CoreAlert, {
       props: {
-        tone: 'error',
+        tone: 'danger',
         title: 'Server message',
         message: 'Column not found',
       },
@@ -164,7 +164,7 @@ describe('CoreAlert', () => {
 describe('CoreEmptyState', () => {
   test('shows its title and text, and the action only when given', async () => {
     const plain = mount(CoreEmptyState, {
-      props: { title: 'Nothing yet', text: 'Create one' },
+      props: { title: 'Nothing yet', message: 'Create one' },
     })
     expect(plain.text()).toContain('Nothing yet')
     expect(plain.text()).toContain('Create one')
@@ -445,8 +445,8 @@ describe('CoreConfirmDialog', () => {
     expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
   })
 
-  test('a danger colour makes the confirm button destructive', async () => {
-    const { confirm } = await mountConfirm({ confirmColor: 'var(--danger)' })
+  test('the danger tone makes the confirm button destructive', async () => {
+    const { confirm } = await mountConfirm({ tone: 'danger' })
     expect(confirm.classList).toContain('core-button--tone-danger')
   })
 

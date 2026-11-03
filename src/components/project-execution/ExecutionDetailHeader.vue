@@ -21,7 +21,7 @@
         v-if="canSetCurrentPlan"
         variant="icon"
         size="small"
-        color="grey"
+        tone="neutral"
         icon="mdi-star-outline"
         :aria-label="$t('latestPlan.actions.setAsCurrent')"
         :title="$t('latestPlan.actions.setAsCurrent')"
@@ -31,7 +31,7 @@
       <CoreButton
         variant="icon"
         size="small"
-        color="danger"
+        tone="danger"
         icon="mdi-delete-outline"
         :loading="deleting"
         :aria-label="$t('executionTable.deleteExecution')"
@@ -89,7 +89,7 @@
 
     <CoreAlert
       v-if="errorMessage"
-      tone="error"
+      tone="danger"
       :title="$t('versionHistory.detail.serverMessage')"
       :message="errorMessage"
     />

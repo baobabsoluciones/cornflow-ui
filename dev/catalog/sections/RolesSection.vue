@@ -71,7 +71,7 @@
       <CoreButton variant="outlined" text="Rename role" icon="mdi-pencil-outline" @click="openRoleForm(roles[1])" />
       <CoreButton
         variant="outlined"
-        color="danger"
+        tone="danger"
         text="Delete role"
         icon="mdi-delete-outline"
         @click="openRoleDelete(roles[1])"

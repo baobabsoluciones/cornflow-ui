@@ -29,7 +29,7 @@
         :tone="badge.tone"
         :spin="badge.spin"
         :title="badge.title"
-        size="sm"
+        size="small"
       />
     </span>
   </div>

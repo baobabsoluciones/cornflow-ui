@@ -14,7 +14,7 @@
     :message="message"
     :confirm-text="$t('table.forceRetry.accept')"
     :cancel-text="$t('table.forceRetry.reject')"
-    confirm-color="var(--color-danger)"
+    tone="danger"
     icon="mdi-alert-outline"
     :loading="loading"
     @confirm="emit('confirm')"

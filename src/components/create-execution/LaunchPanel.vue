@@ -178,7 +178,7 @@
 
           <CoreAlert
             v-if="draft.launch.error"
-            tone="error"
+            tone="danger"
             :title="$t('createExecution.launch.failed')"
             :message="draft.launch.error"
             data-testid="launch-panel-error"

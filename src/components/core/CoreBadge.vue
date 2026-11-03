@@ -6,7 +6,7 @@
   - dot: a coloured dot and the text, for dense rows.
 
   <CoreBadge tone="success" icon="mdi-check-circle" label="Success" />
-  <CoreBadge tone="warning" icon="mdi-star" label="Current plan" size="sm" />
+  <CoreBadge tone="warning" icon="mdi-star" label="Current plan" size="small" />
   <CoreBadge tone="danger" variant="dot" label="Infeasible" />
   <CoreBadge tone="primary" spin label="Running" />
 -->
@@ -22,7 +22,7 @@
     <span v-if="variant === 'dot'" class="core-badge__dot" />
     <CoreSpinner
       v-else-if="spin"
-      :size="size === 'sm' ? 10 : 12"
+      :size="size === 'small' ? 10 : 12"
       class="core-badge__icon"
     />
     <CoreIcon v-else-if="icon" :name="icon" class="core-badge__icon" />
@@ -47,7 +47,7 @@ withDefaults(
     /** Something in progress: a spinner instead of the icon. */
     spin?: boolean
     variant?: 'soft' | 'dot'
-    size?: 'sm' | 'md'
+    size?: 'small' | 'default'
   }>(),
   {
     label: '',
@@ -55,7 +55,7 @@ withDefaults(
     icon: undefined,
     spin: false,
     variant: 'soft',
-    size: 'md',
+    size: 'default',
   },
 )
 </script>
@@ -112,13 +112,13 @@ withDefaults(
   background: var(--badge-soft);
 }
 
-.core-badge--soft.core-badge--md {
+.core-badge--soft.core-badge--default {
   padding: 3px 10px 3px 7px;
   font-size: var(--text-sm);
   line-height: 16px;
 }
 
-.core-badge--soft.core-badge--sm {
+.core-badge--soft.core-badge--small {
   gap: calc(var(--spacing) * 0.75);
   padding: 1px 6px 1px 4px;
   font-size: var(--text-xs);
@@ -129,11 +129,11 @@ withDefaults(
   padding-inline: 8px;
 }
 
-.core-badge--md .core-badge__icon {
+.core-badge--default .core-badge__icon {
   font-size: 15px;
 }
 
-.core-badge--sm .core-badge__icon {
+.core-badge--small .core-badge__icon {
   font-size: 12px;
 }
 

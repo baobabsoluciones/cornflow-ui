@@ -16,19 +16,19 @@
         />
         <CoreButton
           variant="outlined"
-          color="danger"
+          tone="danger"
           icon="mdi-delete-outline"
           text="Delete"
         />
         <CoreButton
           variant="text"
-          color="danger"
+          tone="danger"
           icon="mdi-delete-outline"
           text="Delete"
         />
-        <CoreButton color="danger" icon="mdi-delete-outline" text="Delete" />
+        <CoreButton tone="danger" icon="mdi-delete-outline" text="Delete" />
         <CoreButton variant="text" text="Clear filters" />
-        <CoreButton variant="text" color="grey" text="Cancel" />
+        <CoreButton variant="text" tone="neutral" text="Cancel" />
       </div>
       <div class="row">
         <CoreButton
@@ -39,13 +39,13 @@
         <CoreButton icon="mdi-open-in-app" text="Load execution" disabled />
         <CoreButton
           variant="outlined"
-          color="warning"
+          tone="warning"
           icon="mdi-alert"
           text="Review"
         />
         <CoreButton
           variant="outlined"
-          color="success"
+          tone="success"
           icon="mdi-check"
           text="Approve"
         />

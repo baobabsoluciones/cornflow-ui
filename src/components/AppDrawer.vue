@@ -91,7 +91,7 @@
                     <span class="app-drawer__selector-meta">
                       <span>{{ executions.loaded.date }}</span>
                       <CoreBadge
-                        size="sm"
+                        size="small"
                         :tone="executions.loaded.status.tone"
                         :spin="executions.loaded.status.spin"
                         :label="executions.loaded.status.label"

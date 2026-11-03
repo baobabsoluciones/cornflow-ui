@@ -15,7 +15,7 @@
     <header class="panel-header">
       <CoreIcon name="mdi-account-group-outline" :size="18" class="panel-header__icon" />
       <h2 class="panel-header__title">{{ $t('rolesManagement.usersTitle') }}</h2>
-      <CoreBadge :label="countLabel" tone="primary" size="sm" class="users-count" />
+      <CoreBadge :label="countLabel" tone="primary" size="small" class="users-count" />
     </header>
 
     <div class="users-toolbar">
@@ -103,7 +103,7 @@
                     :key="name"
                     :label="name"
                     :tone="roleMeta.toneForName(name)"
-                    size="sm"
+                    size="small"
                     class="role-chip"
                   />
                 </template>

@@ -32,11 +32,11 @@
 
     <CatalogBlock
       name="CoreConfirmDialog"
-      api="v-model · title · message · confirmText · cancelText · confirmColor · icon · loading · loadingMessage → confirm, cancel"
+      api="v-model · title · message · confirmText · cancelText · tone · icon · loading · loadingMessage → confirm, cancel"
     >
       <CoreButton
         variant="outlined"
-        color="danger"
+        tone="danger"
         icon="mdi-delete-outline"
         text="Delete…"
         @click="confirmOpen = true"
@@ -47,7 +47,7 @@
         message="«Plan week 42» will be removed from the history. This cannot be undone."
         confirm-text="Delete"
         cancel-text="Cancel"
-        confirm-color="var(--danger)"
+        tone="danger"
         icon="mdi-delete-outline"
         :loading="deleting"
         loading-message="Deleting, please wait…"

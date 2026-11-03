@@ -43,7 +43,7 @@
       @show-comparison="handleShowComparison"
     />
     <!-- Validation errors of the data, below the table -->
-    <CoreAlert v-if="instanceErrors" tone="error" class="review-instance-errors">
+    <CoreAlert v-if="instanceErrors" tone="danger" class="review-instance-errors">
       <span v-html="instanceErrors" />
     </CoreAlert>
     <!-- Replacing a master table that other data depends on (offer_force_retry) -->

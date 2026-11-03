@@ -71,6 +71,9 @@ describe('CoreDataTable', () => {
   test('an error offers to retry', async () => {
     const wrapper = mountTable({ status: 'error' })
     expect(wrapper.text()).toContain('The data could not be loaded')
+    expect(wrapper.find('.core-empty-state__text').text()).toBe(
+      'The server did not answer. Check the connection and try again.',
+    )
     await wrapper.find('.core-empty-state__action').trigger('click')
     expect(wrapper.emitted('retry')).toHaveLength(1)
   })

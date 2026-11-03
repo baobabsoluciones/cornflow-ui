@@ -14,7 +14,7 @@
     <template #actions>
       <CoreButton
         variant="text"
-        color="danger"
+        tone="danger"
         :text="$t('createExecution.exit.leave')"
         :disabled="saving"
         data-testid="exit-leave"

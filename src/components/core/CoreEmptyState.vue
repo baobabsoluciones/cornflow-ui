@@ -3,7 +3,7 @@
   for the filters, nothing selected), with an optional way out.
 
   <CoreEmptyState icon="mdi-filter-remove-outline" title="No execution matches the filters"
-    text="Change the search or widen the dates." action-label="Clear filters" @action="clear" />
+    message="Change the search or widen the dates." action-label="Clear filters" @action="clear" />
 -->
 <template>
   <div class="core-empty-state">
@@ -14,8 +14,8 @@
       class="core-empty-state__icon"
     />
     <span class="core-empty-state__title">{{ title }}</span>
-    <span v-if="text || $slots.default" class="core-empty-state__text">
-      <slot>{{ text }}</slot>
+    <span v-if="message || $slots.default" class="core-empty-state__text">
+      <slot>{{ message }}</slot>
     </span>
     <button
       v-if="actionLabel"
@@ -36,11 +36,11 @@ defineOptions({ name: 'CoreEmptyState' })
 withDefaults(
   defineProps<{
     title: string
-    text?: string
+    message?: string
     icon?: string
     actionLabel?: string
   }>(),
-  { text: '', icon: '', actionLabel: '' },
+  { message: '', icon: '', actionLabel: '' },
 )
 
 const emit = defineEmits<{ action: [] }>()

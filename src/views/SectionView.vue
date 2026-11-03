@@ -382,7 +382,7 @@
       :message="t('sectionView.exitConfirmation.message')"
       :confirm-text="t('sectionView.exitConfirmation.confirmButton')"
       :cancel-text="t('sectionView.exitConfirmation.cancelButton')"
-      confirm-color="var(--color-danger)"
+      tone="danger"
       icon="mdi-exit-to-app"
       @confirm="handleConfirmExit"
       @cancel="handleCancelExit"

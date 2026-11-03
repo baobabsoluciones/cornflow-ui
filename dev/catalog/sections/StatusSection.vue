@@ -15,13 +15,13 @@
           tone="warning"
           icon="mdi-star"
           label="Current plan"
-          size="sm"
+          size="small"
         />
         <CoreBadge
           tone="info"
           icon="mdi-calendar-sync"
           label="Replanning"
-          size="sm"
+          size="small"
         />
       </div>
       <div class="row">
@@ -41,7 +41,7 @@
       column
     >
       <CoreAlert
-        tone="error"
+        tone="danger"
         title="Server message"
         message="Column 'capacity' not found in the products master table (row 14)."
       />
@@ -64,12 +64,12 @@
       <CoreEmptyState
         icon="mdi-history"
         title="No executions in these dates"
-        text="Executions you create from New execution appear here."
+        message="Executions you create from New execution appear here."
       />
       <CoreEmptyState
         icon="mdi-filter-remove-outline"
         title="No execution matches the filters"
-        text="Change the search or widen the dates."
+        message="Change the search or widen the dates."
         action-label="Clear filters"
       />
     </CatalogBlock>

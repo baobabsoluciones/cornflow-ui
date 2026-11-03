@@ -2,7 +2,7 @@
   CoreButton: the app's button.
 
   Variants:
-  - filled: solid, for the main action of a view or dialog (with color="danger", a destructive one).
+  - filled: solid, for the main action of a view or dialog (with tone="danger", a destructive one).
   - outlined: white with a neutral border, for the other actions; with a tone colour
     (danger, warning, success) the text and border take that tone.
   - text: no background, for low-emphasis actions ("Cancel", "Clear filters", "Delete" in a header).
@@ -15,8 +15,8 @@
 
   <CoreButton text="Load execution" icon="mdi-open-in-app" @click="load" />
   <CoreButton text="Download Excel" icon="mdi-microsoft-excel" variant="outlined" />
-  <CoreButton text="Delete" icon="mdi-delete-outline" variant="text" color="danger" />
-  <CoreButton text="Delete" variant="filled" color="danger" :loading="deleting" loading-text="Deleting…" />
+  <CoreButton text="Delete" icon="mdi-delete-outline" variant="text" tone="danger" />
+  <CoreButton text="Delete" variant="filled" tone="danger" :loading="deleting" loading-text="Deleting…" />
   <CoreButton icon="mdi-pencil" variant="icon" aria-label="Edit" />
 -->
 <template>
@@ -68,7 +68,7 @@ interface Props {
   icon?: string | null
   iconPosition?: 'before' | 'after'
   variant?: 'filled' | 'outlined' | 'text' | 'icon'
-  color?: 'primary' | 'warning' | 'danger' | 'success' | 'error' | 'grey'
+  tone?: 'primary' | 'neutral' | 'success' | 'warning' | 'danger'
   backgroundColor?: string | null
   textColor?: string | null
   size?: 'xs' | 'small' | 'default' | 'large' | 'xl'
@@ -86,7 +86,7 @@ const props = withDefaults(defineProps<Props>(), {
   icon: null,
   iconPosition: 'before',
   variant: 'filled',
-  color: 'primary',
+  tone: 'primary',
   backgroundColor: null,
   textColor: null,
   size: 'default',
@@ -103,8 +103,6 @@ defineEmits<{
 
 const slots = useSlots()
 
-/** `error` is the same tone as `danger`. */
-const tone = computed(() => (props.color === 'error' ? 'danger' : props.color))
 
 const hasText = computed(
   () => props.variant !== 'icon' && Boolean(slots.default || props.text),
@@ -204,7 +202,7 @@ const customColors = computed(() => {
   --button-tone-border: var(--color-success-border);
 }
 
-.core-button--tone-grey {
+.core-button--tone-neutral {
   --button-tone: var(--color-neutral);
   --button-tone-strong: var(--color-text-muted);
   --button-tone-soft: var(--color-surface-hover);

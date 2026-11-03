@@ -1,13 +1,12 @@
 <!--
   CoreConfirmDialog: asks the user to confirm an action, with a cancel and a confirm button.
 
-  - `confirmColor`: a CSS colour for the confirm button; a danger colour (`var(--danger)`) makes it
-    the destructive button and tints the icon.
+  - `tone`: `danger` makes the confirm button the destructive one and tints the icon.
   - `loading`: the confirm button shows a spinner and `loadingMessage` appears under the message.
   - `persistent` (default): Escape and a click outside do not close it.
 
   <CoreConfirmDialog v-model="open" :title="$t('table.confirmDelete')" :message="$t('table.deleteMessage')"
-    :confirm-text="$t('table.delete')" confirm-color="var(--danger)" icon="mdi-delete-outline"
+    :confirm-text="$t('table.delete')" tone="danger" icon="mdi-delete-outline"
     :loading="deleting" @confirm="remove" @cancel="open = false" />
 -->
 <template>
@@ -15,7 +14,7 @@
     :model-value="modelValue === true"
     :title="title"
     :icon="icon"
-    :tone="isDanger ? 'danger' : 'primary'"
+    :tone="tone"
     :width="480"
     :persistent="persistent || loading"
     closable
@@ -41,8 +40,7 @@
         variant="filled"
         size="small"
         :icon="icon || null"
-        :color="isDanger ? 'danger' : 'primary'"
-        :background-color="isDanger ? null : confirmColor"
+        :tone="tone"
         :loading="loading"
         @click="handleConfirm"
       />
@@ -51,7 +49,6 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
 import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
 import CoreDialog from '@cornflow-ui/core/components/core/CoreDialog.vue'
 
@@ -61,7 +58,7 @@ interface Props {
   message: string
   confirmText?: string
   cancelText?: string
-  confirmColor?: string
+  tone?: 'primary' | 'danger'
   /** Icon of the title and the confirm button (e.g. `mdi-delete-outline`). */
   icon?: string
   loading?: boolean
@@ -73,7 +70,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   confirmText: 'Confirm',
   cancelText: 'Cancel',
-  confirmColor: 'var(--primary)',
+  tone: 'primary',
   icon: '',
   loading: false,
   loadingMessage: '',
@@ -85,8 +82,6 @@ const emit = defineEmits<{
   confirm: []
   cancel: []
 }>()
-
-const isDanger = computed(() => /danger|error/.test(props.confirmColor))
 
 const handleConfirm = () => {
   emit('confirm')

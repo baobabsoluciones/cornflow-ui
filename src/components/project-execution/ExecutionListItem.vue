@@ -26,14 +26,14 @@
           <span class="execution-row__name">{{ execution.name }}</span>
           <CoreBadge
             v-if="replanning"
-            size="sm"
+            size="small"
             tone="info"
             icon="mdi-calendar-sync"
             :label="$t('executionTable.replanning')"
           />
           <CoreBadge
             v-if="currentPlan"
-            size="sm"
+            size="small"
             tone="warning"
             icon="mdi-star"
             :label="$t('latestPlan.chip.current')"

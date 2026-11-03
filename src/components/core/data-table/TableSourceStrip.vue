@@ -52,7 +52,7 @@
           <CoreBadge
             v-for="pill in pills"
             :key="pill.key"
-            size="sm"
+            size="small"
             :tone="pill.tone"
             :label="pill.label"
             :title="pill.title"
@@ -92,7 +92,7 @@
       "
       :confirm-text="confirming ? $t(`dataTable.source.master.${confirming}.confirm`) : ''"
       :cancel-text="$t('common.cancel')"
-      :confirm-color="confirming === 'saveMaster' ? 'var(--color-danger)' : undefined"
+      :tone="confirming === 'saveMaster' ? 'danger' : 'primary'"
       :icon="confirming === 'saveMaster' ? 'mdi-database-export-outline' : 'mdi-database-import-outline'"
       :persistent="false"
       @confirm="confirm"

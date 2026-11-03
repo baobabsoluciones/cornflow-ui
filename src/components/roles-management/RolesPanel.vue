@@ -13,7 +13,7 @@
     <header class="panel-header">
       <CoreIcon name="mdi-shield-key-outline" :size="18" class="panel-header__icon" />
       <h2 class="panel-header__title">{{ $t('rolesManagement.rolesTitle') }}</h2>
-      <CoreBadge :label="String(roles.length)" tone="primary" size="sm" />
+      <CoreBadge :label="String(roles.length)" tone="primary" size="small" />
     </header>
 
     <div
@@ -40,7 +40,7 @@
               {{ $t('rolesManagement.allUsersSubtitle') }}
             </span>
           </span>
-          <CoreBadge :label="String(totalUsers)" size="sm" class="role-item__count" />
+          <CoreBadge :label="String(totalUsers)" size="small" class="role-item__count" />
         </button>
       </div>
 
@@ -66,7 +66,7 @@
           <CoreBadge
             v-if="!isEditable(role)"
             :label="String(usersCountByRole[role.id] ?? 0)"
-            size="sm"
+            size="small"
             class="role-item__count"
           />
         </button>
@@ -82,7 +82,7 @@
           <CoreButton
             variant="icon"
             size="small"
-            color="danger"
+            tone="danger"
             icon="mdi-delete-outline"
             :aria-label="$t('rolesManagement.delete')"
             :title="$t('rolesManagement.delete')"

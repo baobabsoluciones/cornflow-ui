@@ -6,7 +6,7 @@
     It will be removed from the history.
     <template #actions>
       <CoreButton text="Cancel" variant="outlined" @click="open = false" />
-      <CoreButton text="Delete" color="danger" @click="remove" />
+      <CoreButton text="Delete" tone="danger" @click="remove" />
     </template>
   </CoreDialog>
 -->

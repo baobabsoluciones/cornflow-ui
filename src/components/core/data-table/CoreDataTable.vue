@@ -204,7 +204,7 @@
           v-if="canDelete"
           variant="text"
           size="small"
-          :color="allSelectedDeleted ? undefined : 'danger'"
+          :tone="allSelectedDeleted ? undefined : 'danger'"
           :icon="allSelectedDeleted ? 'mdi-restore' : 'mdi-delete-outline'"
           :text="allSelectedDeleted ? $t('dataTable.selection.restore') : $t('dataTable.selection.delete')"
           data-testid="data-table-delete"
@@ -271,7 +271,7 @@
         :message="$t('dataTable.deleteRows.message', { count: selected.length }, selected.length)"
         :confirm-text="$t('dataTable.deleteRows.confirm')"
         :cancel-text="$t('common.cancel')"
-        confirm-color="var(--color-danger)"
+        tone="danger"
         icon="mdi-delete-outline"
         :loading="deleting"
         :loading-message="$t('dataTable.deleteRows.deleting')"
@@ -658,7 +658,7 @@ const message = computed(() => {
     return {
       icon: 'mdi-alert-circle-outline',
       title: t('dataTable.messages.errorTitle'),
-      text: t('dataTable.messages.errorText'),
+      message: t('dataTable.messages.errorText'),
       actionLabel: t('dataTable.messages.retry'),
     }
   }
@@ -666,7 +666,7 @@ const message = computed(() => {
     return {
       icon: 'mdi-table-off',
       title: t('dataTable.messages.emptyTitle'),
-      text: props.canAdd ? t('dataTable.messages.emptyEditable') : t('dataTable.messages.emptyText'),
+      message: props.canAdd ? t('dataTable.messages.emptyEditable') : t('dataTable.messages.emptyText'),
       actionLabel: props.canAdd ? t('dataTable.addRow') : undefined,
     }
   }
@@ -674,14 +674,14 @@ const message = computed(() => {
     return {
       icon: 'mdi-magnify-close',
       title: t('dataTable.messages.noSearchTitle', { search: search.value.trim() }),
-      text: t('dataTable.messages.noSearchText'),
+      message: t('dataTable.messages.noSearchText'),
       actionLabel: t('dataTable.messages.clearSearch'),
     }
   }
   return {
     icon: 'mdi-filter-remove-outline',
     title: t('dataTable.messages.noFilterTitle'),
-    text: t('dataTable.messages.noFilterText', { count: formatCount(total.value) }, total.value),
+    message: t('dataTable.messages.noFilterText', { count: formatCount(total.value) }, total.value),
     actionLabel: t('dataTable.clearFilters'),
   }
 })

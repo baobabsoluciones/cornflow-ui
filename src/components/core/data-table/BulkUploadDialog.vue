@@ -58,7 +58,7 @@
             <CoreBadge
               v-if="mode.recommended"
               tone="success"
-              size="sm"
+              size="small"
               :label="$t('dataTable.bulkUpload.recommended')"
               class="bulk-upload__badge"
             />
@@ -66,7 +66,7 @@
         </div>
         <CoreAlert
           v-if="operation === 'overwrite_all'"
-          tone="error"
+          tone="danger"
           icon="mdi-alert"
           :message="replaceWarning"
           data-testid="bulk-upload-replace-warning"
@@ -129,7 +129,7 @@
             </button>
           </li>
         </ul>
-        <CoreAlert v-if="fileError" tone="error" :message="fileError" data-testid="bulk-upload-file-error" />
+        <CoreAlert v-if="fileError" tone="danger" :message="fileError" data-testid="bulk-upload-file-error" />
       </section>
     </template>
 
@@ -153,7 +153,7 @@
         :tone="progressTone"
         :label="progressTitle"
       />
-      <CoreAlert v-if="phase === 'error' && errorText" tone="error" :message="errorText" />
+      <CoreAlert v-if="phase === 'error' && errorText" tone="danger" :message="errorText" />
     </section>
 
     <template #actions>

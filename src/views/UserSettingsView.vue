@@ -25,7 +25,7 @@
             {{ $t('settings.username') }}: {{ account.username }}
           </span>
           <div v-if="account.roles.length" class="user-settings__roles" :aria-label="$t('settings.roles')">
-            <CoreBadge v-for="role in account.roles" :key="role" :label="role" tone="neutral" size="sm" />
+            <CoreBadge v-for="role in account.roles" :key="role" :label="role" tone="neutral" size="small" />
           </div>
         </div>
       </section>
