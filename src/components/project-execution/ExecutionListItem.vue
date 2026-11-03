@@ -107,7 +107,7 @@ import {
   formatDuration,
   type HistoryExecution,
 } from '@cornflow-ui/core/composables/project-execution/useExecutionDetails'
-import { isExecutionActive } from '@cornflow-ui/core/composables/project-execution/useExecutionStatus'
+import { isExecutionActive } from '@cornflow-ui/core/utils/executionStates'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { formatLocalTimeHHmm } from '@cornflow-ui/core/utils/date'
 

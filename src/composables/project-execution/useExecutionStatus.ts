@@ -7,19 +7,7 @@
  */
 import { useExecutionState } from '@cornflow-ui/core/composables/project-execution-table/useExecutionState'
 import type { CoreTone } from '@cornflow-ui/core/types/ui'
-
-/** Execution state of an execution that finished with a solution. */
-export const SUCCESS_STATE = 1
-
-/** Execution states of an execution that has not finished. */
-export const RUNNING_STATE = 0
-export const QUEUED_STATE = -7
-
-export const isExecutionActive = (state: number | null | undefined): boolean =>
-  state === RUNNING_STATE || state === QUEUED_STATE
-
-/** Execution states of an execution that ended without a solution. */
-export const FAILED_STATES = [-1, -2, -3, -5, -6]
+import { ExecutionState } from '@cornflow-ui/core/utils/executionStates'
 
 export interface StatusDisplay {
   label: string
@@ -85,7 +73,7 @@ export function useExecutionStatus() {
   function executionStatus(state: number | null | undefined): StatusDisplay {
     const info = getStateInfo(state)
     const icon = configuredIcon(stateInfo.value, state)
-    if (state === RUNNING_STATE) {
+    if (state === ExecutionState.Running) {
       return {
         label: info.code,
         message: info.message,
@@ -94,7 +82,7 @@ export function useExecutionStatus() {
         spin: !icon,
       }
     }
-    if (state === QUEUED_STATE) {
+    if (state === ExecutionState.Queued) {
       return {
         label: info.code,
         message: info.message,
@@ -138,7 +126,7 @@ export function useExecutionStatus() {
     state: number | null | undefined,
     solutionCode: number | null | undefined,
   ): StatusDisplay {
-    return state === SUCCESS_STATE && solutionCode !== null && solutionCode !== undefined
+    return state === ExecutionState.Solved && solutionCode !== null && solutionCode !== undefined
       ? solutionStatus(solutionCode)
       : executionStatus(state)
   }

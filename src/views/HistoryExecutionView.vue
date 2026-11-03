@@ -284,7 +284,7 @@ import ExecutionDetailHeader from '@cornflow-ui/core/components/project-executio
 import ExecutionList from '@cornflow-ui/core/components/project-execution/ExecutionList.vue'
 import { useExecutionHistoryFilters } from '@cornflow-ui/core/composables/project-execution/useExecutionHistoryFilters'
 import { useExecutionDetails } from '@cornflow-ui/core/composables/project-execution/useExecutionDetails'
-import { isExecutionActive } from '@cornflow-ui/core/composables/project-execution/useExecutionStatus'
+import { isExecutionActive } from '@cornflow-ui/core/utils/executionStates'
 import { useLatestPlanController } from '@cornflow-ui/core/composables/project-execution/useLatestPlanController'
 import { EXECUTIONS_LIST_LIMIT } from '@cornflow-ui/core/repositories/ExecutionRepository'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'

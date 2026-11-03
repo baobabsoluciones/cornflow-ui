@@ -52,6 +52,7 @@ import { useI18n } from 'vue-i18n'
 import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
 import CoreTimeline from '@cornflow-ui/core/components/core/CoreTimeline.vue'
 import { useExecutionDetails } from '@cornflow-ui/core/composables/project-execution/useExecutionDetails'
+import { ExecutionState, isExecutionActive } from '@cornflow-ui/core/utils/executionStates'
 
 defineOptions({ name: 'LaunchResult' })
 
@@ -66,25 +67,24 @@ defineEmits<{ view: []; another: []; history: [] }>()
 const { t } = useI18n()
 const details = useExecutionDetails()
 
-const QUEUED = -7
-const RUNNING = 0
-
-const state = computed(() => props.execution?.state ?? QUEUED)
-const running = computed(() => state.value === QUEUED || state.value === RUNNING)
-const finished = computed(() => state.value === 1 || state.value === 2)
+const state = computed(() => props.execution?.state ?? ExecutionState.Queued)
+const running = computed(() => isExecutionActive(state.value))
+const finished = computed(
+  () => state.value === ExecutionState.Solved || state.value === ExecutionState.SolutionLoaded,
+)
 
 const kicker = computed(() => {
-  if (state.value === QUEUED) return t('createExecution.launched.queued')
-  if (state.value === RUNNING) return t('createExecution.launched.running')
-  if (state.value === 2) return t('createExecution.launched.solutionLoaded')
-  if (state.value === 1) return t('createExecution.launched.finished')
+  if (state.value === ExecutionState.Queued) return t('createExecution.launched.queued')
+  if (state.value === ExecutionState.Running) return t('createExecution.launched.running')
+  if (state.value === ExecutionState.SolutionLoaded) return t('createExecution.launched.solutionLoaded')
+  if (state.value === ExecutionState.Solved) return t('createExecution.launched.finished')
   return t('createExecution.launched.failed')
 })
 
 const message = computed(() => {
   if (running.value) return t('createExecution.launched.runningHint')
-  if (state.value === 2) return t('createExecution.launched.solutionLoadedHint')
-  if (state.value === 1) return t('createExecution.launched.finishedHint')
+  if (state.value === ExecutionState.SolutionLoaded) return t('createExecution.launched.solutionLoadedHint')
+  if (state.value === ExecutionState.Solved) return t('createExecution.launched.finishedHint')
   return props.execution?.messageState || t('createExecution.launched.failedHint')
 })
 

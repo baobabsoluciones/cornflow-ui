@@ -4,6 +4,7 @@ import session from '@cornflow-ui/core/services/AuthService'
 import appConfig from '@/app/config'
 import config from '@cornflow-ui/core/config'
 import { mainLogo as logo, fullLogo } from '@cornflow-ui/core/utils/assets'
+import { ExecutionState, isExecutionActive } from '@cornflow-ui/core/utils/executionStates'
 
 import { SchemaConfig } from '@cornflow-ui/core/models/SchemaConfig'
 import { Execution } from '@cornflow-ui/core/models/Execution'
@@ -835,19 +836,17 @@ export const useGeneralStore = defineStore('general', {
         let execution
         do {
           execution = await this.executionRepository.loadExecution(executionId)
-          // Only continue waiting if execution is still running (state 0) or queued (state -7)
-          if (execution && (execution.state === 0 || execution.state === -7)) {
+          if (execution && isExecutionActive(execution.state)) {
             await new Promise((resolve) => setTimeout(resolve, 3000))
           }
-        } while (execution && (execution.state === 0 || execution.state === -7))
+        } while (execution && isExecutionActive(execution.state))
 
-        // Check if execution completed successfully
-        // Success states: 1 (solved correctly), 2 (loaded manually), -4 (not run by user)
+        // The checks ran unless the execution ended in a failure
         if (
           execution &&
-          (execution.state === 1 ||
-            execution.state === 2 ||
-            execution.state === -4)
+          (execution.state === ExecutionState.Solved ||
+            execution.state === ExecutionState.SolutionLoaded ||
+            execution.state === ExecutionState.NotRun)
         ) {
           const instance = await this.instanceRepository.getInstance(id)
           return instance
@@ -906,7 +905,7 @@ export const useGeneralStore = defineStore('general', {
             const loaded = await this.executionRepository.loadExecution(execId)
             const state = loaded.state
 
-            if (state === 0 || state === -7) {
+            if (isExecutionActive(state)) {
               historicalPollTimer = setTimeout(() => {
                 void poll()
               }, HISTORICAL_POLL_MS)
@@ -1071,7 +1070,7 @@ export const useGeneralStore = defineStore('general', {
         this.autoLoadTickInFlight = true
         try {
           for (const execution of this.loadedExecutions) {
-            if (execution.state !== 0 && execution.state !== -7) continue
+            if (!isExecutionActive(execution.state)) continue
             // A hard failure of the poll itself (backend down/unavailable)
             // stops the loop instead of hammering a failing endpoint every 4s.
             const keepPolling = await this.refreshRunningExecution(execution)
@@ -1100,7 +1099,7 @@ export const useGeneralStore = defineStore('general', {
         )
         if (!meta) return true
         // Still running → keep polling, nothing to update yet.
-        if (meta.state === 0 || meta.state === -7) return true
+        if (isExecutionActive(meta.state)) return true
 
         // State transitioned: now (and only now) fetch the full payload.
         const updatedExecution = await this.executionRepository.loadExecution(

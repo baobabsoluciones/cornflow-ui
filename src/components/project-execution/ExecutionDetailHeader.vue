@@ -124,7 +124,7 @@ import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
 import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
 import ExecutionStateBadge from '@cornflow-ui/core/components/project-execution/ExecutionStateBadge.vue'
 import type { HistoryExecution } from '@cornflow-ui/core/composables/project-execution/useExecutionDetails'
-import { FAILED_STATES } from '@cornflow-ui/core/composables/project-execution/useExecutionStatus'
+import { FAILED_STATES } from '@cornflow-ui/core/utils/executionStates'
 
 defineOptions({ name: 'ExecutionDetailHeader' })
 

@@ -8,11 +8,8 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
-import {
-  QUEUED_STATE,
-  RUNNING_STATE,
-  useExecutionStatus,
-} from '@cornflow-ui/core/composables/project-execution/useExecutionStatus'
+import { useExecutionStatus } from '@cornflow-ui/core/composables/project-execution/useExecutionStatus'
+import { ExecutionState, isExecutionActive } from '@cornflow-ui/core/utils/executionStates'
 import { formatLocalTimeHHmm } from '@cornflow-ui/core/utils/date'
 import type { DescriptionItem } from '@cornflow-ui/core/components/core/CoreDescriptionList.vue'
 import type { TimelineStep } from '@cornflow-ui/core/components/core/CoreTimeline.vue'
@@ -134,8 +131,7 @@ export function useExecutionDetails() {
   ): DescriptionItem[] {
     const created = toMs(execution.createdAt)
     const finished = toMs(execution.finishedAt)
-    const active =
-      execution.state === RUNNING_STATE || execution.state === QUEUED_STATE
+    const active = isExecutionActive(execution.state)
     const items: DescriptionItem[] = []
 
     if (
@@ -258,7 +254,7 @@ export function useExecutionDetails() {
     const state = execution.state
     const status = executionStatus(state)
 
-    if (state === QUEUED_STATE) {
+    if (state === ExecutionState.Queued) {
       return [
         {
           key: 'queued',
@@ -297,7 +293,7 @@ export function useExecutionDetails() {
       status: 'done',
     }
 
-    if (state === RUNNING_STATE) {
+    if (state === ExecutionState.Running) {
       const elapsed = created !== null ? (now - created) / 1000 : 0
       const limit = timeLimitSeconds(execution)
       return [
@@ -328,7 +324,7 @@ export function useExecutionDetails() {
     }
 
     const run: TimelineStep =
-      state === -3
+      state === ExecutionState.NotStarted
         ? {
             key: 'run',
             label: t('versionHistory.timeline.execution'),
@@ -337,7 +333,7 @@ export function useExecutionDetails() {
             tone: status.tone,
             icon: status.icon,
           }
-        : state === -4 || state === 2
+        : state === ExecutionState.NotRun || state === ExecutionState.SolutionLoaded
           ? {
               key: 'run',
               label: t('versionHistory.timeline.execution'),

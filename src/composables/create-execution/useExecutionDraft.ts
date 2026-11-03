@@ -14,6 +14,7 @@ import { computed, markRaw, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ErrorObject } from 'ajv'
 import config from '@cornflow-ui/core/config'
+import { isExecutionActive } from '@cornflow-ui/core/utils/executionStates'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import {
   useInstanceProcessing,
@@ -91,9 +92,6 @@ export interface DraftExecution {
   name: string
   description: string
 }
-
-const QUEUED = -7
-const RUNNING = 0
 
 /** `capacity_by_line` → "Capacity by line": the name of a check table or column without a title. */
 function keyInWords(key: string): string {
@@ -854,8 +852,7 @@ export function useExecutionDraft() {
 
   /** Whether the launched execution is still queued or running. */
   const launchedRunning = computed(() => {
-    const state = launchedExecution.value?.state
-    return state === QUEUED || state === RUNNING
+    return isExecutionActive(launchedExecution.value?.state)
   })
 
   // The review's origin switches changed: the backend has to hear about it before the checks
