@@ -1,6 +1,21 @@
 import config from '@cornflow-ui/core/config'
 import { RequestOptions } from '@cornflow-ui/core/interfaces/RequestOptions'
 
+/**
+ * The `error` cornflow gives with a 400 when the session token is no good: expired, invalid or
+ * missing ("The token has expired, please login again", "Invalid token, please try again with a
+ * new token", "Authorization header is missing"…).
+ */
+const ENDED_SESSION_ERROR = /token|authorization header|unable to authenticate the user/i
+
+/** The backend ended the session: a 401, or a 400 whose error is about the token. */
+export function isEndedSession(status: number, content: unknown): boolean {
+  if (status === 401) return true
+  if (status !== 400) return false
+  const error = (content as { error?: unknown } | null)?.error
+  return typeof error === 'string' && ENDED_SESSION_ERROR.test(error)
+}
+
 class ApiClient {
   private baseUrl: string
   private refreshingToken: boolean = false
@@ -199,8 +214,8 @@ class ApiClient {
 
     try {
       const response = await this.performFetch(completeUrl, options)
-      this.handleUnauthorizedResponse(response, url)
       const content = await this.parseResponseContent(response)
+      this.handleEndedSession(response.status, content, url)
 
       return { status: response.status, content }
     } catch (error) {
@@ -275,13 +290,25 @@ class ApiClient {
     return body instanceof FormData ? body : JSON.stringify(body)
   }
 
-  private handleUnauthorizedResponse(response: Response, url: string): void {
-    if (response.status === 401 && !url.includes('/login/')) {
-      console.warn(
-        'Received 401 Unauthorized response, session may have expired',
-      )
-      this.handleAuthFailure()
-      throw new Error('Unauthorized: Session expired')
+  /**
+   * A request outside the login that the backend answers with an ended session clears the
+   * session and goes to the sign-in page.
+   */
+  private handleEndedSession(status: number, content: unknown, url: string): void {
+    if (url.includes('/login/') || !isEndedSession(status, content)) return
+    console.warn('The backend rejected the session token: the session has ended')
+    this.handleAuthFailure()
+    throw new Error('Unauthorized: Session expired')
+  }
+
+  /** The JSON body of a 400, read from a copy so the response can still be read. */
+  private async rejectionContent(response: Response): Promise<unknown> {
+    if (response.status !== 400) return null
+    if (!response.headers.get('Content-Type')?.includes('application/json')) return null
+    try {
+      return await response.clone().json()
+    } catch {
+      return null
     }
   }
 
@@ -397,7 +424,7 @@ class ApiClient {
       mode: 'cors',
     })
 
-    this.handleUnauthorizedResponse(response, url)
+    this.handleEndedSession(response.status, await this.rejectionContent(response), url)
 
     const blob = await response.blob()
 
@@ -463,7 +490,7 @@ class ApiClient {
       },
       isExternal,
     })
-    this.handleUnauthorizedResponse(response, url)
+    this.handleEndedSession(response.status, await this.rejectionContent(response), url)
     return response
   }
 
