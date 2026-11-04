@@ -4,7 +4,7 @@
 
     <CatalogBlock
       name="CoreButton"
-      api="text · icon · variant (filled | outlined | text | icon) · color · size · loading · loadingText · disabled · block"
+      api="text · icon · variant (filled | outlined | text | icon) · tone (primary | neutral | success | warning | danger) · size · loading · loadingText · disabled · block"
       column
     >
       <div class="row">

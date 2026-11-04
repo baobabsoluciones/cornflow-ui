@@ -4,7 +4,7 @@
 
     <CatalogBlock
       name="CoreBadge"
-      api="label · tone · icon · spin · variant (soft | dot) · size (sm | md)"
+      api="label · tone · icon · spin · variant (soft | dot) · size (small | default)"
       column
     >
       <div class="row">
@@ -37,7 +37,7 @@
 
     <CatalogBlock
       name="CoreAlert"
-      api="tone (error | warning | info | success) · title · message · icon · actionLabel → action"
+      api="tone (danger | warning | info | success) · title · message · icon · actionLabel → action"
       column
     >
       <CoreAlert
@@ -59,7 +59,7 @@
 
     <CatalogBlock
       name="CoreEmptyState"
-      api="title · text · icon · actionLabel → action"
+      api="title · message · icon · actionLabel → action"
     >
       <CoreEmptyState
         icon="mdi-history"
