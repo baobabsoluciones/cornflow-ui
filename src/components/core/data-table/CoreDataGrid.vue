@@ -36,6 +36,7 @@
         :aria-rowcount="rows.length + 1"
         :aria-colcount="columns.length"
         :aria-busy="status === 'loading' || loadingMore || undefined"
+        :aria-activedescendant="activeCellId"
         :style="{ minWidth: `${totalWidth}px` }"
         data-testid="data-grid"
         @keydown="onGridKey"
@@ -221,6 +222,9 @@
               class="data-grid__cell"
               :class="cellClasses(row, column, index)"
               :style="index === 0 ? { left: `${frozenLeft}px` } : undefined"
+              :id="isActive(row, column) ? activeCellId : undefined"
+              role="gridcell"
+              :aria-selected="isActive(row, column) || undefined"
               :aria-readonly="!canEditCell(row, column) || undefined"
               :title="cellTitle(row, column)"
               :data-column="column.key"
@@ -302,6 +306,7 @@ import {
   onBeforeUnmount,
   reactive,
   ref,
+  useId,
   watch,
 } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -652,6 +657,10 @@ const isActive = (row: DataRow, column: DataColumn) => {
 }
 const isEditing = (row: DataRow, column: DataColumn) =>
   editing.value && isActive(row, column)
+
+/** The active cell as the grid's active descendant, so assistive technology reads it. */
+const gridId = useId()
+const activeCellId = computed(() => (active.value ? `${gridId}-active-cell` : undefined))
 
 const activeRow = () => props.rows.find((row) => row.id === active.value?.rowId)
 const activeColumn = () =>

@@ -209,6 +209,21 @@ describe('CoreDataGrid from the keyboard', () => {
     return `${td.element.closest('tr')!.getAttribute('data-row-id')}:${td.attributes('data-column')}`
   }
 
+  test('the active cell is the active descendant of the grid, for assistive technology', async () => {
+    const wrapper = mountGrid()
+    expect(grid(wrapper).attributes('aria-activedescendant')).toBeUndefined()
+
+    await pick(wrapper, 2, 'capacity')
+    const id = grid(wrapper).attributes('aria-activedescendant')
+    const activeCell = cell(wrapper, 2, 'capacity')
+    expect(id).toBeTruthy()
+    expect(activeCell.attributes('id')).toBe(id)
+    expect(activeCell.attributes('aria-selected')).toBe('true')
+
+    await key(wrapper, 'Escape')
+    expect(grid(wrapper).attributes('aria-activedescendant')).toBeUndefined()
+  })
+
   test('the first arrow picks the first cell, and without rows there is nothing to pick', async () => {
     const wrapper = mountGrid()
     await key(wrapper, 'ArrowDown')
