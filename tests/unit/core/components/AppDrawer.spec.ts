@@ -32,6 +32,7 @@ vi.mock('@cornflow-ui/core/composables/navigation/useDrawerExecutions', () => ({
 }))
 
 import AppDrawer from '@cornflow-ui/core/components/AppDrawer.vue'
+import { GENERAL_TOUR } from '@cornflow-ui/core/composables/onboarding/tours'
 
 const SECTIONS = [
   { key: 'history', scope: 'general', title: 'History', icon: 'mdi-history', to: '/history-execution' },
@@ -421,6 +422,14 @@ describe('AppDrawer', () => {
     expect(auth.logout).toHaveBeenCalled()
     expect(router.currentRoute.value.path).toBe('/sign-in')
     expect(snackbar).toHaveBeenCalledWith('logOut.snackbar_message_success', 'success')
+  })
+
+  test('open, the menu has every part of it the tour of the app points at', async () => {
+    state.store.isDrawerPinned = true
+    ;({ wrapper } = await mountDrawer())
+    const parts = GENERAL_TOUR.steps.map((step) => step.target).filter((target) => target?.startsWith('drawer'))
+    expect(parts.length).toBeGreaterThan(0)
+    for (const part of parts) expect(wrapper.find(`[data-tour="${part}"]`).exists(), part).toBe(true)
   })
 
   test('without the user loaded, the menu still offers to log out', async () => {

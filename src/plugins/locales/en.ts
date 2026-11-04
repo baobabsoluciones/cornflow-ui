@@ -553,8 +553,51 @@ export default {
     snackbarMessageSuccess: 'Password updated successfully',
     snackbarMessageError: 'An error occurred while updating the password',
   },
+  onboarding: {
+    back: 'Back',
+    next: 'Next',
+    done: 'Done',
+    close: 'Close the tour',
+    progress: 'Step {current} of {total}',
+    general: {
+      welcome: {
+        title: 'Welcome to {app}',
+        text: 'In a minute, the parts of the app. You can take this tour again at any time from the help button (?).',
+      },
+      menu: {
+        title: 'The menu',
+        text: 'Everything is here. Folded, it shows only the icons and opens when you rest the pointer on it; the pin keeps it open.',
+      },
+      newExecution: {
+        title: 'New execution',
+        text: 'Starts a new execution: you load its data, review the parameters and launch it.',
+      },
+      loadedExecution: {
+        title: 'The loaded execution',
+        text: 'The execution you are working on. Its input data, its results and its dashboards hang from it; from here you switch to another one of the latest.',
+      },
+      shared: {
+        title: 'The same for every execution',
+        text: 'The execution history and the sections that do not depend on an execution, such as the master data.',
+      },
+      tabs: {
+        title: 'Open executions',
+        text: 'Each execution you open stays in a tab, to go from one to another. The × closes it.',
+      },
+      help: {
+        title: 'Help',
+        text: 'The user manual, this tour and the tour of the page you are on.',
+      },
+      account: {
+        title: 'Your account',
+        text: 'Your settings (language, appearance and password) and the button to log out.',
+      },
+    },
+  },
   helpMenu: {
     help: 'Help center',
+    generalTour: 'Tour of the app',
+    pageTour: 'Tour of this page',
     licences: 'Licenses',
     close: 'Close',
     download: 'Download user manual',

@@ -1,6 +1,7 @@
 <template>
   <div class="main-container" :class="{ 'drawer-pinned': isDrawerPinned }">
     <HelpMenu />
+    <TourHost />
     <WarningsPanel v-if="enableWarnings" />
     <div
       v-if="showAppSectionLoading"
@@ -26,6 +27,7 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import HelpMenu from '@cornflow-ui/core/components/core/HelpMenu.vue'
+import TourHost from '@cornflow-ui/core/components/TourHost.vue'
 import WarningsPanel from '@cornflow-ui/core/components/WarningsPanel.vue'
 import appConfig from '@/app/config'
 import { getAppParameters } from '@cornflow-ui/core/utils/appParameters'

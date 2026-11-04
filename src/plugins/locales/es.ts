@@ -559,8 +559,51 @@ export default {
     snackbarMessageSuccess: 'Contraseña actualizada correctamente',
     snackbarMessageError: 'Se produjo un error al actualizar la contraseña',
   },
+  onboarding: {
+    back: 'Anterior',
+    next: 'Siguiente',
+    done: 'Terminar',
+    close: 'Cerrar el recorrido',
+    progress: 'Paso {current} de {total}',
+    general: {
+      welcome: {
+        title: 'Te damos la bienvenida a {app}',
+        text: 'En un minuto, las partes de la aplicación. Puedes repetir este recorrido cuando quieras desde el botón de ayuda (?).',
+      },
+      menu: {
+        title: 'El menú',
+        text: 'Aquí está todo. Plegado muestra solo los iconos y se abre al pasar el ratón; con la chincheta se queda abierto.',
+      },
+      newExecution: {
+        title: 'Nueva ejecución',
+        text: 'Empieza una ejecución nueva: cargas sus datos, revisas los parámetros y la lanzas.',
+      },
+      loadedExecution: {
+        title: 'La ejecución cargada',
+        text: 'La ejecución con la que trabajas. De ella cuelgan sus datos de entrada, sus resultados y sus dashboards; desde aquí cambias a otra de las últimas.',
+      },
+      shared: {
+        title: 'Lo común a todas',
+        text: 'El historial de ejecuciones y las secciones que no dependen de una ejecución, como los datos maestros.',
+      },
+      tabs: {
+        title: 'Ejecuciones abiertas',
+        text: 'Cada ejecución que abres queda en una pestaña, para pasar de una a otra. La × la cierra.',
+      },
+      help: {
+        title: 'Ayuda',
+        text: 'El manual de usuario, este recorrido y el de la página en la que estés.',
+      },
+      account: {
+        title: 'Tu cuenta',
+        text: 'Tus ajustes (idioma, apariencia y contraseña) y el botón para cerrar sesión.',
+      },
+    },
+  },
   helpMenu: {
     help: 'Centro de ayuda',
+    generalTour: 'Recorrido por la aplicación',
+    pageTour: 'Recorrido por esta página',
     licences: 'Licencias',
     close: 'Cerrar',
     download: 'Descargar manual de usuario',

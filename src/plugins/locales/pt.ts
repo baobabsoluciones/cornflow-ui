@@ -542,8 +542,51 @@ export default {
     snackbarMessageSuccess: 'Palavra-passe atualizada com sucesso',
     snackbarMessageError: 'Ocorreu um erro ao atualizar a palavra-passe',
   },
+  onboarding: {
+    back: 'Anterior',
+    next: 'Seguinte',
+    done: 'Terminar',
+    close: 'Fechar a visita',
+    progress: 'Passo {current} de {total}',
+    general: {
+      welcome: {
+        title: 'Bem-vindo a {app}',
+        text: 'Num minuto, as partes da aplicação. Pode repetir esta visita quando quiser a partir do botão de ajuda (?).',
+      },
+      menu: {
+        title: 'O menu',
+        text: 'Está tudo aqui. Recolhido, mostra apenas os ícones e abre-se ao passar o rato; o pin mantém-no aberto.',
+      },
+      newExecution: {
+        title: 'Nova execução',
+        text: 'Começa uma execução nova: carrega os seus dados, revê os parâmetros e lança-a.',
+      },
+      loadedExecution: {
+        title: 'A execução carregada',
+        text: 'A execução com que está a trabalhar. Dela dependem os dados de entrada, os resultados e os dashboards; daqui muda para outra das últimas.',
+      },
+      shared: {
+        title: 'Comum a todas',
+        text: 'O histórico de execuções e as secções que não dependem de uma execução, como os dados mestre.',
+      },
+      tabs: {
+        title: 'Execuções abertas',
+        text: 'Cada execução que abre fica num separador, para passar de uma para outra. O × fecha-a.',
+      },
+      help: {
+        title: 'Ajuda',
+        text: 'O manual do utilizador, esta visita e a da página em que está.',
+      },
+      account: {
+        title: 'A sua conta',
+        text: 'As suas definições (idioma, aparência e palavra-passe) e o botão para terminar sessão.',
+      },
+    },
+  },
   helpMenu: {
     help: 'Centro de ajuda',
+    generalTour: 'Visita à aplicação',
+    pageTour: 'Visita a esta página',
     licences: 'Licenças',
     close: 'Fechar',
     download: 'Transferir manual do utilizador',

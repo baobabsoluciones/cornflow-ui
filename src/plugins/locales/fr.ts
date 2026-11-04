@@ -528,8 +528,51 @@ export default {
     snackbarMessageError:
       'Une erreur est survenue lors de la mise à jour du mot de passe',
   },
+  onboarding: {
+    back: 'Précédent',
+    next: 'Suivant',
+    done: 'Terminer',
+    close: 'Fermer la visite',
+    progress: 'Étape {current} sur {total}',
+    general: {
+      welcome: {
+        title: 'Bienvenue dans {app}',
+        text: "En une minute, les parties de l'application. Vous pouvez refaire cette visite à tout moment depuis le bouton d'aide (?).",
+      },
+      menu: {
+        title: 'Le menu',
+        text: "Tout est ici. Replié, il ne montre que les icônes et s'ouvre au passage de la souris ; l'épingle le garde ouvert.",
+      },
+      newExecution: {
+        title: 'Nouvelle exécution',
+        text: 'Lance une nouvelle exécution : vous chargez ses données, vérifiez les paramètres et la lancez.',
+      },
+      loadedExecution: {
+        title: "L'exécution chargée",
+        text: "L'exécution sur laquelle vous travaillez. Ses données d'entrée, ses résultats et ses tableaux de bord en dépendent ; d'ici, vous passez à une autre des dernières.",
+      },
+      shared: {
+        title: 'Commun à toutes',
+        text: "L'historique des exécutions et les sections qui ne dépendent pas d'une exécution, comme les données de référence.",
+      },
+      tabs: {
+        title: 'Exécutions ouvertes',
+        text: "Chaque exécution ouverte reste dans un onglet, pour passer de l'une à l'autre. Le × la ferme.",
+      },
+      help: {
+        title: 'Aide',
+        text: "Le manuel d'utilisation, cette visite et celle de la page où vous êtes.",
+      },
+      account: {
+        title: 'Votre compte',
+        text: 'Vos paramètres (langue, apparence et mot de passe) et le bouton pour vous déconnecter.',
+      },
+    },
+  },
   helpMenu: {
     help: "Centre d'aide",
+    generalTour: "Visite de l'application",
+    pageTour: 'Visite de cette page',
     licences: 'Licences',
     close: 'Fermer',
     download: "Télécharger le manuel de l'utilisateur",

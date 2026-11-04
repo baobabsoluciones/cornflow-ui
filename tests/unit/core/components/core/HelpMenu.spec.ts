@@ -1,7 +1,9 @@
 import { describe, test, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
+import { createMemoryHistory, createRouter } from 'vue-router'
 import appConfig from '@/app/config'
+import { GENERAL_TOUR } from '@cornflow-ui/core/composables/onboarding/tours'
 
 vi.mock('@cornflow-ui/core/../package.json', () => ({ version: '1.2.3' }))
 
@@ -14,6 +16,9 @@ const store = {
 }
 vi.mock('@cornflow-ui/core/stores/general', () => ({ useGeneralStore: () => store }))
 
+const tours = vi.hoisted(() => ({ start: vi.fn() }))
+vi.mock('@cornflow-ui/core/composables/onboarding/useTour', () => ({ useTour: () => tours }))
+
 import HelpMenu from '@cornflow-ui/core/components/core/HelpMenu.vue'
 
 const i18n = createI18n({
@@ -22,7 +27,14 @@ const i18n = createI18n({
   missingWarn: false,
   messages: {
     en: {
-      helpMenu: { help: 'Help', licences: 'Licences', close: 'Close', download: 'Download the manual' },
+      helpMenu: {
+        help: 'Help',
+        generalTour: 'Tour of the app',
+        pageTour: 'Tour of this page',
+        licences: 'Licences',
+        close: 'Close',
+        download: 'Download the manual',
+      },
     },
   },
 })
@@ -37,15 +49,31 @@ const stubs = {
   },
 }
 
-const mountMenu = () => mount(HelpMenu, { global: { plugins: [i18n], stubs } })
+const mountMenu = () => {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [{ path: '/:pathMatch(.*)*', component: { template: '<div />' } }],
+  })
+  return mount(HelpMenu, { global: { plugins: [i18n, router], stubs } })
+}
 
 describe('HelpMenu', () => {
-  test('a "?" button opens the help centre and the licences, and shows the versions', () => {
+  test('a "?" button opens the tour, the help centre and the licences, and shows the versions', () => {
     const wrapper = mountMenu()
     expect(wrapper.find('[data-testid="help-menu-trigger"]').attributes('aria-label')).toBe('Help')
-    expect(wrapper.findAll('.core-menu__item').map((item) => item.text())).toEqual(['Help', 'Licences'])
+    expect(wrapper.findAll('.core-menu__item').map((item) => item.text())).toEqual([
+      'Tour of the app',
+      'Help',
+      'Licences',
+    ])
     expect(wrapper.find('.help-menu__versions').text()).toContain('Cornflow app version: 1.2.3')
     expect(wrapper.find('.help-menu__versions').text()).toContain('Cornflow version: 2.4.1')
+  })
+
+  test('the tour of the app starts the general tour', async () => {
+    const wrapper = mountMenu()
+    await wrapper.find('[data-testid="help-menu-tour"]').trigger('click')
+    expect(tours.start).toHaveBeenCalledWith(GENERAL_TOUR)
   })
 
   test('the help centre offers each file of the app config in the current language', async () => {
