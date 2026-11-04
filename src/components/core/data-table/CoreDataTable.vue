@@ -60,8 +60,8 @@
             :key="filter.id"
             :filter="filter"
             :column="columnByKey[filter.field]"
-            :choices="choicesFor(filter.field)"
-            :boolean-counts="booleanCountsFor(filter.field)"
+            :choices="filterChoices[filter.field]"
+            :boolean-counts="filterBooleanCounts[filter.field]"
             :is-new="filter.id === newFilterId"
             @apply="replaceFilter"
             @remove="removeFilter"
@@ -535,6 +535,17 @@ function booleanCountsFor(field: string) {
   const yes = countRows.value.filter((row) => isTruthy(cellValue(row, field))).length
   return { yes, no: countRows.value.length - yes }
 }
+
+/**
+ * The values and counts each filter chip offers, counted over the rows once when they or the
+ * filters change, not on every render of the table.
+ */
+const filterChoices = computed(() =>
+  Object.fromEntries(filters.value.map((filter) => [filter.field, choicesFor(filter.field)])),
+)
+const filterBooleanCounts = computed(() =>
+  Object.fromEntries(filters.value.map((filter) => [filter.field, booleanCountsFor(filter.field)])),
+)
 
 function dateRangeFilter(key: string): DataFilter {
   const range = props.dateRangeValues[key]
