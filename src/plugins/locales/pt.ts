@@ -548,6 +548,24 @@ export default {
     done: 'Terminar',
     close: 'Fechar a visita',
     progress: 'Passo {current} de {total}',
+    history: {
+      filters: {
+        title: 'Pesquisa e filtros',
+        text: 'Pesquise por nome ou descrição. A lista abre no último mês: mude aqui as datas e adicione filtros por estado, utilizador, solver ou qualquer outro campo.',
+      },
+      list: {
+        title: 'As execuções',
+        text: 'Por dia, a mais recente em cima. Ao passar o rato por uma vê um resumo; a partir da linha carrega-a ou descarrega o seu Excel.',
+      },
+      detail: {
+        title: 'O seu detalhe',
+        text: 'A execução que escolhe: como correu, os seus dados e os seus parâmetros. Daqui carrega-a, descarrega o seu Excel ou apaga-a.',
+      },
+      newExecution: {
+        title: 'Uma execução nova',
+        text: 'Também pode começar uma a partir daqui.',
+      },
+    },
     general: {
       welcome: {
         title: 'Bem-vindo a {app}',

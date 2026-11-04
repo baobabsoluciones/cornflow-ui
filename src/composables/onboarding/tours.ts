@@ -46,8 +46,22 @@ export const GENERAL_TOUR: Tour = {
   ],
 }
 
+/** The tour of a page at exactly this path. */
+const atPath = (route: string) => (path: string) => path === route
+
+export const HISTORY_TOUR: Tour = {
+  key: 'history',
+  page: atPath('/history-execution'),
+  steps: [
+    { key: 'filters', target: 'history-filters' },
+    { key: 'list', target: 'history-list' },
+    { key: 'detail', target: 'history-detail' },
+    { key: 'newExecution', target: 'history-new-execution' },
+  ],
+}
+
 /** The tours of single pages. */
-export const PAGE_TOURS: Tour[] = []
+export const PAGE_TOURS: Tour[] = [HISTORY_TOUR]
 
 /** The tour of the page at this path, if it has one. */
 export function pageTourOf(path: string): Tour | null {

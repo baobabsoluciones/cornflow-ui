@@ -534,6 +534,24 @@ export default {
     done: 'Terminer',
     close: 'Fermer la visite',
     progress: 'Étape {current} sur {total}',
+    history: {
+      filters: {
+        title: 'Recherche et filtres',
+        text: "Cherchez par nom ou description. La liste s'ouvre sur le dernier mois : changez les dates ici et ajoutez des filtres par état, utilisateur, solveur ou tout autre champ.",
+      },
+      list: {
+        title: 'Les exécutions',
+        text: 'Par jour, la plus récente en haut. En passant la souris sur une, vous voyez un résumé ; depuis la ligne, vous la chargez ou téléchargez son Excel.',
+      },
+      detail: {
+        title: 'Son détail',
+        text: "L'exécution choisie : son déroulement, ses données et ses paramètres. D'ici, vous la chargez, téléchargez son Excel ou la supprimez.",
+      },
+      newExecution: {
+        title: 'Une nouvelle exécution',
+        text: "Vous pouvez aussi en lancer une d'ici.",
+      },
+    },
     general: {
       welcome: {
         title: 'Bienvenue dans {app}',

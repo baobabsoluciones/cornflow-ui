@@ -6,6 +6,7 @@ import { createI18n } from 'vue-i18n'
 import { h, KeepAlive, nextTick } from 'vue'
 import HistoryExecutionView from '@cornflow-ui/core/views/HistoryExecutionView.vue'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import { HISTORY_TOUR } from '@cornflow-ui/core/composables/onboarding/tours'
 import appConfig from '@/app/config'
 
 // Mock CoreTitleView component
@@ -159,7 +160,7 @@ const createWrapper = ({ keepAlive = false } = {}) => {
       stubs: {
         CoreTitleView: {
           name: 'CoreTitleView',
-          template: '<div data-testid="core-title-view"></div>',
+          template: '<div data-testid="core-title-view"><slot name="actions" /></div>',
           props: ['icon', 'title', 'description', 'dropdownItems'],
         },
         teleport: true,
@@ -235,6 +236,15 @@ describe('HistoryExecutionView', () => {
       expect(dateChip.props('fromLabel')).toBe('From')
       expect(dateChip.props('toLabel')).toBe('To')
     })
+  })
+
+  test('has every part its tour points at', async () => {
+    const { wrapper, generalStore } = createWrapper()
+    generalStore.fetchExecutionsByDateRange.mockResolvedValue([])
+    await flushPromises()
+    for (const step of HISTORY_TOUR.steps) {
+      expect(wrapper.find(`[data-tour="${step.target}"]`).exists(), step.key).toBe(true)
+    }
   })
 
   describe('Component Props', () => {

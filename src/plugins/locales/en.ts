@@ -559,6 +559,24 @@ export default {
     done: 'Done',
     close: 'Close the tour',
     progress: 'Step {current} of {total}',
+    history: {
+      filters: {
+        title: 'Search and filters',
+        text: 'Search by name or description. The list opens on the last month: change the dates here, and add filters by state, user, solver or any other field.',
+      },
+      list: {
+        title: 'The executions',
+        text: 'By day, the newest first. Resting the pointer on one shows a summary; from the row you load it or download its Excel.',
+      },
+      detail: {
+        title: 'Its detail',
+        text: 'The execution you pick: how it went, its data and its parameters. From here you load it, download its Excel or delete it.',
+      },
+      newExecution: {
+        title: 'A new execution',
+        text: 'Starts a new one from here too.',
+      },
+    },
     general: {
       welcome: {
         title: 'Welcome to {app}',

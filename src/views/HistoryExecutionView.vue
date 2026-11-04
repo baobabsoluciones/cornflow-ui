@@ -16,6 +16,7 @@
           icon="mdi-plus"
           :text="$t('versionHistory.createNewExecution')"
           data-testid="history-create-execution"
+          data-tour="history-new-execution"
           @click="navigateToCreateExecution"
         />
       </template>
@@ -27,7 +28,7 @@
         class="history-panel history-list"
         :aria-busy="loadingData"
       >
-        <div class="history-filters">
+        <div class="history-filters" data-tour="history-filters">
           <CoreSearchInput
             v-model="historyFilters.state.search"
             block
@@ -102,7 +103,7 @@
           </div>
         </div>
 
-        <div class="history-list__scroll">
+        <div class="history-list__scroll" data-tour="history-list">
           <div
             v-if="loadingData"
             class="history-skeleton"
@@ -170,6 +171,7 @@
         v-if="showDetail"
         class="history-panel history-detail"
         data-testid="history-detail"
+        data-tour="history-detail"
       >
         <div v-if="loadingData" class="history-detail__skeleton">
           <CoreSkeleton width="40%" :height="20" />
