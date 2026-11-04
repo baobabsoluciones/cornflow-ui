@@ -6,8 +6,8 @@
   >
     <CoreTitleView
       icon="mdi-history"
-      :title="title"
-      :description="narrow && selectedExecution ? '' : description"
+      :title="$t('versionHistory.title')"
+      :description="narrow && selectedExecution ? '' : $t('versionHistory.description')"
       class="history-title"
     >
       <template #actions>
@@ -71,7 +71,7 @@
               :remove-label="$t('versionHistory.filterBar.remove')"
               :auto-open="definition.key === justAddedFilter"
               :data-testid="`history-filter-${definition.key}`"
-              @pick="historyFilters.pick(definition.key, $event)"
+              @pick="historyFilters.pick(definition.key, $event as string | null)"
               @remove="historyFilters.remove(definition.key)"
             />
             <AddFilterMenu
@@ -267,7 +267,21 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
+import {
+  computed,
+  inject,
+  onActivated,
+  onBeforeUnmount,
+  onDeactivated,
+  onMounted,
+  reactive,
+  ref,
+  useTemplateRef,
+  watch,
+} from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import CoreAlert from '@cornflow-ui/core/components/core/CoreAlert.vue'
 import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
 import CoreDescriptionList from '@cornflow-ui/core/components/core/CoreDescriptionList.vue'
@@ -278,33 +292,66 @@ import CoreTitleView from '@cornflow-ui/core/components/core/CoreTitleView.vue'
 import CoreConfirmDialog from '@cornflow-ui/core/components/core/table/CoreConfirmDialog.vue'
 import CoreSearchInput from '@cornflow-ui/core/components/core/table/CoreSearchInput.vue'
 import FilterChip from '@cornflow-ui/core/components/core/filters/FilterChip.vue'
-import DateFilterChip from '@cornflow-ui/core/components/core/filters/DateFilterChip.vue'
+import DateFilterChip, {
+  type DatePreset,
+} from '@cornflow-ui/core/components/core/filters/DateFilterChip.vue'
 import AddFilterMenu from '@cornflow-ui/core/components/core/filters/AddFilterMenu.vue'
 import ExecutionDetailHeader from '@cornflow-ui/core/components/project-execution/ExecutionDetailHeader.vue'
-import ExecutionList from '@cornflow-ui/core/components/project-execution/ExecutionList.vue'
+import ExecutionList, {
+  type ExecutionDay,
+} from '@cornflow-ui/core/components/project-execution/ExecutionList.vue'
 import { useExecutionHistoryFilters } from '@cornflow-ui/core/composables/project-execution/useExecutionHistoryFilters'
-import { useExecutionDetails } from '@cornflow-ui/core/composables/project-execution/useExecutionDetails'
+import {
+  useExecutionDetails,
+  type HistoryExecution,
+} from '@cornflow-ui/core/composables/project-execution/useExecutionDetails'
 import { isExecutionActive } from '@cornflow-ui/core/utils/executionStates'
 import { useLatestPlanController } from '@cornflow-ui/core/composables/project-execution/useLatestPlanController'
 import { EXECUTIONS_LIST_LIMIT } from '@cornflow-ui/core/repositories/ExecutionRepository'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import type { ExecutionFilter } from '@cornflow-ui/core/types/executionFilters'
 import {
   formatLocalDateKey,
   formatLocalTimeHHmm,
   parseLocalDateKey,
 } from '@cornflow-ui/core/utils/date'
-import { inject } from 'vue'
+
+defineOptions({ name: 'HistoryExecutionView' })
+
+type DateOption = 'today' | 'yesterday' | 'last7days' | 'lastMonth' | 'custom'
+
+interface DateRange {
+  startDate: Date | null
+  endDate: Date | null
+}
+
+/** The days of a custom range, as `YYYY-MM-DD`. */
+interface CustomDates {
+  startDate: string | null
+  endDate: string | null
+}
+
+/** An execution of the list, with the time it was created at (`HH:mm`, local). */
+type HistoryRow = HistoryExecution & { time: string }
+
+/** The executions created on one day (`YYYY-MM-DD`, local). */
+interface HistoryDay {
+  date: string
+  data: HistoryRow[]
+}
 
 /** Date range the history opens with. */
-const DEFAULT_DATE_OPTION = 'lastMonth'
+const DEFAULT_DATE_OPTION: DateOption = 'lastMonth'
+
+const DATE_OPTIONS: DateOption[] = ['today', 'yesterday', 'last7days', 'lastMonth', 'custom']
 
 /**
  * The days a date option lists: today, yesterday, the last 7 days or the last month up to today;
  * a custom range once both its days are given. No option, or a custom range not complete, has
  * no days.
  */
-function datesOfOption(option, custom, today = new Date()) {
-  const daysAgo = (days) => {
+function datesOfOption(option: DateOption | null, custom: CustomDates, today = new Date()): DateRange {
+  const daysAgo = (days: number) => {
     const date = new Date(today)
     date.setDate(date.getDate() - days)
     return date
@@ -333,620 +380,480 @@ function datesOfOption(option, custom, today = new Date()) {
 /** Below this width (px) the list and the detail take turns instead of sitting side by side. */
 const NARROW_WIDTH = 860
 
-export default {
-  components: {
-    AddFilterMenu,
-    CoreAlert,
-    CoreButton,
-    CoreConfirmDialog,
-    CoreDescriptionList,
-    CoreEmptyState,
-    CoreSearchInput,
-    CoreSkeleton,
-    CoreTimeline,
-    CoreTitleView,
-    DateFilterChip,
-    ExecutionDetailHeader,
-    ExecutionList,
-    FilterChip,
-  },
-  setup() {
-    return {
-      historyFilters: useExecutionHistoryFilters(),
-      executionDetails: useExecutionDetails(),
-      // latest-plan controller injected by the premium module; inert when the module is absent.
-      latestPlan: useLatestPlanController(),
-    }
-  },
-  data() {
-    return {
-      data: [],
-      generalStore: useGeneralStore(),
-      dateOptionSelected: null,
-      customSelectedDates: {
-        startDate: null,
-        endDate: null,
-      },
-      showSnackbar: null,
-      loadingExecutions: new Set(),
-      deletingExecutions: new Set(),
-      downloadingExecutions: new Set(),
-      // Coalesce overlapping list fetches (see `fetchData`).
-      fetchInFlight: false,
-      fetchQueued: false,
-      // Pending id of the fetchData retry timer, cleared on unmount/deactivate so a
-      // late retry can't run on a torn-down component (would call `$t` on nothing).
-      fetchRetryTimer: null,
-      // Filter added last, whose menu opens as it appears.
-      justAddedFilter: null,
-      listLimit: EXECUTIONS_LIST_LIMIT,
-      // Start `true` so the skeleton is visible from the very first paint,
-      // before `activated()` fires `fetchData`. Avoids the flash where
-      // "no executions" briefly renders for users who just logged in.
-      loadingData: true,
-      selectedExecutionId: null,
-      executionToDelete: null,
-      latestPlanCandidate: null,
-      showLatestPlanModal: false,
-      narrow: false,
-      resizeObserver: null,
-      // Current time, ticking while the view is shown, for the live durations of running executions.
-      now: Date.now(),
-      clockTimer: null,
-    }
-  },
-  created() {
-    this.showSnackbar = inject('showSnackbar')
-  },
-  mounted() {
-    this.dateOptionSelected = DEFAULT_DATE_OPTION
-    this.observeWidth()
-    this.executionDetails.loadParameterOptions()
-  },
-  activated() {
-    this.fetchData()
-    // Make sure the background poller is running so rows that are still loading
-    // flip to their final state while the user watches the history — even if
-    // the list request itself is failing. `loadedExecutionsSignature` then
-    // syncs those state changes into the list.
-    this.generalStore.autoLoadExecutions()
-    this.startClock()
-  },
-  deactivated() {
-    this.clearFetchRetryTimer()
-    this.stopClock()
-  },
-  beforeUnmount() {
-    this.clearFetchRetryTimer()
-    this.stopClock()
-    this.resizeObserver?.disconnect()
-  },
-  computed: {
-    /** The days the list is loaded for. */
-    selectedDates() {
-      return datesOfOption(this.dateOptionSelected, this.customSelectedDates)
-    },
-    /** The days as text, so the list loads again only when they change. */
-    selectedDaysKey() {
-      const { startDate, endDate } = this.selectedDates
-      return `${startDate?.toDateString() ?? ''}|${endDate?.toDateString() ?? ''}`
-    },
-    title() {
-      return this.$t('versionHistory.title')
-    },
-    description() {
-      return this.$t('versionHistory.description')
-    },
-    locale() {
-      return this.$i18n.locale
-    },
-    datePresets() {
-      return this.labels.map(({ label, value }) => ({ label, value }))
-    },
-    labels() {
-      return [
-        {
-          label: this.$t('versionHistory.today'),
-          value: 'today',
-          color: 'primary',
-          isCustom: false,
-        },
-        {
-          label: this.$t('versionHistory.yesterday'),
-          value: 'yesterday',
-          color: 'primary',
-          isCustom: false,
-        },
-        {
-          label: this.$t('versionHistory.last7days'),
-          value: 'last7days',
-          color: 'primary',
-          isCustom: false,
-        },
-        {
-          label: this.$t('versionHistory.lastMonth'),
-          value: 'lastMonth',
-          color: 'primary',
-          isCustom: false,
-        },
-        {
-          label: this.$t('versionHistory.custom'),
-          value: 'custom',
-          color: 'primary',
-          isCustom: true,
-        },
-      ]
-    },
-    /** Executions history filters with options (none without their frontend-automation table). */
-    visibleFilters() {
-      return this.generalStore.getExecutionFilters.filter(
-        (filter) => this.filterOptions(filter).length > 0,
-      )
-    },
-    /** Picked filters as one value, so a change lists the executions again. */
-    filterParamsSignature() {
-      return JSON.stringify(this.generalStore.getExecutionFilterParams)
-    },
-    /** Every loaded execution, across days. */
-    rows() {
-      return this.data.flatMap((group) => group.data)
-    },
-    /** The days with the executions that pass the search and the added filters. */
-    filteredData() {
-      return this.data
-        .map((group) => ({
-          ...group,
-          data: this.historyFilters.filterRows(group.data),
-        }))
-        .filter((group) => group.data.length > 0)
-    },
-    /** The filtered days, newest first, as the list shows them. */
-    executionDays() {
-      return this.filteredData
+const { t, te, locale } = useI18n()
+const router = useRouter()
+const generalStore = useGeneralStore()
+const historyFilters = useExecutionHistoryFilters()
+const executionDetails = useExecutionDetails()
+// latest-plan controller injected by the premium module; inert when the module is absent.
+const latestPlan = useLatestPlanController()
+const showSnackbar = inject<(message: string, type?: string) => void>('showSnackbar')!
+
+const root = useTemplateRef<HTMLElement>('root')
+
+const data = ref<HistoryDay[]>([])
+const dateOptionSelected = ref<DateOption | null>(null)
+const customSelectedDates = reactive<CustomDates>({ startDate: null, endDate: null })
+const loadingExecutions = reactive(new Set<string>())
+const deletingExecutions = reactive(new Set<string>())
+const downloadingExecutions = reactive(new Set<string>())
+// Start `true` so the skeleton is visible from the very first paint, before `onActivated` fires
+// `fetchData`. Avoids the flash where "no executions" briefly renders for users who just logged in.
+const loadingData = ref(true)
+// Filter added last, whose menu opens as it appears.
+const justAddedFilter = ref<string | null>(null)
+const listLimit = EXECUTIONS_LIST_LIMIT
+const selectedExecutionId = ref<string | null>(null)
+const executionToDelete = ref<HistoryRow | null>(null)
+const latestPlanCandidate = ref<{ id: string; name: string } | null>(null)
+const showLatestPlanModal = ref(false)
+const narrow = ref(false)
+// Current time, ticking while the view is shown, for the live durations of running executions.
+const now = ref(Date.now())
+
+// Coalesce overlapping list fetches (see `fetchData`).
+let fetchInFlight = false
+let fetchQueued = false
+// Pending id of the fetchData retry timer, cleared on unmount/deactivate so a late retry can't
+// run on a torn-down component.
+let fetchRetryTimer: ReturnType<typeof setTimeout> | null = null
+let resizeObserver: ResizeObserver | null = null
+let clockTimer: ReturnType<typeof setInterval> | null = null
+
+/** The days the list is loaded for. */
+const selectedDates = computed(() => datesOfOption(dateOptionSelected.value, customSelectedDates))
+/** The days as text, so the list loads again only when they change. */
+const selectedDaysKey = computed(() => {
+  const { startDate, endDate } = selectedDates.value
+  return `${startDate?.toDateString() ?? ''}|${endDate?.toDateString() ?? ''}`
+})
+const datePresets = computed<DatePreset[]>(() =>
+  DATE_OPTIONS.map((value) => ({ value, label: t(`versionHistory.${value}`) })),
+)
+/** Executions history filters with options (none without their frontend-automation table). */
+const visibleFilters = computed(() =>
+  generalStore.getExecutionFilters.filter((filter) => filterOptions(filter).length > 0),
+)
+/** Picked filters as one value, so a change lists the executions again. */
+const filterParamsSignature = computed(() => JSON.stringify(generalStore.getExecutionFilterParams))
+/** Every loaded execution, across days. */
+const rows = computed(() => data.value.flatMap((group) => group.data))
+/** The days with the executions that pass the search and the added filters. */
+const filteredData = computed(() =>
+  data.value
+    .map((group) => ({ ...group, data: historyFilters.filterRows(group.data) }))
+    .filter((group) => group.data.length > 0),
+)
+/** The filtered days, newest first, as the list shows them. */
+const executionDays = computed<ExecutionDay[]>(() =>
+  filteredData.value
+    .slice()
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .map((group) => ({
+      key: group.date,
+      label: dayTitle(group.date),
+      executions: group.data
         .slice()
-        .sort((a, b) => b.date.localeCompare(a.date))
-        .map((group) => ({
-          key: group.date,
-          label: this.dayTitle(group.date),
-          executions: group.data
-            .slice()
-            .sort((a, b) =>
-              String(b.createdAt).localeCompare(String(a.createdAt)),
-            ),
-        }))
-    },
-    executionCount() {
-      return this.filteredData.reduce(
-        (total, group) => total + group.data.length,
-        0,
-      )
-    },
-    /** The list came back full: older executions in the range are not loaded. */
-    limitReached() {
-      return (
-        Boolean(this.selectedDates.startDate) &&
-        this.rows.length >= EXECUTIONS_LIST_LIMIT
-      )
-    },
-    /** The range is wider than a week, so narrowing to the last 7 days lists fewer executions. */
-    canNarrowToLastWeek() {
-      return ['lastMonth', 'custom'].includes(this.dateOptionSelected)
-    },
-    /** Filters the user can still add, by group. */
-    addFilterGroups() {
-      return ['execution', 'solution']
-        .map((group) => ({
-          key: group,
-          title: this.$t(`versionHistory.filterBar.groups.${group}`),
-          fields: this.historyFilters.availableDefinitions
-            .filter((definition) => definition.group === group)
-            .map((definition) => ({
-              key: definition.key,
-              title: this.$t(definition.labelKey),
-              icon: definition.icon,
-            })),
-        }))
-        .filter((group) => group.fields.length > 0)
-    },
-    /** Anything away from how the history opens: search, filters or another date range. */
-    anyFilterActive() {
-      return (
-        this.historyFilters.isActive ||
-        this.dateOptionSelected !== DEFAULT_DATE_OPTION ||
-        Object.keys(this.generalStore.getExecutionFilterParams).length > 0
-      )
-    },
-    selectedExecution() {
-      return (
-        this.rows.find(
-          (execution) => execution.id === this.selectedExecutionId,
-        ) ?? null
-      )
-    },
-    selectedParameters() {
-      return this.selectedExecution
-        ? this.executionDetails.parameterItems(this.selectedExecution)
-        : []
-    },
-    /** On a narrow screen the detail replaces the list while an execution is selected. */
-    showList() {
-      return !this.narrow || !this.selectedExecution
-    },
-    showDetail() {
-      return !this.narrow || Boolean(this.selectedExecution)
-    },
-    /**
-     * Signature of the store's tracked executions (id + state). Changes only
-     * when an execution transitions state (the background poller updates
-     * `loadedExecutions` on transition), which is exactly when the history
-     * needs to refresh its states.
-     */
-    loadedExecutionsSignature() {
-      return this.generalStore.loadedExecutions
-        .map((execution) => `${execution.executionId}:${execution.state}`)
-        .join('|')
-    },
-  },
-  watch: {
-    // Keep the history rows in sync with the live execution state held in the
-    // store. Without this, a row launched while the user is on this view stays
-    // stuck on "Loading" forever: the list is a one-shot snapshot from
-    // `fetchData`, while the actual completion is detected by the store poller.
-    loadedExecutionsSignature() {
-      this.syncExecutionStatesFromStore()
-    },
-    filterParamsSignature() {
-      this.fetchData()
-    },
-    // Another option drops the custom days; no option shows nothing.
-    dateOptionSelected(option, previous) {
-      this.customSelectedDates.startDate = null
-      this.customSelectedDates.endDate = null
-      if (!option) this.data = []
-      // Leaving a custom range that had no days keeps the same (empty) days: load again anyway.
-      if (previous === 'custom' && !this.selectedDates.startDate) this.fetchData()
-    },
-    // A custom range loads once both its days are given.
-    selectedDaysKey() {
-      if (this.dateOptionSelected === 'custom' && !this.selectedDates.startDate) return
-      this.fetchData()
-    },
-    // On a wide screen the detail always shows an execution: the newest one, until the user picks.
-    executionDays() {
-      this.selectFirstExecutionIfNone()
-    },
-    narrow() {
-      this.selectFirstExecutionIfNone()
-    },
-  },
-  methods: {
-    filterOptions(filter) {
-      return this.generalStore.executionFilterOptions[filter.key] ?? []
-    },
-    filterLabel(filter) {
-      return this.$te(filter.labelKey)
-        ? this.$t(filter.labelKey)
-        : filter.labelKey
-    },
-    pickFilterValue(filter, value) {
-      this.generalStore.setExecutionFilterValue(filter.key, value)
-    },
-    addHistoryFilter(key) {
-      this.historyFilters.add(key)
-      this.justAddedFilter = key
-    },
-    /** Back to how the history opens: no search, no filters, the default date range. */
-    clearFilters() {
-      this.historyFilters.clear()
-      this.justAddedFilter = null
-      for (const key of Object.keys(
-        this.generalStore.getExecutionFilterParams,
-      )) {
-        this.generalStore.setExecutionFilterValue(key, null)
-      }
-      this.dateOptionSelected = DEFAULT_DATE_OPTION
-    },
-    /** "Today · 21 Oct", "Yesterday · 20 Oct", "Monday · 19 Oct" (with the year when not this one). */
-    dayTitle(date) {
-      const day = parseLocalDateKey(date)
-      const today = new Date()
-      const yesterday = new Date(today)
-      yesterday.setDate(today.getDate() - 1)
-      const sameDay = (a, b) => a.toDateString() === b.toDateString()
-      const name = sameDay(day, today)
-        ? this.$t('versionHistory.today')
-        : sameDay(day, yesterday)
-          ? this.$t('versionHistory.yesterday')
-          : day.toLocaleDateString(this.locale, { weekday: 'long' })
-      const short = day.toLocaleDateString(this.locale, {
-        day: 'numeric',
-        month: 'short',
-        ...(day.getFullYear() === today.getFullYear()
-          ? {}
-          : { year: 'numeric' }),
+        .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))),
+    })),
+)
+const executionCount = computed(() =>
+  filteredData.value.reduce((total, group) => total + group.data.length, 0),
+)
+/** The list came back full: older executions in the range are not loaded. */
+const limitReached = computed(
+  () => Boolean(selectedDates.value.startDate) && rows.value.length >= EXECUTIONS_LIST_LIMIT,
+)
+/** The range is wider than a week, so narrowing to the last 7 days lists fewer executions. */
+const canNarrowToLastWeek = computed(() =>
+  dateOptionSelected.value === 'lastMonth' || dateOptionSelected.value === 'custom',
+)
+/** Filters the user can still add, by group. */
+const addFilterGroups = computed(() =>
+  ['execution', 'solution']
+    .map((group) => ({
+      key: group,
+      title: t(`versionHistory.filterBar.groups.${group}`),
+      fields: historyFilters.availableDefinitions
+        .filter((definition) => definition.group === group)
+        .map((definition) => ({
+          key: definition.key,
+          title: t(definition.labelKey),
+          icon: definition.icon,
+        })),
+    }))
+    .filter((group) => group.fields.length > 0),
+)
+/** Anything away from how the history opens: search, filters or another date range. */
+const anyFilterActive = computed(
+  () =>
+    historyFilters.isActive ||
+    dateOptionSelected.value !== DEFAULT_DATE_OPTION ||
+    Object.keys(generalStore.getExecutionFilterParams).length > 0,
+)
+const selectedExecution = computed(
+  () => rows.value.find((execution) => execution.id === selectedExecutionId.value) ?? null,
+)
+const selectedParameters = computed(() =>
+  selectedExecution.value ? executionDetails.parameterItems(selectedExecution.value) : [],
+)
+/** On a narrow screen the detail replaces the list while an execution is selected. */
+const showList = computed(() => !narrow.value || !selectedExecution.value)
+const showDetail = computed(() => !narrow.value || Boolean(selectedExecution.value))
+/**
+ * Signature of the store's tracked executions (id + state). Changes only when an execution
+ * transitions state (the background poller updates `loadedExecutions` on transition), which is
+ * exactly when the history needs to refresh its states.
+ */
+const loadedExecutionsSignature = computed(() =>
+  generalStore.loadedExecutions
+    .map((execution) => `${execution.executionId}:${execution.state}`)
+    .join('|'),
+)
+
+// Keep the history rows in sync with the live execution state held in the store. Without this, a
+// row launched while the user is on this view stays stuck on "Loading" forever: the list is a
+// one-shot snapshot from `fetchData`, while the actual completion is detected by the store poller.
+watch(loadedExecutionsSignature, () => syncExecutionStatesFromStore())
+watch(filterParamsSignature, () => fetchData())
+// Another option drops the custom days; no option shows nothing.
+watch(dateOptionSelected, (option, previous) => {
+  customSelectedDates.startDate = null
+  customSelectedDates.endDate = null
+  if (!option) data.value = []
+  // Leaving a custom range that had no days keeps the same (empty) days: load again anyway.
+  if (previous === 'custom' && !selectedDates.value.startDate) fetchData()
+})
+// A custom range loads once both its days are given.
+watch(selectedDaysKey, () => {
+  if (dateOptionSelected.value === 'custom' && !selectedDates.value.startDate) return
+  fetchData()
+})
+// On a wide screen the detail always shows an execution: the newest one, until the user picks.
+watch(executionDays, () => selectFirstExecutionIfNone())
+watch(narrow, () => selectFirstExecutionIfNone())
+
+onMounted(() => {
+  dateOptionSelected.value = DEFAULT_DATE_OPTION
+  observeWidth()
+  executionDetails.loadParameterOptions()
+})
+onActivated(() => {
+  fetchData()
+  // Make sure the background poller is running so rows that are still loading flip to their
+  // final state while the user watches the history — even if the list request itself is
+  // failing. `loadedExecutionsSignature` then syncs those state changes into the list.
+  generalStore.autoLoadExecutions()
+  startClock()
+})
+onDeactivated(() => {
+  clearFetchRetryTimer()
+  stopClock()
+})
+onBeforeUnmount(() => {
+  clearFetchRetryTimer()
+  stopClock()
+  resizeObserver?.disconnect()
+})
+
+function filterOptions(filter: ExecutionFilter) {
+  return generalStore.executionFilterOptions[filter.key] ?? []
+}
+
+function filterLabel(filter: ExecutionFilter) {
+  return te(filter.labelKey) ? t(filter.labelKey) : filter.labelKey
+}
+
+function pickFilterValue(filter: ExecutionFilter, value: unknown) {
+  generalStore.setExecutionFilterValue(filter.key, value)
+}
+
+function addHistoryFilter(key: string) {
+  historyFilters.add(key)
+  justAddedFilter.value = key
+}
+
+/** Back to how the history opens: no search, no filters, the default date range. */
+function clearFilters() {
+  historyFilters.clear()
+  justAddedFilter.value = null
+  for (const key of Object.keys(generalStore.getExecutionFilterParams)) {
+    generalStore.setExecutionFilterValue(key, null)
+  }
+  dateOptionSelected.value = DEFAULT_DATE_OPTION
+}
+
+/** "Today · 21 Oct", "Yesterday · 20 Oct", "Monday · 19 Oct" (with the year when not this one). */
+function dayTitle(date: string) {
+  const day = parseLocalDateKey(date)
+  const today = new Date()
+  const yesterday = new Date(today)
+  yesterday.setDate(today.getDate() - 1)
+  const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString()
+  const name = sameDay(day, today)
+    ? t('versionHistory.today')
+    : sameDay(day, yesterday)
+      ? t('versionHistory.yesterday')
+      : day.toLocaleDateString(locale.value, { weekday: 'long' })
+  const short = day.toLocaleDateString(locale.value, {
+    day: 'numeric',
+    month: 'short',
+    ...(day.getFullYear() === today.getFullYear() ? {} : { year: 'numeric' }),
+  })
+  return `${name} · ${short}`
+}
+
+function navigateToCreateExecution() {
+  router.push('/project-execution')
+}
+
+function selectExecution(id: string) {
+  selectedExecutionId.value = id
+}
+
+function selectFirstExecutionIfNone() {
+  if (narrow.value || selectedExecution.value) return
+  selectedExecutionId.value = executionDays.value[0]?.executions[0]?.id ?? null
+}
+
+/** Watches the view's width: below `NARROW_WIDTH` the list and the detail take turns. */
+function observeWidth() {
+  if (!root.value || typeof ResizeObserver === 'undefined') return
+  resizeObserver = new ResizeObserver((entries) => {
+    const width = entries[0]?.contentRect.width ?? 0
+    // A width of 0 is a view not laid out yet (or a test): keep the wide layout.
+    narrow.value = width > 0 && width < NARROW_WIDTH
+  })
+  resizeObserver.observe(root.value)
+}
+
+function startClock() {
+  stopClock()
+  now.value = Date.now()
+  clockTimer = setInterval(() => {
+    if (rows.value.some((execution) => isExecutionActive(execution.state))) {
+      now.value = Date.now()
+    }
+  }, 1000)
+}
+
+function stopClock() {
+  if (clockTimer) {
+    clearInterval(clockTimer)
+    clockTimer = null
+  }
+}
+
+function isLatestPlan(id: string) {
+  return latestPlan.isLatestPlan(id)
+}
+
+function canSetCurrentPlan(execution: HistoryExecution) {
+  return (
+    latestPlan.isSetLatestPlanAvailable() &&
+    latestPlan.canSetAsLatestPlan(execution.state) &&
+    !latestPlan.isLatestPlan(execution.id)
+  )
+}
+
+function openSetLatestPlan(execution: HistoryExecution) {
+  latestPlanCandidate.value = {
+    id: execution.id,
+    name: execution.name || `Execution ${execution.id}`,
+  }
+  showLatestPlanModal.value = true
+}
+
+function handleLatestPlanSuccess() {
+  showSnackbar(t('latestPlan.snackbar.success'), 'success')
+}
+
+function handleLatestPlanError(message?: string) {
+  showSnackbar(message || t('latestPlan.snackbar.error'), 'error')
+}
+
+function clearFetchRetryTimer() {
+  if (fetchRetryTimer) {
+    clearTimeout(fetchRetryTimer)
+    fetchRetryTimer = null
+  }
+}
+
+async function fetchData(attempt = 0): Promise<void> {
+  // Coalesce overlapping fetches. A single user action (picking a date option, typing custom
+  // dates) can fire several watchers, and each list query can be slow/heavy on the backend. Keep
+  // at most one request in flight plus one trailing refetch (with the latest dates) so we don't
+  // pile duplicate queries onto a backend that is already struggling while an execution is
+  // running.
+  if (attempt === 0) {
+    if (fetchInFlight) {
+      fetchQueued = true
+      return
+    }
+    fetchInFlight = true
+    // Show the "loading" state (not the previous rows) until the new data actually arrives.
+    data.value = []
+  }
+  loadingData.value = true
+  try {
+    const result = await generalStore.fetchExecutionsByDateRange(
+      selectedDates.value.startDate,
+      selectedDates.value.endDate,
+    )
+
+    if (result) {
+      showSnackbar(t('projectExecution.snackbar.succesSearch'))
+      data.value = formatData(result)
+      // Overlay the freshest known state from the store so rows reflect any execution that has
+      // already finished/transitioned since the list was built on the backend.
+      syncExecutionStatesFromStore()
+      return
+    }
+
+    // `result === undefined` only happens when the store swallowed an exception (see
+    // `fetchExecutionsByDateRange` in stores/general.ts). The most common cause right after login
+    // is a token-signature race: this view's `onActivated` hook fires before the auth token has
+    // been written to sessionStorage, so the API rejects the request. Retry once after a short
+    // delay before surfacing "no data" — by then the token should be in place and the call
+    // succeeds transparently.
+    if (attempt === 0) {
+      await new Promise((resolve) => {
+        fetchRetryTimer = setTimeout(resolve, 600)
       })
-      return `${name} · ${short}`
-    },
-    navigateToCreateExecution() {
-      this.$router.push('/project-execution')
-    },
-    selectExecution(id) {
-      this.selectedExecutionId = id
-    },
-    selectFirstExecutionIfNone() {
-      if (this.narrow || this.selectedExecution) return
-      this.selectedExecutionId =
-        this.executionDays[0]?.executions[0]?.id ?? null
-    },
-    /** Watches the view's width: below `NARROW_WIDTH` the list and the detail take turns. */
-    observeWidth() {
-      if (!this.$refs.root || typeof ResizeObserver === 'undefined') return
-      this.resizeObserver = new ResizeObserver((entries) => {
-        const width = entries[0]?.contentRect.width ?? 0
-        // A width of 0 is a view not laid out yet (or a test): keep the wide layout.
-        this.narrow = width > 0 && width < NARROW_WIDTH
-      })
-      this.resizeObserver.observe(this.$refs.root)
-    },
-    startClock() {
-      this.stopClock()
-      this.now = Date.now()
-      this.clockTimer = setInterval(() => {
-        if (this.rows.some((execution) => isExecutionActive(execution.state))) {
-          this.now = Date.now()
-        }
-      }, 1000)
-    },
-    stopClock() {
-      if (this.clockTimer) {
-        clearInterval(this.clockTimer)
-        this.clockTimer = null
-      }
-    },
-    isLatestPlan(id) {
-      return this.latestPlan.isLatestPlan(id)
-    },
-    canSetCurrentPlan(execution) {
-      return (
-        this.latestPlan.isSetLatestPlanAvailable() &&
-        this.latestPlan.canSetAsLatestPlan(execution.state) &&
-        !this.latestPlan.isLatestPlan(execution.id)
-      )
-    },
-    openSetLatestPlan(execution) {
-      this.latestPlanCandidate = {
-        id: execution.id,
-        name: execution.name || `Execution ${execution.id}`,
-      }
-      this.showLatestPlanModal = true
-    },
-    handleLatestPlanSuccess() {
-      this.showSnackbar(this.$t('latestPlan.snackbar.success'), 'success')
-    },
-    handleLatestPlanError(message) {
-      this.showSnackbar(
-        message || this.$t('latestPlan.snackbar.error'),
-        'error',
-      )
-    },
-    clearFetchRetryTimer() {
-      if (this.fetchRetryTimer) {
-        clearTimeout(this.fetchRetryTimer)
-        this.fetchRetryTimer = null
-      }
-    },
-    async fetchData(attempt = 0) {
-      // Coalesce overlapping fetches. A single user action (picking a date
-      // option, typing custom dates) can fire several watchers, and each list
-      // query can be slow/heavy on the backend. Keep at most one request in
-      // flight plus one trailing refetch (with the latest dates) so we don't
-      // pile duplicate queries onto a backend that is already struggling while
-      // an execution is running.
-      if (attempt === 0) {
-        if (this.fetchInFlight) {
-          this.fetchQueued = true
-          return
-        }
-        this.fetchInFlight = true
-        // Show the "loading" state (not the previous rows) until the new data
-        // actually arrives.
-        this.data = []
-      }
-      this.loadingData = true
-      try {
-        const result = await this.generalStore.fetchExecutionsByDateRange(
-          this.selectedDates.startDate,
-          this.selectedDates.endDate,
-        )
+      fetchRetryTimer = null
+      return await fetchData(1)
+    }
 
-        if (result) {
-          this.showSnackbar(this.$t('projectExecution.snackbar.succesSearch'))
-          this.data = this.formatData(result)
-          // Overlay the freshest known state from the store so rows reflect any
-          // execution that has already finished/transitioned since the list was
-          // built on the backend.
-          this.syncExecutionStatesFromStore()
-          return
-        }
-
-        // `result === undefined` only happens when the store swallowed an
-        // exception (see `fetchExecutionsByDateRange` in stores/general.ts).
-        // The most common cause right after login is a token-signature race:
-        // this view's `activated()` hook fires before the auth token has
-        // been written to sessionStorage, so the API rejects the request.
-        // Retry once after a short delay before surfacing "no data" — by then
-        // the token should be in place and the call succeeds transparently.
-        if (attempt === 0) {
-          await new Promise((resolve) => {
-            this.fetchRetryTimer = setTimeout(resolve, 600)
-          })
-          this.fetchRetryTimer = null
-          return await this.fetchData(1)
-        }
-
-        this.data = this.formatData([])
-        this.showSnackbar(this.$t('projectExecution.snackbar.noDataSearch'))
-      } catch {
-        this.data = this.formatData([])
-        this.showSnackbar(
-          this.$t('projectExecution.snackbar.errorSearch'),
-          'error',
-        )
-      } finally {
-        this.loadingData = false
-        if (attempt === 0) {
-          this.fetchInFlight = false
-          // If a fetch was requested while this one ran, run it once now with
-          // whatever the current dates are.
-          if (this.fetchQueued) {
-            this.fetchQueued = false
-            this.fetchData()
-          }
-        }
+    data.value = formatData([])
+    showSnackbar(t('projectExecution.snackbar.noDataSearch'))
+  } catch {
+    data.value = formatData([])
+    showSnackbar(t('projectExecution.snackbar.errorSearch'), 'error')
+  } finally {
+    loadingData.value = false
+    if (attempt === 0) {
+      fetchInFlight = false
+      // If a fetch was requested while this one ran, run it once now with whatever the current
+      // dates are.
+      if (fetchQueued) {
+        fetchQueued = false
+        fetchData()
       }
-    },
-    /**
-     * Updates the state of the displayed rows from the store's tracked
-     * executions. The background poller keeps `loadedExecutions` current, so a
-     * row that was "Loading" when fetched flips to its final state here without
-     * needing another (possibly queued/stalled) list request.
-     */
-    syncExecutionStatesFromStore() {
-      const stateById = new Map(
-        this.generalStore.loadedExecutions.map((execution) => [
-          execution.executionId,
-          execution.state,
-        ]),
-      )
-      this.applyExecutionStates(stateById)
-    },
-    /**
-     * Applies a map of executionId -> state onto the displayed rows. Reassigns
-     * `this.data` with fresh references only when something actually changed,
-     * so the list re-renders the states (and we avoid needless churn).
-     */
-    applyExecutionStates(stateById) {
-      let changed = false
-      const next = this.data.map((group) => ({
-        ...group,
-        data: group.data.map((item) => {
-          const nextState = stateById.get(item.id)
-          if (nextState !== undefined && nextState !== item.state) {
-            changed = true
-            return { ...item, state: nextState }
-          }
-          return item
-        }),
-      }))
-      if (changed) {
-        this.data = next
-      }
-    },
-    formatData(rawData) {
-      const formattedData = rawData.reduce((acc, item) => {
-        // Check if createdAt exists and is a valid string
-        if (!item.createdAt || typeof item.createdAt !== 'string') {
-          return acc
-        }
+    }
+  }
+}
 
-        // Group by the user's local day (createdAt is already normalised to
-        // UTC by the repository), so executions launched around midnight land
-        // on the day the user actually launched them.
-        const date = formatLocalDateKey(item.createdAt)
-        if (!date) {
-          return acc
-        }
-        if (!acc[date]) {
-          acc[date] = {
-            date,
-            data: [],
-          }
-        }
-        const formattedTime = formatLocalTimeHHmm(item.createdAt)
-        acc[date].data.push({
-          time: formattedTime,
-          ...item,
-        })
-        return acc
-      }, {})
-      return Object.values(formattedData)
-    },
-    async loadExecution(execution) {
-      this.loadingExecutions.add(execution.id)
-      try {
-        const loadedResult = await this.generalStore.fetchLoadedExecution(
-          execution.id,
-        )
+/**
+ * Updates the state of the displayed rows from the store's tracked executions. The background
+ * poller keeps `loadedExecutions` current, so a row that was "Loading" when fetched flips to its
+ * final state here without needing another (possibly queued/stalled) list request.
+ */
+function syncExecutionStatesFromStore() {
+  const stateById = new Map<string, number>(
+    generalStore.loadedExecutions.map((execution) => [execution.executionId, execution.state]),
+  )
+  applyExecutionStates(stateById)
+}
 
-        if (loadedResult) {
-          this.generalStore.setSelectedExecution(execution.id)
-          this.showSnackbar(this.$t('projectExecution.snackbar.successLoad'))
-        } else {
-          this.showSnackbar(
-            this.$t('projectExecution.snackbar.errorLoad'),
-            'error',
-          )
-        }
-      } catch {
-        this.showSnackbar(
-          this.$t('projectExecution.snackbar.errorLoad'),
-          'error',
-        )
-      } finally {
-        this.loadingExecutions.delete(execution.id)
+/**
+ * Applies a map of executionId -> state onto the displayed rows. Reassigns `data` with fresh
+ * references only when something actually changed, so the list re-renders the states (and we
+ * avoid needless churn).
+ */
+function applyExecutionStates(stateById: Map<string, number>) {
+  let changed = false
+  const next = data.value.map((group) => ({
+    ...group,
+    data: group.data.map((item) => {
+      const nextState = stateById.get(item.id)
+      if (nextState !== undefined && nextState !== item.state) {
+        changed = true
+        return { ...item, state: nextState }
       }
-    },
-    async downloadExcel(execution) {
-      this.downloadingExecutions.add(execution.id)
-      try {
-        await this.generalStore.getDataToDownload(execution.id, true, true)
-      } catch {
-        this.showSnackbar(
-          this.$t('inputOutputData.errorDownloadingExcel'),
-          'error',
-        )
-      } finally {
-        this.downloadingExecutions.delete(execution.id)
-      }
-    },
-    askDelete(execution) {
-      this.executionToDelete = execution
-    },
-    async confirmDelete() {
-      const execution = this.executionToDelete
-      if (!execution) return
-      await this.deleteExecution(execution)
-      this.executionToDelete = null
-    },
-    async deleteExecution(execution) {
-      // Mark the execution as deleting so its action shows a spinner while the
-      // (sometimes slow) DELETE + refetch is in flight.
-      this.deletingExecutions.add(execution.id)
-      try {
-        const result = await this.generalStore.deleteExecution(execution.id)
+      return item
+    }),
+  }))
+  if (changed) {
+    data.value = next
+  }
+}
 
-        if (result) {
-          if (this.selectedExecutionId === execution.id) {
-            this.selectedExecutionId = null
-          }
-          await this.fetchData()
-          this.showSnackbar(this.$t('projectExecution.snackbar.successDelete'))
-        } else {
-          this.showSnackbar(
-            this.$t('projectExecution.snackbar.errorDelete'),
-            'error',
-          )
-        }
-      } catch {
-        this.showSnackbar(
-          this.$t('projectExecution.snackbar.errorDelete'),
-          'error',
-        )
-      } finally {
-        this.deletingExecutions.delete(execution.id)
+/** The executions grouped by the user's local day, each with its local time. */
+function formatData(rawData: HistoryExecution[]): HistoryDay[] {
+  const days: Record<string, HistoryDay> = {}
+  for (const item of rawData) {
+    if (!item.createdAt || typeof item.createdAt !== 'string') continue
+    // Group by the user's local day (createdAt is already normalised to UTC by the repository),
+    // so executions launched around midnight land on the day the user actually launched them.
+    const date = formatLocalDateKey(item.createdAt)
+    if (!date) continue
+    days[date] ??= { date, data: [] }
+    days[date].data.push({ time: formatLocalTimeHHmm(item.createdAt), ...item })
+  }
+  return Object.values(days)
+}
+
+async function loadExecution(execution: HistoryExecution) {
+  loadingExecutions.add(execution.id)
+  try {
+    const loadedResult = await generalStore.fetchLoadedExecution(execution.id)
+
+    if (loadedResult) {
+      generalStore.setSelectedExecution(execution.id)
+      showSnackbar(t('projectExecution.snackbar.successLoad'))
+    } else {
+      showSnackbar(t('projectExecution.snackbar.errorLoad'), 'error')
+    }
+  } catch {
+    showSnackbar(t('projectExecution.snackbar.errorLoad'), 'error')
+  } finally {
+    loadingExecutions.delete(execution.id)
+  }
+}
+
+async function downloadExcel(execution: HistoryExecution) {
+  downloadingExecutions.add(execution.id)
+  try {
+    await generalStore.getDataToDownload(execution.id, true, true)
+  } catch {
+    showSnackbar(t('inputOutputData.errorDownloadingExcel'), 'error')
+  } finally {
+    downloadingExecutions.delete(execution.id)
+  }
+}
+
+function askDelete(execution: HistoryRow) {
+  executionToDelete.value = execution
+}
+
+async function confirmDelete() {
+  const execution = executionToDelete.value
+  if (!execution) return
+  await deleteExecution(execution)
+  executionToDelete.value = null
+}
+
+async function deleteExecution(execution: HistoryExecution) {
+  // Mark the execution as deleting so its action shows a spinner while the (sometimes slow)
+  // DELETE + refetch is in flight.
+  deletingExecutions.add(execution.id)
+  try {
+    const result = await generalStore.deleteExecution(execution.id)
+
+    if (result) {
+      if (selectedExecutionId.value === execution.id) {
+        selectedExecutionId.value = null
       }
-    },
-  },
+      await fetchData()
+      showSnackbar(t('projectExecution.snackbar.successDelete'))
+    } else {
+      showSnackbar(t('projectExecution.snackbar.errorDelete'), 'error')
+    }
+  } catch {
+    showSnackbar(t('projectExecution.snackbar.errorDelete'), 'error')
+  } finally {
+    deletingExecutions.delete(execution.id)
+  }
 }
 </script>
 

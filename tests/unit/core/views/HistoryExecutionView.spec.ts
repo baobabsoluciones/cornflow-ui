@@ -3,6 +3,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
+import { h, KeepAlive, nextTick } from 'vue'
 import HistoryExecutionView from '@cornflow-ui/core/views/HistoryExecutionView.vue'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import appConfig from '@/app/config'
@@ -62,7 +63,7 @@ vi.mock('@cornflow-ui/core/components/core/filters/AddFilterMenu.vue', () => ({
   },
 }))
 
-const createWrapper = () => {
+const createWrapper = ({ keepAlive = false } = {}) => {
   const vuetify = createVuetify()
   const pinia = createPinia()
   setActivePinia(pinia)
@@ -142,10 +143,14 @@ const createWrapper = () => {
   generalStore.deleteExecution = vi.fn()
   generalStore.setSelectedExecution = vi.fn()
   generalStore.loadedExecutions = []
+  generalStore.autoLoadExecutions = vi.fn()
 
   const mockShowSnackbar = vi.fn()
 
-  const wrapper = mount(HistoryExecutionView, {
+  const view = keepAlive
+    ? { render: () => h(KeepAlive, null, { default: () => h(HistoryExecutionView) }) }
+    : HistoryExecutionView
+  const wrapper: any = mount(view, {
     global: {
       plugins: [vuetify, pinia, i18n],
       provide: {
@@ -179,6 +184,20 @@ const createWrapper = () => {
   })
 
   return { wrapper, generalStore, mockShowSnackbar }
+}
+
+/** Picks a date option, and the days of a custom range, as the date chip does. */
+const pickDates = async (
+  wrapper: any,
+  option: string,
+  custom?: { startDate: string | null; endDate: string | null },
+) => {
+  wrapper.vm.dateOptionSelected = option
+  await nextTick()
+  if (custom) {
+    Object.assign(wrapper.vm.customSelectedDates, custom)
+    await nextTick()
+  }
 }
 
 describe('HistoryExecutionView', () => {
@@ -239,57 +258,7 @@ describe('HistoryExecutionView', () => {
     })
   })
 
-  describe('Data Properties', () => {
-    test('has correct initial data structure', () => {
-      const { wrapper } = createWrapper()
-
-      expect(Array.isArray(wrapper.vm.data)).toBe(true)
-      expect(wrapper.vm.customSelectedDates.startDate).toBeNull()
-      expect(wrapper.vm.customSelectedDates.endDate).toBeNull()
-      expect(wrapper.vm.loadingExecutions instanceof Set).toBe(true)
-    })
-  })
-
-  describe('Computed Properties', () => {
-    test('title computed property returns correct value', () => {
-      const { wrapper } = createWrapper()
-
-      expect(wrapper.vm.title).toBe('Execution History')
-    })
-
-    test('description computed property returns correct value', () => {
-      const { wrapper } = createWrapper()
-
-      expect(wrapper.vm.description).toBe('View past executions')
-    })
-
-    test('locale computed property returns current locale', () => {
-      const { wrapper } = createWrapper()
-
-      expect(wrapper.vm.locale).toBe('en')
-    })
-
-    test('labels computed property returns correct options', () => {
-      const { wrapper } = createWrapper()
-
-      const labels = wrapper.vm.labels
-      expect(labels).toHaveLength(5)
-      expect(labels[0].value).toBe('today')
-      expect(labels[1].value).toBe('yesterday')
-      expect(labels[2].value).toBe('last7days')
-      expect(labels[3].value).toBe('lastMonth')
-      expect(labels[4].value).toBe('custom')
-      expect(labels[4].isCustom).toBe(true)
-    })
-  })
-
   describe('Lifecycle Methods', () => {
-    test('injects showSnackbar on created', () => {
-      const { wrapper, mockShowSnackbar } = createWrapper()
-
-      expect(wrapper.vm.showSnackbar).toBe(mockShowSnackbar)
-    })
-
     test('opens on the last 30 days', async () => {
       const { wrapper } = createWrapper()
       await wrapper.vm.$nextTick()
@@ -302,15 +271,14 @@ describe('HistoryExecutionView', () => {
       )
     })
 
-    test('calls fetchData on activated', async () => {
-      const { wrapper } = createWrapper()
-      const fetchDataSpy = vi
-        .spyOn(wrapper.vm, 'fetchData')
-        .mockImplementation(() => Promise.resolve())
+    test('lists the executions and keeps their states polled when the view is shown', async () => {
+      const { wrapper, generalStore } = createWrapper({ keepAlive: true })
+      generalStore.fetchExecutionsByDateRange.mockResolvedValue([])
+      await flushPromises()
 
-      await wrapper.vm.$options.activated.call(wrapper.vm)
-
-      expect(fetchDataSpy).toHaveBeenCalled()
+      expect(generalStore.fetchExecutionsByDateRange).toHaveBeenCalled()
+      expect(generalStore.autoLoadExecutions).toHaveBeenCalled()
+      wrapper.unmount()
     })
   })
 
@@ -320,8 +288,8 @@ describe('HistoryExecutionView', () => {
         const { wrapper, generalStore } = createWrapper()
         generalStore.fetchExecutionsByDateRange.mockResolvedValue([])
 
-        await wrapper.setData({ dateOptionSelected: 'custom' })
-        await wrapper.setData({ customSelectedDates: { startDate: '2023-01-01', endDate: '2023-01-31' } })
+        await pickDates(wrapper, 'custom', { startDate: '2023-01-01', endDate: '2023-01-31' })
+        await flushPromises()
         generalStore.fetchExecutionsByDateRange.mockClear()
 
         await wrapper.vm.fetchData()
@@ -473,16 +441,16 @@ describe('HistoryExecutionView', () => {
       test('deletes execution successfully and refetches data', async () => {
         const { wrapper, generalStore, mockShowSnackbar } = createWrapper()
         generalStore.deleteExecution.mockResolvedValue(true)
-        const fetchDataSpy = vi
-          .spyOn(wrapper.vm, 'fetchData')
-          .mockImplementation(() => Promise.resolve())
+        generalStore.fetchExecutionsByDateRange.mockResolvedValue([])
+        await flushPromises()
+        generalStore.fetchExecutionsByDateRange.mockClear()
 
         const execution = { id: 1, name: 'Test' }
 
         await wrapper.vm.deleteExecution(execution)
 
         expect(generalStore.deleteExecution).toHaveBeenCalledWith(1)
-        expect(fetchDataSpy).toHaveBeenCalled()
+        expect(generalStore.fetchExecutionsByDateRange).toHaveBeenCalledTimes(1)
         expect(mockShowSnackbar).toHaveBeenCalledWith(
           'Execution deleted successfully',
         )
@@ -524,7 +492,7 @@ describe('HistoryExecutionView', () => {
     test('the today option lists its days', async () => {
       const { wrapper } = createWrapper()
 
-      await wrapper.setData({ dateOptionSelected: 'today' })
+      await pickDates(wrapper, 'today')
 
       const today = new Date()
       expect(wrapper.vm.selectedDates.startDate.toDateString()).toBe(
@@ -538,7 +506,7 @@ describe('HistoryExecutionView', () => {
     test('the yesterday option lists its days', async () => {
       const { wrapper } = createWrapper()
 
-      await wrapper.setData({ dateOptionSelected: 'yesterday' })
+      await pickDates(wrapper, 'yesterday')
 
       const yesterday = new Date()
       yesterday.setDate(yesterday.getDate() - 1)
@@ -553,7 +521,7 @@ describe('HistoryExecutionView', () => {
     test('the last7days option lists its days', async () => {
       const { wrapper } = createWrapper()
 
-      await wrapper.setData({ dateOptionSelected: 'last7days' })
+      await pickDates(wrapper, 'last7days')
 
       const today = new Date()
       const lastWeek = new Date()
@@ -570,7 +538,7 @@ describe('HistoryExecutionView', () => {
     test('the lastMonth option lists its days', async () => {
       const { wrapper } = createWrapper()
 
-      await wrapper.setData({ dateOptionSelected: 'lastMonth' })
+      await pickDates(wrapper, 'lastMonth')
 
       const today = new Date()
       const lastMonth = new Date()
@@ -587,7 +555,7 @@ describe('HistoryExecutionView', () => {
     test('a custom range has no days until both are given', async () => {
       const { wrapper } = createWrapper()
 
-      await wrapper.setData({ dateOptionSelected: 'custom' })
+      await pickDates(wrapper, 'custom')
 
       expect(wrapper.vm.selectedDates.startDate).toBeNull()
       expect(wrapper.vm.selectedDates.endDate).toBeNull()
@@ -596,13 +564,7 @@ describe('HistoryExecutionView', () => {
     test('a custom range lists its days, read as local days', async () => {
       const { wrapper } = createWrapper()
 
-      await wrapper.setData({ dateOptionSelected: 'custom' })
-      await wrapper.setData({
-        customSelectedDates: {
-          startDate: '2023-01-01',
-          endDate: '2023-01-31',
-        },
-      })
+      await pickDates(wrapper, 'custom', { startDate: '2023-01-01', endDate: '2023-01-31' })
 
       // Picked days are read as local midnight, not UTC midnight
       expect(wrapper.vm.selectedDates.startDate).toEqual(new Date(2023, 0, 1))
@@ -610,20 +572,24 @@ describe('HistoryExecutionView', () => {
     })
 
     test('other days load the list again; a custom range only once both days are given', async () => {
-      const { wrapper } = createWrapper()
-      await wrapper.setData({ dateOptionSelected: 'custom' })
-      const fetchDataSpy = vi
-        .spyOn(wrapper.vm, 'fetchData')
-        .mockImplementation(() => Promise.resolve())
+      const { wrapper, generalStore } = createWrapper()
+      generalStore.fetchExecutionsByDateRange.mockResolvedValue([])
+      await pickDates(wrapper, 'custom')
+      await flushPromises()
+      const listed = generalStore.fetchExecutionsByDateRange
+      listed.mockClear()
 
-      await wrapper.setData({ customSelectedDates: { startDate: '2023-01-01', endDate: null } })
-      expect(fetchDataSpy).not.toHaveBeenCalled()
+      Object.assign(wrapper.vm.customSelectedDates, { startDate: '2023-01-01' })
+      await flushPromises()
+      expect(listed).not.toHaveBeenCalled()
 
-      await wrapper.setData({ customSelectedDates: { startDate: '2023-01-01', endDate: '2023-01-31' } })
-      expect(fetchDataSpy).toHaveBeenCalledTimes(1)
+      Object.assign(wrapper.vm.customSelectedDates, { endDate: '2023-01-31' })
+      await flushPromises()
+      expect(listed).toHaveBeenCalledTimes(1)
 
-      await wrapper.setData({ dateOptionSelected: 'today' })
-      expect(fetchDataSpy).toHaveBeenCalledTimes(2)
+      await pickDates(wrapper, 'today')
+      await flushPromises()
+      expect(listed).toHaveBeenCalledTimes(2)
     })
   })
 
@@ -710,15 +676,14 @@ describe('HistoryExecutionView', () => {
       const { wrapper, generalStore } = createWrapper()
       generalStore.executionFilterOptions = { plant_id: plants }
       generalStore.executionFilterValues = { plant_id: null }
-      await wrapper.vm.$nextTick()
-      const fetchDataSpy = vi
-        .spyOn(wrapper.vm, 'fetchData')
-        .mockImplementation(() => Promise.resolve())
+      generalStore.fetchExecutionsByDateRange.mockResolvedValue([])
+      await flushPromises()
+      generalStore.fetchExecutionsByDateRange.mockClear()
 
       generalStore.executionFilterValues = { plant_id: 2 }
-      await wrapper.vm.$nextTick()
+      await flushPromises()
 
-      expect(fetchDataSpy).toHaveBeenCalledTimes(1)
+      expect(generalStore.fetchExecutionsByDateRange).toHaveBeenCalledTimes(1)
     })
   })
 
