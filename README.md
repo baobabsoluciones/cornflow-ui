@@ -102,6 +102,25 @@ menu), a card per subject:
   with what it needs ticked as it is typed (at least 5 characters; upper and lower case letters,
   numbers and a special character; no spaces; both the same). It is sent once it meets all of it.
 
+## Help menu and guided tours
+
+The "?" button at the top right of every view opens the help menu: a tour of the app, the tour of
+the page the user is on (when it has one), the help centre with the files of `helpMenuFiles` and
+the licences.
+
+A guided tour dims the window and goes step by step over the parts of the screen, each with a card
+beside it. It shows only when the user starts it from the help menu. The tours
+(`composables/onboarding/tours.ts`):
+
+- **The app**: the side menu, a new execution, the loaded execution, what every execution shares,
+  the open executions, the help and the account.
+- **Pages**: the execution history, create execution, the data tables (input data, results and
+  master data), user settings and roles management.
+
+A step points at the element marked `data-tour="<target>"` and reads its title and text from
+`onboarding.<tour>.<step>` in the locales. A step whose element is not on the screen (a button the
+user may not use, a panel of another state) is left out.
+
 ## Execution management section
 
 The execution management section handles the complete lifecycle of optimization executions, from creation to historical tracking.
