@@ -60,8 +60,67 @@ export const HISTORY_TOUR: Tour = {
   ],
 }
 
+export const CREATE_EXECUTION_TOUR: Tour = {
+  key: 'createExecution',
+  page: atPath('/project-execution'),
+  steps: [
+    { key: 'draft', target: 'create-draft' },
+    { key: 'data', target: 'create-data' },
+    { key: 'dataActions', target: 'create-data-actions' },
+    { key: 'name', target: 'create-name' },
+    { key: 'checks', target: 'create-checks' },
+    { key: 'parameters', target: 'create-parameters' },
+    { key: 'launch', target: 'create-launch' },
+  ],
+}
+
+/** The tables of the loaded execution (its input data and results) and the master data. */
+const TABLE_PAGE = /^\/(input-data|results|configuration)\/(?!section\/)/
+
+export const DATA_TABLE_TOUR: Tour = {
+  key: 'dataTable',
+  page: (path) => TABLE_PAGE.test(path),
+  steps: [
+    { key: 'execution', target: 'table-execution' },
+    { key: 'tabs', target: 'table-tabs' },
+    { key: 'search', target: 'table-search' },
+    { key: 'filters', target: 'table-filters' },
+    { key: 'actions', target: 'table-actions' },
+    { key: 'grid', target: 'table-grid' },
+    { key: 'footer', target: 'table-footer' },
+  ],
+}
+
+export const USER_SETTINGS_TOUR: Tour = {
+  key: 'userSettings',
+  page: atPath('/user-settings'),
+  steps: [
+    { key: 'account', target: 'settings-account' },
+    { key: 'theme', target: 'settings-theme' },
+    { key: 'language', target: 'settings-language' },
+    { key: 'password', target: 'settings-password' },
+  ],
+}
+
+export const ROLES_TOUR: Tour = {
+  key: 'roles',
+  page: atPath('/roles-management'),
+  steps: [
+    { key: 'roles', target: 'roles-roles' },
+    { key: 'addRole', target: 'roles-add' },
+    { key: 'search', target: 'roles-search' },
+    { key: 'users', target: 'roles-users' },
+  ],
+}
+
 /** The tours of single pages. */
-export const PAGE_TOURS: Tour[] = [HISTORY_TOUR]
+export const PAGE_TOURS: Tour[] = [
+  HISTORY_TOUR,
+  CREATE_EXECUTION_TOUR,
+  DATA_TABLE_TOUR,
+  USER_SETTINGS_TOUR,
+  ROLES_TOUR,
+]
 
 /** The tour of the page at this path, if it has one. */
 export function pageTourOf(path: string): Tour | null {

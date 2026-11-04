@@ -534,6 +534,102 @@ export default {
     done: 'Terminer',
     close: 'Fermer la visite',
     progress: 'Étape {current} sur {total}',
+    createExecution: {
+      draft: {
+        title: 'Un brouillon enregistré',
+        text: "Vous avez laissé une exécution à moitié : reprenez-la où vous l'avez laissée, ou abandonnez-la.",
+      },
+      data: {
+        title: 'Les données',
+        text: "D'où viennent les données de l'exécution : chargez des fichiers ou récupérez-les de la base de données, selon l'application. Une fois chargées, leurs tables sont ici pour les vérifier et les modifier.",
+      },
+      dataActions: {
+        title: 'Ce que vous faites des données',
+        text: 'Chargez des fichiers, chargez ou rechargez les données, téléchargez-les en Excel ou remplacez-les depuis un classeur, et agrandissez la table.',
+      },
+      name: {
+        title: 'Le nom',
+        text: "Donnez un nom à l'exécution ; il peut être proposé à partir des données. Vous pouvez aussi ajouter une description.",
+      },
+      checks: {
+        title: 'Vérifications',
+        text: 'Vérifiez que les données sont cohérentes avant de lancer ; vous voyez les avertissements et les erreurs avec leur détail.',
+      },
+      parameters: {
+        title: 'Paramètres',
+        text: "Les paramètres de l'exécution et le solveur. Les obligatoires sont marqués ; les avancés, repliés.",
+      },
+      launch: {
+        title: 'Lancer',
+        text: "Ce qui manque encore pour lancer ; chaque point vous y emmène. Quand rien ne manque, le bouton lance l'exécution.",
+      },
+    },
+    dataTable: {
+      execution: {
+        title: "L'exécution",
+        text: 'À quelle exécution appartiennent les données que vous voyez.',
+      },
+      tabs: {
+        title: 'Les tables du groupe',
+        text: "Passez d'une table à l'autre. Chaque onglet indique ses lignes, ses modifications en attente et ses avertissements ; le bouton au bout les liste toutes.",
+      },
+      search: {
+        title: 'Rechercher',
+        text: 'Cherche dans toute la table (Ctrl/⌘ K).',
+      },
+      filters: {
+        title: 'Filtres',
+        text: "Ajoutez des filtres par colonne ; ils restent sous forme d'étiquettes que vous pouvez modifier ou retirer.",
+      },
+      actions: {
+        title: 'Actions',
+        text: 'Téléchargez la table en Excel, changez la densité des lignes et passez en plein écran. Sur une table modifiable, ajoutez des lignes ou chargez-les en bloc.',
+      },
+      grid: {
+        title: 'Les données',
+        text: "Triez par une colonne depuis son en-tête. Si la table est modifiable, vous changez les cellules ici ; les modifications restent en attente jusqu'à ce que vous les enregistriez.",
+      },
+      footer: {
+        title: 'Lignes et modifications',
+        text: 'Combien de lignes vous voyez sur le total. Quand vous modifiez, les modifications en attente sont ici pour les vérifier et les enregistrer.',
+      },
+    },
+    userSettings: {
+      account: {
+        title: 'Votre compte',
+        text: 'Avec qui vous êtes connecté : nom, e-mail, identifiant et rôles.',
+      },
+      theme: {
+        title: 'Apparence',
+        text: 'Clair, sombre ou comme votre système.',
+      },
+      language: {
+        title: 'Langue',
+        text: "La langue dans laquelle l'application s'affiche.",
+      },
+      password: {
+        title: 'Mot de passe',
+        text: "Saisissez le nouveau deux fois ; chaque règle se coche une fois remplie et le bouton s'active quand elles le sont toutes.",
+      },
+    },
+    roles: {
+      roles: {
+        title: 'Rôles',
+        text: "Les rôles de l'application, avec le nombre d'utilisateurs de chacun. Choisissez-en un pour voir ce qu'il peut faire et filtrer les utilisateurs.",
+      },
+      addRole: {
+        title: 'Un nouveau rôle',
+        text: 'Crée un rôle. Une fois un rôle choisi, vous pouvez aussi le renommer ou le supprimer.',
+      },
+      search: {
+        title: 'Trouver un utilisateur',
+        text: 'Par identifiant, nom, e-mail ou rôle.',
+      },
+      users: {
+        title: 'Utilisateurs',
+        text: 'Les utilisateurs et leurs rôles. Le crayon de chaque ligne modifie son nom, son e-mail et ses rôles.',
+      },
+    },
     history: {
       filters: {
         title: 'Recherche et filtres',

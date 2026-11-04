@@ -548,6 +548,102 @@ export default {
     done: 'Terminar',
     close: 'Fechar a visita',
     progress: 'Passo {current} de {total}',
+    createExecution: {
+      draft: {
+        title: 'Um rascunho guardado',
+        text: 'Deixou uma execução a meio: continue-a onde a deixou ou descarte-a.',
+      },
+      data: {
+        title: 'Os dados',
+        text: 'De onde vêm os dados da execução: carregue ficheiros ou traga-os da base de dados, conforme a aplicação. Depois de carregados, as suas tabelas estão aqui para as rever e editar.',
+      },
+      dataActions: {
+        title: 'O que faz com os dados',
+        text: 'Carregue ficheiros, carregue ou recarregue os dados, descarregue-os para Excel ou substitua-os a partir de um livro, e amplie a tabela.',
+      },
+      name: {
+        title: 'O nome',
+        text: 'Dê um nome à execução; pode vir proposto a partir dos dados. Também pode acrescentar uma descrição.',
+      },
+      checks: {
+        title: 'Verificações',
+        text: 'Verifique que os dados são coerentes antes de lançar; vê os avisos e os erros com o seu detalhe.',
+      },
+      parameters: {
+        title: 'Parâmetros',
+        text: 'Os parâmetros da execução e o solver. Os obrigatórios estão marcados; os avançados, recolhidos.',
+      },
+      launch: {
+        title: 'Lançar',
+        text: 'O que ainda falta para lançar; cada ponto leva-o até ele. Quando não falta nada, o botão lança a execução.',
+      },
+    },
+    dataTable: {
+      execution: {
+        title: 'A execução',
+        text: 'De que execução são os dados que vê.',
+      },
+      tabs: {
+        title: 'As tabelas do grupo',
+        text: 'Passe de uma tabela para outra. Cada separador marca as suas linhas, as alterações pendentes e os avisos; o botão no fim lista-as todas.',
+      },
+      search: {
+        title: 'Pesquisar',
+        text: 'Pesquisa em toda a tabela (Ctrl/⌘ K).',
+      },
+      filters: {
+        title: 'Filtros',
+        text: 'Adicione filtros por coluna; ficam como etiquetas que pode mudar ou retirar.',
+      },
+      actions: {
+        title: 'Ações',
+        text: 'Descarregue a tabela para Excel, mude a densidade das linhas e passe a ecrã inteiro. Numa tabela editável, adicione linhas ou carregue-as em bloco.',
+      },
+      grid: {
+        title: 'Os dados',
+        text: 'Ordene por uma coluna a partir do seu cabeçalho. Se a tabela for editável, muda as células aqui; as alterações ficam pendentes até as guardar.',
+      },
+      footer: {
+        title: 'Linhas e alterações',
+        text: 'Quantas linhas vê do total. Quando edita, as alterações pendentes estão aqui para as rever e guardar.',
+      },
+    },
+    userSettings: {
+      account: {
+        title: 'A sua conta',
+        text: 'Com quem iniciou sessão: nome, e-mail, utilizador e funções.',
+      },
+      theme: {
+        title: 'Aparência',
+        text: 'Claro, escuro ou como tiver o sistema.',
+      },
+      language: {
+        title: 'Idioma',
+        text: 'O idioma em que vê a aplicação.',
+      },
+      password: {
+        title: 'Palavra-passe',
+        text: 'Escreva a nova duas vezes; cada regra marca-se ao cumprir-se e o botão ativa-se quando se cumprem todas.',
+      },
+    },
+    roles: {
+      roles: {
+        title: 'Funções',
+        text: 'As funções da aplicação, com quantos utilizadores tem cada uma. Escolha uma para ver o que pode fazer e filtrar os utilizadores por ela.',
+      },
+      addRole: {
+        title: 'Uma função nova',
+        text: 'Cria uma função. Ao escolher uma, também a pode renomear ou apagar.',
+      },
+      search: {
+        title: 'Procurar um utilizador',
+        text: 'Por utilizador, nome, e-mail ou função.',
+      },
+      users: {
+        title: 'Utilizadores',
+        text: 'Os utilizadores e as suas funções. O lápis de cada linha edita o nome, o e-mail e as funções.',
+      },
+    },
     history: {
       filters: {
         title: 'Pesquisa e filtros',

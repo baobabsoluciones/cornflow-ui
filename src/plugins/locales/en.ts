@@ -559,6 +559,102 @@ export default {
     done: 'Done',
     close: 'Close the tour',
     progress: 'Step {current} of {total}',
+    createExecution: {
+      draft: {
+        title: 'A saved draft',
+        text: 'You left an execution halfway: continue it where you left it, or discard it.',
+      },
+      data: {
+        title: 'The data',
+        text: 'Where the data of the execution comes from: upload files or bring it from the database, as the app does it. Once loaded, its tables are here to review and edit.',
+      },
+      dataActions: {
+        title: 'What you do with the data',
+        text: 'Upload files, load or reload the data, download it to Excel or replace it from a workbook, and enlarge the table.',
+      },
+      name: {
+        title: 'The name',
+        text: 'Give the execution a name; it may come proposed from the data. You can add a description too.',
+      },
+      checks: {
+        title: 'Checks',
+        text: 'Check the data is consistent before you launch; you see the warnings and errors with their detail.',
+      },
+      parameters: {
+        title: 'Parameters',
+        text: 'The parameters of the execution and the solver. The required ones are marked; the advanced ones, folded.',
+      },
+      launch: {
+        title: 'Launch',
+        text: 'What is still missing to launch; each item takes you to it. Once nothing is missing, the button launches the execution.',
+      },
+    },
+    dataTable: {
+      execution: {
+        title: 'The execution',
+        text: 'Which execution the data you see belongs to.',
+      },
+      tabs: {
+        title: 'The tables of the group',
+        text: 'Go from one table to another. Each tab marks its rows, its pending changes and its warnings; the button at the end lists them all.',
+      },
+      search: {
+        title: 'Search',
+        text: 'Searches the whole table (Ctrl/⌘ K).',
+      },
+      filters: {
+        title: 'Filters',
+        text: 'Add filters by column; they stay as chips you can change or remove.',
+      },
+      actions: {
+        title: 'Actions',
+        text: 'Download the table to Excel, change the row density and go full screen. On a table you can edit, add rows or upload them in bulk.',
+      },
+      grid: {
+        title: 'The data',
+        text: 'Sort by a column from its header. When the table can be edited, you change the cells here; the changes stay pending until you save them.',
+      },
+      footer: {
+        title: 'Rows and changes',
+        text: 'How many rows you see out of all of them. Once you edit, the pending changes are here to review and save.',
+      },
+    },
+    userSettings: {
+      account: {
+        title: 'Your account',
+        text: 'Who you are signed in as: name, e-mail, user name and roles.',
+      },
+      theme: {
+        title: 'Appearance',
+        text: 'Light, dark or as your system has it.',
+      },
+      language: {
+        title: 'Language',
+        text: 'The language the app shows.',
+      },
+      password: {
+        title: 'Password',
+        text: 'Type the new one twice; each rule ticks as it is met, and the button turns on once they all are.',
+      },
+    },
+    roles: {
+      roles: {
+        title: 'Roles',
+        text: 'The roles of the app, with how many users each one has. Pick one to see what it can do and to filter the users by it.',
+      },
+      addRole: {
+        title: 'A new role',
+        text: 'Creates a role. Once you pick one, you can also rename or delete it.',
+      },
+      search: {
+        title: 'Find a user',
+        text: 'By user name, full name, e-mail or role.',
+      },
+      users: {
+        title: 'Users',
+        text: 'The users and their roles. The pencil of each row edits their name, e-mail and roles.',
+      },
+    },
     history: {
       filters: {
         title: 'Search and filters',

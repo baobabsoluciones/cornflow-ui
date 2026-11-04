@@ -23,11 +23,17 @@
       <div ref="main" class="create-execution-main">
         <DraftBanner
           v-if="savedDraft && showDraftBanner"
+          data-tour="create-draft"
           :draft="savedDraft"
           @resume="resumeDraft"
           @discard="discardDraft"
         />
-        <ExecutionDataCard :draft="draft" :highlight="flashData" class="create-execution-data" />
+        <ExecutionDataCard
+          :draft="draft"
+          :highlight="flashData"
+          class="create-execution-data"
+          data-tour="create-data"
+        />
       </div>
       <LaunchPanel
         v-model:collapsed="collapsed"

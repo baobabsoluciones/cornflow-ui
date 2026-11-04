@@ -37,6 +37,7 @@
       <div class="data-table__toolbar">
         <CoreSearchInput
           v-if="searchable"
+          data-tour="table-search"
           :model-value="search"
           class="data-table__search"
           :placeholder="$t('dataTable.searchIn', { table: title })"
@@ -44,7 +45,7 @@
           clearable
           @update:model-value="search = $event"
         />
-        <div v-if="filterable || dateRanges.length" class="data-table__filters">
+        <div v-if="filterable || dateRanges.length" class="data-table__filters" data-tour="table-filters">
           <ConditionFilterChip
             v-for="range in dateRanges"
             :key="`range-${range.key}`"
@@ -78,7 +79,7 @@
           </template>
         </div>
 
-        <div class="data-table__actions">
+        <div class="data-table__actions" data-tour="table-actions">
           <CoreButton
             v-if="canAdd"
             variant="outlined"
@@ -148,12 +149,13 @@
         <CoreButton size="small" :text="$t('dataTable.addRow')" data-testid="data-table-add-confirm" @click="grid?.commitAdd()" />
       </div>
 
-      <div v-if="$slots.body" class="data-table__body">
+      <div v-if="$slots.body" class="data-table__body" data-tour="table-grid">
         <slot name="body" />
       </div>
       <CoreDataGrid
         v-else
         ref="grid"
+        data-tour="table-grid"
         v-model:sort="sort"
         v-model:selected="selected"
         v-model:widths="widths"
@@ -220,7 +222,7 @@
         />
       </div>
 
-      <footer class="data-table__footer">
+      <footer class="data-table__footer" data-tour="table-footer">
         <span class="data-table__count" data-testid="data-table-count">{{ countText }}</span>
         <button v-if="isFiltered" type="button" class="data-table__link" @click="clearFilters">
           {{ $t('dataTable.clearFilters') }}

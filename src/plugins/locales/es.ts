@@ -565,6 +565,102 @@ export default {
     done: 'Terminar',
     close: 'Cerrar el recorrido',
     progress: 'Paso {current} de {total}',
+    createExecution: {
+      draft: {
+        title: 'Un borrador guardado',
+        text: 'Dejaste una ejecución a medias: continúala donde la dejaste o descártala.',
+      },
+      data: {
+        title: 'Los datos',
+        text: 'De dónde salen los datos de la ejecución: sube ficheros o tráelos de la base de datos, según la aplicación. Una vez cargados, aquí están sus tablas para revisarlas y editarlas.',
+      },
+      dataActions: {
+        title: 'Qué haces con los datos',
+        text: 'Sube ficheros, carga o vuelve a cargar los datos, descárgalos a Excel o sustitúyelos desde un libro, y amplía la tabla.',
+      },
+      name: {
+        title: 'El nombre',
+        text: 'Ponle nombre a la ejecución; puede venir propuesto a partir de los datos. También puedes añadir una descripción.',
+      },
+      checks: {
+        title: 'Comprobaciones',
+        text: 'Comprueba que los datos son coherentes antes de lanzar; verás los avisos y los errores con su detalle.',
+      },
+      parameters: {
+        title: 'Parámetros',
+        text: 'Los parámetros de la ejecución y el solver. Los obligatorios están marcados; los avanzados, plegados.',
+      },
+      launch: {
+        title: 'Lanzar',
+        text: 'Lo que aún falta para lanzar; cada punto te lleva a él. Cuando no falta nada, el botón lanza la ejecución.',
+      },
+    },
+    dataTable: {
+      execution: {
+        title: 'La ejecución',
+        text: 'De qué ejecución son los datos que ves.',
+      },
+      tabs: {
+        title: 'Las tablas del grupo',
+        text: 'Pasa de una tabla a otra. Cada pestaña marca sus filas, sus cambios pendientes y sus avisos; el botón del final las lista todas.',
+      },
+      search: {
+        title: 'Buscar',
+        text: 'Busca en toda la tabla (Ctrl/⌘ K).',
+      },
+      filters: {
+        title: 'Filtros',
+        text: 'Añade filtros por columna; quedan como etiquetas que puedes cambiar o quitar.',
+      },
+      actions: {
+        title: 'Acciones',
+        text: 'Descarga la tabla a Excel, cambia la densidad de las filas y ponla a pantalla completa. En una tabla que se puede editar, añade filas o súbelas en bloque.',
+      },
+      grid: {
+        title: 'Los datos',
+        text: 'Ordena por una columna desde su cabecera. Si la tabla se puede editar, cambias las celdas aquí; los cambios quedan pendientes hasta que los guardes.',
+      },
+      footer: {
+        title: 'Filas y cambios',
+        text: 'Cuántas filas ves de todas las que hay. Cuando editas, aquí están los cambios pendientes para revisarlos y guardarlos.',
+      },
+    },
+    userSettings: {
+      account: {
+        title: 'Tu cuenta',
+        text: 'Con quién has entrado: nombre, correo, usuario y roles.',
+      },
+      theme: {
+        title: 'Apariencia',
+        text: 'Claro, oscuro o como tengas el sistema.',
+      },
+      language: {
+        title: 'Idioma',
+        text: 'El idioma en el que ves la aplicación.',
+      },
+      password: {
+        title: 'Contraseña',
+        text: 'Escribe la nueva dos veces; cada regla se marca al cumplirse y el botón se activa cuando se cumplen todas.',
+      },
+    },
+    roles: {
+      roles: {
+        title: 'Roles',
+        text: 'Los roles de la aplicación, con cuántos usuarios tiene cada uno. Elige uno para ver lo que puede hacer y filtrar los usuarios por él.',
+      },
+      addRole: {
+        title: 'Un rol nuevo',
+        text: 'Crea un rol. Al elegir uno, también puedes renombrarlo o borrarlo.',
+      },
+      search: {
+        title: 'Buscar un usuario',
+        text: 'Por usuario, nombre, correo o rol.',
+      },
+      users: {
+        title: 'Usuarios',
+        text: 'Los usuarios y sus roles. El lápiz de cada fila edita su nombre, su correo y sus roles.',
+      },
+    },
     history: {
       filters: {
         title: 'Búsqueda y filtros',
