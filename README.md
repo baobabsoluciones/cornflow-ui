@@ -57,6 +57,7 @@ At the foot of the app, from where the side menu ends, a tab per loaded executio
   execution reads as its solution ("Optimal"), any other as its own state; a running one shows a
   spinner. The selected tab is marked; clicking it again deselects it.
 - The × closes a tab; closing the selected one deselects its execution, as clicking it again does.
+- From the keyboard the bar is a tab list: Tab reaches the selected tab, the arrows (and Home, End) move between tabs, Enter or Space selects one, and Delete closes it.
   A new execution starts from the side menu ("New execution").
 - Premium modules may decorate the tabs (`decorateExecutionTabs`), e.g. the ⭐ of the current plan.
 

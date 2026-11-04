@@ -59,6 +59,58 @@ describe('ExecutionTabBar', () => {
     expect(wrapper.emitted('select')).toHaveLength(1)
   })
 
+  describe('from the keyboard', () => {
+    const mountAttached = (selected: string | null = 'e2') =>
+      mount(ExecutionTabBar, {
+        props: { tabs, selected },
+        global: { plugins: [i18n()] },
+        attachTo: document.body,
+      })
+    const tabButtons = (wrapper: ReturnType<typeof mountAttached>) => wrapper.findAll('[role="tab"]')
+    const focusedIndex = (wrapper: ReturnType<typeof mountAttached>) =>
+      tabButtons(wrapper).findIndex((tab) => tab.element === document.activeElement)
+    const press = (wrapper: ReturnType<typeof mountAttached>, key: string) =>
+      wrapper.find('[role="tablist"]').trigger('keydown', { key })
+
+    test('Tab reaches the selected tab only, or the first when none is selected; the crosses are not stops', () => {
+      const wrapper = mountAttached()
+      expect(tabButtons(wrapper).map((tab) => tab.attributes('tabindex'))).toEqual(['-1', '0', '-1'])
+      expect(wrapper.findAll('.execution-tab-bar__close').every((close) => close.attributes('tabindex') === '-1')).toBe(true)
+      wrapper.unmount()
+
+      const none = mountAttached(null)
+      expect(tabButtons(none).map((tab) => tab.attributes('tabindex'))).toEqual(['0', '-1', '-1'])
+      none.unmount()
+    })
+
+    test('the arrows, Home and End move between the tabs without selecting them', async () => {
+      const wrapper = mountAttached()
+      ;(tabButtons(wrapper)[1].element as HTMLElement).focus()
+
+      await press(wrapper, 'ArrowRight')
+      expect(focusedIndex(wrapper)).toBe(2)
+      await press(wrapper, 'ArrowRight')
+      expect(focusedIndex(wrapper)).toBe(0)
+      await press(wrapper, 'ArrowLeft')
+      expect(focusedIndex(wrapper)).toBe(2)
+      await press(wrapper, 'Home')
+      expect(focusedIndex(wrapper)).toBe(0)
+      await press(wrapper, 'End')
+      expect(focusedIndex(wrapper)).toBe(2)
+      expect(wrapper.emitted('select')).toBeUndefined()
+      wrapper.unmount()
+    })
+
+    test('Delete closes the tab with the focus', async () => {
+      const wrapper = mountAttached()
+      ;(tabButtons(wrapper)[2].element as HTMLElement).focus()
+
+      await press(wrapper, 'Delete')
+      expect(wrapper.emitted('close')).toEqual([[2]])
+      wrapper.unmount()
+    })
+  })
+
   test('shows the end slot after the tabs', () => {
     const wrapper = mountBar({}, { end: '<span class="credit">Powered by</span>' })
     expect(wrapper.find('.execution-tab-bar__end .credit').exists()).toBe(true)

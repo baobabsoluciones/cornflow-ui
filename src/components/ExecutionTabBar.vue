@@ -5,11 +5,19 @@
   name; the selected one is marked. A click selects a tab (`select`, its id), the × closes it
   (`close`, its index). At the end, the `end` slot. Many tabs scroll sideways.
 
+  From the keyboard it is a tab list: Tab reaches the selected tab, the arrows (and Home, End)
+  move between tabs, Enter or Space selects the one with the focus, and Delete closes it.
+
   <ExecutionTabBar :tabs="tabs" :selected="selectedId" @select="select" @close="close" />
 -->
 <template>
   <nav class="execution-tab-bar" :aria-label="$t('executionTabs.label')" data-testid="execution-tab-bar">
-    <div class="execution-tab-bar__tabs" role="tablist" :aria-label="$t('executionTabs.label')">
+    <div
+      class="execution-tab-bar__tabs"
+      role="tablist"
+      :aria-label="$t('executionTabs.label')"
+      @keydown="onKey"
+    >
       <div
         v-for="(tab, index) in tabs"
         :key="tab.id"
@@ -21,6 +29,8 @@
           role="tab"
           class="execution-tab-bar__select"
           :aria-selected="tab.id === selected"
+          :tabindex="tab.id === focusableId ? 0 : -1"
+          aria-keyshortcuts="Delete"
           :title="`${tab.name} · ${tab.status.label}`"
           :data-testid="`execution-tab-${tab.id}`"
           @click="emit('select', tab.id)"
@@ -32,6 +42,7 @@
         <button
           type="button"
           class="execution-tab-bar__close"
+          tabindex="-1"
           :aria-label="$t('executionTabs.close', { name: tab.name })"
           :title="$t('executionTabs.close', { name: tab.name })"
           :data-testid="`execution-tab-close-${tab.id}`"
@@ -48,6 +59,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
 import CoreSpinner from '@cornflow-ui/core/components/core/CoreSpinner.vue'
 import type { CoreTone } from '@cornflow-ui/core/types/ui'
@@ -61,7 +73,7 @@ export interface ExecutionTabBarTab {
   status: { label: string; tone: CoreTone; spin: boolean }
 }
 
-defineProps<{
+const props = defineProps<{
   tabs: ExecutionTabBarTab[]
   /** Id of the selected tab. */
   selected: string | null
@@ -71,6 +83,31 @@ const emit = defineEmits<{
   select: [id: string]
   close: [index: number]
 }>()
+
+/** The tab Tab reaches: the selected one, or the first. */
+const focusableId = computed(() =>
+  props.tabs.some((tab) => tab.id === props.selected) ? props.selected : props.tabs[0]?.id,
+)
+
+function onKey(event: KeyboardEvent) {
+  const tabs = [...(event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('[role="tab"]')]
+  const index = tabs.indexOf(document.activeElement as HTMLElement)
+  if (index === -1) return
+  const last = tabs.length - 1
+  const target = {
+    ArrowLeft: index === 0 ? last : index - 1,
+    ArrowRight: index === last ? 0 : index + 1,
+    Home: 0,
+    End: last,
+  }[event.key]
+  if (target !== undefined) {
+    event.preventDefault()
+    tabs[target].focus()
+  } else if (event.key === 'Delete') {
+    event.preventDefault()
+    emit('close', index)
+  }
+}
 </script>
 
 <style scoped>
