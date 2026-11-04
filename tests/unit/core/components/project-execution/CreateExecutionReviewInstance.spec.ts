@@ -304,7 +304,7 @@ describe('CreateExecutionReviewInstance', () => {
     })
 
     test('passes the ETL flow to the view', () => {
-      const flow = { tableSwitches: {}, parameterSwitches: {} }
+      const flow = { state: { tableSwitches: {}, parameterSwitches: {} }, markAllReuploaded: vi.fn() }
       wrapper = createWrapper({ externalEtlFlow: flow })
       expect(wrapper.findComponent(ExecutionDataViewStub).props('externalEtlFlow')).toEqual(flow)
     })
@@ -392,15 +392,11 @@ describe('CreateExecutionReviewInstance', () => {
       wrapper = null
     })
 
-    test('an uploaded Excel is a new instance with its data, and marks the ETL tables as reuploaded', async () => {
-      const flow = {
-        tableSwitches: { orders: { variant: 'from_db', fixed: false } },
-        parameterSwitches: { 'parameters.horizon': true },
-      }
+    test('an uploaded Excel is a new instance with its data, and marks the ETL review as reuploaded', async () => {
+      const flow = { state: { tableSwitches: {}, parameterSwitches: {} }, markAllReuploaded: vi.fn() }
       wrapper = createWrapper({ ...withOrders(), externalEtlFlow: flow })
       excel.onInstanceUpdate!({ data: { orders: [] } })
-      expect(flow.tableSwitches.orders).toEqual({ variant: 'reuploaded', fixed: true })
-      expect(flow.parameterSwitches['parameters.horizon']).toBe(null)
+      expect(flow.markAllReuploaded).toHaveBeenCalledTimes(1)
       expect(wrapper.emitted('update:instance')![0][0]).toMatchObject({ id: null, data: { orders: [] } })
     })
   })
@@ -435,6 +431,12 @@ describe('CreateExecutionReviewInstance', () => {
     test('detects the matches on mount', () => {
       wrapper = createWrapper()
       expect(mtm.detectMatches).toHaveBeenCalled()
+    })
+
+    test('leaves the tables the ETL loaded from the database to the ETL', () => {
+      const flow = { state: { metadata: { tables_from_db: ['orders'], parameters_from_db: [] } } }
+      wrapper = createWrapper({ ...withOrders(), externalEtlFlow: flow })
+      expect(mtm.detectMatches).toHaveBeenCalledWith(expect.any(Object), { etlTablesFromDb: ['orders'] })
     })
 
     test('gives the view the matches with whether the master can be replaced', async () => {

@@ -55,7 +55,9 @@ export interface ExternalEtlFlowController {
   state: ExternalEtlFlowState
   isActive: ComputedRef<boolean>
   initializeFromEtlResponse: (data: Record<string, any>) => void
+  /** A table the user edited: one loaded from the DB becomes `edited_from_db`, fixed. */
   markTableEdited: (tableName: string) => void
+  /** A workbook the user uploaded replaces the data: every table `reuploaded`, fixed; every parameter null. */
   markAllReuploaded: () => void
   setTableFixed: (tableName: string, value: boolean | null) => void
   setParameterFixed: (paramKey: string, value: boolean | null) => void

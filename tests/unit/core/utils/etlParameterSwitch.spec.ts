@@ -2,10 +2,10 @@ import { describe, test, expect } from 'vitest'
 import {
   resolveEtlParamKey,
   resolveReuploadedParameterSwitchValue,
-  applyEtlParameterSwitch,
+  etlParameterSwitchValue,
   normalizeTableNameForLookup,
   resolveEtlParameterSwitchKey,
-  turnOffEtlParameterFromDbSwitchAfterManualValueEdit,
+  fromDbParameterSwitchKey,
 } from '@cornflow-ui/core/utils/etlParameterSwitch'
 
 describe('resolveEtlParamKey', () => {
@@ -40,25 +40,19 @@ describe('resolveReuploadedParameterSwitchValue', () => {
   })
 })
 
-describe('applyEtlParameterSwitch', () => {
+describe('etlParameterSwitchValue', () => {
   test('non-reuploaded: ON -> false (from DB), OFF -> true (fixed)', () => {
-    const flow: any = { parameterSwitches: {} }
-    applyEtlParameterSwitch(flow, 'T.p', '__etl_from_db__', true, false)
-    expect(flow.parameterSwitches['T.p']).toBe(false)
-    applyEtlParameterSwitch(flow, 'T.p', '__etl_from_db__', false, false)
-    expect(flow.parameterSwitches['T.p']).toBe(true)
+    expect(etlParameterSwitchValue('__etl_from_db__', true, false)).toBe(false)
+    expect(etlParameterSwitchValue('__etl_from_db__', false, false)).toBe(true)
   })
 
-  test('reuploaded: writes the resolved value', () => {
-    const flow: any = { parameterSwitches: {} }
-    applyEtlParameterSwitch(flow, 'T.p', '__etl_fixed__', true, true)
-    expect(flow.parameterSwitches['T.p']).toBe(true)
+  test('reuploaded: the value of the toggled field', () => {
+    expect(etlParameterSwitchValue('__etl_fixed__', true, true)).toBe(true)
+    expect(etlParameterSwitchValue('__etl_default__', true, true)).toBeNull()
   })
 
-  test('reuploaded with an unknown field is a no-op', () => {
-    const flow: any = { parameterSwitches: { 'T.p': 'untouched' } }
-    applyEtlParameterSwitch(flow, 'T.p', 'unknown', true, true)
-    expect(flow.parameterSwitches['T.p']).toBe('untouched')
+  test('reuploaded with an unknown field sets nothing', () => {
+    expect(etlParameterSwitchValue('unknown', true, true)).toBeUndefined()
   })
 })
 
@@ -94,22 +88,16 @@ describe('resolveEtlParameterSwitchKey', () => {
   })
 })
 
-describe('turnOffEtlParameterFromDbSwitchAfterManualValueEdit', () => {
-  test('flips a resolved "from DB" (false) switch to fixed (true)', () => {
-    const flow = { parameterSwitches: { 'T.5': false } }
-    turnOffEtlParameterFromDbSwitchAfterManualValueEdit(flow, 'T', 5)
-    expect(flow.parameterSwitches['T.5']).toBe(true)
+describe('fromDbParameterSwitchKey', () => {
+  test('a resolved "from DB" (false) switch', () => {
+    expect(fromDbParameterSwitchKey({ parameterSwitches: { 'T.5': false } }, 'T', 5)).toBe('T.5')
   })
 
-  test('leaves a non-false resolved switch untouched', () => {
-    const flow = { parameterSwitches: { 'T.5': null } }
-    turnOffEtlParameterFromDbSwitchAfterManualValueEdit(flow, 'T', 5)
-    expect(flow.parameterSwitches['T.5']).toBeNull()
+  test('none when the resolved switch is not from DB', () => {
+    expect(fromDbParameterSwitchKey({ parameterSwitches: { 'T.5': null } }, 'T', 5)).toBeNull()
   })
 
-  test('no-op when no switch matches', () => {
-    const flow = { parameterSwitches: { 'A.1': false } }
-    turnOffEtlParameterFromDbSwitchAfterManualValueEdit(flow, 'B', 2)
-    expect(flow.parameterSwitches['A.1']).toBe(false)
+  test('none when no switch matches', () => {
+    expect(fromDbParameterSwitchKey({ parameterSwitches: { 'A.1': false } }, 'B', 2)).toBeNull()
   })
 })

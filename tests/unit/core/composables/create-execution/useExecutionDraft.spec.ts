@@ -464,7 +464,7 @@ describe('useExecutionDraft', () => {
     const draft = setup()
     draft.addFiles([file('a.xlsx')])
     await draft.load()
-    expect(draft.etlReviewState?.tableSwitches).toEqual({ lines: { variant: 'from_db', fixed: false } })
+    expect(draft.etlReviewFlow?.state.tableSwitches).toEqual({ lines: { variant: 'from_db', fixed: false } })
     expect(draft.etlNeedsSync).toBe(true)
 
     await draft.runChecks()
@@ -539,7 +539,7 @@ describe('useExecutionDraft', () => {
     draft = setup()
     const saved = await draft.readDraft()
     await draft.resumeDraft(saved!)
-    expect(draft.etlReviewState?.tableSwitches).toEqual({ lines: { variant: 'from_db', fixed: true } })
+    expect(draft.etlReviewFlow?.state.tableSwitches).toEqual({ lines: { variant: 'from_db', fixed: true } })
     expect(draft.etlNeedsSync).toBe(true)
 
     draft.setParameter('objective', 'cost')

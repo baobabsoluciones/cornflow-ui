@@ -146,10 +146,11 @@ import {
 import { resolveTitle } from '@cornflow-ui/core/utils/i18nUtils'
 import {
   resolveEtlParamKey,
-  applyEtlParameterSwitch,
+  etlParameterSwitchValue,
   normalizeTableNameForLookup,
-  turnOffEtlParameterFromDbSwitchAfterManualValueEdit,
+  fromDbParameterSwitchKey,
 } from '@cornflow-ui/core/utils/etlParameterSwitch'
+import type { ExternalEtlFlowController } from '@cornflow-ui/core/types/etlFlow'
 import {
   OBJECT_TABLE_ROW_ID,
   formatTitle,
@@ -172,7 +173,8 @@ interface Props {
   readOnly?: boolean
   masterTableMatches?: any[]
   enableExcelMode?: boolean
-  externalEtlFlow?: any | null
+  /** The external ETL review flow, while it is active. */
+  externalEtlFlow?: ExternalEtlFlowController | null
   /** The comparison with the master tables is still running. */
   masterTableLoading?: boolean
 }
@@ -184,6 +186,9 @@ const props = withDefaults(defineProps<Props>(), {
   externalEtlFlow: null,
   masterTableLoading: false,
 })
+
+/** The switches of the ETL flow, while it is active. */
+const etlState = computed(() => props.externalEtlFlow?.state ?? null)
 
 // Emits
 const emit = defineEmits<{
@@ -274,7 +279,7 @@ const instanceSchema = computed(() => {
 
 /** Subscribe `instanceTables` to ETL param switch mutations (row `__etl_from_db__` is set at build time). */
 const etlParameterSwitchesSignature = computed(() => {
-  const sw = props.externalEtlFlow?.parameterSwitches
+  const sw = etlState.value?.parameterSwitches
   if (!sw || typeof sw !== 'object') return ''
   return Object.keys(sw)
     .sort((a, b) => a.localeCompare(b))
@@ -375,13 +380,13 @@ const instanceTables = computed(() => {
     if (isSchemaObjectKey || (hasObjectSchema && isPlainObject)) {
       const objectData = isPlainObject ? { ...baseData } : {}
       const isParameterTableWithEtl =
-        props.externalEtlFlow &&
-        props.externalEtlFlow.parameterTableNames?.has(tableKey)
+        etlState.value &&
+        etlState.value.parameterTableNames?.has(tableKey)
       const table = isParameterTableWithEtl
         ? createParameterTableVertical(tableKey, objectData, instanceSchemaRoot, {
             t,
             instanceSchema: props.execution?.instance?.schema,
-            etlFlow: props.externalEtlFlow,
+            etlFlow: etlState.value,
           })
         : createObjectTableObject(tableKey, objectData, instanceSchemaRoot, {
             instanceSchema: props.execution?.instance?.schema,
@@ -412,12 +417,12 @@ const instanceTables = computed(() => {
     )
     if (tableObject) {
       if (
-        props.externalEtlFlow &&
-        props.externalEtlFlow.parameterTableNames?.has(tableKey)
+        etlState.value &&
+        etlState.value.parameterTableNames?.has(tableKey)
       ) {
         injectParameterSwitchColumns(tableObject, tableKey, {
           t,
-          etlFlow: props.externalEtlFlow,
+          etlFlow: etlState.value,
         })
       }
       tables.push(tableObject)
@@ -554,17 +559,17 @@ const currentTableMatch = computed(() => {
 })
 
 const currentTableSwitchState = computed(() => {
-  if (!props.externalEtlFlow) return null
+  if (!etlState.value) return null
   const key = currentTable.value?.key
   if (!key) return null
-  return props.externalEtlFlow.tableSwitches[key] ?? null
+  return etlState.value.tableSwitches[key] ?? null
 })
 
 const isCurrentTableParameterTable = computed(() => {
-  if (!props.externalEtlFlow) return false
+  if (!etlState.value) return false
   const key = currentTable.value?.key
   if (!key) return false
-  return props.externalEtlFlow.parameterTableNames?.has(key) ?? false
+  return etlState.value.parameterTableNames?.has(key) ?? false
 })
 
 /** Unified: switch ON = track changes (fixed: false), switch OFF = static mode (fixed: true/null). */
@@ -575,11 +580,8 @@ const etlSwitchModelValue = computed(() => {
 })
 
 function handleEtlSwitchChange(tableKey: string, value: boolean | null) {
-  if (!props.externalEtlFlow) return
-  const switchState = props.externalEtlFlow.tableSwitches[tableKey]
-  if (!switchState) return
   // Unified: switch ON = track changes (fixed: false), switch OFF = static mode (fixed: true)
-  switchState.fixed = value !== true
+  props.externalEtlFlow?.setTableFixed(tableKey, value !== true)
 }
 
 /**
@@ -604,10 +606,17 @@ function handleEtlParameterCellChange(
   const paramKey = resolveEtlParamKey(table, row, tableKey, rowId, fieldKey)
   if (paramKey == null) return
 
-  const switchState = props.externalEtlFlow.tableSwitches[tableKey]
-  const isReuploaded = switchState?.variant === 'reuploaded'
+  const isReuploaded = props.externalEtlFlow.state.tableSwitches[tableKey]?.variant === 'reuploaded'
+  const value = etlParameterSwitchValue(fieldKey, newValue, isReuploaded)
+  if (value !== undefined) props.externalEtlFlow.setParameterFixed(paramKey, value)
+}
 
-  applyEtlParameterSwitch(props.externalEtlFlow, paramKey, fieldKey, newValue, isReuploaded)
+/** A parameter the user typed a value for stops coming from the DB. */
+function fixEditedParameter(tableKey: string, rowId: string | number) {
+  const flow = props.externalEtlFlow
+  if (!flow) return
+  const key = fromDbParameterSwitchKey(flow.state, tableKey, rowId)
+  if (key != null) flow.setParameterFixed(key, true)
 }
 
 // Dropdown options come from the instance JSON (tables that match), not from masterData API.
@@ -800,16 +809,8 @@ const recordTypedCellChange = (
     table?.title,
   )
 
-  if (
-    props.externalEtlFlow &&
-    table?.isParameterTableVertical &&
-    fieldKey === 'value'
-  ) {
-    turnOffEtlParameterFromDbSwitchAfterManualValueEdit(
-      props.externalEtlFlow,
-      tableKey,
-      rowId,
-    )
+  if (table?.isParameterTableVertical && fieldKey === 'value') {
+    fixEditedParameter(tableKey, rowId)
   }
 
 }
@@ -825,7 +826,7 @@ const handleCellChange = (
   if (!props.enableExcelMode) return
 
   // ETL parameter switch columns: update parameterSwitches instead of recording a table change
-  if (fieldKey.startsWith('__etl_') && props.externalEtlFlow) {
+  if (fieldKey.startsWith('__etl_') && etlState.value) {
     handleEtlParameterCellChange(tableKey, rowId, fieldKey, newValue)
     return
   }
@@ -929,63 +930,39 @@ function applyObjectTableChanges(
   updatedData[tableKey] = merged
 }
 
-function applyEtlTableSwitchesAfterSave(
-  modifiedKeysForEtl: string[],
-) {
-  if (!props.externalEtlFlow) return
-  for (const tableKey of modifiedKeysForEtl) {
-    const current = props.externalEtlFlow.tableSwitches[tableKey]
-    if (current && current.variant === 'from_db') {
-      props.externalEtlFlow.tableSwitches[tableKey] = {
-        variant: 'edited_from_db',
-        fixed: true,
-      }
-    }
-  }
+function applyEtlTableSwitchesAfterSave(modifiedKeysForEtl: string[]) {
+  for (const tableKey of modifiedKeysForEtl) props.externalEtlFlow?.markTableEdited(tableKey)
 }
 
 // Turn off the "From DB" parameter switch for every manually edited param key in a single table.
 function applyEtlParameterSwitchesForTableAfterSave(
-  etlFlow: NonNullable<typeof props.externalEtlFlow>,
   tableKey: string,
   changes: Record<string, any>,
 ) {
   const horizontal = changes[OBJECT_TABLE_ROW_ID]
   if (horizontal) {
-    for (const fieldKey of Object.keys(horizontal)) {
-      turnOffEtlParameterFromDbSwitchAfterManualValueEdit(
-        etlFlow,
-        tableKey,
-        fieldKey,
-      )
-    }
+    for (const fieldKey of Object.keys(horizontal)) fixEditedParameter(tableKey, fieldKey)
     return
   }
 
   for (const rowId of Object.keys(changes)) {
     if (rowId === OBJECT_TABLE_ROW_ID) continue
     if (!changes[rowId]?.value) continue
-    turnOffEtlParameterFromDbSwitchAfterManualValueEdit(
-      etlFlow,
-      tableKey,
-      rowId,
-    )
+    fixEditedParameter(tableKey, rowId)
   }
 }
 
 function applyEtlParameterSwitchesAfterSave(
   modifiedKeysForEtl: string[],
 ) {
-  const etlFlow = props.externalEtlFlow
-  if (!etlFlow) return
   // Parameter "Desde base de datos": false = from DB (switch ON). After user saves a new value, fix it (true = switch OFF).
-  const paramTables = etlFlow.parameterTableNames
+  const paramTables = etlState.value?.parameterTableNames
   if (!paramTables?.size) return
   for (const tableKey of modifiedKeysForEtl) {
     if (!paramTables.has(tableKey)) continue
     const changes = tableChanges.getChangesForTable(tableKey)
     if (!changes) continue
-    applyEtlParameterSwitchesForTableAfterSave(etlFlow, tableKey, changes)
+    applyEtlParameterSwitchesForTableAfterSave(tableKey, changes)
   }
 }
 
@@ -1043,7 +1020,7 @@ const handleSaveAllChanges = async (): Promise<boolean> => {
       return false
     }
 
-    // ETL: only after accepted save — mark DB-sourced tables as manually edited (same rules as useExternalEtlFlow.markTableEdited).
+    // ETL: only after accepted save — mark DB-sourced tables as manually edited.
     const modifiedKeysForEtl = [...tableChanges.modifiedTableKeys.value]
     applyEtlTableSwitchesAfterSave(modifiedKeysForEtl)
     applyEtlParameterSwitchesAfterSave(modifiedKeysForEtl)
@@ -1373,7 +1350,7 @@ const pendingCountOf = (tableKey: string): number => {
 const tableTabs = computed<DataTableTab[]>(() =>
   instanceTables.value.map((table: any) => {
     const match = getMatchForTable(table.key)
-    const variant = props.externalEtlFlow?.tableSwitches[table.key]?.variant
+    const variant = etlState.value?.tableSwitches[table.key]?.variant
     return {
       key: table.key,
       label: resolveTitle(table.title as any, formatTitle(table.key)),
@@ -1411,8 +1388,8 @@ const sourceMaster = computed<TableMasterComparison | null>(() => {
     added: match.diffSummary?.onlyInInstance ?? 0,
     removed: match.diffSummary?.onlyInMaster ?? 0,
     modified: match.diffSummary?.different ?? 0,
-    canUseMaster: !props.externalEtlFlow,
-    canSaveMaster: !props.externalEtlFlow && !!match.showReplaceMasterOption,
+    canUseMaster: !etlState.value,
+    canSaveMaster: !etlState.value && !!match.showReplaceMasterOption,
   }
 })
 
@@ -1450,7 +1427,7 @@ const parameterRows = computed<ParameterRow[]>(() => {
       column: parameterColumn('value', cellText(row.parameterTitle), itemSchema?.properties?.[row.parameter]),
       value: cellValue(row, 'value'),
       modified: isCellModified(row.id, 'value'),
-      source: !props.externalEtlFlow
+      source: !etlState.value
         ? undefined
         : reuploaded
           ? {

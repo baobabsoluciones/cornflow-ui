@@ -51,7 +51,7 @@ function makeDraft(overrides: Record<string, any> = {}) {
     checks: { status: 'none', results: [], checkedAt: null },
     launch: { running: false, step: null, executionId: null, error: null },
     solution: { enabled: false, file: null, data: null, errors: null },
-    etlReviewState: null,
+    etlReviewFlow: null,
     acceptedExtensions: ['json', 'xlsx'],
     dataSourceMode: 'files',
     loadFilterFields: [],

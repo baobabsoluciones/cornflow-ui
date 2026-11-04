@@ -778,8 +778,8 @@ export function useExecutionDraft() {
     { deep: true },
   )
 
-  /** What the review needs to show the ETL origin switches; null without an ETL review. */
-  const etlReviewState = computed(() => (etlFlow.isActive.value ? etlFlow.state : null))
+  /** The ETL flow the review shows and sets the origin switches of; null without an ETL review. */
+  const etlReviewFlow = computed(() => (etlFlow.isActive.value ? etlFlow : null))
 
   return reactive({
     // state
@@ -798,7 +798,7 @@ export function useExecutionDraft() {
     launch,
     solution,
     etlFlow: markRaw(etlFlow),
-    etlReviewState,
+    etlReviewFlow,
     etlNeedsSync,
     // configuration
     /** File extensions the data can be loaded from (e.g. `['xlsx', 'csv']`). */

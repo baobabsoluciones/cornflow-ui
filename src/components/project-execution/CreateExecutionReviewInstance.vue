@@ -103,12 +103,12 @@ import { getAppParameters } from '@cornflow-ui/core/utils/appParameters'
 import { useTableChanges } from '@cornflow-ui/core/composables/useTableChanges'
 import { isTempId } from '@cornflow-ui/core/utils/tableCreateDependencies'
 import { parameterRowsToParameterObject, buildRowMatchKey } from '@cornflow-ui/core/utils/schemaUtils'
-import type { ExternalEtlFlowState } from '@cornflow-ui/core/types/etlFlow'
+import type { ExternalEtlFlowController } from '@cornflow-ui/core/types/etlFlow'
 
 interface Props {
   newExecution: NewExecution
   instanceErrors?: string | null
-  externalEtlFlow?: ExternalEtlFlowState | null
+  externalEtlFlow?: ExternalEtlFlowController | null
   /**
    * Show the floating Excel menu and maximize button. A screen that offers them in its own header
    * turns it off and calls the exposed `downloadExcel`, `uploadExcel` and `toggleMaximize`.
@@ -281,7 +281,7 @@ const runMasterTableMatchDetection = async () => {
   const newData = props.newExecution.instance?.data
   if (newData && typeof newData === 'object') {
     await masterTableMatch.detectMatches(newData as Record<string, any>, {
-      etlTablesFromDb: props.externalEtlFlow?.metadata?.tables_from_db,
+      etlTablesFromDb: props.externalEtlFlow?.state.metadata?.tables_from_db,
     })
   } else {
     masterTableMatch.reset()
@@ -299,7 +299,7 @@ watch(
   runMasterTableMatchDetection,
 )
 watch(
-  () => props.externalEtlFlow?.metadata?.tables_from_db?.length ?? 0,
+  () => props.externalEtlFlow?.state.metadata?.tables_from_db?.length ?? 0,
   runMasterTableMatchDetection,
 )
 
@@ -534,21 +534,8 @@ const toggleMaximize = () => executionDataViewRef.value?.toggleFullscreen()
 
 // Handle instance update callback (e.g. from Excel re-upload)
 const handleInstanceUpdate = (instance: Instance) => {
-  // When ETL flow is active and user re-uploads Excel, mark all tables as reuploaded
-  if (props.externalEtlFlow?.tableSwitches) {
-    for (const switchState of Object.values(
-      props.externalEtlFlow.tableSwitches,
-    )) {
-      ;(switchState as any).variant = 'reuploaded'
-      ;(switchState as any).fixed = true
-    }
-    // Reset all parameter switches to null (default behavior) for re-upload
-    if (props.externalEtlFlow.parameterSwitches) {
-      for (const key of Object.keys(props.externalEtlFlow.parameterSwitches)) {
-        props.externalEtlFlow.parameterSwitches[key] = null
-      }
-    }
-  }
+  // A re-uploaded workbook replaces the data the ETL flow loaded
+  props.externalEtlFlow?.markAllReuploaded()
   // The workbook is new data: a new instance, so the launch does not reuse the one already stored
   const schemas = generalStore.getSchemaConfig
   emit(

@@ -230,7 +230,7 @@
         :show-toolbar="false"
         :new-execution="draft.execution"
         :instance-errors="draft.dataErrors"
-        :external-etl-flow="draft.etlReviewState"
+        :external-etl-flow="draft.etlReviewFlow"
         @update:instance="draft.setInstance"
         @update:instance-errors="draft.setDataErrors"
       />

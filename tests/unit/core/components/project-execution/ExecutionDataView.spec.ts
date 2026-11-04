@@ -2,7 +2,7 @@ import { describe, test, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
-import { nextTick } from 'vue'
+import { computed, nextTick, reactive } from 'vue'
 import ExecutionDataView from '@cornflow-ui/core/components/project-execution/ExecutionDataView.vue'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 
@@ -137,11 +137,33 @@ const buildExecution = (overrides: Record<string, any> = {}) => ({
   },
 })
 
-const etlFlow = (switches: Record<string, any>, parameterSwitches: Record<string, any> = {}, parameterTables: string[] = []) => ({
-  tableSwitches: switches,
-  parameterSwitches,
-  parameterTableNames: new Set(parameterTables),
-})
+/** An active ETL flow over these switches; setting a switch writes it, as the controller does. */
+const etlFlow = (switches: Record<string, any>, parameterSwitches: Record<string, any> = {}, parameterTables: string[] = []) => {
+  const state = reactive({
+    initialData: null,
+    currentData: null,
+    metadata: null,
+    tableSwitches: switches,
+    parameterSwitches,
+    parameterTableNames: new Set(parameterTables),
+  })
+  return {
+    state,
+    isActive: computed(() => true),
+    initializeFromEtlResponse: vi.fn(),
+    markTableEdited: vi.fn(),
+    markAllReuploaded: vi.fn(),
+    setTableFixed: vi.fn((table: string, value: boolean | null) => {
+      if (state.tableSwitches[table]) state.tableSwitches[table].fixed = value
+    }),
+    setParameterFixed: vi.fn((key: string, value: boolean | null) => {
+      state.parameterSwitches[key] = value
+    }),
+    buildAdditionalMetadata: vi.fn(() => ({ tables: {}, parameters: {} })),
+    submitUpdate: vi.fn(),
+    reset: vi.fn(),
+  }
+}
 
 const openTable = async (wrapper: any, key: string) => {
   await nextTick()
@@ -587,7 +609,7 @@ describe('ExecutionDataView', () => {
       await openTable(wrapper, 'products')
       expect(wrapper.vm.sourceChoice).toBe('static')
       wrapper.vm.setSourceChoice('live')
-      expect(flow.tableSwitches.products.fixed).toBe(false)
+      expect(flow.state.tableSwitches.products.fixed).toBe(false)
       expect(wrapper.vm.sourceChoice).toBe('live')
     })
 
@@ -597,9 +619,9 @@ describe('ExecutionDataView', () => {
       await openTable(wrapper, 'products')
       expect(wrapper.vm.sourceChoice).toBe('file')
       wrapper.vm.setSourceChoice('database')
-      expect(flow.tableSwitches.products.fixed).toBe(false)
+      expect(flow.state.tableSwitches.products.fixed).toBe(false)
       wrapper.vm.setSourceChoice('file')
-      expect(flow.tableSwitches.products.fixed).toBe(true)
+      expect(flow.state.tableSwitches.products.fixed).toBe(true)
     })
 
     test('a parameter table chooses its origin per parameter', async () => {
@@ -623,7 +645,7 @@ describe('ExecutionDataView', () => {
       const wrapper = createWrapper({ execution: buildExecution(), externalEtlFlow: flow })
       await openTable(wrapper, 'products')
       wrapper.vm.handleCellChange('products', 1, '__etl_from_db__', false, true)
-      expect(flow.parameterSwitches['products.A']).toBe(false)
+      expect(flow.state.parameterSwitches['products.A']).toBe(false)
       expect(tableChangesMock.recordChange).not.toHaveBeenCalled()
     })
   })
@@ -680,21 +702,21 @@ describe('ExecutionDataView', () => {
         await openTable(wrapper, 'parameters')
         wrapper.vm.setParameterValue('horizon', '15')
         expect(tableChangesMock.recordChange.mock.calls[0].slice(0, 5)).toEqual(['parameters', 'horizon', 'value', 10, 15])
-        expect(flow.parameterSwitches['parameters.horizon']).toBe(true)
+        expect(flow.state.parameterSwitches['parameters.horizon']).toBe(true)
       })
 
       test('the switch and the choices set the origin of the parameter', async () => {
         const { wrapper, flow } = vertical()
         await openTable(wrapper, 'parameters')
         wrapper.vm.setParameterSource('factor', true)
-        expect(flow.parameterSwitches['parameters.factor']).toBe(false)
+        expect(flow.state.parameterSwitches['parameters.factor']).toBe(false)
 
         const reuploaded = vertical('reuploaded', { 'parameters.horizon': null })
         await openTable(reuploaded.wrapper, 'parameters')
         reuploaded.wrapper.vm.setParameterSource('horizon', 'fixed')
-        expect(reuploaded.flow.parameterSwitches['parameters.horizon']).toBe(true)
+        expect(reuploaded.flow.state.parameterSwitches['parameters.horizon']).toBe(true)
         reuploaded.wrapper.vm.setParameterSource('horizon', 'database')
-        expect(reuploaded.flow.parameterSwitches['parameters.horizon']).toBe(false)
+        expect(reuploaded.flow.state.parameterSwitches['parameters.horizon']).toBe(false)
       })
 
       test('reverting a parameter takes back its value', async () => {
@@ -849,7 +871,7 @@ describe('ExecutionDataView', () => {
       expect(wrapper.vm.savingChanges).toBe(false)
     })
 
-    test('an edited table from the database becomes "edited from the database"', async () => {
+    test('saving marks the edited tables as edited in the ETL flow', async () => {
       tableChangesMock.modifiedTableKeys = { value: ['products'] }
       tableChangesMock.getChangesForTable = vi.fn(() => ({ '1': { qty: { newValue: 3 } } }))
       const flow = etlFlow({ products: { variant: 'from_db', fixed: true } })
@@ -858,7 +880,7 @@ describe('ExecutionDataView', () => {
       await nextTick()
       await wrapper.vm.handleSaveAllChanges()
       await flushPromises()
-      expect(flow.tableSwitches.products.variant).toBe('edited_from_db')
+      expect(flow.markTableEdited).toHaveBeenCalledWith('products')
     })
   })
 
