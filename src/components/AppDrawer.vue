@@ -286,6 +286,7 @@ import CoreConfirmDialog from '@cornflow-ui/core/components/core/table/CoreConfi
 import DrawerExecutionList from '@cornflow-ui/core/components/app-drawer/DrawerExecutionList.vue'
 import DrawerGroup from '@cornflow-ui/core/components/app-drawer/DrawerGroup.vue'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import { onTourReveal } from '@cornflow-ui/core/composables/onboarding/useTour'
 import getAuthService from '@cornflow-ui/core/services/AuthServiceFactory'
 import { showSnackbar } from '@cornflow-ui/core/services/SnackbarService'
 import config from '@cornflow-ui/core/config'
@@ -328,6 +329,14 @@ const selectorOpen = ref(false)
 const moduleMenuOpen = ref(false)
 const confirmSignOut = ref(false)
 const openKey = ref<string | null>(null)
+
+// A guided tour shows the latest executions with the selector open.
+onTourReveal('drawer-execution-list', () => {
+  selectorOpen.value = true
+  return () => {
+    selectorOpen.value = false
+  }
+})
 
 // ── Layout ───────────────────────────────────────────────────────────────────
 

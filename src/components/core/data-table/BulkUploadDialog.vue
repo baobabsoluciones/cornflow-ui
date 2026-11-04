@@ -207,6 +207,7 @@ import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
 import CoreProgressBar from '@cornflow-ui/core/components/core/CoreProgressBar.vue'
 import CoreSpinner from '@cornflow-ui/core/components/core/CoreSpinner.vue'
 import { onRadioGroupKey, radioTabIndex } from '@cornflow-ui/core/utils/radioGroup'
+import { BULK_UPLOAD_MODES } from './bulkUploadModes'
 
 defineOptions({ name: 'BulkUploadDialog' })
 
@@ -252,12 +253,6 @@ const emit = defineEmits<{
 
 const { t, locale } = useI18n()
 
-const MODE_META: Record<string, { key: string; icon: string; recommended?: boolean; danger?: boolean }> = {
-  post_update_bulk: { key: 'update', icon: 'mdi-database-refresh-outline', recommended: true },
-  post_bulk: { key: 'append', icon: 'mdi-database-plus-outline' },
-  overwrite_all: { key: 'replace', icon: 'mdi-database-remove-outline', danger: true },
-}
-
 const PHASE_ICONS: Record<BulkUploadPhase, string> = {
   form: 'mdi-upload',
   waiting: 'mdi-timer-sand',
@@ -298,14 +293,14 @@ const showModes = computed(() => props.operations.length > 1)
 
 const modes = computed(() =>
   props.operations.map((op) => {
-    const meta = MODE_META[op] ?? { key: op, icon: 'mdi-database-outline' }
+    const meta = BULK_UPLOAD_MODES[op] ?? { key: op, icon: 'mdi-database-outline' }
     return {
       operation: op,
       icon: meta.icon,
       recommended: !!meta.recommended,
       danger: !!meta.danger,
-      title: MODE_META[op] ? t(`dataTable.bulkUpload.modes.${meta.key}.title`) : op,
-      description: MODE_META[op] ? t(`dataTable.bulkUpload.modes.${meta.key}.description`) : '',
+      title: BULK_UPLOAD_MODES[op] ? t(`dataTable.bulkUpload.modes.${meta.key}.title`) : op,
+      description: BULK_UPLOAD_MODES[op] ? t(`dataTable.bulkUpload.modes.${meta.key}.description`) : '',
     }
   }),
 )

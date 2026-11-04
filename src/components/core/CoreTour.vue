@@ -1,7 +1,8 @@
 <!--
   CoreTour: one step of a guided tour. It dims the window, lights up the element the step points
   at (`target`) and shows a card beside it with the title, the text, how far the tour has gone
-  and the buttons to go back, on and out. Without `target` the card shows in the middle.
+  and the buttons to go back, on and out. Without `target` the card shows in the middle. The
+  default slot goes below the text (terms, an example), and the card grows to hold it.
 
   The card takes the focus at each step. The arrows go back and on, Escape closes, and Tab stays
   within the card. The element is followed while it moves (scrolls, a menu that opens).
@@ -64,6 +65,7 @@
           </button>
         </header>
         <p :id="textId" class="core-tour__text">{{ text }}</p>
+        <slot />
         <footer class="core-tour__footer">
           <span class="core-tour__progress" aria-live="polite">{{ progressLabel }}</span>
           <span class="core-tour__dots" aria-hidden="true">
@@ -240,6 +242,8 @@ function onKey(event: KeyboardEvent) {
   gap: calc(var(--spacing) * 2);
   width: 340px;
   max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
   box-sizing: border-box;
   padding: calc(var(--spacing) * 5);
   border-radius: var(--radius-lg);

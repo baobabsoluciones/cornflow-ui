@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import CoreDataTable from '@cornflow-ui/core/components/core/data-table/CoreDataTable.vue'
+import { DATA_TABLE_TOUR } from '@cornflow-ui/core/composables/onboarding/tours'
+import { tourTermsOf, useTour } from '@cornflow-ui/core/composables/onboarding/useTour'
 import type { DataColumn, DataFilter, DataRow } from '@cornflow-ui/core/components/core/data-table/types'
 import { createEnI18n } from './i18nEn'
 
@@ -162,5 +164,44 @@ describe('CoreDataTable', () => {
     const filters = wrapper.emitted('update:filters')?.at(-1)?.[0] as DataFilter[]
     expect(filters).toHaveLength(1)
     expect(filters[0]).toMatchObject({ field: 'capacity', operator: 'is_between', value: '' })
+  })
+
+  describe('tour', () => {
+    const part = (mark: string) => document.querySelector(`[data-tour="${mark}"]`)
+
+    test('marks each button it explains, and a column that has a description', () => {
+      mountTable({
+        canAdd: true,
+        canDownloadExcel: true,
+        canBulkUpload: true,
+        columns: [{ ...columns[0], description: 'The production line' }, ...columns.slice(1)],
+      })
+      for (const mark of ['table-add-row', 'table-excel', 'table-density', 'table-more-actions', 'table-fullscreen']) {
+        expect(part(mark), mark).not.toBeNull()
+      }
+      expect(part('table-column-description')?.textContent).toContain('Line')
+    })
+
+    test('opens the more-actions menu while it explains it, with the bulk upload in it', async () => {
+      mountTable({ canBulkUpload: true })
+      const tour = useTour()
+      await tour.start(DATA_TABLE_TOUR)
+      while (tour.step.value?.key !== 'moreActions') tour.next()
+      await flushPromises()
+      expect(part('table-more-actions-menu')).not.toBeNull()
+      expect(part('table-bulk-upload')).not.toBeNull()
+
+      tour.stop()
+      await flushPromises()
+      expect(part('table-more-actions-menu')).toBeNull()
+    })
+
+    test('explains the ways the table can be uploaded in bulk', () => {
+      mountTable({ canBulkUpload: true, uploadOperations: ['post_update_bulk', 'overwrite_all'] })
+      expect(tourTermsOf('table-bulk-upload').map((term) => term.title)).toEqual([
+        'Update existing data',
+        'Replace all data',
+      ])
+    })
   })
 })

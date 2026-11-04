@@ -131,6 +131,16 @@
         @close="tourIndex = null"
       />
     </CatalogBlock>
+
+    <CatalogBlock
+      name="TourHost · ChecksExample"
+      api="useTour().start(tour) · step: target · shownWith · reveal · terms · example"
+    >
+      <div class="tour-sample">
+        <CoreButton text="Start the tour" icon="mdi-compass-outline" variant="outlined" @click="startHostTour" />
+        <span data-tour="catalog-checks" class="tour-sample__part">Checks</span>
+      </div>
+    </CatalogBlock>
   </div>
 </template>
 
@@ -142,6 +152,8 @@ import CoreHoverCard from '@cornflow-ui/core/components/core/CoreHoverCard.vue'
 import CoreSnackbar from '@cornflow-ui/core/components/core/CoreSnackbar.vue'
 import CoreTour from '@cornflow-ui/core/components/core/CoreTour.vue'
 import CoreConfirmDialog from '@cornflow-ui/core/components/core/table/CoreConfirmDialog.vue'
+import { CREATE_EXECUTION_TOUR } from '@cornflow-ui/core/composables/onboarding/tours'
+import { useTour } from '@cornflow-ui/core/composables/onboarding/useTour'
 import { showSnackbar } from '@cornflow-ui/core/services/SnackbarService'
 import CatalogBlock from '../CatalogBlock.vue'
 
@@ -156,6 +168,13 @@ const tourIndex = ref<number | null>(null)
 const tourFilters = useTemplateRef<HTMLElement>('tourFilters')
 const tourList = useTemplateRef<HTMLElement>('tourList')
 const tourTargets = computed(() => [null, tourFilters.value, tourList.value])
+
+/** The step of the app's tours with terms and an example, on the part of this block. */
+function startHostTour() {
+  const checks = CREATE_EXECUTION_TOUR.steps.find((step) => step.key === 'checksExample')!
+  void useTour().start({ key: CREATE_EXECUTION_TOUR.key, steps: [{ ...checks, target: 'catalog-checks' }] })
+}
+
 const confirmOpen = ref(false)
 const deleting = ref(false)
 

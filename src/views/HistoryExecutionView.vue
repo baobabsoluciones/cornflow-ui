@@ -156,7 +156,7 @@
               :is-current-plan="isLatestPlan"
               :loading-ids="loadingExecutions"
               :downloading-ids="downloadingExecutions"
-              :actions-always="narrow"
+              :actions-always="narrow || rowActionsShown"
               :preview="!narrow"
               :now="now"
               @select="selectExecution"
@@ -193,7 +193,7 @@
           :message="$t('versionHistory.detail.noSelectionText')"
         />
         <template v-else>
-          <div class="history-detail__section history-detail__section--head">
+          <div class="history-detail__section history-detail__section--head" data-tour="history-detail-head">
             <ExecutionDetailHeader
               :execution="selectedExecution"
               :current-plan="isLatestPlan(selectedExecution.id)"
@@ -209,13 +209,13 @@
               @back="selectedExecutionId = null"
             />
           </div>
-          <div class="history-detail__section">
+          <div class="history-detail__section" data-tour="history-detail-progress">
             <CoreTimeline
               :title="$t('versionHistory.detail.progress')"
               :steps="executionDetails.timelineSteps(selectedExecution, now)"
             />
           </div>
-          <div class="history-detail__section">
+          <div class="history-detail__section" data-tour="history-detail-data">
             <CoreDescriptionList
               :title="$t('versionHistory.detail.data')"
               :items="executionDetails.dataItems(selectedExecution, now)"
@@ -225,6 +225,7 @@
           <div
             v-if="selectedParameters.length > 0"
             class="history-detail__section"
+            data-tour="history-detail-parameters"
           >
             <CoreDescriptionList
               :title="$t('versionHistory.detail.parameters')"
@@ -310,6 +311,7 @@ import {
 import { isExecutionActive } from '@cornflow-ui/core/utils/executionStates'
 import { useLatestPlanController } from '@cornflow-ui/core/composables/project-execution/useLatestPlanController'
 import { EXECUTIONS_LIST_LIMIT } from '@cornflow-ui/core/repositories/ExecutionRepository'
+import { onTourReveal } from '@cornflow-ui/core/composables/onboarding/useTour'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import type { ExecutionFilter } from '@cornflow-ui/core/types/executionFilters'
 import {
@@ -612,6 +614,23 @@ function navigateToCreateExecution() {
 function selectExecution(id: string) {
   selectedExecutionId.value = id
 }
+
+// A guided tour shows the buttons of the rows, and the detail of an execution: the first one if
+// none is chosen.
+const rowActionsShown = ref(false)
+onTourReveal('history-row-actions', () => {
+  rowActionsShown.value = true
+  return () => {
+    rowActionsShown.value = false
+  }
+})
+onTourReveal('history-detail', () => {
+  if (selectedExecution.value) return
+  selectedExecutionId.value = executionDays.value[0]?.executions[0]?.id ?? null
+  return () => {
+    selectedExecutionId.value = null
+  }
+})
 
 function selectFirstExecutionIfNone() {
   if (narrow.value || selectedExecution.value) return

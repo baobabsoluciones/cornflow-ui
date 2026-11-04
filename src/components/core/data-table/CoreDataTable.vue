@@ -79,7 +79,7 @@
           </template>
         </div>
 
-        <div class="data-table__actions" data-tour="table-actions">
+        <div class="data-table__actions">
           <CoreButton
             v-if="canAdd"
             variant="outlined"
@@ -87,6 +87,7 @@
             :text="$t('dataTable.addRow')"
             :disabled="adding"
             data-testid="data-table-add-row"
+            data-tour="table-add-row"
             @click="adding = true"
           />
           <CoreButton
@@ -98,6 +99,7 @@
             :aria-label="$t('dataTable.downloadExcel')"
             :title="$t('dataTable.downloadExcel')"
             data-testid="data-table-excel"
+            data-tour="table-excel"
             @click="emit('download-excel')"
           />
           <CorePopover v-model:open="densityOpen" :width="200" align="end">
@@ -107,6 +109,7 @@
                 icon="mdi-format-line-spacing"
                 :aria-label="$t('dataTable.density.title')"
                 :title="$t('dataTable.density.title')"
+                data-tour="table-density"
               />
             </template>
             <CoreMenu
@@ -124,9 +127,10 @@
                 :aria-label="$t('dataTable.moreActions')"
                 :title="$t('dataTable.moreActions')"
                 data-testid="data-table-actions"
+                data-tour="table-more-actions"
               />
             </template>
-            <CoreMenu :items="actionItems" @select="runAction($event.key)" />
+            <CoreMenu :items="actionItems" data-tour="table-more-actions-menu" @select="runAction($event.key)" />
           </CorePopover>
           <CoreButton
             variant="icon"
@@ -134,6 +138,7 @@
             :aria-label="fullscreen ? $t('dataTable.exitFullscreen') : $t('dataTable.fullscreen')"
             :title="fullscreen ? $t('dataTable.exitFullscreen') : $t('dataTable.fullscreen')"
             data-testid="data-table-fullscreen"
+            data-tour="table-fullscreen"
             @click="fullscreen = !fullscreen"
           />
         </div>
@@ -298,6 +303,7 @@ import AddFilterMenu from '@cornflow-ui/core/components/core/filters/AddFilterMe
 import ConditionFilterChip from '@cornflow-ui/core/components/core/filters/ConditionFilterChip.vue'
 import BulkEditDialog from './BulkEditDialog.vue'
 import BulkUploadDialog from './BulkUploadDialog.vue'
+import { BULK_UPLOAD_MODES } from './bulkUploadModes'
 import CoreDataGrid from './CoreDataGrid.vue'
 import type {
   DataColumn,
@@ -313,6 +319,7 @@ import type {
 import { cellText, emptyFilter, filterKindOf, formatCellValue, isTruthy } from '@cornflow-ui/core/utils/dataTable'
 import { generateFilterId } from '@cornflow-ui/core/utils/tableFilterUtils'
 import { useFillHeight } from '@cornflow-ui/core/composables/core-table/useFillHeight'
+import { onTourReveal, provideTourTerms } from '@cornflow-ui/core/composables/onboarding/useTour'
 
 defineOptions({ name: 'CoreDataTable', inheritAttrs: false })
 
@@ -576,13 +583,39 @@ function pickDensity(key: string) {
 
 const actionItems = computed<CoreMenuItem[]>(() => [
   ...(props.canBulkUpload
-    ? [{ key: 'bulk-upload', label: t('dataTable.bulkUpload.title'), icon: 'mdi-upload-outline' }]
+    ? [
+        {
+          key: 'bulk-upload',
+          label: t('dataTable.bulkUpload.title'),
+          icon: 'mdi-upload-outline',
+          tourId: 'table-bulk-upload',
+        },
+      ]
     : []),
   ...(props.editable && props.pendingCount > 0
     ? [{ key: 'review', label: t('dataTable.pending.review'), icon: 'mdi-file-compare', count: props.pendingCount }]
     : []),
   ...props.actions.map((action) => ({ ...action })),
 ])
+
+// A guided tour shows the more-actions menu open, and the ways the bulk upload can write the table.
+onTourReveal('table-more-actions', () => {
+  actionsOpen.value = true
+  return () => {
+    actionsOpen.value = false
+  }
+})
+provideTourTerms('table-bulk-upload', () =>
+  props.uploadOperations
+    .filter((operation) => BULK_UPLOAD_MODES[operation])
+    .map((operation) => {
+      const { key } = BULK_UPLOAD_MODES[operation]
+      return {
+        title: t(`dataTable.bulkUpload.modes.${key}.title`),
+        text: t(`dataTable.bulkUpload.modes.${key}.description`),
+      }
+    }),
+)
 
 function runAction(key: string) {
   actionsOpen.value = false

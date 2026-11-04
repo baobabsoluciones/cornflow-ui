@@ -553,7 +553,29 @@ export default {
       },
       checks: {
         title: 'Vérifications',
-        text: 'Vérifiez que les données sont cohérentes avant de lancer ; vous voyez les avertissements et les erreurs avec leur détail.',
+        text: "Avant de lancer, vérifiez que les données sont cohérentes. Si vous changez les données ensuite, elles vous indiquent qu'il faut les relancer.",
+      },
+      checksExample: {
+        title: "Ce qu'elles trouvent",
+        text: "Voici leur aspect quand elles trouvent quelque chose (c'est un exemple). Chaque ligne est une vérification, avec le nombre de lignes trouvées.",
+        terms: {
+          error: {
+            title: 'Erreurs, en rouge',
+            text: "Des données à corriger : le modèle ne peut pas les utiliser. Si l'application est configurée ainsi, vous ne pouvez pas lancer avant de les corriger.",
+          },
+          warning: {
+            title: 'Avertissements, en orange',
+            text: "Des données inhabituelles à revoir, qui n'empêchent pas de lancer.",
+          },
+        },
+        example: {
+          error: 'Produits sans prix',
+          warning: 'Commandes avec une date passée',
+        },
+      },
+      fixChecks: {
+        title: 'Corriger les données',
+        text: 'Cliquez sur une vérification (ou « Voir le détail ») pour voir les lignes trouvées. Corrigez-les dans les tables des données, ici, ou dans votre fichier et chargez-le à nouveau. Puis relancez les vérifications.',
       },
       parameters: {
         title: 'Paramètres',
@@ -581,13 +603,37 @@ export default {
         title: 'Filtres',
         text: "Ajoutez des filtres par colonne ; ils restent sous forme d'étiquettes que vous pouvez modifier ou retirer.",
       },
-      actions: {
-        title: 'Actions',
-        text: 'Téléchargez la table en Excel, changez la densité des lignes et passez en plein écran. Sur une table modifiable, ajoutez des lignes ou chargez-les en bloc.',
+      addRow: {
+        title: 'Ajouter une ligne',
+        text: 'Ajoute une ligne à la table : remplissez au moins ses champs clés et confirmez-la.',
+      },
+      excel: {
+        title: 'Télécharger Excel',
+        text: 'La table dans un classeur Excel.',
+      },
+      density: {
+        title: 'Densité',
+        text: 'Des lignes plus serrées ou plus aérées : pour en voir davantage, ou pour mieux les lire.',
+      },
+      moreActions: {
+        title: "Plus d'actions",
+        text: "Ce que vous faites avec toute la table : charger des données en bloc, revoir les modifications en attente, et les actions propres à l'application.",
+      },
+      bulkUpload: {
+        title: 'Chargement en bloc',
+        text: 'Chargez un fichier avec de nombreuses lignes à la fois. Ce que le chargement peut en faire :',
+      },
+      fullscreen: {
+        title: 'Plein écran',
+        text: 'La table occupe toute la fenêtre ; Échap la remet à sa place.',
       },
       grid: {
         title: 'Les données',
         text: "Triez par une colonne depuis son en-tête. Si la table est modifiable, vous changez les cellules ici ; les modifications restent en attente jusqu'à ce que vous les enregistriez.",
+      },
+      columnDescription: {
+        title: 'Ce que contient chaque colonne',
+        text: "Laissez la souris sur le nom d'une colonne pour lire sa description.",
       },
       footer: {
         title: 'Lignes et modifications',
@@ -637,11 +683,105 @@ export default {
       },
       list: {
         title: 'Les exécutions',
-        text: 'Par jour, la plus récente en haut. En passant la souris sur une, vous voyez un résumé ; depuis la ligne, vous la chargez ou téléchargez son Excel.',
+        text: 'Par jour, la plus récente en haut. En passant la souris sur une, vous voyez un résumé ; en cliquant dessus, son détail.',
+      },
+      row: {
+        title: 'Ce que dit chaque ligne',
+        text: 'Voici la première exécution de la liste. De gauche à droite :',
+        terms: {
+          state: {
+            title: "État de l'exécution",
+            text: "L'icône : en file d'attente, en cours, terminée ou en erreur.",
+          },
+          name: {
+            title: 'Nom et description',
+            text: 'Ceux qui lui ont été donnés au lancement.',
+          },
+          tags: {
+            title: 'Étiquettes',
+            text: 'Elles signalent, par exemple, le plan en vigueur ou une replanification.',
+          },
+          time: {
+            title: 'Heure',
+            text: 'Quand elle a été lancée.',
+          },
+          solution: {
+            title: 'État de la solution',
+            text: 'Sur la deuxième ligne : si le solveur a trouvé une solution optimale, une solution réalisable ou aucune.',
+          },
+          details: {
+            title: 'Utilisateur · solveur · durée',
+            text: "Qui l'a lancée, avec quel solveur, et combien de temps elle a duré (ou dure déjà, si elle est en cours).",
+          },
+        },
+      },
+      rowActions: {
+        title: 'Les boutons de la ligne',
+        text: "Chargez l'exécution pour travailler dessus, ou téléchargez ses données en Excel, sans ouvrir son détail. Ils apparaissent quand la souris passe sur la ligne.",
       },
       detail: {
         title: 'Son détail',
-        text: "L'exécution choisie : son déroulement, ses données et ses paramètres. D'ici, vous la chargez, téléchargez son Excel ou la supprimez.",
+        text: "Choisissez une exécution : tout ce qui la concerne s'affiche ici.",
+      },
+      detailHead: {
+        title: 'Son nom et ses états',
+        text: 'Avec sa description et les boutons :',
+        terms: {
+          load: {
+            title: 'Charger',
+            text: "Ouvre l'exécution, pour travailler sur ses données et ses résultats.",
+          },
+          excel: {
+            title: 'Télécharger Excel',
+            text: 'Ses données dans un classeur Excel.',
+          },
+          currentPlan: {
+            title: 'Plan en vigueur',
+            text: "Dans les applications qui l'utilisent, l'étoile marque l'exécution comme le plan en vigueur.",
+          },
+          delete: {
+            title: 'Supprimer',
+            text: 'La supprime, une fois que vous avez confirmé.',
+          },
+        },
+      },
+      detailProgress: {
+        title: 'Progression',
+        text: "Son déroulement : quand elle est entrée en file d'attente, quand elle a commencé, combien de temps elle a duré et comment elle s'est terminée. Pendant qu'elle tourne, la part de sa limite de temps déjà utilisée.",
+      },
+      detailData: {
+        title: "Données de l'exécution",
+        text: 'Les faits de son déroulement :',
+        terms: {
+          user: {
+            title: 'Utilisateur',
+            text: "Qui l'a lancée.",
+          },
+          created: {
+            title: 'Créée',
+            text: 'Quand elle a été lancée.',
+          },
+          finished: {
+            title: 'Terminée',
+            text: "Quand elle s'est arrêtée.",
+          },
+          duration: {
+            title: 'Durée',
+            text: 'Combien de temps elle a duré, ou dure déjà si elle est en cours.',
+          },
+          solver: {
+            title: 'Solveur',
+            text: "Le moteur d'optimisation qui l'a résolue.",
+          },
+          timeLimit: {
+            title: 'Limite de temps',
+            text: 'Le temps maximum donné pour la résoudre.',
+          },
+        },
+      },
+      detailParameters: {
+        title: 'Paramètres',
+        text: 'Les valeurs des paramètres avec lesquelles elle a été lancée.',
       },
       newExecution: {
         title: 'Une nouvelle exécution',
@@ -663,7 +803,11 @@ export default {
       },
       loadedExecution: {
         title: "L'exécution chargée",
-        text: "L'exécution sur laquelle vous travaillez. Ses données d'entrée, ses résultats et ses tableaux de bord en dépendent ; d'ici, vous passez à une autre des dernières.",
+        text: "L'exécution sur laquelle vous travaillez. Ses données d'entrée, ses résultats et ses tableaux de bord en dépendent.",
+      },
+      switchExecution: {
+        title: "Changer d'exécution",
+        text: "En cliquant dessus, vous voyez les dernières exécutions, chacune avec un point de la couleur de son état. Choisissez-en une pour la charger, ou ouvrez l'historique complet.",
       },
       shared: {
         title: 'Commun à toutes',

@@ -578,7 +578,29 @@ export default {
       },
       checks: {
         title: 'Checks',
-        text: 'Check the data is consistent before you launch; you see the warnings and errors with their detail.',
+        text: 'Before launching, check that the data hold together. If you change the data afterwards, they tell you to run them again.',
+      },
+      checksExample: {
+        title: 'What they find',
+        text: 'This is how they look when they find something (an example). Each line is a check, with how many rows it found.',
+        terms: {
+          error: {
+            title: 'Errors, in red',
+            text: 'Data to fix: the model cannot work with them. If the app is set up so, you cannot launch until they are fixed.',
+          },
+          warning: {
+            title: 'Warnings, in amber',
+            text: 'Odd data worth a look, which do not stop the launch.',
+          },
+        },
+        example: {
+          error: 'Products without a price',
+          warning: 'Orders with a past date',
+        },
+      },
+      fixChecks: {
+        title: 'Fixing the data',
+        text: 'Click a check (or "See detail") to see the rows it found. Fix them in the data tables, here, or in your file and upload it again. Then run the checks again.',
       },
       parameters: {
         title: 'Parameters',
@@ -606,13 +628,37 @@ export default {
         title: 'Filters',
         text: 'Add filters by column; they stay as chips you can change or remove.',
       },
-      actions: {
-        title: 'Actions',
-        text: 'Download the table to Excel, change the row density and go full screen. On a table you can edit, add rows or upload them in bulk.',
+      addRow: {
+        title: 'Add row',
+        text: 'Adds a row to the table: fill in at least its key fields and confirm it.',
+      },
+      excel: {
+        title: 'Download Excel',
+        text: 'The table in an Excel workbook.',
+      },
+      density: {
+        title: 'Density',
+        text: 'Rows closer together or roomier: to see more of them, or to read them better.',
+      },
+      moreActions: {
+        title: 'More actions',
+        text: "What you do with the whole table: upload data in bulk, review the pending changes, and the app's own actions.",
+      },
+      bulkUpload: {
+        title: 'Bulk upload',
+        text: 'Upload a file with many rows at once. What the upload can do with them:',
+      },
+      fullscreen: {
+        title: 'Full screen',
+        text: 'The table takes the whole window; Esc puts it back.',
       },
       grid: {
         title: 'The data',
         text: 'Sort by a column from its header. When the table can be edited, you change the cells here; the changes stay pending until you save them.',
+      },
+      columnDescription: {
+        title: 'What each column holds',
+        text: 'Rest the pointer on a column name to read its description.',
       },
       footer: {
         title: 'Rows and changes',
@@ -662,11 +708,105 @@ export default {
       },
       list: {
         title: 'The executions',
-        text: 'By day, the newest first. Resting the pointer on one shows a summary; from the row you load it or download its Excel.',
+        text: 'By day, the latest first. Rest the pointer on one for a summary; click it for its detail.',
+      },
+      row: {
+        title: 'What each row says',
+        text: 'This is the first execution of the list. From left to right:',
+        terms: {
+          state: {
+            title: 'Execution state',
+            text: 'The icon: queued, running, finished or failed.',
+          },
+          name: {
+            title: 'Name and description',
+            text: 'The ones it was given when it was launched.',
+          },
+          tags: {
+            title: 'Tags',
+            text: 'They mark, for instance, the current plan or a replanning.',
+          },
+          time: {
+            title: 'Time',
+            text: 'When it was launched.',
+          },
+          solution: {
+            title: 'Solution state',
+            text: 'On the second line: whether the solver found an optimal solution, a feasible one or none.',
+          },
+          details: {
+            title: 'User · solver · duration',
+            text: 'Who launched it, with which solver, and how long it took (or has been running).',
+          },
+        },
+      },
+      rowActions: {
+        title: "The row's buttons",
+        text: 'Load the execution to work with it, or download its data to Excel, without opening its detail. They show when the pointer is on the row.',
       },
       detail: {
         title: 'Its detail',
-        text: 'The execution you pick: how it went, its data and its parameters. From here you load it, download its Excel or delete it.',
+        text: 'Pick an execution and everything about it shows here.',
+      },
+      detailHead: {
+        title: 'Its name and states',
+        text: 'With its description and the buttons:',
+        terms: {
+          load: {
+            title: 'Load',
+            text: 'Opens the execution, to work with its data and its results.',
+          },
+          excel: {
+            title: 'Download Excel',
+            text: 'Its data in an Excel workbook.',
+          },
+          currentPlan: {
+            title: 'Current plan',
+            text: 'In the apps that use it, the star marks the execution as the plan in force.',
+          },
+          delete: {
+            title: 'Delete',
+            text: 'Deletes it, once you confirm.',
+          },
+        },
+      },
+      detailProgress: {
+        title: 'Progress',
+        text: 'How it went: when it was queued, when it started, how long it took and how it ended. While it runs, how much of its time limit it has used.',
+      },
+      detailData: {
+        title: 'Execution data',
+        text: 'The facts of its run:',
+        terms: {
+          user: {
+            title: 'User',
+            text: 'Who launched it.',
+          },
+          created: {
+            title: 'Created',
+            text: 'When it was launched.',
+          },
+          finished: {
+            title: 'Finished',
+            text: 'When it ended.',
+          },
+          duration: {
+            title: 'Duration',
+            text: 'How long it took, or has been running.',
+          },
+          solver: {
+            title: 'Solver',
+            text: 'The optimisation engine that solved it.',
+          },
+          timeLimit: {
+            title: 'Time limit',
+            text: 'The longest it was given to solve.',
+          },
+        },
+      },
+      detailParameters: {
+        title: 'Parameters',
+        text: 'The parameter values it was launched with.',
       },
       newExecution: {
         title: 'A new execution',
@@ -688,7 +828,11 @@ export default {
       },
       loadedExecution: {
         title: 'The loaded execution',
-        text: 'The execution you are working on. Its input data, its results and its dashboards hang from it; from here you switch to another one of the latest.',
+        text: 'The execution you work with. Its input data, its results and its dashboards hang from it.',
+      },
+      switchExecution: {
+        title: 'Switch execution',
+        text: 'Clicking it opens the latest executions, each with a dot in the colour of its state. Pick one to load it, or open the full history.',
       },
       shared: {
         title: 'The same for every execution',

@@ -567,7 +567,29 @@ export default {
       },
       checks: {
         title: 'Verificações',
-        text: 'Verifique que os dados são coerentes antes de lançar; vê os avisos e os erros com o seu detalhe.',
+        text: 'Antes de lançar, verifique que os dados são coerentes. Se mudar os dados depois, avisam que é preciso voltar a corrê-las.',
+      },
+      checksExample: {
+        title: 'O que encontram',
+        text: 'É assim que aparecem quando encontram algo (é um exemplo). Cada linha é uma verificação, com quantas linhas encontrou.',
+        terms: {
+          error: {
+            title: 'Erros, a vermelho',
+            text: 'Dados a corrigir: o modelo não consegue trabalhar com eles. Se a aplicação estiver configurada assim, não pode lançar até os corrigir.',
+          },
+          warning: {
+            title: 'Avisos, a âmbar',
+            text: 'Dados estranhos que convém rever, mas que não impedem o lançamento.',
+          },
+        },
+        example: {
+          error: 'Produtos sem preço',
+          warning: 'Encomendas com data passada',
+        },
+      },
+      fixChecks: {
+        title: 'Corrigir os dados',
+        text: 'Clique numa verificação (ou «Ver detalhe») para ver as linhas que encontrou. Corrija-as nas tabelas dos dados, aqui, ou no seu ficheiro e volte a carregá-lo. Depois, corra outra vez as verificações.',
       },
       parameters: {
         title: 'Parâmetros',
@@ -595,13 +617,37 @@ export default {
         title: 'Filtros',
         text: 'Adicione filtros por coluna; ficam como etiquetas que pode mudar ou retirar.',
       },
-      actions: {
-        title: 'Ações',
-        text: 'Descarregue a tabela para Excel, mude a densidade das linhas e passe a ecrã inteiro. Numa tabela editável, adicione linhas ou carregue-as em bloco.',
+      addRow: {
+        title: 'Adicionar linha',
+        text: 'Adiciona uma linha à tabela: preencha pelo menos os seus campos chave e confirme-a.',
+      },
+      excel: {
+        title: 'Descarregar Excel',
+        text: 'A tabela num livro de Excel.',
+      },
+      density: {
+        title: 'Densidade',
+        text: 'Linhas mais juntas ou mais folgadas: para ver mais, ou para as ler melhor.',
+      },
+      moreActions: {
+        title: 'Mais ações',
+        text: 'O que faz com a tabela inteira: carregar dados em bloco, rever as alterações pendentes e as ações próprias da aplicação.',
+      },
+      bulkUpload: {
+        title: 'Carregamento em bloco',
+        text: 'Carregue um ficheiro com muitas linhas de uma vez. O que o carregamento pode fazer com elas:',
+      },
+      fullscreen: {
+        title: 'Ecrã inteiro',
+        text: 'A tabela ocupa a janela toda; Esc devolve-a ao seu lugar.',
       },
       grid: {
         title: 'Os dados',
         text: 'Ordene por uma coluna a partir do seu cabeçalho. Se a tabela for editável, muda as células aqui; as alterações ficam pendentes até as guardar.',
+      },
+      columnDescription: {
+        title: 'O que guarda cada coluna',
+        text: 'Deixe o rato sobre o nome de uma coluna para ler a sua descrição.',
       },
       footer: {
         title: 'Linhas e alterações',
@@ -651,11 +697,105 @@ export default {
       },
       list: {
         title: 'As execuções',
-        text: 'Por dia, a mais recente em cima. Ao passar o rato por uma vê um resumo; a partir da linha carrega-a ou descarrega o seu Excel.',
+        text: 'Por dia, a mais recente em cima. Ao passar o rato por uma vê um resumo; ao clicar nela, o seu detalhe.',
+      },
+      row: {
+        title: 'O que diz cada linha',
+        text: 'Esta é a primeira execução da lista. Da esquerda para a direita:',
+        terms: {
+          state: {
+            title: 'Estado da execução',
+            text: 'O ícone: em fila, em curso, terminada ou com erro.',
+          },
+          name: {
+            title: 'Nome e descrição',
+            text: 'Os que lhe foram dados ao lançá-la.',
+          },
+          tags: {
+            title: 'Etiquetas',
+            text: 'Marcam, por exemplo, o plano em vigor ou um replaneamento.',
+          },
+          time: {
+            title: 'Hora',
+            text: 'Quando foi lançada.',
+          },
+          solution: {
+            title: 'Estado da solução',
+            text: 'Na segunda linha: se o solver encontrou uma solução ótima, uma admissível ou nenhuma.',
+          },
+          details: {
+            title: 'Utilizador · solver · duração',
+            text: 'Quem a lançou, com que solver, e quanto demorou (ou quanto leva, se ainda está a correr).',
+          },
+        },
+      },
+      rowActions: {
+        title: 'Os botões da linha',
+        text: 'Carregue a execução para trabalhar com ela, ou descarregue os seus dados para Excel, sem abrir o seu detalhe. Aparecem ao passar o rato pela linha.',
       },
       detail: {
         title: 'O seu detalhe',
-        text: 'A execução que escolhe: como correu, os seus dados e os seus parâmetros. Daqui carrega-a, descarrega o seu Excel ou apaga-a.',
+        text: 'Escolha uma execução e aqui vê tudo sobre ela.',
+      },
+      detailHead: {
+        title: 'O seu nome e os seus estados',
+        text: 'Com a sua descrição e os botões:',
+        terms: {
+          load: {
+            title: 'Carregar',
+            text: 'Abre a execução, para trabalhar com os seus dados e os seus resultados.',
+          },
+          excel: {
+            title: 'Descarregar Excel',
+            text: 'Os seus dados num livro de Excel.',
+          },
+          currentPlan: {
+            title: 'Plano em vigor',
+            text: 'Nas aplicações que o usam, a estrela marca a execução como o plano em vigor.',
+          },
+          delete: {
+            title: 'Apagar',
+            text: 'Apaga-a, depois de confirmar.',
+          },
+        },
+      },
+      detailProgress: {
+        title: 'Progresso',
+        text: 'Como correu: quando entrou em fila, quando começou, quanto demorou e como terminou. Enquanto corre, quanto já gastou do seu limite de tempo.',
+      },
+      detailData: {
+        title: 'Dados da execução',
+        text: 'Os dados de como correu:',
+        terms: {
+          user: {
+            title: 'Utilizador',
+            text: 'Quem a lançou.',
+          },
+          created: {
+            title: 'Criada',
+            text: 'Quando foi lançada.',
+          },
+          finished: {
+            title: 'Terminada',
+            text: 'Quando acabou.',
+          },
+          duration: {
+            title: 'Duração',
+            text: 'Quanto demorou, ou quanto leva se ainda está a correr.',
+          },
+          solver: {
+            title: 'Solver',
+            text: 'O motor de otimização que a resolveu.',
+          },
+          timeLimit: {
+            title: 'Limite de tempo',
+            text: 'O tempo máximo que lhe foi dado para a resolver.',
+          },
+        },
+      },
+      detailParameters: {
+        title: 'Parâmetros',
+        text: 'Os valores dos parâmetros com que foi lançada.',
       },
       newExecution: {
         title: 'Uma execução nova',
@@ -677,7 +817,11 @@ export default {
       },
       loadedExecution: {
         title: 'A execução carregada',
-        text: 'A execução com que está a trabalhar. Dela dependem os dados de entrada, os resultados e os dashboards; daqui muda para outra das últimas.',
+        text: 'A execução com que está a trabalhar. Dela dependem os dados de entrada, os resultados e os dashboards.',
+      },
+      switchExecution: {
+        title: 'Mudar de execução',
+        text: 'Ao clicar abrem-se as últimas execuções, cada uma com um ponto da cor do seu estado. Escolha uma para a carregar, ou abra o histórico completo.',
       },
       shared: {
         title: 'Comum a todas',
