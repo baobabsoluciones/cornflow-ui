@@ -22,6 +22,7 @@
     class="parameter-input__segments"
     role="radiogroup"
     :aria-label="field.label"
+    @keydown="onRadioGroupKey($event, optionValues, value, (picked) => $emit('change', picked))"
   >
     <button
       v-for="option in field.options"
@@ -31,6 +32,7 @@
       class="parameter-input__segment"
       :class="{ 'is-on': option.value === value, 'is-invalid': invalid, 'is-compact': compact }"
       :aria-checked="option.value === value"
+      :tabindex="radioTabIndex(optionValues, value, option.value)"
       :title="option.label"
       @click="$emit('change', option.value)"
     >
@@ -78,9 +80,11 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import CoreMultiSelect from '@cornflow-ui/core/components/core/CoreMultiSelect.vue'
 import CoreSelect from '@cornflow-ui/core/components/core/CoreSelect.vue'
 import CoreTextField from '@cornflow-ui/core/components/core/CoreTextField.vue'
+import { onRadioGroupKey, radioTabIndex } from '@cornflow-ui/core/utils/radioGroup'
 
 defineOptions({ name: 'ParameterInput' })
 
@@ -98,7 +102,7 @@ export interface ParameterFieldView {
   default?: unknown
 }
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     field: ParameterFieldView
     value: unknown
@@ -113,6 +117,8 @@ withDefaults(
 defineEmits<{ change: [value: unknown] }>()
 
 const MAX_BUTTONS = 3
+
+const optionValues = computed(() => props.field.options.map((option) => option.value))
 
 </script>
 

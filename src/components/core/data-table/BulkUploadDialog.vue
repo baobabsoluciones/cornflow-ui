@@ -33,7 +33,12 @@
     <template v-if="showForm">
       <section v-if="showModes" class="bulk-upload__section">
         <h3 class="bulk-upload__step">{{ $t('dataTable.bulkUpload.modeStep') }}</h3>
-        <div class="bulk-upload__modes" role="radiogroup" :aria-label="$t('dataTable.bulkUpload.modeStep')">
+        <div
+          class="bulk-upload__modes"
+          role="radiogroup"
+          :aria-label="$t('dataTable.bulkUpload.modeStep')"
+          @keydown="onRadioGroupKey($event, operations, operation, (value) => (operation = value))"
+        >
           <button
             v-for="mode in modes"
             :key="mode.operation"
@@ -42,6 +47,7 @@
             class="bulk-upload__mode"
             :class="{ 'is-on': mode.operation === operation, 'is-danger': mode.danger }"
             :aria-checked="mode.operation === operation"
+            :tabindex="radioTabIndex(operations, operation, mode.operation)"
             :data-testid="`bulk-upload-mode-${mode.operation}`"
             @click="operation = mode.operation"
           >
@@ -200,6 +206,7 @@ import CoreDialog from '@cornflow-ui/core/components/core/CoreDialog.vue'
 import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
 import CoreProgressBar from '@cornflow-ui/core/components/core/CoreProgressBar.vue'
 import CoreSpinner from '@cornflow-ui/core/components/core/CoreSpinner.vue'
+import { onRadioGroupKey, radioTabIndex } from '@cornflow-ui/core/utils/radioGroup'
 
 defineOptions({ name: 'BulkUploadDialog' })
 

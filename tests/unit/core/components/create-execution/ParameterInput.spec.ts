@@ -24,6 +24,15 @@ describe('ParameterInput', () => {
     expect(wrapper.emitted('change')).toEqual([['v3']])
   })
 
+  test('the arrows move along the buttons, and only the picked one is in the tab order', async () => {
+    const wrapper = mountInput({ type: 'options', options: [option(1), option(2), option(3)] }, 'v1')
+    expect(wrapper.findAll('[role="radio"]').map((b) => b.attributes('tabindex'))).toEqual(['0', '-1', '-1'])
+
+    await wrapper.find('[role="radiogroup"]').trigger('keydown', { key: 'ArrowRight' })
+    await wrapper.find('[role="radiogroup"]').trigger('keydown', { key: 'End' })
+    expect(wrapper.emitted('change')).toEqual([['v2'], ['v3']])
+  })
+
   test('more options are a dropdown', async () => {
     const wrapper = mountInput({ type: 'options', options: [option(1), option(2), option(3), option(4)] })
 

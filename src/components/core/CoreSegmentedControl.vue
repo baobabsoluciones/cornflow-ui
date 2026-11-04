@@ -15,6 +15,7 @@
     class="core-segmented"
     :class="[`core-segmented--${variant}`, `core-segmented--${size}`]"
     role="radiogroup"
+    @keydown="onRadioGroupKey($event, enabledValues, modelValue, (value) => emit('update:modelValue', value))"
   >
     <button
       v-for="option in options"
@@ -24,6 +25,7 @@
       class="core-segmented__option"
       :class="{ 'is-on': option.value === modelValue }"
       :aria-checked="option.value === modelValue"
+      :tabindex="radioTabIndex(enabledValues, modelValue, option.value)"
       :disabled="option.disabled"
       :title="option.title"
       @click="emit('update:modelValue', option.value)"
@@ -39,7 +41,9 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
+import { onRadioGroupKey, radioTabIndex } from '@cornflow-ui/core/utils/radioGroup'
 
 defineOptions({ name: 'CoreSegmentedControl' })
 
@@ -52,7 +56,7 @@ export interface CoreSegmentedOption {
   disabled?: boolean
 }
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     modelValue?: unknown
     options: CoreSegmentedOption[]
@@ -63,6 +67,9 @@ withDefaults(
 )
 
 const emit = defineEmits<{ 'update:modelValue': [value: unknown] }>()
+
+/** The options the arrows go through: the ones not disabled. */
+const enabledValues = computed(() => props.options.filter((option) => !option.disabled).map((option) => option.value))
 </script>
 
 <style scoped>
