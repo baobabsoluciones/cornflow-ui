@@ -11,7 +11,12 @@
   <ExecutionTabBar :tabs="tabs" :selected="selectedId" @select="select" @close="close" />
 -->
 <template>
-  <nav class="execution-tab-bar" :aria-label="$t('executionTabs.label')" data-testid="execution-tab-bar">
+  <nav
+    class="execution-tab-bar"
+    :aria-label="$t('executionTabs.label')"
+    data-testid="execution-tab-bar"
+    data-tour="execution-tabs"
+  >
     <div
       class="execution-tab-bar__tabs"
       role="tablist"

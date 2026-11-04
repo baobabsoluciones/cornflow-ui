@@ -1,7 +1,9 @@
 import { describe, test, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
+import { createMemoryHistory, createRouter } from 'vue-router'
 import appConfig from '@/app/config'
+import { GENERAL_TOUR, HISTORY_TOUR } from '@cornflow-ui/core/composables/onboarding/tours'
 
 vi.mock('@cornflow-ui/core/../package.json', () => ({ version: '1.2.3' }))
 
@@ -14,6 +16,9 @@ const store = {
 }
 vi.mock('@cornflow-ui/core/stores/general', () => ({ useGeneralStore: () => store }))
 
+const tours = vi.hoisted(() => ({ start: vi.fn() }))
+vi.mock('@cornflow-ui/core/composables/onboarding/useTour', () => ({ useTour: () => tours }))
+
 import HelpMenu from '@cornflow-ui/core/components/core/HelpMenu.vue'
 
 const i18n = createI18n({
@@ -22,7 +27,14 @@ const i18n = createI18n({
   missingWarn: false,
   messages: {
     en: {
-      helpMenu: { help: 'Help', licences: 'Licences', close: 'Close', download: 'Download the manual' },
+      helpMenu: {
+        help: 'Help',
+        generalTour: 'Tour of the app',
+        pageTour: 'Tour of this page',
+        licences: 'Licences',
+        close: 'Close',
+        download: 'Download the manual',
+      },
     },
   },
 })
@@ -37,19 +49,48 @@ const stubs = {
   },
 }
 
-const mountMenu = () => mount(HelpMenu, { global: { plugins: [i18n], stubs } })
+const mountMenu = async (path = '/') => {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [{ path: '/:pathMatch(.*)*', component: { template: '<div />' } }],
+  })
+  await router.push(path)
+  return mount(HelpMenu, { global: { plugins: [i18n, router], stubs } })
+}
 
 describe('HelpMenu', () => {
-  test('a "?" button opens the help centre and the licences, and shows the versions', () => {
-    const wrapper = mountMenu()
+  test('a "?" button opens the tour, the help centre and the licences, and shows the versions', async () => {
+    const wrapper = await mountMenu()
     expect(wrapper.find('[data-testid="help-menu-trigger"]').attributes('aria-label')).toBe('Help')
-    expect(wrapper.findAll('.core-menu__item').map((item) => item.text())).toEqual(['Help', 'Licences'])
+    expect(wrapper.findAll('.core-menu__item').map((item) => item.text())).toEqual([
+      'Tour of the app',
+      'Help',
+      'Licences',
+    ])
     expect(wrapper.find('.help-menu__versions').text()).toContain('Cornflow app version: 1.2.3')
     expect(wrapper.find('.help-menu__versions').text()).toContain('Cornflow version: 2.4.1')
   })
 
+  test('the tour of the app starts the general tour', async () => {
+    const wrapper = await mountMenu()
+    await wrapper.find('[data-testid="help-menu-tour"]').trigger('click')
+    expect(tours.start).toHaveBeenCalledWith(GENERAL_TOUR)
+  })
+
+  test('on a page with a tour, it offers the tour of the page too', async () => {
+    const wrapper = await mountMenu('/history-execution')
+    expect(wrapper.findAll('.core-menu__item').map((item) => item.text())).toEqual([
+      'Tour of the app',
+      'Tour of this page',
+      'Help',
+      'Licences',
+    ])
+    await wrapper.find('[data-testid="help-menu-page-tour"]').trigger('click')
+    expect(tours.start).toHaveBeenCalledWith(HISTORY_TOUR)
+  })
+
   test('the help centre offers each file of the app config in the current language', async () => {
-    const wrapper = mountMenu()
+    const wrapper = await mountMenu()
     await wrapper.find('[data-testid="help-menu-help"]').trigger('click')
     const dialog = wrapper.find('.dialog[data-title="Help"]')
     expect(dialog.exists()).toBe(true)
@@ -67,7 +108,7 @@ describe('HelpMenu', () => {
   })
 
   test('the licences list each library with its version, licence and author', async () => {
-    const wrapper = mountMenu()
+    const wrapper = await mountMenu()
     await wrapper.find('[data-testid="help-menu-licences"]').trigger('click')
     const items = wrapper.findAll('.dialog[data-title="Licences"] li')
     expect(items.map((item) => item.text())).toEqual([
@@ -77,7 +118,7 @@ describe('HelpMenu', () => {
   })
 
   test('"Close" closes the dialog', async () => {
-    const wrapper = mountMenu()
+    const wrapper = await mountMenu()
     await wrapper.find('[data-testid="help-menu-licences"]').trigger('click')
     await wrapper.find('.dialog[data-title="Licences"] button').trigger('click')
     expect(wrapper.find('.dialog[data-title="Licences"]').exists()).toBe(false)

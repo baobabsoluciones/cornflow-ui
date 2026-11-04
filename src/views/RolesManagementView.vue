@@ -15,6 +15,7 @@
 
     <div class="roles-layout">
       <RolesPanel
+        data-tour="roles-roles"
         :roles="roles"
         :selected-role-id="selectedRoleId"
         :selected-role="selectedRole"

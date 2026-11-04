@@ -559,8 +559,309 @@ export default {
     snackbarMessageSuccess: 'Contraseña actualizada correctamente',
     snackbarMessageError: 'Se produjo un error al actualizar la contraseña',
   },
+  onboarding: {
+    back: 'Anterior',
+    next: 'Siguiente',
+    done: 'Terminar',
+    close: 'Cerrar el recorrido',
+    progress: 'Paso {current} de {total}',
+    createExecution: {
+      draft: {
+        title: 'Un borrador guardado',
+        text: 'Dejaste una ejecución a medias: continúala donde la dejaste o descártala.',
+      },
+      data: {
+        title: 'Los datos',
+        text: 'De dónde salen los datos de la ejecución: sube ficheros o tráelos de la base de datos, según la aplicación. Una vez cargados, aquí están sus tablas para revisarlas y editarlas.',
+      },
+      dataActions: {
+        title: 'Qué haces con los datos',
+        text: 'Sube ficheros, carga o vuelve a cargar los datos, descárgalos a Excel o sustitúyelos desde un libro, y amplía la tabla.',
+      },
+      name: {
+        title: 'El nombre',
+        text: 'Ponle nombre a la ejecución; puede venir propuesto a partir de los datos. También puedes añadir una descripción.',
+      },
+      checks: {
+        title: 'Comprobaciones',
+        text: 'Antes de lanzar, comprueba que los datos son coherentes. Si cambias los datos después, te avisan de que hay que volver a pasarlas.',
+      },
+      checksExample: {
+        title: 'Lo que encuentran',
+        text: 'Así se ven cuando encuentran algo (es un ejemplo). Cada línea es una comprobación, con cuántas filas ha encontrado.',
+        terms: {
+          error: {
+            title: 'Errores, en rojo',
+            text: 'Datos que hay que corregir: el modelo no puede trabajar con ellos. Si la aplicación está configurada así, no se puede lanzar hasta corregirlos.',
+          },
+          warning: {
+            title: 'Avisos, en ámbar',
+            text: 'Datos raros que conviene revisar, pero que no impiden lanzar.',
+          },
+        },
+        example: {
+          error: 'Productos sin precio',
+          warning: 'Pedidos con fecha pasada',
+        },
+      },
+      fixChecks: {
+        title: 'Cómo corregir los datos',
+        text: 'Pulsa una comprobación (o «Ver detalle») para ver las filas que ha encontrado. Corrígelas en las tablas de los datos, aquí, o en tu fichero y vuelve a subirlo. Después, pasa otra vez las comprobaciones.',
+      },
+      parameters: {
+        title: 'Parámetros',
+        text: 'Los parámetros de la ejecución y el solver. Los obligatorios están marcados; los avanzados, plegados.',
+      },
+      launch: {
+        title: 'Lanzar',
+        text: 'Lo que aún falta para lanzar; cada punto te lleva a él. Cuando no falta nada, el botón lanza la ejecución.',
+      },
+    },
+    dataTable: {
+      execution: {
+        title: 'La ejecución',
+        text: 'De qué ejecución son los datos que ves.',
+      },
+      tabs: {
+        title: 'Las tablas del grupo',
+        text: 'Pasa de una tabla a otra. Cada pestaña marca sus filas, sus cambios pendientes y sus avisos; el botón del final las lista todas.',
+      },
+      search: {
+        title: 'Buscar',
+        text: 'Busca en toda la tabla (Ctrl/⌘ K).',
+      },
+      filters: {
+        title: 'Filtros',
+        text: 'Añade filtros por columna; quedan como etiquetas que puedes cambiar o quitar.',
+      },
+      addRow: {
+        title: 'Añadir fila',
+        text: 'Añade una fila a la tabla: rellena al menos sus campos clave y confírmala.',
+      },
+      excel: {
+        title: 'Descargar Excel',
+        text: 'La tabla en un libro de Excel.',
+      },
+      density: {
+        title: 'Densidad',
+        text: 'Filas más juntas o más holgadas: para ver más, o para leerlas mejor.',
+      },
+      moreActions: {
+        title: 'Más acciones',
+        text: 'Lo que haces con la tabla entera: subir datos en bloque, revisar los cambios pendientes y las acciones propias de la aplicación.',
+      },
+      bulkUpload: {
+        title: 'Carga en bloque',
+        text: 'Sube un fichero con muchas filas a la vez. Lo que la carga puede hacer con ellas:',
+      },
+      fullscreen: {
+        title: 'Pantalla completa',
+        text: 'La tabla ocupa toda la ventana; Esc la devuelve a su sitio.',
+      },
+      grid: {
+        title: 'Los datos',
+        text: 'Ordena por una columna desde su cabecera. Si la tabla se puede editar, cambias las celdas aquí; los cambios quedan pendientes hasta que los guardes.',
+      },
+      columnDescription: {
+        title: 'Qué guarda cada columna',
+        text: 'Deja el ratón sobre el nombre de una columna para leer su descripción.',
+      },
+      footer: {
+        title: 'Filas y cambios',
+        text: 'Cuántas filas ves de todas las que hay. Cuando editas, aquí están los cambios pendientes para revisarlos y guardarlos.',
+      },
+    },
+    userSettings: {
+      account: {
+        title: 'Tu cuenta',
+        text: 'Con quién has entrado: nombre, correo, usuario y roles.',
+      },
+      theme: {
+        title: 'Apariencia',
+        text: 'Claro, oscuro o como tengas el sistema.',
+      },
+      language: {
+        title: 'Idioma',
+        text: 'El idioma en el que ves la aplicación.',
+      },
+      password: {
+        title: 'Contraseña',
+        text: 'Escribe la nueva dos veces; cada regla se marca al cumplirse y el botón se activa cuando se cumplen todas.',
+      },
+    },
+    roles: {
+      roles: {
+        title: 'Roles',
+        text: 'Los roles de la aplicación, con cuántos usuarios tiene cada uno. Elige uno para ver lo que puede hacer y filtrar los usuarios por él.',
+      },
+      addRole: {
+        title: 'Un rol nuevo',
+        text: 'Crea un rol. Al elegir uno, también puedes renombrarlo o borrarlo.',
+      },
+      search: {
+        title: 'Buscar un usuario',
+        text: 'Por usuario, nombre, correo o rol.',
+      },
+      users: {
+        title: 'Usuarios',
+        text: 'Los usuarios y sus roles. El lápiz de cada fila edita su nombre, su correo y sus roles.',
+      },
+    },
+    history: {
+      filters: {
+        title: 'Búsqueda y filtros',
+        text: 'Busca por nombre o descripción. La lista abre con el último mes: cambia aquí las fechas y añade filtros por estado, usuario, solver o cualquier otro campo.',
+      },
+      list: {
+        title: 'Las ejecuciones',
+        text: 'Por días, la más reciente arriba. Al pasar el ratón por una ves un resumen; al pulsarla, su detalle.',
+      },
+      row: {
+        title: 'Qué dice cada fila',
+        text: 'Esta es la primera ejecución de la lista. De izquierda a derecha:',
+        terms: {
+          state: {
+            title: 'Estado de la ejecución',
+            text: 'El icono: en cola, en marcha, terminada o con error.',
+          },
+          name: {
+            title: 'Nombre y descripción',
+            text: 'Los que se le dieron al lanzarla.',
+          },
+          tags: {
+            title: 'Etiquetas',
+            text: 'Marcan, por ejemplo, el plan vigente o una replanificación.',
+          },
+          time: {
+            title: 'Hora',
+            text: 'Cuándo se lanzó.',
+          },
+          solution: {
+            title: 'Estado de la solución',
+            text: 'En la segunda línea: si el solver encontró una solución óptima, una factible o ninguna.',
+          },
+          details: {
+            title: 'Usuario · solver · duración',
+            text: 'Quién la lanzó, con qué solver y cuánto tardó (o cuánto lleva, si sigue en marcha).',
+          },
+        },
+      },
+      rowActions: {
+        title: 'Los botones de la fila',
+        text: 'Carga la ejecución para trabajar con ella, o descarga sus datos a Excel, sin abrir su detalle. Aparecen al pasar el ratón por la fila.',
+      },
+      detail: {
+        title: 'Su detalle',
+        text: 'Elige una ejecución y aquí ves todo sobre ella.',
+      },
+      detailHead: {
+        title: 'Su nombre y sus estados',
+        text: 'Con su descripción y los botones:',
+        terms: {
+          load: {
+            title: 'Cargar',
+            text: 'Abre la ejecución, para trabajar con sus datos y sus resultados.',
+          },
+          excel: {
+            title: 'Descargar Excel',
+            text: 'Sus datos en un libro de Excel.',
+          },
+          currentPlan: {
+            title: 'Plan vigente',
+            text: 'En las aplicaciones que lo usan, la estrella marca la ejecución como el plan en vigor.',
+          },
+          delete: {
+            title: 'Eliminar',
+            text: 'La borra, después de que lo confirmes.',
+          },
+        },
+      },
+      detailProgress: {
+        title: 'Progreso',
+        text: 'Cómo fue: cuándo entró en cola, cuándo empezó, cuánto tardó y cómo terminó. Mientras corre, cuánto lleva gastado de su límite de tiempo.',
+      },
+      detailData: {
+        title: 'Datos de la ejecución',
+        text: 'Los datos de cómo corrió:',
+        terms: {
+          user: {
+            title: 'Usuario',
+            text: 'Quién la lanzó.',
+          },
+          created: {
+            title: 'Creada',
+            text: 'Cuándo se lanzó.',
+          },
+          finished: {
+            title: 'Finalizada',
+            text: 'Cuándo acabó.',
+          },
+          duration: {
+            title: 'Duración',
+            text: 'Cuánto tardó, o cuánto lleva si sigue en marcha.',
+          },
+          solver: {
+            title: 'Solver',
+            text: 'El motor de optimización que la resolvió.',
+          },
+          timeLimit: {
+            title: 'Límite de tiempo',
+            text: 'El tiempo máximo que se le dio para resolverla.',
+          },
+        },
+      },
+      detailParameters: {
+        title: 'Parámetros',
+        text: 'Los valores de los parámetros con los que se lanzó.',
+      },
+      newExecution: {
+        title: 'Una ejecución nueva',
+        text: 'También puedes empezar una desde aquí.',
+      },
+    },
+    general: {
+      welcome: {
+        title: 'Te damos la bienvenida a {app}',
+        text: 'En un minuto, las partes de la aplicación. Puedes repetir este recorrido cuando quieras desde el botón de ayuda (?).',
+      },
+      menu: {
+        title: 'El menú',
+        text: 'Aquí está todo. Plegado muestra solo los iconos y se abre al pasar el ratón; con la chincheta se queda abierto.',
+      },
+      newExecution: {
+        title: 'Nueva ejecución',
+        text: 'Empieza una ejecución nueva: cargas sus datos, revisas los parámetros y la lanzas.',
+      },
+      loadedExecution: {
+        title: 'La ejecución cargada',
+        text: 'La ejecución con la que trabajas. De ella cuelgan sus datos de entrada, sus resultados y sus dashboards.',
+      },
+      switchExecution: {
+        title: 'Cambiar de ejecución',
+        text: 'Al pulsarla se abren las últimas ejecuciones, cada una con un punto del color de su estado. Elige una para cargarla, o abre el historial completo.',
+      },
+      shared: {
+        title: 'Lo común a todas',
+        text: 'El historial de ejecuciones y las secciones que no dependen de una ejecución, como los datos maestros.',
+      },
+      tabs: {
+        title: 'Ejecuciones abiertas',
+        text: 'Cada ejecución que abres queda en una pestaña, para pasar de una a otra. La × la cierra.',
+      },
+      help: {
+        title: 'Ayuda',
+        text: 'El manual de usuario, este recorrido y el de la página en la que estés.',
+      },
+      account: {
+        title: 'Tu cuenta',
+        text: 'Tus ajustes (idioma, apariencia y contraseña) y el botón para cerrar sesión.',
+      },
+    },
+  },
   helpMenu: {
     help: 'Centro de ayuda',
+    generalTour: 'Recorrido por la aplicación',
+    pageTour: 'Recorrido por esta página',
     licences: 'Licencias',
     close: 'Cerrar',
     download: 'Descargar manual de usuario',

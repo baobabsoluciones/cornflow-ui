@@ -39,7 +39,7 @@
           <span v-if="meta" class="data-card__meta">{{ meta }}</span>
         </div>
         <span class="data-card__spacer" />
-        <div class="data-card__actions">
+        <div class="data-card__actions" data-tour="create-data-actions">
           <span v-if="draft.filtersChanged" class="data-card__stale">
             <CoreIcon name="mdi-alert" :size="16" />
             {{ $t('createExecution.data.filtersChanged') }}

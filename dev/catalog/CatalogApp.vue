@@ -35,6 +35,8 @@
     <main class="catalog__main">
       <component :is="activeSection.component" />
     </main>
+    <!-- Shows the guided tours started in any section, as the app's view does. -->
+    <TourHost />
   </div>
 </template>
 
@@ -45,6 +47,7 @@ import vuetify, {
   readCssToken,
 } from '@cornflow-ui/core/plugins/vuetify'
 import CoreSegmentedControl from '@cornflow-ui/core/components/core/CoreSegmentedControl.vue'
+import TourHost from '@cornflow-ui/core/components/TourHost.vue'
 import ButtonsSection from './sections/ButtonsSection.vue'
 import CreateExecutionSection from './sections/CreateExecutionSection.vue'
 import DashboardsSection from './sections/DashboardsSection.vue'

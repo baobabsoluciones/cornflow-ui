@@ -58,6 +58,7 @@
           :aria-checked="selectable || multiple ? Boolean(item.selected) : undefined"
           :disabled="item.disabled"
           :data-testid="item.testId"
+          :data-tour="item.tourId"
           @click="emit('select', item)"
         >
           <CoreIcon
@@ -114,6 +115,8 @@ export interface CoreMenuItem {
   /** A line between groups, not a row. */
   separator?: boolean
   testId?: string
+  /** `data-tour` of the row, for a guided tour that points at it. */
+  tourId?: string
 }
 
 const props = withDefaults(

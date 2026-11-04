@@ -12,6 +12,7 @@
     <button
       type="button"
       class="execution-row__main"
+      data-tour="history-row"
       :aria-current="selected ? 'true' : undefined"
       @click="emit('select')"
     >
@@ -68,6 +69,7 @@
     </button>
 
     <div
+      data-tour="history-row-actions"
       :class="[
         'execution-row__actions',
         { 'is-visible': actionsAlways || loading || downloading },

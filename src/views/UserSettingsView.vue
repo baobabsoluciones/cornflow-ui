@@ -16,7 +16,7 @@
     />
 
     <div class="user-settings">
-      <section v-if="account" class="user-settings__card user-settings__account" data-testid="settings-account">
+      <section v-if="account" class="user-settings__card user-settings__account" data-testid="settings-account" data-tour="settings-account">
         <span class="user-settings__avatar" aria-hidden="true">{{ account.initial }}</span>
         <div class="user-settings__account-text">
           <span class="user-settings__name">{{ account.name }}</span>
@@ -30,7 +30,12 @@
         </div>
       </section>
 
-      <section v-if="themeEnabled" class="user-settings__card" aria-labelledby="settings-theme-title">
+      <section
+        v-if="themeEnabled"
+        class="user-settings__card"
+        aria-labelledby="settings-theme-title"
+        data-tour="settings-theme"
+      >
         <header class="user-settings__head">
           <h2 id="settings-theme-title" class="user-settings__title">{{ $t('settings.theme') }}</h2>
           <p class="user-settings__hint">{{ $t('settings.selectTheme') }}</p>
@@ -44,7 +49,7 @@
         />
       </section>
 
-      <section class="user-settings__card" aria-labelledby="settings-language-title">
+      <section class="user-settings__card" aria-labelledby="settings-language-title" data-tour="settings-language">
         <header class="user-settings__head">
           <h2 id="settings-language-title" class="user-settings__title">{{ $t('settings.language') }}</h2>
           <p class="user-settings__hint">{{ $t('settings.selectLanguage') }}</p>
@@ -58,7 +63,12 @@
         />
       </section>
 
-      <section v-if="canChangePassword" class="user-settings__card" aria-labelledby="settings-password-title">
+      <section
+        v-if="canChangePassword"
+        class="user-settings__card"
+        aria-labelledby="settings-password-title"
+        data-tour="settings-password"
+      >
         <header class="user-settings__head">
           <h2 id="settings-password-title" class="user-settings__title">{{ $t('settings.password') }}</h2>
           <p class="user-settings__hint">{{ $t('settings.changePassword') }}</p>

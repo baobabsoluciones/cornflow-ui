@@ -73,6 +73,7 @@
               }"
               :style="index === 0 ? { left: `${frozenLeft}px` } : undefined"
               :aria-sort="ariaSort(column)"
+              :data-tour="column.description ? 'table-column-description' : undefined"
               :title="
                 column.description ||
                 $t('dataTable.grid.sortBy', { column: column.title })

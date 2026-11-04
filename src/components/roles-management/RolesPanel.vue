@@ -132,7 +132,7 @@
       </ul>
     </div>
 
-    <div v-if="allowEdit" class="roles-add">
+    <div v-if="allowEdit" class="roles-add" data-tour="roles-add">
       <CoreButton
         :text="$t('rolesManagement.addRole')"
         icon="mdi-plus"

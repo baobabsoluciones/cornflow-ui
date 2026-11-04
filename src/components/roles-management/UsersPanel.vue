@@ -18,7 +18,7 @@
       <CoreBadge :label="countLabel" tone="primary" size="small" class="users-count" />
     </header>
 
-    <div class="users-toolbar">
+    <div class="users-toolbar" data-tour="roles-search">
       <CoreSearchInput
         :model-value="search"
         :placeholder="$t('rolesManagement.searchUsers')"
@@ -41,7 +41,7 @@
       </span>
     </div>
 
-    <div class="users-table" :class="{ 'is-loading': loading }" :aria-busy="loading || undefined">
+    <div class="users-table" data-tour="roles-users" :class="{ 'is-loading': loading }" :aria-busy="loading || undefined">
       <table class="users-table__table">
         <thead>
           <tr>

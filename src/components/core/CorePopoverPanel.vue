@@ -1,7 +1,8 @@
 <!--
   CorePopoverPanel: the floating card of a popover (white, rounded, with shadow), placed next to
   its trigger or anchor and kept inside the window. Focus moves into it when it opens and back
-  when it closes; Escape and a click outside close it.
+  when it closes; Escape and a click outside close it. One opened during a guided tour is the
+  tour's: the focus stays on the tour's card, and only the tour closes it.
 
   It goes inside a Reka `PopoverRoot`. CorePopover puts the root, the trigger and this panel
   together; use the panel on its own when the trigger is not the whole anchor (as in a filter chip
@@ -15,6 +16,10 @@
       :align="align"
       :side-offset="6"
       :collision-padding="8"
+      @open-auto-focus="onOpenFocus"
+      @close-auto-focus="onCloseFocus"
+      @escape-key-down="keepForTour"
+      @interact-outside="keepForTour"
       :style="
         width
           ? { width: typeof width === 'number' ? `${width}px` : width }
@@ -28,6 +33,7 @@
 
 <script setup lang="ts">
 import { PopoverContent, PopoverPortal } from 'reka-ui'
+import { useTour } from '@cornflow-ui/core/composables/onboarding/useTour'
 
 defineOptions({ name: 'CorePopoverPanel' })
 
@@ -40,6 +46,25 @@ withDefaults(
   }>(),
   { side: 'bottom', align: 'start', width: undefined },
 )
+
+const { tour } = useTour()
+
+/** Opened by a guided tour. */
+let forTour = false
+
+function onOpenFocus(event: Event) {
+  forTour = tour.value !== null
+  if (forTour) event.preventDefault()
+}
+
+function onCloseFocus(event: Event) {
+  if (forTour) event.preventDefault()
+  forTour = false
+}
+
+function keepForTour(event: Event) {
+  if (forTour) event.preventDefault()
+}
 </script>
 
 <!--

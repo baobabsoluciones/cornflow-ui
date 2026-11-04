@@ -32,6 +32,8 @@ vi.mock('@cornflow-ui/core/composables/navigation/useDrawerExecutions', () => ({
 }))
 
 import AppDrawer from '@cornflow-ui/core/components/AppDrawer.vue'
+import { GENERAL_TOUR } from '@cornflow-ui/core/composables/onboarding/tours'
+import { useTour } from '@cornflow-ui/core/composables/onboarding/useTour'
 
 const SECTIONS = [
   { key: 'history', scope: 'general', title: 'History', icon: 'mdi-history', to: '/history-execution' },
@@ -421,6 +423,40 @@ describe('AppDrawer', () => {
     expect(auth.logout).toHaveBeenCalled()
     expect(router.currentRoute.value.path).toBe('/sign-in')
     expect(snackbar).toHaveBeenCalledWith('logOut.snackbar_message_success', 'success')
+  })
+
+  test('the tour of the app finds every part of the menu it points at', async () => {
+    ;({ wrapper } = await mountDrawer())
+    const tour = useTour()
+    await tour.start(GENERAL_TOUR)
+    await flushPromises()
+    const parts = GENERAL_TOUR.steps.filter((step) => step.target?.startsWith('drawer'))
+    expect(tour.steps.value).toEqual(expect.arrayContaining(parts))
+    try {
+      for (const step of [...tour.steps.value]) {
+        await flushPromises()
+        if (step.target?.startsWith('drawer')) {
+          expect(document.querySelector(`[data-tour="${step.target}"]`), step.key).not.toBeNull()
+        }
+        tour.next()
+      }
+    } finally {
+      tour.stop()
+    }
+  })
+
+  test('the tour shows the latest executions with the selector open, and closes it after', async () => {
+    ;({ wrapper } = await mountDrawer())
+    const tour = useTour()
+    await tour.start(GENERAL_TOUR)
+    while (tour.step.value?.key !== 'switchExecution') tour.next()
+    await flushPromises()
+    expect(document.querySelector('[data-tour="drawer-execution-list"]')).not.toBeNull()
+
+    tour.next()
+    await flushPromises()
+    expect(document.querySelector('[data-tour="drawer-execution-list"]')).toBeNull()
+    tour.stop()
   })
 
   test('without the user loaded, the menu still offers to log out', async () => {

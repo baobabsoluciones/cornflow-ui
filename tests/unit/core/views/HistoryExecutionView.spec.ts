@@ -6,6 +6,8 @@ import { createI18n } from 'vue-i18n'
 import { h, KeepAlive, nextTick } from 'vue'
 import HistoryExecutionView from '@cornflow-ui/core/views/HistoryExecutionView.vue'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import { HISTORY_TOUR } from '@cornflow-ui/core/composables/onboarding/tours'
+import { useTour } from '@cornflow-ui/core/composables/onboarding/useTour'
 import appConfig from '@/app/config'
 
 // Mock CoreTitleView component
@@ -63,7 +65,7 @@ vi.mock('@cornflow-ui/core/components/core/filters/AddFilterMenu.vue', () => ({
   },
 }))
 
-const createWrapper = ({ keepAlive = false } = {}) => {
+const createWrapper = ({ keepAlive = false, attach = false } = {}) => {
   const vuetify = createVuetify()
   const pinia = createPinia()
   setActivePinia(pinia)
@@ -151,6 +153,7 @@ const createWrapper = ({ keepAlive = false } = {}) => {
     ? { render: () => h(KeepAlive, null, { default: () => h(HistoryExecutionView) }) }
     : HistoryExecutionView
   const wrapper: any = mount(view, {
+    attachTo: attach ? document.body : undefined,
     global: {
       plugins: [vuetify, pinia, i18n],
       provide: {
@@ -159,7 +162,7 @@ const createWrapper = ({ keepAlive = false } = {}) => {
       stubs: {
         CoreTitleView: {
           name: 'CoreTitleView',
-          template: '<div data-testid="core-title-view"></div>',
+          template: '<div data-testid="core-title-view"><slot name="actions" /></div>',
           props: ['icon', 'title', 'description', 'dropdownItems'],
         },
         teleport: true,
@@ -234,6 +237,72 @@ describe('HistoryExecutionView', () => {
       ).toEqual(['today', 'yesterday', 'last7days', 'lastMonth', 'custom'])
       expect(dateChip.props('fromLabel')).toBe('From')
       expect(dateChip.props('toLabel')).toBe('To')
+    })
+  })
+
+  describe('Tour', () => {
+    const execution = {
+      id: 'only',
+      name: 'Plan week 42',
+      state: 1,
+      createdAt: '2026-10-14T09:00:00Z',
+      config: {},
+    }
+
+    /** Mounted in the document, with one execution, and with the tour of the page started. */
+    const touring = async () => {
+      const result = createWrapper({ attach: true })
+      result.generalStore.fetchExecutionsByDateRange.mockResolvedValue([execution])
+      await flushPromises()
+      const tour = useTour()
+      await tour.start(HISTORY_TOUR)
+      return { ...result, tour }
+    }
+
+    afterEach(() => {
+      useTour().stop()
+      document.body.innerHTML = ''
+    })
+
+    test('finds the part each step points at', async () => {
+      const { tour } = await touring()
+      expect(tour.steps.value).toEqual(HISTORY_TOUR.steps)
+      for (const step of HISTORY_TOUR.steps) {
+        await flushPromises()
+        const part = document.querySelector(`[data-tour="${step.target}"]`)
+        // An execution without parameters shows none: the tour host leaves that step out.
+        if (step.key === 'detailParameters') expect(part).toBeNull()
+        else expect(part, step.key).not.toBeNull()
+        tour.next()
+      }
+      expect(tour.tour.value).toBeNull()
+    })
+
+    test('shows the buttons of the rows while it explains them', async () => {
+      const { wrapper, tour } = await touring()
+      const actionsShown = () =>
+        wrapper.findComponent({ name: 'ExecutionList' }).props('actionsAlways')
+      expect(actionsShown()).toBe(false)
+
+      while (tour.step.value?.key !== 'rowActions') tour.next()
+      await flushPromises()
+      expect(actionsShown()).toBe(true)
+
+      tour.next()
+      await flushPromises()
+      expect(actionsShown()).toBe(false)
+    })
+
+    test('shows the detail of the first execution when none is chosen, and leaves none after', async () => {
+      const { wrapper, tour } = await touring()
+      wrapper.vm.selectedExecutionId = null
+      while (tour.step.value?.key !== 'detail') tour.next()
+      await flushPromises()
+      expect(wrapper.vm.selectedExecutionId).toBe('only')
+
+      tour.stop()
+      await flushPromises()
+      expect(wrapper.vm.selectedExecutionId).toBeNull()
     })
   })
 

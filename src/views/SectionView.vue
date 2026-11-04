@@ -15,7 +15,7 @@
         :dropdown-items="dropdownMenuItems"
       >
         <template v-if="executionType" #actions>
-          <CoreExecutionSummary />
+          <CoreExecutionSummary data-tour="table-execution" />
         </template>
       </CoreTitleView>
 
@@ -175,6 +175,7 @@
                 >
                   <template #tabs>
                     <DataTableTabs
+                      data-tour="table-tabs"
                       :model-value="selectedTable ?? ''"
                       :tabs="groupTabs"
                       @update:model-value="selectTab"
@@ -256,6 +257,7 @@
             >
               <template #tabs>
                 <DataTableTabs
+                  data-tour="table-tabs"
                   :model-value="selectedTable ?? ''"
                   :tabs="groupTabs"
                   @update:model-value="selectTab"

@@ -106,6 +106,13 @@ describe('UserSettingsView', () => {
     vi.restoreAllMocks()
   })
 
+  test('marks the parts its tour points at', () => {
+    ;({ wrapper } = mountView())
+    for (const part of ['settings-account', 'settings-language', 'settings-password']) {
+      expect(wrapper.find(`[data-tour="${part}"]`).exists(), part).toBe(true)
+    }
+  })
+
   test('shows who is signed in: name, e-mail, user name and roles', () => {
     ;({ wrapper } = mountView())
     const account = field(wrapper, 'settings-account')

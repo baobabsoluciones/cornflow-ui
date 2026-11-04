@@ -104,20 +104,77 @@
         <p class="hover-text">A preview, for extra information only.</p>
       </CoreHoverCard>
     </CatalogBlock>
+
+    <CatalogBlock
+      name="CoreTour"
+      api="target · title · text · index · count · progressLabel · backLabel · nextLabel · doneLabel · closeLabel → back, next, close"
+    >
+      <div class="tour-sample">
+        <CoreButton text="Start the tour" icon="mdi-compass-outline" variant="outlined" @click="tourIndex = 0" />
+        <span ref="tourFilters" class="tour-sample__part">Filters</span>
+        <span ref="tourList" class="tour-sample__part">List of executions</span>
+      </div>
+      <CoreTour
+        v-if="tourIndex !== null"
+        :target="tourTargets[tourIndex]"
+        :title="TOUR_STEPS[tourIndex].title"
+        :text="TOUR_STEPS[tourIndex].text"
+        :index="tourIndex"
+        :count="TOUR_STEPS.length"
+        :progress-label="`Step ${tourIndex + 1} of ${TOUR_STEPS.length}`"
+        back-label="Back"
+        next-label="Next"
+        done-label="Done"
+        close-label="Close the tour"
+        @back="tourIndex = Math.max(0, tourIndex - 1)"
+        @next="tourIndex = tourIndex + 1 < TOUR_STEPS.length ? tourIndex + 1 : null"
+        @close="tourIndex = null"
+      />
+    </CatalogBlock>
+
+    <CatalogBlock
+      name="TourHost · ChecksExample"
+      api="useTour().start(tour) · step: target · shownWith · reveal · terms · example"
+    >
+      <div class="tour-sample">
+        <CoreButton text="Start the tour" icon="mdi-compass-outline" variant="outlined" @click="startHostTour" />
+        <span data-tour="catalog-checks" class="tour-sample__part">Checks</span>
+      </div>
+    </CatalogBlock>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref, useTemplateRef } from 'vue'
 import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
 import CoreDialog from '@cornflow-ui/core/components/core/CoreDialog.vue'
 import CoreHoverCard from '@cornflow-ui/core/components/core/CoreHoverCard.vue'
 import CoreSnackbar from '@cornflow-ui/core/components/core/CoreSnackbar.vue'
+import CoreTour from '@cornflow-ui/core/components/core/CoreTour.vue'
 import CoreConfirmDialog from '@cornflow-ui/core/components/core/table/CoreConfirmDialog.vue'
+import { CREATE_EXECUTION_TOUR } from '@cornflow-ui/core/composables/onboarding/tours'
+import { useTour } from '@cornflow-ui/core/composables/onboarding/useTour'
 import { showSnackbar } from '@cornflow-ui/core/services/SnackbarService'
 import CatalogBlock from '../CatalogBlock.vue'
 
 const dialogOpen = ref(false)
+
+const TOUR_STEPS = [
+  { title: 'Welcome', text: 'In a minute, the parts of this page.' },
+  { title: 'Filters', text: 'Narrow the list down by date, state or any field you add.' },
+  { title: 'The list', text: 'The executions, newest first. Pick one to see its detail.' },
+]
+const tourIndex = ref<number | null>(null)
+const tourFilters = useTemplateRef<HTMLElement>('tourFilters')
+const tourList = useTemplateRef<HTMLElement>('tourList')
+const tourTargets = computed(() => [null, tourFilters.value, tourList.value])
+
+/** The step of the app's tours with terms and an example, on the part of this block. */
+function startHostTour() {
+  const checks = CREATE_EXECUTION_TOUR.steps.find((step) => step.key === 'checksExample')!
+  void useTour().start({ key: CREATE_EXECUTION_TOUR.key, steps: [{ ...checks, target: 'catalog-checks' }] })
+}
+
 const confirmOpen = ref(false)
 const deleting = ref(false)
 
@@ -149,5 +206,18 @@ const longMessage =
   margin: 0;
   padding: calc(var(--spacing) * 3) calc(var(--spacing) * 4);
   font-size: var(--text-md);
+}
+.tour-sample {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 4);
+}
+
+.tour-sample__part {
+  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
 }
 </style>

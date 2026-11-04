@@ -102,6 +102,39 @@ menu), a card per subject:
   with what it needs ticked as it is typed (at least 5 characters; upper and lower case letters,
   numbers and a special character; no spaces; both the same). It is sent once it meets all of it.
 
+## Help menu and guided tours
+
+The "?" button at the top right of every view opens the help menu: a tour of the app, the tour of
+the page the user is on (when it has one), the help centre with the files of `helpMenuFiles` and
+the licences.
+
+A guided tour dims the window and goes step by step over the parts of the screen, each with a card
+beside it. It shows only when the user starts it from the help menu. The tours
+(`composables/onboarding/tours.ts`):
+
+- **The app**: the side menu, a new execution, the loaded execution and its list of the latest
+  ones, what every execution shares, the open executions, the help and the account.
+- **Pages**:
+  - the execution history: what each row and each part of the detail says;
+  - create execution, with an example of checks that find errors and warnings, and how to fix the
+    data;
+  - the data tables (input data, results and master data), button by button, with the ways the
+    table can be uploaded in bulk and where to read what a column holds;
+  - user settings and roles management.
+
+A step points at the element marked `data-tour="<target>"` and reads its title and text from
+`onboarding.<tour>.<step>` in the locales. Besides, a step can:
+
+- **Open what it shows** (`reveal`): a menu, the buttons of a row, the detail of an execution. The
+  component that owns it says how with `onTourReveal('<part>', open)`, and the tour closes it when it
+  moves on. `shownWith` names what must be on the screen for such a step.
+- **Explain terms** (`terms`), read from `onboarding.<tour>.<step>.terms.<term>`, or the ones the
+  page gives with `provideTourTerms('<target>', terms)` when they depend on what it holds.
+- **Show an example** (`example`): a component drawn in the card, out of reach.
+
+A step whose element is not on the screen (a button the user may not use, a panel of another state)
+is left out. A popover a tour opens keeps the focus on the tour's card and only the tour closes it.
+
 ## Execution management section
 
 The execution management section handles the complete lifecycle of optimization executions, from creation to historical tracking.

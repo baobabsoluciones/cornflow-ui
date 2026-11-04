@@ -528,8 +528,309 @@ export default {
     snackbarMessageError:
       'Une erreur est survenue lors de la mise à jour du mot de passe',
   },
+  onboarding: {
+    back: 'Précédent',
+    next: 'Suivant',
+    done: 'Terminer',
+    close: 'Fermer la visite',
+    progress: 'Étape {current} sur {total}',
+    createExecution: {
+      draft: {
+        title: 'Un brouillon enregistré',
+        text: "Vous avez laissé une exécution à moitié : reprenez-la où vous l'avez laissée, ou abandonnez-la.",
+      },
+      data: {
+        title: 'Les données',
+        text: "D'où viennent les données de l'exécution : chargez des fichiers ou récupérez-les de la base de données, selon l'application. Une fois chargées, leurs tables sont ici pour les vérifier et les modifier.",
+      },
+      dataActions: {
+        title: 'Ce que vous faites des données',
+        text: 'Chargez des fichiers, chargez ou rechargez les données, téléchargez-les en Excel ou remplacez-les depuis un classeur, et agrandissez la table.',
+      },
+      name: {
+        title: 'Le nom',
+        text: "Donnez un nom à l'exécution ; il peut être proposé à partir des données. Vous pouvez aussi ajouter une description.",
+      },
+      checks: {
+        title: 'Vérifications',
+        text: "Avant de lancer, vérifiez que les données sont cohérentes. Si vous changez les données ensuite, elles vous indiquent qu'il faut les relancer.",
+      },
+      checksExample: {
+        title: "Ce qu'elles trouvent",
+        text: "Voici leur aspect quand elles trouvent quelque chose (c'est un exemple). Chaque ligne est une vérification, avec le nombre de lignes trouvées.",
+        terms: {
+          error: {
+            title: 'Erreurs, en rouge',
+            text: "Des données à corriger : le modèle ne peut pas les utiliser. Si l'application est configurée ainsi, vous ne pouvez pas lancer avant de les corriger.",
+          },
+          warning: {
+            title: 'Avertissements, en orange',
+            text: "Des données inhabituelles à revoir, qui n'empêchent pas de lancer.",
+          },
+        },
+        example: {
+          error: 'Produits sans prix',
+          warning: 'Commandes avec une date passée',
+        },
+      },
+      fixChecks: {
+        title: 'Corriger les données',
+        text: 'Cliquez sur une vérification (ou « Voir le détail ») pour voir les lignes trouvées. Corrigez-les dans les tables des données, ici, ou dans votre fichier et chargez-le à nouveau. Puis relancez les vérifications.',
+      },
+      parameters: {
+        title: 'Paramètres',
+        text: "Les paramètres de l'exécution et le solveur. Les obligatoires sont marqués ; les avancés, repliés.",
+      },
+      launch: {
+        title: 'Lancer',
+        text: "Ce qui manque encore pour lancer ; chaque point vous y emmène. Quand rien ne manque, le bouton lance l'exécution.",
+      },
+    },
+    dataTable: {
+      execution: {
+        title: "L'exécution",
+        text: 'À quelle exécution appartiennent les données que vous voyez.',
+      },
+      tabs: {
+        title: 'Les tables du groupe',
+        text: "Passez d'une table à l'autre. Chaque onglet indique ses lignes, ses modifications en attente et ses avertissements ; le bouton au bout les liste toutes.",
+      },
+      search: {
+        title: 'Rechercher',
+        text: 'Cherche dans toute la table (Ctrl/⌘ K).',
+      },
+      filters: {
+        title: 'Filtres',
+        text: "Ajoutez des filtres par colonne ; ils restent sous forme d'étiquettes que vous pouvez modifier ou retirer.",
+      },
+      addRow: {
+        title: 'Ajouter une ligne',
+        text: 'Ajoute une ligne à la table : remplissez au moins ses champs clés et confirmez-la.',
+      },
+      excel: {
+        title: 'Télécharger Excel',
+        text: 'La table dans un classeur Excel.',
+      },
+      density: {
+        title: 'Densité',
+        text: 'Des lignes plus serrées ou plus aérées : pour en voir davantage, ou pour mieux les lire.',
+      },
+      moreActions: {
+        title: "Plus d'actions",
+        text: "Ce que vous faites avec toute la table : charger des données en bloc, revoir les modifications en attente, et les actions propres à l'application.",
+      },
+      bulkUpload: {
+        title: 'Chargement en bloc',
+        text: 'Chargez un fichier avec de nombreuses lignes à la fois. Ce que le chargement peut en faire :',
+      },
+      fullscreen: {
+        title: 'Plein écran',
+        text: 'La table occupe toute la fenêtre ; Échap la remet à sa place.',
+      },
+      grid: {
+        title: 'Les données',
+        text: "Triez par une colonne depuis son en-tête. Si la table est modifiable, vous changez les cellules ici ; les modifications restent en attente jusqu'à ce que vous les enregistriez.",
+      },
+      columnDescription: {
+        title: 'Ce que contient chaque colonne',
+        text: "Laissez la souris sur le nom d'une colonne pour lire sa description.",
+      },
+      footer: {
+        title: 'Lignes et modifications',
+        text: 'Combien de lignes vous voyez sur le total. Quand vous modifiez, les modifications en attente sont ici pour les vérifier et les enregistrer.',
+      },
+    },
+    userSettings: {
+      account: {
+        title: 'Votre compte',
+        text: 'Avec qui vous êtes connecté : nom, e-mail, identifiant et rôles.',
+      },
+      theme: {
+        title: 'Apparence',
+        text: 'Clair, sombre ou comme votre système.',
+      },
+      language: {
+        title: 'Langue',
+        text: "La langue dans laquelle l'application s'affiche.",
+      },
+      password: {
+        title: 'Mot de passe',
+        text: "Saisissez le nouveau deux fois ; chaque règle se coche une fois remplie et le bouton s'active quand elles le sont toutes.",
+      },
+    },
+    roles: {
+      roles: {
+        title: 'Rôles',
+        text: "Les rôles de l'application, avec le nombre d'utilisateurs de chacun. Choisissez-en un pour voir ce qu'il peut faire et filtrer les utilisateurs.",
+      },
+      addRole: {
+        title: 'Un nouveau rôle',
+        text: 'Crée un rôle. Une fois un rôle choisi, vous pouvez aussi le renommer ou le supprimer.',
+      },
+      search: {
+        title: 'Trouver un utilisateur',
+        text: 'Par identifiant, nom, e-mail ou rôle.',
+      },
+      users: {
+        title: 'Utilisateurs',
+        text: 'Les utilisateurs et leurs rôles. Le crayon de chaque ligne modifie son nom, son e-mail et ses rôles.',
+      },
+    },
+    history: {
+      filters: {
+        title: 'Recherche et filtres',
+        text: "Cherchez par nom ou description. La liste s'ouvre sur le dernier mois : changez les dates ici et ajoutez des filtres par état, utilisateur, solveur ou tout autre champ.",
+      },
+      list: {
+        title: 'Les exécutions',
+        text: 'Par jour, la plus récente en haut. En passant la souris sur une, vous voyez un résumé ; en cliquant dessus, son détail.',
+      },
+      row: {
+        title: 'Ce que dit chaque ligne',
+        text: 'Voici la première exécution de la liste. De gauche à droite :',
+        terms: {
+          state: {
+            title: "État de l'exécution",
+            text: "L'icône : en file d'attente, en cours, terminée ou en erreur.",
+          },
+          name: {
+            title: 'Nom et description',
+            text: 'Ceux qui lui ont été donnés au lancement.',
+          },
+          tags: {
+            title: 'Étiquettes',
+            text: 'Elles signalent, par exemple, le plan en vigueur ou une replanification.',
+          },
+          time: {
+            title: 'Heure',
+            text: 'Quand elle a été lancée.',
+          },
+          solution: {
+            title: 'État de la solution',
+            text: 'Sur la deuxième ligne : si le solveur a trouvé une solution optimale, une solution réalisable ou aucune.',
+          },
+          details: {
+            title: 'Utilisateur · solveur · durée',
+            text: "Qui l'a lancée, avec quel solveur, et combien de temps elle a duré (ou dure déjà, si elle est en cours).",
+          },
+        },
+      },
+      rowActions: {
+        title: 'Les boutons de la ligne',
+        text: "Chargez l'exécution pour travailler dessus, ou téléchargez ses données en Excel, sans ouvrir son détail. Ils apparaissent quand la souris passe sur la ligne.",
+      },
+      detail: {
+        title: 'Son détail',
+        text: "Choisissez une exécution : tout ce qui la concerne s'affiche ici.",
+      },
+      detailHead: {
+        title: 'Son nom et ses états',
+        text: 'Avec sa description et les boutons :',
+        terms: {
+          load: {
+            title: 'Charger',
+            text: "Ouvre l'exécution, pour travailler sur ses données et ses résultats.",
+          },
+          excel: {
+            title: 'Télécharger Excel',
+            text: 'Ses données dans un classeur Excel.',
+          },
+          currentPlan: {
+            title: 'Plan en vigueur',
+            text: "Dans les applications qui l'utilisent, l'étoile marque l'exécution comme le plan en vigueur.",
+          },
+          delete: {
+            title: 'Supprimer',
+            text: 'La supprime, une fois que vous avez confirmé.',
+          },
+        },
+      },
+      detailProgress: {
+        title: 'Progression',
+        text: "Son déroulement : quand elle est entrée en file d'attente, quand elle a commencé, combien de temps elle a duré et comment elle s'est terminée. Pendant qu'elle tourne, la part de sa limite de temps déjà utilisée.",
+      },
+      detailData: {
+        title: "Données de l'exécution",
+        text: 'Les faits de son déroulement :',
+        terms: {
+          user: {
+            title: 'Utilisateur',
+            text: "Qui l'a lancée.",
+          },
+          created: {
+            title: 'Créée',
+            text: 'Quand elle a été lancée.',
+          },
+          finished: {
+            title: 'Terminée',
+            text: "Quand elle s'est arrêtée.",
+          },
+          duration: {
+            title: 'Durée',
+            text: 'Combien de temps elle a duré, ou dure déjà si elle est en cours.',
+          },
+          solver: {
+            title: 'Solveur',
+            text: "Le moteur d'optimisation qui l'a résolue.",
+          },
+          timeLimit: {
+            title: 'Limite de temps',
+            text: 'Le temps maximum donné pour la résoudre.',
+          },
+        },
+      },
+      detailParameters: {
+        title: 'Paramètres',
+        text: 'Les valeurs des paramètres avec lesquelles elle a été lancée.',
+      },
+      newExecution: {
+        title: 'Une nouvelle exécution',
+        text: "Vous pouvez aussi en lancer une d'ici.",
+      },
+    },
+    general: {
+      welcome: {
+        title: 'Bienvenue dans {app}',
+        text: "En une minute, les parties de l'application. Vous pouvez refaire cette visite à tout moment depuis le bouton d'aide (?).",
+      },
+      menu: {
+        title: 'Le menu',
+        text: "Tout est ici. Replié, il ne montre que les icônes et s'ouvre au passage de la souris ; l'épingle le garde ouvert.",
+      },
+      newExecution: {
+        title: 'Nouvelle exécution',
+        text: 'Lance une nouvelle exécution : vous chargez ses données, vérifiez les paramètres et la lancez.',
+      },
+      loadedExecution: {
+        title: "L'exécution chargée",
+        text: "L'exécution sur laquelle vous travaillez. Ses données d'entrée, ses résultats et ses tableaux de bord en dépendent.",
+      },
+      switchExecution: {
+        title: "Changer d'exécution",
+        text: "En cliquant dessus, vous voyez les dernières exécutions, chacune avec un point de la couleur de son état. Choisissez-en une pour la charger, ou ouvrez l'historique complet.",
+      },
+      shared: {
+        title: 'Commun à toutes',
+        text: "L'historique des exécutions et les sections qui ne dépendent pas d'une exécution, comme les données de référence.",
+      },
+      tabs: {
+        title: 'Exécutions ouvertes',
+        text: "Chaque exécution ouverte reste dans un onglet, pour passer de l'une à l'autre. Le × la ferme.",
+      },
+      help: {
+        title: 'Aide',
+        text: "Le manuel d'utilisation, cette visite et celle de la page où vous êtes.",
+      },
+      account: {
+        title: 'Votre compte',
+        text: 'Vos paramètres (langue, apparence et mot de passe) et le bouton pour vous déconnecter.',
+      },
+    },
+  },
   helpMenu: {
     help: "Centre d'aide",
+    generalTour: "Visite de l'application",
+    pageTour: 'Visite de cette page',
     licences: 'Licences',
     close: 'Fermer',
     download: "Télécharger le manuel de l'utilisateur",

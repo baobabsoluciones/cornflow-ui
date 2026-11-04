@@ -6,7 +6,7 @@
     @open="open" @history="goToHistory" />
 -->
 <template>
-  <div class="drawer-executions" data-testid="drawer-executions">
+  <div class="drawer-executions" data-testid="drawer-executions" data-tour="drawer-execution-list">
     <span class="drawer-executions__label">{{ $t('drawer.latestExecutions') }}</span>
     <div v-if="loading && latest.length === 0" class="drawer-executions__state">
       <CoreSpinner :size="16" />

@@ -1,7 +1,8 @@
 <!--
-  HelpMenu: the "?" button at the top right of every view. Its menu opens the help centre (the
-  files of `helpMenuFiles` in the app config, to download in the current language) and the
-  licences of the libraries, and shows the versions of the app and of Cornflow.
+  HelpMenu: the "?" button at the top right of every view. Its menu starts the guided tour of the
+  app and, on a page that has one, the tour of that page; it opens the help centre (the files of
+  `helpMenuFiles` in the app config, to download in the current language) and the licences of the
+  libraries, and shows the versions of the app and of Cornflow.
 -->
 <template>
   <CorePopover v-model:open="menuOpen" align="end" :width="260">
@@ -12,6 +13,7 @@
         :aria-label="t('helpMenu.help')"
         :title="t('helpMenu.help')"
         data-testid="help-menu-trigger"
+        data-tour="help-menu"
       >
         <CoreIcon name="mdi-help" :size="20" />
       </button>
@@ -69,6 +71,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import { version } from '@cornflow-ui/core/../package.json'
 import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
 import CoreDialog from '@cornflow-ui/core/components/core/CoreDialog.vue'
@@ -76,18 +79,29 @@ import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
 import CoreMenu, { type CoreMenuItem } from '@cornflow-ui/core/components/core/CoreMenu.vue'
 import CorePopover from '@cornflow-ui/core/components/core/CorePopover.vue'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import { GENERAL_TOUR, pageTourOf } from '@cornflow-ui/core/composables/onboarding/tours'
+import { useTour } from '@cornflow-ui/core/composables/onboarding/useTour'
 import appConfig, { type HelpMenuDownloadableFile } from '@/app/config'
 
 defineOptions({ name: 'HelpMenu' })
 
 const { t, locale } = useI18n()
 const store = useGeneralStore()
+const route = useRoute()
+const tours = useTour()
 
 const menuOpen = ref(false)
 const helpOpen = ref(false)
 const licencesOpen = ref(false)
 
+/** The tour of the page the user is on, if it has one. */
+const pageTour = computed(() => pageTourOf(route.path))
+
 const menuItems = computed<CoreMenuItem[]>(() => [
+  { key: 'tour', label: t('helpMenu.generalTour'), icon: 'mdi-compass-outline', testId: 'help-menu-tour' },
+  ...(pageTour.value
+    ? [{ key: 'page-tour', label: t('helpMenu.pageTour'), icon: 'mdi-map-marker-path', testId: 'help-menu-page-tour' }]
+    : []),
   { key: 'help', label: t('helpMenu.help'), icon: 'mdi-help-circle-outline', testId: 'help-menu-help' },
   { key: 'licences', label: t('helpMenu.licences'), icon: 'mdi-license', testId: 'help-menu-licences' },
 ])
@@ -99,7 +113,9 @@ const backendVersion = computed(() => `Cornflow version: ${store.cornflowVersion
 
 function pick(item: CoreMenuItem) {
   menuOpen.value = false
-  if (item.key === 'help') helpOpen.value = true
+  if (item.key === 'tour') void tours.start(GENERAL_TOUR)
+  else if (item.key === 'page-tour' && pageTour.value) void tours.start(pageTour.value)
+  else if (item.key === 'help') helpOpen.value = true
   else licencesOpen.value = true
 }
 

@@ -553,8 +553,309 @@ export default {
     snackbarMessageSuccess: 'Password updated successfully',
     snackbarMessageError: 'An error occurred while updating the password',
   },
+  onboarding: {
+    back: 'Back',
+    next: 'Next',
+    done: 'Done',
+    close: 'Close the tour',
+    progress: 'Step {current} of {total}',
+    createExecution: {
+      draft: {
+        title: 'A saved draft',
+        text: 'You left an execution halfway: continue it where you left it, or discard it.',
+      },
+      data: {
+        title: 'The data',
+        text: 'Where the data of the execution comes from: upload files or bring it from the database, as the app does it. Once loaded, its tables are here to review and edit.',
+      },
+      dataActions: {
+        title: 'What you do with the data',
+        text: 'Upload files, load or reload the data, download it to Excel or replace it from a workbook, and enlarge the table.',
+      },
+      name: {
+        title: 'The name',
+        text: 'Give the execution a name; it may come proposed from the data. You can add a description too.',
+      },
+      checks: {
+        title: 'Checks',
+        text: 'Before launching, check that the data hold together. If you change the data afterwards, they tell you to run them again.',
+      },
+      checksExample: {
+        title: 'What they find',
+        text: 'This is how they look when they find something (an example). Each line is a check, with how many rows it found.',
+        terms: {
+          error: {
+            title: 'Errors, in red',
+            text: 'Data to fix: the model cannot work with them. If the app is set up so, you cannot launch until they are fixed.',
+          },
+          warning: {
+            title: 'Warnings, in amber',
+            text: 'Odd data worth a look, which do not stop the launch.',
+          },
+        },
+        example: {
+          error: 'Products without a price',
+          warning: 'Orders with a past date',
+        },
+      },
+      fixChecks: {
+        title: 'Fixing the data',
+        text: 'Click a check (or "See detail") to see the rows it found. Fix them in the data tables, here, or in your file and upload it again. Then run the checks again.',
+      },
+      parameters: {
+        title: 'Parameters',
+        text: 'The parameters of the execution and the solver. The required ones are marked; the advanced ones, folded.',
+      },
+      launch: {
+        title: 'Launch',
+        text: 'What is still missing to launch; each item takes you to it. Once nothing is missing, the button launches the execution.',
+      },
+    },
+    dataTable: {
+      execution: {
+        title: 'The execution',
+        text: 'Which execution the data you see belongs to.',
+      },
+      tabs: {
+        title: 'The tables of the group',
+        text: 'Go from one table to another. Each tab marks its rows, its pending changes and its warnings; the button at the end lists them all.',
+      },
+      search: {
+        title: 'Search',
+        text: 'Searches the whole table (Ctrl/⌘ K).',
+      },
+      filters: {
+        title: 'Filters',
+        text: 'Add filters by column; they stay as chips you can change or remove.',
+      },
+      addRow: {
+        title: 'Add row',
+        text: 'Adds a row to the table: fill in at least its key fields and confirm it.',
+      },
+      excel: {
+        title: 'Download Excel',
+        text: 'The table in an Excel workbook.',
+      },
+      density: {
+        title: 'Density',
+        text: 'Rows closer together or roomier: to see more of them, or to read them better.',
+      },
+      moreActions: {
+        title: 'More actions',
+        text: "What you do with the whole table: upload data in bulk, review the pending changes, and the app's own actions.",
+      },
+      bulkUpload: {
+        title: 'Bulk upload',
+        text: 'Upload a file with many rows at once. What the upload can do with them:',
+      },
+      fullscreen: {
+        title: 'Full screen',
+        text: 'The table takes the whole window; Esc puts it back.',
+      },
+      grid: {
+        title: 'The data',
+        text: 'Sort by a column from its header. When the table can be edited, you change the cells here; the changes stay pending until you save them.',
+      },
+      columnDescription: {
+        title: 'What each column holds',
+        text: 'Rest the pointer on a column name to read its description.',
+      },
+      footer: {
+        title: 'Rows and changes',
+        text: 'How many rows you see out of all of them. Once you edit, the pending changes are here to review and save.',
+      },
+    },
+    userSettings: {
+      account: {
+        title: 'Your account',
+        text: 'Who you are signed in as: name, e-mail, user name and roles.',
+      },
+      theme: {
+        title: 'Appearance',
+        text: 'Light, dark or as your system has it.',
+      },
+      language: {
+        title: 'Language',
+        text: 'The language the app shows.',
+      },
+      password: {
+        title: 'Password',
+        text: 'Type the new one twice; each rule ticks as it is met, and the button turns on once they all are.',
+      },
+    },
+    roles: {
+      roles: {
+        title: 'Roles',
+        text: 'The roles of the app, with how many users each one has. Pick one to see what it can do and to filter the users by it.',
+      },
+      addRole: {
+        title: 'A new role',
+        text: 'Creates a role. Once you pick one, you can also rename or delete it.',
+      },
+      search: {
+        title: 'Find a user',
+        text: 'By user name, full name, e-mail or role.',
+      },
+      users: {
+        title: 'Users',
+        text: 'The users and their roles. The pencil of each row edits their name, e-mail and roles.',
+      },
+    },
+    history: {
+      filters: {
+        title: 'Search and filters',
+        text: 'Search by name or description. The list opens on the last month: change the dates here, and add filters by state, user, solver or any other field.',
+      },
+      list: {
+        title: 'The executions',
+        text: 'By day, the latest first. Rest the pointer on one for a summary; click it for its detail.',
+      },
+      row: {
+        title: 'What each row says',
+        text: 'This is the first execution of the list. From left to right:',
+        terms: {
+          state: {
+            title: 'Execution state',
+            text: 'The icon: queued, running, finished or failed.',
+          },
+          name: {
+            title: 'Name and description',
+            text: 'The ones it was given when it was launched.',
+          },
+          tags: {
+            title: 'Tags',
+            text: 'They mark, for instance, the current plan or a replanning.',
+          },
+          time: {
+            title: 'Time',
+            text: 'When it was launched.',
+          },
+          solution: {
+            title: 'Solution state',
+            text: 'On the second line: whether the solver found an optimal solution, a feasible one or none.',
+          },
+          details: {
+            title: 'User · solver · duration',
+            text: 'Who launched it, with which solver, and how long it took (or has been running).',
+          },
+        },
+      },
+      rowActions: {
+        title: "The row's buttons",
+        text: 'Load the execution to work with it, or download its data to Excel, without opening its detail. They show when the pointer is on the row.',
+      },
+      detail: {
+        title: 'Its detail',
+        text: 'Pick an execution and everything about it shows here.',
+      },
+      detailHead: {
+        title: 'Its name and states',
+        text: 'With its description and the buttons:',
+        terms: {
+          load: {
+            title: 'Load',
+            text: 'Opens the execution, to work with its data and its results.',
+          },
+          excel: {
+            title: 'Download Excel',
+            text: 'Its data in an Excel workbook.',
+          },
+          currentPlan: {
+            title: 'Current plan',
+            text: 'In the apps that use it, the star marks the execution as the plan in force.',
+          },
+          delete: {
+            title: 'Delete',
+            text: 'Deletes it, once you confirm.',
+          },
+        },
+      },
+      detailProgress: {
+        title: 'Progress',
+        text: 'How it went: when it was queued, when it started, how long it took and how it ended. While it runs, how much of its time limit it has used.',
+      },
+      detailData: {
+        title: 'Execution data',
+        text: 'The facts of its run:',
+        terms: {
+          user: {
+            title: 'User',
+            text: 'Who launched it.',
+          },
+          created: {
+            title: 'Created',
+            text: 'When it was launched.',
+          },
+          finished: {
+            title: 'Finished',
+            text: 'When it ended.',
+          },
+          duration: {
+            title: 'Duration',
+            text: 'How long it took, or has been running.',
+          },
+          solver: {
+            title: 'Solver',
+            text: 'The optimisation engine that solved it.',
+          },
+          timeLimit: {
+            title: 'Time limit',
+            text: 'The longest it was given to solve.',
+          },
+        },
+      },
+      detailParameters: {
+        title: 'Parameters',
+        text: 'The parameter values it was launched with.',
+      },
+      newExecution: {
+        title: 'A new execution',
+        text: 'Starts a new one from here too.',
+      },
+    },
+    general: {
+      welcome: {
+        title: 'Welcome to {app}',
+        text: 'In a minute, the parts of the app. You can take this tour again at any time from the help button (?).',
+      },
+      menu: {
+        title: 'The menu',
+        text: 'Everything is here. Folded, it shows only the icons and opens when you rest the pointer on it; the pin keeps it open.',
+      },
+      newExecution: {
+        title: 'New execution',
+        text: 'Starts a new execution: you load its data, review the parameters and launch it.',
+      },
+      loadedExecution: {
+        title: 'The loaded execution',
+        text: 'The execution you work with. Its input data, its results and its dashboards hang from it.',
+      },
+      switchExecution: {
+        title: 'Switch execution',
+        text: 'Clicking it opens the latest executions, each with a dot in the colour of its state. Pick one to load it, or open the full history.',
+      },
+      shared: {
+        title: 'The same for every execution',
+        text: 'The execution history and the sections that do not depend on an execution, such as the master data.',
+      },
+      tabs: {
+        title: 'Open executions',
+        text: 'Each execution you open stays in a tab, to go from one to another. The × closes it.',
+      },
+      help: {
+        title: 'Help',
+        text: 'The user manual, this tour and the tour of the page you are on.',
+      },
+      account: {
+        title: 'Your account',
+        text: 'Your settings (language, appearance and password) and the button to log out.',
+      },
+    },
+  },
   helpMenu: {
     help: 'Help center',
+    generalTour: 'Tour of the app',
+    pageTour: 'Tour of this page',
     licences: 'Licenses',
     close: 'Close',
     download: 'Download user manual',

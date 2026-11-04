@@ -36,6 +36,7 @@
     :class="{ 'is-expanded': expanded, 'is-floating': floating, 'is-overlay': pinned && isNarrow }"
     :aria-label="$t('drawer.label')"
     data-testid="app-drawer"
+    data-tour="drawer"
     @pointerenter="onPointerEnter"
     @pointerleave="onPointerLeave"
   >
@@ -75,12 +76,13 @@
           to="/project-execution"
           class="app-drawer__create"
           data-testid="app-drawer-new-execution"
+          data-tour="drawer-new-execution"
           @click="startExecution"
         >
           <CoreIcon name="mdi-plus" :size="18" />
           <span>{{ $t('drawer.newExecution') }}</span>
         </RouterLink>
-        <section class="app-drawer__execution" data-testid="app-drawer-execution-block">
+        <section class="app-drawer__execution" data-testid="app-drawer-execution-block" data-tour="drawer-execution">
           <span class="app-drawer__label">{{ $t('drawer.loadedExecution') }}</span>
           <CorePopover v-model:open="selectorOpen" align="start" :width="226">
             <template #trigger>
@@ -128,7 +130,12 @@
           <p v-else-if="!executions.loaded" class="app-drawer__hint">{{ $t('drawer.executionHint') }}</p>
         </section>
 
-        <section v-if="generalSections.length" class="app-drawer__general" data-testid="app-drawer-general-block">
+        <section
+          v-if="generalSections.length"
+          class="app-drawer__general"
+          data-testid="app-drawer-general-block"
+          data-tour="drawer-groups"
+        >
           <DrawerGroup
             v-for="section in generalSections"
             :key="section.key"
@@ -140,7 +147,7 @@
         </section>
       </nav>
 
-      <footer class="app-drawer__user">
+      <footer class="app-drawer__user" data-tour="drawer-user">
         <button type="button" class="app-drawer__user-link" :title="$t('drawer.userSettings')" @click="goToSettings">
           <span class="app-drawer__avatar">
             <template v-if="user">{{ user.initial }}</template>
@@ -279,6 +286,7 @@ import CoreConfirmDialog from '@cornflow-ui/core/components/core/table/CoreConfi
 import DrawerExecutionList from '@cornflow-ui/core/components/app-drawer/DrawerExecutionList.vue'
 import DrawerGroup from '@cornflow-ui/core/components/app-drawer/DrawerGroup.vue'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import { onTourReveal } from '@cornflow-ui/core/composables/onboarding/useTour'
 import getAuthService from '@cornflow-ui/core/services/AuthServiceFactory'
 import { showSnackbar } from '@cornflow-ui/core/services/SnackbarService'
 import config from '@cornflow-ui/core/config'
@@ -321,6 +329,14 @@ const selectorOpen = ref(false)
 const moduleMenuOpen = ref(false)
 const confirmSignOut = ref(false)
 const openKey = ref<string | null>(null)
+
+// A guided tour shows the latest executions with the selector open.
+onTourReveal('drawer-execution-list', () => {
+  selectorOpen.value = true
+  return () => {
+    selectorOpen.value = false
+  }
+})
 
 // ── Layout ───────────────────────────────────────────────────────────────────
 

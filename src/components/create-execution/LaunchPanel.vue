@@ -71,7 +71,7 @@
 
       <template v-else>
         <div class="launch-panel__body">
-          <section class="launch-panel__section launch-panel__name">
+          <section class="launch-panel__section launch-panel__name" data-tour="create-name">
             <label for="launch-panel-name" class="launch-panel__section-title">
               {{ $t('createExecution.launch.name') }}
             </label>
@@ -108,7 +108,7 @@
             </button>
           </section>
 
-          <section v-if="draft.hasChecks" class="launch-panel__section">
+          <section v-if="draft.hasChecks" class="launch-panel__section" data-tour="create-checks">
             <span class="launch-panel__section-title">{{ $t('createExecution.launch.checks') }}</span>
             <ChecksStatus
               :status="draft.checks.status"
@@ -121,7 +121,7 @@
             />
           </section>
 
-          <section v-if="hasParameters" class="launch-panel__section">
+          <section v-if="hasParameters" class="launch-panel__section" data-tour="create-parameters">
             <span class="launch-panel__section-title">{{ $t('createExecution.launch.parameters') }}</span>
             <ExecutionParametersForm
               :fields="draft.parameterFields"
@@ -136,7 +136,7 @@
           </section>
         </div>
 
-        <footer class="launch-panel__footer">
+        <footer class="launch-panel__footer" data-tour="create-launch">
           <div v-if="draft.missing.length > 0" class="launch-panel__missing" data-testid="launch-panel-missing">
             <span class="launch-panel__missing-title">{{ $t('createExecution.launch.missingTitle') }}</span>
             <button
