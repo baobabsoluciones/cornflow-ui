@@ -323,6 +323,7 @@ export default {
     containsCurrent: 'La page actuelle est dans ce groupe',
     userSettings: 'Paramètres utilisateur',
     logout: 'Se déconnecter',
+    account: 'Votre compte',
   },
   logOut: {
     title: 'Déconnexion',

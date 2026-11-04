@@ -436,6 +436,7 @@ export default {
     containsCurrent: 'The current page is in this group',
     userSettings: 'User settings',
     logout: 'Log out',
+    account: 'Your account',
   },
   logOut: {
     title: 'Log out',

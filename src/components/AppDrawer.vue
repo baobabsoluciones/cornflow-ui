@@ -139,12 +139,15 @@
         </section>
       </nav>
 
-      <footer v-if="user" class="app-drawer__user">
+      <footer class="app-drawer__user">
         <button type="button" class="app-drawer__user-link" :title="$t('drawer.userSettings')" @click="goToSettings">
-          <span class="app-drawer__avatar">{{ user.initial }}</span>
+          <span class="app-drawer__avatar">
+            <template v-if="user">{{ user.initial }}</template>
+            <CoreIcon v-else name="mdi-account-outline" :size="18" />
+          </span>
           <span class="app-drawer__user-text">
-            <span class="app-drawer__user-name">{{ user.name }}</span>
-            <span class="app-drawer__user-email">{{ user.email }}</span>
+            <span class="app-drawer__user-name">{{ user?.name ?? $t('drawer.account') }}</span>
+            <span v-if="user" class="app-drawer__user-email">{{ user.email }}</span>
           </span>
         </button>
         <CoreButton
@@ -221,9 +224,15 @@
         </div>
       </nav>
 
-      <div v-if="user" class="app-drawer__rail-user">
-        <button type="button" class="app-drawer__avatar is-button" :aria-label="user.name" @click="goToSettings">
-          {{ user.initial }}
+      <div class="app-drawer__rail-user">
+        <button
+          type="button"
+          class="app-drawer__avatar is-button"
+          :aria-label="user?.name ?? $t('drawer.account')"
+          @click="goToSettings"
+        >
+          <template v-if="user">{{ user.initial }}</template>
+          <CoreIcon v-else name="mdi-account-outline" :size="18" />
         </button>
       </div>
     </template>
@@ -413,6 +422,10 @@ function pickModule(item: { key: string }) {
   void modules.request(item.key)
 }
 
+/**
+ * The signed-in user. When it does not load (an expired session, a backend that does not answer)
+ * the row stays, as "Your account", so the user can still log out.
+ */
 const user = computed(() => {
   const account = store.getUser
   const name = getAppParameters().showOpenIdUsername ? account?.fullName : account?.username
