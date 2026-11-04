@@ -11,7 +11,7 @@
 <template>
   <div class="core-search-input" :class="{ 'core-search-input--block': block }">
     <div
-      class="core-search-input__container"
+      class="core-search-input__container core-field"
       :class="{ 'is-disabled': disabled }"
     >
       <CoreIcon name="mdi-magnify" :size="18" class="core-search-input__icon" />
@@ -178,26 +178,8 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: calc(var(--spacing) * 2);
   height: 36px;
-  box-sizing: border-box;
   padding: 0 calc(var(--spacing) * 2.5) 0 calc(var(--spacing) * 3);
-  border: 1px solid var(--color-border-input);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
   font-family: var(--font-sans);
-  transition: border-color var(--duration-base) var(--ease-standard);
-}
-
-.core-search-input__container:hover {
-  border-color: var(--color-border-strong);
-}
-
-.core-search-input__container:focus-within {
-  border-color: var(--color-primary);
-}
-
-.core-search-input__container.is-disabled {
-  background: var(--color-disabled);
-  opacity: 0.7;
 }
 
 .core-search-input__icon {

@@ -15,14 +15,14 @@
     :class="[
       'core-select',
       `core-select--${size}`,
-      { 'is-empty': selected === '', 'is-invalid': invalid, 'is-disabled': disabled },
+      { 'is-empty': selected === '' },
       $attrs.class,
     ]"
     :style="$attrs.style as StyleValue"
   >
     <select
       v-bind="controlAttrs"
-      class="core-select__control"
+      :class="['core-select__control', 'core-field', { 'is-invalid': invalid }]"
       :value="selected"
       :disabled="disabled"
       :aria-invalid="invalid || undefined"
@@ -117,44 +117,19 @@ function pick(event: Event) {
   min-width: 0;
   height: 100%;
   padding: 0 calc(var(--spacing) * 8) 0 calc(var(--spacing) * 2.5);
-  border: 1px solid var(--color-border-input);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
   font: inherit;
   color: inherit;
   text-overflow: ellipsis;
   appearance: none;
   outline: none;
   cursor: pointer;
-  transition:
-    border-color var(--duration-fast) var(--ease-standard),
-    box-shadow var(--duration-fast) var(--ease-standard);
-}
-
-.core-select__control:hover {
-  border-color: var(--color-border-strong);
-}
-
-.core-select__control:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
 
 .core-select.is-empty .core-select__control {
   color: var(--color-text-subtle);
 }
 
-.core-select.is-invalid .core-select__control {
-  border-color: var(--color-danger);
-}
-
-.core-select.is-invalid .core-select__control:focus {
-  box-shadow: 0 0 0 2px var(--color-danger-soft);
-}
-
-.core-select.is-disabled .core-select__control {
-  background: var(--color-disabled);
-  opacity: 0.7;
+.core-select__control:disabled {
   cursor: default;
 }
 

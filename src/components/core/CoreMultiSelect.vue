@@ -18,6 +18,7 @@
         type="button"
         :class="[
           'core-multi-select',
+          'core-field',
           { 'is-empty': picked.length === 0, 'is-invalid': invalid, 'is-open': open },
           $attrs.class,
         ]"
@@ -152,52 +153,25 @@ function toggle(key: string) {
 <style scoped>
 .core-multi-select {
   position: relative;
-  box-sizing: border-box;
   display: flex;
   align-items: center;
   width: 100%;
   min-width: 0;
   height: 36px;
   padding: 0 calc(var(--spacing) * 8) 0 calc(var(--spacing) * 2.5);
-  border: 1px solid var(--color-border-input);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
   font-family: var(--font-sans);
   font-size: var(--text-md);
   color: var(--color-text);
   text-align: left;
   cursor: pointer;
   outline: none;
-  transition:
-    border-color var(--duration-fast) var(--ease-standard),
-    box-shadow var(--duration-fast) var(--ease-standard);
-}
-
-.core-multi-select:hover {
-  border-color: var(--color-border-strong);
-}
-
-.core-multi-select:focus-visible,
-.core-multi-select.is-open {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
 
 .core-multi-select.is-empty {
   color: var(--color-text-subtle);
 }
 
-.core-multi-select.is-invalid {
-  border-color: var(--color-danger);
-}
-
-.core-multi-select.is-invalid:focus-visible {
-  box-shadow: 0 0 0 2px var(--color-danger-soft);
-}
-
 .core-multi-select:disabled {
-  background: var(--color-disabled);
-  opacity: 0.7;
   cursor: default;
 }
 

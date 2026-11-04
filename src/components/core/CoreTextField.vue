@@ -20,6 +20,7 @@
   <div
     :class="[
       'core-text-field',
+      'core-field',
       `core-text-field--${size}`,
       {
         'core-text-field--multiline': multiline,
@@ -117,21 +118,14 @@ defineExpose({ focus: () => control.value?.focus() })
 
 <style scoped>
 .core-text-field {
-  box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: calc(var(--spacing) * 1.5);
   min-width: 0;
   padding: 0 calc(var(--spacing) * 1) 0 calc(var(--spacing) * 2.5);
-  border: 1px solid var(--color-border-input);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
   font-family: var(--font-sans);
   font-size: var(--text-md);
   color: var(--color-text);
-  transition:
-    border-color var(--duration-fast) var(--ease-standard),
-    box-shadow var(--duration-fast) var(--ease-standard);
 }
 
 .core-text-field--small {
@@ -151,28 +145,6 @@ defineExpose({ focus: () => control.value?.focus() })
 .core-text-field--multiline {
   height: auto;
   padding: calc(var(--spacing) * 2) calc(var(--spacing) * 2.5);
-}
-
-.core-text-field:hover {
-  border-color: var(--color-border-strong);
-}
-
-.core-text-field:focus-within {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 12%, transparent);
-}
-
-.core-text-field.is-invalid {
-  border-color: var(--color-danger);
-}
-
-.core-text-field.is-invalid:focus-within {
-  box-shadow: 0 0 0 2px var(--color-danger-soft);
-}
-
-.core-text-field.is-disabled {
-  background: var(--color-disabled);
-  opacity: 0.7;
 }
 
 .core-text-field__input {

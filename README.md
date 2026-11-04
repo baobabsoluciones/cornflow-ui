@@ -1272,11 +1272,14 @@ Inside the app folder, there are several changes that can be done to configurate
 
 `src/assets/styles/tokens.css` is the one source of colour, type, spacing, radii and shadows for the
 core's components, which read the tokens instead of fixed values. `src/assets/styles/main.css`
-imports it, so an application gets the tokens with the core's stylesheet.
+imports it, so an application gets the tokens with the core's stylesheet. It also imports
+`field.css`: the box of a form field (border, hover, focus, `is-invalid`, disabled), which
+`CoreTextField`, `CoreSelect`, `CoreMultiSelect` and `CoreSearchInput` take with the `core-field`
+class.
 
 - **Colour** (`--color-primary`, `--color-success`, `--color-text`, `--color-surface`…) comes from
   the app's `variables.css` (`--primary`, `--success`, `--title`…). An application changes its
-  palette there, as before; a variable it does not declare falls back to the core's default.
+  palette there; a variable it does not declare falls back to the core's default.
 - **Type**: `--font-sans`, `--font-mono`, sizes `--text-xs` to `--text-2xl`, and
   `--font-weight-regular|medium|bold`.
 - **Spacing**: one base unit, `--spacing` (4px); sizes are its multiples,
