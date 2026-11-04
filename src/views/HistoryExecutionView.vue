@@ -298,6 +298,38 @@ import { inject } from 'vue'
 /** Date range the history opens with. */
 const DEFAULT_DATE_OPTION = 'lastMonth'
 
+/**
+ * The days a date option lists: today, yesterday, the last 7 days or the last month up to today;
+ * a custom range once both its days are given. No option, or a custom range not complete, has
+ * no days.
+ */
+function datesOfOption(option, custom, today = new Date()) {
+  const daysAgo = (days) => {
+    const date = new Date(today)
+    date.setDate(date.getDate() - days)
+    return date
+  }
+  switch (option) {
+    case 'today':
+      return { startDate: today, endDate: today }
+    case 'yesterday':
+      return { startDate: daysAgo(1), endDate: daysAgo(1) }
+    case 'last7days':
+      return { startDate: daysAgo(7), endDate: today }
+    case 'lastMonth': {
+      const monthAgo = new Date(today)
+      monthAgo.setMonth(monthAgo.getMonth() - 1)
+      return { startDate: monthAgo, endDate: today }
+    }
+    case 'custom':
+      return custom.startDate && custom.endDate
+        ? { startDate: parseLocalDateKey(custom.startDate), endDate: parseLocalDateKey(custom.endDate) }
+        : { startDate: null, endDate: null }
+    default:
+      return { startDate: null, endDate: null }
+  }
+}
+
 /** Below this width (px) the list and the detail take turns instead of sitting side by side. */
 const NARROW_WIDTH = 860
 
@@ -331,10 +363,6 @@ export default {
       data: [],
       generalStore: useGeneralStore(),
       dateOptionSelected: null,
-      selectedDates: {
-        startDate: null,
-        endDate: null,
-      },
       customSelectedDates: {
         startDate: null,
         endDate: null,
@@ -394,6 +422,15 @@ export default {
     this.resizeObserver?.disconnect()
   },
   computed: {
+    /** The days the list is loaded for. */
+    selectedDates() {
+      return datesOfOption(this.dateOptionSelected, this.customSelectedDates)
+    },
+    /** The days as text, so the list loads again only when they change. */
+    selectedDaysKey() {
+      const { startDate, endDate } = this.selectedDates
+      return `${startDate?.toDateString() ?? ''}|${endDate?.toDateString() ?? ''}`
+    },
     title() {
       return this.$t('versionHistory.title')
     },
@@ -561,72 +598,18 @@ export default {
     filterParamsSignature() {
       this.fetchData()
     },
-    dateOptionSelected(newVal, oldVal) {
-      const today = new Date()
-      const yesterday = new Date(today)
-      yesterday.setDate(yesterday.getDate() - 1)
-      const lastWeek = new Date(today)
-      lastWeek.setDate(lastWeek.getDate() - 7)
-      const lastMonth = new Date(today)
-      lastMonth.setMonth(lastMonth.getMonth() - 1)
+    // Another option drops the custom days; no option shows nothing.
+    dateOptionSelected(option, previous) {
       this.customSelectedDates.startDate = null
       this.customSelectedDates.endDate = null
-
-      switch (newVal) {
-        case 'today':
-          this.selectedDates.startDate = today
-          this.selectedDates.endDate = today
-          break
-        case 'yesterday':
-          this.selectedDates.startDate = yesterday
-          this.selectedDates.endDate = yesterday
-          break
-        case 'last7days':
-          this.selectedDates.startDate = lastWeek
-          this.selectedDates.endDate = today
-          break
-        case 'lastMonth':
-          this.selectedDates.startDate = lastMonth
-          this.selectedDates.endDate = today
-          break
-        case 'custom':
-          this.selectedDates.startDate = null
-          this.selectedDates.endDate = null
-          break
-        default:
-          this.selectedDates.startDate = null
-          this.selectedDates.endDate = null
-          this.data = []
-          break
-      }
-
-      // Fetch data if custom option is selected and no dates are selected, otherwise data is setted to empty
-      if (
-        oldVal === 'custom' &&
-        this.selectedDates.startDate === null &&
-        this.selectedDates.endDate === null
-      ) {
-        this.fetchData()
-      }
+      if (!option) this.data = []
+      // Leaving a custom range that had no days keeps the same (empty) days: load again anyway.
+      if (previous === 'custom' && !this.selectedDates.startDate) this.fetchData()
     },
-    customSelectedDates: {
-      handler(newVal) {
-        if (
-          this.dateOptionSelected === 'custom' &&
-          newVal.startDate &&
-          newVal.endDate
-        ) {
-          this.selectedDates.startDate = parseLocalDateKey(newVal.startDate)
-          this.selectedDates.endDate = parseLocalDateKey(newVal.endDate)
-        }
-      },
-      deep: true,
-    },
-    selectedDates: {
-      handler() {
-        this.fetchData()
-      },
-      deep: true,
+    // A custom range loads once both its days are given.
+    selectedDaysKey() {
+      if (this.dateOptionSelected === 'custom' && !this.selectedDates.startDate) return
+      this.fetchData()
     },
     // On a wide screen the detail always shows an execution: the newest one, until the user picks.
     executionDays() {

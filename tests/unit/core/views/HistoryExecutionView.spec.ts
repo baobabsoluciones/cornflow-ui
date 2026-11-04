@@ -320,14 +320,15 @@ describe('HistoryExecutionView', () => {
         const { wrapper, generalStore } = createWrapper()
         generalStore.fetchExecutionsByDateRange.mockResolvedValue([])
 
-        wrapper.vm.selectedDates.startDate = new Date('2023-01-01')
-        wrapper.vm.selectedDates.endDate = new Date('2023-01-31')
+        await wrapper.setData({ dateOptionSelected: 'custom' })
+        await wrapper.setData({ customSelectedDates: { startDate: '2023-01-01', endDate: '2023-01-31' } })
+        generalStore.fetchExecutionsByDateRange.mockClear()
 
         await wrapper.vm.fetchData()
 
         expect(generalStore.fetchExecutionsByDateRange).toHaveBeenCalledWith(
-          wrapper.vm.selectedDates.startDate,
-          wrapper.vm.selectedDates.endDate,
+          new Date(2023, 0, 1),
+          new Date(2023, 0, 31),
         )
       })
 
@@ -519,8 +520,8 @@ describe('HistoryExecutionView', () => {
     })
   })
 
-  describe('Watchers', () => {
-    test('dateOptionSelected watcher sets correct dates for today', async () => {
+  describe('The days listed', () => {
+    test('the today option lists its days', async () => {
       const { wrapper } = createWrapper()
 
       await wrapper.setData({ dateOptionSelected: 'today' })
@@ -534,7 +535,7 @@ describe('HistoryExecutionView', () => {
       )
     })
 
-    test('dateOptionSelected watcher sets correct dates for yesterday', async () => {
+    test('the yesterday option lists its days', async () => {
       const { wrapper } = createWrapper()
 
       await wrapper.setData({ dateOptionSelected: 'yesterday' })
@@ -549,7 +550,7 @@ describe('HistoryExecutionView', () => {
       )
     })
 
-    test('dateOptionSelected watcher sets correct dates for last7days', async () => {
+    test('the last7days option lists its days', async () => {
       const { wrapper } = createWrapper()
 
       await wrapper.setData({ dateOptionSelected: 'last7days' })
@@ -566,7 +567,7 @@ describe('HistoryExecutionView', () => {
       )
     })
 
-    test('dateOptionSelected watcher sets correct dates for lastMonth', async () => {
+    test('the lastMonth option lists its days', async () => {
       const { wrapper } = createWrapper()
 
       await wrapper.setData({ dateOptionSelected: 'lastMonth' })
@@ -583,7 +584,7 @@ describe('HistoryExecutionView', () => {
       )
     })
 
-    test('dateOptionSelected watcher clears dates for custom', async () => {
+    test('a custom range has no days until both are given', async () => {
       const { wrapper } = createWrapper()
 
       await wrapper.setData({ dateOptionSelected: 'custom' })
@@ -592,7 +593,7 @@ describe('HistoryExecutionView', () => {
       expect(wrapper.vm.selectedDates.endDate).toBeNull()
     })
 
-    test('customSelectedDates watcher updates selectedDates when custom is selected', async () => {
+    test('a custom range lists its days, read as local days', async () => {
       const { wrapper } = createWrapper()
 
       await wrapper.setData({ dateOptionSelected: 'custom' })
@@ -608,20 +609,21 @@ describe('HistoryExecutionView', () => {
       expect(wrapper.vm.selectedDates.endDate).toEqual(new Date(2023, 0, 31))
     })
 
-    test('selectedDates watcher calls fetchData', async () => {
+    test('other days load the list again; a custom range only once both days are given', async () => {
       const { wrapper } = createWrapper()
+      await wrapper.setData({ dateOptionSelected: 'custom' })
       const fetchDataSpy = vi
         .spyOn(wrapper.vm, 'fetchData')
         .mockImplementation(() => Promise.resolve())
 
-      await wrapper.setData({
-        selectedDates: {
-          startDate: new Date('2023-01-01'),
-          endDate: new Date('2023-01-31'),
-        },
-      })
+      await wrapper.setData({ customSelectedDates: { startDate: '2023-01-01', endDate: null } })
+      expect(fetchDataSpy).not.toHaveBeenCalled()
 
-      expect(fetchDataSpy).toHaveBeenCalled()
+      await wrapper.setData({ customSelectedDates: { startDate: '2023-01-01', endDate: '2023-01-31' } })
+      expect(fetchDataSpy).toHaveBeenCalledTimes(1)
+
+      await wrapper.setData({ dateOptionSelected: 'today' })
+      expect(fetchDataSpy).toHaveBeenCalledTimes(2)
     })
   })
 
