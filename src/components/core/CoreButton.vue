@@ -26,7 +26,7 @@
       'core-button',
       `core-button--${variant}`,
       `core-button--${size}`,
-      `core-button--tone-${tone}`,
+      `core-tone--${tone}`,
       { 'core-button--block': block, 'core-button--loading': loading },
     ]"
     :style="customColors"
@@ -127,12 +127,6 @@ const customColors = computed(() => {
 
 <style scoped>
 .core-button {
-  /* Tone of the variant; the tone classes below set them. */
-  --button-tone: var(--color-primary);
-  --button-tone-strong: var(--color-primary);
-  --button-tone-soft: var(--color-primary-subtle);
-  --button-tone-border: var(--color-border-input);
-
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -180,37 +174,19 @@ const customColors = computed(() => {
   line-height: 1.4;
 }
 
-/* Tones */
-.core-button--tone-warning {
-  --button-tone: var(--color-warning);
-  --button-tone-strong: var(--color-warning-strong);
-  --button-tone-soft: var(--color-warning-soft);
-  --button-tone-border: var(--color-warning-border);
+/* Tones: a filled danger button is the strong red; a neutral one has muted text and hover. */
+.core-button.core-tone--danger {
+  --tone: var(--color-danger-strong);
 }
 
-.core-button--tone-danger {
-  --button-tone: var(--color-danger-strong);
-  --button-tone-strong: var(--color-danger-strong);
-  --button-tone-soft: var(--color-danger-soft);
-  --button-tone-border: var(--color-danger-border);
-}
-
-.core-button--tone-success {
-  --button-tone: var(--color-success);
-  --button-tone-strong: var(--color-success-strong);
-  --button-tone-soft: var(--color-success-soft);
-  --button-tone-border: var(--color-success-border);
-}
-
-.core-button--tone-neutral {
-  --button-tone: var(--color-neutral);
-  --button-tone-strong: var(--color-text-muted);
-  --button-tone-soft: var(--color-surface-hover);
+.core-button.core-tone--neutral {
+  --tone-strong: var(--color-text-muted);
+  --tone-soft: var(--color-surface-hover);
 }
 
 /* Variants */
 .core-button--filled {
-  background: var(--button-bg, var(--button-tone));
+  background: var(--button-bg, var(--tone));
   color: var(--button-fg, var(--color-on-primary));
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
 }
@@ -235,41 +211,41 @@ const customColors = computed(() => {
 }
 
 .core-button--outlined:is(
-  .core-button--tone-danger,
-  .core-button--tone-warning,
-  .core-button--tone-success
+  .core-tone--danger,
+  .core-tone--warning,
+  .core-tone--success
 ) {
-  color: var(--button-fg, var(--button-tone-strong));
-  border-color: var(--button-tone-border);
+  color: var(--button-fg, var(--tone-strong));
+  border-color: var(--tone-border);
 }
 
 .core-button--outlined:is(
-    .core-button--tone-danger,
-    .core-button--tone-warning,
-    .core-button--tone-success
+    .core-tone--danger,
+    .core-tone--warning,
+    .core-tone--success
   )
   .core-button__icon {
   color: inherit;
 }
 
 .core-button--outlined:is(
-    .core-button--tone-danger,
-    .core-button--tone-warning,
-    .core-button--tone-success
+    .core-tone--danger,
+    .core-tone--warning,
+    .core-tone--success
   ):not(:disabled):hover {
-  background: var(--button-bg, var(--button-tone-soft));
-  border-color: var(--button-tone-border);
+  background: var(--button-bg, var(--tone-soft));
+  border-color: var(--tone-border);
 }
 
 .core-button--text,
 .core-button--icon {
   background: var(--button-bg, transparent);
-  color: var(--button-fg, var(--button-tone-strong));
+  color: var(--button-fg, var(--tone-strong));
 }
 
 .core-button--text:not(:disabled):hover,
 .core-button--icon:not(:disabled):hover {
-  background: var(--button-bg, var(--button-tone-soft));
+  background: var(--button-bg, var(--tone-soft));
 }
 
 /* Sizes */

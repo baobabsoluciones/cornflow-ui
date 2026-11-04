@@ -5,7 +5,7 @@
 -->
 <template>
   <div
-    :class="['core-progress-bar', `core-progress-bar--${tone}`]"
+    :class="['core-progress-bar', `core-tone--${tone}`]"
     role="progressbar"
     :aria-valuenow="clamped"
     aria-valuemin="0"
@@ -39,38 +39,16 @@ const clamped = computed(() =>
 
 <style scoped>
 .core-progress-bar {
-  --progress-fill: var(--color-primary);
-
   height: 4px;
   overflow: hidden;
   border-radius: var(--radius-full);
   background: var(--color-neutral-soft);
 }
 
-.core-progress-bar--neutral {
-  --progress-fill: var(--color-neutral);
-}
-
-.core-progress-bar--info {
-  --progress-fill: var(--color-info);
-}
-
-.core-progress-bar--success {
-  --progress-fill: var(--color-success);
-}
-
-.core-progress-bar--warning {
-  --progress-fill: var(--color-warning);
-}
-
-.core-progress-bar--danger {
-  --progress-fill: var(--color-danger);
-}
-
 .core-progress-bar__fill {
   height: 100%;
   border-radius: inherit;
-  background: var(--progress-fill);
+  background: var(--tone);
   transition: width var(--duration-base) var(--ease-standard);
 }
 </style>

@@ -16,7 +16,7 @@
       'core-badge',
       `core-badge--${variant}`,
       `core-badge--${size}`,
-      `core-badge--${tone}`,
+      `core-tone--${tone}`,
     ]"
   >
     <span v-if="variant === 'dot'" class="core-badge__dot" />
@@ -62,10 +62,6 @@ withDefaults(
 
 <style scoped>
 .core-badge {
-  --badge-base: var(--color-neutral);
-  --badge-soft: var(--color-neutral-soft);
-  --badge-strong: var(--color-neutral-strong);
-
   display: inline-flex;
   align-items: center;
   gap: calc(var(--spacing) * 1.25);
@@ -74,42 +70,12 @@ withDefaults(
   font-family: var(--font-sans);
   font-weight: var(--font-weight-medium);
   white-space: nowrap;
-  color: var(--badge-strong);
-}
-
-.core-badge--primary {
-  --badge-base: var(--color-primary);
-  --badge-soft: var(--color-primary-subtle);
-  --badge-strong: var(--color-primary);
-}
-
-.core-badge--info {
-  --badge-base: var(--color-info);
-  --badge-soft: var(--color-info-soft);
-  --badge-strong: var(--color-info-strong);
-}
-
-.core-badge--success {
-  --badge-base: var(--color-success);
-  --badge-soft: var(--color-success-soft);
-  --badge-strong: var(--color-success-strong);
-}
-
-.core-badge--warning {
-  --badge-base: var(--color-warning);
-  --badge-soft: var(--color-warning-soft);
-  --badge-strong: var(--color-warning-strong);
-}
-
-.core-badge--danger {
-  --badge-base: var(--color-danger);
-  --badge-soft: var(--color-danger-soft);
-  --badge-strong: var(--color-danger-strong);
+  color: var(--tone-strong);
 }
 
 .core-badge--soft {
   border-radius: var(--radius-full);
-  background: var(--badge-soft);
+  background: var(--tone-soft);
 }
 
 .core-badge--soft.core-badge--default {
@@ -146,7 +112,7 @@ withDefaults(
   height: 6px;
   flex: none;
   border-radius: var(--radius-full);
-  background: var(--badge-base);
+  background: var(--tone);
 }
 
 .core-badge__label {

@@ -378,7 +378,7 @@ describe('CreateExecutionReviewInstance', () => {
       expect(wrapper.emitted('update:instance')).toBeFalsy()
       expect(wrapper.emitted('update:instanceErrors')![0][0]).toContain('Schema validation error')
       expect(snackbar).toHaveBeenCalledWith('Schema validation error', 'error', { persistent: true })
-      expect(wrapper.find('.core-alert--danger').exists()).toBe(true)
+      expect(wrapper.find('.core-alert.core-tone--danger').exists()).toBe(true)
     })
 
     test('does nothing without an instance', async () => {
@@ -405,7 +405,7 @@ describe('CreateExecutionReviewInstance', () => {
     test('shows the errors in an alert below the table', async () => {
       wrapper = createWrapper({ instanceErrors: '<b>Boom</b>' })
       const alert = wrapper.find('.review-instance-errors')
-      expect(alert.classes()).toContain('core-alert--danger')
+      expect(alert.classes()).toContain('core-tone--danger')
       expect(alert.find('b').text()).toBe('Boom')
     })
 

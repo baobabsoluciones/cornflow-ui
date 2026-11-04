@@ -66,7 +66,7 @@ describe('CoreButton', () => {
       expect.arrayContaining([
         'core-button--text',
         'core-button--small',
-        'core-button--tone-danger',
+        'core-tone--danger',
       ]),
     )
   })
@@ -111,7 +111,7 @@ describe('CoreBadge', () => {
       props: { label: 'Success', tone: 'success', icon: 'mdi-check-circle' },
     })
     expect(wrapper.classes()).toEqual(
-      expect.arrayContaining(['core-badge--soft', 'core-badge--success']),
+      expect.arrayContaining(['core-badge--soft', 'core-tone--success']),
     )
     expect(wrapper.find('.mdi-check-circle').exists()).toBe(true)
     expect(wrapper.text()).toBe('Success')
@@ -447,7 +447,7 @@ describe('CoreConfirmDialog', () => {
 
   test('the danger tone makes the confirm button destructive', async () => {
     const { confirm } = await mountConfirm({ tone: 'danger' })
-    expect(confirm.classList).toContain('core-button--tone-danger')
+    expect(confirm.classList).toContain('core-tone--danger')
   })
 
   test('while loading the confirm button spins and the message says to wait', async () => {

@@ -9,7 +9,7 @@
 -->
 <template>
   <div
-    :class="['core-alert', `core-alert--${tone}`]"
+    :class="['core-alert', `core-tone--${tone}`]"
     :role="tone === 'danger' ? 'alert' : 'status'"
   >
     <CoreIcon
@@ -65,47 +65,21 @@ const DEFAULT_ICONS: Record<AlertTone, string> = {
 
 <style scoped>
 .core-alert {
-  --alert-base: var(--color-info);
-  --alert-soft: var(--color-info-soft);
-  --alert-border: var(--color-info-border);
-  --alert-strong: var(--color-info-strong);
-
   display: flex;
   align-items: flex-start;
   gap: calc(var(--spacing) * 2.5);
   box-sizing: border-box;
   padding: calc(var(--spacing) * 2.5) calc(var(--spacing) * 3);
-  border: 1px solid var(--alert-border);
+  border: 1px solid var(--tone-border);
   border-radius: var(--radius-md);
-  background: var(--alert-soft);
+  background: var(--tone-soft);
   font-family: var(--font-sans);
   font-size: var(--text-md);
   line-height: 18px;
 }
 
-.core-alert--danger {
-  --alert-base: var(--color-danger);
-  --alert-soft: var(--color-danger-soft);
-  --alert-border: var(--color-danger-border);
-  --alert-strong: var(--color-danger-strong);
-}
-
-.core-alert--warning {
-  --alert-base: var(--color-warning);
-  --alert-soft: var(--color-warning-soft);
-  --alert-border: var(--color-warning-border);
-  --alert-strong: var(--color-warning-strong);
-}
-
-.core-alert--success {
-  --alert-base: var(--color-success);
-  --alert-soft: var(--color-success-soft);
-  --alert-border: var(--color-success-border);
-  --alert-strong: var(--color-success-strong);
-}
-
 .core-alert__icon {
-  color: var(--alert-base);
+  color: var(--tone);
 }
 
 .core-alert__body {
@@ -118,7 +92,7 @@ const DEFAULT_ICONS: Record<AlertTone, string> = {
 
 .core-alert__title {
   font-weight: var(--font-weight-bold);
-  color: var(--alert-strong);
+  color: var(--tone-strong);
 }
 
 .core-alert__message {
@@ -134,7 +108,7 @@ const DEFAULT_ICONS: Record<AlertTone, string> = {
   background: none;
   font: inherit;
   font-weight: var(--font-weight-medium);
-  color: var(--alert-strong);
+  color: var(--tone-strong);
   white-space: nowrap;
   cursor: pointer;
 }

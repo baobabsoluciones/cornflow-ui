@@ -840,7 +840,6 @@ defineExpose({
 }
 
 .data-table__selection :deep(.core-button) {
-  --button-tone: var(--color-on-inverse);
   color: var(--color-on-inverse);
 }
 

@@ -53,7 +53,7 @@ describe('RoleDeleteDialog', () => {
 
   test('deleting is the destructive action', async () => {
     const { confirm } = await mountDialog()
-    expect(confirm.classList).toContain('core-button--tone-danger')
+    expect(confirm.classList).toContain('core-tone--danger')
   })
 
   test('confirming emits confirm and leaves closing to the view', async () => {

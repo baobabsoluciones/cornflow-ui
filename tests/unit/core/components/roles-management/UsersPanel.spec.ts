@@ -110,8 +110,8 @@ describe('UsersPanel', () => {
       wrapper = createWrapper({ users: [user({ role_names: ['admin', 'viewer'] })] })
       const chips = wrapper.findAll('.role-chip')
       expect(chips.map((c: any) => c.text())).toEqual(['admin', 'viewer'])
-      expect(chips[0].classes()).toContain('core-badge--primary')
-      expect(chips[1].classes()).toContain('core-badge--success')
+      expect(chips[0].classes()).toContain('core-tone--primary')
+      expect(chips[1].classes()).toContain('core-tone--success')
     })
 
     test('renders the no-roles placeholder when the user has no roles', () => {

@@ -1378,7 +1378,10 @@ gives focus handling, keyboard and ARIA without styles. The views use the `Core*
 Reka directly.
 
 Tones (`neutral`, `primary`, `info`, `success`, `warning`, `danger`) have four tokens each:
-`--color-<tone>` and its `-soft`, `-border` and `-strong` variants (see `tokens.css`). Overlays sit
+`--color-<tone>` and its `-soft`, `-border` and `-strong` variants (see `tokens.css`). The class
+`core-tone--<tone>` (`tone.css`, imported by `main.css`) gives an element and what it holds the
+tone's colours as `--tone`, `--tone-soft`, `--tone-strong` and `--tone-border`; `CoreAlert`,
+`CoreBadge`, `CoreButton`, `CoreProgressBar` and `CoreTimeline` paint with them. Overlays sit
 above Vuetify's with `--z-popover`, `--z-dialog` and `--z-toast`.
 The execution tab bar at the foot of the window is `--bottom-bar-height` tall, as is the side
 menu's user row beside it; an app view that fills the window leaves it free:

@@ -55,7 +55,7 @@ describe('ForceRetryConfirmDialog', () => {
 
   test('going ahead is the destructive action', async () => {
     const { confirm } = await mountDialog()
-    expect(confirm.classList).toContain('core-button--tone-danger')
+    expect(confirm.classList).toContain('core-tone--danger')
   })
 
   test('confirming emits confirm', async () => {

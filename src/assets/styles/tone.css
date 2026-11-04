@@ -1,0 +1,46 @@
+/*
+   The colours of a tone. A base component puts `core-tone--<tone>` on its element and reads
+   `--tone` (an icon, a dot, a fill), `--tone-soft` (a background), `--tone-strong` (text on that
+   background) and `--tone-border`; the elements inside inherit them.
+*/
+.core-tone--neutral {
+  --tone: var(--color-neutral);
+  --tone-soft: var(--color-neutral-soft);
+  --tone-strong: var(--color-neutral-strong);
+  --tone-border: var(--color-neutral-border);
+}
+
+.core-tone--primary {
+  --tone: var(--color-primary);
+  --tone-soft: var(--color-primary-subtle);
+  --tone-strong: var(--color-primary);
+  --tone-border: var(--color-primary-soft);
+}
+
+.core-tone--info {
+  --tone: var(--color-info);
+  --tone-soft: var(--color-info-soft);
+  --tone-strong: var(--color-info-strong);
+  --tone-border: var(--color-info-border);
+}
+
+.core-tone--success {
+  --tone: var(--color-success);
+  --tone-soft: var(--color-success-soft);
+  --tone-strong: var(--color-success-strong);
+  --tone-border: var(--color-success-border);
+}
+
+.core-tone--warning {
+  --tone: var(--color-warning);
+  --tone-soft: var(--color-warning-soft);
+  --tone-strong: var(--color-warning-strong);
+  --tone-border: var(--color-warning-border);
+}
+
+.core-tone--danger {
+  --tone: var(--color-danger);
+  --tone-soft: var(--color-danger-soft);
+  --tone-strong: var(--color-danger-strong);
+  --tone-border: var(--color-danger-border);
+}

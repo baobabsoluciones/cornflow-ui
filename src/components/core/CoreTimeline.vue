@@ -28,7 +28,7 @@
         :class="[
           'core-timeline__step',
           `is-${step.status}`,
-          `core-timeline__step--${toneOf(step)}`,
+          `core-tone--${toneOf(step)}`,
         ]"
         :aria-current="step.status === 'current' ? 'step' : undefined"
       >
@@ -145,44 +145,10 @@ function toneOf(step: TimelineStep): CoreTone {
 }
 
 .core-timeline__step {
-  --step-base: var(--color-primary);
-  --step-soft: var(--color-primary-subtle);
-  --step-strong: var(--color-primary);
-
   display: flex;
   flex-direction: column;
   gap: calc(var(--spacing) * 2);
   min-width: 0;
-}
-
-.core-timeline__step--info {
-  --step-base: var(--color-info);
-  --step-soft: var(--color-info-soft);
-  --step-strong: var(--color-info-strong);
-}
-
-.core-timeline__step--success {
-  --step-base: var(--color-success);
-  --step-soft: var(--color-success-soft);
-  --step-strong: var(--color-success-strong);
-}
-
-.core-timeline__step--warning {
-  --step-base: var(--color-warning);
-  --step-soft: var(--color-warning-soft);
-  --step-strong: var(--color-warning-strong);
-}
-
-.core-timeline__step--danger {
-  --step-base: var(--color-danger);
-  --step-soft: var(--color-danger-soft);
-  --step-strong: var(--color-danger-strong);
-}
-
-.core-timeline__step--neutral {
-  --step-base: var(--color-neutral);
-  --step-soft: var(--color-neutral-soft);
-  --step-strong: var(--color-neutral-strong);
 }
 
 .core-timeline__track {
@@ -205,8 +171,8 @@ function toneOf(step: TimelineStep): CoreTone {
 
 .is-current .core-timeline__dot,
 .is-failed .core-timeline__dot {
-  background: var(--step-soft);
-  color: var(--step-base);
+  background: var(--tone-soft);
+  color: var(--tone);
 }
 
 .is-skipped .core-timeline__dot {
@@ -252,7 +218,7 @@ function toneOf(step: TimelineStep): CoreTone {
 
 .is-current .core-timeline__label,
 .is-failed .core-timeline__label {
-  color: var(--step-strong);
+  color: var(--tone-strong);
 }
 
 .is-skipped .core-timeline__label {
