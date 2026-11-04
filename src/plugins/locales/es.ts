@@ -391,6 +391,7 @@ export default {
     containsCurrent: 'La página actual está en este grupo',
     userSettings: 'Ajustes de usuario',
     logout: 'Cerrar sesión',
+    account: 'Tu cuenta',
   },
   logOut: {
     title: 'Cerrar sesión',

@@ -423,6 +423,21 @@ describe('AppDrawer', () => {
     expect(snackbar).toHaveBeenCalledWith('logOut.snackbar_message_success', 'success')
   })
 
+  test('without the user loaded, the menu still offers to log out', async () => {
+    state.store.getUser = {}
+    ;({ wrapper } = await mountDrawer())
+    expect(wrapper.find('.app-drawer__rail-user .app-drawer__avatar').attributes('aria-label')).toBe('drawer.account')
+
+    state.store.isDrawerPinned = true
+    await flushPromises()
+    expect(wrapper.find('.app-drawer__user-name').text()).toBe('drawer.account')
+    await wrapper.find('[data-testid="app-drawer-logout"]').trigger('click')
+    await flushPromises()
+    confirmButton('app-drawer-logout-dialog').click()
+    await flushPromises()
+    expect(auth.logout).toHaveBeenCalled()
+  })
+
   test('a failed log out says so', async () => {
     auth.logout.mockRejectedValue(new Error('down'))
     vi.spyOn(console, 'error').mockImplementation(() => {})

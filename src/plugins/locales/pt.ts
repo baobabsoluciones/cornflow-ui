@@ -374,6 +374,7 @@ export default {
     containsCurrent: 'A página atual está neste grupo',
     userSettings: 'Definições do utilizador',
     logout: 'Terminar sessão',
+    account: 'A sua conta',
   },
   logOut: {
     title: 'Terminar sessão',
