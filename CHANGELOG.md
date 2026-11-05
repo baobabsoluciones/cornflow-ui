@@ -26,7 +26,7 @@ Version 4 redraws the core on its own components (Reka UI underneath, no Vuetify
   - In a deployment with several DAGs, a selector fed by a frontend-automation table asks its list with `schema` set to the active DAG, so the backend can return only the rows that apply to it; with a single DAG the list is asked without parameters, and a backend that ignores `schema` returns every row
   - A DAG switch asks the options of the history filters, the pre-ETL parameters and the parameter names of the execution detail again
   *Contributors:* [@HelenaCA](#)  
-  *Commit ID:* #PR_NUMBER
+  *Commit ID:* #265
 - **Dark mode, opt-in per application** (`enableDarkMode`, off by default)  
   *Contributors:* [@HelenaCA](#)  
   *Commit ID:* #254
