@@ -106,19 +106,22 @@ function flattenQueryParams(
   return flat
 }
 
+/**
+ * The message of an error the backend sent as a JSON blob, in any shape the API uses for
+ * `message` (a string, translations resolved with the current locale, or a list of either).
+ * `defaultMsg` when the blob is not JSON or carries no message.
+ */
 async function parseErrorFromBlob(
   blob: Blob,
   defaultMsg: string,
 ): Promise<string> {
   if (!blob.type?.includes?.('json')) return defaultMsg
   try {
-    const text = await blob.text()
-    const j = JSON.parse(text) as { message?: string }
-    if (typeof j.message === 'string' && j.message) return j.message
+    const content: unknown = JSON.parse(await blob.text())
+    return getMessageFromResponseContent(content, defaultMsg) || defaultMsg
   } catch {
-    /* keep default */
+    return defaultMsg
   }
-  return defaultMsg
 }
 
 export default class TableRepository {
