@@ -174,6 +174,11 @@ describe('loadErrors', () => {
     const result = singleLoadError('<p><strong>ETL failed</strong></p><li>Bad sheet</li>', t)
     expect(result.groups[0].items).toEqual(['ETL failed', 'Bad sheet'])
   })
+
+  test('a script or style in an error is left out', () => {
+    const result = singleLoadError('<p>Bad sheet</p><script>alert(1)</script><style>p{}</style><ul><li>Row 2</li></ul>', t)
+    expect(result.groups[0].items).toEqual(['Bad sheet', 'Row 2'])
+  })
 })
 
 describe('executionName', () => {
