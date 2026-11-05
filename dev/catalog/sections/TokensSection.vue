@@ -2,13 +2,27 @@
   <section class="tokens">
     <h1 class="tokens__title">Design tokens</h1>
     <p class="tokens__lead">
-      Defined in <code>src/assets/styles/tokens.css</code>. Colours come from the app's
-      <code>variables.css</code>; try another primary in the side bar.
+      Defined in <code>src/assets/styles/tokens.css</code>. Colours come from
+      the app's <code>variables.css</code>; try another primary in the side bar.
     </p>
 
     <h2 class="tokens__heading">Colour</h2>
     <div class="tokens__swatches">
       <div v-for="token in colorTokens" :key="token" class="swatch">
+        <div class="swatch__chip" :style="{ background: `var(${token})` }" />
+        <code class="swatch__name">{{ token }}</code>
+        <code class="swatch__value">{{ values[token] }}</code>
+      </div>
+    </div>
+
+    <h2 class="tokens__heading">Tones</h2>
+    <p class="tokens__note">
+      Each tone has a base colour, a soft background, a border for it and the
+      text that reads on it. Soft and border mix the base with white, so they
+      follow the app's palette.
+    </p>
+    <div class="tokens__swatches">
+      <div v-for="token in toneTokens" :key="token" class="swatch">
         <div class="swatch__chip" :style="{ background: `var(${token})` }" />
         <code class="swatch__name">{{ token }}</code>
         <code class="swatch__value">{{ values[token] }}</code>
@@ -24,30 +38,42 @@
       <v-btn color="primary">Vuetify button</v-btn>
       <v-chip color="primary" variant="flat">Chip</v-chip>
       <v-progress-circular color="primary" indeterminate />
-      <v-switch color="primary" :model-value="true" hide-details label="Switch" />
+      <v-switch
+        color="primary"
+        :model-value="true"
+        hide-details
+        label="Switch"
+      />
     </div>
 
     <h2 class="tokens__heading">Type</h2>
     <div class="tokens__list">
       <div v-for="token in textTokens" :key="token" class="type-sample">
         <code class="type-sample__name">{{ token }} · {{ values[token] }}</code>
-        <span :style="{ fontSize: `var(${token})` }">Plan semana 42 · Planta Norte</span>
+        <span :style="{ fontSize: `var(${token})` }"
+          >Plan semana 42 · Planta Norte</span
+        >
       </div>
       <div v-for="token in weightTokens" :key="token" class="type-sample">
         <code class="type-sample__name">{{ token }} · {{ values[token] }}</code>
-        <span :style="{ fontWeight: `var(${token})` }">Plan semana 42 · Planta Norte</span>
+        <span :style="{ fontWeight: `var(${token})` }"
+          >Plan semana 42 · Planta Norte</span
+        >
       </div>
     </div>
 
     <h2 class="tokens__heading">Spacing</h2>
     <p class="tokens__note">
-      One base unit, <code>--spacing</code> ({{ values['--spacing'] }}); sizes are its multiples,
-      e.g. <code>calc(var(--spacing) * 4)</code>.
+      One base unit, <code>--spacing</code> ({{ values['--spacing'] }}); sizes
+      are its multiples, e.g. <code>calc(var(--spacing) * 4)</code>.
     </p>
     <div class="tokens__list">
       <div v-for="step in spacingSteps" :key="step" class="spacing-sample">
         <code class="type-sample__name">× {{ step }}</code>
-        <div class="spacing-sample__bar" :style="{ width: `calc(var(--spacing) * ${step})` }" />
+        <div
+          class="spacing-sample__bar"
+          :style="{ width: `calc(var(--spacing) * ${step})` }"
+        />
       </div>
     </div>
 
@@ -59,7 +85,10 @@
         <code class="swatch__value">{{ values[token] }}</code>
       </div>
       <div v-for="token in shadowTokens" :key="token" class="swatch">
-        <div class="swatch__box swatch__box--shadow" :style="{ boxShadow: `var(${token})` }" />
+        <div
+          class="swatch__box swatch__box--shadow"
+          :style="{ boxShadow: `var(${token})` }"
+        />
         <code class="swatch__name">{{ token }}</code>
       </div>
     </div>
@@ -74,26 +103,65 @@ const colorTokens = [
   '--color-primary',
   '--color-primary-light',
   '--color-primary-soft',
+  '--color-primary-subtle',
   '--color-on-primary',
   '--color-secondary',
-  '--color-success',
-  '--color-warning',
-  '--color-danger',
-  '--color-danger-strong',
   '--color-text',
   '--color-text-muted',
+  '--color-text-subtle',
   '--color-background',
   '--color-surface',
+  '--color-surface-muted',
+  '--color-surface-hover',
+  '--color-inverse',
   '--color-border',
+  '--color-border-subtle',
+  '--color-border-input',
+  '--color-border-strong',
+  '--color-divider',
   '--color-disabled',
 ]
-const textTokens = ['--text-xs', '--text-sm', '--text-md', '--text-base', '--text-lg', '--text-xl', '--text-2xl']
-const weightTokens = ['--font-weight-regular', '--font-weight-medium', '--font-weight-bold']
-const radiusTokens = ['--radius-sm', '--radius-md', '--radius-lg', '--radius-xl', '--radius-full']
-const shadowTokens = ['--shadow-sm', '--shadow-md', '--shadow-lg']
+const toneTokens = ['success', 'warning', 'danger', 'info', 'neutral'].flatMap(
+  (tone) =>
+    ['', '-soft', '-border', '-strong'].map((part) => `--color-${tone}${part}`),
+)
+const textTokens = [
+  '--text-xs',
+  '--text-sm',
+  '--text-md',
+  '--text-base',
+  '--text-lg',
+  '--text-xl',
+  '--text-2xl',
+]
+const weightTokens = [
+  '--font-weight-regular',
+  '--font-weight-medium',
+  '--font-weight-bold',
+]
+const radiusTokens = [
+  '--radius-sm',
+  '--radius-md',
+  '--radius-lg',
+  '--radius-xl',
+  '--radius-full',
+]
+const shadowTokens = [
+  '--shadow-sm',
+  '--shadow-md',
+  '--shadow-lg',
+  '--shadow-xl',
+]
 const spacingSteps = [1, 2, 3, 4, 6, 8, 12, 16]
 
-const allTokens = [...colorTokens, ...textTokens, ...weightTokens, ...radiusTokens, '--spacing']
+const allTokens = [
+  ...colorTokens,
+  ...toneTokens,
+  ...textTokens,
+  ...weightTokens,
+  ...radiusTokens,
+  '--spacing',
+]
 const values = reactive<Record<string, string>>({})
 
 function readValues() {
@@ -104,7 +172,10 @@ function readValues() {
 const observer = new MutationObserver(readValues)
 onMounted(() => {
   readValues()
-  observer.observe(document.body, { attributes: true, attributeFilter: ['style'] })
+  observer.observe(document.body, {
+    attributes: true,
+    attributeFilter: ['style'],
+  })
 })
 onUnmounted(() => observer.disconnect())
 </script>

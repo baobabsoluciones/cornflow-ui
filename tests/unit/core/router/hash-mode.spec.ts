@@ -59,8 +59,8 @@ vi.mock('@cornflow-ui/core/stores/general', () => ({
 const stubView = (name: string) => ({ default: { name, template: '<div />' } })
 vi.mock('@cornflow-ui/core/views/IndexView.vue', () => stubView('IndexView'))
 vi.mock('@cornflow-ui/core/views/LoginView.vue', () => stubView('LoginView'))
-vi.mock('@cornflow-ui/core/views/ProjectExecutionView.vue', () =>
-  stubView('ProjectExecutionView'),
+vi.mock('@cornflow-ui/core/views/CreateExecutionView.vue', () =>
+  stubView('CreateExecutionView'),
 )
 vi.mock('@cornflow-ui/core/views/HistoryExecutionView.vue', () =>
   stubView('HistoryExecutionView'),

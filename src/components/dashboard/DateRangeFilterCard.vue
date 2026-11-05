@@ -80,9 +80,9 @@ const { t } = useI18n()
 
 <style scoped>
 .date-range-filter-card {
-  background: #ffffff;
+  background: var(--color-surface);
   border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--color-border-subtle);
   padding: 16px 20px;
   margin-bottom: 20px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);

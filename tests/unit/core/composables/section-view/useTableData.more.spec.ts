@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ref, computed, defineComponent, h, nextTick } from 'vue'
+import { ref, computed, defineComponent, h, nextTick, watch } from 'vue'
 import { mount } from '@vue/test-utils'
 
 // ─── Hoisted controllable fixtures ──────────────────────────────────────────
@@ -183,7 +183,6 @@ vi.mock('@cornflow-ui/core/composables/useTableChanges', () => ({
 vi.mock('@cornflow-ui/core/composables/core-table/useFormFields', () => ({
   useFormFields: () => ({
     prepareFormDataForSubmit: (data: any) => ({ ...data }),
-    updateDependentFields: (_f: string, _v: any, data: any) => data,
   }),
 }))
 
@@ -229,13 +228,7 @@ vi.mock('@cornflow-ui/core/utils/schemaUtils', () => ({
 
 // applyFiltersAndSearch real-ish: passthrough so windowing slices the full set.
 vi.mock('@cornflow-ui/core/utils/tableFilterUtils', () => ({
-  getOperatorsForFieldType: vi.fn(() => ['equals']),
-  getOperatorText: vi.fn((op: string) => `OP:${op}`),
-  operatorNeedsValue: vi.fn(() => true),
-  operatorNeedsSecondValue: vi.fn(() => false),
-  generateFilterId: vi.fn(() => 'fid-1'),
   applyFiltersAndSearch: vi.fn((items: any[]) => items),
-  getFilterFieldTypeFromSchemaProperty: vi.fn(() => 'string'),
 }))
 
 // csvUtils — controllable for the CSV parse path.
@@ -524,10 +517,7 @@ describe('useTableData — FK mapping on bulk upload (mapDependentFieldsToIds)',
     expect(body[0].factory_id).toBe(20)
     // Dependent display column removed before sending.
     expect('factoria' in body[0]).toBe(false)
-    expect(showSnackbar).toHaveBeenCalledWith(
-      'table.messages.bulkUploadSuccess',
-      'success',
-    )
+    expect(api.uploadPhase.value).toBe('done')
   })
 
   test('throws bulkUploadReferenceNotFound when display value has no match', async () => {
@@ -538,16 +528,12 @@ describe('useTableData — FK mapping on bulk upload (mapDependentFieldsToIds)',
     )
     await api.handleBulkUpload({ files: [file], operation: 'post_bulk' })
     await nextTick()
-    // No bulk POST happened; error surfaced via snackbar.
+    // No bulk POST happened; the dialog says why.
     expect(
       repoCtrl.calls.post?.some((c) => c.url === '/ports/bulk'),
     ).toBeFalsy()
-    const errCall = showSnackbar.mock.calls.find(
-      (c) =>
-        typeof c[0] === 'string' &&
-        c[0].includes('table.messages.bulkUploadReferenceNotFound'),
-    )
-    expect(errCall).toBeDefined()
+    expect(api.uploadPhase.value).toBe('error')
+    expect(api.uploadError.value).toContain('table.messages.bulkUploadReferenceNotFound')
   })
 
   test('value-none display sets FK to null instead of throwing', async () => {
@@ -640,7 +626,7 @@ describe('useTableData — parseUploadFile', () => {
     expect(posted!.data[1].qty).toBeNull()
   })
 
-  test('Excel with only a header row throws (surfaced as snackbar error)', async () => {
+  test('Excel with only a header row is an error of the upload', async () => {
     excelCtrl.rows = [['name']]
     excelCtrl.rowCount = 1
     const { api } = mountTableData(plainBulkConfig)
@@ -650,10 +636,8 @@ describe('useTableData — parseUploadFile', () => {
     expect(
       repoCtrl.calls.post?.some((c) => c.url === '/pb/bulk'),
     ).toBeFalsy()
-    expect(showSnackbar).toHaveBeenCalledWith(
-      'table.fileProcessingError',
-      'error',
-    )
+    expect(api.uploadPhase.value).toBe('error')
+    expect(api.uploadError.value).toBe('table.fileProcessingError')
   })
 
   test('unsupported extension surfaces invalidFileFormat error', async () => {
@@ -661,10 +645,8 @@ describe('useTableData — parseUploadFile', () => {
     const file = makeFile('rows.txt', 'whatever')
     await api.handleBulkUpload({ files: [file], operation: 'post_bulk' })
     await nextTick()
-    expect(showSnackbar).toHaveBeenCalledWith(
-      'table.messages.invalidFileFormat',
-      'error',
-    )
+    expect(api.uploadPhase.value).toBe('error')
+    expect(api.uploadError.value).toBe('table.messages.invalidFileFormat')
   })
 
   test('empty file list reports a bulk-upload error', async () => {
@@ -698,7 +680,7 @@ describe('useTableData — async bulk upload (tryRunAsyncBulkUpload)', () => {
     repoCtrl.getByUrl['/async'] = []
   })
 
-  test('polls until completed, reloads list, closes modal, success snackbar', async () => {
+  test('polls until completed, reloads the list and the dialog says how many rows went in', async () => {
     vi.useFakeTimers()
     // POST start -> upload_id. Then status GETs: processing, processing, completed.
     repoCtrl.postQueue = [{ upload_id: 'up-1', status: 'queued' }]
@@ -721,11 +703,9 @@ describe('useTableData — async bulk upload (tryRunAsyncBulkUpload)', () => {
     await vi.runAllTimersAsync()
     await promise
 
-    expect(api.showBulkUploadModal.value).toBe(false)
-    expect(showSnackbar).toHaveBeenCalledWith(
-      expect.stringContaining('table.messages.asyncUploadCompleted'),
-      'success',
-    )
+    expect(api.uploadPhase.value).toBe('done')
+    expect(api.uploadedRows.value).toBe(20)
+    expect(api.showBulkUploadModal.value).toBe(true)
     // The start upload POST hit the async endpoint.
     expect(
       repoCtrl.calls.post?.some((c) => c.url === '/async/upload'),
@@ -736,26 +716,31 @@ describe('useTableData — async bulk upload (tryRunAsyncBulkUpload)', () => {
     ).toBeFalsy()
   })
 
-  test('updates uploadProgressMessage during processing', async () => {
+  test('the dialog waits while the upload is queued and counts the rows while they load', async () => {
     vi.useFakeTimers()
     repoCtrl.postQueue = [{ upload_id: 'up-2', status: 'queued' }]
     repoCtrl.getQueue = [
+      { status: 'queued' },
       { status: 'processing', total_rows_loaded: 7 },
-      { status: 'completed', total_rows_loaded: 7 },
+      { status: 'completed', total_rows_loaded: 9 },
     ]
     const { api } = mountTableData(asyncConfig)
-    const file = makeFile('big.xlsx', 'binary')
+    const seen: Array<[string, number | undefined]> = []
+    const stop = watch([api.uploadPhase, api.uploadedRows], ([phase, rows]) => seen.push([phase, rows]))
     const promise = api.handleBulkUpload({
-      files: [file],
+      files: [makeFile('big.xlsx', 'binary')],
       operation: 'post_bulk',
     })
     await vi.runAllTimersAsync()
     await promise
-    // After completion the progress message is cleared in the finally block.
-    expect(api.uploadProgressMessage.value).toBe('')
+    stop()
+
+    expect(seen.map(([phase]) => phase)).toEqual(expect.arrayContaining(['waiting', 'loading', 'done']))
+    expect(seen).toContainEqual(['loading', 7])
+    expect(seen.at(-1)).toEqual(['done', 9])
   })
 
-  test('failed status surfaces error and keeps modal logic intact', async () => {
+  test('a failed upload shows its error in the dialog, not over the table', async () => {
     vi.useFakeTimers()
     repoCtrl.postQueue = [{ upload_id: 'up-3', status: 'queued' }]
     repoCtrl.getQueue = [
@@ -770,8 +755,10 @@ describe('useTableData — async bulk upload (tryRunAsyncBulkUpload)', () => {
     })
     await vi.runAllTimersAsync()
     await promise
-    expect(api.error.value).toBe('boom on server')
-    expect(showSnackbar).toHaveBeenCalledWith('boom on server', 'error')
+    expect(api.uploadPhase.value).toBe('error')
+    expect(api.uploadError.value).toBe('boom on server')
+    expect(api.error.value).toBeNull()
+    expect(showSnackbar).not.toHaveBeenCalledWith('boom on server', 'error')
   })
 
   test('falls back to sync path when no async op declared', async () => {
@@ -793,6 +780,22 @@ describe('useTableData — async bulk upload (tryRunAsyncBulkUpload)', () => {
     expect(
       repoCtrl.calls.post?.some((c) => c.url === '/so/bulk'),
     ).toBe(true)
+    expect(api.uploadPhase.value).toBe('done')
+    expect(api.uploadedRows.value).toBe(1)
+  })
+
+  test('opening the dialog again starts at the form', async () => {
+    const { api } = mountTableData(asyncConfig)
+    api.uploadPhase.value = 'error'
+    api.uploadError.value = 'boom'
+    api.uploadedRows.value = 3
+
+    api.showBulkUploadModal.value = true
+    await nextTick()
+
+    expect(api.uploadPhase.value).toBe('form')
+    expect(api.uploadError.value).toBe('')
+    expect(api.uploadedRows.value).toBeUndefined()
   })
 })
 

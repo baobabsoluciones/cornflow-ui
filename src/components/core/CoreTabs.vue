@@ -123,7 +123,7 @@ const showRightArrow = ref(false)
 const showRightEllipsis = ref(true)
 const registeredTabs = ref<Map<string | number, TabInfo>>(new Map())
 
-/** DOM `data-tab-value` is always a string; map keys may be string (e.g. table key) or legacy numeric index */
+/** DOM `data-tab-value` is always a string; map keys may be a string (e.g. table key) or a numeric index */
 const getTabInfoForElement = (
   element: Element,
   map: Map<string | number, TabInfo>,

@@ -1,6 +1,5 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
-import { createVuetify } from 'vuetify'
 import { createI18n } from 'vue-i18n'
 import { nextTick } from 'vue'
 
@@ -83,11 +82,9 @@ vi.mock('@cornflow-ui/core/components/roles-management/UserRolesDialog.vue', () 
 import RolesManagementView from '@cornflow-ui/core/views/RolesManagementView.vue'
 
 describe('RolesManagementView', () => {
-  let vuetify: any
   let wrapper: any
 
   beforeEach(() => {
-    vuetify = createVuetify()
     vi.clearAllMocks()
     coreParams.value = { parameters: { allowEditRoles: true } }
     rm.roles.value = [
@@ -105,7 +102,7 @@ describe('RolesManagementView', () => {
 
   const createWrapper = () =>
     mount(RolesManagementView, {
-      global: { plugins: [vuetify, i18n] },
+      global: { plugins: [i18n] },
     })
 
   describe('mount + lifecycle', () => {

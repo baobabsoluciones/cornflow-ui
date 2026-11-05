@@ -45,9 +45,7 @@ export interface AutoChartTypeOptions {
  * Builds the reactive `chartOptions` / `series` pair shared by the
  * AutoAreaChart, AutoBarChart and AutoLineChart dashboard components.
  *
- * The returned `chartOptions` object is assembled to be identical to the
- * per-component option objects that previously lived inline, with the supplied
- * `typeOptions` accounting for the area/bar/line differences.
+ * The supplied `typeOptions` account for the area/bar/line differences.
  */
 export function useAutoChart(
   config: Ref<AutoChartConfig> | (() => AutoChartConfig),

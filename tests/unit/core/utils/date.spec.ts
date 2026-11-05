@@ -1,6 +1,8 @@
 import { describe, test, expect, beforeAll, afterAll } from 'vitest'
 import {
   formatDateForFilename,
+  formatDay,
+  formatTime,
   formatLocalDateKey,
   formatLocalTimeHHmm,
   normalizeBackendDate,
@@ -91,6 +93,22 @@ describe('formatDateForFilename', () => {
     const result = formatDateForFilename('2024-02-29T12:30:45.123Z')
     expect(result).toMatch(/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}$/)
     expect(result).toContain('-02-')
+  })
+})
+
+describe('formatDay and formatTime', () => {
+  test('write a day and a time as the language does', () => {
+    const when = new Date(2026, 10, 3, 9, 5)
+    expect(formatDay(when, 'es')).toBe('3/11/2026')
+    expect(formatDay(when, 'en')).toBe('11/3/2026')
+    expect(formatTime(when, 'es')).toBe('09:05')
+    expect(formatTime(when, 'en')).toBe('09:05 AM')
+  })
+
+  test('a bare day is a local day, and what is not a date stays as it is', () => {
+    expect(formatDay('2026-11-03', 'es')).toBe('3/11/2026')
+    expect(formatDay('soon', 'es')).toBe('soon')
+    expect(formatTime('soon', 'es')).toBe('soon')
   })
 })
 

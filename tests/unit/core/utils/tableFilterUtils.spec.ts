@@ -3,15 +3,8 @@ import {
   generateSecureId,
   generateFrontendRowId,
   isFrontendRowId,
-  getFilterFieldTypeFromSchemaProperty,
-  isDateLikeFieldType,
-  getOperatorsForFieldType,
-  getOperatorText,
-  operatorNeedsValue,
-  operatorNeedsSecondValue,
   generateFilterId,
   applyFilterToItem,
-  itemMatchesSearch,
   applyFiltersAndSearch,
   generateHeadersFromData,
   type FilterCondition,
@@ -64,150 +57,6 @@ describe('generateSecureId', () => {
 
   it('treats empty-string prefix the same as no prefix', () => {
     expect(generateSecureId('')).toHaveLength(12)
-  })
-})
-
-describe('getFilterFieldTypeFromSchemaProperty', () => {
-  it('returns "string" when prop is null/undefined', () => {
-    expect(getFilterFieldTypeFromSchemaProperty(null as any)).toBe('string')
-    expect(getFilterFieldTypeFromSchemaProperty(undefined as any)).toBe(
-      'string',
-    )
-  })
-
-  it('returns "date" for format date', () => {
-    expect(getFilterFieldTypeFromSchemaProperty({ format: 'date' })).toBe('date')
-  })
-
-  it('returns "date-time" for format date-time', () => {
-    expect(
-      getFilterFieldTypeFromSchemaProperty({ format: 'date-time' }),
-    ).toBe('date-time')
-  })
-
-  it('returns "date-time" for format datetime', () => {
-    expect(
-      getFilterFieldTypeFromSchemaProperty({ format: 'datetime' }),
-    ).toBe('date-time')
-  })
-
-  it('maps integer type to "number"', () => {
-    expect(getFilterFieldTypeFromSchemaProperty({ type: 'integer' })).toBe(
-      'number',
-    )
-  })
-
-  it('returns the type when present and not integer', () => {
-    expect(getFilterFieldTypeFromSchemaProperty({ type: 'boolean' })).toBe(
-      'boolean',
-    )
-  })
-
-  it('falls back to "string" when type is missing', () => {
-    expect(getFilterFieldTypeFromSchemaProperty({})).toBe('string')
-  })
-
-  it('prioritises date format over type', () => {
-    expect(
-      getFilterFieldTypeFromSchemaProperty({ type: 'string', format: 'date' }),
-    ).toBe('date')
-  })
-})
-
-describe('isDateLikeFieldType', () => {
-  it('returns true for date, date-time and datetime', () => {
-    expect(isDateLikeFieldType('date')).toBe(true)
-    expect(isDateLikeFieldType('date-time')).toBe(true)
-    expect(isDateLikeFieldType('datetime')).toBe(true)
-  })
-
-  it('returns false for non-date types', () => {
-    expect(isDateLikeFieldType('string')).toBe(false)
-    expect(isDateLikeFieldType('number')).toBe(false)
-    expect(isDateLikeFieldType('')).toBe(false)
-  })
-})
-
-describe('getOperatorsForFieldType', () => {
-  it('returns string operators', () => {
-    expect(getOperatorsForFieldType('string')).toEqual([
-      'is',
-      'is_not',
-      'contains',
-      'has_any_value',
-    ])
-  })
-
-  it('returns number operators for number and integer', () => {
-    const expected = ['is', 'is_not', 'is_between', 'has_any_value']
-    expect(getOperatorsForFieldType('number')).toEqual(expected)
-    expect(getOperatorsForFieldType('integer')).toEqual(expected)
-  })
-
-  it('returns only is_between for date-like types', () => {
-    expect(getOperatorsForFieldType('date')).toEqual(['is_between'])
-    expect(getOperatorsForFieldType('date-time')).toEqual(['is_between'])
-    expect(getOperatorsForFieldType('datetime')).toEqual(['is_between'])
-  })
-
-  it('returns is/is_not for boolean', () => {
-    expect(getOperatorsForFieldType('boolean')).toEqual(['is', 'is_not'])
-  })
-
-  it('returns default operators for unknown type', () => {
-    expect(getOperatorsForFieldType('mystery')).toEqual([
-      'is',
-      'is_not',
-      'has_any_value',
-    ])
-  })
-})
-
-describe('getOperatorText', () => {
-  const t = (key: string) => `T:${key}`
-
-  it('returns the translated text for known operators', () => {
-    expect(getOperatorText('is', t)).toBe('T:table.filters.operators.is')
-    expect(getOperatorText('is_not', t)).toBe(
-      'T:table.filters.operators.is_not',
-    )
-    expect(getOperatorText('contains', t)).toBe(
-      'T:table.filters.operators.contains',
-    )
-    expect(getOperatorText('is_between', t)).toBe(
-      'T:table.filters.operators.is_between',
-    )
-    expect(getOperatorText('has_any_value', t)).toBe(
-      'T:table.filters.operators.has_any_value',
-    )
-  })
-
-  it('returns the operator itself when unknown', () => {
-    expect(getOperatorText('unknown_op', t)).toBe('unknown_op')
-  })
-})
-
-describe('operatorNeedsValue', () => {
-  it('returns false only for has_any_value', () => {
-    expect(operatorNeedsValue('has_any_value')).toBe(false)
-  })
-
-  it('returns true for value-requiring operators', () => {
-    expect(operatorNeedsValue('is')).toBe(true)
-    expect(operatorNeedsValue('is_not')).toBe(true)
-    expect(operatorNeedsValue('contains')).toBe(true)
-    expect(operatorNeedsValue('is_between')).toBe(true)
-  })
-})
-
-describe('operatorNeedsSecondValue', () => {
-  it('returns true only for is_between', () => {
-    expect(operatorNeedsSecondValue('is_between')).toBe(true)
-  })
-
-  it('returns false for other operators', () => {
-    expect(operatorNeedsSecondValue('is')).toBe(false)
-    expect(operatorNeedsSecondValue('has_any_value')).toBe(false)
   })
 })
 
@@ -352,33 +201,9 @@ describe('applyFilterToItem', () => {
   describe('unknown operator', () => {
     it('returns true (no-op) by default', () => {
       expect(
-        applyFilterToItem({ name: 'x' }, filter({ operator: 'weird' })),
+        applyFilterToItem({ name: 'x' }, filter({ operator: 'weird' as any })),
       ).toBe(true)
     })
-  })
-})
-
-describe('itemMatchesSearch', () => {
-  it('returns true when search term is empty', () => {
-    expect(itemMatchesSearch({ a: 1 }, '')).toBe(true)
-  })
-
-  it('matches case-insensitively across values', () => {
-    expect(itemMatchesSearch({ name: 'Alice', city: 'Madrid' }, 'mad')).toBe(
-      true,
-    )
-  })
-
-  it('matches numeric values coerced to string', () => {
-    expect(itemMatchesSearch({ age: 42 }, '42')).toBe(true)
-  })
-
-  it('ignores null and undefined values', () => {
-    expect(itemMatchesSearch({ a: null, b: undefined }, 'x')).toBe(false)
-  })
-
-  it('returns false when no value matches', () => {
-    expect(itemMatchesSearch({ name: 'Alice' }, 'zzz')).toBe(false)
   })
 })
 

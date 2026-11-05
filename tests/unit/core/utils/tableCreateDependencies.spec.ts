@@ -7,11 +7,28 @@ vi.mock('@cornflow-ui/core/utils/schemaUtils', () => ({
 }))
 
 import {
+  isTempId,
+  newTempId,
   getTableKeyFromTempId,
   sortKeysByCreateDependency,
   getFkFieldNameForReferencedTable,
   resolveTempIdsInPayload,
 } from '@cornflow-ui/core/utils/tableCreateDependencies'
+
+describe('temporary ids', () => {
+  test('a row added to a table gets a temporary id that names the table', () => {
+    const id = newTempId('my-table', 2)
+    expect(isTempId(id)).toBe(true)
+    expect(getTableKeyFromTempId(id)).toBe('my-table')
+  })
+
+  test('only a string with the prefix is a temporary id', () => {
+    expect(isTempId('create-orders-0-1')).toBe(true)
+    expect(isTempId('orders-0')).toBe(false)
+    expect(isTempId(42)).toBe(false)
+    expect(isTempId(null)).toBe(false)
+  })
+})
 
 describe('getTableKeyFromTempId', () => {
   test('extracts the table key from a create temp id', () => {

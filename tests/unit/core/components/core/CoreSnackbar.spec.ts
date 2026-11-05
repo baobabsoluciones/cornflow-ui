@@ -1,132 +1,167 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { createVuetify } from 'vuetify'
-import * as components from 'vuetify/components'
-import * as directives from 'vuetify/directives'
 import { reactive } from 'vue'
 import { createI18n } from 'vue-i18n'
 import CoreSnackbar from '@cornflow-ui/core/components/core/CoreSnackbar.vue'
-import type { SnackbarState } from '@cornflow-ui/core/services/SnackbarService'
-
-// Stub v-snackbar (a VOverlay) so it renders inline without jsdom visualViewport errors
-const snackbarStub = {
-  name: 'v-snackbar',
-  props: ['modelValue', 'color', 'timeout'],
-  emits: ['update:modelValue'],
-  template: '<div class="v-snackbar-stub"><slot /><slot name="actions" /></div>',
-}
+import {
+  SNACKBAR_COLORS,
+  type SnackbarState,
+} from '@cornflow-ui/core/services/SnackbarService'
 
 describe('CoreSnackbar', () => {
-  let vuetify: any
-  let wrapper: any
   let snackbar: SnackbarState
 
   beforeEach(() => {
-    vuetify = createVuetify({ components, directives })
+    vi.useFakeTimers()
     snackbar = reactive<SnackbarState>({
       show: false,
       message: '',
       fullMessage: null,
-      color: 'var(--success)',
+      color: SNACKBAR_COLORS.success,
       timeout: 3000,
     })
   })
 
   afterEach(() => {
-    if (wrapper) wrapper.unmount()
+    vi.useRealTimers()
     vi.restoreAllMocks()
   })
 
   const createWrapper = (props = {}) => {
-    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } })
+    const i18n = createI18n({
+      legacy: false,
+      locale: 'en',
+      messages: {
+        en: {
+          common: { close: 'Close' },
+          table: { downloadFullMessage: 'Download' },
+        },
+      },
+    })
     return mount(CoreSnackbar, {
       props,
       global: {
-        plugins: [vuetify, i18n],
+        plugins: [i18n],
         provide: { snackbar },
-        stubs: { 'v-snackbar': snackbarStub, 'v-btn': true, 'v-icon': true },
+        stubs: { teleport: true },
       },
     })
   }
 
-  test('does not render snackbar when show is false', () => {
-    wrapper = createWrapper()
-    expect(wrapper.find('.v-snackbar-stub').exists()).toBe(false)
-  })
-
-  test('renders snackbar with message when show is true', async () => {
-    wrapper = createWrapper()
+  const show = async (
+    wrapper: ReturnType<typeof createWrapper>,
+    message: string,
+  ) => {
     snackbar.show = true
-    snackbar.message = 'Hello world'
+    snackbar.message = message
     await wrapper.vm.$nextTick()
-    expect(wrapper.find('.v-snackbar-stub').exists()).toBe(true)
-    expect(wrapper.text()).toContain('Hello world')
+  }
+
+  test('shows nothing while there is no message', () => {
+    const wrapper = createWrapper()
+    expect(wrapper.find('[data-testid="core-snackbar"]').exists()).toBe(false)
   })
 
-  test('effectiveTimeout uses service timeout when set', () => {
-    snackbar.timeout = 5000
-    wrapper = createWrapper({ timeout: 1000 })
-    expect((wrapper.vm as any).effectiveTimeout).toBe(5000)
+  test('shows the message, announced politely', async () => {
+    const wrapper = createWrapper()
+    await show(wrapper, 'Hello world')
+
+    const toast = wrapper.find('[data-testid="core-snackbar"]')
+    expect(toast.text()).toContain('Hello world')
+    expect(toast.attributes('role')).toBe('status')
+    expect(toast.find('.mdi-check-circle').exists()).toBe(true)
   })
 
-  test('effectiveTimeout falls back to prop when service timeout falsy', () => {
-    snackbar.timeout = 0 as any
-    wrapper = createWrapper({ timeout: 7777 })
-    expect((wrapper.vm as any).effectiveTimeout).toBe(7777)
+  test('announces an error at once, with the error icon', async () => {
+    snackbar.color = SNACKBAR_COLORS.error
+    const wrapper = createWrapper()
+    await show(wrapper, 'It failed')
+
+    const toast = wrapper.find('[data-testid="core-snackbar"]')
+    expect(toast.attributes('role')).toBe('alert')
+    expect(toast.find('.mdi-alert-circle').exists()).toBe(true)
   })
 
-  test('handleClose sets show false and clears fullMessage', async () => {
-    wrapper = createWrapper()
-    snackbar.show = true
+  test('hides itself after the timeout of the message', async () => {
+    const wrapper = createWrapper()
+    await show(wrapper, 'Saved')
+
+    vi.advanceTimersByTime(2999)
+    expect(snackbar.show).toBe(true)
+    vi.advanceTimersByTime(1)
+    expect(snackbar.show).toBe(false)
+  })
+
+  test('a new message starts its own countdown', async () => {
+    const wrapper = createWrapper()
+    await show(wrapper, 'First')
+    vi.advanceTimersByTime(2000)
+
+    await show(wrapper, 'Second')
+    vi.advanceTimersByTime(2000)
+    expect(snackbar.show).toBe(true)
+    vi.advanceTimersByTime(1000)
+    expect(snackbar.show).toBe(false)
+  })
+
+  test('uses the service timeout when set, and the prop otherwise', async () => {
+    snackbar.timeout = 0
+    const wrapper = createWrapper({ timeout: 500 })
+    await show(wrapper, 'Quick')
+
+    vi.advanceTimersByTime(500)
+    expect(snackbar.show).toBe(false)
+  })
+
+  test('the close button hides it and drops the full message', async () => {
+    const wrapper = createWrapper()
     snackbar.fullMessage = 'big message'
-    ;(wrapper.vm as any).handleClose()
+    await show(wrapper, 'big…')
+
+    const close = wrapper.find('[data-testid="core-snackbar-close"]')
+    expect(close.attributes('aria-label')).toBe('Close')
+    await close.trigger('click')
+
     expect(snackbar.show).toBe(false)
     expect(snackbar.fullMessage).toBe(null)
   })
 
-  test('onSnackbarModelUpdate(false) closes; (true) does nothing', () => {
-    wrapper = createWrapper()
-    snackbar.show = true
-    ;(wrapper.vm as any).onSnackbarModelUpdate(true)
-    expect(snackbar.show).toBe(true)
-    ;(wrapper.vm as any).onSnackbarModelUpdate(false)
-    expect(snackbar.show).toBe(false)
-  })
-
-  test('renders download button only when fullMessage present', async () => {
-    wrapper = createWrapper()
-    snackbar.show = true
-    snackbar.message = 'short'
-    await wrapper.vm.$nextTick()
-    let btns = wrapper.findAll('v-btn-stub')
-    // only the close button
-    expect(btns.length).toBe(1)
+  test('offers the full message only when it was truncated', async () => {
+    const wrapper = createWrapper()
+    await show(wrapper, 'short')
+    expect(
+      wrapper.find('[data-testid="core-snackbar-download"]').exists(),
+    ).toBe(false)
 
     snackbar.fullMessage = 'the full long message'
     await wrapper.vm.$nextTick()
-    btns = wrapper.findAll('v-btn-stub')
-    expect(btns.length).toBe(2)
+    expect(
+      wrapper.find('[data-testid="core-snackbar-download"]').exists(),
+    ).toBe(true)
   })
 
-  test('downloadFullMessage no-ops when fullMessage null', () => {
-    wrapper = createWrapper()
-    const createSpy = vi.spyOn(document, 'createElement')
-    ;(wrapper.vm as any).downloadFullMessage()
-    expect(createSpy).not.toHaveBeenCalled()
-  })
-
-  test('downloadFullMessage creates and clicks an anchor when fullMessage set', () => {
-    wrapper = createWrapper()
+  test('downloads the full message as a text file', async () => {
+    const wrapper = createWrapper()
     snackbar.fullMessage = 'A long message to download'
+    await show(wrapper, 'A long…')
+
     const clickSpy = vi.fn()
-    const anchor = { href: '', download: '', click: clickSpy } as any
+    const anchor = {
+      href: '',
+      download: '',
+      click: clickSpy,
+    } as unknown as HTMLAnchorElement
     const createSpy = vi
       .spyOn(document, 'createElement')
       .mockReturnValue(anchor)
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:url')
-    const revokeSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+    const revokeSpy = vi
+      .spyOn(URL, 'revokeObjectURL')
+      .mockImplementation(() => {})
 
-    ;(wrapper.vm as any).downloadFullMessage()
+    await wrapper
+      .find('[data-testid="core-snackbar-download"]')
+      .trigger('click')
 
     expect(createSpy).toHaveBeenCalledWith('a')
     expect(anchor.download).toMatch(/^message-.*\.txt$/)

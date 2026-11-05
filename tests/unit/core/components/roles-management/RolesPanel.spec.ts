@@ -1,24 +1,24 @@
-import { describe, test, expect, beforeEach, afterEach } from 'vitest'
+import { describe, test, expect, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { createVuetify } from 'vuetify'
 import { createI18n } from 'vue-i18n'
 import RolesPanel from '@cornflow-ui/core/components/roles-management/RolesPanel.vue'
 
 const role = (id: number, name: string) => ({ id, name })
 
 describe('RolesPanel', () => {
-  let vuetify: any
   let wrapper: any
-
-  beforeEach(() => {
-    vuetify = createVuetify()
-  })
 
   afterEach(() => {
     if (wrapper) wrapper.unmount()
   })
 
-  const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } })
+  const i18n = createI18n({
+    legacy: false,
+    locale: 'en',
+    missingWarn: false,
+    fallbackWarn: false,
+    messages: { en: {} },
+  })
 
   const createWrapper = (props = {}) =>
     mount(RolesPanel, {
@@ -32,133 +32,188 @@ describe('RolesPanel', () => {
         allowEdit: false,
         ...props,
       },
-      global: {
-        plugins: [vuetify, i18n],
-        stubs: {
-          'v-card': { template: '<div><slot /></div>' },
-          'v-icon': { template: '<i><slot /></i>' },
-          'v-chip': { template: '<span class="v-chip"><slot /></span>' },
-          'v-btn': {
-            template: '<button class="v-btn" @click="$emit(\'click\', $event)"><slot /></button>',
-            emits: ['click'],
-          },
-        },
-      },
+      global: { plugins: [i18n] },
     })
 
+  const roleItems = () => wrapper.findAll('.role-item')
+  const counts = () => wrapper.findAll('.role-item__count').map((b: any) => b.text())
+
   describe('rendering', () => {
-    test('renders the all-users button plus one button per role', () => {
+    test('renders the all-users row plus one row per role', () => {
       wrapper = createWrapper()
-      // 1 "all users" + 2 roles
-      expect(wrapper.findAll('.role-item')).toHaveLength(3)
+      expect(roleItems()).toHaveLength(3)
       expect(wrapper.find('.role-item--all').exists()).toBe(true)
     })
 
-    test('renders role names and per-role user counts', () => {
+    test('counts the roles in the header', () => {
+      wrapper = createWrapper()
+      expect(wrapper.find('.panel-header').text()).toContain('2')
+    })
+
+    test('renders role names, the total and per-role user counts', () => {
       wrapper = createWrapper()
       expect(wrapper.text()).toContain('admin')
       expect(wrapper.text()).toContain('viewer')
-      // counts present
-      expect(wrapper.text()).toContain('3')
-      expect(wrapper.text()).toContain('5')
+      expect(counts()).toEqual(['8', '3', '5'])
     })
 
-    test('renders count 0 fallback for a role missing in usersCountByRole', () => {
+    test('counts 0 for a role missing in usersCountByRole', () => {
       wrapper = createWrapper({ usersCountByRole: {} })
-      expect(wrapper.text()).toContain('0')
+      expect(counts()).toEqual(['8', '0', '0'])
     })
 
-    test('marks the all-users item active when selectedRoleId is null', () => {
+    test('gives each role the icon and tone of its preset', () => {
+      wrapper = createWrapper()
+      const adminIcon = roleItems()[1].find('.role-item__icon')
+      expect(adminIcon.classes()).toContain('is-primary')
+      expect(adminIcon.find('.mdi-shield-crown-outline').exists()).toBe(true)
+      expect(roleItems()[2].find('.role-item__icon').classes()).toContain('is-success')
+    })
+
+    test('a role without a preset takes the fallback icon and the primary tone', () => {
+      wrapper = createWrapper({ roles: [role(9, 'auditor')] })
+      const icon = roleItems()[1].find('.role-item__icon')
+      expect(icon.classes()).toContain('is-primary')
+      expect(icon.find('.mdi-shield-account-outline').exists()).toBe(true)
+    })
+
+    test('marks the all-users row active when selectedRoleId is null', () => {
       wrapper = createWrapper({ selectedRoleId: null })
       expect(wrapper.find('.role-item--all').classes()).toContain('role-item--active')
+      expect(wrapper.find('.role-item--all .role-item__main').attributes('aria-pressed')).toBe('true')
     })
 
-    test('marks the matching role item active', () => {
+    test('marks the matching role row active', () => {
       wrapper = createWrapper({ selectedRoleId: 1 })
-      const items = wrapper.findAll('.role-item')
-      // index 0 is all-users, index 1 is first role (admin)
-      expect(items[1].classes()).toContain('role-item--active')
+      expect(roleItems()[1].classes()).toContain('role-item--active')
+      expect(roleItems()[1].find('.role-item__main').attributes('aria-pressed')).toBe('true')
+      expect(wrapper.find('.role-item--all').classes()).not.toContain('role-item--active')
     })
   })
 
-  describe('empty state', () => {
-    test('renders empty state when there are no roles and not loading', () => {
+  describe('empty and loading states', () => {
+    test('renders the empty state when there are no roles and not loading', () => {
       wrapper = createWrapper({ roles: [], loading: false })
       expect(wrapper.find('.empty-state').exists()).toBe(true)
       expect(wrapper.text()).toContain('rolesManagement.noRoles')
     })
 
-    test('does not render empty state while loading', () => {
+    test('shows placeholder rows instead of the empty state while the roles load', () => {
       wrapper = createWrapper({ roles: [], loading: true })
       expect(wrapper.find('.empty-state').exists()).toBe(false)
+      expect(wrapper.findAll('.role-skeleton')).toHaveLength(3)
       expect(wrapper.find('.roles-list').classes()).toContain('is-loading')
+      expect(wrapper.find('.roles-list').attributes('aria-busy')).toBe('true')
+    })
+
+    test('keeps the roles on screen while they reload', () => {
+      wrapper = createWrapper({ loading: true })
+      expect(roleItems()).toHaveLength(3)
+      expect(wrapper.find('.role-skeleton').exists()).toBe(false)
     })
   })
 
   describe('select emits', () => {
     test('emits select with null when all-users is clicked', async () => {
       wrapper = createWrapper()
-      await wrapper.find('.role-item--all').trigger('click')
-      expect(wrapper.emitted('select')).toBeTruthy()
+      await wrapper.find('.role-item--all .role-item__main').trigger('click')
       expect(wrapper.emitted('select')![0]).toEqual([null])
     })
 
     test('emits select with role id when a role is clicked', async () => {
       wrapper = createWrapper()
-      const roleButtons = wrapper.findAll('.role-item:not(.role-item--all)')
-      await roleButtons[0].trigger('click')
+      await roleItems()[1].find('.role-item__main').trigger('click')
       expect(wrapper.emitted('select')![0]).toEqual([1])
     })
   })
 
   describe('edit controls (allowEdit)', () => {
-    test('does not show edit/delete buttons when allowEdit is false', () => {
+    test('offers no edit, delete or add when allowEdit is false', () => {
       wrapper = createWrapper({ allowEdit: false, selectedRoleId: 1 })
+      expect(wrapper.find('.role-item__actions').exists()).toBe(false)
       expect(wrapper.find('.roles-add').exists()).toBe(false)
     })
 
     test('shows the add role button when allowEdit is true', () => {
       wrapper = createWrapper({ allowEdit: true })
       expect(wrapper.find('.roles-add').exists()).toBe(true)
-      expect(wrapper.text()).toContain('rolesManagement.addRole')
+      expect(wrapper.find('.roles-add').text()).toContain('rolesManagement.addRole')
     })
 
-    test('emits create when add role button is clicked', async () => {
+    test('emits create when the add role button is clicked', async () => {
       wrapper = createWrapper({ allowEdit: true })
-      await wrapper.find('.roles-add .v-btn').trigger('click')
+      await wrapper.find('.roles-add button').trigger('click')
       expect(wrapper.emitted('create')).toBeTruthy()
     })
 
-    test('shows edit/delete buttons for the active role when allowEdit is true', async () => {
+    test('the selected role offers edit and delete in place of its count', async () => {
       wrapper = createWrapper({ allowEdit: true, selectedRoleId: 1 })
-      // active role row shows two action buttons (edit + delete)
-      const activeItem = wrapper.findAll('.role-item')[1]
-      const btns = activeItem.findAll('.v-btn')
-      expect(btns.length).toBe(2)
-      await btns[0].trigger('click')
-      expect(wrapper.emitted('edit')).toBeTruthy()
+      const active = roleItems()[1]
+      expect(active.find('.role-item__count').exists()).toBe(false)
+      const buttons = active.findAll('.role-item__actions button')
+      expect(buttons.map((b: any) => b.attributes('aria-label'))).toEqual([
+        'rolesManagement.editRole',
+        'rolesManagement.delete',
+      ])
+
+      await buttons[0].trigger('click')
       expect(wrapper.emitted('edit')![0][0]).toMatchObject({ id: 1, name: 'admin' })
-      await btns[1].trigger('click')
-      expect(wrapper.emitted('delete')).toBeTruthy()
+      await buttons[1].trigger('click')
       expect(wrapper.emitted('delete')![0][0]).toMatchObject({ id: 1 })
+      expect(wrapper.emitted('select')).toBeFalsy()
+    })
+
+    test('only the selected role offers edit and delete', () => {
+      wrapper = createWrapper({ allowEdit: true, selectedRoleId: 1 })
+      expect(wrapper.findAll('.role-item__actions')).toHaveLength(1)
+      expect(roleItems()[2].find('.role-item__count').text()).toBe('5')
     })
   })
 
   describe('permissions panel', () => {
-    test('does not render permissions panel when no role selected', () => {
+    test('does not render the permissions panel when no role is selected', () => {
       wrapper = createWrapper({ selectedRole: null })
       expect(wrapper.find('.role-permissions').exists()).toBe(false)
     })
 
-    test('renders permissions panel with empty fallback for an unknown role', () => {
+    test('renders the permissions panel with the empty fallback for an unknown role', () => {
       wrapper = createWrapper({
         selectedRole: role(99, 'unknown-role'),
         selectedRoleId: 99,
       })
       expect(wrapper.find('.role-permissions').exists()).toBe(true)
-      // unknown role has no preset permissions -> empty placeholder shown
       expect(wrapper.text()).toContain('rolesManagement.noPermissionsDefined')
       expect(wrapper.vm.selectedRolePermissions).toEqual([])
+    })
+
+    test('lists the permissions of the selected role', () => {
+      const withPermissions = createI18n({
+        legacy: false,
+        locale: 'en',
+        missingWarn: false,
+        fallbackWarn: false,
+        messages: {
+          en: {
+            rolesManagement: {
+              roleMeta: {
+                planner: { permissions: ['Read instances', 'Create executions'] },
+              },
+            },
+          },
+        },
+      })
+      wrapper = mount(RolesPanel, {
+        props: {
+          roles: [role(3, 'Planner')],
+          selectedRoleId: 3,
+          selectedRole: role(3, 'Planner'),
+          usersCountByRole: {},
+          totalUsers: 0,
+        },
+        global: { plugins: [withPermissions] },
+      })
+      const items = wrapper.findAll('.role-permissions__item').map((li: any) => li.text())
+      expect(items).toEqual(['Read instances', 'Create executions'])
     })
   })
 })

@@ -65,7 +65,6 @@ vi.mock('../../../../src/services/ConfigService', async () => {
           useHashMode: mockImportMetaEnv.VITE_APP_USE_HASH_MODE == '1',
           defaultLanguage: mockImportMetaEnv.VITE_APP_DEFAULT_LANGUAGE || '',
           isDeveloperMode: mockImportMetaEnv.VITE_APP_IS_DEVELOPER_MODE == '1',
-          enableSignup: mockImportMetaEnv.VITE_APP_ENABLE_SIGNUP == '1',
           cognito: {
             region: mockImportMetaEnv.VITE_APP_AUTH_REGION || '',
             user_pool_id: mockImportMetaEnv.VITE_APP_AUTH_USER_POOL_ID || '',
@@ -138,7 +137,6 @@ const mockEnvComplete = {
   VITE_APP_USE_HASH_MODE: '1',
   VITE_APP_DEFAULT_LANGUAGE: 'en',
   VITE_APP_IS_DEVELOPER_MODE: '0',
-  VITE_APP_ENABLE_SIGNUP: '1',
   VITE_APP_AUTH_REGION: 'us-east-1',
   VITE_APP_AUTH_USER_POOL_ID: 'us-east-1_test',
   VITE_APP_AUTH_CLIENT_ID: 'test-client-id',
@@ -158,7 +156,6 @@ const mockJsonConfig = {
   useHashMode: false,
   defaultLanguage: 'es',
   isDeveloperMode: false,
-  enableSignup: false,
   cognito: {
     region: 'eu-west-1',
     user_pool_id: 'eu-west-1_prod',
@@ -222,7 +219,6 @@ describe('ConfigService', () => {
       expect(config.isStagingEnvironment).toBe(false) // '0'
       expect(config.useHashMode).toBe(true) // '1'
       expect(config.isDeveloperMode).toBe(false) // '0'
-      expect(config.enableSignup).toBe(true) // '1'
     })
 
     test('parses auth providers array correctly', async () => {

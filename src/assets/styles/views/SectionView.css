@@ -32,9 +32,9 @@
 }
 
 .loading-container p {
-  color: var(--subtitle);
-  font-size: 1rem;
-  margin-top: 1rem;
+  color: var(--color-text-muted);
+  font-size: var(--text-base);
+  margin-top: calc(var(--spacing) * 4);
 }
 
 /* ==========================================================================
@@ -56,85 +56,28 @@
 }
 
 /* ==========================================================================
-   Table Card - The v-card wrapper
+   Body - the tables, and the review of the pending changes at their right
    ========================================================================== */
-.table-card {
-  display: flex;
-  flex-direction: column;
+.section-view__body {
   flex: 1;
+  display: flex;
+  gap: calc(var(--spacing) * 4);
   min-height: 0;
-  overflow: hidden;
+  margin-top: calc(var(--spacing) * 5);
 }
 
-/* Ensure the v-card inside table-section fills the space */
-.table-section > .v-card {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
-
-/* ==========================================================================
-   Table Card Content - Content area inside the card
-   ========================================================================== */
-.table-card-content {
+.section-view__main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 0;
-  padding: 0;
-  overflow: hidden;
-}
-
-/* Ensure CoreTable container fills the card content */
-.table-card-content > .core-table-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-/* ==========================================================================
-   Section tabs (CoreTabs / CoreTab) - Long table names with ellipsis
-   ========================================================================== */
-.section-view .table-card .m-tab {
-  max-width: min(480px, 55vw);
-}
-
-.section-view .table-card .m-tab__content {
   min-width: 0;
-  overflow: hidden;
-}
-
-.section-view .table-card .m-tab__label {
-  display: block;
-  width: 100%;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* ==========================================================================
-   Vuetify Component Overrides
-   ========================================================================== */
-.section-view :deep(.v-tab) {
-  text-transform: none;
-  font-weight: 500;
-}
-
-.section-view :deep(.v-tab--selected) {
-  color: white;
-}
-
-/* Ensure v-card-text fills available space */
-.section-view :deep(.v-card-text.table-card-content) {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
   min-height: 0;
-  padding: 0;
+}
+
+.section-view__panel {
+  flex: none;
+  width: 400px;
+  max-height: 100%;
 }
 
 /* ==========================================================================
@@ -288,10 +231,6 @@
 
 /* Medium screens (768px - 992px) */
 @media (max-width: 992px) {
-  .table-section {
-    margin-top: 1rem !important;
-  }
-
   .kpis-section {
     grid-template-columns: 1fr;
   }
@@ -307,10 +246,6 @@
 
 /* Small screens (576px - 768px) */
 @media (max-width: 768px) {
-  .table-section {
-    margin-top: 0.75rem !important;
-  }
-
   .table-with-widgets {
     gap: 12px;
   }

@@ -20,13 +20,9 @@ import { TableOperation } from '@cornflow-ui/core/types/table'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { useRecalculationController } from '@cornflow-ui/core/composables/section-view/useRecalculationController'
 import { useTableChanges } from '@cornflow-ui/core/composables/useTableChanges'
+import { isTempId } from '@cornflow-ui/core/utils/tableCreateDependencies'
 import type { Ref, ComputedRef } from 'vue'
 import {
-  getOperatorsForFieldType,
-  getOperatorText as getOperatorTextUtil,
-  operatorNeedsValue,
-  operatorNeedsSecondValue,
-  generateFilterId,
   applyFiltersAndSearch as applyFiltersAndSearchUtil,
   type FilterCondition,
 } from '@cornflow-ui/core/utils/tableFilterUtils'
@@ -43,7 +39,7 @@ import {
   normalizeJsonSchemaPropertyTypeForUi,
 } from '@cornflow-ui/core/utils/schemaUtils'
 import { isForceRetryOfferError } from '@cornflow-ui/core/repositories/TableRepository'
-import type { AsyncUploadStatusResponse } from '@cornflow-ui/core/types/frontendAutomation'
+import type { BulkUploadPhase } from '@cornflow-ui/core/components/core/data-table/BulkUploadDialog.vue'
 import {
   detectDelimiter,
   parseCsvContent as parseCsvWithDelimiter,
@@ -51,6 +47,12 @@ import {
 import { getAppParameters } from '@cornflow-ui/core/utils/appParameters'
 import { useFilePreProcessing } from '@cornflow-ui/core/composables/useFilePreProcessing'
 import { resolveTableColumnOrder } from '@cornflow-ui/core/utils/tableColumnOrder'
+import { cellText, columnsFromHeaders, sortRows } from '@cornflow-ui/core/utils/dataTable'
+import type {
+  DataFilter,
+  DataRowState,
+  DataSort,
+} from '@cornflow-ui/core/components/core/data-table/types'
 
 /** Plain (non-object) cell value produced when flattening spreadsheet cells. */
 type PlainCellValue = string | number | boolean
@@ -98,6 +100,7 @@ function buildFieldDescriptorFromProperty(
     foreignKeyField: prop.foreignKeyField || undefined,
     hidden: prop.hidden || false,
     frontendReadOnly: prop.frontendReadOnly || false,
+    pinsRow: prop.pinsRow || false,
     choices: prop.choices || undefined,
   }
 }
@@ -111,9 +114,6 @@ export function useTableData(
   const { t } = useI18n()
   const route = useRoute()
 
-  const getOperatorText = (operator: string): string => {
-    return getOperatorTextUtil(operator, t)
-  }
 
   // Table changes for Excel-like editing (master tables only)
   const tableChanges = useTableChanges()
@@ -262,6 +262,8 @@ export function useTableData(
   const debouncedSearchValue = ref('')
   let clientSearchDebounceTimer: ReturnType<typeof setTimeout> | null = null
   const activeFilters = ref<any[]>([])
+  /** Column order picked in the table; applied to the whole filtered set before windowing. */
+  const sort = ref<DataSort | null>(null)
   /** Date range filter configs from get_list.parameters (datetime_gte + datetime_lte with symmetric). */
   const apiDateRangeFilterConfigs = computed(() => {
     if (!tableConfig.value?.get_list) return []
@@ -283,32 +285,31 @@ export function useTableData(
       }
     >
   >({})
-  const showAddEditModal = ref(false)
-  const showDeleteDialog = ref(false)
-  const showBulkDeleteDialog = ref(false)
   const showBulkUploadModal = ref(false)
   /** When overwrite_all or delete returns offer_force_retry, show this message and offer Accept/Reject. */
   const forceRetryOffer = ref<{
     message: string
-    operation?: 'overwrite_all' | 'delete_item' | 'delete_bulk' | 'delete_all'
-    id?: string | number
+    operation?: 'overwrite_all' | 'delete_bulk'
     ids?: (string | number)[]
   } | null>(null)
   /** Pending overwrite data for retry with force=true (used when operation is overwrite_all). */
   const pendingOverwriteData = ref<any[] | null>(null)
   const forceRetryLoading = ref(false)
-  const formData = ref({})
-  const isEditing = ref(false)
-  const saving = ref(false)
-  const deleting = ref(false)
   const bulkDeleting = ref(false)
-  const uploading = ref(false)
   const downloading = ref(false)
-  // Progress text shown in the bulk upload modal during an async upload (status + rows loaded).
-  const uploadProgressMessage = ref('')
-  const editingRowId = ref<string | number | null>(null)
-  const editingData = ref({})
-  const originalData = ref({})
+  /** Where the bulk upload stands, for its dialog. */
+  const uploadPhase = ref<BulkUploadPhase>('form')
+  /** Rows loaded so far by an async upload, or in all once the upload is done. */
+  const uploadedRows = ref<number | undefined>(undefined)
+  /** Why the last bulk upload failed. */
+  const uploadError = ref('')
+  // Each time the dialog opens it starts at the form.
+  watch(showBulkUploadModal, (open) => {
+    if (!open) return
+    uploadPhase.value = 'form'
+    uploadedRows.value = undefined
+    uploadError.value = ''
+  })
   const tableDataCache = ref<Record<string, any[]>>(sharedTableDataCache)
   // Cancel in-flight loadData when view is deactivated so we don't update state after navigate-away
   const loadIdRef = ref(0)
@@ -387,10 +388,6 @@ export function useTableData(
           buildFieldDescriptorFromProperty(key, prop, requiredList),
         )
     }),
-    formData: computed(() => (isEditing.value ? formData.value : {})),
-    mode: computed(() => (isEditing.value ? 'edit' : 'add')),
-    loadTableData,
-    tableData: tableDataCache as any, // Type assertion needed due to Ref vs ComputedRef distinction
   })
 
   /** Set of column names that are filtered by the API (get_list.parameters with is_filter + filters_on). */
@@ -409,6 +406,47 @@ export function useTableData(
     )
   })
 
+  /** A list filter with a single value is sent as "is" that value. */
+  const asServerFilter = (filter: DataFilter): DataFilter =>
+    filter.operator === 'is_any_of' && (filter.values ?? []).length === 1
+      ? { ...filter, operator: 'is', value: cellText(filter.values?.[0]) }
+      : filter
+
+  /**
+   * Whether the API filters this condition: a get_list param filters its column and takes its
+   * operator. The rest are applied to the loaded rows.
+   */
+  const isFilterSentToServer = (filter: DataFilter): boolean => {
+    if (!serverFilteredFields.value.has(filter.field)) return false
+    const getList = tableConfig.value?.get_list
+    if (!getList) return false
+    const condition = asServerFilter(filter)
+    return getGetListQueryParameters(getList).some((p) => {
+      const info = p.filter_info as { filters_on?: string; filter_type?: string } | undefined
+      if (!p.is_filter || info?.filters_on !== filter.field) return false
+      const ft = (info.filter_type ?? '').toLowerCase()
+      let role: 'single' | 'range_gte' | 'range_lte' = 'single'
+      if (ft.endsWith('_gte')) role = 'range_gte'
+      else if (ft.endsWith('_lte')) role = 'range_lte'
+      return filterTypeMatchesUiOperator(ft, condition.operator, role)
+    })
+  }
+
+  /** The columns of the table, for sorting by type. */
+  const sortColumn = computed(() => {
+    const current = sort.value
+    if (!current) return undefined
+    return columnsFromHeaders(dynamicHeaders.value).find((c) => c.key === current.key)
+  })
+
+  /** Sorted by the values on screen: an edit not saved yet sorts by its new value. */
+  const sortedRows = <T extends Record<string, any>>(rows: T[]): T[] => {
+    const storageKey = normalizeTableKeyForStorage(tableKey.value)
+    return sortRows(rows, sort.value, sortColumn.value, (row, key) =>
+      tableChanges.getCurrentValue(storageKey, row.id, key, row[key]),
+    )
+  }
+
   /** When set, search text is sent as a get_list query param (not applied client-side). */
   const globalSearchParamName = computed(() => {
     const getList = tableConfig.value?.get_list
@@ -419,22 +457,18 @@ export function useTableData(
   // Filtered items: apply only client-side search and filters for fields not sent to the API
   const filteredItems = computed(() => {
     const clientFilters = (activeFilters.value as FilterCondition[]).filter(
-      (f) => !serverFilteredFields.value.has(f.field),
+      (f) => !isFilterSentToServer(f),
     )
     // Read the debounced search value so each keystroke doesn't re-filter
     // the whole `items` array (O(n*m) over filters per keystroke).
     const clientSearch = globalSearchParamName.value
       ? ''
       : debouncedSearchValue.value
-    return applyFiltersAndSearchUtil(
-      items.value,
-      clientSearch,
-      clientFilters,
-    )
+    return sortedRows(applyFiltersAndSearchUtil(items.value, clientSearch, clientFilters))
   })
 
   /**
-   * Headers that are visible in the table (same filter as CoreTable safeHeaders).
+   * Headers that are visible in the table (without the selection, hidden and foreign-key ones).
    * Used for Excel export so the file has the same columns as the UI, including
    * joined columns (columns to join).
    */
@@ -510,7 +544,7 @@ export function useTableData(
     return dataHeaders
   })
 
-  // Filter fields must match table-visible columns (same rules as CoreTable safeHeaders).
+  // Filter fields must match the columns the table shows.
   // Filters for fields with get_list.parameters (is_filter + filters_on) are sent to the backend;
   // the rest are applied client-side on loaded data.
   const availableFilterFields = computed(() => {
@@ -546,6 +580,7 @@ export function useTableData(
         hidden: 'hidden' in header ? header.hidden : undefined,
         frontendReadOnly:
           'frontendReadOnly' in header ? header.frontendReadOnly : undefined,
+        pinsRow: 'pinsRow' in header ? header.pinsRow : undefined,
       }))
   })
 
@@ -989,12 +1024,9 @@ export function useTableData(
    *   1. Execution data (instance/solution in `selectedExecution`).
    *   2. Master tables whose `get_list` does **not** declare `limit`/`offset`
    *      — the backend dumps the whole table in one response.
-   * In both cases we slice the array so Vuetify only processes a small window
-   * on mount; the window grows on `loadMore`, reusing the same `@load-more`
-   * infra that drives true server-paginated infinite scroll. Without this,
-   * handing 500k rows to `v-data-table-virtual` at once froze the UI even
-   * though row rendering itself is virtualized, because Vuetify's internal
-   * sort/filter pipeline iterates the full array.
+   * In both cases the table gets a window of the rows that grows on
+   * `loadMore`, the same `load-more` that drives true server-paginated
+   * infinite scroll, so a 500k-row table is not handed over at once.
    */
   const IN_MEMORY_WINDOW_PAGE_SIZE = 200
   const inMemoryWindowSize = ref(IN_MEMORY_WINDOW_PAGE_SIZE)
@@ -1026,10 +1058,11 @@ export function useTableData(
     const filtersOn = filterInfo?.filters_on
     if (!p.is_filter || filtersOn == null) return
 
-    const filter = activeFilters.value.find(
-      (f: FilterCondition) => f.field === filtersOn,
+    const active = activeFilters.value.find(
+      (f: FilterCondition) => f.field === filtersOn && isFilterSentToServer(f),
     )
-    if (!filter) return
+    if (!active) return
+    const filter = asServerFilter(active)
 
     const filterType = filterInfo?.filter_type ?? ''
     const ft = filterType.toLowerCase()
@@ -1225,9 +1258,10 @@ export function useTableData(
   const loadData = async () => {
     if (shouldUseExecutionData.value) return
 
-    if (!tableConfig.value?.get_list) {
+    // A table with no list endpoint (e.g. a result the execution did not return) is empty.
+    if (!tableConfig.value?.get_list?.url) {
       items.value = []
-      hasMore.value = true
+      hasMore.value = false
       return
     }
 
@@ -1265,7 +1299,7 @@ export function useTableData(
 
   /** Load next page and append (infinite scroll). Called when user scrolls to bottom. */
   const loadMore = async () => {
-    if (!tableConfig.value?.get_list || loadingMore.value || !hasMore.value)
+    if (!tableConfig.value?.get_list?.url || loadingMore.value || !hasMore.value)
       return
 
     const pageSize = listPageSize.value
@@ -1308,31 +1342,9 @@ export function useTableData(
   }
 
   /**
-   * Build the bulk upload modal progress text from an async upload status.
-   * Mirrors the status→message mapping in the frontend-automation docs.
-   */
-  const buildAsyncUploadProgressMessage = (
-    status: AsyncUploadStatusResponse,
-  ): string => {
-    const rows = status.total_rows_loaded ?? 0
-    switch (status.status) {
-      case 'processing':
-        return t('table.messages.asyncUploadProcessing', { count: rows })
-      case 'completed':
-        return t('table.messages.asyncUploadCompleted', { count: rows })
-      case 'failed':
-        return status.error_message || t('table.messages.asyncUploadFailed')
-      case 'queued':
-      case 'downloading':
-      default:
-        return t('table.messages.asyncUploadQueued')
-    }
-  }
-
-  /**
    * Async bulk upload flow. When the table declares the async counterpart of the chosen
-   * operation, POST the raw (unprocessed) file, poll its status until terminal while updating
-   * the modal progress text, then reload on success or surface the error on failure.
+   * operation, POST the raw (unprocessed) file and poll its status until terminal: the dialog
+   * waits while it is queued, counts the rows while they load, and ends done or with the error.
    * Returns false when the table has no async op for this operation (caller falls back to the
    * synchronous, client-parsed path).
    */
@@ -1352,7 +1364,7 @@ export function useTableData(
 
     // Token so polling stops if the user navigates away mid-upload.
     const myPollId = ++pollIdRef.value
-    uploadProgressMessage.value = t('table.messages.asyncUploadQueued')
+    uploadPhase.value = 'waiting'
 
     const init = await repository.startAsyncBulkUpload(asyncOperation, file)
 
@@ -1361,7 +1373,12 @@ export function useTableData(
       {
         onProgress: (status) => {
           if (pollIdRef.value !== myPollId) return
-          uploadProgressMessage.value = buildAsyncUploadProgressMessage(status)
+          if (status.status === 'processing') {
+            uploadPhase.value = 'loading'
+            uploadedRows.value = status.total_rows_loaded ?? 0
+          } else if (status.status === 'queued' || status.status === 'downloading') {
+            uploadPhase.value = 'waiting'
+          }
         },
         shouldContinue: () => pollIdRef.value === myPollId,
       },
@@ -1371,28 +1388,22 @@ export function useTableData(
     if (pollIdRef.value !== myPollId) return true
 
     if (finalStatus.status === 'failed') {
-      const message =
-        finalStatus.error_message || t('table.messages.asyncUploadFailed')
-      error.value = message
-      showSnackbar(message, 'error')
+      uploadError.value = finalStatus.error_message || t('table.messages.asyncUploadFailed')
+      uploadPhase.value = 'error'
       return true
     }
 
     if (finalStatus.status === 'completed') {
       items.value = await fetchListEnriched(repository, tableConfig.value)
-      showBulkUploadModal.value = false
-      showSnackbar(
-        t('table.messages.asyncUploadCompleted', {
-          count: finalStatus.total_rows_loaded ?? 0,
-        }),
-        'success',
-      )
+      uploadedRows.value = finalStatus.total_rows_loaded ?? 0
+      uploadPhase.value = 'done'
       await maybeRequestMasterRecalculationPending()
       return true
     }
 
     // Non-terminal (e.g. cancelled before completion): just close the modal.
     showBulkUploadModal.value = false
+    uploadPhase.value = 'form'
     return true
   }
 
@@ -1604,8 +1615,8 @@ export function useTableData(
     // No `deep: true`: this flow replaces `executionTableData.items.value`
     // wholesale when the execution changes (see `useExecutionTableData`),
     // and row-level edits go through `useTableChanges` (a separate reactive
-    // map). Deep-tracking 500k rows here used to freeze the UI on every
-    // section change.
+    // map). Deep-tracking 500k rows here would freeze the UI on every section
+    // change.
   )
 
   // Full filtered set for execution data (search + filters applied, no windowing).
@@ -1628,10 +1639,12 @@ export function useTableData(
       return []
     }
 
-    return applyFiltersAndSearchUtil(
-      baseItems,
-      debouncedSearchValue.value,
-      activeFilters.value as FilterCondition[],
+    return sortedRows(
+      applyFiltersAndSearchUtil(
+        baseItems,
+        debouncedSearchValue.value,
+        activeFilters.value as FilterCondition[],
+      ),
     )
   })
 
@@ -1967,7 +1980,7 @@ export function useTableData(
     }
   }
 
-  // Local ref so getRowClass (and other handlers) can access it in closure
+  /** Changes are staged as pending changes: master tables that can edit rows, and recalculation edit mode. */
   const enableExcelMode = computed(
     () =>
       (!shouldUseExecutionData.value && !!tableConfig.value?.put_item) ||
@@ -1999,107 +2012,8 @@ export function useTableData(
     return isEditOnly
   })
 
-  const performApiSave = async (wasEditing: boolean, preparedData: any) => {
-    const { default: TableRepository } = await import(
-      '@cornflow-ui/core/repositories/TableRepository'
-    )
-    const repository = new TableRepository(tableConfig.value, t)
-    if (wasEditing) {
-      const id = (formData.value as any).id
-      await repository.putItem(id, preparedData)
-    } else {
-      await repository.createItem(preparedData)
-    }
-    items.value = await fetchListEnriched(repository, tableConfig.value)
-    showAddEditModal.value = false
-    formData.value = {}
-    isEditing.value = false
-    showSnackbar(
-      wasEditing
-        ? t('table.messages.itemUpdated')
-        : t('table.messages.itemCreated'),
-      'success',
-    )
-  }
 
-  /** Execute pending deletes for a table (bulk or individual). */
-  const executePendingDeletes = async (
-    repository: any,
-    config: any,
-    storageKey: string,
-  ): Promise<void> => {
-    const deletes = tableChanges.getPendingDeletes(storageKey)
-    if (deletes.length === 0) return
-    if (config?.delete_bulk) {
-      await repository.deleteBulk(deletes)
-    } else if (config?.delete_item) {
-      for (const rowId of deletes) {
-        await repository.deleteItem(rowId)
-      }
-    }
-    tableChanges.clearDeletesForTable(storageKey)
-  }
 
-  /** Execute pending creates for a table (bulk or individual). */
-  const executePendingCreates = async (
-    repository: any,
-    config: any,
-    storageKey: string,
-  ): Promise<void> => {
-    const creates = tableChanges.getPendingCreates(storageKey)
-    if (creates.length === 0) return
-    if (config?.post_bulk) {
-      const payloads = creates.map(({ data }: { data: any }) => {
-        const { id: _id, ...rest } = data
-        return formFieldsComposable.prepareFormDataForSubmit(rest, 'add')
-      })
-      await repository.createBulk(payloads)
-    } else if (config?.post_item) {
-      for (const { data } of creates) {
-        const { id: _id, ...rest } = data
-        const payload = formFieldsComposable.prepareFormDataForSubmit(rest as any, 'add')
-        await repository.createItem(payload)
-      }
-    }
-    tableChanges.clearCreatesForTable(storageKey)
-  }
-
-  /** Execute pending cell edits for a table in concurrent batches. */
-  const executePendingEdits = async (
-    repository: any,
-    config: any,
-    storageKey: string,
-  ): Promise<void> => {
-    const changes = tableChanges.getChangesForTable(storageKey)
-    if (!config?.put_item || !changes || Object.keys(changes).length === 0) return
-    const currentItems = normalizeGetListResponseToRows(
-      await repository.getList(),
-      tableConfig.value,
-    )
-    const CONCURRENT_PUTS = 10
-    const putTasks: Array<{ rowId: string; preparedData: any }> = []
-    for (const [rowId, rowChanges] of Object.entries(changes)) {
-      const row = currentItems.find((i: any) => String(i.id) === rowId)
-      if (!row) continue
-      const merged = { ...row }
-      Object.entries(rowChanges as Record<string, any>).forEach(
-        ([fieldKey, change]: [string, any]) => {
-          merged[fieldKey] = change.newValue
-        },
-      )
-      const preparedData = formFieldsComposable.prepareFormDataForSubmit(merged, 'edit')
-      putTasks.push({ rowId, preparedData })
-    }
-    for (let i = 0; i < putTasks.length; i += CONCURRENT_PUTS) {
-      const batch = putTasks.slice(i, i + CONCURRENT_PUTS)
-      await Promise.all(
-        batch.map(({ rowId, preparedData }) =>
-          repository.putItem(rowId, preparedData),
-        ),
-      )
-    }
-    tableChanges.revertTableChanges(storageKey)
-  }
 
   /** Stage post_update_bulk rows for recalculation edit mode: edit matched rows, create unmatched. */
   const stageRecalculationUpdateBulk = (
@@ -2187,14 +2101,14 @@ export function useTableData(
   }
 
   /**
-   * Handle a bulk upload error. Returns true when the error was converted into a
-   * force-retry offer (caller should stop); false when it was reported as a normal error.
+   * A failed bulk upload: an overwrite the server wants confirmed becomes the force-retry offer;
+   * any other error shows in the dialog.
    */
   const handleBulkUploadError = (
     err: unknown,
     operation: string,
     mappedData: any[] | null,
-  ): boolean => {
+  ) => {
     if (
       isForceRetryOfferError(err) &&
       operation === 'overwrite_all' &&
@@ -2206,35 +2120,28 @@ export function useTableData(
       }
       pendingOverwriteData.value = mappedData
       showBulkUploadModal.value = false
-      return true
+      uploadPhase.value = 'form'
+      return
     }
     console.error('Error in bulk upload:', err)
-    error.value =
-      err instanceof Error ? err.message : t('table.messages.errorBulkUpload')
-    showSnackbar(
-      err instanceof Error ? err.message : t('table.messages.errorBulkUpload'),
-      'error',
-    )
-    return false
+    uploadError.value =
+      err instanceof Error && err.message ? err.message : t('table.messages.errorBulkUpload')
+    uploadPhase.value = 'error'
   }
 
-  return {
+  const api = {
     // Dynamic data that switches automatically
     items: dynamicItems,
     headers: dynamicHeaders,
     loading: dynamicLoading,
     error: dynamicError,
     tableTitle: dynamicTableTitle,
-    availableFilterFields: dynamicAvailableFilterFields,
     isPrimitiveArray: dynamicIsPrimitiveArray,
     isValidationMessageList: computed(
       () =>
         shouldUseExecutionData.value &&
         !!executionTableData.isValidationMessageList?.value,
     ),
-    searchPlaceholder: computed(() => t('table.searchPlaceholder')),
-    enableSearch: computed(() => true),
-    enableFilters: computed(() => true),
     enableSelection: computed(() => {
       if (isRecalculationEditMode.value) return true
       return (
@@ -2245,18 +2152,6 @@ export function useTableData(
               !!tableConfig.value?.delete_bulk)))
       )
     }),
-    enableActions: computed(
-      () => !shouldUseExecutionData.value || isRecalculationEditMode.value,
-    ),
-    enableBulkActions: computed(
-      () =>
-        isRecalculationEditMode.value ||
-        (!shouldUseExecutionData.value &&
-          (!!tableConfig.value?.put_item ||
-            (!isParameterLikeNonDeletableTable.value &&
-              (!!tableConfig.value?.delete_item ||
-                !!tableConfig.value?.delete_bulk)))),
-    ),
     canAdd: computed(
       () =>
         isRecalculationEditMode.value ||
@@ -2325,7 +2220,7 @@ export function useTableData(
       return ops
     }),
     canDownloadExcel: computed(() => true),
-    // Excel-like mode for master tables (accumulate changes, save all via TableRepository)
+    // Excel-like mode for master tables: edits, creates and deletes accumulate as pending changes
     enableExcelMode,
     isCellModified: (rowId: string | number, fieldKey: string) =>
       tableChanges.isCellModified(
@@ -2364,6 +2259,13 @@ export function useTableData(
       const tableTitle = tableConfig.value?.title || rawKey
 
       tableChanges.setTableTitle(keyToUse, tableTitle)
+      if (isTempId(rowId)) {
+        tableChanges.updateCreateField(keyToUse, cellText(rowId), fieldKey, newValue)
+        items.value = items.value.map((item: any) =>
+          item.id === rowId ? { ...item, [fieldKey]: newValue } : item,
+        )
+        return
+      }
       tableChanges.recordChange(
         keyToUse,
         rowId,
@@ -2408,58 +2310,21 @@ export function useTableData(
       const storageKey = normalizeTableKeyForStorage(tableKey.value)
       return { [storageKey]: dynamicHeaders.value }
     }),
-    /** Row class for pending changes: row-new (green), row-deleted (red). Only when Excel mode. */
-    getRowClass: (item: any): string => {
-      if (!enableExcelMode.value) return ''
-      const storageKey = normalizeTableKeyForStorage(tableKey.value)
-      return tableChanges.getRowClass(storageKey, item)
-    },
     searchValue,
     activeFilters,
     selectedItems,
-    showAddEditModal,
-    showDeleteDialog,
-    showBulkDeleteDialog,
     showBulkUploadModal,
     forceRetryOffer,
     forceRetryLoading,
-    formFields: computed(() => {
-      const rowSchema = getListResponseRowProperties(tableConfig.value)
-      if (!rowSchema) return []
-
-      const properties = rowSchema.properties
-      const requiredList = rowSchema.required
-      return Object.entries(properties)
-        .filter(([key]) => key !== 'id') // Exclude id from form fields
-        .filter(([, prop]) => isParameterPropertySchemaVisible(prop))
-        .map(([key, prop]: [string, any]) => ({
-          ...buildFieldDescriptorFromProperty(key, prop, requiredList),
-          valueNone: prop.valueNone || undefined,
-        }))
-    }),
-    formData,
-    isEditing,
-    saving,
-    deleting,
     bulkDeleting,
-    uploading,
-    uploadProgressMessage,
+    uploadPhase,
+    uploadedRows,
+    uploadError,
     downloading,
-    editingRowId,
-    editingData,
-    originalData,
-    isEditingAnyRow: computed(() => editingRowId.value !== null),
-
-    // Foreign key data loading
     loadTableData,
     tableData: tableDataCache,
 
     // Filter functions
-    getOperatorsForFieldType,
-    getOperatorText,
-    operatorNeedsValue,
-    operatorNeedsSecondValue,
-    generateFilterId,
     apiDateRangeFilterConfigs,
     dateRangeValues,
     // `hasMore` / `loadMore` cover three modes:
@@ -2488,39 +2353,8 @@ export function useTableData(
       }
     },
 
-    // Event handlers (simplified)
+    // Event handlers
     handleSearch,
-    handleAddFilter: (filter: any) => {
-      if (!filter?.field || !filter.operator) return
-
-      // Add unique ID if not present
-      if (!filter.id) {
-        filter.id = generateFilterId()
-      }
-
-      activeFilters.value.push(filter)
-      // Reload when an API-backed filter is added so the backend receives the new param
-      if (serverFilteredFields.value.has(filter.field)) {
-        loadData()
-      }
-    },
-    handleRemoveFilter: (filterId: string) => {
-      const index = activeFilters.value.findIndex((f) => f.id === filterId)
-      if (index >= 0) {
-        const removed = activeFilters.value[index]
-        activeFilters.value.splice(index, 1)
-        if (removed && serverFilteredFields.value.has(removed.field)) {
-          loadData()
-        }
-      }
-    },
-    handleClearAllFilters: () => {
-      const hadApiFilters = (activeFilters.value as FilterCondition[]).some(
-        (f) => serverFilteredFields.value.has(f.field),
-      )
-      activeFilters.value = []
-      if (hadApiFilters) loadData()
-    },
     handleApplyDateRange: (
       key: string,
       range: { from: string; to: string },
@@ -2539,118 +2373,6 @@ export function useTableData(
       dateRangeValues.value = next
       loadData()
     },
-    handleToggleFiltersPanel: (show: boolean) => {
-      // This is handled by CoreTable internally
-    },
-    handleSelectItem: (item: any) => {
-      const index = selectedItems.value.findIndex(
-        (selected) => selected.id === item.id,
-      )
-      if (index >= 0) {
-        selectedItems.value.splice(index, 1)
-      } else {
-        selectedItems.value.push(item)
-      }
-    },
-    handleSelectAll: (selectAll: boolean) => {
-      if (selectAll) {
-        selectedItems.value = [...dynamicItems.value]
-      } else {
-        selectedItems.value = []
-      }
-    },
-    handleClearSelection: () => {
-      selectedItems.value = []
-    },
-    handleAddItem: () => {
-      if (isParameterObjectTable.value) {
-        return
-      }
-      showAddEditModal.value = true
-      isEditing.value = false
-      formData.value = {}
-    },
-    handleEditItem: (item: any) => {
-      showAddEditModal.value = true
-      isEditing.value = true
-      formData.value = { ...item }
-    },
-    handleDeleteItem: (item: any) => {
-      if (isParameterLikeNonDeletableTable.value) return
-      formData.value = { ...item }
-      showDeleteDialog.value = true
-    },
-    handleBulkDelete: () => {
-      if (isParameterLikeNonDeletableTable.value) return
-      if (selectedItems.value.length > 0) {
-        showBulkDeleteDialog.value = true
-      }
-    },
-    handleSaveItem: async () => {
-      if (!tableConfig.value) return
-
-      saving.value = true
-      try {
-        const wasEditing = isEditing.value
-        const mode = wasEditing ? 'edit' : 'add'
-        const keepDependentFields = enableExcelMode.value && !wasEditing
-        const preparedData = formFieldsComposable.prepareFormDataForSubmit(
-          formData.value as any,
-          mode,
-          keepDependentFields ? { keepDependentFields: true } : undefined,
-        )
-
-        // Excel mode (master tables or recalculation): stage add (no API call)
-        if (keepDependentFields) {
-          const storageKey = normalizeTableKeyForStorage(tableKey.value)
-          const tableTitle = tableConfig.value?.title || tableKey.value
-          const tempId = tableChanges.recordCreate(
-            storageKey,
-            preparedData,
-            tableTitle,
-          )
-          items.value = [...items.value, { ...preparedData, id: tempId } as any]
-          showAddEditModal.value = false
-          formData.value = {}
-          isEditing.value = false
-          showSnackbar(t('pendingChanges.changeStaged'), 'success')
-          saving.value = false
-          return
-        }
-
-        // Recalculation edit mode: block API calls for edits — changes are staged via cell edits
-        if (isRecalculationEditMode.value && wasEditing) {
-          showAddEditModal.value = false
-          formData.value = {}
-          isEditing.value = false
-          saving.value = false
-          return
-        }
-
-        await performApiSave(wasEditing, preparedData)
-      } catch (err) {
-        console.error('Error saving item:', err)
-        error.value = err instanceof Error ? err.message : 'Error saving item'
-        showSnackbar(
-          err instanceof Error ? err.message : t('table.messages.errorSaving'),
-          'error',
-        )
-      } finally {
-        saving.value = false
-      }
-    },
-    handleBulkEdit: (fieldValues: Record<string, any>) => {
-      const storageKey = normalizeTableKeyForStorage(tableKey.value)
-      const tableTitle = tableConfig.value?.title || tableKey.value
-      tableChanges.setTableTitle(storageKey, tableTitle)
-      for (const item of selectedItems.value) {
-        for (const [fieldKey, newValue] of Object.entries(fieldValues)) {
-          const oldValue = tableChanges.getCurrentValue(storageKey, item.id, fieldKey, item[fieldKey])
-          tableChanges.recordChange(storageKey, item.id, fieldKey, oldValue, newValue, fieldKey, tableTitle)
-        }
-      }
-      showSnackbar(t('table.bulkEditApplied', { count: selectedItems.value.length }), 'success')
-    },
     handleBulkUpload: async (uploadData: {
       files: File[]
       operation: string
@@ -2660,7 +2382,9 @@ export function useTableData(
         return
       }
 
-      uploading.value = true
+      uploadPhase.value = 'loading'
+      uploadedRows.value = undefined
+      uploadError.value = ''
       let mappedData: any[] | null = null
       try {
         // Get the first file (modal is set to multiple=false)
@@ -2685,8 +2409,8 @@ export function useTableData(
           }
           stageRecalculationBulkUpload(parsedData, uploadData.operation)
           showBulkUploadModal.value = false
+          uploadPhase.value = 'form'
           showSnackbar(t('table.messages.bulkUploadSuccess'), 'success')
-          uploading.value = false
           return
         }
 
@@ -2712,20 +2436,13 @@ export function useTableData(
 
         await persistBulkUpload(repository, uploadData.operation, mappedData)
 
-        // Reload data and close modal (enrich so joined columns show correctly)
+        // Reload the data (enriched, so joined columns show) and say how many rows went in
         items.value = await fetchListEnriched(repository, tableConfig.value)
-        showBulkUploadModal.value = false
-
-        // Show success message
-        showSnackbar(t('table.messages.bulkUploadSuccess'), 'success')
+        uploadedRows.value = mappedData.length
+        uploadPhase.value = 'done'
         await maybeRequestMasterRecalculationPending()
       } catch (err) {
-        if (handleBulkUploadError(err, uploadData.operation, mappedData)) {
-          return
-        }
-      } finally {
-        uploading.value = false
-        uploadProgressMessage.value = ''
+        handleBulkUploadError(err, uploadData.operation, mappedData)
       }
     },
     acceptForceRetry: async () => {
@@ -2736,12 +2453,7 @@ export function useTableData(
       const isOverwrite =
         offer.operation === 'overwrite_all' && data && data.length > 0
 
-      if (
-        !isOverwrite &&
-        offer.operation !== 'delete_item' &&
-        offer.operation !== 'delete_bulk' &&
-        offer.operation !== 'delete_all'
-      ) {
+      if (!isOverwrite && offer.operation !== 'delete_bulk') {
         forceRetryOffer.value = null
         pendingOverwriteData.value = null
         return
@@ -2758,24 +2470,9 @@ export function useTableData(
           await repository.overwriteAll(data, { force: true })
           showBulkUploadModal.value = false
           showSnackbar(t('table.messages.bulkUploadSuccess'), 'success')
-        } else if (offer.operation === 'delete_item' && offer.id != null) {
-          await repository.deleteItem(offer.id, { force: true })
-          showDeleteDialog.value = false
-          formData.value = {}
-          showSnackbar(t('table.messages.itemDeleted'), 'success')
-        } else if (
-          offer.operation === 'delete_bulk' &&
-          offer.ids &&
-          offer.ids.length > 0
-        ) {
+        } else if (offer.ids && offer.ids.length > 0) {
           await repository.deleteBulk(offer.ids, { force: true })
           selectedItems.value = []
-          showBulkDeleteDialog.value = false
-          showSnackbar(t('table.messages.itemsDeleted'), 'success')
-        } else if (offer.operation === 'delete_all') {
-          await repository.deleteAll({ force: true })
-          selectedItems.value = []
-          showBulkDeleteDialog.value = false
           showSnackbar(t('table.messages.itemsDeleted'), 'success')
         }
 
@@ -2807,273 +2504,6 @@ export function useTableData(
         await downloadMasterTableExcel()
       }
     },
-    handleConfirmDelete: async () => {
-      if (isParameterLikeNonDeletableTable.value) return
-      if (!tableConfig.value || !(formData.value as any)?.id) return
-
-      const id = (formData.value as any).id
-
-      // Master tables in Excel mode: stage delete (row stays visible in red until Save all)
-      if (enableExcelMode.value) {
-        const storageKey = normalizeTableKeyForStorage(tableKey.value)
-        const rowData = formData.value as Record<string, any>
-        tableChanges.recordDelete(storageKey, id, rowData)
-        showDeleteDialog.value = false
-        formData.value = {}
-        showSnackbar(t('pendingChanges.changeStaged'), 'success')
-        return
-      }
-
-      deleting.value = true
-      try {
-        const { default: TableRepository } = await import(
-          '@cornflow-ui/core/repositories/TableRepository'
-        )
-        const repository = new TableRepository(tableConfig.value, t)
-
-        await repository.deleteItem(id)
-
-        items.value = await fetchListEnriched(repository, tableConfig.value)
-        showDeleteDialog.value = false
-        formData.value = {}
-
-        showSnackbar(t('table.messages.itemDeleted'), 'success')
-      } catch (err) {
-        if (isForceRetryOfferError(err)) {
-          forceRetryOffer.value = {
-            message: err.message,
-            operation: 'delete_item',
-            id,
-          }
-          return
-        }
-        console.error('Error deleting item:', err)
-        error.value = err instanceof Error ? err.message : 'Error deleting item'
-        showSnackbar(
-          err instanceof Error
-            ? err.message
-            : t('table.messages.errorDeleting'),
-          'error',
-        )
-      } finally {
-        deleting.value = false
-      }
-    },
-    handleConfirmBulkDelete: async () => {
-      if (isParameterLikeNonDeletableTable.value) return
-      if (!tableConfig.value || selectedItems.value.length === 0) return
-
-      // Master tables in Excel mode: stage deletes (rows stay visible in red until Save all)
-      if (enableExcelMode.value) {
-        const storageKey = normalizeTableKeyForStorage(tableKey.value)
-        selectedItems.value.forEach((item: any) =>
-          tableChanges.recordDelete(storageKey, item.id, item),
-        )
-        selectedItems.value = []
-        showBulkDeleteDialog.value = false
-        showSnackbar(t('pendingChanges.changeStaged'), 'success')
-        return
-      }
-
-      bulkDeleting.value = true
-      try {
-        const { default: TableRepository } = await import(
-          '@cornflow-ui/core/repositories/TableRepository'
-        )
-        const repository = new TableRepository(tableConfig.value, t)
-
-        const idsToDelete = selectedItems.value.map((item) => item.id)
-        await repository.deleteBulk(idsToDelete)
-
-        items.value = await fetchListEnriched(repository, tableConfig.value)
-        selectedItems.value = []
-        showBulkDeleteDialog.value = false
-
-        showSnackbar(t('table.messages.itemsDeleted'), 'success')
-      } catch (err) {
-        if (isForceRetryOfferError(err)) {
-          forceRetryOffer.value = {
-            message: err.message,
-            operation: 'delete_bulk',
-            ids: selectedItems.value.map((item) => item.id),
-          }
-          return
-        }
-        console.error('Error deleting items:', err)
-        error.value =
-          err instanceof Error ? err.message : 'Error deleting items'
-        showSnackbar(
-          err instanceof Error
-            ? err.message
-            : t('table.messages.errorDeletingItems'),
-          'error',
-        )
-      } finally {
-        bulkDeleting.value = false
-      }
-    },
-    handleCancelDelete: () => {
-      showDeleteDialog.value = false
-    },
-    handleCancelBulkDelete: () => {
-      showBulkDeleteDialog.value = false
-    },
-    handleCancelBulkUpload: () => {
-      showBulkUploadModal.value = false
-    },
-    startInlineEdit: (item: any) => {
-      editingRowId.value = item.id
-      editingData.value = { ...item }
-      originalData.value = { ...item }
-    },
-    saveInlineEdit: async () => {
-      if (!tableConfig.value || !editingRowId.value) return
-
-      saving.value = true
-      try {
-        const { default: TableRepository } = await import(
-          '@cornflow-ui/core/repositories/TableRepository'
-        )
-        const repository = new TableRepository(tableConfig.value, t)
-
-        // Use composable to prepare data (filters dependent fields and excludes id)
-        const preparedData = formFieldsComposable.prepareFormDataForSubmit(
-          editingData.value as any,
-          'edit',
-        )
-
-        await repository.putItem(editingRowId.value, preparedData)
-
-        // Reload list so joined columns are resolved
-        items.value = await fetchListEnriched(repository, tableConfig.value)
-
-        editingRowId.value = null
-        editingData.value = {}
-        originalData.value = {}
-
-        // Show success message
-        showSnackbar(t('table.messages.itemUpdated'), 'success')
-      } catch (err) {
-        console.error('Error saving inline edit:', err)
-        error.value =
-          err instanceof Error ? err.message : 'Error saving changes'
-        showSnackbar(
-          err instanceof Error ? err.message : t('table.messages.errorSaving'),
-          'error',
-        )
-      } finally {
-        saving.value = false
-      }
-    },
-    cancelInlineEdit: () => {
-      editingRowId.value = null
-      editingData.value = {}
-      originalData.value = {}
-    },
-    saveAllChanges: async () => {
-      if (shouldUseExecutionData.value) return
-      const config = tableConfig.value
-      const storageKey = normalizeTableKeyForStorage(tableKey.value)
-      const edits = tableChanges.getChangesForTable(storageKey)
-      const hasEdits = edits && Object.keys(edits).length > 0
-      const hasCreates = tableChanges.getPendingCreates(storageKey).length > 0
-      const hasDeletes = tableChanges.getPendingDeletes(storageKey).length > 0
-      if (!hasEdits && !hasCreates && !hasDeletes) return
-
-      saving.value = true
-      try {
-        const { default: TableRepository } = await import(
-          '@cornflow-ui/core/repositories/TableRepository'
-        )
-        const repository = new TableRepository(config, t)
-
-        // 1. Pending deletes (use bulk when supported to avoid N calls)
-        await executePendingDeletes(repository, config, storageKey)
-
-        // 2. Pending creates (use bulk when supported to avoid N calls)
-        await executePendingCreates(repository, config, storageKey)
-
-        // 3. Cell edits (run putItem in parallel batches for speed)
-        await executePendingEdits(repository, config, storageKey)
-
-        await loadData()
-        showSnackbar(t('table.messages.itemUpdated'), 'success')
-      } catch (err) {
-        console.error('Error saving all changes:', err)
-        error.value =
-          err instanceof Error ? err.message : 'Error saving changes'
-        showSnackbar(
-          err instanceof Error ? err.message : t('table.messages.errorSaving'),
-          'error',
-        )
-      } finally {
-        saving.value = false
-      }
-    },
-    clearPendingChanges: () => {
-      tableChanges.revertTableChanges(
-        normalizeTableKeyForStorage(tableKey.value),
-      )
-    },
-    updateInlineField: (field: string, value: any) => {
-      // Update the field and handle dependent fields (foreign keys)
-      const updatedData = { ...editingData.value, [field]: value }
-
-      // Use composable to update dependent fields if this is a selector field
-      const finalData = formFieldsComposable.updateDependentFields(
-        field,
-        value,
-        updatedData,
-      )
-
-      editingData.value = finalData
-    },
-    handleConfirmBulkUpload: async (data: any[]) => {
-      if (!tableConfig.value || !data?.length) return
-
-      const normalizedData = data.map((row) =>
-        Object.fromEntries(
-          Object.entries(row).map(([k, v]) => [
-            k,
-            v === '' || v === undefined ? null : v,
-          ]),
-        ),
-      )
-
-      uploading.value = true
-      try {
-        const { default: TableRepository } = await import(
-          '@cornflow-ui/core/repositories/TableRepository'
-        )
-        const repository = new TableRepository(tableConfig.value, t)
-
-        if (tableConfig.value.post_update_bulk) {
-          await repository.updateBulk(normalizedData)
-        } else {
-          await repository.createBulk(normalizedData)
-        }
-
-        // Reload data and close modal (enrich so joined columns show correctly)
-        items.value = await fetchListEnriched(repository, tableConfig.value)
-        showBulkUploadModal.value = false
-
-        // Show success message
-        showSnackbar(t('table.messages.bulkUploadSuccess'), 'success')
-        await maybeRequestMasterRecalculationPending()
-      } catch (err) {
-        console.error('Error in bulk upload:', err)
-        error.value =
-          err instanceof Error ? err.message : 'Error uploading data'
-        showSnackbar(
-          err instanceof Error
-            ? err.message
-            : t('table.messages.errorBulkUpload'),
-          'error',
-        )
-      } finally {
-        uploading.value = false
-      }
-    },
     loadData: async () => {
       if (shouldUseExecutionData.value) return
 
@@ -3082,5 +2512,154 @@ export function useTableData(
       await loadData()
     },
     cancelLoadData,
+  }
+
+  /** Adds a row: staged as a pending change in Excel mode, created through the API otherwise. */
+  const addRow = async (values: Record<string, unknown>) => {
+    if (!tableConfig.value) return
+    try {
+      if (enableExcelMode.value) {
+        const preparedData = formFieldsComposable.prepareFormDataForSubmit(values, {
+          keepDependentFields: true,
+        })
+        const storageKey = normalizeTableKeyForStorage(tableKey.value)
+        const tableTitle = tableConfig.value?.title || tableKey.value
+        const tempId = tableChanges.recordCreate(storageKey, preparedData, tableTitle)
+        items.value = [...items.value, { ...preparedData, id: tempId } as any]
+        showSnackbar(t('pendingChanges.changeStaged'), 'success')
+        return
+      }
+      const { default: TableRepository } = await import(
+        '@cornflow-ui/core/repositories/TableRepository'
+      )
+      const repository = new TableRepository(tableConfig.value, t)
+      await repository.createItem(formFieldsComposable.prepareFormDataForSubmit(values))
+      items.value = await fetchListEnriched(repository, tableConfig.value)
+      showSnackbar(t('table.messages.itemCreated'), 'success')
+    } catch (err) {
+      console.error('Error saving item:', err)
+      error.value = err instanceof Error ? err.message : 'Error saving item'
+      showSnackbar(
+        err instanceof Error ? err.message : t('table.messages.errorSaving'),
+        'error',
+      )
+    }
+  }
+
+  const selectRows = (ids: Array<string | number>) => {
+    const wanted = new Set(ids.map((id) => cellText(id)))
+    selectedItems.value = dynamicItems.value.filter((item: any) => wanted.has(cellText(item.id)))
+  }
+
+  /** Deletes rows: marked as pending deletes in Excel mode, deleted through the API otherwise. */
+  const deleteRows = async (ids: Array<string | number>) => {
+    if (isParameterLikeNonDeletableTable.value || !tableConfig.value) return
+    selectRows(ids)
+    if (selectedItems.value.length === 0) return
+
+    if (enableExcelMode.value) {
+      const storageKey = normalizeTableKeyForStorage(tableKey.value)
+      selectedItems.value.forEach((item: any) =>
+        tableChanges.recordDelete(storageKey, item.id, item),
+      )
+      selectedItems.value = []
+      showSnackbar(t('pendingChanges.changeStaged'), 'success')
+      return
+    }
+
+    bulkDeleting.value = true
+    try {
+      const { default: TableRepository } = await import(
+        '@cornflow-ui/core/repositories/TableRepository'
+      )
+      const repository = new TableRepository(tableConfig.value, t)
+      await repository.deleteBulk(selectedItems.value.map((item) => item.id))
+      items.value = await fetchListEnriched(repository, tableConfig.value)
+      selectedItems.value = []
+      showSnackbar(t('table.messages.itemsDeleted'), 'success')
+    } catch (err) {
+      if (isForceRetryOfferError(err)) {
+        forceRetryOffer.value = {
+          message: err.message,
+          operation: 'delete_bulk',
+          ids: selectedItems.value.map((item) => item.id),
+        }
+        return
+      }
+      console.error('Error deleting items:', err)
+      error.value = err instanceof Error ? err.message : 'Error deleting items'
+      showSnackbar(
+        err instanceof Error ? err.message : t('table.messages.errorDeletingItems'),
+        'error',
+      )
+    } finally {
+      bulkDeleting.value = false
+    }
+  }
+
+  /**
+   * Sets the same values in several rows, as pending changes, each cell as if it were edited on
+   * its own. Rows marked for deletion are left as they are.
+   */
+  const bulkEditRows = (ids: Array<string | number>, values: Record<string, unknown>) => {
+    selectRows(ids)
+    const storageKey = normalizeTableKeyForStorage(tableKey.value)
+    const deleted = new Set(tableChanges.getPendingDeletes(storageKey).map(cellText))
+    const rows = selectedItems.value.filter((item: any) => !deleted.has(cellText(item.id)))
+    for (const item of rows) {
+      for (const [fieldKey, newValue] of Object.entries(values)) {
+        const oldValue = tableChanges.getCurrentValue(storageKey, item.id, fieldKey, item[fieldKey])
+        api.handleCellChange(tableKey.value, item.id, fieldKey, oldValue, newValue)
+      }
+    }
+    showSnackbar(t('table.bulkEditApplied', { count: rows.length }), 'success')
+  }
+
+  return {
+    ...api,
+    sort,
+    /**
+     * A table of parameters: a single record that is edited, never added to or deleted from.
+     * With one row it shows as a list of its fields.
+     */
+    isSingleRecord: isParameterLikeNonDeletableTable,
+    /** Rows of the table before the search and filters; unknown while the server pages it. */
+    totalCount: computed<number | undefined>(() => {
+      if (shouldUseExecutionData.value) return executionTableData.items.value.length
+      return isUnwindowedMasterData.value ? items.value.length : undefined
+    }),
+    /** Rows that pass the search and filters, beyond the window shown. */
+    filteredCount: computed<number | undefined>(() => {
+      if (shouldUseExecutionData.value) return fullFilteredExecutionItems.value.length
+      return isUnwindowedMasterData.value ? filteredItems.value.length : undefined
+    }),
+    /** Takes back the pending change of one cell. */
+    revertCell: (rowId: string | number, fieldKey: string) =>
+      tableChanges.revertChange(normalizeTableKeyForStorage(tableKey.value), rowId, fieldKey),
+    /** The filters of the table; reloads when the ones the API applies change. */
+    setFilters: (next: DataFilter[]) => {
+      const sent = (filters: DataFilter[]) =>
+        JSON.stringify(filters.filter(isFilterSentToServer).map(asServerFilter))
+      const reload = sent(activeFilters.value) !== sent(next)
+      activeFilters.value = next
+      if (reload) loadData()
+    },
+    /** The pending state of a row: added, deleted or with edited cells. */
+    getRowState: (item: any): DataRowState | undefined => {
+      if (!enableExcelMode.value || !item) return undefined
+      const storageKey = normalizeTableKeyForStorage(tableKey.value)
+      const rowClass = tableChanges.getRowClass(storageKey, item)
+      if (rowClass === 'row-deleted') return 'deleted'
+      if (rowClass === 'row-new') return 'new'
+      return tableChanges.isRowModified(storageKey, item.id) ? 'modified' : undefined
+    },
+    addRow,
+    deleteRows,
+    /** Takes back the pending deletion of rows. */
+    restoreRows: (ids: Array<string | number>) => {
+      const storageKey = normalizeTableKeyForStorage(tableKey.value)
+      ids.forEach((id) => tableChanges.revertDelete(storageKey, id))
+    },
+    bulkEditRows,
   }
 }

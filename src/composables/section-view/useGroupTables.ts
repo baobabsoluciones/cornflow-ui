@@ -230,8 +230,8 @@ export function useGroupTables(currentConfiguration: any, sectionType: any) {
 
   /**
    * True while a tab switch is in flight. Set synchronously on click and
-   * cleared two rAFs after the actual table change, so consumers (CoreTable /
-   * SectionView) can show a loading overlay that is *painted before* the
+   * cleared two rAFs after the actual table change, so the table can show
+   * its loading state that is *painted before* the
    * heavy reactivity work runs. Without the deferral below, the spinner
    * would only become visible after the freeze, defeating the purpose.
    */

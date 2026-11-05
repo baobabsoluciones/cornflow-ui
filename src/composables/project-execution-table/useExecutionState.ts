@@ -1,7 +1,13 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
-import { StateInfo } from './types'
+
+/** How a state shows: its colour, its label (`code`) and its explanation. */
+export interface StateInfo {
+  color: string
+  message: string
+  code: string
+}
 
 export function useExecutionState() {
   const { t } = useI18n()

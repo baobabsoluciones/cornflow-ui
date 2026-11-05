@@ -1,71 +1,80 @@
+<!--
+  FilterChip: a filter of a list, shown as "Label  Value". Clicking it opens the options; picking
+  one emits `pick` and closes the menu.
+
+  A chip with a picked value (or open) is tinted in the primary. A `removable` chip is a filter the
+  user added: it shows a cross that emits `remove` instead of the chevron.
+
+  The `panel` slot replaces the list of options with an editor of its own (a condition with an
+  operator, a range…); `valueText` is then the value the chip shows, and the slot gets `close`.
+-->
 <template>
-  <v-menu
-    v-model="open"
-    location="bottom start"
-    offset="6"
-    :close-on-content-click="false"
-  >
-    <template #activator="{ props: activator }">
+  <PopoverRoot v-model:open="open">
+    <PopoverAnchor as-child>
       <div
         class="filter-chip"
-        :class="{ 'is-set': hasValue, 'is-open': open }"
+        :class="{
+          'is-set': hasValue,
+          'is-open': open,
+          'is-removable': removable,
+        }"
         v-bind="$attrs"
       >
-        <button type="button" class="filter-chip__main" v-bind="activator">
-          <v-icon v-if="icon" size="18" class="filter-chip__icon">{{
-            icon
-          }}</v-icon>
-          <span class="filter-chip__label">{{ label }}:</span>
-          <span class="filter-chip__value">{{ valueTitle }}</span>
-          <v-icon v-if="!removable" size="18" class="filter-chip__chevron">
-            mdi-menu-down
-          </v-icon>
-        </button>
+        <PopoverTrigger as-child>
+          <button type="button" class="filter-chip__main">
+            <CoreIcon
+              v-if="icon"
+              :name="icon"
+              :size="16"
+              class="filter-chip__icon"
+            />
+            <span class="filter-chip__label">{{
+              removable ? `${label}:` : label
+            }}</span>
+            <span class="filter-chip__value">{{ valueTitle }}</span>
+            <CoreIcon
+              v-if="!removable"
+              :name="open ? 'mdi-menu-up' : 'mdi-menu-down'"
+              :size="18"
+              class="filter-chip__chevron"
+            />
+          </button>
+        </PopoverTrigger>
         <button
           v-if="removable"
           type="button"
           class="filter-chip__remove"
           :aria-label="removeLabel"
+          :title="removeLabel"
           data-testid="filter-chip-remove"
           @click="emit('remove')"
         >
-          <v-icon size="16">mdi-close</v-icon>
+          <CoreIcon name="mdi-close" :size="14" />
         </button>
       </div>
-    </template>
-
-    <div class="filter-menu" role="listbox" :aria-label="label">
-      <div class="filter-menu__caption">{{ label }}</div>
-      <button
-        v-for="option in items"
-        :key="String(option.value)"
-        type="button"
-        role="option"
-        class="filter-menu__option"
-        :class="{ 'is-selected': isSelected(option.value) }"
-        :aria-selected="isSelected(option.value)"
-        :data-testid="`filter-option-${String(option.value)}`"
-        @click="pick(option.value)"
+    </PopoverAnchor>
+    <CorePopoverPanel :width="menuWidth">
+      <slot v-if="$slots.panel" name="panel" :close="() => (open = false)" />
+      <CoreMenu
+        v-else
+        :title="label"
+        selectable
+        :items="menuItems"
+        @select="pick($event.key)"
       >
-        <v-icon size="20" class="filter-menu__radio">{{
-          isSelected(option.value)
-            ? 'mdi-radiobox-marked'
-            : 'mdi-radiobox-blank'
-        }}</v-icon>
-        <span class="filter-menu__title">{{ option.title }}</span>
-        <span
-          v-if="showCounts && option.count !== undefined"
-          class="filter-menu__count"
-          >{{ option.count }}</span
-        >
-      </button>
-      <slot name="after-options" />
-    </div>
-  </v-menu>
+        <slot name="after-options" />
+      </CoreMenu>
+    </CorePopoverPanel>
+  </PopoverRoot>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted } from 'vue'
+import { PopoverAnchor, PopoverRoot, PopoverTrigger } from 'reka-ui'
+import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
+import CoreMenu from '@cornflow-ui/core/components/core/CoreMenu.vue'
+import type { CoreMenuItem } from '@cornflow-ui/core/components/core/CoreMenu.vue'
+import CorePopoverPanel from '@cornflow-ui/core/components/core/CorePopoverPanel.vue'
 
 defineOptions({ name: 'CoreFilterChip', inheritAttrs: false })
 
@@ -93,6 +102,10 @@ const props = withDefaults(
     autoOpen?: boolean
     /** Picking this value keeps the menu open (e.g. a custom range that needs more input). */
     keepOpenValue?: unknown
+    /** Width of the menu, in px. */
+    menuWidth?: number
+    /** The value shown on the chip, instead of the title of the picked option. */
+    valueText?: string
   }>(),
   {
     icon: undefined,
@@ -103,6 +116,8 @@ const props = withDefaults(
     removeLabel: undefined,
     autoOpen: false,
     keepOpenValue: undefined,
+    menuWidth: 260,
+    valueText: undefined,
   },
 )
 
@@ -111,13 +126,13 @@ const emit = defineEmits<{
   remove: []
 }>()
 
-const open = ref(false)
+const open = defineModel<boolean>('open', { default: false })
 
 /** Same value on both sides, comparing as text (ids may come as numbers or strings). */
 const isSame = (a: unknown, b: unknown): boolean =>
   a === b || (a != null && b != null && String(a) === String(b))
 
-const items = computed<FilterChipOption[]>(() => [
+const options = computed<FilterChipOption[]>(() => [
   ...(props.allLabel !== undefined
     ? [{ value: null, title: props.allLabel }]
     : []),
@@ -125,7 +140,7 @@ const items = computed<FilterChipOption[]>(() => [
 ])
 
 const hasValue = computed(
-  () => props.value !== null && props.value !== undefined,
+  () => props.valueText !== undefined || (props.value !== null && props.value !== undefined),
 )
 
 const isSelected = (value: unknown): boolean =>
@@ -133,16 +148,31 @@ const isSelected = (value: unknown): boolean =>
 
 const valueTitle = computed(
   () =>
-    items.value.find((option) => isSelected(option.value))?.title ??
+    props.valueText ??
+    options.value.find((option) => isSelected(option.value))?.title ??
     props.allLabel ??
     '',
 )
 
-function pick(value: unknown) {
-  emit('pick', value)
+const menuItems = computed<CoreMenuItem[]>(() =>
+  options.value.map((option) => ({
+    key: String(option.value),
+    label: option.title,
+    selected: isSelected(option.value),
+    count: props.showCounts ? option.count : undefined,
+    testId: `filter-option-${String(option.value)}`,
+  })),
+)
+
+function pick(key: string) {
+  const option = options.value.find(
+    (candidate) => String(candidate.value) === key,
+  )
+  if (!option) return
+  emit('pick', option.value)
   if (
     props.keepOpenValue === undefined ||
-    !isSame(value, props.keepOpenValue)
+    !isSame(option.value, props.keepOpenValue)
   ) {
     open.value = false
   }
@@ -159,135 +189,109 @@ onMounted(async () => {
 .filter-chip {
   display: inline-flex;
   align-items: center;
-  height: 44px;
-  border: 1px solid color-mix(in srgb, var(--primary) 22%, #fff);
-  border-radius: 10px;
-  background-color: color-mix(in srgb, var(--primary) 6%, #fff);
-  color: var(--title);
+  height: 32px;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--color-border-input);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  color: var(--color-text);
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
+    background-color var(--duration-base) var(--ease-standard),
+    border-color var(--duration-base) var(--ease-standard);
 }
 
 .filter-chip:hover {
-  border-color: color-mix(in srgb, var(--primary) 45%, #fff);
+  border-color: var(--color-primary);
 }
 
-.filter-chip.is-set {
-  border-color: color-mix(in srgb, var(--primary) 45%, #fff);
-  background-color: color-mix(in srgb, var(--primary) 12%, #fff);
-}
-
+.filter-chip.is-set,
 .filter-chip.is-open {
-  border-color: var(--primary);
-  background-color: var(--primary);
-  color: #fff;
+  border-color: var(--color-primary);
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+}
+
+.filter-chip.is-removable {
+  border-color: color-mix(in srgb, var(--color-primary) 25%, var(--color-surface));
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
 }
 
 .filter-chip__main {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: calc(var(--spacing) * 1.5);
   height: 100%;
-  padding: 0 10px 0 14px;
-  font-size: 0.9375rem;
+  min-width: 0;
+  padding: 0 calc(var(--spacing) * 1.5) 0 calc(var(--spacing) * 2.5);
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  font: inherit;
+  color: inherit;
   white-space: nowrap;
+  cursor: pointer;
 }
 
-.filter-chip__icon {
+.is-removable .filter-chip__main {
+  padding-right: calc(var(--spacing) * 0.5);
+}
+
+.filter-chip__icon,
+.filter-chip__chevron {
+  color: var(--color-text-muted);
+}
+
+.filter-chip.is-set .filter-chip__icon,
+.filter-chip.is-open .filter-chip__icon,
+.filter-chip.is-set .filter-chip__chevron,
+.filter-chip.is-open .filter-chip__chevron,
+.is-removable .filter-chip__icon {
   color: inherit;
-  opacity: 0.85;
+}
+
+.filter-chip__chevron {
+  margin-left: -2px;
 }
 
 .filter-chip__label {
-  color: var(--subtitle);
+  color: var(--color-text-muted);
 }
 
-.filter-chip.is-open .filter-chip__label {
-  color: rgba(255, 255, 255, 0.8);
+.filter-chip.is-set .filter-chip__label,
+.filter-chip.is-open .filter-chip__label,
+.is-removable .filter-chip__label {
+  color: inherit;
 }
 
 .filter-chip__value {
-  font-weight: 700;
-  color: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: var(--font-weight-medium);
 }
 
 .filter-chip__remove {
   display: inline-flex;
   align-items: center;
-  height: 100%;
-  padding: 0 12px 0 2px;
+  margin: 0 calc(var(--spacing) * 1.5) 0 calc(var(--spacing) * 0.5);
+  padding: 2px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
   color: inherit;
-  opacity: 0.75;
+  cursor: pointer;
 }
 
 .filter-chip__remove:hover {
-  opacity: 1;
+  background: color-mix(in srgb, var(--color-text) 10%, transparent);
 }
 
 .filter-chip__main:focus-visible,
 .filter-chip__remove:focus-visible {
-  outline: 2px solid var(--primary);
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
-  border-radius: 8px;
-}
-</style>
-
-<style>
-/* The menu is teleported out of the chip, so its styles cannot be scoped. */
-.filter-menu {
-  min-width: 260px;
-  max-height: 420px;
-  overflow-y: auto;
-  padding: 10px 8px;
-  border-radius: 14px;
-  background-color: #fff;
-  box-shadow:
-    0 10px 30px rgba(16, 24, 40, 0.12),
-    0 2px 6px rgba(16, 24, 40, 0.06);
-}
-
-.filter-menu__caption {
-  padding: 8px 12px 6px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--subtitle);
-}
-
-.filter-menu__option {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 48px;
-  padding: 0 12px;
-  border-radius: 10px;
-  font-size: 0.9375rem;
-  color: var(--title);
-  text-align: left;
-}
-
-.filter-menu__option:hover {
-  background-color: color-mix(in srgb, var(--primary) 6%, #fff);
-}
-
-.filter-menu__option.is-selected {
-  background-color: color-mix(in srgb, var(--primary) 10%, #fff);
-}
-
-.filter-menu__radio {
-  color: var(--title);
-}
-
-.filter-menu__title {
-  flex: 1;
-}
-
-.filter-menu__count {
-  font-size: 0.8125rem;
-  color: var(--subtitle);
 }
 </style>

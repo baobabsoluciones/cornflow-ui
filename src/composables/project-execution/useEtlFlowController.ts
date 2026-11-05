@@ -1,7 +1,7 @@
 /**
  * useEtlFlowController.ts — CORE consumption point for the external ETL flow controller.
  *
- * The execution-creation wizard (ProjectExecutionView) instantiates the controller HERE, without
+ * The create-execution screen (`useExecutionDraft`) instantiates the controller HERE, without
  * knowing about the premium module: it requests it from the registry (§3.7 `capabilities.externalEtlFlow`).
  * If no module provides it (build without ETL), it returns an INERT implementation so the core keeps
  * working the same (flow not active). The contract lives in `@/types/etlFlow`.

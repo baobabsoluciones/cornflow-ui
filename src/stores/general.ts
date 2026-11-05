@@ -4,6 +4,7 @@ import session from '@cornflow-ui/core/services/AuthService'
 import appConfig from '@/app/config'
 import config from '@cornflow-ui/core/config'
 import { mainLogo as logo, fullLogo } from '@cornflow-ui/core/utils/assets'
+import { ExecutionState, isExecutionActive } from '@cornflow-ui/core/utils/executionStates'
 
 import { SchemaConfig } from '@cornflow-ui/core/models/SchemaConfig'
 import { Execution } from '@cornflow-ui/core/models/Execution'
@@ -24,6 +25,7 @@ import RoleRepository from '@cornflow-ui/core/repositories/RoleRepository'
 import WarningsRepository from '@cornflow-ui/core/repositories/WarningsRepository'
 import TableRepository from '@cornflow-ui/core/repositories/TableRepository'
 import type { Warning } from '@cornflow-ui/core/repositories/WarningsRepository'
+import type { ExecutionTab } from '@cornflow-ui/core/types/extension'
 
 import { toUTCDayBoundary } from '@cornflow-ui/core/utils/date'
 
@@ -219,7 +221,6 @@ export const useGeneralStore = defineStore('general', {
     autoLoadTickInFlight: false,
     isDrawerPinned: false, // New state for drawer pin status
     uploadComponentKey: 0,
-    tabBarKey: 0,
     cornflowVersion: '',
     configurations: null as ConfigurationData | null,
     rawConfigurations: null as ConfigurationData | null, // Store raw configurations with original multilingual data
@@ -466,7 +467,7 @@ export const useGeneralStore = defineStore('general', {
     /**
      * Switches the session to another DAG without reloading the page: closes the loaded
      * executions, reloads the schema, its instance/solution tables and the views, and lets premium
-     * modules reset what they keep per DAG. Navigation is up to the caller (see `ModuleSwitcher`).
+     * modules reset what they keep per DAG. Navigation is up to the caller (see `useSchemaSwitch`).
      * Returns false when `schema` is not one the user may switch to.
      */
     async setActiveSchema(schema: string): Promise<boolean> {
@@ -499,7 +500,6 @@ export const useGeneralStore = defineStore('general', {
       this.setSelectedExecution(null)
       this.lastExecutions = []
       this.clearHistoricalExecution()
-      this.incrementTabBarKey()
     },
 
     /**
@@ -775,6 +775,26 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
+    /**
+     * The DAG's latest executions, newest first, whatever the history filters say (the side
+     * menu offers them to load). The backend caps the list when no dates are given.
+     */
+    async fetchRecentExecutions(): Promise<Execution[]> {
+      try {
+        const executions = await this.executionRepository.getExecutions(
+          this.getSchemaName,
+          null,
+          null,
+        )
+        return [...executions].sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        )
+      } catch (error) {
+        console.error('Error getting the latest executions', error)
+        return []
+      }
+    },
+
     async fetchLoadedExecution(id: string) {
       try {
         const loadedExecution = await this.executionRepository.loadExecution(id)
@@ -816,19 +836,17 @@ export const useGeneralStore = defineStore('general', {
         let execution
         do {
           execution = await this.executionRepository.loadExecution(executionId)
-          // Only continue waiting if execution is still running (state 0) or queued (state -7)
-          if (execution && (execution.state === 0 || execution.state === -7)) {
+          if (execution && isExecutionActive(execution.state)) {
             await new Promise((resolve) => setTimeout(resolve, 3000))
           }
-        } while (execution && (execution.state === 0 || execution.state === -7))
+        } while (execution && isExecutionActive(execution.state))
 
-        // Check if execution completed successfully
-        // Success states: 1 (solved correctly), 2 (loaded manually), -4 (not run by user)
+        // The checks ran unless the execution ended in a failure
         if (
           execution &&
-          (execution.state === 1 ||
-            execution.state === 2 ||
-            execution.state === -4)
+          (execution.state === ExecutionState.Solved ||
+            execution.state === ExecutionState.SolutionLoaded ||
+            execution.state === ExecutionState.NotRun)
         ) {
           const instance = await this.instanceRepository.getInstance(id)
           return instance
@@ -887,7 +905,7 @@ export const useGeneralStore = defineStore('general', {
             const loaded = await this.executionRepository.loadExecution(execId)
             const state = loaded.state
 
-            if (state === 0 || state === -7) {
+            if (isExecutionActive(state)) {
               historicalPollTimer = setTimeout(() => {
                 void poll()
               }, HISTORICAL_POLL_MS)
@@ -970,17 +988,9 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
+    /** Creates (and, unless `params` says `?run=0`, launches) an execution; throws the backend's error. */
     async createExecution(execution: Execution, params: string = '') {
-      try {
-        const newExecution = await this.executionRepository.createExecution(
-          execution,
-          params,
-        )
-        return newExecution
-      } catch (error) {
-        console.error('Error creating execution', error)
-        return false
-      }
+      return this.executionRepository.createExecution(execution, params)
     },
 
     async uploadSolutionData(executionId: string, solutionData: any) {
@@ -1060,7 +1070,7 @@ export const useGeneralStore = defineStore('general', {
         this.autoLoadTickInFlight = true
         try {
           for (const execution of this.loadedExecutions) {
-            if (execution.state !== 0 && execution.state !== -7) continue
+            if (!isExecutionActive(execution.state)) continue
             // A hard failure of the poll itself (backend down/unavailable)
             // stops the loop instead of hammering a failing endpoint every 4s.
             const keepPolling = await this.refreshRunningExecution(execution)
@@ -1089,7 +1099,7 @@ export const useGeneralStore = defineStore('general', {
         )
         if (!meta) return true
         // Still running → keep polling, nothing to update yet.
-        if (meta.state === 0 || meta.state === -7) return true
+        if (isExecutionActive(meta.state)) return true
 
         // State transitioned: now (and only now) fetch the full payload.
         const updatedExecution = await this.executionRepository.loadExecution(
@@ -1170,10 +1180,6 @@ export const useGeneralStore = defineStore('general', {
 
     incrementUploadComponentKey() {
       this.uploadComponentKey++
-    },
-
-    incrementTabBarKey() {
-      return this.tabBarKey++
     },
 
     async getDataToDownload(
@@ -1286,32 +1292,14 @@ export const useGeneralStore = defineStore('general', {
       )
     },
 
-    getLoadedExecutionTabs(): object[] {
-      return this.loadedExecutions.map((execution) => {
-        let icon
-        let isLoading = false
-        switch (execution.state) {
-          case 1:
-          case -4:
-            icon = 'mdi-checkbox-marked'
-            break
-          case 0:
-          case -7:
-            isLoading = true
-            icon = 'mdi-loading'
-            break
-          default:
-            icon = 'mdi-close-box'
-        }
-
-        return {
-          value: execution.executionId,
-          text: execution.name,
-          icon: icon,
-          loading: isLoading,
-          selected: false,
-        }
-      })
+    /** A tab per loaded execution: its id, name, state and the state of its solution. */
+    getLoadedExecutionTabs(): ExecutionTab[] {
+      return this.loadedExecutions.map((execution) => ({
+        value: execution.executionId,
+        text: execution.name,
+        state: execution.state,
+        solutionStatusCode: execution.solutionState?.status_code ?? null,
+      }))
     },
 
     getConfigurations(): ConfigurationData | null {

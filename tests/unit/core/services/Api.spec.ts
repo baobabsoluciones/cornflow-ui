@@ -506,6 +506,53 @@ describe('ApiClient', () => {
       expect(handleAuthFailureSpy).toHaveBeenCalled()
     })
 
+    const badRequest = (error: string) =>
+      new Response(JSON.stringify({ error }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+    test.each([
+      'The token has expired, please login again',
+      'Invalid token, please try again with a new token',
+      'Authorization header is missing',
+      'Unable to authenticate the user',
+    ])('a 400 that says "%s" ends the session', async (error) => {
+      const handleAuthFailureSpy = vi.spyOn(apiClient, 'handleAuthFailure').mockImplementation(() => {})
+      vi.mocked(fetch).mockResolvedValue(badRequest(error))
+
+      await expect(apiClient['request']('/user/1/')).rejects.toThrow('Unauthorized: Session expired')
+      expect(handleAuthFailureSpy).toHaveBeenCalled()
+    })
+
+    test('any other 400 is the answer of the request', async () => {
+      const handleAuthFailureSpy = vi.spyOn(apiClient, 'handleAuthFailure').mockImplementation(() => {})
+      vi.mocked(fetch).mockResolvedValue(badRequest('Name is required'))
+
+      await expect(apiClient['request']('/execution/')).resolves.toEqual({
+        status: 400,
+        content: { error: 'Name is required' },
+      })
+      expect(handleAuthFailureSpy).not.toHaveBeenCalled()
+    })
+
+    test('a token 400 of the login itself does not end a session', async () => {
+      const handleAuthFailureSpy = vi.spyOn(apiClient, 'handleAuthFailure').mockImplementation(() => {})
+      vi.mocked(fetch).mockResolvedValue(badRequest('Invalid token, please try again with a new token'))
+
+      await expect(apiClient['request']('/login/')).resolves.toMatchObject({ status: 400 })
+      expect(handleAuthFailureSpy).not.toHaveBeenCalled()
+    })
+
+    test('a download or a stream answered with an expired token ends the session', async () => {
+      const handleAuthFailureSpy = vi.spyOn(apiClient, 'handleAuthFailure').mockImplementation(() => {})
+      vi.mocked(fetch).mockImplementation(async () => badRequest('The token has expired, please login again'))
+
+      await expect(apiClient.getBlob('/data/1/')).rejects.toThrow('Unauthorized: Session expired')
+      await expect(apiClient.postStream('/agent/', { message: 'x' })).rejects.toThrow('Unauthorized: Session expired')
+      expect(handleAuthFailureSpy).toHaveBeenCalledTimes(2)
+    })
+
     test('request handles FormData body correctly', async () => {
       const formData = new FormData()
       formData.append('file', 'test')

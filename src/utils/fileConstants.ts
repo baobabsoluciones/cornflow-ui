@@ -112,3 +112,16 @@ export const resolveAllowedExtensions = (
 
   return allowed.length > 0 ? allowed : fallback
 }
+
+/**
+ * The names a user knows the given extensions by, in order and without repeats: every Excel
+ * extension is "Excel", the rest their own name in capitals (`['xlsx', 'xls', 'json']` →
+ * `['Excel', 'JSON']`).
+ */
+export const fileFormatNames = (extensions: readonly string[]): string[] => [
+  ...new Set(
+    extensions.map((extension) =>
+      isExcelExtension(extension) ? 'Excel' : extension.toUpperCase(),
+    ),
+  ),
+]

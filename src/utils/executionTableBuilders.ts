@@ -8,7 +8,6 @@
 import {
   generateFrontendRowId,
   generateHeadersFromData,
-  generateSecureId,
 } from '@cornflow-ui/core/utils/tableFilterUtils'
 import {
   isAllowLoadFromDbDisabled,
@@ -236,6 +235,7 @@ export function createObjectTableObject(
             : prop?.type || 'string',
         required: (objectSchema.required || []).includes(key),
         frontendReadOnly: prop?.frontendReadOnly || false,
+        pinsRow: prop?.pinsRow || false,
       }))
   } else {
     const dataHeaders = generateHeadersFromData([{ ...visibleObjectData }])
@@ -263,105 +263,6 @@ export function createObjectTableObject(
     originalItems: items,
     isObjectTable: true,
   }
-}
-
-export interface ValidationTableDeps {
-  /** The component's filter/search applier, keyed by `validation_<tableKey>`. */
-  applyFilters: (items: any[], tableKey: string) => any[]
-  /** The checks JSON schema (used to flag warning-only tables). */
-  checksSchema: any
-}
-
-/** Builds the validation/checks tables from `execution.instance.dataChecks`. */
-export function createValidationTables(execution: any, deps: ValidationTableDeps) {
-  const { applyFilters, checksSchema } = deps
-  const validationTables: any[] = []
-  const instanceData = execution.instance.dataChecks || {}
-
-  Object.keys(instanceData).forEach((tableKey) => {
-    const tableData = instanceData[tableKey]
-    // Only create table if it's an array with data
-    if (Array.isArray(tableData) && tableData.length > 0) {
-      // Check if array contains primitives (strings, numbers, etc.) or objects
-      const isPrimitiveArray =
-        typeof tableData[0] !== 'object' ||
-        tableData[0] === null ||
-        Array.isArray(tableData[0])
-
-      let processedData: any[]
-      let headers: any[]
-
-      if (isPrimitiveArray) {
-        // Convert primitives to objects with a 'value' field
-        processedData = tableData.map((value: any, index: number) => ({
-          id: generateSecureId(`validation_${tableKey}_${index}`),
-          value: value,
-        }))
-        headers = [
-          {
-            title: 'ID',
-            value: 'id',
-            key: 'id',
-            sortable: false,
-            filterable: false,
-            type: 'string',
-            align: ' d-none',
-          },
-          {
-            title: formatTitle(tableKey),
-            value: 'value',
-            key: 'value',
-            sortable: true,
-            filterable: true,
-            type: typeof tableData[0],
-          },
-        ]
-      } else {
-        // Object array - ensure all items have an ID
-        processedData = tableData.map((item: any, index: number) => ({
-          id: item.id || generateSecureId(`validation_${tableKey}_${index}`),
-          ...item,
-        }))
-
-        // Generate headers from data for validation tables
-        const dataHeaders = generateHeadersFromData(processedData)
-        headers = [
-          {
-            title: 'ID',
-            value: 'id',
-            key: 'id',
-            sortable: false,
-            filterable: false,
-            type: 'string',
-            align: ' d-none',
-          },
-          ...dataHeaders.filter((h: any) => h.key !== 'id' && h.key !== 'selection'),
-        ]
-      }
-
-      // Apply filters
-      let filteredItems = applyFilters(processedData, `validation_${tableKey}`)
-      filteredItems = filteredItems.map((item: any) => ({
-        id: item.id,
-        ...item,
-      }))
-
-      const schemaEntry = checksSchema?.properties?.[tableKey]
-      const isWarning = schemaEntry?.is_warning === true
-
-      validationTables.push({
-        key: `validation_${tableKey}`,
-        title: `${formatTitle(tableKey)}`,
-        headers: headers,
-        items: filteredItems,
-        originalItems: tableData,
-        isValidationTable: true,
-        isWarning,
-      })
-    }
-  })
-
-  return validationTables
 }
 
 export interface InjectSwitchDeps {
@@ -544,6 +445,7 @@ export function createTableObject(
           max: prop.maximum,
           pattern: prop.pattern,
           frontendReadOnly: prop.frontendReadOnly || false,
+          pinsRow: prop.pinsRow || false,
           isForeignKey: prop.isForeignKey || false,
           isDependentField: prop.isDependentField || false,
           isMainSelector: prop.isMainSelector || false,

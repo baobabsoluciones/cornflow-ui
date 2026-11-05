@@ -1,92 +1,92 @@
+<!--
+  UserRolesDialog: edits a user's name, e-mail and roles.
+
+  The e-mail may be left empty; otherwise it has to look like one before saving. The roles are a
+  checkbox per role of the app. `save` gives the user, the trimmed profile and the role names.
+
+  <UserRolesDialog v-model="open" :user="user" :roles="roles" :saving="saving" @save="saveUser" />
+-->
 <template>
-  <v-dialog
+  <CoreDialog
     :model-value="modelValue"
-    max-width="560"
+    :title="$t('rolesManagement.editUser')"
+    icon="mdi-account-edit-outline"
+    :width="560"
     persistent
     @update:model-value="$emit('update:modelValue', $event)"
   >
-    <v-card rounded="lg">
-      <v-card-title class="dialog-title pt-5 px-6">
-        <v-icon color="var(--primary)" class="mr-2" size="20">
-          mdi-account-edit-outline
-        </v-icon>
-        {{ $t('rolesManagement.editUser') }}
-      </v-card-title>
+    <div class="user-roles">
+      <div class="user-info-pill">
+        <CoreIcon name="mdi-account-outline" :size="16" />
+        <span class="user-info-pill__name">{{ user?.username }}</span>
+      </div>
 
-      <v-card-text class="px-6 pt-3 pb-2">
-        <div class="user-info-pill mb-4">
-          <v-icon size="15" color="var(--subtitle)">
-            mdi-account-outline
-          </v-icon>
-          <span class="text-body-2 font-weight-medium ml-1">
-            {{ user?.username }}
-          </span>
-        </div>
+      <div class="user-roles__names">
+        <label class="user-roles__label">
+          {{ $t('rolesManagement.firstName') }}
+          <CoreTextField v-model="firstName" autocomplete="off" />
+        </label>
+        <label class="user-roles__label">
+          {{ $t('rolesManagement.lastName') }}
+          <CoreTextField v-model="lastName" autocomplete="off" />
+        </label>
+      </div>
 
-        <div class="d-flex ga-3">
-          <v-text-field
-            v-model="firstName"
-            :label="$t('rolesManagement.firstName')"
-            variant="outlined"
-            density="comfortable"
-          />
-          <v-text-field
-            v-model="lastName"
-            :label="$t('rolesManagement.lastName')"
-            variant="outlined"
-            density="comfortable"
-          />
-        </div>
-        <v-text-field
+      <label class="user-roles__label">
+        {{ $t('rolesManagement.colEmail') }}
+        <CoreTextField
           v-model="email"
-          :label="$t('rolesManagement.colEmail')"
           type="email"
-          variant="outlined"
-          density="comfortable"
-          :rules="emailRules"
+          autocomplete="off"
+          :invalid="!isEmailValid"
+          :aria-describedby="isEmailValid ? undefined : emailErrorId"
         />
+      </label>
+      <p v-if="!isEmailValid" :id="emailErrorId" class="user-roles__error">
+        {{ $t('rolesManagement.invalidEmail') }}
+      </p>
 
-        <v-select
-          v-model="selectedNames"
-          :items="roleItems"
-          :label="$t('rolesManagement.colRoles')"
-          item-title="text"
-          item-value="value"
-          variant="outlined"
-          density="comfortable"
-          multiple
-          chips
-          closable-chips
-          :placeholder="$t('rolesManagement.noRoles2')"
+      <fieldset class="user-roles__roles">
+        <legend class="user-roles__label">{{ $t('rolesManagement.colRoles') }}</legend>
+        <CoreCheckbox
+          v-for="option in roleOptions"
+          :key="option.value"
+          :model-value="selectedNames.includes(option.value)"
+          :label="option.label"
+          @update:model-value="toggleRole(option.value, $event)"
         />
-      </v-card-text>
+        <span v-if="roleOptions.length === 0" class="user-roles__none">
+          {{ $t('rolesManagement.noRoles') }}
+        </span>
+      </fieldset>
+    </div>
 
-      <v-card-actions class="px-6 pb-5 pt-0 d-flex justify-end ga-2">
-        <CoreButton
-          :text="$t('rolesManagement.cancel')"
-          variant="outlined"
-          color="primary"
-          size="small"
-          @click="$emit('update:modelValue', false)"
-        />
-        <CoreButton
-          :text="$t('rolesManagement.save')"
-          icon="mdi-content-save-outline"
-          variant="filled"
-          color="primary"
-          size="small"
-          :disabled="saving || !isEmailValid"
-          @click="onSave"
-        />
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+    <template #actions>
+      <CoreButton
+        :text="$t('rolesManagement.cancel')"
+        variant="outlined"
+        size="small"
+        @click="$emit('update:modelValue', false)"
+      />
+      <CoreButton
+        :text="$t('rolesManagement.save')"
+        icon="mdi-content-save-outline"
+        size="small"
+        :loading="saving"
+        :disabled="!isEmailValid"
+        @click="onSave"
+      />
+    </template>
+  </CoreDialog>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { computed, ref, useId, watch } from 'vue'
 import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
+import CoreCheckbox from '@cornflow-ui/core/components/core/CoreCheckbox.vue'
+import CoreDialog from '@cornflow-ui/core/components/core/CoreDialog.vue'
+import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
+import CoreTextField from '@cornflow-ui/core/components/core/CoreTextField.vue'
 import type {
   Role,
   UserRow,
@@ -114,11 +114,11 @@ const emit = defineEmits<{
   ): void
 }>()
 
-const { t } = useI18n()
 const selectedNames = ref<string[]>([])
 const firstName = ref('')
 const lastName = ref('')
 const email = ref('')
+const emailErrorId = useId()
 
 // Bounded quantifiers (local part max 64, domain parts max 63) to avoid ReDoS
 // super-linear backtracking (SonarQube S5852).
@@ -126,12 +126,8 @@ const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,63}\.[^\s@]{1,63}$/
 const isEmailValid = computed(
   () => email.value.trim() === '' || EMAIL_RE.test(email.value.trim()),
 )
-const emailRules = computed(() => [
-  (v: string) =>
-    !v || EMAIL_RE.test(v) || t('rolesManagement.invalidEmail'),
-])
 
-// Seed the v-select each time the dialog opens for a (possibly different) user.
+// Seed the form each time the dialog opens for a (possibly different) user.
 watch(
   () => [props.modelValue, props.user?.id] as const,
   ([open]) => {
@@ -145,9 +141,15 @@ watch(
   { immediate: true },
 )
 
-const roleItems = computed(() =>
-  props.roles.map((r) => ({ value: r.name, text: r.name })),
+const roleOptions = computed(() =>
+  props.roles.map((r) => ({ value: r.name, label: r.name })),
 )
+
+function toggleRole(name: string, checked: boolean) {
+  selectedNames.value = checked
+    ? [...selectedNames.value, name]
+    : selectedNames.value.filter((n) => n !== name)
+}
 
 function onSave() {
   if (!props.user || !isEmailValid.value) return
@@ -164,26 +166,68 @@ function onSave() {
 </script>
 
 <style scoped>
-.dialog-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--title);
+.user-roles {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 3);
 }
 
 .user-info-pill {
   display: flex;
   align-items: center;
-  background: rgba(0, 0, 0, 0.04);
-  border-radius: 8px;
-  padding: 8px 12px;
+  gap: calc(var(--spacing) * 1.5);
   min-width: 0;
-  overflow: hidden;
+  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
 }
 
-.user-info-pill .font-weight-medium {
+.user-info-pill__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
-  flex-shrink: 0;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+.user-roles__names {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: calc(var(--spacing) * 3);
+}
+
+.user-roles__label {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 1.5);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+}
+
+.user-roles__error {
+  margin: calc(var(--spacing) * -1.5) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-danger-strong);
+}
+
+.user-roles__roles {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.user-roles__roles legend {
+  margin-bottom: calc(var(--spacing) * 2);
+  padding: 0;
+}
+
+.user-roles__none {
+  font-size: var(--text-md);
+  color: var(--color-text-subtle);
 }
 </style>

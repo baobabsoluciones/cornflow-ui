@@ -11,7 +11,6 @@ interface ConfigValues {
     useHashMode?: boolean;
     defaultLanguage?: string;
     isDeveloperMode?: boolean;
-    enableSignup?: boolean;
     cognito?: {
       region: string;
       user_pool_id: string;
@@ -58,7 +57,6 @@ interface ConfigValues {
           useHashMode: import.meta.env.VITE_APP_USE_HASH_MODE == '1',
           defaultLanguage: import.meta.env.VITE_APP_DEFAULT_LANGUAGE || '',
           isDeveloperMode: import.meta.env.VITE_APP_IS_DEVELOPER_MODE == '1',
-          enableSignup: import.meta.env.VITE_APP_ENABLE_SIGNUP == '1',
           cognito: {
             region: import.meta.env.VITE_APP_AUTH_REGION || '',
             user_pool_id: import.meta.env.VITE_APP_AUTH_USER_POOL_ID || '',

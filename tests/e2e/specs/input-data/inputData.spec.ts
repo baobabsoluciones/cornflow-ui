@@ -32,7 +32,7 @@ test.describe('Input Data Page', () => {
 
     const executionTab = tablist
       .getByRole('tab')
-      .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+      .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
       .first();
 
     await expect(executionTab).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
@@ -92,14 +92,12 @@ test.describe('Input Data Page', () => {
       const tableKeys = Object.keys(instanceDataResponse.data);
       console.log(`API returned ${tableKeys.length} tables: ${tableKeys.join(', ')}`);
 
-      // Check if we have a group view with tabs (multiple tables)
-      const tableCard = page.locator('.table-card');
-      const hasGroupView = await tableCard.count() > 0;
+      // A group of tables shows one tab per table above the table
+      const tabs = page.locator('[role="tab"][data-testid^="data-table-tab-"]');
+      const hasGroupView = await tabs.count() > 0;
 
       if (hasGroupView && tableKeys.length > 1) {
         // Group view - verify tabs match the table keys from API
-        // CoreTab components use .m-tab class
-        const tabs = tableCard.locator('.m-tab, button[role="tab"]');
         const tabCount = await tabs.count();
         console.log(`UI shows ${tabCount} tabs for ${tableKeys.length} tables in API`);
         
@@ -114,23 +112,21 @@ test.describe('Input Data Page', () => {
       if (Array.isArray(firstTableData) && firstTableData.length > 0) {
         console.log(`First table "${firstTableKey}" has ${firstTableData.length} rows from API`);
 
-        // Check if it's a primitive array (SimpleList) or object array (CoreTable)
+        // A list of plain values shows as a one-column table; a list of objects, as a table
         const isPrimitiveArray = typeof firstTableData[0] !== 'object' || firstTableData[0] === null;
-        
+
         if (isPrimitiveArray) {
-          // For primitive arrays, SimpleList is used
-          const simpleList = page.locator('.simple-list');
-          const hasSimpleList = await simpleList.count() > 0;
-          console.log(`Primitive array detected, SimpleList present: ${hasSimpleList}`);
+          const dataTable = page.locator('[data-testid="data-table"]');
+          const hasDataTable = await dataTable.count() > 0;
+          console.log(`Primitive array detected, table present: ${hasDataTable}`);
         } else {
-          // For object arrays, CoreTable is used
           // Verify the table has headers matching the object keys
           const firstItem = firstTableData[0];
           const expectedColumns = Object.keys(firstItem);
           console.log(`Expected columns from API data: ${expectedColumns.join(', ')}`);
 
           // Check for table headers
-          const tableHeaders = page.locator('.v-data-table__th, .v-data-table-header th, th');
+          const tableHeaders = page.locator('[data-testid="data-grid"] thead th');
           await tableHeaders.first().waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
           
           const headerCount = await tableHeaders.count();
@@ -146,7 +142,9 @@ test.describe('Input Data Page', () => {
             console.log(`Looking for sample value from API in UI: "${sampleValue}"`);
             
             // Look for this value in the table content
-            const cellWithValue = page.locator('.v-data-table').getByText(String(sampleValue), { exact: false });
+            const cellWithValue = page
+              .locator('[data-testid="data-grid"] tbody.data-grid__body td[data-column]')
+              .getByText(String(sampleValue), { exact: false });
             const valueFound = await cellWithValue.count() > 0;
             
             if (valueFound) {
@@ -164,16 +162,11 @@ test.describe('Input Data Page', () => {
       // If we didn't capture the API response, just verify the UI structure
       console.log('API data not captured - verifying UI structure only');
       
-      const coreTableContainer = page.locator('.core-table-container');
-      const simpleList = page.locator('.simple-list');
-      const tableCard = page.locator('.table-card');
+      const dataTable = page.locator('[data-testid="data-table"]');
+      const hasTable = await dataTable.count() > 0;
 
-      const hasTable = await coreTableContainer.count() > 0;
-      const hasList = await simpleList.count() > 0;
-      const hasCard = await tableCard.count() > 0;
-
-      console.log(`Content types found - Table: ${hasTable}, List: ${hasList}, Card: ${hasCard}`);
-      expect(hasTable || hasList || hasCard).toBe(true);
+      console.log(`Data table found: ${hasTable}`);
+      expect(hasTable).toBe(true);
     }
   });
 
@@ -191,7 +184,7 @@ test.describe('Input Data Page', () => {
 
     const executionTab = tablist
       .getByRole('tab')
-      .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+      .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
       .first();
 
     await expect(executionTab).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
@@ -214,22 +207,17 @@ test.describe('Input Data Page', () => {
     const loadingSpinner = page.locator('.loading-container');
     await expect(loadingSpinner).not.toBeVisible({ timeout: TIMEOUTS.NAVIGATION });
 
-    // Check if we have a group view with tabs (table-card contains tabs)
-    const tableCard = page.locator('.table-card');
-    const hasGroupView = await tableCard.count() > 0;
+    // A group of tables shows one tab per table (data tabs, not execution tabs)
+    const dataTable = page.locator('[data-testid="data-table"]');
+    await expect(dataTable.first()).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
 
-    if (!hasGroupView) {
+    const dataTabs = page.locator('[role="tab"][data-testid^="data-table-tab-"]');
+    const tabCount = await dataTabs.count();
+
+    if (tabCount === 0) {
       console.log('No group view detected (single table), skipping tab navigation test');
-      // Verify at least the table content is visible
-      const tableContent = page.locator('.table-section');
-      await expect(tableContent).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
       return;
     }
-
-    // Get all tabs within the table card (data tabs, not execution tabs)
-    // CoreTab components use .m-tab class and role="tab" attribute
-    const dataTabs = tableCard.locator('.m-tab, button[role="tab"]');
-    const tabCount = await dataTabs.count();
 
     console.log(`Found ${tabCount} tabs in the Input Data page`);
 
@@ -272,21 +260,13 @@ test.describe('Input Data Page', () => {
         await expect(previousTab).toHaveAttribute('aria-selected', 'false');
       }
 
-      // Wait for content to load (either CoreTable or SimpleList)
-      const tableCardContent = tableCard.locator('.table-card-content');
-      await expect(tableCardContent).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
+      // The table of the tab is shown: its rows, or the list of its messages
+      await expect(dataTable.first()).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
 
-      // Check if content is loaded (has either a table or a list)
-      const coreTableContainer = tableCardContent.locator('.core-table-container');
-      const simpleList = tableCardContent.locator('.simple-list');
+      const hasGrid = await dataTable.locator('[data-testid="data-grid"]').count() > 0;
+      const hasMessages = await dataTable.locator('.message-list').count() > 0;
 
-      const hasTable = await coreTableContainer.count() > 0;
-      const hasList = await simpleList.count() > 0;
-
-      console.log(`Tab "${tabName}" content - Table: ${hasTable}, List: ${hasList}`);
-
-      // At least one type of content should be visible
-      expect(hasTable || hasList).toBe(true);
+      console.log(`Tab "${tabName}" content - Grid: ${hasGrid}, Messages: ${hasMessages}`);
 
       // Small delay to ensure UI is stable before next tab click
       await page.waitForTimeout(300);
@@ -314,7 +294,7 @@ test.describe('Input Data Page', () => {
 
     const executionTab = tablist
       .getByRole('tab')
-      .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+      .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
       .first();
 
     await expect(executionTab).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
@@ -337,30 +317,15 @@ test.describe('Input Data Page', () => {
     const loadingSpinner = page.locator('.loading-container');
     await expect(loadingSpinner).not.toBeVisible({ timeout: TIMEOUTS.NAVIGATION });
 
-    // Find the three-dots menu button (CoreDropdownMenu trigger)
-    // The button is inside the table content area, next to the filters
-    const menuButton = page.locator(
-      '.table-card-content .core-dropdown-menu__trigger, ' +
-      '.core-table-container .core-dropdown-menu__trigger, ' +
-      '.table-section .core-dropdown-menu__trigger'
-    ).first();
-
-    await menuButton.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
-    console.log('Found the three-dots menu button (CoreDropdownMenu trigger)');
-
-    // Click the menu button to open the dropdown
-    await menuButton.click();
-
-    // Wait for the menu to appear and find the "Descargar excel" option
-    const downloadOption = page.getByText(/Descargar excel|Download excel/i);
-    await downloadOption.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
-    console.log('Download Excel option is visible');
+    // The Excel button is in the toolbar of the table
+    const downloadButton = page.locator('[data-testid="data-table-excel"]').first();
+    await downloadButton.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
+    console.log('Download Excel button is visible');
 
     // Set up download listener before clicking
     const downloadPromise = page.waitForEvent('download', { timeout: TIMEOUTS.NAVIGATION });
 
-    // Click the download option
-    await downloadOption.click();
+    await downloadButton.click();
 
     // Wait for the download to complete
     const download = await downloadPromise;
@@ -391,7 +356,7 @@ test.describe('Input Data Page', () => {
 
     const executionTab = tablist
       .getByRole('tab')
-      .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+      .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
       .first();
 
     await expect(executionTab).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
@@ -461,9 +426,9 @@ test.describe('Input Data Page', () => {
 
     console.log('Successfully navigated to edit instance page');
 
-    // Wait for the execution page to load (uses MFormSteps component)
-    const formSteps = page.locator('.m-form-steps, .view-container');
-    await formSteps.first().waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
+    // Wait for the create-execution page to load
+    const createExecution = page.locator('[data-testid="create-execution-view"], .view-container');
+    await createExecution.first().waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
 
     // Verify that the same execution tab is still selected
     const executionTablistAfterNav = page.getByRole('tablist');
@@ -471,7 +436,7 @@ test.describe('Input Data Page', () => {
 
     const selectedTabAfterNav = executionTablistAfterNav
       .getByRole('tab')
-      .filter({ hasNot: page.getByText(/Añadir nuevo|Add new/i) })
+      .filter({ hasNot: page.getByText(/Nueva ejecución|New execution/i) })
       .first();
 
     await expect(selectedTabAfterNav).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });

@@ -1,11 +1,11 @@
 /**
  * latestPlan.ts — CORE contract for the "latest plan" (latest-plan) controller.
  *
- * The CORE defines what it needs from the premium latest-plan feature in the executions table:
+ * The CORE defines what it needs from the premium latest-plan feature in the execution history:
  * a few queries (is it the latest plan?, can it be pinned?) and the modal component to confirm
  * "pin as latest plan". The IMPLEMENTATION lives in `@/modules/latest-plan` and is injected by the
- * registry (§3.7 capability). Keeping the contract in core prevents `ProjectExecutionsTable`
- * from importing the premium module (neither the store nor the modal component).
+ * registry (§3.7 capability). Keeping the contract in core prevents the history from importing
+ * the premium module (neither the store nor the modal component).
  */
 import type { Component } from 'vue'
 

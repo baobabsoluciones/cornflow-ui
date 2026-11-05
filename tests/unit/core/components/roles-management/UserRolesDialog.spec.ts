@@ -1,19 +1,8 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount } from '@vue/test-utils'
-import { createVuetify } from 'vuetify'
+import { describe, test, expect, afterEach } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
 import { nextTick } from 'vue'
 import UserRolesDialog from '@cornflow-ui/core/components/roles-management/UserRolesDialog.vue'
-
-vi.mock('@cornflow-ui/core/components/core/CoreButton.vue', () => ({
-  default: {
-    name: 'CoreButton',
-    template:
-      '<button class="core-button" :data-text="text" :disabled="disabled" @click="$emit(\'click\')">{{ text }}</button>',
-    props: ['text', 'icon', 'variant', 'color', 'size', 'disabled'],
-    emits: ['click'],
-  },
-}))
 
 const user = (overrides: any = {}) => ({
   id: 1,
@@ -27,22 +16,25 @@ const user = (overrides: any = {}) => ({
   ...overrides,
 })
 
+// CoreDialog teleports to the body: the dialog is queried from the document.
 describe('UserRolesDialog', () => {
-  let vuetify: any
   let wrapper: any
 
-  beforeEach(() => {
-    vuetify = createVuetify()
-  })
-
   afterEach(() => {
-    if (wrapper) wrapper.unmount()
+    wrapper?.unmount()
+    wrapper = null
   })
 
-  const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } })
+  const i18n = createI18n({
+    legacy: false,
+    locale: 'en',
+    missingWarn: false,
+    fallbackWarn: false,
+    messages: { en: {} },
+  })
 
-  const createWrapper = (props = {}) =>
-    mount(UserRolesDialog, {
+  const createWrapper = async (props = {}) => {
+    wrapper = mount(UserRolesDialog, {
       props: {
         modelValue: true,
         user: user(),
@@ -53,133 +45,141 @@ describe('UserRolesDialog', () => {
         saving: false,
         ...props,
       },
-      global: {
-        plugins: [vuetify, i18n],
-        stubs: {
-          'v-dialog': {
-            template: '<div class="v-dialog"><slot /></div>',
-            props: ['modelValue'],
-            emits: ['update:modelValue'],
-          },
-          'v-card': { template: '<div><slot /></div>' },
-          'v-card-title': { template: '<div><slot /></div>' },
-          'v-card-text': { template: '<div><slot /></div>' },
-          'v-card-actions': { template: '<div><slot /></div>' },
-          'v-icon': { template: '<i><slot /></i>' },
-          'v-text-field': {
-            template:
-              '<input class="v-text-field" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
-            props: ['modelValue', 'label', 'type', 'rules'],
-            emits: ['update:modelValue'],
-          },
-          'v-select': {
-            template: '<div class="v-select" :data-items="JSON.stringify(items)"></div>',
-            props: ['modelValue', 'items', 'label', 'placeholder'],
-            emits: ['update:modelValue'],
-          },
-        },
-      },
+      global: { plugins: [i18n] },
+      attachTo: document.body,
     })
+    await flushPromises()
+    return wrapper
+  }
+
+  const dialog = () => document.body.querySelector('.core-dialog')!
+  const inputs = () => Array.from(dialog().querySelectorAll<HTMLInputElement>('input'))
+  const checkboxes = () => Array.from(dialog().querySelectorAll<HTMLButtonElement>('[role="checkbox"]'))
+  const button = (text: string) =>
+    Array.from(dialog().querySelectorAll<HTMLButtonElement>('.core-dialog__actions button')).find((b) =>
+      b.textContent?.includes(text),
+    )!
+
+  const type = async (field: HTMLInputElement, value: string) => {
+    field.value = value
+    field.dispatchEvent(new Event('input'))
+    await nextTick()
+  }
 
   describe('rendering', () => {
-    test('renders the user info pill with username', () => {
-      wrapper = createWrapper()
-      expect(wrapper.find('.user-info-pill').text()).toContain('jdoe')
+    test('shows the username in the user pill', async () => {
+      await createWrapper()
+      expect(dialog().querySelector('.user-info-pill')?.textContent).toContain('jdoe')
     })
 
-    test('seeds profile fields from the user', async () => {
-      wrapper = createWrapper()
-      await nextTick()
-      expect(wrapper.vm.firstName).toBe('John')
-      expect(wrapper.vm.lastName).toBe('Doe')
-      expect(wrapper.vm.email).toBe('john@example.com')
+    test('seeds the profile fields from the user', async () => {
+      await createWrapper()
+      expect(inputs().map((i) => i.value)).toEqual(['John', 'Doe', 'john@example.com'])
+      expect(inputs()[2].type).toBe('email')
     })
 
-    test('seeds empty email when user has no email', async () => {
-      wrapper = createWrapper({ user: user({ email: '' }) })
-      await nextTick()
-      expect(wrapper.vm.email).toBe('')
+    test('seeds an empty email when the user has none', async () => {
+      await createWrapper({ user: user({ email: '' }) })
+      expect(inputs()[2].value).toBe('')
     })
 
-    test('handles a null user gracefully', () => {
-      wrapper = createWrapper({ user: null })
-      expect(wrapper.find('.v-dialog').exists()).toBe(true)
+    test('handles a null user', async () => {
+      await createWrapper({ user: null })
+      expect(dialog()).not.toBeNull()
     })
   })
 
-  describe('roleItems computed', () => {
-    test('maps roles to value/text pairs', () => {
-      wrapper = createWrapper()
-      expect(wrapper.vm.roleItems).toEqual([
-        { value: 'admin', text: 'admin' },
-        { value: 'viewer', text: 'viewer' },
-      ])
+  describe('roles', () => {
+    test('shows a checkbox per role, ticked for the roles of the user', async () => {
+      await createWrapper()
+      expect(checkboxes().map((c) => c.textContent?.trim())).toEqual(['admin', 'viewer'])
+      expect(checkboxes().map((c) => c.getAttribute('aria-checked'))).toEqual(['true', 'false'])
     })
-  })
 
-  describe('selectedNames seeding', () => {
-    test('seeds selectedNames from the user role names on open', async () => {
-      wrapper = createWrapper({ user: user({ role_names: ['admin', 'viewer'] }) })
+    test('says there are no roles when the app has none', async () => {
+      await createWrapper({ roles: [] })
+      expect(checkboxes()).toHaveLength(0)
+      expect(dialog().querySelector('.user-roles__none')?.textContent).toContain(
+        'rolesManagement.noRoles',
+      )
+    })
+
+    test('ticking and unticking a role changes the selected names', async () => {
+      await createWrapper()
+      checkboxes()[1].click()
       await nextTick()
       expect(wrapper.vm.selectedNames).toEqual(['admin', 'viewer'])
+      checkboxes()[0].click()
+      await nextTick()
+      expect(wrapper.vm.selectedNames).toEqual(['viewer'])
     })
 
-    test('re-seeds when reopened for a different user', async () => {
-      wrapper = createWrapper({ modelValue: false, user: user({ id: 1, role_names: ['admin'] }) })
+    test('re-seeds the roles when reopened for a different user', async () => {
+      await createWrapper({ modelValue: false, user: user({ id: 1, role_names: ['admin'] }) })
       await wrapper.setProps({
         modelValue: true,
         user: user({ id: 2, role_names: ['viewer'] }),
       })
-      await nextTick()
+      await flushPromises()
       expect(wrapper.vm.selectedNames).toEqual(['viewer'])
+      expect(checkboxes().map((c) => c.getAttribute('aria-checked'))).toEqual(['false', 'true'])
+    })
+  })
+
+  describe('email validation', () => {
+    test('an invalid email marks the field, explains it and blocks saving', async () => {
+      await createWrapper()
+      await type(inputs()[2], 'not-an-email')
+      expect(dialog().querySelector('.core-text-field.is-invalid')).not.toBeNull()
+      const error = dialog().querySelector('.user-roles__error')!
+      expect(error.textContent).toContain('rolesManagement.invalidEmail')
+      expect(inputs()[2].getAttribute('aria-describedby')).toBe(error.id)
+      expect(button('rolesManagement.save').disabled).toBe(true)
+    })
+
+    test('an empty email is allowed', async () => {
+      await createWrapper()
+      await type(inputs()[2], '')
+      expect(dialog().querySelector('.user-roles__error')).toBeNull()
+      expect(button('rolesManagement.save').disabled).toBe(false)
     })
   })
 
   describe('save behaviour', () => {
-    test('emits save with the user, profile and selected role names', async () => {
-      wrapper = createWrapper()
+    test('emits save with the user, the trimmed profile and the selected role names', async () => {
+      await createWrapper()
+      await type(inputs()[0], '  Jane ')
+      checkboxes()[1].click()
       await nextTick()
-      wrapper.vm.selectedNames = ['admin', 'viewer']
-      wrapper.vm.onSave()
-      expect(wrapper.emitted('save')).toBeTruthy()
+      button('rolesManagement.save').click()
       const payload = wrapper.emitted('save')![0][0] as any
       expect(payload.user.id).toBe(1)
       expect(payload.profile).toEqual({
-        first_name: 'John',
+        first_name: 'Jane',
         last_name: 'Doe',
         email: 'john@example.com',
       })
       expect(payload.roleNames).toEqual(['admin', 'viewer'])
     })
 
-    test('does not emit save when user is null', () => {
-      wrapper = createWrapper({ user: null })
+    test('does not emit save when the user is null', async () => {
+      await createWrapper({ user: null })
       wrapper.vm.onSave()
       expect(wrapper.emitted('save')).toBeFalsy()
     })
 
-    test('save button disabled while saving', async () => {
-      wrapper = createWrapper({ saving: true })
-      await nextTick()
-      const saveBtn = wrapper.findAll('.core-button').find((b) => b.attributes('data-text') === 'rolesManagement.save')
-      expect(saveBtn!.attributes('disabled')).toBeDefined()
-    })
-
-    test('clicking save button emits save', async () => {
-      wrapper = createWrapper()
-      await nextTick()
-      const saveBtn = wrapper.findAll('.core-button').find((b) => b.attributes('data-text') === 'rolesManagement.save')
-      await saveBtn!.trigger('click')
-      expect(wrapper.emitted('save')).toBeTruthy()
+    test('the save button spins and is disabled while saving', async () => {
+      await createWrapper({ saving: true })
+      const save = button('rolesManagement.save')
+      expect(save.disabled).toBe(true)
+      expect(save.querySelector('.core-spinner')).not.toBeNull()
     })
   })
 
   describe('close behaviour', () => {
-    test('cancel button emits update:modelValue false', async () => {
-      wrapper = createWrapper()
-      await nextTick()
-      const cancelBtn = wrapper.findAll('.core-button').find((b) => b.attributes('data-text') === 'rolesManagement.cancel')
-      await cancelBtn!.trigger('click')
+    test('the cancel button emits update:modelValue false', async () => {
+      await createWrapper()
+      button('rolesManagement.cancel').click()
       expect(wrapper.emitted('update:modelValue')![0]).toEqual([false])
     })
   })

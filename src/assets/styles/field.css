@@ -1,0 +1,40 @@
+/*
+   The box of a form field. CoreTextField, CoreSelect, CoreMultiSelect and CoreSearchInput put
+   `core-field` on the element with the border: the border and background, the hover, the focus
+   (inside the box, or the box open), `is-invalid` and disabled (`is-disabled` or `:disabled`).
+   The size, padding and text stay with each field.
+*/
+.core-field {
+  box-sizing: border-box;
+  border: 1px solid var(--color-border-input);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+.core-field:hover {
+  border-color: var(--color-border-strong);
+}
+
+.core-field:focus-within,
+.core-field.is-open {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.core-field.is-invalid {
+  border-color: var(--color-danger);
+}
+
+.core-field.is-invalid:focus-within,
+.core-field.is-invalid.is-open {
+  box-shadow: 0 0 0 2px var(--color-danger-soft);
+}
+
+.core-field.is-disabled,
+.core-field:disabled {
+  background: var(--color-disabled);
+  opacity: 0.7;
+}

@@ -1,8 +1,5 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount } from '@vue/test-utils'
-import { createVuetify } from 'vuetify'
-import * as components from 'vuetify/components'
-import * as directives from 'vuetify/directives'
+import { describe, test, expect, vi, beforeEach } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
 
 const store = vi.hoisted(() => ({
@@ -25,96 +22,61 @@ vi.mock('@cornflow-ui/core/repositories/WarningsRepository', () => ({
 
 import WarningsPanel from '@cornflow-ui/core/components/WarningsPanel.vue'
 
-const vuetify = createVuetify({ components, directives })
+const i18n = createI18n({
+  legacy: false,
+  locale: 'en',
+  messages: {
+    en: { warnings: { title: 'Warnings', downloadAll: 'Download all', noWarnings: 'There are no warnings.' } },
+  },
+})
 
-const createWrapper = () => {
-  const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } })
-  return mount(WarningsPanel, {
-    global: {
-      plugins: [vuetify, i18n],
-      stubs: {
-        'v-tooltip': { template: '<div><slot name="activator" :props="{}" /><slot /></div>' },
-      },
-    },
-  })
-}
+/** The popover rendered inline, so the panel can be read. */
+const popover = { name: 'CorePopover', template: '<div><slot name="trigger" /><slot /></div>' }
+
+const mountPanel = () =>
+  mount(WarningsPanel, { global: { plugins: [i18n], stubs: { CorePopover: popover } } })
 
 describe('WarningsPanel', () => {
-  let wrapper: any
-
   beforeEach(() => {
-    vi.clearAllMocks()
     store.getWarnings = []
+    repoMock.downloadWarnings.mockReset().mockResolvedValue(undefined)
   })
 
-  afterEach(() => {
-    if (wrapper) wrapper.unmount()
+  test('without warnings, the bell is plain and the panel says there are none', () => {
+    const wrapper = mountPanel()
+    const trigger = wrapper.find('[data-testid="warnings-trigger"]')
+    expect(trigger.attributes('aria-label')).toBe('Warnings')
+    expect(trigger.classes()).not.toContain('has-warnings')
+    expect(wrapper.find('.warnings-panel__empty').text()).toBe('There are no warnings.')
+    expect(wrapper.find('[data-testid="warnings-download"]').exists()).toBe(false)
   })
 
-  describe('computed', () => {
-    test('hasWarnings is false when there are no warnings', () => {
-      wrapper = createWrapper()
-      expect(wrapper.vm.hasWarnings).toBe(false)
-      expect(wrapper.vm.warnings).toEqual([])
-    })
-
-    test('hasWarnings is true when warnings exist', () => {
-      store.getWarnings = [{ message: 'w1' }]
-      wrapper = createWrapper()
-      expect(wrapper.vm.hasWarnings).toBe(true)
-      expect(wrapper.vm.warnings).toHaveLength(1)
-    })
+  test('with warnings, the bell is marked and the panel lists them', () => {
+    store.getWarnings = [{ message: 'first' }, { message: 'second' }]
+    const wrapper = mountPanel()
+    expect(wrapper.find('[data-testid="warnings-trigger"]').classes()).toContain('has-warnings')
+    expect(wrapper.findAll('.warnings-panel__item').map((item) => item.text())).toEqual([
+      'first',
+      'second',
+    ])
   })
 
-  describe('toggle open state', () => {
-    test('toggles open when bell button is clicked', async () => {
-      wrapper = createWrapper()
-      expect(wrapper.vm.open).toBe(false)
-
-      await wrapper.find('button').trigger('click')
-      expect(wrapper.vm.open).toBe(true)
-
-      await wrapper.find('button').trigger('click')
-      expect(wrapper.vm.open).toBe(false)
-    })
-
-    test('renders the panel card when open', async () => {
-      wrapper = createWrapper()
-      wrapper.vm.open = true
-      await wrapper.vm.$nextTick()
-      expect(wrapper.find('.v-card').exists()).toBe(true)
-    })
-
-    test('shows the no-warnings message when empty and open', async () => {
-      wrapper = createWrapper()
-      wrapper.vm.open = true
-      await wrapper.vm.$nextTick()
-      expect(wrapper.text()).toContain('warnings.noWarnings')
-    })
-
-    test('renders one block per warning when warnings exist', async () => {
-      store.getWarnings = [{ message: 'first' }, { message: 'second' }]
-      wrapper = createWrapper()
-      wrapper.vm.open = true
-      await wrapper.vm.$nextTick()
-      expect(wrapper.text()).toContain('first')
-      expect(wrapper.text()).toContain('second')
-    })
+  test('"Download all" asks the repository for them', async () => {
+    store.getWarnings = [{ message: 'first' }]
+    const wrapper = mountPanel()
+    await wrapper.find('[data-testid="warnings-download"]').trigger('click')
+    await flushPromises()
+    expect(repoMock.downloadWarnings).toHaveBeenCalledTimes(1)
+    expect(wrapper.find('[data-testid="warnings-download"]').attributes('disabled')).toBeUndefined()
   })
 
-  describe('download', () => {
-    test('calls the repository and resets downloading on success', async () => {
-      wrapper = createWrapper()
-      await wrapper.vm.download()
-      expect(repoMock.downloadWarnings).toHaveBeenCalledTimes(1)
-      expect(wrapper.vm.downloading).toBe(false)
-    })
-
-    test('swallows errors and resets downloading flag', async () => {
-      repoMock.downloadWarnings.mockRejectedValueOnce(new Error('boom'))
-      wrapper = createWrapper()
-      await wrapper.vm.download()
-      expect(wrapper.vm.downloading).toBe(false)
-    })
+  test('a failed download leaves the panel usable', async () => {
+    store.getWarnings = [{ message: 'first' }]
+    repoMock.downloadWarnings.mockRejectedValue(new Error('network'))
+    const wrapper = mountPanel()
+    await wrapper.find('[data-testid="warnings-download"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="warnings-download"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.findAll('.warnings-panel__item')).toHaveLength(1)
   })
 })

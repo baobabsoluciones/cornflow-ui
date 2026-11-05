@@ -13,7 +13,7 @@ import * as fs from 'fs';
  * Tests for version history navigation
  * 
  * These tests verify that users can access the version history page
- * after logging in and by clicking on "Historial de versiones" in the left sidebar menu.
+ * after logging in and by clicking on "Historial de ejecuciones" in the left sidebar menu.
  * Also tests the three dots menu that allows navigating to the execution page.
  * Additionally tests that the backend API response has the correct data structure.
  */
@@ -63,27 +63,27 @@ test.describe('Version History Navigation', () => {
     expect(isHashRoute(page, PROTECTED_ROUTES)).toBe(true);
 
     // Verify the version history page title is displayed
-    // The title can be in different languages: "Historial de versiones" (ES), "Version history" (EN), "Historique des versions" (FR)
-    const pageTitle = page.getByRole('heading', { name: /Historial de versiones|Version history|Historique des versions/i });
+    // The title can be in different languages: "Historial de ejecuciones" (ES), "Execution history" (EN), "Historique des exécutions" (FR)
+    const pageTitle = page.getByRole('heading', { name: /Historial de ejecuciones|Execution history|Historique des exécutions/i });
     await pageTitle.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
     await expect(pageTitle).toBeVisible();
 
     // Verify the page description is displayed
     // The description mentions a summary of all versions
-    const pageDescription = page.getByText(/resumen de todas las versiones|summary of all the versions|résumé de toutes les versions/i);
+    const pageDescription = page.getByText(/ver su detalle y cargarla|see its detail and load it|voir son détail et la charger/i);
     await expect(pageDescription.first()).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
   });
 
-  test('should navigate to version history when clicking "Historial de versiones" in sidebar menu', async ({ page }) => {
-    // Find the "Historial de versiones" menu item in the sidebar
+  test('should navigate to version history when clicking "Historial de ejecuciones" in sidebar menu', async ({ page }) => {
+    // Find the "Historial de ejecuciones" menu item in the sidebar
     // The menu item is in the subpages section under "Executions" section
-    // It can be in different languages: "Historial de versiones" (ES), "Version history" (EN), "Historique des versions" (FR)
+    // It can be in different languages: "Historial de ejecuciones" (ES), "Execution history" (EN), "Historique des exécutions" (FR)
     // The menu item is a v-list-item within .subpages that contains the text
     // Strategy: Find by text first, if not visible (menu collapsed), find by icon or use more specific selector
     
     // Try to find the menu item by text (works when menu is expanded)
     let versionHistoryMenuItem = page.locator('.subpages .v-list-item').filter({ 
-      hasText: /Historial de versiones|Version history|Historique des versions/i 
+      hasText: /Historial de ejecuciones|Execution history|Historique des exécutions/i 
     }).first();
     
     // Check if the menu item is visible
@@ -127,16 +127,16 @@ test.describe('Version History Navigation', () => {
     expect(isHashRoute(page, PROTECTED_ROUTES)).toBe(true);
 
     // Verify the version history page title is displayed
-    const pageTitle = page.getByRole('heading', { name: /Historial de versiones|Version history|Historique des versions/i });
+    const pageTitle = page.getByRole('heading', { name: /Historial de ejecuciones|Execution history|Historique des exécutions/i });
     await pageTitle.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
     await expect(pageTitle).toBeVisible();
 
     // Verify the page description is displayed
-    const pageDescription = page.getByText(/resumen de todas las versiones|summary of all the versions|résumé de toutes les versions/i);
+    const pageDescription = page.getByText(/ver su detalle y cargarla|see its detail and load it|voir son détail et la charger/i);
     await expect(pageDescription.first()).toBeVisible({ timeout: TIMEOUTS.FORM_LOAD });
   });
 
-  test('should navigate to execution page when clicking "Crear nueva ejecución" from three dots menu', async ({ page }) => {
+  test('should navigate to execution page when clicking "Crear nueva ejecución" in the title', async ({ page }) => {
     // First, navigate to the version history page
     // Check if we're already on history-execution (it's the default view)
     const currentHash = getHashRoute(page);
@@ -160,52 +160,18 @@ test.describe('Version History Navigation', () => {
     const hash = getHashRoute(page);
     expect(hash).toContain('/history-execution');
 
-    // Find the three dots menu button (mdi-dots-vertical icon)
-    // The button is in the CoreTitleView component, rendered by CoreDropdownMenu
-    // It's a v-btn with icon="mdi-dots-vertical"
-    const threeDotsButton = page.locator('button:has([class*="mdi-dots-vertical"])').first();
-    
-    // Wait for the button to be visible
-    await threeDotsButton.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
-    await expect(threeDotsButton).toBeVisible();
-
-    // Click on the three dots button to open the dropdown menu
-    await threeDotsButton.click();
-
-    // Wait for the dropdown menu to appear
-    // The menu is a v-menu that contains a v-list
-    const dropdownMenu = page.locator('.v-menu .v-list, .v-overlay__content .v-list').first();
-    await dropdownMenu.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
-    await expect(dropdownMenu).toBeVisible();
-
-    // Find the "Crear nueva ejecución" menu item
-    // The text can be in different languages:
+    // The "create new execution" button sits in the title of the history.
+    // Its text can be in different languages:
     // - "Crear nueva ejecución" (ES)
     // - "Create new execution" (EN)
     // - "Créer une nouvelle exécution" (FR)
-    // The item has an icon mdi-plus and is a v-list-item
-    const createExecutionMenuItem = page.locator('.v-list-item').filter({
-      hasText: /Crear nueva ejecución|Create new execution|Créer une nouvelle exécution/i
-    }).first();
+    const createExecutionButton = page.locator('[data-testid="history-create-execution"]');
+    await createExecutionButton.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
+    await expect(createExecutionButton).toHaveText(
+      /Crear nueva ejecución|Create new execution|Créer une nouvelle exécution/i
+    );
 
-    // Alternative: Find by icon if text search doesn't work
-    // The item should have mdi-plus icon
-    let menuItem = createExecutionMenuItem;
-    const isMenuItemVisible = await createExecutionMenuItem.isVisible().catch(() => false);
-    
-    if (!isMenuItemVisible) {
-      // Try to find by icon (mdi-plus) within the menu
-      menuItem = dropdownMenu.locator('.v-list-item').filter({
-        has: page.locator('[class*="mdi-plus"]')
-      }).first();
-    }
-
-    // Wait for the menu item to be visible
-    await menuItem.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
-    await expect(menuItem).toBeVisible();
-
-    // Click on the "Crear nueva ejecución" menu item
-    await menuItem.click();
+    await createExecutionButton.click();
 
     // Wait for navigation to project-execution route
     await page.waitForURL(
@@ -578,7 +544,7 @@ test.describe('Version History Navigation', () => {
     expect(routeHash).toContain('/history-execution');
 
     // Wait for the page to load completely
-    const pageTitle = page.getByRole('heading', { name: /Historial de versiones|Version history|Historique des versions/i });
+    const pageTitle = page.getByRole('heading', { name: /Historial de ejecuciones|Execution history|Historique des exécutions/i });
     await pageTitle.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
 
     // Wait for MPanelData to render the checkboxes
@@ -830,7 +796,7 @@ test.describe('Version History Navigation', () => {
     expect(routeHash).toContain('/history-execution');
 
     // Wait for the page to load completely
-    const pageTitle = page.getByRole('heading', { name: /Historial de versiones|Version history|Historique des versions/i });
+    const pageTitle = page.getByRole('heading', { name: /Historial de ejecuciones|Execution history|Historique des exécutions/i });
     await pageTitle.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
 
     // Wait for MPanelData to render the checkboxes
@@ -1052,7 +1018,7 @@ test.describe('Version History Navigation', () => {
     expect(routeHash).toContain('/history-execution');
 
     // Wait for the page to load completely
-    const pageTitle = page.getByRole('heading', { name: /Historial de versiones|Version history|Historique des versions/i });
+    const pageTitle = page.getByRole('heading', { name: /Historial de ejecuciones|Execution history|Historique des exécutions/i });
     await pageTitle.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
 
     // Wait for MPanelData to render the checkboxes
@@ -1274,7 +1240,7 @@ test.describe('Version History Navigation', () => {
     expect(routeHash).toContain('/history-execution');
 
     // Wait for the page to load completely
-    const pageTitle = page.getByRole('heading', { name: /Historial de versiones|Version history|Historique des versions/i });
+    const pageTitle = page.getByRole('heading', { name: /Historial de ejecuciones|Execution history|Historique des exécutions/i });
     await pageTitle.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
 
     // Wait for MPanelData to render the checkboxes
@@ -1499,7 +1465,7 @@ test.describe('Version History Navigation', () => {
     expect(routeHash).toContain('/history-execution');
 
     // Wait for the page to load completely
-    const pageTitle = page.getByRole('heading', { name: /Historial de versiones|Version history|Historique des versions/i });
+    const pageTitle = page.getByRole('heading', { name: /Historial de ejecuciones|Execution history|Historique des exécutions/i });
     await pageTitle.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
 
     // Wait for MPanelData to render the checkboxes
@@ -2102,7 +2068,7 @@ test.describe('Version History Navigation', () => {
     expect(routeHash).toContain('/history-execution');
 
     // Wait for the page to load completely
-    const pageTitle = page.getByRole('heading', { name: /Historial de versiones|Version history|Historique des versions/i });
+    const pageTitle = page.getByRole('heading', { name: /Historial de ejecuciones|Execution history|Historique des exécutions/i });
     await pageTitle.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
 
     // Wait for the table to be rendered
@@ -2662,7 +2628,7 @@ test.describe('Version History Navigation', () => {
         console.log(`Verified tab contains execution name: "${executionName}"`);
       }
 
-      // Verify the expected number of execution tabs (excluding "Añadir nuevo" or similar add buttons)
+      // Verify the expected number of execution tabs (excluding "Nueva ejecución" or similar add buttons)
       let executionTabCount = 0;
       for (let i = 0; i < tabCount; i++) {
         const tabText = await allTabs.nth(i).textContent().catch(() => '');
@@ -2802,7 +2768,7 @@ test.describe('Version History Navigation', () => {
     expect(routeHash).toContain('/history-execution');
 
     // Wait for the page to load completely
-    const pageTitle = page.getByRole('heading', { name: /Historial de versiones|Version history|Historique des versions/i });
+    const pageTitle = page.getByRole('heading', { name: /Historial de ejecuciones|Execution history|Historique des exécutions/i });
     await pageTitle.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
 
     // Wait for the table to be rendered
@@ -2956,7 +2922,7 @@ test.describe('Version History Navigation', () => {
     expect(routeHash).toContain('/history-execution');
 
     // Wait for the page to load completely
-    const pageTitle = page.getByRole('heading', { name: /Historial de versiones|Version history|Historique des versions/i });
+    const pageTitle = page.getByRole('heading', { name: /Historial de ejecuciones|Execution history|Historique des exécutions/i });
     await pageTitle.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
 
     // Wait for the table to be rendered
@@ -3178,7 +3144,7 @@ test.describe('Version History Navigation', () => {
     expect(routeHash).toContain('/history-execution');
 
     // Wait for the page to load completely
-    const pageTitle = page.getByRole('heading', { name: /Historial de versiones|Version history|Historique des versions/i });
+    const pageTitle = page.getByRole('heading', { name: /Historial de ejecuciones|Execution history|Historique des exécutions/i });
     await pageTitle.waitFor({ state: 'visible', timeout: TIMEOUTS.FORM_LOAD });
 
     // Wait for the table to be rendered

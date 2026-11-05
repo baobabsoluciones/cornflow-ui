@@ -1,10 +1,10 @@
 /**
  * etlFlow.ts — CORE contract for the external ETL review flow.
  *
- * The CORE defines here the SHAPE of the ETL flow controller that the wizard components
+ * The CORE defines here the SHAPE of the ETL flow controller that the create-execution components
  * consume (via the nullable `externalEtlFlow` prop). The IMPLEMENTATION is premium
  * (`@/modules/etl/useExternalEtlFlow`) and is injected by the registry (§3.7 capability).
- * Keeping these types in core prevents the wizard components from importing the premium module.
+ * Keeping these types in core prevents those components from importing the premium module.
  */
 import type { ComputedRef } from 'vue'
 
@@ -48,13 +48,16 @@ export interface EtlUpdateResult {
 
 /**
  * ETL flow controller: returned by the premium composable `useExternalEtlFlow` and consumed by
- * the wizard (through `useEtlFlowController`, which falls back to an inert implementation without ETL).
+ * the create-execution screen (through `useEtlFlowController`, which falls back to an inert
+ * implementation without ETL).
  */
 export interface ExternalEtlFlowController {
   state: ExternalEtlFlowState
   isActive: ComputedRef<boolean>
   initializeFromEtlResponse: (data: Record<string, any>) => void
+  /** A table the user edited: one loaded from the DB becomes `edited_from_db`, fixed. */
   markTableEdited: (tableName: string) => void
+  /** A workbook the user uploaded replaces the data: every table `reuploaded`, fixed; every parameter null. */
   markAllReuploaded: () => void
   setTableFixed: (tableName: string, value: boolean | null) => void
   setParameterFixed: (paramKey: string, value: boolean | null) => void

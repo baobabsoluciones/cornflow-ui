@@ -1,142 +1,144 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount } from '@vue/test-utils'
-import { createVuetify } from 'vuetify'
+import { describe, test, expect, afterEach } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
 import { nextTick } from 'vue'
 import RoleFormDialog from '@cornflow-ui/core/components/roles-management/RoleFormDialog.vue'
 
-vi.mock('@cornflow-ui/core/components/core/CoreButton.vue', () => ({
-  default: {
-    name: 'CoreButton',
-    template:
-      '<button class="core-button" :data-text="text" :disabled="disabled" @click="$emit(\'click\')">{{ text }}</button>',
-    props: ['text', 'icon', 'variant', 'color', 'size', 'disabled'],
-    emits: ['click'],
-  },
-}))
-
+// CoreDialog teleports to the body: the dialog is queried from the document.
 describe('RoleFormDialog', () => {
-  let vuetify: any
   let wrapper: any
 
-  beforeEach(() => {
-    vuetify = createVuetify()
-  })
-
   afterEach(() => {
-    if (wrapper) wrapper.unmount()
+    wrapper?.unmount()
+    wrapper = null
   })
 
-  const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } })
+  const i18n = createI18n({
+    legacy: false,
+    locale: 'en',
+    missingWarn: false,
+    fallbackWarn: false,
+    messages: { en: {} },
+  })
 
-  const createWrapper = (props = {}) =>
-    mount(RoleFormDialog, {
+  const createWrapper = async (props = {}) => {
+    wrapper = mount(RoleFormDialog, {
       props: { modelValue: true, role: null, saving: false, ...props },
-      global: {
-        plugins: [vuetify, i18n],
-        stubs: {
-          'v-dialog': {
-            template: '<div class="v-dialog"><slot /></div>',
-            props: ['modelValue'],
-            emits: ['update:modelValue'],
-          },
-          'v-card': { template: '<div><slot /></div>' },
-          'v-card-title': { template: '<div><slot /></div>' },
-          'v-card-text': { template: '<div><slot /></div>' },
-          'v-card-actions': { template: '<div><slot /></div>' },
-          'v-icon': { template: '<i><slot /></i>' },
-          'v-text-field': {
-            template:
-              '<input class="v-text-field" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" @keyup.enter="$emit(\'keyup\', $event)" />',
-            props: ['modelValue', 'label', 'rules'],
-            emits: ['update:modelValue', 'keyup'],
-          },
-        },
-      },
+      global: { plugins: [i18n] },
+      attachTo: document.body,
     })
+    await flushPromises()
+    return wrapper
+  }
+
+  const dialog = () => document.body.querySelector('.core-dialog')
+  const input = () => document.body.querySelector<HTMLInputElement>('.core-dialog input')!
+  const button = (text: string) =>
+    Array.from(document.body.querySelectorAll<HTMLButtonElement>('.core-dialog__actions button')).find(
+      (b) => b.textContent?.includes(text),
+    )!
+
+  const type = async (value: string) => {
+    input().value = value
+    input().dispatchEvent(new Event('input'))
+    await nextTick()
+  }
 
   describe('create vs edit mode', () => {
     test('opens in create mode with an empty form', async () => {
-      wrapper = createWrapper({ role: null })
-      await nextTick()
-      expect(wrapper.vm.isEdit).toBe(false)
-      expect(wrapper.vm.form.name).toBe('')
-      expect(wrapper.text()).toContain('rolesManagement.addRole')
+      await createWrapper({ role: null })
+      expect(dialog()?.textContent).toContain('rolesManagement.addRole')
+      expect(dialog()?.querySelector('.mdi-plus-circle-outline')).not.toBeNull()
+      expect(input().value).toBe('')
     })
 
     test('opens in edit mode pre-filled with the role values', async () => {
-      wrapper = createWrapper({ role: { id: 7, name: 'admin' } })
-      await nextTick()
-      expect(wrapper.vm.isEdit).toBe(true)
-      expect(wrapper.vm.form).toEqual({ id: 7, name: 'admin' })
-      expect(wrapper.text()).toContain('rolesManagement.editRole')
+      await createWrapper({ role: { id: 7, name: 'admin' } })
+      expect(dialog()?.textContent).toContain('rolesManagement.editRole')
+      expect(dialog()?.querySelector('.mdi-pencil-outline')).not.toBeNull()
+      expect(input().value).toBe('admin')
+    })
+
+    test('labels the field with the role name', async () => {
+      await createWrapper()
+      expect(input().closest('label')?.textContent).toContain('rolesManagement.roleName')
     })
 
     test('re-seeds the form each time the dialog reopens', async () => {
-      wrapper = createWrapper({ modelValue: false, role: null })
+      await createWrapper({ modelValue: false, role: null })
       await wrapper.setProps({ modelValue: true, role: { id: 3, name: 'planner' } })
-      await nextTick()
+      await flushPromises()
       expect(wrapper.vm.isEdit).toBe(true)
-      expect(wrapper.vm.form.name).toBe('planner')
+      expect(input().value).toBe('planner')
     })
 
-    test('does nothing when modelValue toggles to closed', async () => {
-      wrapper = createWrapper({ modelValue: true, role: { id: 1, name: 'admin' } })
-      await nextTick()
+    test('keeps the form as it was when the dialog closes', async () => {
+      await createWrapper({ modelValue: true, role: { id: 1, name: 'admin' } })
       await wrapper.setProps({ modelValue: false })
       await nextTick()
-      // form remains as last seeded (watcher returns early when not open)
       expect(wrapper.vm.form.name).toBe('admin')
     })
   })
 
   describe('save behaviour', () => {
-    test('emits save with trimmed name', async () => {
-      wrapper = createWrapper({ role: null })
-      wrapper.vm.form.name = '  newRole  '
-      wrapper.vm.onSave()
-      expect(wrapper.emitted('save')).toBeTruthy()
-      expect(wrapper.emitted('save')![0][0]).toEqual({ name: 'newRole' })
+    test('emits save with the trimmed name', async () => {
+      await createWrapper({ role: null })
+      await type('  Planner  ')
+      button('rolesManagement.save').click()
+      expect(wrapper.emitted('save')![0][0]).toEqual({ name: 'Planner' })
     })
 
-    test('does not emit save when name is blank', () => {
-      wrapper = createWrapper({ role: null })
+    test('emits save with the id when editing', async () => {
+      await createWrapper({ role: { id: 4, name: 'viewer' } })
+      await type('Reader')
+      button('rolesManagement.save').click()
+      expect(wrapper.emitted('save')![0][0]).toEqual({ id: 4, name: 'Reader' })
+    })
+
+    test('the save button is disabled while the name is blank', async () => {
+      await createWrapper({ role: null })
+      expect(button('rolesManagement.save').disabled).toBe(true)
+      await type('   ')
+      expect(button('rolesManagement.save').disabled).toBe(true)
+      await type('Planner')
+      expect(button('rolesManagement.save').disabled).toBe(false)
+    })
+
+    test('does not emit save when the name is blank', async () => {
+      await createWrapper({ role: null })
       wrapper.vm.form.name = '   '
       wrapper.vm.onSave()
       expect(wrapper.emitted('save')).toBeFalsy()
     })
 
-    test('save button is disabled when name is empty', async () => {
-      wrapper = createWrapper({ role: null })
-      await nextTick()
-      const saveBtn = wrapper.findAll('.core-button').find((b) => b.attributes('data-text') === 'rolesManagement.save')
-      expect(saveBtn!.attributes('disabled')).toBeDefined()
+    test('the save button spins and is disabled while saving', async () => {
+      await createWrapper({ role: { id: 1, name: 'admin' }, saving: true })
+      const save = button('rolesManagement.save')
+      expect(save.disabled).toBe(true)
+      expect(save.querySelector('.core-spinner')).not.toBeNull()
     })
 
-    test('save button is disabled while saving', async () => {
-      wrapper = createWrapper({ role: { id: 1, name: 'admin' }, saving: true })
-      await nextTick()
-      const saveBtn = wrapper.findAll('.core-button').find((b) => b.attributes('data-text') === 'rolesManagement.save')
-      expect(saveBtn!.attributes('disabled')).toBeDefined()
-    })
-
-    test('enter key on text field triggers onSave', async () => {
-      wrapper = createWrapper({ role: { id: 1, name: 'admin' } })
-      await nextTick()
-      await wrapper.find('.v-text-field').trigger('keyup.enter')
-      expect(wrapper.emitted('save')).toBeTruthy()
+    test('Enter in the field saves', async () => {
+      await createWrapper({ role: { id: 1, name: 'admin' } })
+      input().dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter' }))
       expect(wrapper.emitted('save')![0][0]).toEqual({ id: 1, name: 'admin' })
     })
   })
 
   describe('close behaviour', () => {
-    test('cancel button emits update:modelValue false', async () => {
-      wrapper = createWrapper()
-      await nextTick()
-      const cancelBtn = wrapper.findAll('.core-button').find((b) => b.attributes('data-text') === 'rolesManagement.cancel')
-      await cancelBtn!.trigger('click')
-      expect(wrapper.emitted('update:modelValue')).toBeTruthy()
+    test('the cancel button emits update:modelValue false', async () => {
+      await createWrapper()
+      button('rolesManagement.cancel').click()
       expect(wrapper.emitted('update:modelValue')![0]).toEqual([false])
+    })
+
+    test('Escape does not close it', async () => {
+      await createWrapper()
+      document.body
+        .querySelector('[role="dialog"]')!
+        .dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+      await flushPromises()
+      expect(wrapper.emitted('update:modelValue')).toBeFalsy()
     })
   })
 })

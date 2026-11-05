@@ -14,7 +14,6 @@ vi.mock('@cornflow-ui/core/utils/i18nUtils', () => ({
 vi.mock('@cornflow-ui/core/utils/tableFilterUtils', () => ({
   generateHeadersFromData: (rows: any[]) =>
     Object.keys(rows[0] || {}).map((k) => ({ key: k, value: k })),
-  generateSecureId: (seed: string) => `id_${seed}`,
   generateFrontendRowId: (tableKey: string, index?: number) =>
     `id_${index === undefined ? tableKey : `${tableKey}_${index}`}`,
 }))
@@ -24,7 +23,6 @@ import {
   formatTitle,
   createParameterTableVertical,
   createObjectTableObject,
-  createValidationTables,
   createTableObject,
   injectParameterSwitchColumns,
 } from '@cornflow-ui/core/utils/executionTableBuilders'
@@ -129,41 +127,6 @@ describe('createObjectTableObject', () => {
     expect(table.headers.map((h: any) => h.key)).toEqual(['selection', 'x'])
     expect(table.title).toBe('Obj') // formatTitle('obj')
     expect(table.items[0]).toEqual({ id: OBJECT_TABLE_ROW_ID, x: 1 })
-  })
-})
-
-describe('createValidationTables', () => {
-  const identity = (items: any[]) => items
-
-  test('builds a table from a primitive array (value column)', () => {
-    const execution = { instance: { dataChecks: { errors: ['e1', 'e2'] } } }
-    const tables = createValidationTables(execution, { applyFilters: identity, checksSchema: {} })
-    expect(tables).toHaveLength(1)
-    const tbl = tables[0]
-    expect(tbl.key).toBe('validation_errors')
-    expect(tbl.isValidationTable).toBe(true)
-    expect(tbl.headers.map((h: any) => h.key)).toEqual(['id', 'value'])
-    expect(tbl.items).toHaveLength(2)
-    expect(tbl.items[0].value).toBe('e1')
-  })
-
-  test('builds a table from an object array and flags warnings via checksSchema', () => {
-    const execution = { instance: { dataChecks: { rows: [{ a: 1 }, { a: 2 }] } } }
-    const checksSchema = { properties: { rows: { is_warning: true } } }
-    const tables = createValidationTables(execution, { applyFilters: identity, checksSchema })
-    expect(tables[0].isWarning).toBe(true)
-    // id header + data headers (id/selection filtered out of generated)
-    expect(tables[0].headers[0].key).toBe('id')
-    expect(tables[0].items).toHaveLength(2)
-  })
-
-  test('skips empty / non-array check entries', () => {
-    const execution = { instance: { dataChecks: { empty: [], notArray: { x: 1 } } } }
-    expect(createValidationTables(execution, { applyFilters: identity, checksSchema: {} })).toEqual([])
-  })
-
-  test('tolerates missing dataChecks', () => {
-    expect(createValidationTables({ instance: {} }, { applyFilters: identity, checksSchema: {} })).toEqual([])
   })
 })
 

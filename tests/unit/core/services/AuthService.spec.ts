@@ -73,48 +73,6 @@ describe('AuthService', () => {
     })
   })
 
-  describe('signup', () => {
-    test('successful signup returns true', async () => {
-      const mockResponse = {
-        status: 201,
-        content: {}
-      }
-
-      const { default: client } = await import('@cornflow-ui/core/api/Api')
-      vi.mocked(client.post).mockResolvedValue(mockResponse)
-
-      const result = await AuthService.signup('test@example.com', 'testuser', 'password123')
-
-      expect(client.post).toHaveBeenCalledWith(
-        '/signup/',
-        { email: 'test@example.com', username: 'testuser', password: 'password123' },
-        { 'Content-Type': 'application/json' }
-      )
-      expect(result).toBe(true)
-    })
-
-    test('failed signup returns false', async () => {
-      const mockResponse = {
-        status: 400,
-        content: {}
-      }
-
-      const { default: client } = await import('@cornflow-ui/core/api/Api')
-      vi.mocked(client.post).mockResolvedValue(mockResponse)
-
-      const result = await AuthService.signup('test@example.com', 'testuser', 'password123')
-
-      expect(result).toBe(false)
-    })
-
-    test('handles API errors gracefully', async () => {
-      const { default: client } = await import('@cornflow-ui/core/api/Api')
-      vi.mocked(client.post).mockRejectedValue(new Error('Network error'))
-
-      await expect(AuthService.signup('test@example.com', 'testuser', 'password123')).rejects.toThrow('Network error')
-    })
-  })
-
   describe('logout', () => {
     test('clears authentication data from session storage', () => {
       // Set up initial state

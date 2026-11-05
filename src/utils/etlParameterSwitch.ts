@@ -6,7 +6,8 @@
  * - {@link resolveEtlParamKey} derives the `parameterSwitches` key for a cell.
  * - {@link resolveReuploadedParameterSwitchValue} maps a reuploaded-table
  *   toggle to its `parameterSwitches` value.
- * - {@link applyEtlParameterSwitch} writes the resolved value onto the flow.
+ * - {@link etlParameterSwitchValue} gives the value a switch column toggle sets.
+ * - {@link fromDbParameterSwitchKey} finds the "from DB" switch a manual edit fixes.
  */
 
 /**
@@ -57,28 +58,18 @@ export function resolveReuploadedParameterSwitchValue(
 }
 
 /**
- * Writes the resolved switch value onto `etlFlow.parameterSwitches[paramKey]`.
- * For non-reuploaded tables the single "From DB" toggle maps ON -> false
- * (from DB) and OFF -> true (fixed). For reuploaded tables the value is
- * derived from the specific field via {@link resolveReuploadedParameterSwitchValue}.
+ * The `parameterSwitches` value a toggle in the switch columns sets. For non-reuploaded tables
+ * the single "From DB" toggle maps ON -> false (from DB) and OFF -> true (fixed). For reuploaded
+ * tables the value is derived from the specific field via
+ * {@link resolveReuploadedParameterSwitchValue}; `undefined` for unknown field keys.
  */
-export function applyEtlParameterSwitch(
-  etlFlow: any,
-  paramKey: string,
+export function etlParameterSwitchValue(
   fieldKey: string,
   newValue: any,
   isReuploaded: boolean,
-): void {
-  if (!isReuploaded) {
-    // Single column: toggling "From DB" switch
-    // ON = from DB (false in parameterSwitches), OFF = fixed (true in parameterSwitches)
-    etlFlow.parameterSwitches[paramKey] = !newValue
-    return
-  }
-
-  const value = resolveReuploadedParameterSwitchValue(fieldKey, newValue)
-  if (value === undefined) return
-  etlFlow.parameterSwitches[paramKey] = value
+): boolean | null | undefined {
+  if (!isReuploaded) return !newValue
+  return resolveReuploadedParameterSwitchValue(fieldKey, newValue)
 }
 
 /**
@@ -144,35 +135,14 @@ export function resolveEtlParameterSwitchKey(
 }
 
 /**
- * After a manual value edit, flips the matching "from DB" switch (stored as
- * `false`) back to fixed (`true`). Resolves the key first; if that fails,
- * falls back to the first matching normalized-table + row candidate.
+ * The "from DB" switch (stored as `false`) a manual value edit turns to fixed. Null when the
+ * parameter has no switch ({@link resolveEtlParameterSwitchKey}) or it is not from DB.
  */
-export function turnOffEtlParameterFromDbSwitchAfterManualValueEdit(
+export function fromDbParameterSwitchKey(
   flow: { parameterSwitches: Record<string, any> },
   tableKey: string,
   rowId: string | number,
-): void {
-  const switches = flow.parameterSwitches
+): string | null {
   const key = resolveEtlParameterSwitchKey(flow, tableKey, rowId)
-  if (key != null) {
-    if (switches[key] === false) switches[key] = true
-    return
-  }
-  const rowKey = String(rowId)
-  const rowKeyLower = rowKey.toLowerCase()
-  const normTable = normalizeTableNameForLookup(tableKey)
-  const candidates = Object.keys(switches).filter((k) => {
-    const dot = k.lastIndexOf('.')
-    if (dot < 0) return false
-    const rk = k.slice(dot + 1)
-    if (rk !== rowKey && rk.toLowerCase() !== rowKeyLower) return false
-    return normalizeTableNameForLookup(k.slice(0, dot)) === normTable
-  })
-  for (const k of candidates) {
-    if (switches[k] === false) {
-      switches[k] = true
-      return
-    }
-  }
+  return key != null && flow.parameterSwitches[key] === false ? key : null
 }

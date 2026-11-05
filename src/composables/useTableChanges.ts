@@ -4,6 +4,7 @@
  * across different tables before reviewing and saving them all at once.
  */
 import { ref, computed, readonly } from 'vue'
+import { isTempId, newTempId } from '@cornflow-ui/core/utils/tableCreateDependencies'
 
 // Type definitions
 export interface FieldChange {
@@ -36,6 +37,13 @@ export interface ChangesSummary {
   oldValue: any
   newValue: any
   timestamp: number
+}
+
+export interface TableChangesSnapshot {
+  pendingChanges: AllChanges
+  tableTitles: Record<string, string>
+  pendingCreates: Record<string, Array<{ tempId: string; data: Record<string, any> }>>
+  pendingDeletes: Record<string, Array<{ rowId: string; data?: Record<string, any> }>>
 }
 
 // Singleton state to share across components
@@ -282,6 +290,25 @@ export function useTableChanges() {
     pendingDeletes.value = {}
   }
 
+  /** Plain copy of every pending edit, create and delete, to keep them aside (e.g. a draft). */
+  const snapshotState = (): TableChangesSnapshot =>
+    JSON.parse(
+      JSON.stringify({
+        pendingChanges: pendingChanges.value,
+        tableTitles: tableTitles.value,
+        pendingCreates: pendingCreates.value,
+        pendingDeletes: pendingDeletes.value,
+      }),
+    )
+
+  /** Puts back what `snapshotState` returned, replacing whatever is pending now. */
+  const restoreState = (snapshot: TableChangesSnapshot | null | undefined) => {
+    pendingChanges.value = snapshot?.pendingChanges ?? {}
+    tableTitles.value = snapshot?.tableTitles ?? {}
+    pendingCreates.value = snapshot?.pendingCreates ?? {}
+    pendingDeletes.value = snapshot?.pendingDeletes ?? {}
+  }
+
   /**
    * Record a pending create (new row). Not sent to API until save.
    * Returns the tempId assigned to the row.
@@ -295,7 +322,7 @@ export function useTableChanges() {
       pendingCreates.value[tableKey] = []
     }
     const index = pendingCreates.value[tableKey].length
-    const tempId = `create-${tableKey}-${index}-${Date.now()}`
+    const tempId = newTempId(tableKey, index)
     pendingCreates.value[tableKey].push({ tempId, data: { ...rowData } })
     if (tableTitle) {
       tableTitles.value[tableKey] = tableTitle
@@ -427,8 +454,7 @@ export function useTableChanges() {
     if (deletedIds.includes(String(item.id))) return 'row-deleted'
     const creates = pendingCreates.value[tableKey] ?? []
     if (creates.some((c) => c.tempId === item.id)) return 'row-new'
-    if (item.id != null && String(item.id).startsWith('create-'))
-      return 'row-new'
+    if (isTempId(item.id)) return 'row-new'
     return ''
   }
 
@@ -718,6 +744,8 @@ export function useTableChanges() {
     revertRowChanges,
     revertTableChanges,
     clearAllChanges,
+    snapshotState,
+    restoreState,
     getChangesForTable,
     getAllChanges,
     isCellModified,

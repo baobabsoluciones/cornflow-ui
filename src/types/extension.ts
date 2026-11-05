@@ -131,15 +131,6 @@ export interface PremiumGlobalComponent {
 /** §3.4 i18n messages per language, merged over the core's (precedence: app > premium > core). */
 export type PremiumLocaleMessages = Record<string /* lang */, Record<string, unknown>>
 
-/** §3.5 Injectable step of the execution-creation wizard (e.g. ETL in load-instance). DRAFT. */
-export interface PremiumWizardStep {
-  wizard: 'project-execution'
-  anchor: { step: 'load-instance'; position: 'replace' | 'augment' }
-  component: Component
-  isEnabled?: (ctx: ExtensionContext) => boolean
-  /** Advance blocking (e.g. ETL requires loading data before continuing). */
-  blocksAdvance?: (ctx: ExtensionContext) => boolean
-}
 
 /** §3.6 Contribution to a named zone of a core view (declarative registration, not Vue slots). */
 export interface PremiumViewSlot {
@@ -233,8 +224,6 @@ export interface PremiumModule {
   globalComponents?: PremiumGlobalComponent[]
   /** §3.4 i18n messages per language. */
   locales?: PremiumLocaleMessages
-  /** §3.5 Injectable wizard steps. */
-  wizardSteps?: PremiumWizardStep[]
   /** §3.6 Contributions to core view zones. */
   viewSlots?: PremiumViewSlot[]
   /**

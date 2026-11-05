@@ -8,7 +8,6 @@
     "useHashMode": false,
     "defaultLanguage": "en",
     "isDeveloperMode": false,
-    "enableSignup": false,
     "cognito": {
       "region": "your-region",
       "user_pool_id": "your-user-pool-id",

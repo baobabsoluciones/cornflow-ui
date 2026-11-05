@@ -13,7 +13,6 @@ vi.mock('@cornflow-ui/core/stores/general', () => ({
 }))
 
 vi.mock('@cornflow-ui/core/utils/tableFilterUtils', () => ({
-  getFilterFieldTypeFromSchemaProperty: vi.fn(() => 'string'),
 }))
 
 // schemaUtils — light fakes returning controllable data.

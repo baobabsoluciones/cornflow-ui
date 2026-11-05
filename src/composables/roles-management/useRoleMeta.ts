@@ -1,5 +1,5 @@
 /**
- * Presentation helpers for roles: icon, color, description and permissions
+ * Presentation helpers for roles: icon, tone, description and permissions
  * derived from a role name. Visuals come from a static mapping (presets);
  * description and permissions come from i18n so they translate per locale.
  *
@@ -8,26 +8,26 @@
  */
 
 import { useI18n } from 'vue-i18n'
+import type { CoreTone } from '@cornflow-ui/core/types/ui'
 import type { Role } from './types'
 
-const ROLE_PRESETS: Record<string, { icon: string; color: string }> = {
-  admin: { icon: 'mdi-shield-crown-outline', color: 'primary' },
-  planner: { icon: 'mdi-clipboard-edit-outline', color: 'info' },
-  viewer: { icon: 'mdi-eye-outline', color: 'success' },
-  service: { icon: 'mdi-cog-outline', color: 'warning' },
-  ie_viewer: { icon: 'mdi-eye-check-outline', color: 'secondary' },
+const ROLE_PRESETS: Record<string, { icon: string; tone: CoreTone }> = {
+  admin: { icon: 'mdi-shield-crown-outline', tone: 'primary' },
+  planner: { icon: 'mdi-clipboard-edit-outline', tone: 'info' },
+  viewer: { icon: 'mdi-eye-outline', tone: 'success' },
+  service: { icon: 'mdi-cog-outline', tone: 'warning' },
 }
 
-const ROLE_PRESET_FALLBACK = {
+const ROLE_PRESET_FALLBACK: { icon: string; tone: CoreTone } = {
   icon: 'mdi-shield-account-outline',
-  color: 'primary',
+  tone: 'primary',
 }
 
 function rolePresetKey(roleName: string): string {
   return roleName?.toLowerCase().replaceAll(/[\s-]+/g, '_') ?? ''
 }
 
-function preset(roleName: string): { icon: string; color: string } {
+function preset(roleName: string): { icon: string; tone: CoreTone } {
   return ROLE_PRESETS[rolePresetKey(roleName)] ?? ROLE_PRESET_FALLBACK
 }
 
@@ -35,12 +35,13 @@ function iconFor(role: Role): string {
   return preset(role.name).icon
 }
 
-function colorFor(role: Role): string {
-  return preset(role.name).color
+/** Tone of the core components for a role name. */
+function toneForName(name: string): CoreTone {
+  return preset(name).tone
 }
 
-function colorForName(name: string): string {
-  return preset(name).color
+function toneFor(role: Role): CoreTone {
+  return toneForName(role.name)
 }
 
 export function useRoleMeta() {
@@ -63,8 +64,8 @@ export function useRoleMeta() {
 
   return {
     iconFor,
-    colorFor,
-    colorForName,
+    toneFor,
+    toneForName,
     descriptionFor,
     permissionsFor,
   }
