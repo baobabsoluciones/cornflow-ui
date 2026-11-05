@@ -153,11 +153,16 @@ export function groupLoadErrors(
   return { count: errors.length, groups: result }
 }
 
-/** An error that did not come from the schema (the ETL, a file that cannot be read): plain text. */
+/**
+ * An error that did not come from the schema (the ETL, a file that cannot be read): plain text,
+ * a line per list item. The message is parsed as an inert document, so nothing in it runs, and
+ * what scripts or styles it carries is left out.
+ */
 export function singleLoadError(message: string, t: Translate): LoadErrors {
-  const text = message
-    .replace(/<li>/g, '\n')
-    .replace(/<[^>]+>/g, '')
+  const parsed = new DOMParser().parseFromString(message, 'text/html')
+  parsed.querySelectorAll('script, style').forEach((element) => element.remove())
+  parsed.querySelectorAll('li').forEach((item) => item.before('\n'))
+  const text = (parsed.body.textContent ?? '')
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean)
