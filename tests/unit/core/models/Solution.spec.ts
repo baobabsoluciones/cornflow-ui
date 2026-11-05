@@ -309,7 +309,11 @@ describe('SolutionCore', () => {
 
       await solution.checkSchema()
 
-      expect(MockAjv).toHaveBeenCalledWith({ strict: false, allErrors: true })
+      expect(MockAjv).toHaveBeenCalledWith({
+        strict: false,
+        allErrors: true,
+        validateSchema: false,
+      })
     })
 
     test('should handle schema compilation errors', async () => {

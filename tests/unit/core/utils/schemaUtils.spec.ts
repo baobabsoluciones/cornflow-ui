@@ -818,6 +818,28 @@ describe('transformJsonSchemaToAutomationFormat', () => {
     expect(result.chk.is_warning).toBe(true)
     expect(result.chk.isPrimitiveArray).toBe(true)
   })
+  test('names an array table with its schema title, or its key in words', () => {
+    const schema = {
+      properties: {
+        plants: {
+          type: 'array',
+          title: { en: 'Plants', es: 'Plantas' },
+          items: { properties: { code: { type: 'string' } } },
+        },
+        unit_costs: {
+          type: 'array',
+          title: 'Costs',
+          items: { properties: { value: { type: 'number' } } },
+        },
+        work_orders: { type: 'array', items: { properties: { id: { type: 'string' } } } },
+      },
+    }
+    const result = transformJsonSchemaToAutomationFormat(schema, null, 'instance')
+    expect(result.plants._originalTitle).toEqual({ en: 'Plants', es: 'Plantas' })
+    expect(result.unit_costs.title).toBe('Costs')
+    expect(result.work_orders.title).toBe('Work Orders')
+    expect(resolveTableConfigTitles(result, 'es').plants.title).toBe('Plantas')
+  })
   test('leaves out array and parameter tables declared visible: false', () => {
     const schema = {
       properties: {
