@@ -3,6 +3,8 @@
  * Analyzes table patterns and creates appropriate visualizations.
  */
 
+import { resolveTitleWithLocale } from '@cornflow-ui/core/utils/i18nUtils'
+
 export interface DashboardWidget {
   type: 'kpi' | 'line' | 'bar' | 'pie' | 'area' | 'map'
   title: string
@@ -25,6 +27,8 @@ export interface TableAnalysis {
   idColumns: string[]
   codeColumns: string[]
   locationColumns: string[]
+  /** What each column is called in the widgets: its schema title, or its key in words. */
+  columnLabels: Record<string, string>
 }
 
 // ---------------------------------------------------------------------------
@@ -244,6 +248,7 @@ export function analyzeTable(
   tableKey: string,
   data: any[],
   schema?: any,
+  locale: string = 'en',
 ): TableAnalysis | null {
   if (!data || data.length === 0) return null
 
@@ -342,7 +347,19 @@ export function analyzeTable(
     idColumns,
     codeColumns,
     locationColumns,
+    columnLabels: Object.fromEntries(
+      columns.map((col) => {
+        const fallback = formatColumnName(col)
+        const title = schema?.properties?.[col]?.title
+        return [col, title ? resolveTitleWithLocale(title, locale, fallback) : fallback]
+      }),
+    ),
   }
+}
+
+/** What a column is called in the widgets of a table. */
+function columnLabel(analysis: TableAnalysis, col: string): string {
+  return analysis.columnLabels?.[col] || formatColumnName(col)
 }
 
 // ---------------------------------------------------------------------------
@@ -666,6 +683,7 @@ function groupByCategoryMultiSeries(
   catCol: string,
   numericCols: string[],
   aggMethods?: AggregationMethod[],
+  label: (col: string) => string = formatColumnName,
 ): {
   categories: string[]
   series: Array<{ name: string; data: number[] }>
@@ -693,7 +711,7 @@ function groupByCategoryMultiSeries(
   const series = numericCols.map((col, idx) => {
     const method = aggMethods?.[idx] ?? 'sum'
     return {
-      name: formatColumnName(col),
+      name: label(col),
       data: categories.map((cat) => {
         const values = grouped[cat]?.[col] || []
         return aggregate(values, method)
@@ -901,7 +919,7 @@ function generateKPIWidgets(
     const avg = roundToTwoDecimals(sum / values.length)
     const icon = getIconForColumn(col)
     const format = getFormatForColumn(col)
-    const columnName = formatColumnName(col)
+    const columnName = columnLabel(analysis, col)
 
     if (isSummableColumn(col) && Math.abs(sum) >= 0.01) {
       // Show Total for summable columns (count, quantity, amount, etc.)
@@ -963,7 +981,7 @@ function generateLineChartWidget(
     }
 
     series.push({
-      name: formatColumnName(numericCol),
+      name: columnLabel(analysis, numericCol),
       data: grouped.map((g) => roundToTwoDecimals(g.value)),
     })
   }
@@ -971,7 +989,7 @@ function generateLineChartWidget(
   if (series.length === 0 || categories.length === 0) return null
 
   const titleCol =
-    series.length === 1 ? series[0].name : formatColumnName(dateCol)
+    series.length === 1 ? series[0].name : columnLabel(analysis, dateCol)
   return {
     type: 'line',
     title: getTitle('dashboard.widgets.overTime', { column: titleCol }),
@@ -1006,8 +1024,8 @@ function generateBarChartWidget(
     const grouped = groupByCategory(analysis.data, catCol, numericCols[0], aggMethod)
     if (!hasPlottableSeries(grouped.map((g) => g.value))) return null
 
-    const numericColName = formatColumnName(numericCols[0])
-    const catColName = formatColumnName(catCol)
+    const numericColName = columnLabel(analysis, numericCols[0])
+    const catColName = columnLabel(analysis, catCol)
     return {
       type: 'bar',
       title: getTitle('dashboard.widgets.by', {
@@ -1037,6 +1055,7 @@ function generateBarChartWidget(
     catCol,
     numericCols,
     aggMethods,
+    (col) => columnLabel(analysis, col),
   )
   if (multiData.categories.length <= 1) return null
 
@@ -1046,7 +1065,7 @@ function generateBarChartWidget(
   )
   if (!hasNonZero) return null
 
-  const catColName = formatColumnName(catCol)
+  const catColName = columnLabel(analysis, catCol)
   return {
     type: 'bar',
     title: getTitle('dashboard.widgets.by', {
@@ -1088,7 +1107,7 @@ function generatePieChartWidget(
   const positiveGrouped = grouped.filter((g) => g.value > 0)
   if (positiveGrouped.length < 2) return null
 
-  const catColName = formatColumnName(catCol)
+  const catColName = columnLabel(analysis, catCol)
   return {
     type: 'pie',
     title: getTitle('dashboard.widgets.distributionBy', {
@@ -1125,7 +1144,7 @@ function generateAreaChartWidget(
   if (!hasPlottableSeries(grouped.map((g) => g.value))) return null
 
   let cumulative = 0
-  const numericColName = formatColumnName(numericCol)
+  const numericColName = columnLabel(analysis, numericCol)
   const cumulativeTitle = getTitle('dashboard.widgets.cumulative', {
     column: numericColName,
   })
@@ -1229,7 +1248,7 @@ function generateMapWidget(
   const allValues = coordinateData.map((d) => d.value)
   if (allValuesAreZero(allValues) || coordinateData.length === 0) return null
 
-  const valueColName = formatColumnName(valueCol)
+  const valueColName = columnLabel(analysis, valueCol)
   return {
     type: 'map',
     title: getTitle('dashboard.widgets.map', {
@@ -1274,7 +1293,7 @@ export function generateDashboardWidgets(
     // Mark the numeric columns used in the line chart
     lineChart.config?.series?.forEach((s: any) => {
       const col = analysis.numericColumns.find(
-        (c) => formatColumnName(c) === s.name,
+        (c) => columnLabel(analysis, c) === s.name,
       )
       if (col) usedNumericCols.add(col)
     })
@@ -1325,7 +1344,7 @@ export function generateAutoDashboard(
     const schema =
       tableSchema?.get_list?.response_schema?.items || tableSchema
 
-    const analysis = analyzeTable(tableKey, tableData, schema)
+    const analysis = analyzeTable(tableKey, tableData, schema, locale)
     if (!analysis) return widgets
 
     const tableWidgets = generateDashboardWidgets(analysis, locale, t)
@@ -1338,7 +1357,7 @@ export function generateAutoDashboard(
     const tableData = dataSource[key]
     if (!Array.isArray(tableData) || tableData.length === 0) return
 
-    const analysis = analyzeTable(key, tableData)
+    const analysis = analyzeTable(key, tableData, undefined, locale)
     if (!analysis) return
 
     const tableWidgets = generateDashboardWidgets(analysis, locale, t)

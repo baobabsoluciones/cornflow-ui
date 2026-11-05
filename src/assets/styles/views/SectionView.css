@@ -86,18 +86,20 @@
 .dashboard-layout {
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
   gap: 24px;
-  min-height: 0;
 }
 
 /* ==========================================================================
    Auto Dashboard - Widgets Layout (70/30 split)
    ========================================================================== */
+/* The section scrolls when it shows widgets (`.table-section--dashboard`): the row keeps the
+   height of the table, and the charts below it follow it instead of covering it. */
 .table-with-widgets {
   display: flex;
+  flex-shrink: 0;
   gap: 16px;
   width: 100%;
-  min-height: 0;
   align-items: flex-start;
 }
 
