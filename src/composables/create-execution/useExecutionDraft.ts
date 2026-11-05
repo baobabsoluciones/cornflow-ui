@@ -158,22 +158,29 @@ export function useExecutionDraft() {
           .map((f) => (f.joinFrom ? { ...f, options: filterTableOptions.value[f.key] ?? [] } : f)),
   )
 
-  // The fields can arrive with the schema, and the frontend-automation tables after them.
+  // The fields can arrive with the schema, and the frontend-automation tables after them; each
+  // DAG has its own rows. Only the latest request writes the options.
+  let filterOptionsRequest = 0
   watch(
     () =>
-      `${allConfigFields.value
+      `${store.getSchemaName}#${allConfigFields.value
         .filter((f) => f.preEtl === true && f.joinFrom)
         .map((f) => `${f.key}=${f.joinFrom}`)
         .join('|')}#${Object.keys(store.getConfigurations?.masterData ?? {}).length}`,
     async () => {
+      const request = ++filterOptionsRequest
       const withTable = allConfigFields.value.filter((f) => f.preEtl === true && f.joinFrom)
-      for (const field of withTable) {
-        const options = (await store.fetchTableOptions(field.joinFrom)) ?? []
-        filterTableOptions.value = {
-          ...filterTableOptions.value,
-          [field.key]: options.map((o: any) => ({ value: o.value, label: String(o.title) })),
-        }
-      }
+      const loaded = await Promise.all(
+        withTable.map(async (field) => {
+          const options = (await store.fetchTableOptions(field.joinFrom)) ?? []
+          return [
+            field.key,
+            options.map((o: any) => ({ value: o.value, label: String(o.title) })),
+          ] as const
+        }),
+      )
+      if (request !== filterOptionsRequest) return
+      filterTableOptions.value = Object.fromEntries(loaded)
     },
     { immediate: true },
   )

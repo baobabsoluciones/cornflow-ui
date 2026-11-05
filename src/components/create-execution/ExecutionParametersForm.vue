@@ -124,25 +124,33 @@ const store = useGeneralStore()
 /** Options of the fields fed by a frontend-automation table (`joinFrom`), by key. */
 const tableOptions = ref<Record<string, { value: unknown; label: string }[]>>({})
 
+/** Only the latest request writes the options. */
+let tableOptionsRequest = 0
+
 async function loadTableOptions() {
+  const request = ++tableOptionsRequest
   const withTable = props.fields.filter((field) => field.joinFrom)
-  await Promise.all(
+  const loaded = await Promise.all(
     withTable.map(async (field) => {
       const options = await store.fetchTableOptions(field.joinFrom)
-      tableOptions.value = {
-        ...tableOptions.value,
-        [field.key]: options.map((o: any) => ({ value: o.value, label: o.title })),
-      }
+      return [
+        field.key,
+        options.map((o: any) => ({ value: o.value, label: o.title })),
+      ] as const
     }),
   )
+  if (request !== tableOptionsRequest) return
+  tableOptions.value = Object.fromEntries(loaded)
 }
 
-// The fields can arrive with the schema, and the frontend-automation tables after them.
+// The fields can arrive with the schema, and the frontend-automation tables after them; each DAG
+// has its own rows.
 const tableSourcesSignature = computed(
   () =>
-    `${props.fields.filter((f) => f.joinFrom).map((f) => f.key).join('|')}#${
-      Object.keys(store.getConfigurations?.masterData ?? {}).length
-    }`,
+    `${store.getSchemaName}#${props.fields
+      .filter((f) => f.joinFrom)
+      .map((f) => `${f.key}=${f.joinFrom}`)
+      .join('|')}#${Object.keys(store.getConfigurations?.masterData ?? {}).length}`,
 )
 watch(tableSourcesSignature, loadTableOptions)
 onMounted(loadTableOptions)

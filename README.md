@@ -221,7 +221,9 @@ executionsListEndpoint: { path: '/executions/', isExternal: true },
 
 Each selector offers "All" (no parameter) and one option per row of its table. A filter whose table
 gives no options (or that the application has no frontend automation for) is not shown. The filters
-are independent of each other.
+are independent of each other. With several DAGs, the table is asked for the rows of the active DAG
+(`?schema=<active DAG>`, see [Selectors fed by frontend-automation tables](#selectors-fed-by-frontend-automation-tables)),
+and a DAG switch asks them again.
 
 **Executions list.** Cornflow's `GET /execution/` ignores query parameters it does not know, so the
 picked values only filter the list when `executionsListEndpoint` points it at an endpoint that does.
@@ -723,6 +725,15 @@ join_from: "plants.name"
 - The value of each option is the row's `id`; that is what the filter sends and what the execution
   config stores.
 - The text is the row's value in the named column.
+
+**Several DAGs.** In a deployment with several DAGs (`schema` with more than one name), the list
+is asked with the active DAG as `schema`, the same name Cornflow takes in `GET /execution/?schema=`:
+`GET /plants/?schema=<active DAG>`. The backend can use it to return only the rows that apply to
+that DAG, e.g. a `plants` table with a `type` column where each DAG plans the plants of one type.
+A backend that ignores the parameter returns every row, as with a single DAG, where the list is
+asked without parameters. On a DAG switch every selector asks its options again, so it never
+offers the rows of the DAG left behind; a history filter whose value the new DAG does not offer
+goes back to "All".
 
 ⚠️ **It needs frontend automation.** The table has to be one of the application's
 frontend-automation tables. In a project without frontend automation these selectors cannot be
