@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "expensive_days": {
+      "type": "array",
+      "title": { "en": "Expensive days", "es": "Días caros", "fr": "Jours coûteux", "pt": "Dias caros" },
+      "description": { "en": "Days whose plan costs more than 1000.", "es": "Días cuyo plan cuesta más de 1000.", "fr": "Jours dont le plan coûte plus de 1000.", "pt": "Dias cujo plano custa mais de 1000." },
+      "is_warning": true,
+      "items": {
+        "type": "object",
+        "properties": {
+          "date": { "type": "string", "title": { "en": "Date", "es": "Fecha", "fr": "Date", "pt": "Data" } },
+          "cost": { "type": "number", "title": { "en": "Cost", "es": "Coste", "fr": "Coût", "pt": "Custo" } }
+        },
+        "required": ["date", "cost"]
+      }
+    }
+  }
+}
