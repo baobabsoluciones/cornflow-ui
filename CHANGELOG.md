@@ -1,5 +1,70 @@
 # Changelog
 
+## [4.0.0] - 05-11-2026
+
+Version 4 redraws the core on its own components (Reka UI underneath, no Vuetify in what it draws) and removes the components, settings and extension points that the new screens leave unused. See **Removed** before upgrading an application that imports core files by path.
+
+### Added
+- **Settings per DAG with `core.schemaOverrides`**  
+  - A DAG's settings are the app's `parameters` with its entry merged on top; `dashboardLayout` / `instanceDashboardLayout` replace the app's layouts on that DAG. Settings of the whole application (`valuesJsonPath`, `schemaLabels`, roles management…) are ignored with a console warning
+  - `getAppParameters()` / `getAppCoreConfig()` (`utils/appParameters`) read the active DAG's settings reactively; the core and the extension context (`ctx.getConfig()`, `ctx.isFeatureEnabled()`) read them that way
+  - After a DAG switch the user stays on the view on screen when the new DAG has it, and goes to its `defaultView` otherwise
+  - Sub-sections of frontend-automation sections may declare `roles` and `schemas`
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #244
+- **Design tokens**  
+  - `src/assets/styles/tokens.css` (colour, type, spacing, radii, shadows, tones, layers and motion), taken from the app's `variables.css`; the Vuetify `primary` follows the app's `--primary`
+  - `npm run catalog`: a development page with the tokens and the core components (`dev/` is not published)
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #245, #254
+- **Execution history filters and pre-ETL options from frontend-automation tables**  
+  - `executionFilters`: selectors of the history fed by a frontend-automation table (`joinFrom: '<table>.<column>'`); the picked row `id` goes to the executions list, which `executionsListEndpoint` can point at a backend that filters by it
+  - `join_from` on a config schema property: the parameter is a select (or a select of several, for an array) with the rows of that table
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #239
+- **Table lists asked per DAG**  
+  - In a deployment with several DAGs, a selector fed by a frontend-automation table asks its list with `schema` set to the active DAG, so the backend can return only the rows that apply to it; with a single DAG the list is asked without parameters, and a backend that ignores `schema` returns every row
+  - A DAG switch asks the options of the history filters, the pre-ETL parameters and the parameter names of the execution detail again
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #PR_NUMBER
+- **Dark mode, opt-in per application** (`enableDarkMode`, off by default)  
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #254
+
+### Changed
+- **Redesigned screens on the core's own components**  
+  - Execution history: a list and a detail side by side, a filter bar (search, table filters, date, filters added from a menu) and quick actions next to the name
+  - Create execution: one page (data card and launch panel) built on `useExecutionDraft`; `createExecution.component` still lets an app use its own screen
+  - Side menu with the loaded execution apart and the module selector, an execution tab bar in the same look, and a summary of the loaded execution at the head of its views
+  - Sign-in page in two layouts
+  - Own data table for master data, execution data and the review of a new execution
+  - User settings, menus, help, warnings and roles management
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #254
+- **`sonar.projectVersion`**  
+  - 4.0.0, in step with `package.json`
+
+### Removed
+- **The create-execution wizard**  
+  - `ProjectExecutionView` and its step components, `createExecution.flow` and the `CreateExecutionFlow` type, and the premium extension point for wizard steps (`PremiumWizardStep`, `wizardSteps`)
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #254
+- **`etl.alternativeParameterFields`**  
+  - The short form that built a `parameters` workbook for the ETL; values that select the data to load are `pre_etl` parameters
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #254
+- **Components the new screens replace**  
+  - `CoreTable`, `CoreFiltersPanel`, `CoreModal`, `CoreBulkEditModal`, `CoreBulkUploadModal`, `FloatingSelectionBar`, `PendingChangesReviewModal`, `PendingChangeFieldInput`, `DataComparisonModal`, `SectionSingleTable`, `SectionGroupTable`, `SimpleList`, `CorePanelData`, `MasterTableMatchCard`, `MetadataTableSwitch`, `MetadataParameterCheckbox`, `ProjectExecutionsTable`, `ModuleSwitcher`, `AppHeader`, `DateRangePicker`, `LogInSignUp`, the composables only they used (`core-table/*`, `project-execution-table/*`, `useFullscreen`) and their styles
+  - User sign-up (`AuthService.signup`, `enableSignup`) and the `baobabLogo` export of `utils/assets`
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #254
+
+### Fixed
+- **Navigation gating accepts entries of app configs without `roles` or `schemas`**  
+  - `isEntryVisibleFor` takes any object, so an app whose `src/app/config.ts` predates those keys passes `vue-tsc`
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #246
+
 ## [3.6.0] - 20-10-2026
 
 ### Added
