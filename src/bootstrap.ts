@@ -47,6 +47,7 @@ import getAuthService from '@cornflow-ui/core/services/AuthServiceFactory'
 import { registerPremiumModules } from '@cornflow-ui/core/plugins/extensions'
 import type { PremiumModule } from '@cornflow-ui/core/types/extension'
 import { frontendAutomationModule } from '@cornflow-ui/core/modules/frontend-automation'
+import { publishAppDescription } from '@cornflow-ui/core/utils/appDescription'
 
 export interface CreateCornflowAppOptions {
   /** Root component (normally the shell's App.vue). */
@@ -73,6 +74,7 @@ export async function createCornflowApp(
 
   // Update app config with initialized values
   appConfig.updateConfig()
+  publishAppDescription()
 
   // Set the document title from config
   if (config.name) {
