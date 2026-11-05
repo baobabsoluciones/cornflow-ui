@@ -5,7 +5,7 @@
  * The data rows follow `showExtraProjectExecutionColumns` of the app config: user name or full
  * name, finish time, solver and time limit appear only where the app shows them.
  */
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
 import { useExecutionStatus } from '@cornflow-ui/core/composables/project-execution/useExecutionStatus'
@@ -186,34 +186,50 @@ export function useExecutionDetails() {
     return items
   }
 
-  /** Options of the parameters fed by a frontend-automation table, by `joinFrom`. */
+  /**
+   * Options of the parameters fed by a frontend-automation table, by DAG and `joinFrom`: each DAG
+   * may get different rows of the same table (see `fetchTableOptions`).
+   */
   const tableOptions = ref<Record<string, { value: unknown; title: string }[]>>(
     {},
   )
+  const tableOptionsKey = (joinFrom: string): string =>
+    `${generalStore.getSchemaName}|${joinFrom}`
+
+  const parameterSources = computed(() => [
+    ...new Set(
+      configFields.value
+        .map((field) => field.joinFrom)
+        .filter((joinFrom): joinFrom is string => Boolean(joinFrom)),
+    ),
+  ])
 
   /** Loads the names of the parameters that store an id of a frontend-automation table. */
   async function loadParameterOptions(): Promise<void> {
-    const sources = [
-      ...new Set(
-        configFields.value
-          .map((field) => field.joinFrom)
-          .filter((joinFrom): joinFrom is string => Boolean(joinFrom)),
-      ),
-    ].filter((joinFrom) => !(joinFrom in tableOptions.value))
+    const missing = parameterSources.value
+      .map((joinFrom) => ({ joinFrom, key: tableOptionsKey(joinFrom) }))
+      .filter(({ key }) => !(key in tableOptions.value))
     await Promise.all(
-      sources.map(async (joinFrom) => {
+      missing.map(async ({ joinFrom, key }) => {
         const options = await generalStore.fetchTableOptions(joinFrom)
-        tableOptions.value = { ...tableOptions.value, [joinFrom]: options }
+        tableOptions.value = { ...tableOptions.value, [key]: options }
       }),
     )
   }
+
+  // A DAG switch brings its own rows, and maybe other parameters.
+  watch(
+    () => `${generalStore.getSchemaName}#${parameterSources.value.join('|')}`,
+    () => loadParameterOptions(),
+  )
 
   function formatParameter(field: ConfigField, value: unknown): string {
     const same = (option: { value: unknown }) =>
       String(option.value) === String(value)
     if (field.joinFrom) {
       return (
-        tableOptions.value[field.joinFrom]?.find(same)?.title ?? String(value)
+        tableOptions.value[tableOptionsKey(field.joinFrom)]?.find(same)
+          ?.title ?? String(value)
       )
     }
     const option = field.options?.find(same)

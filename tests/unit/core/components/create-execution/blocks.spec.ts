@@ -11,7 +11,10 @@ const { store, review } = vi.hoisted(() => ({
     appConfig: { parameters: {} },
   } as Record<string, any>,
 }))
-vi.mock('@cornflow-ui/core/stores/general', () => ({ useGeneralStore: () => store }))
+vi.mock('@cornflow-ui/core/stores/general', async () => {
+  const { reactive } = await import('vue')
+  return { useGeneralStore: () => reactive(store) }
+})
 vi.mock('@cornflow-ui/core/components/project-execution/CreateExecutionReviewInstance.vue', () => ({
   default: {
     name: 'CreateExecutionReviewInstance',
@@ -317,6 +320,35 @@ describe('ExecutionParametersForm', () => {
     await flushPromises()
     expect(store.fetchTableOptions).toHaveBeenCalledWith('plants.name')
     expect(wrapper.text()).toContain('North plant')
+  })
+
+  test('a DAG switch asks the options of a field fed by a table again, for the new DAG', async () => {
+    const plantsByDag: Record<string, { value: number; title: string }[]> = {
+      dag_a: [{ value: 7, title: 'North plant' }],
+      dag_b: [{ value: 9, title: 'East plant' }],
+    }
+    const activeStore = reactive(store)
+    activeStore.getSchemaName = 'dag_a'
+    const fetchTableOptions = store.fetchTableOptions
+    store.fetchTableOptions = vi.fn(async () => plantsByDag[activeStore.getSchemaName])
+    try {
+      const wrapper = mount(ExecutionParametersForm, {
+        props: { fields: [{ key: 'plant', title: 'Plant', type: 'select', joinFrom: 'plants.name', required: true }], values: {} },
+        global: global(),
+      })
+      await flushPromises()
+      expect(wrapper.text()).toContain('North plant')
+
+      activeStore.getSchemaName = 'dag_b'
+      await flushPromises()
+
+      expect(store.fetchTableOptions).toHaveBeenCalledTimes(2)
+      expect(wrapper.text()).toContain('East plant')
+      expect(wrapper.text()).not.toContain('North plant')
+    } finally {
+      store.fetchTableOptions = fetchTableOptions
+      delete store.getSchemaName
+    }
   })
 })
 

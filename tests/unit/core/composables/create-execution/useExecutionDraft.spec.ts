@@ -25,7 +25,10 @@ const { store, processing, extensions, snackbar, drafts } = vi.hoisted(() => ({
   drafts: new Map<string, any>(),
 }))
 
-vi.mock('@cornflow-ui/core/stores/general', () => ({ useGeneralStore: () => store }))
+vi.mock('@cornflow-ui/core/stores/general', async () => {
+  const { reactive } = await import('vue')
+  return { useGeneralStore: () => reactive(store) }
+})
 vi.mock('@cornflow-ui/core/composables/useInstanceProcessing', () => ({
   useInstanceProcessing: () => ({ ...processing, supportedExtensions: ref(['json', 'xlsx']) }),
 }))
@@ -249,6 +252,29 @@ describe('useExecutionDraft', () => {
     await flushPromises()
     expect(store.fetchTableOptions).toHaveBeenCalledWith('plants.name')
     expect(draft.loadFilterFields[0].options).toEqual([{ value: 7, label: 'North plant' }])
+  })
+
+  test('a DAG switch asks the options of a load filter fed by a table again, for the new DAG', async () => {
+    const plantsByDag: Record<string, { value: number; title: string }[]> = {
+      dag_a: [{ value: 7, title: 'North plant' }],
+      dag_b: [{ value: 9, title: 'East plant' }],
+    }
+    const activeStore = reactive(store)
+    activeStore.getSchemaName = 'dag_a'
+    store.fetchTableOptions = vi.fn(async () => plantsByDag[activeStore.getSchemaName])
+    store.appConfig.parameters.configFields = [
+      ...configFields,
+      { key: 'plant_id', title: 'f.plant', type: 'select', preEtl: true, joinFrom: 'plants.name' },
+    ]
+    const draft = setup()
+    await flushPromises()
+    expect(draft.loadFilterFields[0].options).toEqual([{ value: 7, label: 'North plant' }])
+
+    activeStore.getSchemaName = 'dag_b'
+    await flushPromises()
+
+    expect(store.fetchTableOptions).toHaveBeenCalledTimes(2)
+    expect(draft.loadFilterFields[0].options).toEqual([{ value: 9, label: 'East plant' }])
   })
 
   test('brings the database data without files and asks to reload when the filters change', async () => {

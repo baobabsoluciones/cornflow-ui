@@ -321,6 +321,10 @@ export const useGeneralStore = defineStore('general', {
      * `<table>.<column>` (e.g. 'plants.name'): each row of the table's list is one option, with
      * the row's `id` as the value and the column as the text. Empty, with a warning, when the
      * application has no such frontend-automation table (or no frontend automation at all).
+     *
+     * In a deployment with several DAGs the list is asked with `schema` set to the active DAG (the
+     * same name Cornflow takes in `/execution/?schema=`), so the backend can return only the rows
+     * that apply to it. With a single DAG the list is asked without parameters.
      */
     async fetchTableOptions(joinFrom: string): Promise<TableOption[]> {
       const source = parseJoinFrom(joinFrom)
@@ -335,10 +339,10 @@ export const useGeneralStore = defineStore('general', {
       }
       try {
         const repository = new TableRepository(tableConfig, i18n.global.t)
-        const rows = normalizeGetListResponseToRows(
-          await repository.getList(),
-          tableConfig,
-        )
+        const response = this.isMultiSchemaDeployment
+          ? await repository.getList({ schema: this.getSchemaName })
+          : await repository.getList()
+        const rows = normalizeGetListResponseToRows(response, tableConfig)
         return rows
           .filter((row) => row?.id != null)
           .map((row) => ({
@@ -364,12 +368,15 @@ export const useGeneralStore = defineStore('general', {
         return
       }
 
+      const schema = this.getSchemaName
       const loaded = await Promise.all(
         filters.map(async (filter) => ({
           key: filter.key,
           options: await this.fetchTableOptions(filter.joinFrom),
         })),
       )
+      // A DAG switch while loading loads the filters of the new DAG.
+      if (schema !== this.getSchemaName) return
       const options: Record<string, TableOption[]> = {}
       const values: ExecutionFilterValues = {}
       for (const { key, options: filterOptions } of loaded) {

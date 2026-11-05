@@ -287,8 +287,9 @@ const createAppConfig = () => ({
       /**
        * Filters of the executions history (e.g. the plant), next to its date filters. Each one
        * offers "All" and the rows of a frontend-automation table (`joinFrom: 'plants.name'`), and
-       * sends the picked row's `id` to the executions list. Needs frontend automation. Empty means
-       * date filters only. See README "Executions history filters".
+       * sends the picked row's `id` to the executions list. With several DAGs the table is asked
+       * for the rows of the active DAG (`?schema=`). Needs frontend automation. Empty means date
+       * filters only. See README "Executions history filters".
        */
       executionFilters: [] as ExecutionFilter[],
 

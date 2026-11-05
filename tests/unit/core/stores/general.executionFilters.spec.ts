@@ -71,15 +71,22 @@ vi.mock('@cornflow-ui/core/plugins/extensions', async (orig) => ({
   runPremiumInitialDataHooks: vi.fn(),
 }))
 
-// Rows each frontend-automation table lists, by its get_list URL.
-const mockRows = vi.hoisted(() => ({ byUrl: {} as Record<string, unknown> }))
+// Rows each frontend-automation table lists, by its get_list URL: a list, an error, or a function
+// of the query parameters (a backend that filters by them). `requests` keeps every list asked, as
+// [url, ...arguments of getList].
+const mockRows = vi.hoisted(() => ({
+  byUrl: {} as Record<string, unknown>,
+  requests: [] as unknown[][],
+}))
 vi.mock('@cornflow-ui/core/repositories/TableRepository', () => ({
   default: vi.fn(function (tableConfig: { get_list: { url: string } }) {
     return {
-      getList: vi.fn(async () => {
-        const rows = mockRows.byUrl[tableConfig.get_list.url]
+      getList: vi.fn(async (...args: unknown[]) => {
+        const url = tableConfig.get_list.url
+        mockRows.requests.push([url, ...args])
+        const rows = mockRows.byUrl[url]
         if (rows instanceof Error) throw rows
-        return rows
+        return typeof rows === 'function' ? rows(args[0] ?? {}) : rows
       }),
     }
   }),
@@ -151,6 +158,7 @@ describe('General store — executions history filters', () => {
       '/plants/': plantRows,
       '/programs/': [{ id: 7, name: 'Program A' }],
     }
+    mockRows.requests = []
     mockSchemaRepository.getSchema.mockResolvedValue({ name: 'schema' })
     mockSchemaRepository.getInstanceTables.mockResolvedValue({})
     mockSchemaRepository.getSolutionTables.mockResolvedValue({})
@@ -190,6 +198,30 @@ describe('General store — executions history filters', () => {
       expect(await store.fetchTableOptions('plants.name')).toEqual([])
       expect(warn).toHaveBeenCalledWith(expect.stringContaining('plants.name'))
       warn.mockRestore()
+    })
+
+    test('with a single DAG, asks the table list without parameters', async () => {
+      const store = await loadedStore()
+
+      await store.fetchTableOptions('plants.name')
+
+      expect(mockRows.requests).toEqual([['/plants/']])
+    })
+
+    test('with several DAGs, asks the table list with the active DAG as schema', async () => {
+      mockConfig.schemas = ['planning_dag', 'stock_dag']
+      mockSchemaRepository.getAvailableSchemaNames.mockResolvedValue([
+        'planning_dag',
+        'stock_dag',
+      ])
+      const store = await loadedStore()
+
+      await store.fetchTableOptions('plants.name')
+      await store.setActiveSchema('stock_dag')
+      mockRows.requests = []
+      await store.fetchTableOptions('plants.name')
+
+      expect(mockRows.requests).toEqual([['/plants/', { schema: 'stock_dag' }]])
     })
 
     test('gives no options when the table list fails', async () => {
@@ -311,6 +343,44 @@ describe('General store — executions history filters', () => {
         program_id: 7,
       })
       expect(store.getExecutionFilterParams).toEqual({ program_id: '7' })
+    })
+
+    test('a switch asks the filter options again with the new DAG, and a value it does not offer goes back to "All"', async () => {
+      // A `plants` table with a `type`: each DAG plans the plants of one type, and the backend
+      // returns the rows of the DAG it is asked for.
+      const typedPlants = [
+        { id: 1, name: 'North', type: 'planning_dag' },
+        { id: 2, name: 'South', type: 'planning_dag' },
+        { id: 3, name: 'East', type: 'stock_dag' },
+      ]
+      mockRows.byUrl['/plants/'] = ({ schema }: { schema?: string }) =>
+        typedPlants.filter((plant) => !schema || plant.type === schema)
+      mockConfig.schemas = ['planning_dag', 'stock_dag']
+      mockSchemaRepository.getAvailableSchemaNames.mockResolvedValue([
+        'planning_dag',
+        'stock_dag',
+      ])
+      mockParameters.executionFilters = [PLANT, PROGRAM]
+      const store = await loadedStore()
+      expect(store.executionFilterOptions.plant_id).toEqual([
+        { value: 1, title: 'North' },
+        { value: 2, title: 'South' },
+      ])
+      store.setExecutionFilterValue('plant_id', 2)
+      mockRows.requests = []
+
+      await store.setActiveSchema('stock_dag')
+
+      expect(mockRows.requests).toEqual(
+        expect.arrayContaining([
+          ['/plants/', { schema: 'stock_dag' }],
+          ['/programs/', { schema: 'stock_dag' }],
+        ]),
+      )
+      expect(store.executionFilterOptions.plant_id).toEqual([
+        { value: 3, title: 'East' },
+      ])
+      expect(store.executionFilterValues.plant_id).toBeNull()
     })
 
     test('a switch to a DAG without filters leaves none', async () => {

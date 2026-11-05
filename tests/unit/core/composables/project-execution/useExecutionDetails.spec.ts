@@ -6,12 +6,14 @@ import { createI18n } from 'vue-i18n'
 const { store } = vi.hoisted(() => ({
   store: {
     appConfig: { parameters: {} as Record<string, any> },
+    getSchemaName: 'dag_a',
     fetchTableOptions: vi.fn(),
   },
 }))
-vi.mock('@cornflow-ui/core/stores/general', () => ({
-  useGeneralStore: () => store,
-}))
+vi.mock('@cornflow-ui/core/stores/general', async () => {
+  const { reactive } = await import('vue')
+  return { useGeneralStore: () => reactive(store) }
+})
 
 import {
   formatDuration,
@@ -190,6 +192,7 @@ beforeEach(() => {
       ],
     },
   })
+  store.getSchemaName = 'dag_a'
   store.fetchTableOptions.mockReset()
 })
 
@@ -342,6 +345,30 @@ describe('useExecutionDetails — parameters', () => {
       { label: 'Plant', value: 'South plant' },
       { label: 'Night shift', value: 'No' },
     ])
+  })
+
+  test('a DAG switch names the parameters fed by a table with the rows of the new DAG', async () => {
+    const plantsByDag: Record<string, { value: number; title: string }[]> = {
+      dag_a: [{ value: 2, title: 'South plant' }],
+      dag_b: [{ value: 2, title: 'East plant' }],
+    }
+    const activeStore = reactive(store)
+    store.fetchTableOptions.mockImplementation(
+      async () => plantsByDag[activeStore.getSchemaName],
+    )
+    const { parameterItems, loadParameterOptions } = setup()
+    await loadParameterOptions()
+    const plant = () =>
+      parameterItems(execution({ config: { plant: 2 } })).find(
+        (item) => item.label === 'Plant',
+      )?.value
+    expect(plant()).toBe('South plant')
+
+    activeStore.getSchemaName = 'dag_b'
+    await flushPromises()
+
+    expect(store.fetchTableOptions).toHaveBeenCalledTimes(2)
+    expect(plant()).toBe('East plant')
   })
 
   test('leaves out the parameters the execution did not set', () => {
