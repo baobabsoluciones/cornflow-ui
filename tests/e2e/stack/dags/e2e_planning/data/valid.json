@@ -1,0 +1,76 @@
+{
+  "products": [
+    {
+      "code": "P-100",
+      "name": "Small box",
+      "family": "A",
+      "unit_cost": 2.5,
+      "active": true
+    },
+    {
+      "code": "P-200",
+      "name": "Medium box",
+      "family": "B",
+      "unit_cost": 4.0,
+      "active": true
+    },
+    {
+      "code": "P-300",
+      "name": "Large box",
+      "family": "C",
+      "unit_cost": 7.25,
+      "active": false
+    }
+  ],
+  "demand": [
+    {
+      "product": "P-100",
+      "date": "2026-01-05",
+      "quantity": 10
+    },
+    {
+      "product": "P-100",
+      "date": "2026-01-06",
+      "quantity": 11
+    },
+    {
+      "product": "P-100",
+      "date": "2026-01-07",
+      "quantity": 12
+    },
+    {
+      "product": "P-200",
+      "date": "2026-01-05",
+      "quantity": 20
+    },
+    {
+      "product": "P-200",
+      "date": "2026-01-06",
+      "quantity": 21
+    },
+    {
+      "product": "P-200",
+      "date": "2026-01-07",
+      "quantity": 22
+    },
+    {
+      "product": "P-300",
+      "date": "2026-01-05",
+      "quantity": 30
+    },
+    {
+      "product": "P-300",
+      "date": "2026-01-06",
+      "quantity": 31
+    },
+    {
+      "product": "P-300",
+      "date": "2026-01-07",
+      "quantity": 32
+    }
+  ],
+  "parameters": {
+    "horizon_days": 3,
+    "allow_backorders": false
+  }
+}

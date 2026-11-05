@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "plan": {
+      "type": "array",
+      "title": { "en": "Plan", "es": "Plan", "fr": "Plan", "pt": "Plano" },
+      "description": { "en": "Units planned for each product and day.", "es": "Unidades planificadas por producto y día.", "fr": "Unités planifiées par produit et par jour.", "pt": "Unidades planeadas por produto e dia." },
+      "items": {
+        "type": "object",
+        "properties": {
+          "product": { "type": "string", "title": { "en": "Product", "es": "Producto", "fr": "Produit", "pt": "Produto" } },
+          "date": { "type": "string", "format": "date", "title": { "en": "Date", "es": "Fecha", "fr": "Date", "pt": "Data" } },
+          "quantity": { "type": "integer", "title": { "en": "Quantity", "es": "Cantidad", "fr": "Quantité", "pt": "Quantidade" } },
+          "cost": { "type": "number", "title": { "en": "Cost", "es": "Coste", "fr": "Coût", "pt": "Custo" } }
+        },
+        "required": ["product", "date", "quantity", "cost"]
+      }
+    }
+  },
+  "required": ["plan"]
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "products": {
+      "type": "array",
+      "title": { "en": "Products", "es": "Productos", "fr": "Produits", "pt": "Produtos" },
+      "description": { "en": "What can be planned.", "es": "Lo que se puede planificar.", "fr": "Ce qui peut être planifié.", "pt": "O que pode ser planeado." },
+      "items": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "string", "title": { "en": "Code", "es": "Código", "fr": "Code", "pt": "Código" }, "description": { "en": "Unique code of the product.", "es": "Código único del producto.", "fr": "Code unique du produit.", "pt": "Código único do produto." } },
+          "name": { "type": "string", "title": { "en": "Name", "es": "Nombre", "fr": "Nom", "pt": "Nome" } },
+          "family": { "type": "string", "enum": ["A", "B", "C"], "title": { "en": "Family", "es": "Familia", "fr": "Famille", "pt": "Família" } },
+          "unit_cost": { "type": "number", "minimum": 0, "title": { "en": "Unit cost", "es": "Coste unitario", "fr": "Coût unitaire", "pt": "Custo unitário" } },
+          "active": { "type": "boolean", "title": { "en": "Active", "es": "Activo", "fr": "Actif", "pt": "Ativo" } }
+        },
+        "required": ["code", "name", "family", "unit_cost"]
+      }
+    },
+    "demand": {
+      "type": "array",
+      "title": { "en": "Demand", "es": "Demanda", "fr": "Demande", "pt": "Procura" },
+      "description": { "en": "Units asked for each product and day.", "es": "Unidades pedidas por producto y día.", "fr": "Unités demandées par produit et par jour.", "pt": "Unidades pedidas por produto e dia." },
+      "items": {
+        "type": "object",
+        "properties": {
+          "product": { "type": "string", "title": { "en": "Product", "es": "Producto", "fr": "Produit", "pt": "Produto" } },
+          "date": { "type": "string", "format": "date", "title": { "en": "Date", "es": "Fecha", "fr": "Date", "pt": "Data" } },
+          "quantity": { "type": "integer", "minimum": 0, "title": { "en": "Quantity", "es": "Cantidad", "fr": "Quantité", "pt": "Quantidade" } }
+        },
+        "required": ["product", "date", "quantity"]
+      }
+    },
+    "parameters": {
+      "type": "object",
+      "title": { "en": "Parameters", "es": "Parámetros", "fr": "Paramètres", "pt": "Parâmetros" },
+      "properties": {
+        "horizon_days": { "type": "integer", "minimum": 1, "title": { "en": "Horizon (days)", "es": "Horizonte (días)", "fr": "Horizon (jours)", "pt": "Horizonte (dias)" } },
+        "allow_backorders": { "type": "boolean", "title": { "en": "Allow backorders", "es": "Permitir retrasos", "fr": "Autoriser les retards", "pt": "Permitir atrasos" } }
+      },
+      "required": ["horizon_days"]
+    }
+  },
+  "required": ["products", "demand", "parameters"]
+}

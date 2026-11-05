@@ -1,0 +1,102 @@
+# The cornflow the end-to-end suite of cornflow-ui runs against in this repo: cornflow, airflow,
+# their databases and the e2e_planning app (dags/). For local runs and CI only.
+#
+#   docker compose -f tests/e2e/stack/docker-compose.yml up -d --wait
+#   docker compose -f tests/e2e/stack/docker-compose.yml down -v
+#
+# It runs as its own compose project on ports of its own (cornflow on 5091, airflow on 8091), so
+# it can sit next to any other cornflow on the machine. `down -v` leaves nothing behind.
+name: cornflow-e2e
+
+x-airflow-common: &airflow-common
+  image: baobabsoluciones/airflow:${E2E_IMAGE_TAG:-release-v1.3.9rc1}
+  platform: linux/amd64
+  environment: &airflow-common-env
+    AIRFLOW_USER: admin
+    AIRFLOW_PWD: admin
+    AIRFLOW_DB_HOST: airflow_db
+    AIRFLOW_DB_PORT: 5432
+    AIRFLOW_DB_USER: airflow
+    AIRFLOW_DB_PASSWORD: airflow
+    AIRFLOW_DB: airflow
+    CORNFLOW_SERVICE_USER: service_user
+    CORNFLOW_SERVICE_PWD: Hp3.nxWcd-Gs6k
+    AIRFLOW__WEBSERVER__INSTANCE_NAME: CornflowE2E
+  volumes:
+    - ./dags:/usr/local/airflow/dags
+    - ./dags/requirements.txt:/requirements.txt
+  depends_on: &airflow-common-depends-on
+    airflow_db:
+      condition: service_healthy
+
+services:
+  cornflow:
+    image: baobabsoluciones/cornflow:${E2E_IMAGE_TAG:-release-v1.3.9rc1}
+    platform: linux/amd64
+    restart: always
+    ports:
+      - ${E2E_CORNFLOW_PORT:-5091}:5000
+    environment:
+      CORNFLOW_ADMIN_USER: cornflow_admin
+      CORNFLOW_ADMIN_PWD: Tz8!qw-Lmb#Rv4x
+      CORNFLOW_SERVICE_USER: service_user
+      CORNFLOW_SERVICE_PWD: Hp3.nxWcd-Gs6k
+      CORNFLOW_DB_HOST: cornflow_db
+      CORNFLOW_DB_PORT: 5432
+      CORNFLOW_DB_USER: cornflow
+      CORNFLOW_DB_PASSWORD: cornflow
+      CORNFLOW_DB: cornflow
+      # The interface has no MFA enrolment: the suite signs in with user and password.
+      MFA_REQUIRED: 0
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f /usr/src/app/gunicorn.pid ]"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+    depends_on:
+      cornflow_db:
+        condition: service_healthy
+      webserver:
+        condition: service_healthy
+
+  cornflow_db:
+    image: postgres:15.4
+    environment:
+      POSTGRES_USER: cornflow
+      POSTGRES_PASSWORD: cornflow
+      POSTGRES_DB: cornflow
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "cornflow"]
+      interval: 5s
+      retries: 10
+    volumes:
+      - cornflow_data:/var/lib/postgresql/data/
+
+  airflow_db:
+    image: postgres:15.4
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 10
+    volumes:
+      - airflow_data:/var/lib/postgresql/data/
+
+  webserver:
+    <<: *airflow-common
+    command: webserver
+    restart: always
+    ports:
+      - ${E2E_AIRFLOW_PORT:-8091}:8080
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f /usr/local/airflow/airflow-webserver.pid ]"]
+      interval: 10s
+      timeout: 10s
+      retries: 60
+
+volumes:
+  cornflow_data:
+  airflow_data:

@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "unknown_products": {
+      "type": "array",
+      "title": { "en": "Demand for unknown products", "es": "Demanda de productos que no existen", "fr": "Demande de produits inconnus", "pt": "Procura de produtos desconhecidos" },
+      "description": { "en": "Demand rows whose product is not in the products table.", "es": "Filas de demanda cuyo producto no está en la tabla de productos.", "fr": "Lignes de demande dont le produit n'est pas dans la table des produits.", "pt": "Linhas de procura cujo produto não está na tabela de produtos." },
+      "is_warning": false,
+      "items": {
+        "type": "object",
+        "properties": {
+          "product": { "type": "string", "title": { "en": "Product", "es": "Producto", "fr": "Produit", "pt": "Produto" } },
+          "date": { "type": "string", "title": { "en": "Date", "es": "Fecha", "fr": "Date", "pt": "Data" } }
+        },
+        "required": ["product", "date"]
+      }
+    },
+    "zero_demand": {
+      "type": "array",
+      "title": { "en": "Days without demand", "es": "Días sin demanda", "fr": "Jours sans demande", "pt": "Dias sem procura" },
+      "description": { "en": "Demand rows asking for no units.", "es": "Filas de demanda que no piden unidades.", "fr": "Lignes de demande sans unités.", "pt": "Linhas de procura sem unidades." },
+      "is_warning": true,
+      "items": {
+        "type": "object",
+        "properties": {
+          "product": { "type": "string", "title": { "en": "Product", "es": "Producto", "fr": "Produit", "pt": "Produto" } },
+          "date": { "type": "string", "title": { "en": "Date", "es": "Fecha", "fr": "Date", "pt": "Data" } }
+        },
+        "required": ["product", "date"]
+      }
+    }
+  }
+}
