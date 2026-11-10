@@ -6,7 +6,8 @@
 - **Every list and download of a frontend-automation table carries the active DAG**  
   - In a deployment with several DAGs, `TableRepository.getList` and `downloadExcel` send `schema` with the active DAG next to the parameters the request already has (page, column filters, search), so a table several DAGs share can return only the rows that apply to the active one. With a single DAG the requests carry no `schema`, and a backend that ignores it returns every row
   - It reaches every list the core asks: the tables of the frontend-automation sections and their pages, the referenced tables of joined columns, the selectors fed by a table and the master tables matched against an execution's data
-  - A DAG switch asks the open tables again, from their first page, and the referenced tables too; rows or pages that arrive late for the DAG left behind are dropped
+  - The referenced tables of joined columns are cached per DAG: after a switch they are asked again with the new DAG, and rows that arrive late for the DAG left behind are not kept. The open tables are asked again because a switch builds the views again
+  - `docs/backend-several-dags.md`: what the backend of a deployment with several DAGs receives and how to answer it
   *Contributors:* [@HelenaCA](#)  
   *Commit ID:* #269
 

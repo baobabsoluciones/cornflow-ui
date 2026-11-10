@@ -728,8 +728,12 @@ GET /demand/excel/?schema=<active DAG>&plant_id=3
   the tables of the frontend-automation sections and their pages, the referenced tables of joined
   columns, the [selectors fed by frontend-automation tables](#selectors-fed-by-frontend-automation-tables)
   and the master tables matched against the data of an execution.
-- On a DAG switch the open tables are asked again, from their first page, with the new DAG, and the
-  referenced tables too. Rows or pages that arrive late for the DAG left behind are dropped.
+- A DAG switch builds the views again, so the open table is asked again from its first page with
+  the new DAG. The referenced tables are cached per DAG: the first one asked on the new DAG empties
+  the cache, and rows that arrive late for the DAG left behind are not kept.
+
+What a backend receives, and what it should do with it, is in
+[docs/backend-several-dags.md](docs/backend-several-dags.md).
 
 #### Selectors fed by frontend-automation tables
 
@@ -884,6 +888,9 @@ For applications that serve more than one model. It is off unless configured: an
 a single DAG in `schema` makes no extra request and shows exactly the same interface.
 
 ### Several DAGs in one application
+
+> For the backend of such a deployment (which requests carry the active DAG, and how to answer
+> them), see [docs/backend-several-dags.md](docs/backend-several-dags.md).
 
 **Configuration.** List the DAGs in the same `schema` setting, separated by commas; the first is
 the DAG the deployment opens with:

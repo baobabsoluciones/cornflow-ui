@@ -59,6 +59,11 @@ type PlainCellValue = string | number | boolean
 
 /** Shared cache for table data (referenced tables loaded via loadTableData). Used so cache can be invalidated across composable instances. */
 const sharedTableDataCache: Record<string, any[]> = {}
+/**
+ * DAG the shared cache holds rows of. With several DAGs a list carries the active DAG and may
+ * return other rows on another one, so the cache is emptied when the DAG changes.
+ */
+let sharedTableDataCacheSchema: string | null = null
 
 /**
  * Invalidates the cached data for a table so the next loadTableData for that table will refetch.
@@ -319,6 +324,12 @@ export function useTableData(
 
   // Function to load data from related tables (for foreign key selectors)
   const loadTableData = async (tableName: string): Promise<any[]> => {
+    const schema = generalStore.getSchemaName
+    if (schema !== sharedTableDataCacheSchema) {
+      invalidateAllTableDataCaches()
+      sharedTableDataCacheSchema = schema
+    }
+
     // Check if data is already cached
     if (tableDataCache.value[tableName]) {
       return tableDataCache.value[tableName]
@@ -360,7 +371,6 @@ export function useTableData(
       }
 
       // Create repository and load data
-      const schema = generalStore.getSchemaName
       const repository = new TableRepository(tableConfigFound, t)
       const data = await repository.getList()
       const resultData = normalizeGetListResponseToRows(data, tableConfigFound)
@@ -1307,7 +1317,7 @@ export function useTableData(
 
     const pageSize = listPageSize.value
     const offset = items.value.length
-    // A page asked before the table was loaded again (e.g. on a DAG switch) is dropped.
+    // A page asked before the table was loaded again (a new search or filter) is dropped.
     const myLoadId = loadIdRef.value
     loadingMore.value = true
 
@@ -1488,13 +1498,9 @@ export function useTableData(
     { immediate: true },
   )
 
-  // The table loads with its config and again on a DAG switch: with several DAGs each one may get
-  // other rows of the same table, and the referenced tables are asked again too.
   watch(
-    [tableConfig, () => generalStore.getSchemaName],
-    ([newConfig, schema], previous) => {
-      if (previous && schema !== previous[1]) invalidateAllTableDataCaches()
-
+    tableConfig,
+    (newConfig) => {
       // Don't load data if we're using execution data
       if (shouldUseExecutionData.value) {
         return
