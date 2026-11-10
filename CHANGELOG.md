@@ -11,6 +11,12 @@
   *Contributors:* [@HelenaCA](#)  
   *Commit ID:* #269
 
+### Fixed
+- **Opening or refreshing a premium route no longer ends on the not-found page**  
+  - `registerPlugins` added the premium routes after `app.use(router)`, which had already started the first navigation: a URL such as `/ai-chat` matched the catch-all and redirected to `/not-found`, while the same view opened from the menu worked. The premium routes and locales are now added before the router is installed
+  *Contributors:* [@antoniogonzalezsuarez](#)  
+  *Commit ID:* #
+
 ## [4.0.0] - 05-11-2026
 
 Version 4 redraws the core on its own components (Reka UI underneath, no Vuetify in what it draws) and removes the components, settings and extension points that the new screens leave unused. See **Removed** before upgrading an application that imports core files by path.
