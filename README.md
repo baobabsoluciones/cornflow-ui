@@ -707,6 +707,30 @@ the login, and those are the user's schemas.
 - Groups are still shown even if some tables within them are hidden (only visible tables appear as tabs)
 - This filtering happens in the frontend; the backend still has to refuse what a user may not use
 
+#### Tables several DAGs share
+
+A table several DAGs share (its `schemas` list more than one, or none) can hold rows that apply to
+one DAG or another, e.g. a `demand` table with a `plant_id` column where each DAG plans the plants
+of one type. In a deployment with several DAGs (`schema` with more than one name), every list
+(`get_list`) and every download (`download_excel_table`) of a frontend-automation table carries
+the active DAG as `schema`, the same name Cornflow takes in `GET /execution/?schema=`, next to the
+parameters the request already has (page, column filters, search):
+
+```text
+GET /demand/?schema=<active DAG>&limit=50&offset=0&plant_id=3
+GET /demand/excel/?schema=<active DAG>&plant_id=3
+```
+
+- The backend can use it to return only the rows of that DAG. A backend that ignores it returns
+  every row, so the parameter is safe to send to any table.
+- With a single DAG the requests carry no `schema`.
+- `TableRepository` adds it to `getList` and `downloadExcel`, so every list the core asks gets it:
+  the tables of the frontend-automation sections and their pages, the referenced tables of joined
+  columns, the [selectors fed by frontend-automation tables](#selectors-fed-by-frontend-automation-tables)
+  and the master tables matched against the data of an execution.
+- On a DAG switch the open tables are asked again, from their first page, with the new DAG, and the
+  referenced tables too. Rows or pages that arrive late for the DAG left behind are dropped.
+
 #### Selectors fed by frontend-automation tables
 
 When a selector offers values that live in the database (an [execution history filter](#execution-history-filters-optional),
@@ -726,14 +750,12 @@ join_from: "plants.name"
   config stores.
 - The text is the row's value in the named column.
 
-**Several DAGs.** In a deployment with several DAGs (`schema` with more than one name), the list
-is asked with the active DAG as `schema`, the same name Cornflow takes in `GET /execution/?schema=`:
-`GET /plants/?schema=<active DAG>`. The backend can use it to return only the rows that apply to
+**Several DAGs.** The list carries the active DAG as `schema`, as every list of a
+frontend-automation table does (see [Tables several DAGs share](#tables-several-dags-share)):
+`GET /plants/?schema=<active DAG>`. The backend can use it to offer only the rows that apply to
 that DAG, e.g. a `plants` table with a `type` column where each DAG plans the plants of one type.
-A backend that ignores the parameter returns every row, as with a single DAG, where the list is
-asked without parameters. On a DAG switch every selector asks its options again, so it never
-offers the rows of the DAG left behind; a history filter whose value the new DAG does not offer
-goes back to "All".
+On a DAG switch every selector asks its options again, so it never offers the rows of the DAG left
+behind; a history filter whose value the new DAG does not offer goes back to "All".
 
 ⚠️ **It needs frontend automation.** The table has to be one of the application's
 frontend-automation tables. In a project without frontend automation these selectors cannot be

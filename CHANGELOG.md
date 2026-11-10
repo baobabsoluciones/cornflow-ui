@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- **Every list and download of a frontend-automation table carries the active DAG**  
+  - In a deployment with several DAGs, `TableRepository.getList` and `downloadExcel` send `schema` with the active DAG next to the parameters the request already has (page, column filters, search), so a table several DAGs share can return only the rows that apply to the active one. With a single DAG the requests carry no `schema`, and a backend that ignores it returns every row
+  - It reaches every list the core asks: the tables of the frontend-automation sections and their pages, the referenced tables of joined columns, the selectors fed by a table and the master tables matched against an execution's data
+  - A DAG switch asks the open tables again, from their first page, and the referenced tables too; rows or pages that arrive late for the DAG left behind are dropped
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #PR_NUMBER
+
 ## [4.0.0] - 05-11-2026
 
 Version 4 redraws the core on its own components (Reka UI underneath, no Vuetify in what it draws) and removes the components, settings and extension points that the new screens leave unused. See **Removed** before upgrading an application that imports core files by path.

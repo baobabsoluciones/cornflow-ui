@@ -360,12 +360,15 @@ export function useTableData(
       }
 
       // Create repository and load data
+      const schema = generalStore.getSchemaName
       const repository = new TableRepository(tableConfigFound, t)
       const data = await repository.getList()
       const resultData = normalizeGetListResponseToRows(data, tableConfigFound)
 
-      // Cache the data
-      tableDataCache.value[tableName] = resultData
+      // Cache the data, unless it was asked for the DAG the session has left
+      if (schema === generalStore.getSchemaName) {
+        tableDataCache.value[tableName] = resultData
+      }
 
       return resultData
     } catch (error) {
@@ -1304,6 +1307,8 @@ export function useTableData(
 
     const pageSize = listPageSize.value
     const offset = items.value.length
+    // A page asked before the table was loaded again (e.g. on a DAG switch) is dropped.
+    const myLoadId = loadIdRef.value
     loadingMore.value = true
 
     try {
@@ -1316,6 +1321,7 @@ export function useTableData(
         tableConfig.value,
         queryParams,
       )
+      if (myLoadId !== loadIdRef.value) return
       items.value = [...items.value, ...enriched]
       hasMore.value =
         supportsServerPagination.value && enriched.length >= pageSize
@@ -1482,9 +1488,13 @@ export function useTableData(
     { immediate: true },
   )
 
+  // The table loads with its config and again on a DAG switch: with several DAGs each one may get
+  // other rows of the same table, and the referenced tables are asked again too.
   watch(
-    tableConfig,
-    (newConfig) => {
+    [tableConfig, () => generalStore.getSchemaName],
+    ([newConfig, schema], previous) => {
+      if (previous && schema !== previous[1]) invalidateAllTableDataCaches()
+
       // Don't load data if we're using execution data
       if (shouldUseExecutionData.value) {
         return

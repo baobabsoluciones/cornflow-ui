@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ref, computed, defineComponent, h, nextTick } from 'vue'
+import { ref, computed, defineComponent, h, nextTick, reactive } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 
 // ─── Hoisted controllable fixtures ──────────────────────────────────────────
@@ -10,7 +10,8 @@ const route = vi.hoisted(() => ({ path: '/configuration' }))
 // `vi.mock` reliably applies to statically-imported deps of the SUT, so the
 // repository's calls funnel through this controllable stub.
 const repoCtrl = vi.hoisted(() => ({
-  getListResult: [] as any[], // rows returned by GET
+  // rows returned by GET, or a function of the query parameters that returns them (or a promise)
+  getListResult: [] as any[] | ((params: any) => any),
   rejectStatus: 0, // when >=400, dispatched calls resolve with this error status
   rejectWith: null as any, // when set, client methods reject with this error
   forceRetryContent: null as any, // content payload that triggers a force-retry offer
@@ -24,6 +25,12 @@ function record(method: string, url: string, data: any) {
   c.calls[method].push({ url, data })
   if (c.rejectWith) return Promise.reject(c.rejectWith)
   const status = c.rejectStatus || 200
+  if (method === 'get' && typeof c.getListResult === 'function') {
+    return Promise.resolve(c.getListResult(data)).then((content) => ({
+      status,
+      content,
+    }))
+  }
   let content: any
   if (method === 'get') content = c.getListResult
   else content = c.forceRetryContent ?? { ok: true }
@@ -728,6 +735,69 @@ describe('useTableData — loadData', () => {
   test('cancelLoadData increments load token without throwing', () => {
     const { api } = mountTableData(masterConfig)
     expect(() => api.cancelLoadData()).not.toThrow()
+  })
+})
+
+describe('useTableData — several DAGs', () => {
+  /** A `demand` table several DAGs share; the backend returns the rows of the DAG it is asked for. */
+  const demandRows: Record<string, any[]> = {
+    dag_a: [{ id: 1, plant_id: 10 }],
+    dag_b: [{ id: 2, plant_id: 20 }],
+  }
+  const listedSchemas = () =>
+    (repoCtrl.calls.get ?? []).map((call) => call.data?.schema)
+  let appConfig: any
+  let savedSchema: { schema: string; schemas: string[] }
+
+  beforeEach(async () => {
+    appConfig = (await import('@cornflow-ui/core/config')).default
+    savedSchema = { schema: appConfig.schema, schemas: appConfig.schemas }
+    appConfig.schemas = ['dag_a', 'dag_b']
+    appConfig.schema = 'dag_a'
+    storeState = reactive({ ...storeState, getSchemaName: 'dag_a' })
+  })
+
+  afterEach(() => {
+    Object.assign(appConfig, savedSchema)
+  })
+
+  /** Switches the session to `schema`, as the store does. */
+  function switchDag(schema: string) {
+    appConfig.schema = schema
+    storeState.getSchemaName = schema
+  }
+
+  test('the open table is asked again with the new DAG on a switch', async () => {
+    repoCtrl.getListResult = (params: any) => demandRows[params.schema]
+    const { api } = mountTableData(masterConfig)
+    await flushPromises()
+    expect(api.items.value).toEqual(demandRows.dag_a)
+
+    switchDag('dag_b')
+    await flushPromises()
+
+    expect(listedSchemas()).toEqual(['dag_a', 'dag_b'])
+    expect(api.items.value).toEqual(demandRows.dag_b)
+  })
+
+  test('rows that arrive late for the DAG left behind are dropped', async () => {
+    let answerDagA: (rows: any[]) => void = () => {}
+    repoCtrl.getListResult = (params: any) =>
+      params.schema === 'dag_a'
+        ? new Promise((resolve) => {
+            answerDagA = resolve
+          })
+        : demandRows.dag_b
+    const { api } = mountTableData(masterConfig)
+    await flushPromises()
+
+    switchDag('dag_b')
+    await flushPromises()
+    answerDagA(demandRows.dag_a)
+    await flushPromises()
+
+    expect(listedSchemas()).toEqual(['dag_a', 'dag_b'])
+    expect(api.items.value).toEqual(demandRows.dag_b)
   })
 })
 
