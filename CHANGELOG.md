@@ -8,7 +8,7 @@
   - It reaches every list the core asks: the tables of the frontend-automation sections and their pages, the referenced tables of joined columns, the selectors fed by a table and the master tables matched against an execution's data
   - A DAG switch asks the open tables again, from their first page, and the referenced tables too; rows or pages that arrive late for the DAG left behind are dropped
   *Contributors:* [@HelenaCA](#)  
-  *Commit ID:* #PR_NUMBER
+  *Commit ID:* #269
 
 ## [4.0.0] - 05-11-2026
 
