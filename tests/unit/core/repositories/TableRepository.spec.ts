@@ -21,6 +21,13 @@ vi.mock('@cornflow-ui/core/api/Api', () => ({
   default: mockClient,
 }))
 
+// Deployment config: one DAG unless a test lists several in `schemas`; `schema` is the active one.
+const mockConfig = vi.hoisted(() => ({
+  schema: 'dag_a',
+  schemas: [] as string[],
+}))
+vi.mock('@cornflow-ui/core/config', () => ({ default: mockConfig }))
+
 // i18nUtils.getMessageFromResponseContent is pure but imports the i18n plugin
 // transitively; mock it to deterministic, identifiable strings.
 vi.mock('@cornflow-ui/core/utils/i18nUtils', () => ({
@@ -94,6 +101,8 @@ function ok(content: any, status = 200) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockConfig.schema = 'dag_a'
+  mockConfig.schemas = []
 })
 
 afterEach(() => {
@@ -768,5 +777,122 @@ describe('TableRepository - pollAsyncUploadUntilTerminal', () => {
 
     expect(result.status).toBe('processing')
     expect(mockClient.get).toHaveBeenCalledTimes(1)
+  })
+})
+
+// ─── Tables several DAGs share ───────────────────────────────────────────────────
+
+describe('TableRepository - with several DAGs', () => {
+  /** A `demand` table several DAGs share, with a list and a download. */
+  const demandTable = () => ({
+    title: 'Demand',
+    [TableOperation.GET_LIST]: { url: '/demand/', http_method: 'GET' },
+    [TableOperation.DOWNLOAD_EXCEL]: {
+      url: '/demand/excel/',
+      http_method: 'GET',
+    },
+  })
+
+  beforeEach(() => {
+    mockConfig.schemas = ['dag_a', 'dag_b']
+    mockConfig.schema = 'dag_b'
+    ;(URL as any).createObjectURL = vi.fn(() => 'blob:url')
+    ;(URL as any).revokeObjectURL = vi.fn()
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    mockClient.get.mockResolvedValue(ok([]))
+    mockClient.getBlob.mockResolvedValue({
+      status: 200,
+      blob: new Blob(['data']),
+      filename: 'demand.xlsx',
+    })
+  })
+
+  test('the list carries the active DAG as schema', async () => {
+    await new TableRepository(demandTable()).getList()
+
+    expect(mockClient.get).toHaveBeenCalledWith(
+      '/demand/',
+      { schema: 'dag_b' },
+      {},
+      true,
+    )
+  })
+
+  test('a page of the list keeps its pagination and column filters next to schema', async () => {
+    await new TableRepository(demandTable()).getList({
+      limit: 50,
+      offset: 100,
+      plant_id: 3,
+    })
+
+    expect(mockClient.get).toHaveBeenCalledWith(
+      '/demand/',
+      { schema: 'dag_b', limit: 50, offset: 100, plant_id: 3 },
+      {},
+      true,
+    )
+  })
+
+  test('the download carries the active DAG as schema, with its filters', async () => {
+    await new TableRepository(demandTable()).downloadExcel({ plant_id: 3 })
+
+    expect(mockClient.getBlob).toHaveBeenCalledWith(
+      '/demand/excel/',
+      { schema: 'dag_b', plant_id: 3 },
+      true,
+    )
+  })
+
+  test('a schema given by the caller wins', async () => {
+    await new TableRepository(demandTable()).getList({ schema: 'dag_a' })
+
+    expect(mockClient.get).toHaveBeenCalledWith(
+      '/demand/',
+      { schema: 'dag_a' },
+      {},
+      true,
+    )
+  })
+
+  test('other operations do not carry schema', async () => {
+    const repo = new TableRepository({
+      ...demandTable(),
+      [TableOperation.GET_ITEM]: { url: '/demand/{idx}/', http_method: 'GET' },
+    })
+    mockClient.get.mockResolvedValue(ok({ id: 7 }))
+
+    await repo.getItem(7)
+
+    expect(mockClient.get).toHaveBeenCalledWith('/demand/7/', {}, {}, true)
+  })
+})
+
+describe('TableRepository - with a single DAG', () => {
+  test('the list and the download carry only the parameters of the caller', async () => {
+    ;(URL as any).createObjectURL = vi.fn(() => 'blob:url')
+    ;(URL as any).revokeObjectURL = vi.fn()
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    mockClient.get.mockResolvedValue(ok([]))
+    mockClient.getBlob.mockResolvedValue({
+      status: 200,
+      blob: new Blob(['x']),
+      filename: 'x.xlsx',
+    })
+    const repo = new TableRepository(fullConfig())
+
+    await repo.getList({ limit: 50, offset: 0 })
+    await repo.downloadExcel({ plant_id: 3 })
+
+    expect(mockClient.get).toHaveBeenCalledWith(
+      '/items/',
+      { limit: 50, offset: 0 },
+      {},
+      true,
+    )
+    expect(mockClient.getBlob).toHaveBeenCalledWith(
+      '/items/excel/',
+      { plant_id: 3 },
+      true,
+    )
   })
 })
