@@ -6,7 +6,7 @@
 - **The help button no longer covers the actions of a page header**  
   - The help button is fixed at the top-right corner and overlapped by about 16 px the actions at the right of a page title (for example "Create new execution" in the history). `CoreTitleView` now reserves space on its right so the actions end clear of it
   *Contributors:* [@antoniogonzalezsuarez](#)  
-  *Commit ID:* #271
+  *Commit ID:* #273
 
 ### Changed
 - **Every list and download of a frontend-automation table carries the active DAG**  
