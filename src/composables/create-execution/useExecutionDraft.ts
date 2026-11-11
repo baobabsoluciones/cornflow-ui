@@ -630,7 +630,11 @@ export function useExecutionDraft() {
         name: execution.name || `${new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)}_check`,
       })
       if (!created) throw new Error(t('projectExecution.snackbar.instanceCreationError'))
-      const checked = await store.getInstanceDataChecksById(created.id, execution.config)
+      const checked = await store.getInstanceDataChecksById(
+        created.id,
+        created.schema,
+        execution.config,
+      )
       if (!checked) throw new Error(t('projectExecution.snackbar.instanceDataChecksError'))
 
       execution.instance = checked

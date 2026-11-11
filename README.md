@@ -2043,7 +2043,7 @@ field cannot carry `null`, so leaving the key out is what says "not given".
 | Request | What it carries |
 | --- | --- |
 | `POST /external/etl/` | The load filters, as loose form fields in the body - one field per filter, not a JSON blob and not a query arg. Values are stringified, and an empty one is left out. The premium ETL module does the appending (and `?schema=` with `etl.sendSchema`). |
-| `POST /data-check/instance/<id>/` | The execution config, as `{ config }`: the filters with `in_config` among it. |
+| `POST /data-check/instance/<id>/` | The DAG of the instance and the execution config, as `{ schema, config }`: the filters with `in_config` among the config. |
 | `POST /execution/` | The execution config, unchanged. |
 
 Implementation: `stores/general.ts` (`fetchFrontendConfig`, `getLoadFilterFields`),
@@ -2054,7 +2054,11 @@ Implementation: `stores/general.ts` (`fetchFrontendConfig`, `getLoadFilterFields
 #### Data checks: enableBlockAdvanceOnCheckErrors
 
 The data checks run when the user asks (**Check**): the instance is stored, the checks run with the
-execution config (`POST /data-check/instance/<id>/`) and the result shows one group per check table.
+DAG of that instance and the execution config (`POST /data-check/instance/<id>/` with
+`{ schema, config }`) and the result shows one group per check table. A deployment closed to the DAGs
+of each user rejects a data check without `schema`; the data-check KPIs of an execution
+(`POST /data-check-kpis/execution/<id>/`, in the historical KPIs and when the execution files are
+regenerated) send `{ schema }` with the DAG of that execution, read from `GET /execution/<id>/`.
 Editing the data afterwards marks them out of date. They are optional: launching without them only
 shows a note. With `enableBlockAdvanceOnCheckErrors`, rows in a check table whose schema has
 `is_warning: false` stop the launch until they are fixed.

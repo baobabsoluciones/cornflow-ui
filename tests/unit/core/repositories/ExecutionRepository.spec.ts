@@ -478,6 +478,55 @@ describe('ExecutionRepository', () => {
     })
   })
 
+  describe('getExecutionSchema', () => {
+    test('returns the DAG the execution was created with', async () => {
+      mockClient.get.mockResolvedValue({
+        status: 200,
+        content: { id: '42', schema: 'dag_b' },
+      })
+
+      await expect(repository.getExecutionSchema('42')).resolves.toBe('dag_b')
+      expect(mockClient.get).toHaveBeenCalledWith('/execution/42/')
+    })
+
+    test.each([
+      ['the request fails', { status: 404, content: { error: 'not found' } }],
+      ['the execution has no schema', { status: 200, content: { id: '42' } }],
+    ])('throws when %s', async (_, response) => {
+      mockClient.get.mockResolvedValue(response)
+
+      await expect(repository.getExecutionSchema('42')).rejects.toThrow(
+        'Error getting the schema of the execution',
+      )
+    })
+  })
+
+  describe('startDataCheckKpisForExecution', () => {
+    test('sends the DAG of the execution in the body', async () => {
+      mockClient.post.mockResolvedValue({ status: 201, content: { id: 'c1' } })
+
+      await repository.startDataCheckKpisForExecution('42', 'dag_b')
+
+      expect(mockClient.post).toHaveBeenCalledWith(
+        '/data-check-kpis/execution/42/',
+        { schema: 'dag_b' },
+        {},
+        false,
+      )
+    })
+
+    test('throws when the backend rejects the request', async () => {
+      mockClient.post.mockResolvedValue({
+        status: 400,
+        content: { error: 'The request does not specify a schema to use' },
+      })
+
+      await expect(
+        repository.startDataCheckKpisForExecution('42', 'dag_b'),
+      ).rejects.toThrow('Error starting data-check KPIs for execution')
+    })
+  })
+
   describe('getDataToDownload — backend execution files', () => {
     // jsdom's Blob.text() is unreliable across versions — provide a stub that mimics
     // the only surface the repository code touches.
@@ -580,6 +629,10 @@ describe('ExecutionRepository', () => {
           blob: new Blob(['zip'], { type: 'application/zip' }),
           filename: 'exec.zip',
         })
+      mockClient.get.mockResolvedValue({
+        status: 200,
+        content: { id: '42', schema: 'dag_b' },
+      })
       mockClient.post.mockResolvedValue({ status: 201, content: {} })
 
       vi.useFakeTimers()
@@ -593,15 +646,17 @@ describe('ExecutionRepository', () => {
         vi.useRealTimers()
       }
 
+      // The regeneration runs under the DAG of the execution, not the active one.
+      expect(mockClient.get).toHaveBeenCalledWith('/execution/42/')
       expect(mockClient.post).toHaveBeenCalledWith(
         '/data-check-kpis/execution/42/',
-        {},
+        { schema: 'dag_b' },
         {},
         false,
       )
       expect(mockClient.getBlob).toHaveBeenCalledTimes(3)
       expect(anchorClick).toHaveBeenCalledTimes(1)
-      expect(mockClient.get).not.toHaveBeenCalled()
+      expect(mockClient.get).not.toHaveBeenCalledWith('/execution/42/data/')
     })
 
     test('HTTP 400 status:-3 → throws ExecutionFilesRegenerationError on timeout', async () => {
@@ -609,6 +664,10 @@ describe('ExecutionRepository', () => {
         status: 400,
         blob: blobOf({ status: -3, error: 'stale' }),
         filename: null,
+      })
+      mockClient.get.mockResolvedValue({
+        status: 200,
+        content: { id: '42', schema: 'dag_b' },
       })
       mockClient.post.mockResolvedValue({ status: 201, content: {} })
 

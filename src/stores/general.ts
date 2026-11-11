@@ -862,10 +862,18 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
-    async getInstanceDataChecksById(id: string, config?: Record<string, any>) {
+    async getInstanceDataChecksById(
+      id: string,
+      schema: string,
+      config?: Record<string, any>,
+    ) {
       try {
         const dataChecks =
-          await this.instanceRepository.launchInstanceDataChecks(id, config)
+          await this.instanceRepository.launchInstanceDataChecks(
+            id,
+            schema,
+            config,
+          )
         const executionId = dataChecks.id
 
         let execution
@@ -925,7 +933,12 @@ export const useGeneralStore = defineStore('general', {
 
         this.historical.bannerMode = 'data_check'
         try {
-          await this.executionRepository.startDataCheckKpisForExecution(execId)
+          const schema =
+            await this.executionRepository.getExecutionSchema(execId)
+          await this.executionRepository.startDataCheckKpisForExecution(
+            execId,
+            schema,
+          )
         } catch (err: any) {
           this.historical.errorMessage =
             err?.message || 'Error starting data-check KPIs'

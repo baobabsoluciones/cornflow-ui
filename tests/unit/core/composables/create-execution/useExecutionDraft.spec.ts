@@ -124,7 +124,7 @@ function resetStore() {
     getExecutionSolvers: ['mip', 'heuristic'],
     rawConfigurations: { masterData: {} },
     loadedExecutions: [] as any[],
-    createInstance: vi.fn(async () => ({ id: 'i1' })),
+    createInstance: vi.fn(async () => ({ id: 'i1', schema: 'instance_dag' })),
     getInstanceDataChecksById: vi.fn(),
     createExecution: vi.fn(async () => ({ id: 'e1' })),
     uploadSolutionData: vi.fn(async () => true),
@@ -285,6 +285,7 @@ describe('useExecutionDraft', () => {
     await draft.runChecks()
     expect(store.getInstanceDataChecksById).toHaveBeenCalledWith(
       'i1',
+      'instance_dag',
       expect.objectContaining({ region_code: 'south' }),
     )
 
@@ -411,7 +412,12 @@ describe('useExecutionDraft', () => {
     await draft.runChecks()
 
     expect(store.createInstance).toHaveBeenCalled()
-    expect(store.getInstanceDataChecksById).toHaveBeenCalledWith('i1', expect.any(Object))
+    // The checks run under the DAG of the instance just created, not the active one.
+    expect(store.getInstanceDataChecksById).toHaveBeenCalledWith(
+      'i1',
+      'instance_dag',
+      expect.any(Object),
+    )
     expect(draft.checks.status).toBe('errors')
     expect(draft.checks.results).toEqual([
       {

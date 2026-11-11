@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Fixed
+- **The data checks send the DAG of the instance or execution they check**  
+  - A deployment closed to the DAGs of each user rejects a data check without `schema` (400, "The request does not specify a schema to use") and creates no check execution. `POST /data-check/instance/<id>/` sends the DAG of the instance just created next to the execution `config`, and `POST /data-check-kpis/execution/<id>/` sends the DAG of the execution, read from `GET /execution/<id>/`, both in the historical KPIs and when the execution files are regenerated. Neither takes the active DAG
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #274
+
 ### Changed
 - **Every list and download of a frontend-automation table carries the active DAG**  
   - In a deployment with several DAGs, `TableRepository.getList` and `downloadExcel` send `schema` with the active DAG next to the parameters the request already has (page, column filters, search), so a table several DAGs share can return only the rows that apply to the active one. With a single DAG the requests carry no `schema`, and a backend that ignores it returns every row
