@@ -8,6 +8,12 @@
   *Contributors:* [@antoniogonzalezsuarez](#)  
   *Commit ID:* #275
 
+### Fixed
+- **The help button no longer covers the actions of a page header**  
+  - The help button is fixed at the top-right corner and overlapped by about 16 px the actions at the right of a page title (for example "Create new execution" in the history). `CoreTitleView` now reserves space on its right so the actions end clear of it
+  *Contributors:* [@antoniogonzalezsuarez](#)  
+  *Commit ID:* #273
+
 ### Changed
 - **Every list and download of a frontend-automation table carries the active DAG**  
   - In a deployment with several DAGs, `TableRepository.getList` and `downloadExcel` send `schema` with the active DAG next to the parameters the request already has (page, column filters, search), so a table several DAGs share can return only the rows that apply to the active one. With a single DAG the requests carry no `schema`, and a backend that ignores it returns every row
@@ -16,6 +22,12 @@
   - `docs/backend-several-dags.md`: what the backend of a deployment with several DAGs receives and how to answer it
   *Contributors:* [@HelenaCA](#)  
   *Commit ID:* #269
+
+### Fixed
+- **Opening or refreshing a premium route no longer ends on the not-found page**  
+  - `registerPlugins` added the premium routes after `app.use(router)`, which had already started the first navigation: a URL such as `/ai-chat` matched the catch-all and redirected to `/not-found`, while the same view opened from the menu worked. The premium routes and locales are now added before the router is installed
+  *Contributors:* [@antoniogonzalezsuarez](#)  
+  *Commit ID:* #272
 
 ## [4.0.0] - 05-11-2026
 

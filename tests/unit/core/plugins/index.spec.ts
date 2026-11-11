@@ -24,6 +24,16 @@ vi.mock('@cornflow-ui/core/plugins/i18n', () => ({
   default: { install: vi.fn() }
 }))
 
+const { mockApplyPremiumRoutes, mockApplyPremiumLocales } = vi.hoisted(() => ({
+  mockApplyPremiumRoutes: vi.fn(),
+  mockApplyPremiumLocales: vi.fn()
+}))
+
+vi.mock('@cornflow-ui/core/plugins/extensions', () => ({
+  applyPremiumRoutes: mockApplyPremiumRoutes,
+  applyPremiumLocales: mockApplyPremiumLocales
+}))
+
 describe('plugins/index', () => {
   let mockApp: App
   let mockLoadFonts: any
@@ -62,6 +72,24 @@ describe('plugins/index', () => {
     expect(mockApp.use).toHaveBeenNthCalledWith(1, mockVuetify)
     expect(mockApp.use).toHaveBeenNthCalledWith(2, mockRouter)
     expect(mockApp.use).toHaveBeenNthCalledWith(3, mockI18n)
+  })
+
+  test('should add the premium routes before the router starts its first navigation', () => {
+    // `app.use(router)` triggers the first navigation: a premium route added after it is unknown to
+    // that navigation, so opening or refreshing a premium URL would end on /not-found.
+    const callOrder: string[] = []
+    mockApplyPremiumRoutes.mockImplementation(() => callOrder.push('applyPremiumRoutes'))
+    mockApplyPremiumLocales.mockImplementation(() => callOrder.push('applyPremiumLocales'))
+    mockApp.use = vi.fn().mockImplementation((plugin: unknown) => {
+      callOrder.push(plugin === mockRouter ? 'use(router)' : 'use(other)')
+      return mockApp
+    })
+
+    registerPlugins(mockApp)
+
+    expect(mockApplyPremiumRoutes).toHaveBeenCalledWith(mockRouter)
+    expect(callOrder.indexOf('applyPremiumRoutes')).toBeLessThan(callOrder.indexOf('use(router)'))
+    expect(callOrder.indexOf('applyPremiumLocales')).toBeLessThan(callOrder.indexOf('use(router)'))
   })
 
   test('should load fonts before registering plugins', () => {
