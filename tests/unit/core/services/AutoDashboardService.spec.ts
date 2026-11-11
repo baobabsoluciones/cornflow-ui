@@ -212,6 +212,21 @@ describe('analyzeTable', () => {
 // ---------------------------------------------------------------------------
 
 describe('generateDashboardWidgets', () => {
+  it('names the columns with their schema titles, in the given language', () => {
+    const schema = {
+      properties: {
+        revenue: { type: 'number', title: 'Income' },
+        region: { type: 'string', title: { en: 'Region', es: 'Región' } },
+      },
+    }
+    const analysis = analyzeTable('sales', salesRows, schema, 'es')!
+    expect(analysis.columnLabels).toMatchObject({ revenue: 'Income', region: 'Región', cost: 'Cost' })
+    const titles = generateDashboardWidgets(analysis).map((w) => w.title)
+    expect(titles).toContain('Total Income')
+    expect(titles.some((title) => title.includes('Región'))).toBe(true)
+    expect(titles.some((title) => /revenue|region/i.test(title))).toBe(false)
+  })
+
   it('generates KPI + line + bar + pie widgets for rich data', () => {
     const analysis = analyzeTable('sales', salesRows)!
     const widgets = generateDashboardWidgets(analysis)

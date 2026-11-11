@@ -1127,11 +1127,12 @@ export function buildArrayTableAutomationConfig(
   type: string,
 ): any {
   const defaultGroup = DEFAULT_GROUPS[type] ?? null
+  const title = tableSchema.title || formatTitle(tableKey)
   return {
     group: defaultGroup ? TYPE_TO_GROUP_KEY[type] || null : null,
-    title: formatTitle(tableKey),
+    title,
     icon: 'mdi-table',
-    _originalTitle: formatTitle(tableKey),
+    _originalTitle: title,
     _originalGroup: defaultGroup,
     get_list: {
       url: '',
