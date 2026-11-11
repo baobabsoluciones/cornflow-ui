@@ -10,6 +10,13 @@
   - `docs/backend-several-dags.md`: what the backend of a deployment with several DAGs receives and how to answer it
   *Contributors:* [@HelenaCA](#)  
   *Commit ID:* #269
+- **Load filters from the backend (`GET /external/frontend-config/`)**  
+  - The load filters a DAG's ETL asks for before bringing the data come from the backend: the `query` of the active DAG, a JSON schema read like the config schema, asked once after the login when an ETL module is registered. `pre_etl: true` in the config schema is not read
+  - The label is the property's `title` (per language, or plain text) or its `description`
+  - The filters keep their values apart from the execution config; one with `in_config` also fills that config key, so it reaches the data checks and the solve
+  - A backend without the endpoint, or a DAG it leaves out, asks no load filters. The database is still offered with `etl.useEtlBackend` and `etl.enableLoadFromDb`
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #274
 
 ## [4.0.0] - 05-11-2026
 
