@@ -15,7 +15,7 @@
 - **Opening or refreshing a premium route no longer ends on the not-found page**  
   - `registerPlugins` added the premium routes after `app.use(router)`, which had already started the first navigation: a URL such as `/ai-chat` matched the catch-all and redirected to `/not-found`, while the same view opened from the menu worked. The premium routes and locales are now added before the router is installed
   *Contributors:* [@antoniogonzalezsuarez](#)  
-  *Commit ID:* #
+  *Commit ID:* #272
 
 ## [4.0.0] - 05-11-2026
 
