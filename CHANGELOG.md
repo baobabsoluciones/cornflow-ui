@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Added
+- **Premium modules can add pages to Administration**  
+  - A `PremiumDrawerSection` with `parent: 'admin'` is listed as a page of the core's Administration group (next to Roles management) instead of a group of its own. The group shows for admins when it has a page, so it no longer depends on roles management being on
+  *Contributors:* [@antoniogonzalezsuarez](#)  
+  *Commit ID:* #275
+
 ### Changed
 - **Every list and download of a frontend-automation table carries the active DAG**  
   - In a deployment with several DAGs, `TableRepository.getList` and `downloadExcel` send `schema` with the active DAG next to the parameters the request already has (page, column filters, search), so a table several DAGs share can return only the rows that apply to the active one. With a single DAG the requests carry no `schema`, and a backend that ignores it returns every row
