@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ref, computed, defineComponent, h, nextTick } from 'vue'
+import { ref, computed, defineComponent, h, nextTick, reactive } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 
 // ─── Hoisted controllable fixtures ──────────────────────────────────────────
@@ -10,7 +10,9 @@ const route = vi.hoisted(() => ({ path: '/configuration' }))
 // `vi.mock` reliably applies to statically-imported deps of the SUT, so the
 // repository's calls funnel through this controllable stub.
 const repoCtrl = vi.hoisted(() => ({
-  getListResult: [] as any[], // rows returned by GET
+  // rows returned by GET, or a function of the query parameters and the URL that returns them
+  // (or a promise of them)
+  getListResult: [] as any[] | ((params: any, url: string) => any),
   rejectStatus: 0, // when >=400, dispatched calls resolve with this error status
   rejectWith: null as any, // when set, client methods reject with this error
   forceRetryContent: null as any, // content payload that triggers a force-retry offer
@@ -24,6 +26,12 @@ function record(method: string, url: string, data: any) {
   c.calls[method].push({ url, data })
   if (c.rejectWith) return Promise.reject(c.rejectWith)
   const status = c.rejectStatus || 200
+  if (method === 'get' && typeof c.getListResult === 'function') {
+    return Promise.resolve(c.getListResult(data, url)).then((content) => ({
+      status,
+      content,
+    }))
+  }
   let content: any
   if (method === 'get') content = c.getListResult
   else content = c.forceRetryContent ?? { ok: true }
@@ -728,6 +736,113 @@ describe('useTableData — loadData', () => {
   test('cancelLoadData increments load token without throwing', () => {
     const { api } = mountTableData(masterConfig)
     expect(() => api.cancelLoadData()).not.toThrow()
+  })
+})
+
+describe('useTableData — several DAGs', () => {
+  /** A `demand` table several DAGs share; the backend returns the rows of the DAG it is asked for. */
+  const demandRows: Record<string, any[]> = {
+    dag_a: [{ id: 1, plant_id: 10 }],
+    dag_b: [{ id: 2, plant_id: 20 }],
+  }
+  /** `plants`, the table `demand` refers to. */
+  const plantsTable = {
+    title: 'Plants',
+    get_list: { url: '/plants', http_method: 'get' },
+  }
+  const plantRows: Record<string, any[]> = {
+    dag_a: [{ id: 10, name: 'North' }],
+    dag_b: [{ id: 20, name: 'East' }],
+  }
+  const listed = () =>
+    (repoCtrl.calls.get ?? []).map((call) => [call.url, call.data?.schema])
+  let appConfig: any
+  let savedSchema: { schema: string; schemas: string[] }
+
+  beforeEach(async () => {
+    appConfig = (await import('@cornflow-ui/core/config')).default
+    savedSchema = { schema: appConfig.schema, schemas: appConfig.schemas }
+    appConfig.schemas = ['dag_a', 'dag_b']
+    appConfig.schema = 'dag_a'
+    storeState = reactive({
+      ...storeState,
+      getSchemaName: 'dag_a',
+      getConfigurations: {
+        masterData: { plants: plantsTable },
+        inputData: {},
+        resultsData: {},
+      },
+    })
+    repoCtrl.getListResult = (params: any, url: string) =>
+      url === '/plants' ? plantRows[params.schema] : demandRows[params.schema]
+  })
+
+  afterEach(() => {
+    Object.assign(appConfig, savedSchema)
+  })
+
+  /** Switches the session to `schema`, as the store does. */
+  function switchDag(schema: string) {
+    appConfig.schema = schema
+    storeState.getSchemaName = schema
+  }
+
+  test('a table mounted after a DAG switch is asked with the new DAG', async () => {
+    const before = mountTableData(masterConfig)
+    await flushPromises()
+    expect(before.api.items.value).toEqual(demandRows.dag_a)
+
+    switchDag('dag_b')
+    const after = mountTableData(masterConfig)
+    await flushPromises()
+
+    expect(listed()).toEqual([
+      ['/list', 'dag_a'],
+      ['/list', 'dag_b'],
+    ])
+    expect(after.api.items.value).toEqual(demandRows.dag_b)
+  })
+
+  test('the referenced tables of joined columns are not reused across DAGs', async () => {
+    const { api } = mountTableData(masterConfig)
+    await flushPromises()
+    repoCtrl.calls = {}
+
+    expect(await api.loadTableData('plants')).toEqual(plantRows.dag_a)
+    expect(await api.loadTableData('plants')).toEqual(plantRows.dag_a)
+    switchDag('dag_b')
+    expect(await api.loadTableData('plants')).toEqual(plantRows.dag_b)
+
+    expect(listed()).toEqual([
+      ['/plants', 'dag_a'],
+      ['/plants', 'dag_b'],
+    ])
+  })
+
+  test('rows of a referenced table that arrive late for the DAG left behind are not kept', async () => {
+    const { api } = mountTableData(masterConfig)
+    await flushPromises()
+    repoCtrl.calls = {}
+    let answerDagA: (rows: any[]) => void = () => {}
+    repoCtrl.getListResult = (params: any) =>
+      params.schema === 'dag_a'
+        ? new Promise((resolve) => {
+            answerDagA = resolve
+          })
+        : plantRows.dag_b
+
+    const late = api.loadTableData('plants')
+    await flushPromises()
+    switchDag('dag_b')
+    expect(await api.loadTableData('plants')).toEqual(plantRows.dag_b)
+    answerDagA(plantRows.dag_a)
+    await late
+
+    expect(await api.loadTableData('plants')).toEqual(plantRows.dag_b)
+    expect(listed()).toEqual([
+      ['/plants', 'dag_a'],
+      ['/plants', 'dag_b'],
+    ])
   })
 })
 

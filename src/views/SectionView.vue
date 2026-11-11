@@ -153,7 +153,13 @@
           </div>
 
           <!-- Group of tables, one tab each -->
-          <div v-else class="table-section">
+          <div
+            v-else
+            class="table-section"
+            :class="{
+              'table-section--dashboard': shouldShowWidgets && hasActualWidgets,
+            }"
+          >
             <div
               v-if="shouldShowWidgets && hasActualWidgets"
               class="table-with-widgets"

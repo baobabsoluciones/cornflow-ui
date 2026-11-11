@@ -1,4 +1,5 @@
 import client from '@cornflow-ui/core/api/Api'
+import config from '@cornflow-ui/core/config'
 import { TableOperation } from '@cornflow-ui/core/types/table'
 import { buildApiUrl } from '@cornflow-ui/core/utils/urlUtils'
 import {
@@ -104,6 +105,20 @@ function flattenQueryParams(
     if (v !== undefined && v !== null) flat[k] = v
   }
   return flat
+}
+
+/**
+ * The query parameters of a list or a download of the table. In a deployment with several DAGs
+ * they carry `schema` with the active DAG (the name Cornflow takes in `/execution/?schema=`), so a
+ * table several DAGs share can return only the rows that apply to the active one; a parameter of
+ * the same name given by the caller wins. With a single DAG they are the caller's, unchanged.
+ */
+function withActiveSchema<T extends Record<string, any>>(
+  queryParams: T | undefined,
+): T | Record<string, any> | undefined {
+  const severalDags = (config.schemas?.length ?? 0) > 1
+  if (!severalDags || !config.schema) return queryParams
+  return { schema: config.schema, ...queryParams }
 }
 
 /**
@@ -274,11 +289,12 @@ export default class TableRepository {
   /**
    * Get all items (list endpoint).
    * Query params (limit, offset, date range, column filters) are sent as GET query string.
-   * Keys should match the parameter names defined in the path (e.g. limit, offset, fecha_gte, fecha_lte, tipo_programa).
+   * Keys should match the parameter names defined in the path (e.g. limit, offset, date_gte, date_lte, type).
+   * With several DAGs the list also gets `schema` with the active DAG.
    */
   async getList(queryParams?: Record<string, any>): Promise<any[]> {
     return this.performOperation(TableOperation.GET_LIST, {
-      queryParams: queryParams ?? {},
+      queryParams: withActiveSchema(queryParams ?? {}),
     })
   }
 
@@ -409,7 +425,8 @@ export default class TableRepository {
 
   /**
    * Download Excel from backend when `download_excel_table` is defined in automation.
-   * Query params should match get_list filter params (same names as path.parameters).
+   * Query params should match get_list filter params (same names as path.parameters). With several
+   * DAGs the download also gets `schema` with the active DAG, as the list does.
    */
   async downloadExcel(
     queryParams?: Record<string, string | number | boolean | undefined>,
@@ -436,7 +453,7 @@ export default class TableRepository {
     }
 
     const url = buildApiUrl(operationConfig.url, {})
-    const flat = flattenQueryParams(queryParams)
+    const flat = flattenQueryParams(withActiveSchema(queryParams))
 
     const { status, blob, filename } = await client.getBlob(url, flat, true)
     if (status < 200 || status >= 300) {

@@ -1556,7 +1556,9 @@ defineExpose({
   min-height: 0;
 }
 
-.execution-data-view__table {
+/* CoreDataTable renders inside a Teleport, so its root does not carry this component's scope
+   attribute: the rule reaches it through the body. */
+.execution-data-view__body > :deep(.execution-data-view__table) {
   flex: 1;
   min-width: 0;
 }
