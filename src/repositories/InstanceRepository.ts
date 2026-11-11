@@ -35,7 +35,7 @@ export default class InstanceRepository {
   /**
    * Launches the data checks for an instance. The execution `config` travels with the
    * request so the checks run under the same parameters as the solve will, including
-   * the ones the schema marks `pre_etl` (the ETL filtered the data with them).
+   * the load filters with `in_config` (the ETL filtered the data with them).
    */
   async launchInstanceDataChecks(id: string, config?: Record<string, any>) {
     const body =

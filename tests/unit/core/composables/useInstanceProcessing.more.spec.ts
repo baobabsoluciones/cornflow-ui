@@ -77,27 +77,9 @@ vi.mock('@/app/models/Instance', () => ({
 // suite mocks.
 vi.mock('@cornflow-ui/core/utils/data_io', () => ({}))
 
-// schemaUtils
-// The whole module is replaced (importing it for real drags in i18n, which this suite
-// mocks). `pickPreEtlConfigValues` is reproduced here only so the call reads naturally;
-// what these tests check is the wiring — which arguments the composable hands it and
-// that its result reaches the ETL backend. The picking itself is covered in
-// tests/unit/core/utils/schemaUtils.spec.ts.
-const mockPickPreEtlConfigValues = vi.fn(
-  (config: any, fields: any[]): Record<string, unknown> => {
-    const picked: Record<string, unknown> = {}
-    for (const field of (fields || []).filter((f: any) => f?.preEtl === true)) {
-      const value = config?.[field.key]
-      if (value === null || value === undefined || value === '') continue
-      picked[field.key] = value
-    }
-    return picked
-  },
-)
-vi.mock('@cornflow-ui/core/utils/schemaUtils', () => ({
-  pickPreEtlConfigValues: (...args: any[]) =>
-    (mockPickPreEtlConfigValues as any)(...args),
-}))
+// schemaUtils: reached through the extension registry; the real module drags in i18n, which this
+// suite mocks.
+vi.mock('@cornflow-ui/core/utils/schemaUtils', () => ({}))
 
 // errorFormatting — keep simple, identifiable strings
 vi.mock('@cornflow-ui/core/utils/errorFormatting', () => ({
@@ -138,7 +120,6 @@ function makeStore(overrides: any = {}) {
         etl: {
           enableEtlMetadataAndReview: false,
           useEtlBackend: false,
-          enableLoadFromDb: false,
         },
         fileProcessors: {},
         ...(overrides.parameters || {}),
@@ -305,7 +286,6 @@ describe('useInstanceProcessing - processFiles (ETL backend)', () => {
         etl: {
           enableEtlMetadataAndReview: false,
           useEtlBackend: true,
-          enableLoadFromDb: false,
         },
         fileProcessors: {},
         ...extra,
@@ -325,51 +305,25 @@ describe('useInstanceProcessing - processFiles (ETL backend)', () => {
     expect((result.instance as any).data).toEqual({ table_a: [{ id: 1 }] })
   })
 
-  test('forwards only the pre-ETL parameters of the execution config', async () => {
-    etlStore({
-      configFields: [
-        { key: 'horizon_days', title: '', type: 'number', preEtl: true },
-        { key: 'date', title: '', type: 'date', preEtl: true },
-        { key: 'n_scenarios', title: '', type: 'number' },
-      ],
-    })
+  test('sends the values of the load filters to the ETL with the files', async () => {
+    etlStore()
     mockUseEtlBackend.mockResolvedValue({ data: { table_a: [] } })
 
     const { processFiles } = useInstanceProcessing()
-    await processFiles([makeFile('a.xlsx')], {
-      horizon_days: 3,
-      date: '2026-09-28',
-      n_scenarios: 10,
-      solver: 'base_solver',
-    })
+    await processFiles([makeFile('a.xlsx')], { horizon_days: 3, date: '2026-09-28' })
 
-    // The whole config is handed over together with the deployment's config fields, so
-    // the composable is the only place that has to know which parameters are pre-ETL.
-    expect(mockPickPreEtlConfigValues).toHaveBeenCalledWith(
-      {
-        horizon_days: 3,
-        date: '2026-09-28',
-        n_scenarios: 10,
-        solver: 'base_solver',
-      },
-      storeState.appConfig.parameters.configFields,
-    )
-    // Only the parameters the backend filters the load with travel to the ETL; the
-    // rest of the config is none of its business.
     expect(mockUseEtlBackend).toHaveBeenCalledWith(expect.any(Array), {
       horizon_days: 3,
       date: '2026-09-28',
     })
   })
 
-  test('sends no pre-ETL parameters when the schema marks none', async () => {
-    etlStore({
-      configFields: [{ key: 'n_scenarios', title: '', type: 'number' }],
-    })
+  test('sends no filter values when there are no load filters', async () => {
+    etlStore()
     mockUseEtlBackend.mockResolvedValue({ data: { table_a: [] } })
 
     const { processFiles } = useInstanceProcessing()
-    await processFiles([makeFile('a.xlsx')], { n_scenarios: 10 })
+    await processFiles([makeFile('a.xlsx')])
 
     expect(mockUseEtlBackend).toHaveBeenCalledWith(expect.any(Array), {})
   })
@@ -379,7 +333,6 @@ describe('useInstanceProcessing - processFiles (ETL backend)', () => {
       etl: {
         enableEtlMetadataAndReview: true,
         useEtlBackend: false,
-        enableLoadFromDb: false,
       },
       fileProcessors: {},
     })
@@ -436,7 +389,6 @@ describe('useInstanceProcessing - processFiles (ETL backend)', () => {
       etl: {
         enableEtlMetadataAndReview: false,
         useEtlBackend: true,
-        enableLoadFromDb: false,
       },
       fileProcessors: { somePrefix: {} },
     })
@@ -467,13 +419,21 @@ describe('useInstanceProcessing - processFromDb', () => {
     expect((result.instance as any).data).toEqual({ table_a: [{ id: 1 }] })
   })
 
+  test('asks the database with the values of the load filters', async () => {
+    mockUseEtlBackendFromDb.mockResolvedValue({ data: { table_a: [] } })
+
+    const { processFromDb } = useInstanceProcessing()
+    await processFromDb({ plant: 4, covers: [1, 2] })
+
+    expect(mockUseEtlBackendFromDb).toHaveBeenCalledWith({ plant: 4, covers: [1, 2] })
+  })
+
   test('exposes rawData when review enabled and __metadata__ present', async () => {
     storeState = makeStore({
       parameters: {
         etl: {
           enableEtlMetadataAndReview: true,
           useEtlBackend: false,
-          enableLoadFromDb: true,
         },
         fileProcessors: {},
       },

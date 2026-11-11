@@ -42,6 +42,7 @@ const global = () => ({ plugins: [i18n()], stubs: { teleport: true } })
 function makeDraft(overrides: Record<string, any> = {}) {
   return reactive({
     execution: { instance: null, config: {}, name: '', description: '' },
+    filters: {},
     files: [] as File[],
     loadStatus: 'empty',
     loadErrors: null,
@@ -736,6 +737,26 @@ describe('ExecutionDataCard', () => {
     expect(draft.load).toHaveBeenCalled()
   })
 
+  test('a load filter is labelled with the backend text in the active language, else in English, else its key', () => {
+    const draft = makeDraft({
+      dataSourceMode: 'database-filtered',
+      loadFilterFields: [
+        { key: 'plant', title: 'configParams.plant', label: { en: 'Plant', es: 'Planta' }, type: 'number' },
+        { key: 'weeks', title: 'configParams.weeks', label: { en: 'Weeks', fr: 'Semaines' }, type: 'number' },
+        { key: 'start', title: 'configParams.start', label: 'Start date', type: 'date' },
+        { key: 'products', title: 'configParams.products', label: '', type: 'number' },
+      ],
+    })
+    const wrapper = mount(ExecutionDataCard, {
+      props: { draft },
+      global: {
+        plugins: [createI18n({ legacy: false, locale: 'es', messages: { es: {} }, missingWarn: false, fallbackWarn: false })],
+      },
+    })
+    const labels = wrapper.findAll('.load-filters__label').map((l) => l.text().split('createExecution')[0].trim())
+    expect(labels).toEqual(['Planta', 'Weeks', 'Start date', 'products'])
+  })
+
   test('a load filter typed in shows the hint of its placeholder key', () => {
     const messages = { en: { f: { weekHint: 'First week, e.g. 2026-W44' } } }
     const draft = makeDraft({
@@ -749,8 +770,9 @@ describe('ExecutionDataCard', () => {
     expect(wrapper.find('[data-testid="load-filters"] input').attributes('placeholder')).toBe('First week, e.g. 2026-W44')
   })
 
-  test('with files only, it still asks for the load filters the ETL gets with them', async () => {
+  test('with files picked, it still asks for the load filters the ETL gets with them', async () => {
     const draft = makeDraft({
+      dataSourceMode: 'database-filtered',
       files: [new File(['{}'], 'a.xlsx')],
       loadFilterFields: [{ key: 'full', title: 'Full', type: 'boolean', required: true }],
     })
@@ -792,7 +814,8 @@ describe('ExecutionDataCard', () => {
       isLoaded: true,
       loadStatus: 'loaded',
       loadFilterFields: [field],
-      execution: { instance: { data: {} }, config: { product_ids: [3, 7, 9] }, name: '', description: '' },
+      filters: { product_ids: [3, 7, 9] },
+      execution: { instance: { data: {} }, config: {}, name: '', description: '' },
     })
     const card = mount(ExecutionDataCard, { props: { draft: loaded }, global: global() })
     await flushPromises()

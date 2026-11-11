@@ -43,8 +43,8 @@ import {
   resolveDisplayValuesToFkIds,
   getExecutionConfigFromSchemaConfig,
   mergeAppConfigFields,
-  getPreEtlConfigFields,
-  pickPreEtlConfigValues,
+  getLoadFilterFields,
+  pickLoadFilterValues,
   coerceValueToJsonSchemaField,
   coerceSolutionDataBySchema,
 } from '@cornflow-ui/core/utils/schemaUtils'
@@ -985,11 +985,11 @@ describe('getExecutionConfigFromSchemaConfig', () => {
     const result = getExecutionConfigFromSchemaConfig({ properties: { x: { type: 'string' } } })!
     expect(result.solverConfig.defaultSolver).toBe('MIPModel.gurobi')
   })
-  test('carries pre_etl, required and date-format fields', () => {
+  test('carries required and date-format fields', () => {
     const schemaConfig = {
       properties: {
-        horizon_days: { type: 'integer', default: 1, pre_etl: true },
-        date: { type: ['string', 'null'], format: 'date', pre_etl: true },
+        horizon_days: { type: 'integer', default: 1 },
+        date: { type: ['string', 'null'], format: 'date' },
         n_scenarios: { type: 'integer' },
         plain: { type: 'string' },
       },
@@ -997,10 +997,6 @@ describe('getExecutionConfigFromSchemaConfig', () => {
     }
     const fields = getExecutionConfigFromSchemaConfig(schemaConfig)!.configFields
     const byKey = Object.fromEntries(fields.map((f) => [f.key, f]))
-
-    expect(byKey.horizon_days.preEtl).toBe(true)
-    expect(byKey.date.preEtl).toBe(true)
-    expect(byKey.n_scenarios.preEtl).toBeUndefined()
 
     // Only the root `required` list marks a field as mandatory.
     expect(byKey.n_scenarios.required).toBe(true)
@@ -1013,7 +1009,7 @@ describe('getExecutionConfigFromSchemaConfig', () => {
   test('join_from makes the field a select fed by that frontend-automation table', () => {
     const fields = getExecutionConfigFromSchemaConfig({
       properties: {
-        plant_id: { type: 'integer', pre_etl: true, join_from: 'plants.name' },
+        plant_id: { type: 'integer', join_from: 'plants.name' },
       },
       required: ['plant_id'],
     })!.configFields
@@ -1022,7 +1018,6 @@ describe('getExecutionConfigFromSchemaConfig', () => {
       key: 'plant_id',
       type: 'select',
       joinFrom: 'plants.name',
-      preEtl: true,
       required: true,
     })
   })
@@ -1032,7 +1027,6 @@ describe('getExecutionConfigFromSchemaConfig', () => {
         product_ids: {
           type: 'array',
           items: { type: 'integer' },
-          pre_etl: true,
           join_from: 'products.code',
         },
         shifts: { type: 'array', items: { type: 'string', enum: ['day', 'night'] } },
@@ -1045,7 +1039,6 @@ describe('getExecutionConfigFromSchemaConfig', () => {
       type: 'select',
       multiple: true,
       joinFrom: 'products.code',
-      preEtl: true,
     })
     expect(byKey.shifts).toMatchObject({
       type: 'select',
@@ -1078,7 +1071,7 @@ describe('mergeAppConfigFields', () => {
       timeLimit: { type: 'number' },
       gapRel: { type: 'number' },
       cornflow: { type: 'boolean' },
-      region: { type: 'string', pre_etl: true },
+      region: { type: 'string' },
     },
     required: ['region'],
   })!.configFields
@@ -1127,7 +1120,7 @@ describe('mergeAppConfigFields', () => {
 
     expect(merged.find((f) => f.key === 'region')).toMatchObject({
       default: 'north',
-      preEtl: true,
+      type: 'text',
       required: true,
     })
   })
@@ -1167,58 +1160,119 @@ describe('mergeAppConfigFields', () => {
   })
 })
 
-// ─── pre-ETL config selectors ───────────────────────────────────────────────
+// ─── Load filters ────────────────────────────────────────────────────────────
 
-describe('getPreEtlConfigFields / pickPreEtlConfigValues', () => {
-  const fields = [
-    { key: 'horizon_days', title: '', type: 'number', preEtl: true },
-    { key: 'date', title: '', type: 'date', preEtl: true },
-    { key: 'n_scenarios', title: '', type: 'number' },
-  ]
+describe('getLoadFilterFields', () => {
+  const query = {
+    type: 'object',
+    properties: {
+      plant: {
+        type: 'integer',
+        join_from: 'plants.name',
+        title: { en: 'Plant', es: 'Planta' },
+      },
+      start_date: { type: 'string', format: 'date', title: 'Start date' },
+      total_weeks: { type: 'integer', minimum: 1, default: 3, description: 'Weeks' },
+      products: { type: 'array', items: { type: 'integer' }, join_from: 'products.code' },
+      region: { type: 'string', enum: ['north', 'south'], in_config: 'region_code' },
+    },
+    required: ['plant', 'start_date', 'total_weeks'],
+  }
 
-  test('selects only the fields the schema marked pre_etl', () => {
-    expect(getPreEtlConfigFields(fields).map((f) => f.key)).toEqual([
-      'horizon_days',
-      'date',
+  test('reads every property of the query as a load filter, in order', () => {
+    expect(getLoadFilterFields(query).map((f) => f.key)).toEqual([
+      'plant',
+      'start_date',
+      'total_weeks',
+      'products',
+      'region',
     ])
-    expect(getPreEtlConfigFields(null)).toEqual([])
   })
 
-  test('picks the pre-ETL values out of an execution config', () => {
+  test('reads each property as a config schema property', () => {
+    const byKey = Object.fromEntries(getLoadFilterFields(query).map((f) => [f.key, f]))
+
+    expect(byKey.plant).toMatchObject({ type: 'select', joinFrom: 'plants.name' })
+    expect(byKey.plant.multiple).toBeUndefined()
+    expect(byKey.start_date.type).toBe('date')
+    expect(byKey.total_weeks).toMatchObject({ type: 'number', default: 3 })
+    expect(byKey.products).toMatchObject({
+      type: 'select',
+      multiple: true,
+      joinFrom: 'products.code',
+    })
+    expect(byKey.region.options).toEqual([
+      { value: 'north', label: 'north' },
+      { value: 'south', label: 'south' },
+    ])
+  })
+
+  test('the root required makes a filter required', () => {
+    const required = getLoadFilterFields(query)
+      .filter((f) => f.required)
+      .map((f) => f.key)
+    expect(required).toEqual(['plant', 'start_date', 'total_weeks'])
+  })
+
+  test('keeps the title as the label, or the description without one', () => {
+    const byKey = Object.fromEntries(getLoadFilterFields(query).map((f) => [f.key, f]))
+
+    expect(byKey.plant.label).toEqual({ en: 'Plant', es: 'Planta' })
+    expect(byKey.start_date.label).toBe('Start date')
+    expect(byKey.total_weeks.label).toBe('Weeks')
+    expect(byKey.products.label).toBe('')
+  })
+
+  test('in_config names the execution-config key the value also goes to', () => {
+    const byKey = Object.fromEntries(getLoadFilterFields(query).map((f) => [f.key, f]))
+
+    expect(byKey.region.inConfig).toBe('region_code')
+    expect(byKey.plant.inConfig).toBeUndefined()
+  })
+
+  test('a query without properties asks for nothing', () => {
+    expect(getLoadFilterFields({ type: 'object', properties: {}, required: [] })).toEqual([])
+    expect(getLoadFilterFields(undefined)).toEqual([])
+  })
+})
+
+describe('pickLoadFilterValues', () => {
+  const fields = [
+    { key: 'horizon_days', title: '', type: 'number' },
+    { key: 'date', title: '', type: 'date' },
+  ]
+
+  test('picks the values of the given filters only', () => {
     expect(
-      pickPreEtlConfigValues(
-        { horizon_days: 3, date: '2026-09-28', n_scenarios: 10 },
-        fields,
-      ),
+      pickLoadFilterValues({ horizon_days: 3, date: '2026-09-28', n_scenarios: 10 }, fields),
     ).toEqual({ horizon_days: 3, date: '2026-09-28' })
   })
 
   test('drops empty values instead of sending them blank', () => {
-    // A loose form field cannot carry null, so an unset parameter is left out and the
+    // A loose form field cannot carry null, so an unset filter is left out and the
     // backend reads that as "not given" rather than as an empty value.
     expect(
-      pickPreEtlConfigValues(
+      pickLoadFilterValues(
         { horizon_days: 1, date: null, other: undefined },
-        [...fields, { key: 'other', title: '', type: 'text', preEtl: true }],
+        [...fields, { key: 'other', title: '', type: 'text' }],
       ),
     ).toEqual({ horizon_days: 1 })
-    expect(pickPreEtlConfigValues({ date: '' }, fields)).toEqual({})
-    expect(pickPreEtlConfigValues(null, fields)).toEqual({})
+    expect(pickLoadFilterValues({ date: '' }, fields)).toEqual({})
+    expect(pickLoadFilterValues(null, fields)).toEqual({})
+    expect(pickLoadFilterValues({ date: '2026-09-28' }, null)).toEqual({})
   })
 
   test('sends a list of picks as it is, and leaves an empty one out', () => {
-    const listFields = [{ key: 'product_ids', title: '', type: 'select', multiple: true, preEtl: true }]
-    expect(pickPreEtlConfigValues({ product_ids: [3, 7] }, listFields)).toEqual({
+    const listFields = [{ key: 'product_ids', title: '', type: 'select', multiple: true }]
+    expect(pickLoadFilterValues({ product_ids: [3, 7] }, listFields)).toEqual({
       product_ids: [3, 7],
     })
-    expect(pickPreEtlConfigValues({ product_ids: [] }, listFields)).toEqual({})
+    expect(pickLoadFilterValues({ product_ids: [] }, listFields)).toEqual({})
   })
 
   test('keeps falsy values that are real answers', () => {
-    const boolFields = [{ key: 'flag', title: '', type: 'boolean', preEtl: true }]
-    expect(pickPreEtlConfigValues({ flag: false }, boolFields)).toEqual({
-      flag: false,
-    })
+    const boolFields = [{ key: 'flag', title: '', type: 'boolean' }]
+    expect(pickLoadFilterValues({ flag: false }, boolFields)).toEqual({ flag: false })
   })
 })
 

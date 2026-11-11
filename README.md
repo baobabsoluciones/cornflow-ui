@@ -250,8 +250,8 @@ can declare its own filters, or none, in `schemaOverrides` (see [Several DAGs in
 - **Features**:
   - Data from one or several files, or from the database through the ETL (files replace the
     tables with the same name)
-  - Load filters (pre-ETL parameters) asked before the data is brought - see
-    [Pre-ETL parameters](#pre-etl-parameters-pre_etl)
+  - Load filters asked before the data is brought, as the backend describes them for each DAG - see
+    [Load filters](#load-filters-get-externalfrontend-config)
   - Schema errors grouped by table in plain words, with a download of all of them
   - Review and edit of the tables, comparison with master tables, ETL origin switches; the table
     fills the data card, and the card's header has the Excel menu (download the data, or
@@ -738,7 +738,7 @@ What a backend receives, and what it should do with it, is in
 #### Selectors fed by frontend-automation tables
 
 When a selector offers values that live in the database (an [execution history filter](#execution-history-filters-optional),
-a [pre-ETL parameter](#pre-etl-parameters-pre_etl)), its options **always come from a
+a [load filter](#load-filters-get-externalfrontend-config)), its options **always come from a
 frontend-automation table**. The selector names the table and the column it shows with
 `join_from`, in the same `<table>.<column>` format frontend automation uses for foreign keys:
 
@@ -1923,7 +1923,6 @@ Defines the configuration fields for execution parameters. Each field can have:
 - `default` (any, optional): Default value if not found in the instance. It only fills a key that has no value yet, so it never overwrites an answer the user already gave or the config of the execution being edited.
 - `options` (Array<{label: string, value: any}>, for select type): Options for select fields.
 - `joinFrom` (string, from the schema): Set from `"join_from": "<table>.<column>"`. The field is a select whose options are the rows of that frontend-automation table. See [Selectors fed by frontend-automation tables](#selectors-fed-by-frontend-automation-tables).
-- `preEtl` (boolean, from the schema): Set from `"pre_etl": true`. See [Pre-ETL parameters](#pre-etl-parameters-pre_etl).
 - `required` (boolean, from the schema): Set when the config schema's root `required` lists the key. A required parameter or load filter that is empty stops the launch or the load.
 
 **Fields derived from the backend schema.** Once the app has the schema from `GET /schema/<name>/`, `getExecutionConfigFromSchemaConfig` (in `schemaUtils.ts`) rebuilds `configFields` from `schema.config.properties`, so the backend schema is the source of truth for which fields exist and how they look. The fields `src/app/config.ts` declares with a `source` or a `default` say something the schema cannot (where this app reads the value, or what it sends when nothing else does), so `mergeAppConfigFields` keeps them on top: their properties win over those of the schema field with the same key, and they are kept even when the schema has no such property. The rest of the fields declared in `src/app/config.ts` give way to the schema. When a field with a `source` finds no value in the loaded instance, the browser console says so. The mapping:
@@ -1937,105 +1936,120 @@ Defines the configuration fields for execution parameters. Each field can have:
 | a non-empty `enum` | `type: 'select'` with its options |
 | `join_from: '<table>.<column>'` | `type: 'select'` with the rows of that frontend-automation table as options |
 | `default` | `default` |
-| `pre_etl: true` | `preEtl: true` |
 | listed in the root `required` | `required: true` |
 
 The `solver` and `msg` keys are skipped; `solver` drives the solver step instead.
 
-<a id="pre-etl-parameters-pre_etl"></a>
+<a id="load-filters-get-externalfrontend-config"></a>
 
-#### Pre-ETL parameters (`pre_etl`)
+#### Load filters (`GET /external/frontend-config/`)
 
-Some execution-config parameters decide **which data the ETL brings in**, not how the model solves. They have to be answered before the load happens, because loading the instance is what calls the ETL. A parameter says it is one of those in the backend's config JSON schema:
+Some values decide **which data the ETL brings in**, not how the model solves: the plant, the
+dates, the weeks. They have to be answered before the load happens, because loading the instance
+is what calls the ETL. The backend says which ones each DAG asks for in
+`GET /external/frontend-config/`.
 
-```json
-{
-  "properties": {
-    "horizon_days": { "type": "integer", "default": 1, "pre_etl": true },
-    "date": { "type": ["string", "null"], "format": "date", "pre_etl": true },
-    "n_scenarios": { "type": "integer" }
-  },
-  "required": ["n_scenarios"]
-}
-```
+**The request.** After the login, with the user's token, and only when the premium ETL module is
+registered (it is what brings data through an ETL). One answer covers every DAG of the user, so a
+DAG switch reads it again without asking.
 
-**Options from the database.** A pre-ETL parameter whose values live in a database table (e.g. the
-plant whose data the ETL loads) declares where its options come from with `join_from`, in the same
-config JSON schema:
+**The answer.** By DAG name (the `schema`); only the user's DAGs:
 
 ```json
 {
-  "properties": {
-    "plant_id": { "type": "integer", "pre_etl": true, "join_from": "plants.name" }
-  },
-  "required": ["plant_id"]
-}
-```
-
-It is shown as a select with one option per row of the `plants` frontend-automation table:
-the text is the row's `name`, and the value it stores in the config (and sends to the ETL) is the
-row's `id`. See [Selectors fed by frontend-automation tables](#selectors-fed-by-frontend-automation-tables);
-without frontend automation the select has no options.
-
-**Several values.** A parameter of `"type": "array"` with `join_from` (or with `items.enum`) is a
-select of several: the user picks any number of rows, and the config stores the list of their
-`id`s. With nothing picked it is empty, like any other value, and is not sent:
-
-```json
-{
-  "properties": {
-    "product_ids": {
-      "type": "array",
-      "items": { "type": "integer" },
-      "pre_etl": true,
-      "join_from": "products.code"
-    }
+  "etl": {
+    "dag_1": {
+      "exists": true,
+      "query": {
+        "type": "object",
+        "properties": {
+          "plant": {
+            "type": "integer",
+            "join_from": "plants.name",
+            "title": { "en": "Plant", "es": "Planta", "fr": "Usine" }
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "title": { "en": "Start date", "es": "Fecha de inicio", "fr": "Date de début" }
+          },
+          "total_weeks": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 3,
+            "title": { "en": "Total weeks", "es": "Semanas totales", "fr": "Semaines totales" }
+          },
+          "products": {
+            "type": "array",
+            "items": { "type": "integer" },
+            "join_from": "products.code",
+            "title": { "en": "Products", "es": "Productos", "fr": "Produits" }
+          }
+        },
+        "required": ["plant", "start_date", "total_weeks"]
+      }
+    },
+    "dag_2": { "exists": false, "query": { "type": "object", "properties": {}, "required": [] } }
   }
 }
 ```
 
-The ETL gets a list in its form field as the items separated by commas (`3,7,12`).
+- `exists` says whether the DAG has an ETL. The interface does not read it: whether the data can
+  come from the database is the app's `etl.useEtlBackend` and `etl.enableLoadFromDb`.
+- A DAG the answer leaves out, a 404 or any error of the endpoint mean the same: no load filters.
+- `query` is a JSON schema. Every property is a load filter, read like a property of the config
+  schema (see the mapping in [Parameters: configFields](#parameters-configfields)): `type`,
+  `format`, `default`, `enum`, `items`, `join_from`. Root `required` makes a filter required.
+- `title` is the label: one text per language (the active one, else `en`, else the key) or a plain
+  text. Without `title`, `description` is used the same way.
+- `in_config: "<key>"` (optional): the value also goes to the execution config under that key, so it
+  reaches the data checks and the solve. Without it the value only goes to the ETL. A config
+  parameter a load filter fills this way is not asked again among the parameters.
+
+**Options from the database.** A filter with `join_from: "<table>.<column>"` is a select with one
+option per row of that frontend-automation table: the text is the row's `<column>` and the value
+sent is the row's `id`. With `"type": "array"` it is a select of several, and the ETL gets the list
+as its items separated by commas (`3,7,12`). See
+[Selectors fed by frontend-automation tables](#selectors-fed-by-frontend-automation-tables);
+without frontend automation the select has no options.
 
 **Where they are asked.** Before the data is brought, so they read as part of loading rather than
-as a separate stage: the data card, while empty, shows them in a grid, above "Upload files" and "Get data"
-when the database is offered, and in the drop zone otherwise (the ETL gets them with the
-files too). Once loaded they become text in the card's header ("North plant · since 01/10/2026 · 4 tables ·
+as a separate stage: the data card, while empty, shows them in a grid, above "Upload files" and "Get
+data" when the database is offered, and in the drop zone otherwise (the ETL gets them with the files
+too). Once loaded they become text in the card's header ("North plant · since 01/10/2026 · 4 tables ·
 58 rows") and are changed with **Load filters**, which brings the data again.
 
 Where the data comes from: files are always offered, and the database when `etl.useEtlBackend`
 and `etl.enableLoadFromDb` are set (and the ETL module is enabled). Files picked together with
 the database replace the tables with the same name and the database fills in the rest.
 
-A relaunch has no load at all -- the instance already exists -- so those parameters go back to the
-regular parameters.
+A relaunch has no load at all -- the instance already exists -- so it asks no load filters.
 
-**Nothing is asked twice.** While they are asked as load filters, they are left out of the regular
-parameters: by then the data has already been loaded with them, and a new value there would not
-reload it.
-
-**What blocks what.** A missing required pre-ETL value disables the **load** button ("Get data"),
-not the launch: loading is the point of no return, and once the data is in,
-filtering it differently means loading it again.
+**What blocks what.** A missing required filter disables the **load** button ("Get data"), not the
+launch: loading is the point of no return, and once the data is in, filtering it differently means
+loading it again.
 
 **Changing one after loading.** The loaded instance is kept -- throwing away a load over a
 keystroke would be worse -- but the user is told the data was not brought with the new value:
 "You changed the filters" in the data card and "Reload the data with the current filters" in
-what is missing. The new value still
-reaches the data checks and the execution.
+what is missing.
 
-**Required vs optional.** A parameter is mandatory only when the config schema's root `required` lists it. A nullable one such as `date` can be left blank on purpose - that is how the backend is told to resolve it itself. For the same reason an empty value is never appended to the ETL form: a loose form field cannot carry `null`, so leaving the key out is what says "not given".
+**Empty values.** A filter can be left blank on purpose when it is not required - that is how the
+backend is told to resolve it itself. An empty value is never appended to the ETL form: a loose form
+field cannot carry `null`, so leaving the key out is what says "not given".
 
-**Where the values go.** They live in `newExecution.config` like any other parameter, so they reach everywhere the config already reached, plus the ETL:
+**Where the values go.**
 
 | Request | What it carries |
 | --- | --- |
-| `POST /external/etl/` | The pre-ETL parameters only, as loose form fields in the body - one field per parameter, not a JSON blob and not a query arg. Values are stringified, and an empty one is left out. The premium ETL module does the appending. |
-| `POST /data-check/instance/<id>/` | The whole execution config, as `{ config }`. This body used to go out empty; it is sent so the checks run under the same parameters the ETL filtered with and the solve will use. |
-| `POST /execution/` | The whole execution config, unchanged. |
+| `POST /external/etl/` | The load filters, as loose form fields in the body - one field per filter, not a JSON blob and not a query arg. Values are stringified, and an empty one is left out. The premium ETL module does the appending (and `?schema=` with `etl.sendSchema`). |
+| `POST /data-check/instance/<id>/` | The execution config, as `{ config }`: the filters with `in_config` among it. |
+| `POST /execution/` | The execution config, unchanged. |
 
-**Labels.** The fields use the `configParams.<key>` translation keys like any other config parameter, so a new pre-ETL parameter needs its label added in `src/app/plugins/locales/`.
-
-Implementation: `useExecutionDraft.ts` (`loadFilterFields`, `filtersChanged`), `ExecutionDataCard.vue`, `LoadFiltersForm.vue`, `schemaUtils.ts` (`getPreEtlConfigFields`, `pickPreEtlConfigValues`), `useInstanceProcessing.ts`, `InstanceRepository.ts`.
+Implementation: `stores/general.ts` (`fetchFrontendConfig`, `getLoadFilterFields`),
+`utils/frontendConfig.ts`, `schemaUtils.ts` (`getLoadFilterFields`, `pickLoadFilterValues`),
+`useExecutionDraft.ts` (`loadFilterFields`, `filters`, `filtersChanged`), `ExecutionDataCard.vue`,
+`LoadFiltersForm.vue`, `useInstanceProcessing.ts`.
 
 #### Data checks: enableBlockAdvanceOnCheckErrors
 

@@ -73,7 +73,7 @@ A flow that does not use the blocks at all only needs the draft: show `draft.mis
 
 - **Talk to the backend through the draft.** Loading, checks, the ETL review sync and the launch
   are in `useExecutionDraft`; a flow that calls the repositories itself loses the ETL, the
-  pre-ETL parameters, the checks config and the uploaded-solution path.
+  load filters, the checks config and the uploaded-solution path.
 - **Use the `Core*` components** (`src/components/core/`, see the catalog: `npm run catalog`) and
   the design tokens (`--color-*`, `--spacing`, `--radius-*`…), not Vuetify or fixed colours, so the
   flow follows the app's palette.
@@ -90,7 +90,8 @@ reactive object (read `draft.isLoaded`, not `draft.isLoaded.value`).
 
 | Field | What it is |
 | --- | --- |
-| `execution` | `{ instance, config, name, description }`: what will be created. `config` holds every parameter, the load filters and `solver`. |
+| `execution` | `{ instance, config, name, description }`: what will be created. `config` holds every parameter, `solver` and the load filters with `inConfig`. |
+| `filters` | Values of the load filters, by key: what the ETL gets. |
 | `files` | Files picked and not loaded yet (or the ones the data came from). |
 | `loadStatus` | `'empty' \| 'loading' \| 'loaded' \| 'error'` |
 | `loadErrors` | Schema errors of the last load, grouped by table in plain words (`{ count, groups: [{ title, items }] }`); `rawLoadErrors` keeps the Ajv errors for the "download all" file. |
@@ -107,8 +108,8 @@ reactive object (read `draft.isLoaded`, not `draft.isLoaded.value`).
 | Field | What it says |
 | --- | --- |
 | `dataSourceMode` | `'files'` (the files are read, or sent to the ETL), `'database'` (the ETL brings the data; files replace the tables with the same name), `'database-filtered'` (the same, after the load filters). |
-| `loadFilterFields` | The `pre_etl` parameters, asked before loading. |
-| `parameterFields` | The parameters the user sets (every config field but the load filters). Empty when `configFieldsConfig.showConfigFieldsStep` is false. |
+| `loadFilterFields` | The load filters of the active DAG's ETL (`GET /external/frontend-config/`), asked before loading. |
+| `parameterFields` | The parameters the user sets (every config field but the ones a load filter fills with `inConfig`). Empty when `configFieldsConfig.showConfigFieldsStep` is false. |
 | `showSolver`, `solvers`, `defaultSolver` | The solver is asked only with `solverConfig.showSolverStep` and more than one solver. |
 | `developerMode`, `blockOnCheckErrors`, `hasChecks`, `acceptedExtensions` | `isDeveloperMode`, `enableBlockAdvanceOnCheckErrors`, whether the DAG has instance checks, and the file extensions the data loads from. |
 
@@ -129,7 +130,7 @@ reactive object (read `draft.isLoaded`, not `draft.isLoaded.value`).
 | Action | What it does |
 | --- | --- |
 | `addFiles(files)`, `removeFile(index)` | Pick and drop files. |
-| `setFilter(key, value)` | Set a load filter. |
+| `setFilter(key, value)` | Set a load filter (and, with `inConfig`, that key of `execution.config`). |
 | `load()` | Bring the data in: the picked files (read in the browser, or sent to the ETL with the load filters), or the database when there are none. Proposes a name and takes the parameter values the data has. |
 | `setInstance(instance)`, `setDataErrors(html)` | The review replaced the data / found schema errors in an edit; the checks become out of date. |
 | `registerPendingChangesApplier(fn)`, `applyPendingChanges()` | Whatever shows the tables registers how to apply the pending edits; checks and launch apply them first. |

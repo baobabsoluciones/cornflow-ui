@@ -94,7 +94,7 @@ The same lists feed every place a table's rows show up:
   on the server;
 - the referenced tables of joined columns (`columns_to_join`), read to show a name instead of an id;
 - the options of a selector fed by a table (`join_from`): an executions history filter or a
-  pre-ETL parameter;
+  load filter;
 - the master tables matched against the data of an execution.
 
 **What the backend should do**

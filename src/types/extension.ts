@@ -161,15 +161,15 @@ export interface TableEditStrategy {
 export interface EtlBackendOperations {
   /**
    * POST `/external/etl/` with the uploaded files; returns the raw response body.
-   * `preEtlParams` holds the execution-config values the schema marked `pre_etl: true`;
-   * they go in the request form (one field per parameter) so the backend can filter the
-   * data it loads. Omitted keys mean "not given".
+   * `preEtlParams` holds the values of the load filters the DAG's ETL asks for
+   * (`GET /external/frontend-config/`); they go in the request form (one field per filter) so
+   * the backend can filter the data it loads. Omitted keys mean "not given".
    */
   useEtlBackend: (
     files: File[],
     preEtlParams?: Record<string, unknown>,
   ) => Promise<any>
-  /** Direct load from DB via ETL (no files); returns the raw response body. */
+  /** Direct load from DB via ETL (no files), with the same `preEtlParams`; returns the raw response body. */
   useEtlBackendFromDb: (
     preEtlParams?: Record<string, unknown>,
   ) => Promise<any>

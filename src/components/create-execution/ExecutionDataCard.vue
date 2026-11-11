@@ -8,8 +8,8 @@
     name and the database fills in the rest.
   Under them, the formats the app accepts (`draft.acceptedExtensions`).
   - `database-filtered`: the same, after the load filters.
-  The load filters (`pre_etl` parameters) are asked in every mode that has them: the ETL gets them
-  with the files too.
+  The load filters the DAG's ETL asks for are shown in the database modes: the ETL gets them with
+  the files too.
   Loaded, the header sums the data up and keeps "Load filters", the Excel menu (download the data,
   or overwrite it with a workbook), "Reload" and "Maximize"; the table fills the rest of the card.
 
@@ -194,7 +194,7 @@
           v-if="showFiltersForm"
           class="data-card__empty-filters"
           :fields="draft.loadFilterFields"
-          :values="draft.execution.config"
+          :values="draft.filters"
           :show-errors="triedToLoad"
           @change="draft.setFilter"
         />
@@ -249,7 +249,10 @@ import CoreSpinner from '@cornflow-ui/core/components/core/CoreSpinner.vue'
 import LoadFiltersForm from '@cornflow-ui/core/components/create-execution/LoadFiltersForm.vue'
 import CreateExecutionReviewInstance from '@cornflow-ui/core/components/project-execution/CreateExecutionReviewInstance.vue'
 import { useErrorDownload } from '@cornflow-ui/core/composables/useErrorDownload'
-import { isEmptyConfigValue } from '@cornflow-ui/core/composables/create-execution/configFieldValues'
+import {
+  configFieldLabel,
+  isEmptyConfigValue,
+} from '@cornflow-ui/core/composables/create-execution/configFieldValues'
 import { pickedSummary } from '@cornflow-ui/core/components/core/CoreMultiSelect.vue'
 import { formatDay } from '@cornflow-ui/core/utils/date'
 import { showSnackbar } from '@cornflow-ui/core/services/SnackbarService'
@@ -302,13 +305,13 @@ function countData(data: Record<string, any> | null | undefined) {
 function filterSummary(): string[] {
   return props.draft.loadFilterFields
     .map((field: any) => {
-      const value = props.draft.execution.config[field.key]
+      const value = props.draft.filters[field.key]
       if (isEmptyConfigValue(field, value)) return ''
       if (field.type === 'date') {
         return t('createExecution.data.since', { date: formatDay(String(value), locale.value) })
       }
       if (field.type === 'boolean') {
-        const label = field.title ? t(field.title) : field.key
+        const label = configFieldLabel(field, t, locale.value)
         return `${label}: ${value ? t('createExecution.data.yes') : t('createExecution.data.no')}`
       }
       const labelOf = (v: unknown) => {
@@ -435,7 +438,7 @@ const filterEditIncomplete = computed(() =>
 watch(filtersOpen, (open) => {
   if (!open) return
   filterEdit.value = Object.fromEntries(
-    props.draft.loadFilterFields.map((field: any) => [field.key, props.draft.execution.config[field.key]]),
+    props.draft.loadFilterFields.map((field: any) => [field.key, props.draft.filters[field.key]]),
   )
 })
 

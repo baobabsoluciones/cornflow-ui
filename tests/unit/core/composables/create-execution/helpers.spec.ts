@@ -1,6 +1,7 @@
 import { describe, test, expect, vi } from 'vitest'
 import {
   applySourceConfigFieldValues,
+  configFieldLabel,
   configFieldPlaceholder,
   convertValueByType,
   getValueFromSource,
@@ -113,6 +114,22 @@ describe('configFieldValues', () => {
     expect(configFieldPlaceholder({ placeholder: 'f.horizonPlaceholder' } as any, t)).toBe('Days to plan (1 to 28)')
     expect(configFieldPlaceholder({ placeholder: 'f.missingPlaceholder' } as any, t)).toBe('')
     expect(configFieldPlaceholder({} as any, t)).toBe('')
+  })
+
+  test('a field is labelled with its backend text in the active language, else in English, else its key', () => {
+    const t = (key: string) => ({ 'configParams.timeLimit': 'Time limit' })[key] ?? key
+    const plant = { key: 'plant', title: 'configParams.plant', label: { en: 'Plant', es: 'Planta' } } as any
+    expect(configFieldLabel(plant, t, 'es')).toBe('Planta')
+    expect(configFieldLabel(plant, t, 'fr')).toBe('Plant')
+    expect(configFieldLabel({ key: 'start', label: 'Start date' } as any, t, 'es')).toBe('Start date')
+    expect(configFieldLabel({ key: 'products', label: '' } as any, t, 'es')).toBe('products')
+    expect(configFieldLabel({ key: 'weeks', label: { fr: 'Semaines' } } as any, t, 'es')).toBe('weeks')
+  })
+
+  test('a field without a backend text translates its title', () => {
+    const t = (key: string) => ({ 'configParams.timeLimit': 'Time limit' })[key] ?? key
+    expect(configFieldLabel({ key: 'timeLimit', title: 'configParams.timeLimit' } as any, t, 'en')).toBe('Time limit')
+    expect(configFieldLabel({ key: 'gap', title: '' } as any, t, 'en')).toBe('gap')
   })
 
   test('a parameter of several values is empty while nothing is picked', () => {
