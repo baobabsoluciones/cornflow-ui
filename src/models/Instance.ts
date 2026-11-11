@@ -26,7 +26,9 @@ export class InstanceCore {
   }
 
   async checkSchema(): Promise<ErrorObject<string, Record<string, any>, unknown>[] | undefined> {
-    const ajv = new Ajv({ strict: false, allErrors: true, coerceTypes: true })
+    // Titles and descriptions may come per language ({ en, es, … }), which the JSON Schema
+    // meta-schema rejects; they are annotations and do not change what the data must hold.
+    const ajv = new Ajv({ strict: false, allErrors: true, coerceTypes: true, validateSchema: false })
     const validate = ajv.compile(this.schema)
     const valid = validate(this.data)
     if (!valid) {

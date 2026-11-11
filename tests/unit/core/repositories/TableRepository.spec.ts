@@ -28,14 +28,9 @@ const mockConfig = vi.hoisted(() => ({
 }))
 vi.mock('@cornflow-ui/core/config', () => ({ default: mockConfig }))
 
-// i18nUtils.getMessageFromResponseContent is pure but imports the i18n plugin
-// transitively; mock it to deterministic, identifiable strings.
-vi.mock('@cornflow-ui/core/utils/i18nUtils', () => ({
-  getMessageFromResponseContent: (content: any, fallback: string) => {
-    if (content && typeof content.message === 'string') return content.message
-    return fallback
-  },
-}))
+// Messages resolve with the real i18nUtils; only the current locale is stubbed.
+const { localeState } = vi.hoisted(() => ({ localeState: { value: 'en' } }))
+vi.mock('@cornflow-ui/core/plugins/i18n', () => ({ currentLocale: localeState }))
 
 // buildApiUrl: substitute {key} placeholders so we can assert on URLs.
 vi.mock('@cornflow-ui/core/utils/urlUtils', () => ({
@@ -575,14 +570,62 @@ describe('TableRepository - downloadExcel', () => {
     expect(clickSpy).toHaveBeenCalled()
   })
 
-  test('throws parsed JSON error message on non-2xx', async () => {
-    const repo = new TableRepository(fullConfig())
-    const blob = new Blob([JSON.stringify({ message: 'bad export' })], {
-      type: 'application/json',
-    })
-    mockClient.getBlob.mockResolvedValue({ status: 500, blob, filename: null })
+  /** The backend answers the download with an error whose body is this JSON. */
+  function failWith(body: unknown, status = 400) {
+    const blob = new Blob([JSON.stringify(body)], { type: 'application/json' })
+    mockClient.getBlob.mockResolvedValue({ status, blob, filename: null })
+  }
 
-    await expect(repo.downloadExcel()).rejects.toThrow('bad export')
+  afterEach(() => {
+    localeState.value = 'en'
+  })
+
+  test('throws the message of a JSON error', async () => {
+    failWith({ message: 'Too many rows to download' }, 500)
+
+    await expect(new TableRepository(fullConfig()).downloadExcel()).rejects.toThrow(
+      'Too many rows to download',
+    )
+  })
+
+  test('throws the translation of the current locale when the message is translated', async () => {
+    localeState.value = 'es'
+    failWith({
+      message: {
+        en: 'Narrow the filters to download',
+        es: 'Acota los filtros para descargar',
+        fr: 'Affinez les filtres pour télécharger',
+      },
+    })
+
+    await expect(new TableRepository(fullConfig()).downloadExcel()).rejects.toThrow(
+      'Acota los filtros para descargar',
+    )
+  })
+
+  test('throws every message of a list, one per line', async () => {
+    failWith({ message: ['Too many rows', { en: 'Narrow the filters', es: 'Acota los filtros' }] })
+
+    await expect(new TableRepository(fullConfig()).downloadExcel()).rejects.toThrow(
+      'Too many rows\nNarrow the filters',
+    )
+  })
+
+  test('falls back to the default message when the JSON error has no message', async () => {
+    failWith({ status: 'error' })
+
+    await expect(new TableRepository(fullConfig()).downloadExcel()).rejects.toThrow(
+      'Download failed',
+    )
+  })
+
+  test('falls back to the default message when the JSON error cannot be parsed', async () => {
+    const blob = new Blob(['{not json'], { type: 'application/json' })
+    mockClient.getBlob.mockResolvedValue({ status: 400, blob, filename: null })
+
+    await expect(new TableRepository(fullConfig()).downloadExcel()).rejects.toThrow(
+      'Download failed',
+    )
   })
 
   test('falls back to default message when error blob is not JSON', async () => {

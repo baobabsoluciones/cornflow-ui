@@ -277,6 +277,7 @@ describe('InstanceCore', () => {
         strict: false,
         allErrors: true,
         coerceTypes: true,
+        validateSchema: false,
       })
     })
 

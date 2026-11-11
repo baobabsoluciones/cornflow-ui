@@ -326,7 +326,7 @@ Main service containing all analysis and widget generation logic.
 
 ### Main Functions
 
-#### `analyzeTable(tableKey: string, data: any[], schema?: any): TableAnalysis | null`
+#### `analyzeTable(tableKey: string, data: any[], schema?: any, locale?: string): TableAnalysis | null`
 
 Analyzes a table and determines its structure.
 
@@ -334,7 +334,8 @@ Analyzes a table and determines its structure.
 
 - `tableKey`: Table identifier key
 - `data`: Array of objects with table data
-- `schema`: Optional table schema (for better analysis)
+- `schema`: Optional table schema (for better analysis, and the titles of the columns)
+- `locale`: Language the column titles are read in when the schema gives them per language (`en` by default)
 
 **Returns**: `TableAnalysis` with information about:
 
@@ -347,6 +348,7 @@ Analyzes a table and determines its structure.
 - Whether it has time series
 - Whether it has categories
 - Number of rows
+- The label of each column in the widgets (`columnLabels`): its schema `title`, or its key in words when it has none
 
 #### `generateDashboardWidgets(analysis: TableAnalysis, locale: string, t?: Function): DashboardWidget[]`
 

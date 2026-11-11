@@ -62,13 +62,10 @@ describe('getUserFullName', () => {
     expect(result).toBe("John O'Connor D'Artagnan")
   })
 
-  test('handles names with special characters', () => {
-    const result = getUserFullName('josé', 'garcía-lópez')
-    // The function uses \b\w regex which doesn't properly handle accented characters
-    // The result may not perfectly capitalize accented characters, so just check basic structure
-    expect(result).toMatch(/^José/)
-    expect(typeof result).toBe('string')
-    expect(result.length).toBeGreaterThan(0)
+  test('keeps accented letters inside their word', () => {
+    expect(getUserFullName('josé', 'garcía-lópez')).toBe('José García-López')
+    expect(getUserFullName('LAURA', 'MARTÍN')).toBe('Laura Martín')
+    expect(getUserFullName('ángel', 'núñez')).toBe('Ángel Núñez')
   })
 
   test('handles single character names', () => {
@@ -111,7 +108,7 @@ describe('getUserFullName', () => {
 
   test('handles names with underscores', () => {
     const result = getUserFullName('john_paul', 'smith_jones')
-    // The regex /\b\w/g treats underscores as word boundaries differently
+    // An underscore joins words: only the first letter of the whole is capitalized
     expect(result).toBe('John_paul Smith_jones')
   })
 
