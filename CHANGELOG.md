@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Fixed
+- **The help button no longer covers the actions of a page header**  
+  - The help button is fixed at the top-right corner and overlapped by about 16 px the actions at the right of a page title (for example "Create new execution" in the history). `CoreTitleView` now reserves space on its right so the actions end clear of it
+  *Contributors:* [@antoniogonzalezsuarez](#)  
+  *Commit ID:* #
+
 ### Changed
 - **Every list and download of a frontend-automation table carries the active DAG**  
   - In a deployment with several DAGs, `TableRepository.getList` and `downloadExcel` send `schema` with the active DAG next to the parameters the request already has (page, column filters, search), so a table several DAGs share can return only the rows that apply to the active one. With a single DAG the requests carry no `schema`, and a backend that ignores it returns every row
