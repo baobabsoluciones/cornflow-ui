@@ -65,7 +65,8 @@ Version 4 redraws the core on its own components (Reka UI underneath, no Vuetify
   *Contributors:* [@HelenaCA](#)  
   *Commit ID:* #254
 - **Components the new screens replace**  
-  - `CoreTable`, `CoreFiltersPanel`, `CoreModal`, `CoreBulkEditModal`, `CoreBulkUploadModal`, `FloatingSelectionBar`, `PendingChangesReviewModal`, `PendingChangeFieldInput`, `DataComparisonModal`, `SectionSingleTable`, `SectionGroupTable`, `SimpleList`, `CorePanelData`, `MasterTableMatchCard`, `MetadataTableSwitch`, `MetadataParameterCheckbox`, `ProjectExecutionsTable`, `ModuleSwitcher`, `AppHeader`, `DateRangePicker`, `LogInSignUp`, the composables only they used (`core-table/*`, `project-execution-table/*`, `useFullscreen`) and their styles
+  - `CoreTable`, `CoreFiltersPanel`, `CoreModal`, `CoreBulkEditModal`, `CoreBulkUploadModal`, `FloatingSelectionBar`, `PendingChangesReviewModal`, `PendingChangeFieldInput`, `DataComparisonModal`, `SectionSingleTable`, `SectionGroupTable`, `SimpleList`, `CorePanelData`, `MasterTableMatchCard`, `MetadataTableSwitch`, `MetadataParameterCheckbox`, `ProjectExecutionsTable`, `ModuleSwitcher`, `AppHeader`, `DateRangePicker`, `LogInSignUp`, `CoreDropdownMenuItem`, the composables only they used (`core-table/*`, `project-execution-table/*`, `useFullscreen`) and their styles
+  - `ExecutionInfoCard` and `ExecutionInfoMenu`: the summary of the loaded execution (`ExecutionSummary`) heads the views of an execution, dashboards included, so an app view that drew them drops them
   - User sign-up (`AuthService.signup`, `enableSignup`) and the `baobabLogo` export of `utils/assets`
   *Contributors:* [@HelenaCA](#)  
   *Commit ID:* #254
