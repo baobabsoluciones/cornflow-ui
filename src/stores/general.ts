@@ -321,10 +321,7 @@ export const useGeneralStore = defineStore('general', {
      * `<table>.<column>` (e.g. 'plants.name'): each row of the table's list is one option, with
      * the row's `id` as the value and the column as the text. Empty, with a warning, when the
      * application has no such frontend-automation table (or no frontend automation at all).
-     *
-     * In a deployment with several DAGs the list is asked with `schema` set to the active DAG (the
-     * same name Cornflow takes in `/execution/?schema=`), so the backend can return only the rows
-     * that apply to it. With a single DAG the list is asked without parameters.
+     * With several DAGs the list carries the active DAG (see `TableRepository.getList`).
      */
     async fetchTableOptions(joinFrom: string): Promise<TableOption[]> {
       const source = parseJoinFrom(joinFrom)
@@ -339,10 +336,10 @@ export const useGeneralStore = defineStore('general', {
       }
       try {
         const repository = new TableRepository(tableConfig, i18n.global.t)
-        const response = this.isMultiSchemaDeployment
-          ? await repository.getList({ schema: this.getSchemaName })
-          : await repository.getList()
-        const rows = normalizeGetListResponseToRows(response, tableConfig)
+        const rows = normalizeGetListResponseToRows(
+          await repository.getList(),
+          tableConfig,
+        )
         return rows
           .filter((row) => row?.id != null)
           .map((row) => ({

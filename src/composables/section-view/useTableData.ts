@@ -59,6 +59,11 @@ type PlainCellValue = string | number | boolean
 
 /** Shared cache for table data (referenced tables loaded via loadTableData). Used so cache can be invalidated across composable instances. */
 const sharedTableDataCache: Record<string, any[]> = {}
+/**
+ * DAG the shared cache holds rows of. With several DAGs a list carries the active DAG and may
+ * return other rows on another one, so the cache is emptied when the DAG changes.
+ */
+let sharedTableDataCacheSchema: string | null = null
 
 /**
  * Invalidates the cached data for a table so the next loadTableData for that table will refetch.
@@ -319,6 +324,12 @@ export function useTableData(
 
   // Function to load data from related tables (for foreign key selectors)
   const loadTableData = async (tableName: string): Promise<any[]> => {
+    const schema = generalStore.getSchemaName
+    if (schema !== sharedTableDataCacheSchema) {
+      invalidateAllTableDataCaches()
+      sharedTableDataCacheSchema = schema
+    }
+
     // Check if data is already cached
     if (tableDataCache.value[tableName]) {
       return tableDataCache.value[tableName]
@@ -364,8 +375,10 @@ export function useTableData(
       const data = await repository.getList()
       const resultData = normalizeGetListResponseToRows(data, tableConfigFound)
 
-      // Cache the data
-      tableDataCache.value[tableName] = resultData
+      // Cache the data, unless it was asked for the DAG the session has left
+      if (schema === generalStore.getSchemaName) {
+        tableDataCache.value[tableName] = resultData
+      }
 
       return resultData
     } catch (error) {
@@ -1304,6 +1317,8 @@ export function useTableData(
 
     const pageSize = listPageSize.value
     const offset = items.value.length
+    // A page asked before the table was loaded again (a new search or filter) is dropped.
+    const myLoadId = loadIdRef.value
     loadingMore.value = true
 
     try {
@@ -1316,6 +1331,7 @@ export function useTableData(
         tableConfig.value,
         queryParams,
       )
+      if (myLoadId !== loadIdRef.value) return
       items.value = [...items.value, ...enriched]
       hasMore.value =
         supportsServerPagination.value && enriched.length >= pageSize
