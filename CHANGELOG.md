@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Added
+- **Premium modules can add pages to Administration**  
+  - A `PremiumDrawerSection` with `parent: 'admin'` is listed as a page of the core's Administration group (next to Roles management) instead of a group of its own. The group shows for admins when it has a page, so it no longer depends on roles management being on
+  *Contributors:* [@antoniogonzalezsuarez](#)  
+  *Commit ID:* #275
+
 ### Fixed
 - **The help button no longer covers the actions of a page header**  
   - The help button is fixed at the top-right corner and overlapped by about 16 px the actions at the right of a page title (for example "Create new execution" in the history). `CoreTitleView` now reserves space on its right so the actions end clear of it

@@ -74,6 +74,12 @@ export interface PremiumDrawerSection {
   to?: string
   /** Relative position in the drawer (lower = earlier). */
   order?: number
+  /**
+   * `'admin'`: the entry is a page of the core's Administration group instead of a group of its own
+   * (`title`, `icon` and `to` become its page; `subPages` are ignored). The group is shown to admins
+   * only when it has a page, so an entry gated by `isVisible` does not leave an empty heading.
+   */
+  parent?: 'admin'
   subPages?: { titleKey: string; icon: string; to: string }[]
   /** Role/condition gating; if omitted, visible to everyone. */
   isVisible?: (ctx: ExtensionContext) => boolean

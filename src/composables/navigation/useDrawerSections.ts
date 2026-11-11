@@ -5,7 +5,7 @@
  * Groups, in order: the history of executions (a page of its own), the entries of premium modules,
  * the app's own sections (`appSections`), master data (one group per schema section, or a single
  * "Master data"), and, with an execution selected, its input data and results (with the
- * dashboards); last, administration for admins when roles management is on. Creating an
+ * dashboards); last, administration for admins (roles management when it is on, and the pages premium modules add). Creating an
  * execution is not a group: `canCreateExecution` says whether the menu heads with its button.
  *
  * Each group says whether it belongs to the loaded execution (`scope: 'execution'`: its input
@@ -81,8 +81,11 @@ export function useDrawerSections() {
   const canCreateExecution = computed(() => allowed('project-execution'))
 
   /** Entries contributed by premium modules (enterprise), e.g. the agent. */
+  const premiumEntries = computed(() => getPremiumDrawerSections())
+
   const premium = computed<DrawerSection[]>(() =>
-    getPremiumDrawerSections()
+    premiumEntries.value
+      .filter((s) => s.parent !== 'admin')
       .map((s, index) => ({
         key: `premium-${index}`,
         scope: 'general' as const,
@@ -92,6 +95,13 @@ export function useDrawerSections() {
         subPages: s.subPages?.map((sub) => ({ title: t(sub.titleKey), icon: sub.icon, to: sub.to })),
       }))
       .filter((s) => s.to != null || (s.subPages?.length ?? 0) > 0),
+  )
+
+  /** Pages premium modules add to Administration (`parent: 'admin'`). */
+  const premiumAdminPages = computed<DrawerPage[]>(() =>
+    premiumEntries.value
+      .filter((s) => s.parent === 'admin' && s.to != null)
+      .map((s) => ({ title: t(s.titleKey), icon: s.icon, to: s.to })),
   )
 
   /** The app's own sections (`appSections` in its config). */
@@ -230,15 +240,21 @@ export function useDrawerSections() {
 
   const isAdmin = computed(() => roleNames.value.includes('admin'))
 
-  /** Administration, for admins when roles management is on. */
+  /** Administration, for admins: roles management when it is on, and the pages premium modules add. */
   const admin = computed<DrawerSection | null>(() => {
-    if (!isAdmin.value || !getAppParameters().enableRolesManagement) return null
+    if (!isAdmin.value) return null
+    const subPages: DrawerPage[] = []
+    if (getAppParameters().enableRolesManagement) {
+      subPages.push({ title: t('rolesManagement.title'), icon: 'mdi-account-key', to: '/roles-management' })
+    }
+    subPages.push(...premiumAdminPages.value)
+    if (subPages.length === 0) return null
     return {
       key: 'admin',
       scope: 'general',
       title: t('rolesManagement.adminSection'),
       icon: 'mdi-shield-account',
-      subPages: [{ title: t('rolesManagement.title'), icon: 'mdi-account-key', to: '/roles-management' }],
+      subPages,
     }
   })
 
