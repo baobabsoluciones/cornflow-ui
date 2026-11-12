@@ -1472,13 +1472,17 @@ export interface ExecutionConfigField {
   default?: unknown
   options?: Array<{ value: string; label: string }>
   /**
-   * True when the schema property carries `"pre_etl": true`. Such a parameter is
-   * needed *before* the instance exists, because the ETL backend filters the data
-   * with it, so the create-execution screen asks for it ahead of the instance load
-   * and sends it in the `POST /external/etl/` form.
+   * The label as the backend writes it, one text or one per language (`{ en, es, … }`). A field
+   * that has it shows it rather than translating `title`; load filters have it (see
+   * `getLoadFilterFields`).
    */
-  preEtl?: boolean
-  /** True when the key is listed in the config schema's root `required`. */
+  label?: string | Record<string, string>
+  /**
+   * For a load filter, the execution-config key its value also goes to (`"in_config"`): with it the
+   * value reaches the data checks and the solve as well as the ETL.
+   */
+  inConfig?: string
+  /** True when the key is listed in the schema's root `required`. */
   required?: boolean
   /** Instance table the value is read from (app-defined; see README "configFields"). */
   source?: string
@@ -1581,7 +1585,6 @@ function buildExecutionConfigField(
   }
 
   if (prop.default !== undefined) field.default = prop.default
-  if (prop.pre_etl === true) field.preEtl = true
   if (typeof prop.join_from === 'string' && parseJoinFrom(prop.join_from)) {
     field.type = 'select'
     field.joinFrom = prop.join_from
@@ -1656,38 +1659,55 @@ export function mergeAppConfigFields(
   ]
 }
 
-/** The config fields the schema marked with `pre_etl: true`, in schema order. */
-export function getPreEtlConfigFields(
-  configFields: ExecutionConfigField[] | null | undefined,
-): ExecutionConfigField[] {
-  if (!Array.isArray(configFields)) return []
-  return configFields.filter((field) => field?.preEtl === true)
+/**
+ * The load filters an ETL asks for, from the JSON schema of its `query` (see
+ * `GET /external/frontend-config/` in the README). Each property is read as a config schema
+ * property (`type`, `format`, `default`, `enum`, `items`, `join_from`) and keeps its `title` (or,
+ * without one, its `description`) as the label; `in_config` names the execution-config key the
+ * value also goes to. Root `required` makes a filter required.
+ */
+export function getLoadFilterFields(query: any): ExecutionConfigField[] {
+  const props = query?.properties
+  if (!props || typeof props !== 'object') return []
+  const requiredKeys = new Set<string>(
+    Array.isArray(query.required) ? query.required : [],
+  )
+
+  const fields: ExecutionConfigField[] = []
+  for (const [key, prop] of Object.entries<any>(props)) {
+    if (!prop || typeof prop !== 'object') continue
+    const field = buildExecutionConfigField(key, prop)
+    field.label = prop.title ?? prop.description ?? ''
+    if (typeof prop.in_config === 'string' && prop.in_config) field.inConfig = prop.in_config
+    if (requiredKeys.has(key)) field.required = true
+    fields.push(field)
+  }
+  return fields
 }
 
 /**
- * The subset of an execution config that the ETL backend needs, ready to be appended
- * to the `POST /external/etl/` form as loose fields (agreed contract: one form field
- * per parameter, not a single JSON blob).
+ * The values of the load filters, ready to be appended to the `POST /external/etl/` form as loose
+ * fields (one form field per filter, not a single JSON blob).
  *
  * Empty values (an empty list included) are dropped rather than sent blank: a loose form
- * field cannot carry `null`, and for a nullable parameter such as `date` an empty string
+ * field cannot carry `null`, and for a nullable filter such as `date` an empty string
  * would be indistinguishable from "the user left it blank", which the backend answers by
  * anchoring the run itself instead of to a given day. A list goes as it is; the form field
  * carries it as its items separated by commas (`1,2,3`).
  */
-export function pickPreEtlConfigValues(
-  config: Record<string, any> | null | undefined,
-  configFields: ExecutionConfigField[] | null | undefined,
+export function pickLoadFilterValues(
+  values: Record<string, any> | null | undefined,
+  fields: ExecutionConfigField[] | null | undefined,
 ): Record<string, unknown> {
-  if (!config) return {}
-  const values: Record<string, unknown> = {}
-  for (const field of getPreEtlConfigFields(configFields)) {
-    const value = config[field.key]
+  if (!values || !Array.isArray(fields)) return {}
+  const picked: Record<string, unknown> = {}
+  for (const field of fields) {
+    const value = values[field.key]
     if (value === null || value === undefined || value === '') continue
     if (Array.isArray(value) && value.length === 0) continue
-    values[field.key] = value
+    picked[field.key] = value
   }
-  return values
+  return picked
 }
 
 /** JSON Schema `type` may be a string or e.g. `['number', 'null']`. */

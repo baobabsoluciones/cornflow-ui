@@ -16,6 +16,8 @@ export interface ExecutionDraft {
   name: string
   description: string
   config: Record<string, any>
+  /** Values of the load filters, by key. */
+  filters?: Record<string, unknown>
   /** Instance data as it was on screen (with the row ids the edits refer to), or null. */
   instanceData: Record<string, any> | null
   /** Files picked and not loaded yet. */

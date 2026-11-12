@@ -543,15 +543,16 @@ describe('General Store', () => {
       mockInstanceRepository.getInstance.mockResolvedValue(mockInstance)
 
       const store = useGeneralStore()
-      const result = await store.getInstanceDataChecksById('123', {
+      const result = await store.getInstanceDataChecksById('123', 'dag_a', {
         horizon_days: 3,
       })
 
       expect(result).toEqual(mockInstance)
-      // The execution config is passed straight through to the data-check request.
+      // The instance's DAG and the execution config are passed straight through to the
+      // data-check request.
       expect(
         mockInstanceRepository.launchInstanceDataChecks,
-      ).toHaveBeenCalledWith('123', { horizon_days: 3 })
+      ).toHaveBeenCalledWith('123', 'dag_a', { horizon_days: 3 })
       expect(mockExecutionRepository.loadExecution).toHaveBeenCalledWith(
         'exec123',
       )
@@ -577,7 +578,7 @@ describe('General Store', () => {
       // Use fake timers to control setTimeout
       vi.useFakeTimers()
 
-      const resultPromise = store.getInstanceDataChecksById('123')
+      const resultPromise = store.getInstanceDataChecksById('123', 'dag_a')
 
       // Advance timers to trigger the timeout
       await vi.advanceTimersByTimeAsync(3000)
@@ -602,7 +603,7 @@ describe('General Store', () => {
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
       const store = useGeneralStore()
-      const result = await store.getInstanceDataChecksById('123')
+      const result = await store.getInstanceDataChecksById('123', 'dag_a')
 
       expect(result).toBeNull()
       expect(consoleSpy).toHaveBeenCalledWith(
@@ -620,7 +621,7 @@ describe('General Store', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       const store = useGeneralStore()
-      const result = await store.getInstanceDataChecksById('123')
+      const result = await store.getInstanceDataChecksById('123', 'dag_a')
 
       expect(result).toBeNull()
       expect(consoleSpy).toHaveBeenCalledWith(
@@ -1239,10 +1240,48 @@ describe('General Store', () => {
       expect(store.historical.errorMessage).toBe('create-hist-fail')
     })
 
+    test('starts the data-check KPIs with the DAG of the execution it created', async () => {
+      const store = useGeneralStore()
+      const execRepo = {
+        createHistoricalKpisExecution: vi.fn().mockResolvedValue('h1'),
+        getExecutionSchema: vi.fn().mockResolvedValue('dag_b'),
+        startDataCheckKpisForExecution: vi.fn().mockResolvedValue(undefined),
+        loadExecution: vi.fn().mockResolvedValue({ state: -1 }),
+      }
+      store.executionRepository = execRepo as any
+
+      await store.runHistoricalKpiFlow('2024-01-01', '2024-01-31')
+
+      expect(execRepo.getExecutionSchema).toHaveBeenCalledWith('h1')
+      expect(execRepo.startDataCheckKpisForExecution).toHaveBeenCalledWith(
+        'h1',
+        'dag_b',
+      )
+    })
+
+    test('an execution whose DAG cannot be read sets error banner', async () => {
+      const store = useGeneralStore()
+      const execRepo = {
+        createHistoricalKpisExecution: vi.fn().mockResolvedValue('h1'),
+        getExecutionSchema: vi
+          .fn()
+          .mockRejectedValue(new Error('schema-fail')),
+        startDataCheckKpisForExecution: vi.fn(),
+      }
+      store.executionRepository = execRepo as any
+
+      await store.runHistoricalKpiFlow('2024-01-01', '2024-01-31')
+
+      expect(execRepo.startDataCheckKpisForExecution).not.toHaveBeenCalled()
+      expect(store.historical.bannerMode).toBe('error')
+      expect(store.historical.errorMessage).toBe('schema-fail')
+    })
+
     test('data-check error sets error banner', async () => {
       const store = useGeneralStore()
       const execRepo = {
         createHistoricalKpisExecution: vi.fn().mockResolvedValue('h1'),
+        getExecutionSchema: vi.fn().mockResolvedValue('dag_a'),
         startDataCheckKpisForExecution: vi
           .fn()
           .mockRejectedValue(new Error('dc-fail')),
@@ -1259,6 +1298,7 @@ describe('General Store', () => {
       const store = useGeneralStore()
       const execRepo = {
         createHistoricalKpisExecution: vi.fn().mockResolvedValue('h1'),
+        getExecutionSchema: vi.fn().mockResolvedValue('dag_a'),
         startDataCheckKpisForExecution: vi.fn().mockResolvedValue(undefined),
         loadExecution: vi.fn().mockResolvedValue({
           state: 1,
@@ -1281,6 +1321,7 @@ describe('General Store', () => {
       const store = useGeneralStore()
       const execRepo = {
         createHistoricalKpisExecution: vi.fn().mockResolvedValue('h1'),
+        getExecutionSchema: vi.fn().mockResolvedValue('dag_a'),
         startDataCheckKpisForExecution: vi.fn().mockResolvedValue(undefined),
         loadExecution: vi.fn().mockResolvedValue({ state: -1 }),
       }
@@ -1296,6 +1337,7 @@ describe('General Store', () => {
       const store = useGeneralStore()
       const execRepo = {
         createHistoricalKpisExecution: vi.fn().mockResolvedValue('h1'),
+        getExecutionSchema: vi.fn().mockResolvedValue('dag_a'),
         startDataCheckKpisForExecution: vi.fn().mockResolvedValue(undefined),
         loadExecution: vi.fn().mockResolvedValue({
           state: 1,
@@ -1318,6 +1360,7 @@ describe('General Store', () => {
       const store = useGeneralStore()
       const execRepo = {
         createHistoricalKpisExecution: vi.fn().mockResolvedValue('h1'),
+        getExecutionSchema: vi.fn().mockResolvedValue('dag_a'),
         startDataCheckKpisForExecution: vi.fn().mockResolvedValue(undefined),
         loadExecution: vi.fn().mockResolvedValue({
           state: 1,
@@ -1339,6 +1382,7 @@ describe('General Store', () => {
       const store = useGeneralStore()
       const execRepo = {
         createHistoricalKpisExecution: vi.fn().mockResolvedValue('h1'),
+        getExecutionSchema: vi.fn().mockResolvedValue('dag_a'),
         startDataCheckKpisForExecution: vi.fn().mockResolvedValue(undefined),
         loadExecution: vi
           .fn()

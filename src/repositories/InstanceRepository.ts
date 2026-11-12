@@ -33,13 +33,19 @@ export default class InstanceRepository {
   }
 
   /**
-   * Launches the data checks for an instance. The execution `config` travels with the
-   * request so the checks run under the same parameters as the solve will, including
-   * the ones the schema marks `pre_etl` (the ETL filtered the data with them).
+   * Launches the data checks for an instance. `schema` is the DAG of the instance: a
+   * deployment closed to the DAGs of each user rejects the request without it. The
+   * execution `config` travels with the request so the checks run under the same
+   * parameters as the solve will, including the load filters with `in_config` (the ETL
+   * filtered the data with them).
    */
-  async launchInstanceDataChecks(id: string, config?: Record<string, any>) {
+  async launchInstanceDataChecks(
+    id: string,
+    schema: string,
+    config?: Record<string, any>,
+  ) {
     const body =
-      config && Object.keys(config).length > 0 ? { config } : {}
+      config && Object.keys(config).length > 0 ? { schema, config } : { schema }
     const response = await client.post(
       `/data-check/instance/${id}/`,
       body,

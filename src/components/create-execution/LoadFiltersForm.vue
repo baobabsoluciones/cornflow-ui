@@ -1,8 +1,8 @@
 <!--
-  LoadFiltersForm: the load filters of a new execution — the parameters the schema marks
-  `pre_etl: true`, which the ETL filters the data it brings with — in a grid.
+  LoadFiltersForm: the load filters of a new execution — what the DAG's ETL asks for to filter the
+  data it brings — in a grid.
 
-  <LoadFiltersForm :fields="draft.loadFilterFields" :values="draft.execution.config"
+  <LoadFiltersForm :fields="draft.loadFilterFields" :values="draft.filters"
     :show-errors="tried" @change="draft.setFilter" />
 -->
 <template>
@@ -52,6 +52,7 @@ import CoreMultiSelect from '@cornflow-ui/core/components/core/CoreMultiSelect.v
 import CoreSelect from '@cornflow-ui/core/components/core/CoreSelect.vue'
 import CoreTextField from '@cornflow-ui/core/components/core/CoreTextField.vue'
 import {
+  configFieldLabel,
   configFieldPlaceholder,
   isEmptyConfigValue,
 } from '@cornflow-ui/core/composables/create-execution/configFieldValues'
@@ -70,10 +71,10 @@ const props = withDefaults(
 
 defineEmits<{ change: [key: string, value: unknown] }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 function labelOf(field: any) {
-  return field.title ? t(field.title) : field.key
+  return configFieldLabel(field, t, locale.value)
 }
 
 function optionsOf(field: any): { value: unknown; label: string }[] {

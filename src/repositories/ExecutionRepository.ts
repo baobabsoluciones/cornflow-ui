@@ -349,7 +349,8 @@ export default class ExecutionRepository {
       )
     }
 
-    await this.startDataCheckKpisForExecution(id)
+    const schema = await this.getExecutionSchema(id)
+    await this.startDataCheckKpisForExecution(id, schema)
     const polled = await pollForRegeneratedFiles(
       fetchOnce,
       fallbackFilename,
@@ -505,12 +506,30 @@ export default class ExecutionRepository {
   }
 
   /**
-   * Starts the Cornflow data-check KPIs pipeline for an execution.
+   * Returns the DAG (`schema`) an execution was created with, read from
+   * `GET /execution/<id>/`.
    */
-  async startDataCheckKpisForExecution(executionId: string): Promise<void> {
+  async getExecutionSchema(executionId: string): Promise<string> {
+    const response = await client.get(`/execution/${executionId}/`)
+    const schema = response.status === 200 ? response.content?.schema : null
+    if (!schema) {
+      throw new Error('Error getting the schema of the execution')
+    }
+    return schema
+  }
+
+  /**
+   * Starts the Cornflow data-check KPIs pipeline for an execution. `schema` is the DAG
+   * of the execution: a deployment closed to the DAGs of each user rejects the request
+   * without it.
+   */
+  async startDataCheckKpisForExecution(
+    executionId: string,
+    schema: string,
+  ): Promise<void> {
     const response = await client.post(
       `/data-check-kpis/execution/${executionId}/`,
-      {},
+      { schema },
       {},
       false,
     )

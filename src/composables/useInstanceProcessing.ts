@@ -22,7 +22,6 @@ import {
   isExcelExtension,
   getFileExtension,
 } from '@cornflow-ui/core/utils/fileConstants'
-import { pickPreEtlConfigValues } from '@cornflow-ui/core/utils/schemaUtils'
 import { unwrapEtlResponse } from '@cornflow-ui/core/utils/etlResponse'
 
 export interface ProcessingResult {
@@ -76,21 +75,13 @@ export function useInstanceProcessing() {
   const canProcessFiles = computed(() => !state.value.isProcessing)
 
   /**
-   * The values the ETL backend needs out of an execution config, i.e. the parameters the
-   * config schema marked `pre_etl: true`. Callers hand over the whole config and this
-   * picks the subset, so no caller has to know which parameters those are.
+   * Brings the data from `files`: through the ETL backend when the app sends files to it, read in
+   * the browser otherwise. `loadFilterValues` are the values of the load filters
+   * (`pickLoadFilterValues`), which go to the ETL with the files.
    */
-  const preEtlParamsFrom = (
-    executionConfig?: Record<string, any> | null,
-  ): Record<string, unknown> =>
-    pickPreEtlConfigValues(
-      executionConfig,
-      store.appConfig.parameters.configFields,
-    )
-
   const processFiles = async (
     files: File[],
-    executionConfig?: Record<string, any> | null,
+    loadFilterValues: Record<string, unknown> = {},
   ): Promise<ProcessingResult> => {
     if (files.length === 0) {
       return createErrorResult(
@@ -109,7 +100,7 @@ export function useInstanceProcessing() {
         (store.appConfig.parameters.etl.enableEtlMetadataAndReview ||
           store.appConfig.parameters.etl.useEtlBackend)
       ) {
-        return await processWithEtlBackend(files, executionConfig)
+        return await processWithEtlBackend(files, loadFilterValues)
       } else {
         return await processWithFrontend(files)
       }
@@ -190,14 +181,14 @@ export function useInstanceProcessing() {
    */
   const processWithEtlBackend = async (
     files: File[],
-    executionConfig?: Record<string, any> | null,
+    loadFilterValues: Record<string, unknown>,
   ): Promise<ProcessingResult> => {
     try {
       const preprocessed = await preProcessFilesForEtl(files)
       const filesToSend = preprocessed ?? files
       const rawResponse = await etlBackend!.useEtlBackend(
         filesToSend,
-        preEtlParamsFrom(executionConfig),
+        loadFilterValues,
       )
       const { instance, rawData, warning } =
         buildInstanceFromEtlResponse(rawResponse)
@@ -224,12 +215,12 @@ export function useInstanceProcessing() {
   }
 
   /**
-   * Load instance data directly from the database via the ETL endpoint (no files).
-   * Used when `etl.enableLoadFromDb` is true and the user clicks "Obtener todos los datos de base de datos".
+   * Load instance data directly from the database via the ETL endpoint (no files), filtered by
+   * `loadFilterValues`. Used when `etl.enableLoadFromDb` is on and the user clicks "Get data".
    * Reuses the same metadata/review logic as processWithEtlBackend.
    */
   const processFromDb = async (
-    executionConfig?: Record<string, any> | null,
+    loadFilterValues: Record<string, unknown> = {},
   ): Promise<ProcessingResult> => {
     if (!etlBackend) {
       return createErrorResult(
@@ -243,9 +234,7 @@ export function useInstanceProcessing() {
     state.value.errors = null
 
     try {
-      const rawResponse = await etlBackend.useEtlBackendFromDb(
-        preEtlParamsFrom(executionConfig),
-      )
+      const rawResponse = await etlBackend.useEtlBackendFromDb(loadFilterValues)
       const { instance, rawData, warning } =
         buildInstanceFromEtlResponse(rawResponse)
 

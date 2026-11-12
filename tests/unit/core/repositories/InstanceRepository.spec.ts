@@ -144,12 +144,14 @@ describe('InstanceRepository', () => {
       }
       mockClient.post.mockResolvedValue(mockResponse)
 
-      const result =
-        await repository.launchInstanceDataChecks('test-instance-id')
+      const result = await repository.launchInstanceDataChecks(
+        'test-instance-id',
+        'dag_a',
+      )
 
       expect(mockClient.post).toHaveBeenCalledWith(
         '/data-check/instance/test-instance-id/',
-        {},
+        { schema: 'dag_a' },
         {
           'Content-Type': 'application/json',
         },
@@ -157,31 +159,34 @@ describe('InstanceRepository', () => {
       expect(result).toEqual(mockResponse.content)
     })
 
-    test('sends the execution config so the checks match the solve', async () => {
+    test('sends the DAG of the instance and the execution config so the checks match the solve', async () => {
       mockClient.post.mockResolvedValue({ status: 201, content: { id: 'x' } })
 
-      await repository.launchInstanceDataChecks('test-instance-id', {
+      await repository.launchInstanceDataChecks('test-instance-id', 'dag_a', {
         horizon_days: 3,
         date: '2026-09-28',
       })
 
       expect(mockClient.post).toHaveBeenCalledWith(
         '/data-check/instance/test-instance-id/',
-        { config: { horizon_days: 3, date: '2026-09-28' } },
+        {
+          schema: 'dag_a',
+          config: { horizon_days: 3, date: '2026-09-28' },
+        },
         {
           'Content-Type': 'application/json',
         },
       )
     })
 
-    test('keeps the body empty when there is no config to send', async () => {
+    test('sends only the DAG when there is no config to send', async () => {
       mockClient.post.mockResolvedValue({ status: 201, content: { id: 'x' } })
 
-      await repository.launchInstanceDataChecks('test-instance-id', {})
+      await repository.launchInstanceDataChecks('test-instance-id', 'dag_a', {})
 
       expect(mockClient.post).toHaveBeenCalledWith(
         '/data-check/instance/test-instance-id/',
-        {},
+        { schema: 'dag_a' },
         {
           'Content-Type': 'application/json',
         },
@@ -198,7 +203,7 @@ describe('InstanceRepository', () => {
       mockClient.post.mockResolvedValue(mockResponse)
 
       await expect(
-        repository.launchInstanceDataChecks('invalid-id'),
+        repository.launchInstanceDataChecks('invalid-id', 'dag_a'),
       ).rejects.toThrow('Invalid instance ID')
     })
 
@@ -210,7 +215,7 @@ describe('InstanceRepository', () => {
       mockClient.post.mockResolvedValue(mockResponse)
 
       await expect(
-        repository.launchInstanceDataChecks('test-instance-id'),
+        repository.launchInstanceDataChecks('test-instance-id', 'dag_a'),
       ).rejects.toThrow('Error launching instance data checks: Status 500')
     })
 
@@ -219,7 +224,7 @@ describe('InstanceRepository', () => {
       mockClient.post.mockRejectedValue(error)
 
       await expect(
-        repository.launchInstanceDataChecks('test-instance-id'),
+        repository.launchInstanceDataChecks('test-instance-id', 'dag_a'),
       ).rejects.toThrow('Network error')
     })
   })

@@ -20,9 +20,15 @@ import {
   runPremiumInitialDataHooks,
   runPremiumActiveSchemaChangedHooks,
   loadPremiumMasterDataConfig,
+  getPremiumEtlBackend,
 } from '@cornflow-ui/core/plugins/extensions'
 import RoleRepository from '@cornflow-ui/core/repositories/RoleRepository'
 import WarningsRepository from '@cornflow-ui/core/repositories/WarningsRepository'
+import FrontendConfigRepository from '@cornflow-ui/core/repositories/FrontendConfigRepository'
+import {
+  loadFilterFieldsOfDag,
+  type FrontendConfig,
+} from '@cornflow-ui/core/utils/frontendConfig'
 import TableRepository from '@cornflow-ui/core/repositories/TableRepository'
 import type { Warning } from '@cornflow-ui/core/repositories/WarningsRepository'
 import type { ExecutionTab } from '@cornflow-ui/core/types/extension'
@@ -167,6 +173,7 @@ export const useGeneralStore = defineStore('general', {
     versionRepository: new VersionRepository(),
     roleRepository: new RoleRepository(),
     warningsRepository: new WarningsRepository(),
+    frontendConfigRepository: new FrontendConfigRepository(),
     warnings: [] as Warning[],
     notifications: [] as {
       message: string
@@ -232,6 +239,11 @@ export const useGeneralStore = defineStore('general', {
     initialDataLoading: false,
     /** True once initializeData has been called at least once (prevents duplicate fetches). */
     dataInitialized: false,
+    /**
+     * What the backend tells the interface about each DAG of the user (`fetchFrontendConfig`);
+     * null without an answer.
+     */
+    frontendConfig: null as FrontendConfig | null,
 
     /** Historical KPIs execution state (persists across navigation). */
     historical: {
@@ -256,6 +268,7 @@ export const useGeneralStore = defineStore('general', {
 
         await this.fetchUser()
         await this.fetchCornflowVersion()
+        await this.fetchFrontendConfig()
         await this.resolveActiveSchema()
         this.applyAppConfigForSchema()
         if (!this.noSchemaAccess) {
@@ -313,6 +326,23 @@ export const useGeneralStore = defineStore('general', {
         this.cornflowVersion = version
       } catch (error) {
         console.error('Error getting cornflow version', error)
+      }
+    },
+
+    /**
+     * Asks the backend what it tells the interface about each DAG of the user: the load filters
+     * the DAG's ETL asks for. Asked once after the login, and only with an ETL module registered,
+     * since only that module brings data through an ETL; one answer covers every DAG, so a DAG
+     * switch reads it again without asking. Without an answer (no endpoint, an error) no DAG asks
+     * load filters.
+     */
+    async fetchFrontendConfig() {
+      this.frontendConfig = null
+      if (getPremiumEtlBackend() === null) return
+      try {
+        this.frontendConfig = await this.frontendConfigRepository.getFrontendConfig()
+      } catch (error) {
+        console.warn('No frontend config from the backend: no DAG asks load filters', error)
       }
     },
 
@@ -551,6 +581,7 @@ export const useGeneralStore = defineStore('general', {
       this.executionFilterValues = {}
       this.availableSchemas = []
       this.noSchemaAccess = false
+      this.frontendConfig = null
       this.initialDataLoading = false
       this.dataInitialized = false
       clearStoredActiveSchema()
@@ -831,10 +862,18 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
-    async getInstanceDataChecksById(id: string, config?: Record<string, any>) {
+    async getInstanceDataChecksById(
+      id: string,
+      schema: string,
+      config?: Record<string, any>,
+    ) {
       try {
         const dataChecks =
-          await this.instanceRepository.launchInstanceDataChecks(id, config)
+          await this.instanceRepository.launchInstanceDataChecks(
+            id,
+            schema,
+            config,
+          )
         const executionId = dataChecks.id
 
         let execution
@@ -894,7 +933,12 @@ export const useGeneralStore = defineStore('general', {
 
         this.historical.bannerMode = 'data_check'
         try {
-          await this.executionRepository.startDataCheckKpisForExecution(execId)
+          const schema =
+            await this.executionRepository.getExecutionSchema(execId)
+          await this.executionRepository.startDataCheckKpisForExecution(
+            execId,
+            schema,
+          )
         } catch (err: any) {
           this.historical.errorMessage =
             err?.message || 'Error starting data-check KPIs'
@@ -1287,6 +1331,11 @@ export const useGeneralStore = defineStore('general', {
 
     getSchemaConfig(): SchemaConfig {
       return this.schemaConfig
+    },
+
+    /** The load filters the ETL of the active DAG asks for (`fetchFrontendConfig`). */
+    getLoadFilterFields(): ExecutionConfigField[] {
+      return loadFilterFieldsOfDag(this.frontendConfig, this.getSchemaName)
     },
 
     getExecutionSolvers(): string[] {

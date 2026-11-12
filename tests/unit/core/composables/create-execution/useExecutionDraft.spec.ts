@@ -105,7 +105,7 @@ function resetStore() {
         configFields: [...configFields],
         configFieldsConfig: { showConfigFieldsStep: true, autoLoadValues: false },
         solverConfig: { showSolverStep: true, defaultSolver: 'mip' },
-        etl: { useEtlBackend: false, enableLoadFromDb: false },
+        etl: { useEtlBackend: false },
         enableBlockAdvanceOnCheckErrors: false,
       },
     },
@@ -120,10 +120,11 @@ function resetStore() {
     },
     getSchemaConfig: { instanceSchema: {}, instanceChecksSchema: {} },
     getSchemaName: 'dag',
+    getLoadFilterFields: [],
     getExecutionSolvers: ['mip', 'heuristic'],
     rawConfigurations: { masterData: {} },
     loadedExecutions: [] as any[],
-    createInstance: vi.fn(async () => ({ id: 'i1' })),
+    createInstance: vi.fn(async () => ({ id: 'i1', schema: 'instance_dag' })),
     getInstanceDataChecksById: vi.fn(),
     createExecution: vi.fn(async () => ({ id: 'e1' })),
     uploadSolutionData: vi.fn(async () => true),
@@ -222,32 +223,81 @@ describe('useExecutionDraft', () => {
     expect(draft.loadStatus).toBe('empty')
   })
 
-  test('offers the database when the ETL can bring it, with the load filters first', () => {
+  test('offers the database when the app brings it through the ETL, with the load filters first', () => {
     extensions.etlBackend = { useEtlBackend: vi.fn(), useEtlBackendFromDb: vi.fn() }
     store.appConfig.parameters.etl = { useEtlBackend: true, enableLoadFromDb: true }
     let draft = setup()
     expect(draft.dataSourceMode).toBe('database')
     expect(draft.canLoad).toBe(true)
 
-    store.appConfig.parameters.configFields = [
-      ...configFields,
-      { key: 'plant', title: 'f.plant', type: 'select', preEtl: true, required: true, options: [] },
-    ]
+    store.getLoadFilterFields = [{ key: 'plant', title: '', label: 'Plant', type: 'select', required: true, options: [] }]
     draft = setup()
     expect(draft.dataSourceMode).toBe('database-filtered')
     expect(draft.loadFilterFields.map((f) => f.key)).toEqual(['plant'])
-    expect(draft.parameterFields.map((f) => f.key)).not.toContain('plant')
     expect(draft.canLoad).toBe(false)
     draft.setFilter('plant', 'north')
     expect(draft.canLoad).toBe(true)
   })
 
-  test('a load filter fed by a table takes its rows as options', async () => {
-    store.fetchTableOptions = vi.fn(async () => [{ value: 7, title: 'North plant' }])
+  test('without the ETL module the database is not offered', () => {
+    store.appConfig.parameters.etl = { useEtlBackend: true, enableLoadFromDb: true }
+    const draft = setup()
+    expect(draft.dataSourceMode).toBe('files')
+  })
+
+  test('the load filters keep their values apart from the execution config', () => {
+    extensions.etlBackend = { useEtlBackend: vi.fn(), useEtlBackendFromDb: vi.fn() }
+    store.appConfig.parameters.etl = { useEtlBackend: true, enableLoadFromDb: true }
+    store.getLoadFilterFields = [
+      { key: 'total_weeks', title: '', label: 'Total weeks', type: 'number', default: 3 },
+      { key: 'plant', title: '', label: 'Plant', type: 'select', options: [] },
+    ]
+    const draft = setup()
+    expect(draft.filters).toEqual({ total_weeks: 3 })
+    draft.setFilter('plant', 4)
+
+    expect(draft.filters).toEqual({ total_weeks: 3, plant: 4 })
+    expect(draft.execution.config).not.toHaveProperty('plant')
+    expect(draft.execution.config).not.toHaveProperty('total_weeks')
+  })
+
+  test('a load filter with inConfig also fills that key of the execution config', async () => {
+    extensions.etlBackend = { useEtlBackend: vi.fn(), useEtlBackendFromDb: vi.fn() }
     store.appConfig.parameters.configFields = [
       ...configFields,
-      { key: 'plant_id', title: 'f.plant', type: 'select', preEtl: true, joinFrom: 'plants.name' },
+      { key: 'region_code', title: 'f.region', type: 'text' },
     ]
+    store.appConfig.parameters.etl = { useEtlBackend: true, enableLoadFromDb: true }
+    store.getLoadFilterFields = [
+      { key: 'region', title: '', label: 'Region', type: 'select', default: 'north', inConfig: 'region_code', options: [] },
+    ]
+    processing.processFromDb.mockResolvedValue(loadedOk())
+    store.getInstanceDataChecksById.mockResolvedValue(new FakeInstance('i1', {}))
+    const draft = setup()
+    expect(draft.execution.config.region_code).toBe('north')
+    // The filter asks it: the parameters do not ask it again.
+    expect(draft.parameterFields.map((f) => f.key)).not.toContain('region_code')
+
+    draft.setFilter('region', 'south')
+    expect(draft.execution.config.region_code).toBe('south')
+    await draft.load()
+    expect(processing.processFromDb).toHaveBeenCalledWith({ region: 'south' })
+    await draft.runChecks()
+    expect(store.getInstanceDataChecksById).toHaveBeenCalledWith(
+      'i1',
+      'instance_dag',
+      expect.objectContaining({ region_code: 'south' }),
+    )
+
+    draft.setFilter('region', null)
+    expect(draft.execution.config).not.toHaveProperty('region_code')
+  })
+
+  test('a load filter fed by a table takes its rows as options', async () => {
+    extensions.etlBackend = { useEtlBackend: vi.fn(), useEtlBackendFromDb: vi.fn() }
+    store.fetchTableOptions = vi.fn(async () => [{ value: 7, title: 'North plant' }])
+    store.appConfig.parameters.etl = { useEtlBackend: true, enableLoadFromDb: true }
+    store.getLoadFilterFields = [{ key: 'plant_id', title: '', label: 'Plant', type: 'select', joinFrom: 'plants.name' }]
     const draft = setup()
     await flushPromises()
     expect(store.fetchTableOptions).toHaveBeenCalledWith('plants.name')
@@ -255,6 +305,7 @@ describe('useExecutionDraft', () => {
   })
 
   test('a DAG switch asks the options of a load filter fed by a table again, for the new DAG', async () => {
+    extensions.etlBackend = { useEtlBackend: vi.fn(), useEtlBackendFromDb: vi.fn() }
     const plantsByDag: Record<string, { value: number; title: string }[]> = {
       dag_a: [{ value: 7, title: 'North plant' }],
       dag_b: [{ value: 9, title: 'East plant' }],
@@ -262,10 +313,8 @@ describe('useExecutionDraft', () => {
     const activeStore = reactive(store)
     activeStore.getSchemaName = 'dag_a'
     store.fetchTableOptions = vi.fn(async () => plantsByDag[activeStore.getSchemaName])
-    store.appConfig.parameters.configFields = [
-      ...configFields,
-      { key: 'plant_id', title: 'f.plant', type: 'select', preEtl: true, joinFrom: 'plants.name' },
-    ]
+    store.appConfig.parameters.etl = { useEtlBackend: true, enableLoadFromDb: true }
+    store.getLoadFilterFields = [{ key: 'plant_id', title: '', label: 'Plant', type: 'select', joinFrom: 'plants.name' }]
     const draft = setup()
     await flushPromises()
     expect(draft.loadFilterFields[0].options).toEqual([{ value: 7, label: 'North plant' }])
@@ -277,19 +326,46 @@ describe('useExecutionDraft', () => {
     expect(draft.loadFilterFields[0].options).toEqual([{ value: 9, label: 'East plant' }])
   })
 
+  test('a DAG switch asks the load filters of the new DAG, keeping the values both share', async () => {
+    extensions.etlBackend = { useEtlBackend: vi.fn(), useEtlBackendFromDb: vi.fn() }
+    const activeStore = reactive(store)
+    store.appConfig.parameters.etl = { useEtlBackend: true, enableLoadFromDb: true }
+    activeStore.getLoadFilterFields = [
+      { key: 'plant', title: '', label: 'Plant', type: 'number' },
+      { key: 'total_weeks', title: '', label: 'Total weeks', type: 'number', default: 3 },
+    ]
+    const draft = setup()
+    draft.setFilter('plant', 4)
+    draft.setFilter('total_weeks', 5)
+
+    store.appConfig.parameters.etl = { useEtlBackend: true, enableLoadFromDb: true }
+    activeStore.getLoadFilterFields = [
+      { key: 'plant', title: '', label: 'Plant', type: 'number' },
+      { key: 'min_date', title: '', label: 'From', type: 'date', default: '2026-01-05' },
+    ]
+    await flushPromises()
+
+    expect(draft.loadFilterFields.map((f) => f.key)).toEqual(['plant', 'min_date'])
+    expect(draft.filters).toEqual({ plant: 4, min_date: '2026-01-05' })
+
+    activeStore.getLoadFilterFields = []
+    await flushPromises()
+    expect(draft.loadFilterFields).toEqual([])
+    expect(draft.filters).toEqual({})
+  })
+
   test('brings the database data without files and asks to reload when the filters change', async () => {
     extensions.etlBackend = { useEtlBackend: vi.fn(), useEtlBackendFromDb: vi.fn() }
     store.appConfig.parameters.etl = { useEtlBackend: true, enableLoadFromDb: true }
-    store.appConfig.parameters.configFields = [
-      ...configFields,
-      { key: 'plant', title: 'f.plant', type: 'select', preEtl: true, options: [{ value: 'north', label: 'North' }] },
+    store.getLoadFilterFields = [
+      { key: 'plant', title: '', label: 'Plant', type: 'select', options: [{ value: 'north', label: 'North' }] },
     ]
     processing.processFromDb.mockResolvedValue(loadedOk())
     const draft = setup()
     draft.setFilter('plant', 'north')
     await draft.load()
 
-    expect(processing.processFromDb).toHaveBeenCalledWith(expect.objectContaining({ plant: 'north' }))
+    expect(processing.processFromDb).toHaveBeenCalledWith({ plant: 'north' })
     expect(draft.execution.name).toContain('North')
     expect(draft.filtersChanged).toBe(false)
     draft.setFilter('plant', 'south')
@@ -300,21 +376,20 @@ describe('useExecutionDraft', () => {
   test('the proposed name names the picks of a load filter of several values', async () => {
     extensions.etlBackend = { useEtlBackend: vi.fn(), useEtlBackendFromDb: vi.fn() }
     store.appConfig.parameters.etl = { useEtlBackend: true, enableLoadFromDb: true }
-    store.appConfig.parameters.configFields = [
-      ...configFields,
+    store.getLoadFilterFields = [
       {
         key: 'products',
-        title: 'f.products',
+        title: '',
+        label: 'Products',
         type: 'select',
         multiple: true,
-        preEtl: true,
         options: [
           { value: 3, label: 'P-003' },
           { value: 7, label: 'P-007' },
           { value: 9, label: 'P-009' },
-        ],
-      },
-    ]
+    ],
+        },
+      ]
     processing.processFromDb.mockResolvedValue(loadedOk())
     const draft = setup()
     draft.setFilter('products', [3, 7, 9])
@@ -337,7 +412,12 @@ describe('useExecutionDraft', () => {
     await draft.runChecks()
 
     expect(store.createInstance).toHaveBeenCalled()
-    expect(store.getInstanceDataChecksById).toHaveBeenCalledWith('i1', expect.any(Object))
+    // The checks run under the DAG of the instance just created, not the active one.
+    expect(store.getInstanceDataChecksById).toHaveBeenCalledWith(
+      'i1',
+      'instance_dag',
+      expect.any(Object),
+    )
     expect(draft.checks.status).toBe('errors')
     expect(draft.checks.results).toEqual([
       {
@@ -463,11 +543,9 @@ describe('useExecutionDraft', () => {
     expect(draft.execution.config).toMatchObject({ timeLimit: 300, start: '2026-10-26' })
   })
 
-  test('pre-ETL filters are asked with files too, and sent with them to the ETL', async () => {
-    store.appConfig.parameters.configFields = [
-      ...configFields,
-      { key: 'full', title: 'f.full', type: 'boolean', preEtl: true, required: true },
-    ]
+  test('the load filters are asked with files too, and sent with them to the ETL', async () => {
+    extensions.etlBackend = { useEtlBackend: vi.fn(), useEtlBackendFromDb: vi.fn() }
+    store.getLoadFilterFields = [{ key: 'full', title: '', label: 'Full', type: 'boolean', required: true }]
     processing.processFiles.mockResolvedValue(loadedOk())
     const draft = setup()
     expect(draft.dataSourceMode).toBe('files')
@@ -477,10 +555,7 @@ describe('useExecutionDraft', () => {
     draft.setFilter('full', false)
     expect(draft.canLoad).toBe(true)
     await draft.load()
-    expect(processing.processFiles).toHaveBeenCalledWith(
-      [expect.any(File)],
-      expect.objectContaining({ full: false }),
-    )
+    expect(processing.processFiles).toHaveBeenCalledWith([expect.any(File)], { full: false })
   })
 
   test('the ETL review is sent to the backend before the checks, and its result is what runs', async () => {
@@ -819,6 +894,24 @@ describe('useExecutionDraft', () => {
       expect(draft.filesChanged).toBe(false)
       expect(draft.etlNeedsSync).toBe(false)
       expect(await draft.readDraft()).toBeNull()
+    })
+
+    test('a draft puts back the load filters and the ones the data was brought with', async () => {
+      extensions.etlBackend = { useEtlBackend: vi.fn(), useEtlBackendFromDb: vi.fn() }
+      store.appConfig.parameters.etl = { useEtlBackend: true, enableLoadFromDb: true }
+      store.getLoadFilterFields = [{ key: 'plant', title: '', label: 'Plant', type: 'number' }]
+      processing.processFromDb.mockResolvedValue(loadedOk())
+      let draft = setup()
+      draft.setFilter('plant', 4)
+      await draft.load()
+      draft.setFilter('plant', 5)
+      await draft.saveDraft()
+
+      draft = setup()
+      await draft.resumeDraft((await draft.readDraft())!)
+
+      expect(draft.filters).toEqual({ plant: 5 })
+      expect(draft.filtersChanged).toBe(true)
     })
 
     test('a draft saved before loading keeps the picked files only', async () => {

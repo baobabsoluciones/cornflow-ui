@@ -24,11 +24,12 @@ import { useEtlFlowController } from '@cornflow-ui/core/composables/project-exec
 import { useTableChanges } from '@cornflow-ui/core/composables/useTableChanges'
 import { getPremiumEtlBackend } from '@cornflow-ui/core/plugins/extensions'
 import { showSnackbar } from '@cornflow-ui/core/services/SnackbarService'
-import { pickPreEtlConfigValues } from '@cornflow-ui/core/utils/schemaUtils'
+import { pickLoadFilterValues } from '@cornflow-ui/core/utils/schemaUtils'
 import { pickedSummary } from '@cornflow-ui/core/components/core/CoreMultiSelect.vue'
 import session from '@cornflow-ui/core/services/AuthService'
 import {
   applySourceConfigFieldValues,
+  configFieldLabel,
   isEmptyConfigValue,
   resolveAllConfigFieldValues,
   seedConfigFieldDefaults,
@@ -58,7 +59,7 @@ export type DataSourceMode =
   | 'files'
   /** The database through the ETL; files replace the tables with the same name. */
   | 'database'
-  /** As `database`, with the load filters (`pre_etl` parameters) to fill first. */
+  /** As `database`, with the load filters the DAG's ETL asks for to fill first. */
   | 'database-filtered'
 
 export type MissingTarget = 'data' | 'checks' | 'name' | `param:${string}`
@@ -92,6 +93,11 @@ export function useExecutionDraft() {
     name: '',
     description: '',
   })
+  /**
+   * Values of the load filters, by key. They go to the ETL; one with `inConfig` also goes to
+   * `execution.config` under that key.
+   */
+  const filters = ref<Record<string, unknown>>({})
   const files = ref<File[]>([])
   const loadStatus = ref<LoadStatus>('empty')
   const loadErrors = ref<LoadErrors | null>(null)
@@ -143,6 +149,9 @@ export function useExecutionDraft() {
       Boolean(etlConfig.value?.useEtlBackend && etlConfig.value?.enableLoadFromDb),
   )
 
+  /** The load filters the ETL of the active DAG asks for (`GET /external/frontend-config/`). */
+  const dagFilterFields = computed<any[]>(() => store.getLoadFilterFields ?? [])
+
   /** Options of the load filters fed by a frontend-automation table (`joinFrom`), by key. */
   const filterTableOptions = ref<Record<string, { value: unknown; label: string }[]>>({})
 
@@ -153,23 +162,23 @@ export function useExecutionDraft() {
   const loadFilterFields = computed(() =>
     fromExecution.value
       ? []
-      : allConfigFields.value
-          .filter((f) => f.preEtl === true)
-          .map((f) => (f.joinFrom ? { ...f, options: filterTableOptions.value[f.key] ?? [] } : f)),
+      : dagFilterFields.value.map((f) =>
+          f.joinFrom ? { ...f, options: filterTableOptions.value[f.key] ?? [] } : f,
+        ),
   )
 
-  // The fields can arrive with the schema, and the frontend-automation tables after them; each
+  // The fields come with the backend's answer, and the frontend-automation tables after it; each
   // DAG has its own rows. Only the latest request writes the options.
   let filterOptionsRequest = 0
   watch(
     () =>
-      `${store.getSchemaName}#${allConfigFields.value
-        .filter((f) => f.preEtl === true && f.joinFrom)
+      `${store.getSchemaName}#${dagFilterFields.value
+        .filter((f) => f.joinFrom)
         .map((f) => `${f.key}=${f.joinFrom}`)
         .join('|')}#${Object.keys(store.getConfigurations?.masterData ?? {}).length}`,
     async () => {
       const request = ++filterOptionsRequest
-      const withTable = allConfigFields.value.filter((f) => f.preEtl === true && f.joinFrom)
+      const withTable = dagFilterFields.value.filter((f) => f.joinFrom)
       const loaded = await Promise.all(
         withTable.map(async (field) => {
           const options = (await store.fetchTableOptions(field.joinFrom)) ?? []
@@ -199,12 +208,15 @@ export function useExecutionDraft() {
       Boolean(parameters.value.configFieldsConfig?.autoLoadValues),
   )
 
-  /** The parameters the user sets: every config field but the load filters. */
+  /** Config keys a load filter fills (`inConfig`): the filter asks them, not the parameters. */
+  const filledByFilters = computed(
+    () => new Set(loadFilterFields.value.map((f) => f.inConfig).filter(Boolean)),
+  )
+
+  /** The parameters the user sets: every config field but the ones a load filter fills. */
   const parameterFields = computed(() =>
     showParameters.value
-      ? allConfigFields.value.filter(
-          (field) => !loadFilterFields.value.some((f) => f.key === field.key),
-        )
+      ? allConfigFields.value.filter((field) => !filledByFilters.value.has(field.key))
       : [],
   )
 
@@ -238,9 +250,11 @@ export function useExecutionDraft() {
   const isLoaded = computed(() => loadStatus.value === 'loaded')
   const pendingChangesCount = computed(() => tableChanges.totalChangesCount.value)
 
-  const currentFilters = computed(() =>
-    JSON.stringify(pickPreEtlConfigValues(execution.config, allConfigFields.value)),
+  /** What the ETL gets from the load filters. */
+  const loadFilterValues = computed(() =>
+    pickLoadFilterValues(filters.value, loadFilterFields.value),
   )
+  const currentFilters = computed(() => JSON.stringify(loadFilterValues.value))
   /** The load filters changed since the data was brought: the data does not reflect them. */
   const filtersChanged = computed(
     () =>
@@ -251,7 +265,7 @@ export function useExecutionDraft() {
   )
   const missingRequiredFilters = computed(() =>
     loadFilterFields.value.filter(
-      (field) => field.required && isEmptyConfigValue(field, execution.config[field.key]),
+      (field) => field.required && isEmptyConfigValue(field, filters.value[field.key]),
     ),
   )
   /** Files picked that are not part of the data on screen. */
@@ -280,7 +294,7 @@ export function useExecutionDraft() {
   )
 
   function fieldLabel(field: any): string {
-    return field.title ? t(field.title) : field.key
+    return configFieldLabel(field, t, locale.value)
   }
 
   const missing = computed<MissingItem[]>(() => {
@@ -357,13 +371,39 @@ export function useExecutionDraft() {
     if (!execution.config.solver) execution.config.solver = defaultSolver.value
   }
 
+  /** Writes the value of a filter with `inConfig` to the execution config; empty, it leaves it out. */
+  function copyFilterToConfig(field: any, value: unknown) {
+    if (!field.inConfig) return
+    const { [field.inConfig]: _previous, ...rest } = execution.config
+    execution.config = isEmptyConfigValue(field, value)
+      ? rest
+      : { ...rest, [field.inConfig]: value }
+  }
+
+  /**
+   * The load filters of the active DAG with their values: the ones they had while the DAG still
+   * asks them, the defaults otherwise.
+   */
+  function seedFilters() {
+    const fields = dagFilterFields.value
+    const kept = Object.fromEntries(
+      fields
+        .filter((field) => filters.value[field.key] !== undefined)
+        .map((field) => [field.key, filters.value[field.key]]),
+    )
+    filters.value = seedConfigFieldDefaults(fields, kept)
+    for (const field of fields) copyFilterToConfig(field, filters.value[field.key])
+  }
+
   function setParameter(key: string, value: unknown) {
     execution.config = { ...execution.config, [key]: value }
     fromDataKeys.value = fromDataKeys.value.filter((k) => k !== key)
   }
 
   function setFilter(key: string, value: unknown) {
-    execution.config = { ...execution.config, [key]: value }
+    filters.value = { ...filters.value, [key]: value }
+    const field = dagFilterFields.value.find((f) => f.key === key)
+    if (field) copyFilterToConfig(field, value)
   }
 
   function setName(name: string) {
@@ -399,7 +439,7 @@ export function useExecutionDraft() {
     return loadFilterFields.value
       .filter((field: any) => field.type === 'select' || field.options?.length)
       .map((field) => {
-        const value = execution.config[field.key]
+        const value = filters.value[field.key]
         const labelOf = (v: unknown) =>
           (field.options ?? []).find((o: any) => o.value === v)?.label
         if (Array.isArray(value)) {
@@ -486,8 +526,8 @@ export function useExecutionDraft() {
     try {
       const result =
         files.value.length > 0
-          ? await instanceProcessing.processFiles(files.value, execution.config)
-          : await instanceProcessing.processFromDb(execution.config)
+          ? await instanceProcessing.processFiles(files.value, loadFilterValues.value)
+          : await instanceProcessing.processFromDb(loadFilterValues.value)
       onLoaded(result)
     } catch (error) {
       onLoaded({
@@ -590,7 +630,11 @@ export function useExecutionDraft() {
         name: execution.name || `${new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)}_check`,
       })
       if (!created) throw new Error(t('projectExecution.snackbar.instanceCreationError'))
-      const checked = await store.getInstanceDataChecksById(created.id, execution.config)
+      const checked = await store.getInstanceDataChecksById(
+        created.id,
+        created.schema,
+        execution.config,
+      )
       if (!checked) throw new Error(t('projectExecution.snackbar.instanceDataChecksError'))
 
       execution.instance = checked
@@ -658,6 +702,7 @@ export function useExecutionDraft() {
     execution.config = {}
     execution.name = ''
     execution.description = ''
+    filters.value = {}
     files.value = []
     loadStatus.value = 'empty'
     loadErrors.value = null
@@ -676,6 +721,7 @@ export function useExecutionDraft() {
     solution.enabled = false
     void setSolutionFile(null)
     seedDefaults()
+    seedFilters()
   }
 
   /** An editable copy of a loaded execution: its data, parameters and name ("relaunch"). */
@@ -703,6 +749,7 @@ export function useExecutionDraft() {
       name: execution.name,
       description: execution.description,
       config: JSON.parse(JSON.stringify(execution.config)),
+      filters: JSON.parse(JSON.stringify(filters.value)),
       instanceData: execution.instance?.data
         ? JSON.parse(JSON.stringify(execution.instance.data))
         : null,
@@ -740,6 +787,7 @@ export function useExecutionDraft() {
     execution.name = draft.name
     execution.description = draft.description
     execution.config = { ...execution.config, ...draft.config }
+    filters.value = { ...filters.value, ...(draft.filters ?? {}) }
     files.value = draft.files ?? []
     fromExecution.value = draft.fromExecution
     nameProposed.value = false
@@ -767,8 +815,10 @@ export function useExecutionDraft() {
     await discardDraft()
   }
 
-  // The parameters list can arrive after the flow mounts (schema loaded later).
+  // The parameters list can arrive after the flow mounts (schema loaded later), and the load
+  // filters change with the DAG.
   watch(allConfigFields, seedDefaults, { immediate: true })
+  watch(dagFilterFields, seedFilters, { immediate: true })
 
   /** Whether the launched execution is still queued or running. */
   const launchedRunning = computed(() => {
@@ -791,6 +841,7 @@ export function useExecutionDraft() {
   return reactive({
     // state
     execution,
+    filters,
     files,
     loadStatus,
     loadErrors,

@@ -120,6 +120,23 @@ export function seedConfigFieldDefaults(
   return next
 }
 
+/**
+ * The text a field is shown with. A `label` from the backend gives it in the active language, else
+ * in English; a field without `label` translates its `title`. Without any text, the field's key.
+ */
+export function configFieldLabel(
+  field: Field,
+  t: (key: string) => string,
+  locale: string,
+): string {
+  if (field.label === undefined || field.label === null) {
+    return field.title ? t(field.title) : field.key
+  }
+  const text =
+    typeof field.label === 'string' ? field.label : (field.label[locale] ?? field.label.en)
+  return typeof text === 'string' && text ? text : field.key
+}
+
 /** The hint an empty field shows: its `placeholder` translated, or '' when the key has no text. */
 export function configFieldPlaceholder(field: Field, t: (key: string) => string): string {
   if (!field.placeholder) return ''
