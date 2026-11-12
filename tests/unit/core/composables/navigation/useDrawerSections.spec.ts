@@ -3,8 +3,9 @@ import { defineComponent, h } from 'vue'
 import { mount } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
 
-const { store, appConfig, forbiddenViews } = vi.hoisted(() => ({
+const { store, appConfig, forbiddenViews, premiumSections } = vi.hoisted(() => ({
   store: {} as Record<string, any>,
+  premiumSections: [] as any[],
   forbiddenViews: [] as string[],
   appConfig: {
     getCore: vi.fn(),
@@ -14,6 +15,7 @@ const { store, appConfig, forbiddenViews } = vi.hoisted(() => ({
 }))
 
 vi.mock('@cornflow-ui/core/stores/general', () => ({ useGeneralStore: () => store }))
+vi.mock('@cornflow-ui/core/plugins/extensions', () => ({ getPremiumDrawerSections: () => premiumSections }))
 vi.mock('@/app/config', () => ({ default: appConfig }))
 vi.mock('@/app/rolesConfig', () => ({
   isViewAllowed: (_roles: string[], view: string) => !forbiddenViews.includes(view),
@@ -27,6 +29,7 @@ import {
 const user = { username: 'planner', email: 'p@example.com', roles: [] as { name: string }[] }
 
 function resetStore() {
+  premiumSections.length = 0
   Object.assign(store, {
     getUser: { ...user },
     getSchemaName: 'planning_dag',
@@ -118,6 +121,20 @@ describe('useDrawerSections', () => {
     const api = setup()
     expect(api.isAdmin.value).toBe(true)
     expect(section(api, 'admin').subPages![0].to).toBe('/roles-management')
+  })
+
+  test('a premium page for administration joins the Administration group, with or without roles management', () => {
+    premiumSections.push({ titleKey: 'ai', icon: 'mdi-robot', to: '/ai-assistant', parent: 'admin' })
+    store.getUser = { ...user, roles: [{ name: 'planner' }] }
+    expect(keys(setup())).not.toContain('admin')
+
+    store.getUser = { ...user, roles: [{ name: 'admin' }] }
+    const alone = setup()
+    expect(keys(alone).filter((key) => key.startsWith('premium'))).toEqual([])
+    expect(section(alone, 'admin').subPages!.map((page) => page.to)).toEqual(['/ai-assistant'])
+
+    appConfig.getCore.mockReturnValue({ parameters: { enableRolesManagement: true } })
+    expect(section(setup(), 'admin').subPages!.map((page) => page.to)).toEqual(['/roles-management', '/ai-assistant'])
   })
 
   test('app sections declared for some roles or DAGs show only to them', () => {

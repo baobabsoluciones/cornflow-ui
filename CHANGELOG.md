@@ -2,11 +2,11 @@
 
 ## [Unreleased]
 
-### Fixed
-- **The data checks send the DAG of the instance or execution they check**  
-  - A deployment closed to the DAGs of each user rejects a data check without `schema` (400, "The request does not specify a schema to use") and creates no check execution. `POST /data-check/instance/<id>/` sends the DAG of the instance just created next to the execution `config`, and `POST /data-check-kpis/execution/<id>/` sends the DAG of the execution, read from `GET /execution/<id>/`, both in the historical KPIs and when the execution files are regenerated. Neither takes the active DAG
-  *Contributors:* [@HelenaCA](#)  
-  *Commit ID:* #274
+### Added
+- **Premium modules can add pages to Administration**  
+  - A `PremiumDrawerSection` with `parent: 'admin'` is listed as a page of the core's Administration group (next to Roles management) instead of a group of its own. The group shows for admins when it has a page, so it no longer depends on roles management being on
+  *Contributors:* [@antoniogonzalezsuarez](#)  
+  *Commit ID:* #275
 
 ### Changed
 - **Every list and download of a frontend-automation table carries the active DAG**  
@@ -23,6 +23,20 @@
   - A backend without the endpoint, or a DAG it leaves out, asks no load filters. The database is still offered with `etl.useEtlBackend` and `etl.enableLoadFromDb`
   *Contributors:* [@HelenaCA](#)  
   *Commit ID:* #274
+
+### Fixed
+- **The data checks send the DAG of the instance or execution they check**  
+  - A deployment closed to the DAGs of each user rejects a data check without `schema` (400, "The request does not specify a schema to use") and creates no check execution. `POST /data-check/instance/<id>/` sends the DAG of the instance just created next to the execution `config`, and `POST /data-check-kpis/execution/<id>/` sends the DAG of the execution, read from `GET /execution/<id>/`, both in the historical KPIs and when the execution files are regenerated. Neither takes the active DAG
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #274
+- **The help button no longer covers the actions of a page header**  
+  - The help button is fixed at the top-right corner and overlapped by about 16 px the actions at the right of a page title (for example "Create new execution" in the history). `CoreTitleView` now reserves space on its right so the actions end clear of it
+  *Contributors:* [@antoniogonzalezsuarez](#)  
+  *Commit ID:* #273
+- **Opening or refreshing a premium route no longer ends on the not-found page**  
+  - `registerPlugins` added the premium routes after `app.use(router)`, which had already started the first navigation: a URL such as `/ai-chat` matched the catch-all and redirected to `/not-found`, while the same view opened from the menu worked. The premium routes and locales are now added before the router is installed
+  *Contributors:* [@antoniogonzalezsuarez](#)  
+  *Commit ID:* #272
 
 ## [4.0.0] - 05-11-2026
 

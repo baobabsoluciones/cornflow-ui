@@ -10,6 +10,10 @@
   align-items: flex-start;
   gap: calc(var(--spacing) * 4);
   width: 100%;
+  /* The help button (HelpMenu) is fixed at the top-right corner: 36px wide, 12px from the edge. Page content
+     ends 32px from the edge, so the actions on the right of the header would sit under it. Reserve the
+     difference plus a gap. */
+  padding-right: calc(var(--spacing) * 7);
 }
 
 .core-title-view__left {
