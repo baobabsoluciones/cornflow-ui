@@ -84,6 +84,12 @@ describe('useSectionDisplay', () => {
     expect(single.description.value).toBe('TITLE:inputData - Orders')
   })
 
+  test('description is empty when the page has the section name, so it is not repeated', () => {
+    const group = setup({ sectionType: 'configuration', isGroupView: true, groupName: 'title:MasterData' })
+    expect(group.title.value).toBe('Title:MasterData')
+    expect(group.description.value).toBe('')
+  })
+
   test('currentIcon for group view uses first table icon', () => {
     const withIcon = setup({
       isGroupView: true,
