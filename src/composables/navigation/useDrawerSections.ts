@@ -46,6 +46,16 @@ export interface DrawerSection extends DrawerPage {
   scope: 'execution' | 'general'
 }
 
+/**
+ * A group over a single page is that page: it links to it instead of opening to show it. A page
+ * that is itself a heading (no `to`) stays nested.
+ */
+function linkToOnlyPage(section: DrawerSection): DrawerSection {
+  const pages = section.subPages ?? []
+  if (pages.length !== 1 || !pages[0].to) return section
+  return { ...section, to: pages[0].to, subPages: undefined }
+}
+
 /** Whether `page`, or any page below it, is the one at `path` (or a route nested in it). */
 export function isPageActive(page: DrawerPage | null | undefined, path: string): boolean {
   if (!page) return false
@@ -141,16 +151,16 @@ export function useDrawerSections() {
         : []
     if (blocks.length === 0) {
       return [
-        {
+        linkToOnlyPage({
           key: 'master-data',
           scope: 'general',
           title: getSectionTitle('masterData'),
           icon: 'mdi-database',
           subPages: getNavigationItemsFromConfig(masterDataConfig, '/configuration'),
-        },
+        }),
       ]
     }
-    return blocks.map((block: any, index: number) => {
+    return blocks.map((block: any, index: number): DrawerSection => {
       const subPages = [...(block.subPages || [])]
       if (block.sectionId) {
         appConfig
@@ -164,7 +174,7 @@ export function useDrawerSections() {
             }),
           )
       }
-      return {
+      return linkToOnlyPage({
         key: `master-data-${block.sectionId ?? index}`,
         scope: 'general' as const,
         title:
@@ -173,7 +183,7 @@ export function useDrawerSections() {
             : resolveTitleWithLocale(block.title, locale.value, block.sectionId),
         icon: block.icon,
         subPages,
-      }
+      })
     })
   })
 

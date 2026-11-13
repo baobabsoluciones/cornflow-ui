@@ -32,12 +32,12 @@ export function useSectionDisplay(
     return tableConfig.value?.title || tableKey.value
   })
 
+  /** "Section - page"; nothing when the page has the section's own name, as it would repeat. */
   const description = computed(() => {
     const sectionName = getSectionDisplayName()
-    if (isGroupView.value) {
-      return `${sectionName} - ${title.value}`
-    }
-    return `${sectionName} - ${title.value}`
+    const sameName =
+      sectionName.trim().toLocaleLowerCase() === String(title.value).trim().toLocaleLowerCase()
+    return sameName ? '' : `${sectionName} - ${title.value}`
   })
 
   const currentIcon = computed(() => {
