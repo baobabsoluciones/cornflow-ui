@@ -7,7 +7,7 @@
   - `docs/README.md` and a page per feature, in Spanish, for project managers and presales: what each feature does, what it looks like and how it is turned on (core or enterprise, the setting, what the backend has to provide, roles). The README links to them and drops what they now cover
   - `npm run docs:screenshots` takes the screenshots from the real app, with a mock backend and neutral demo data, so they need no backend and show no real data (`tests/e2e/docs-screenshots/`). Packages built on the core reuse it from `@cornflow-ui/core/e2e/docs-screenshots/`
   *Contributors:* [@david-hidalgo-baobab](#)  
-  *Commit ID:* #TBD
+  *Commit ID:* #277
 - **Premium modules can add pages to Administration**  
   - A `PremiumDrawerSection` with `parent: 'admin'` is listed as a page of the core's Administration group (next to Roles management) instead of a group of its own. The group shows for admins when it has a page, so it no longer depends on roles management being on
   *Contributors:* [@antoniogonzalezsuarez](#)  
