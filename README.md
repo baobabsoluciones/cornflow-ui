@@ -226,12 +226,92 @@ are independent of each other. With several DAGs, the table is asked for the row
 and a DAG switch asks them again.
 
 **Executions list.** Cornflow's `GET /execution/` ignores query parameters it does not know, so the
-picked values only filter the list when `executionsListEndpoint` points it at an endpoint that does.
-That endpoint receives the same query parameters as `GET /execution/` plus the picked values (the
-row `id`s), and returns the same shape.
+picked values only filter the list when it comes from an endpoint that does: the `list` the backend
+declares for the DAG (see [Execution endpoints](#execution-endpoints-optional)) or, for every DAG,
+`executionsListEndpoint`. That endpoint receives the same query parameters as `GET /execution/` plus
+the picked values (the row `id`s), and returns the same shape.
 
 ⚠️ The backend decides which rows each user may see: the frontend-automation table and the
 executions list have to leave out what the user may not use.
+
+### Execution endpoints (optional)
+
+By default every execution is read from Cornflow. A backend that serves the executions of a DAG its
+own way (grouped, filtered by its own data, narrowed to what each user may see) declares, per DAG,
+which of its endpoints the core reads them from instead. They come in the `executions` section of
+`GET /external/frontend-config/`, the same answer that carries the
+[load filters](#load-filters-get-externalfrontend-config):
+
+```json
+{
+  "etl": { "...": "..." },
+  "executions": {
+    "dag_a": { "list": "/executions/" },
+    "dag_b": {
+      "list": "/executions/",
+      "details": "/executions/{id}/",
+      "data": "/executions/{id}/data/",
+      "instance_data": "/instances/{id}/data/"
+    }
+  }
+}
+```
+
+`dag_a` lists its history from the backend and reads everything else from Cornflow. `dag_b` reads
+everything from the backend. Any other DAG reads everything from Cornflow.
+
+**The request.** `GET /external/frontend-config/` is asked once after the login, with the user's
+token, when the app has an external backend ([hasExternalApp](#hasexternalapp)). One answer covers
+every DAG. Without an external backend, or with a 404 or any other error, every execution is read
+from Cornflow.
+
+**Where each read goes.** Each read of an execution of a DAG goes to the first source that has it:
+
+| Order | Source                                                                   | Covers                                                                              |
+| ----- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| 1     | `executions.<DAG>.<key>` of the frontend config, always under `/external` | `list`, `details`, `data`, `instance_data`                                          |
+| 2     | `executionsListEndpoint` of the app config                               | `list` only                                                                         |
+| 3     | Cornflow                                                                 | `/execution/`, `/execution/{id}/`, `/execution/{id}/data/`, `/instance/{id}/data/` |
+
+The list is resolved for the DAG it lists; the other keys for the active DAG. A DAG switch closes
+the loaded executions, so an execution is never read with the endpoints of another DAG.
+
+**The keys.**
+
+| Key             | Requests                                                                                                                                         | `{id}`                                         | What the core uses it for                                                                                                                                  |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `list`          | `GET` with the query of `GET /execution/` (`schema`, `limit`, `creation_date_gte`, `creation_date_lte`) plus the picked [history filters](#execution-history-filters-optional) | -                                              | The history and the latest executions                                                                                                                      |
+| `details`       | `GET`, `PUT` with `{ data }`, `DELETE`                                                                                                           | The execution                                  | The state of a running execution while it is polled, who launched a loaded execution and when it finished, the DAG of an execution, an uploaded solution, a deletion from the history |
+| `data`          | `GET`                                                                                                                                            | The execution                                  | Loading an execution (from the history, once created, the data checks while they run) and building its Excel download                                      |
+| `instance_data` | `GET`                                                                                                                                            | The instance: the `instance_id` that `data` returns | The instance of a loaded or downloaded execution                                                                                                       |
+
+- A route is a path relative to `/external` that starts with `/`. `{id}` is replaced by the id, URL
+  encoded; every key but `list` needs it.
+- A route that is not usable (not a path, or without `{id}` where the id goes) is ignored with a
+  warning in the console, and the read goes to the next source.
+- The endpoints of a DAG serve **every** execution of that DAG, also the ones the core creates by
+  itself: the data checks of an instance (read through `data` and `details` while they run) and the
+  historical KPIs. An endpoint that serves executions of its own, such as groups of executions,
+  answers for a plain execution as Cornflow does.
+- The backend decides what each user may see, as in the executions list.
+
+**What the core reads from each answer.** The shape is Cornflow's:
+
+| Key             | Fields                                                                                                                                                                                  |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `list`          | A list. Of each item: `id`, `name`, `description`, `created_at`, `updated_at`, `state`, `message`, `config`, `log`, `indicators`, `data_hash`, `schema`, `instance_id`, `user_id`, `username`, `first_name`, `last_name` |
+| `details`       | `id`, `schema`, `state`, `updated_at`, `username`, `first_name`, `last_name`                                                                                                           |
+| `data`          | `id`, `instance_id` (required: the instance is read with it), `data`, `checks`, `name`, `description`, `created_at`, `state`, `message`, `log`, `config` and, with `enableKpisResponseMerge`, `kpis` |
+| `instance_data` | `id`, `data`, `checks`                                                                                                                                                                  |
+
+**What is always Cornflow's.** Creating instances and executions, launching data checks
+(`POST /data-check/...`), the instance the create flow has just stored and checks
+(`GET /instance/<id>/data/`), and the files of an execution generated by the backend
+(`GET /execution/files/<id>/`).
+
+Implementation: `utils/executionEndpoints.ts` (`resolveExecutionEndpoint`),
+`utils/frontendConfig.ts`, `repositories/ExecutionRepository.ts`,
+`repositories/InstanceRepository.ts` (`getInstance`), `stores/general.ts` (`fetchFrontendConfig`).
 
 **Several DAGs.** The options come from the frontend-automation tables of the active DAG (a table
 declared with `schemas` only offers its rows on those DAGs). A DAG switch loads the options again:
@@ -1243,7 +1323,7 @@ This file contains **internal application-specific configuration** that is part 
 | `instanceFileFormats`         | `string[]` | File extensions the instance upload accepts. Empty or absent means the default (`json`, `xlsx`, `csv`). |
 | `executionFilters`            | `ExecutionFilter[]` | Filters of the execution history, fed by frontend-automation tables. Empty means date filters only. See [Execution history filters](#execution-history-filters-optional) |
 | `executionSummary`            | `ExecutionSummaryResolver` \| `null` | The app's own summary of the loaded execution; `null` means the core's. See [Execution summary](#execution-summary) |
-| `executionsListEndpoint`      | `{ path, isExternal }` \| `null` | Endpoint of the executions list; `null` means Cornflow's `GET /execution/` |
+| `executionsListEndpoint`      | `{ path, isExternal }` \| `null` | Endpoint of the executions list; `null` means Cornflow's `GET /execution/`. The `list` the backend declares for a DAG comes first (see [Execution endpoints](#execution-endpoints-optional)) |
 | `schemaLabels`                | `Record<string, string>` | Text of each DAG in the module selector, by DAG name. See [Several DAGs](#several-dags-in-one-application) |
 | `login`                       | `{ layout, subtitle, description }` | Sign-in page: `layout` is `'photo'` (default) or `'brand'`. See [Sign-in page](#sign-in-page) |
 
@@ -1521,9 +1601,13 @@ The application automatically converts these formats to proper boolean values.
 
 #### hasExternalApp
 
-- **Purpose**: Controls API request URLs
-- **`true`**: Prefixes requests with `/cornflow`
-- **`false`**: Direct API requests
+- **Purpose**: Says whether the app has an external backend next to Cornflow
+- **`true`**: Prefixes Cornflow requests with `/cornflow`, and asks the external backend
+  `GET /external/frontend-config/` after the login (see
+  [Load filters](#load-filters-get-externalfrontend-config) and
+  [Execution endpoints](#execution-endpoints-optional))
+- **`false`**: Direct API requests, and no frontend config: no load filters, and every execution is
+  read from Cornflow
 
 #### OAuth providers (Cognito only)
 
@@ -1949,9 +2033,11 @@ dates, the weeks. They have to be answered before the load happens, because load
 is what calls the ETL. The backend says which ones each DAG asks for in
 `GET /external/frontend-config/`.
 
-**The request.** After the login, with the user's token, and only when the premium ETL module is
-registered (it is what brings data through an ETL). One answer covers every DAG of the user, so a
-DAG switch reads it again without asking.
+**The request.** After the login, with the user's token, when the app has an external backend
+([hasExternalApp](#hasexternalapp)). One answer covers every DAG of the user, so a DAG switch reads
+it again without asking. The same answer can say where the executions of each DAG are read from
+(see [Execution endpoints](#execution-endpoints-optional)). Only the premium ETL module, which
+brings data through an ETL, asks the load filters.
 
 **The answer.** By DAG name (the `schema`); only the user's DAGs:
 
@@ -2058,7 +2144,8 @@ DAG of that instance and the execution config (`POST /data-check/instance/<id>/`
 `{ schema, config }`) and the result shows one group per check table. A deployment closed to the DAGs
 of each user rejects a data check without `schema`; the data-check KPIs of an execution
 (`POST /data-check-kpis/execution/<id>/`, in the historical KPIs and when the execution files are
-regenerated) send `{ schema }` with the DAG of that execution, read from `GET /execution/<id>/`.
+regenerated) send `{ schema }` with the DAG of that execution, read from its details
+(`GET /execution/<id>/`, or the endpoint of [Execution endpoints](#execution-endpoints-optional)).
 Editing the data afterwards marks them out of date. They are optional: launching without them only
 shows a note. With `enableBlockAdvanceOnCheckErrors`, rows in a check table whose schema has
 `is_warning: false` stop the launch until they are fixed.

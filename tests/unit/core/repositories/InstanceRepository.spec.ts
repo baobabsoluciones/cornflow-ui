@@ -85,9 +85,29 @@ describe('InstanceRepository', () => {
 
       expect(mockClient.get).toHaveBeenCalledWith(
         '/instance/test-instance-id/data/',
+        {},
+        {},
+        false,
       )
       // The actual implementation should call the Instance constructor
       expect(result).toBeDefined()
+    })
+
+    test('reads the instance of a loaded execution where the frontend config says', async () => {
+      mockClient.get.mockResolvedValue({ status: 200, content: mockInstanceData })
+      mockGeneralStore.appConfig.Instance.mockReturnValue(mockInstance)
+
+      await repository.getInstance('test-instance-id', {
+        path: '/instances/test-instance-id/data/',
+        isExternal: true,
+      })
+
+      expect(mockClient.get).toHaveBeenCalledWith(
+        '/instances/test-instance-id/data/',
+        {},
+        {},
+        true,
+      )
     })
 
     test('should throw error when API returns non-200 status', async () => {
@@ -127,6 +147,9 @@ describe('InstanceRepository', () => {
 
       expect(mockClient.get).toHaveBeenCalledWith(
         '/instance/test-instance-id/data/',
+        {},
+        {},
+        false,
       )
       expect(result).toBeDefined()
     })

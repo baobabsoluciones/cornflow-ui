@@ -9,11 +9,22 @@ import {
   stripFrontendRowIdsFromInstanceData,
   stripInvisibleParameterPropertiesFromInstanceData,
 } from '@cornflow-ui/core/utils/schemaUtils'
+import type { ExecutionEndpoint } from '@cornflow-ui/core/utils/executionEndpoints'
 
 export default class InstanceRepository {
-  // Get instance by id
-  async getInstance(id: string): Promise<InstanceCore> {
-    const response = await client.get(`/instance/${id}/data/`)
+  /**
+   * Get an instance by id, from Cornflow's `GET /instance/<id>/data/` unless `endpoint` points
+   * elsewhere: the instance of a loaded execution is read where the frontend config says (see
+   * `resolveExecutionEndpoint`).
+   */
+  async getInstance(
+    id: string,
+    endpoint: ExecutionEndpoint = {
+      path: `/instance/${id}/data/`,
+      isExternal: false,
+    },
+  ): Promise<InstanceCore> {
+    const response = await client.get(endpoint.path, {}, {}, endpoint.isExternal)
 
     if (response.status === 200) {
       const { Instance } = useGeneralStore().appConfig
