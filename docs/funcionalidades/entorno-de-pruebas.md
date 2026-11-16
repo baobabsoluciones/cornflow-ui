@@ -15,4 +15,4 @@ El texto se desplaza por la franja: "Estás en un entorno de pruebas, destinado 
 ## Ver también
 
 - [Avisos](avisos.md)
-- Referencia de configuración: *Configuration reference* del [README](../README.md#configuration-reference).
+- Referencia de configuración: *Configuration reference* del [README](../../README.md#configuration-reference).

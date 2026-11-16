@@ -23,4 +23,4 @@ Una opción para el equipo técnico: crear una ejecución con una solución ya h
 ## Ver también
 
 - [Lanzar la ejecución](lanzar-ejecucion.md)
-- Referencia técnica: *Developer mode* del [README](../README.md#developer-mode-isdevelopermode).
+- Referencia técnica: *Developer mode* del [README](../../README.md#developer-mode-isdevelopermode).

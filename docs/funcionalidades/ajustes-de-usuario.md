@@ -28,4 +28,4 @@ La página **Configuración de usuario**: los datos de quien ha entrado, el idio
 
 - [Inicio de sesión](inicio-de-sesion.md)
 - [Gestión de roles](gestion-de-roles.md)
-- Referencia técnica: *Dark mode* e *Internationalization configuration* del [README](../README.md#dark-mode).
+- Referencia técnica: *Dark mode* e *Internationalization configuration* del [README](../../README.md#dark-mode).

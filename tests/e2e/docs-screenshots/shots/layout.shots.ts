@@ -1,8 +1,8 @@
 /**
  * Structure of the app: side menu, execution tabs, execution summary, staging notice, warnings
  * and several DAGs.
- * Pages: docs/menu-lateral.md, docs/barra-de-pestanas.md, docs/resumen-de-ejecucion.md,
- * docs/entorno-de-pruebas.md, docs/avisos.md, docs/varios-dags.md
+ * Pages: docs/funcionalidades/menu-lateral.md, docs/funcionalidades/barra-de-pestanas.md, docs/funcionalidades/resumen-de-ejecucion.md,
+ * docs/funcionalidades/entorno-de-pruebas.md, docs/funcionalidades/avisos.md, docs/funcionalidades/varios-dags.md
  */
 import { test } from '@playwright/test'
 import { demoExecutions, demoRunningExecution, DEMO_DAG, DEMO_SECOND_DAG } from '../demoData.mjs'

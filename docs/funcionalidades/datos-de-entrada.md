@@ -33,4 +33,4 @@ Los datos de una ejecución no se editan en su sitio: para cambiarlos se lanza u
 - [Resultados](resultados.md)
 - [Validaciones](validaciones.md)
 - [Tablas de datos](tablas-de-datos.md)
-- Referencia técnica: *Input data section* del [README](../README.md#input-data-section).
+- Referencia técnica: *Input data section* del [README](../../README.md#input-data-section).

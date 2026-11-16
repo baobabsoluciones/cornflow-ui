@@ -31,4 +31,4 @@ Las comprobaciones de una ejecución ya lanzada se ven en sus [validaciones](val
 
 - [Validaciones](validaciones.md)
 - [Lanzar la ejecución](lanzar-ejecucion.md)
-- Referencia técnica: *Data checks* del [README](../README.md#data-checks-enableblockadvanceoncheckerrors).
+- Referencia técnica: *Data checks* del [README](../../README.md#data-checks-enableblockadvanceoncheckerrors).

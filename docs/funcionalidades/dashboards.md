@@ -27,4 +27,4 @@ Las vistas gráficas de una ejecución. Hay dos tipos: los **automáticos**, que
 
 - [Histórico en dashboards](historico-en-dashboards.md)
 - [KPIs](kpis.md)
-- Referencia técnica: [dashboards automáticos](AUTO_DASHBOARDS_README.md) (en inglés).
+- Referencia técnica: [dashboards automáticos](../AUTO_DASHBOARDS_README.md) (en inglés).

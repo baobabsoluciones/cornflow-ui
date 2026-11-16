@@ -79,13 +79,13 @@ export async function noSnackbar(page) {
 }
 
 const imagesDir = () => {
-  const dir = process.env.DOCS_IMAGES_DIR ?? path.resolve('docs', 'images')
+  const dir = process.env.DOCS_IMAGES_DIR ?? path.resolve('docs', 'funcionalidades', 'images')
   fs.mkdirSync(dir, { recursive: true })
   return dir
 }
 
 /**
- * Saves `docs/images/<name>.png`: the whole window, an element or a rectangle of it.
+ * Saves `docs/funcionalidades/images/<name>.png`: the whole window, an element or a rectangle of it.
  *
  * @param {import('@playwright/test').Page} page
  * @param {string} name

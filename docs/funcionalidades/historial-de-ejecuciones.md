@@ -61,4 +61,4 @@ En pantallas estrechas la lista ocupa todo el ancho y, al elegir una ejecución,
 - [Filtros del historial](filtros-del-historial.md)
 - [Estados de una ejecución](estados-de-una-ejecucion.md)
 - [Barra de pestañas](barra-de-pestanas.md)
-- Referencia técnica: *Execution history* del [README](../README.md#execution-history).
+- Referencia técnica: *Execution history* del [README](../../README.md#execution-history).

@@ -40,4 +40,4 @@ Al dejar el ratón sobre un estado se ve su explicación.
 
 - [Historial de ejecuciones](historial-de-ejecuciones.md)
 - [Barra de pestañas](barra-de-pestanas.md)
-- Referencia técnica: *executionStates / solutionStates* del [README](../README.md#executionstates--solutionstates).
+- Referencia técnica: *executionStates / solutionStates* del [README](../../README.md#executionstates--solutionstates).

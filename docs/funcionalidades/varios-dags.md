@@ -38,4 +38,4 @@ Cada usuario entra en los módulos que Cornflow le da:
 
 - [Menú lateral](menu-lateral.md)
 - [Tablas de configuración](tablas-de-configuracion.md)
-- Referencia técnica: *Several DAGs* del [README](../README.md#several-dags-optional) y [qué recibe el backend](backend-several-dags.md) (en inglés).
+- Referencia técnica: *Several DAGs* del [README](../../README.md#several-dags-optional) y [qué recibe el backend](../backend-several-dags.md) (en inglés).

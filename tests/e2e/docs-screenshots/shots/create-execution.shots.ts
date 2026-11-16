@@ -1,7 +1,7 @@
 /**
  * Create execution: data, checks, parameters, launch, draft, relaunch, master tables and
  * developer mode.
- * Pages: docs/crear-ejecucion.md and the pages it links.
+ * Pages: docs/funcionalidades/crear-ejecucion.md and the pages it links.
  */
 import { test, type Page } from '@playwright/test'
 import { demoInstanceData } from '../demoData.mjs'

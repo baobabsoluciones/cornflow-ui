@@ -56,4 +56,4 @@ Para cargar todas las tablas de una vez, ver [Cargar todas las tablas maestras](
 - [Cargar todas las tablas maestras](cargar-todas-las-tablas-maestras.md)
 - [Sincronización con tablas maestras](sincronizacion-con-tablas-maestras.md)
 - [Filtros del historial](filtros-del-historial.md): filtros alimentados por estas tablas.
-- Referencia técnica: *Configuration tables section* del [README](../README.md#configuration-tables-section-optional).
+- Referencia técnica: *Configuration tables section* del [README](../../README.md#configuration-tables-section-optional).

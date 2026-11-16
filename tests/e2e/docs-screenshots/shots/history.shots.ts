@@ -1,6 +1,6 @@
 /**
  * Execution history.
- * Pages: docs/historial-de-ejecuciones.md, docs/estados-de-una-ejecucion.md
+ * Pages: docs/funcionalidades/historial-de-ejecuciones.md, docs/funcionalidades/estados-de-una-ejecucion.md
  */
 import { test } from '@playwright/test'
 import { demoExecutions, demoRunningExecution } from '../demoData.mjs'

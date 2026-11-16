@@ -33,4 +33,4 @@ Una vez cargados, la cabecera de la tarjeta tiene:
 - [Crear una ejecución](crear-ejecucion.md)
 - [Comprobaciones de datos](comprobaciones-de-datos.md)
 - [Tablas de datos](tablas-de-datos.md): cómo se edita una tabla.
-- Referencia técnica: *Instance upload file formats* y *Custom file processors* del [README](../README.md#instance-upload-file-formats).
+- Referencia técnica: *Instance upload file formats* y *Custom file processors* del [README](../../README.md#instance-upload-file-formats).

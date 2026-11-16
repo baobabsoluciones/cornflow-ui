@@ -1,9 +1,9 @@
 /**
  * The data of an execution (input data, results, validations, KPIs, dashboards), the data tables
  * themselves and the configuration (master data) tables.
- * Pages: docs/datos-de-entrada.md, docs/resultados.md, docs/validaciones.md, docs/kpis.md,
- * docs/dashboards.md, docs/historico-en-dashboards.md, docs/tablas-de-datos.md,
- * docs/tablas-de-configuracion.md
+ * Pages: docs/funcionalidades/datos-de-entrada.md, docs/funcionalidades/resultados.md, docs/funcionalidades/validaciones.md, docs/funcionalidades/kpis.md,
+ * docs/funcionalidades/dashboards.md, docs/funcionalidades/historico-en-dashboards.md, docs/funcionalidades/tablas-de-datos.md,
+ * docs/funcionalidades/tablas-de-configuracion.md
  */
 import { test, type Page } from '@playwright/test'
 import { openDemo, settle, shot, reportUnhandled, noSnackbar, loadExecution, go } from '../helpers.mjs'

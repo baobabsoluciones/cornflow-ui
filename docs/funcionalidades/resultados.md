@@ -28,4 +28,4 @@ El menú ⋮ junto al título tiene **Descargar excel**, que baja todas las tabl
 - [Datos de entrada](datos-de-entrada.md)
 - [KPIs](kpis.md)
 - [Dashboards](dashboards.md)
-- Referencia técnica: *Results section* del [README](../README.md#results-section).
+- Referencia técnica: *Results section* del [README](../../README.md#results-section).

@@ -1,6 +1,6 @@
 /**
  * User settings, roles management and help.
- * Pages: docs/ajustes-de-usuario.md, docs/gestion-de-roles.md, docs/permisos-por-rol.md,
+ * Pages: docs/funcionalidades/ajustes-de-usuario.md, docs/funcionalidades/gestion-de-roles.md, docs/funcionalidades/permisos-por-rol.md,
  * docs/ayuda-y-recorridos.md
  */
 import { test } from '@playwright/test'

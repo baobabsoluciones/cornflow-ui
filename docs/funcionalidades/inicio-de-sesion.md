@@ -45,4 +45,4 @@ No hay registro de usuarios ni recuperación de contraseña desde la aplicación
 
 - [Ajustes de usuario](ajustes-de-usuario.md): cambiar la contraseña y el idioma.
 - [Gestión de roles](gestion-de-roles.md).
-- Referencia de configuración: sección *Authentication* del [README](../README.md#authentication).
+- Referencia de configuración: sección *Authentication* del [README](../../README.md#authentication).

@@ -30,4 +30,4 @@ El panel de la derecha se puede plegar en una tira que dice si la ejecución est
 ## Ver también
 
 - [Historial de ejecuciones](historial-de-ejecuciones.md)
-- Referencia técnica: *Create execution configuration* del [README](../README.md#create-execution-configuration) y [pantallas a medida](create-execution-flows.md) (en inglés).
+- Referencia técnica: *Create execution configuration* del [README](../../README.md#create-execution-configuration) y [pantallas a medida](../create-execution-flows.md) (en inglés).

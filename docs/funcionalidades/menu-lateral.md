@@ -46,4 +46,4 @@ En pantallas estrechas (768 px o menos), el menú fijado se pone encima del cont
 - [Barra de pestañas](barra-de-pestanas.md)
 - [Historial de ejecuciones](historial-de-ejecuciones.md)
 - [Tablas de configuración](tablas-de-configuracion.md)
-- Referencia técnica: sección *Side menu* del [README](../README.md#side-menu).
+- Referencia técnica: sección *Side menu* del [README](../../README.md#side-menu).

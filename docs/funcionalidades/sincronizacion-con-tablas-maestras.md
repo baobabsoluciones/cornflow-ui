@@ -29,4 +29,4 @@ Al revisar los datos de una ejecución nueva, la aplicación reconoce las tablas
 
 - [Crear una ejecución](crear-ejecucion.md)
 - [Tablas de configuración](tablas-de-configuracion.md)
-- Referencia técnica: *Master table matching* del [README](../README.md#master-table-matching-instance-synchronization).
+- Referencia técnica: *Master table matching* del [README](../../README.md#master-table-matching-instance-synchronization).

@@ -35,4 +35,4 @@ Los recorridos solo empiezan cuando el usuario los pide desde este menú.
 
 - [Menú lateral](menu-lateral.md)
 - [Avisos](avisos.md)
-- Referencia técnica: *Help menu and guided tours* del [README](../README.md#help-menu-and-guided-tours).
+- Referencia técnica: *Help menu and guided tours* del [README](../../README.md#help-menu-and-guided-tours).

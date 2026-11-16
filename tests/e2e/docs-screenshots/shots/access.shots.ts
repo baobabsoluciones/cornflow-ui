@@ -1,6 +1,6 @@
 /**
  * Access: the sign-in page and the not-found / forbidden page.
- * Pages: docs/inicio-de-sesion.md, docs/pagina-no-encontrada.md
+ * Pages: docs/funcionalidades/inicio-de-sesion.md, docs/funcionalidades/pagina-no-encontrada.md
  */
 import { test } from '@playwright/test'
 import { openDemo, settle, shot, reportUnhandled, noSnackbar } from '../helpers.mjs'

@@ -5,7 +5,7 @@ import path from 'node:path'
  * Playwright config of the documentation screenshots.
  *
  * It starts the app with the screenshots' Vite config (mock backend, demo app config) and runs the
- * `*.shots.ts` specs of `testDir`, which save their images to `docs/images/` of the project.
+ * `*.shots.ts` specs of `testDir`, which save their images to `docs/funcionalidades/images/` of the project.
  *
  * Plain JavaScript so that packages built on the core (enterprise) can build their own config with
  * it from node_modules, pointing `viteConfig` and `testDir` at their own files.
@@ -22,7 +22,7 @@ export function createDocsScreenshotsConfig(options) {
   const port = options.port ?? 3100
   const baseURL = `http://localhost:${port}`
 
-  process.env.DOCS_IMAGES_DIR ??= path.join(consumerDir, 'docs', 'images')
+  process.env.DOCS_IMAGES_DIR ??= path.join(consumerDir, 'docs', 'funcionalidades', 'images')
 
   return defineConfig({
     testDir: options.testDir,

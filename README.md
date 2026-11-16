@@ -3,7 +3,7 @@
 Cornflow-UI is a Vue.js application that serves as the user interface for Cornflow. This is the base project, and it provides the general structure and functionalities for creating new applications.
 
 **What each feature looks like and how it is turned on**, for project managers and presales, is in
-the functional documentation: [docs/README.md](docs/README.md) (in Spanish, with screenshots). This
+the functional documentation: [docs/funcionalidades/README.md](docs/funcionalidades/README.md) (in Spanish, with screenshots). This
 README is the reference for whoever configures or develops an application.
 
 # Application structure
@@ -13,7 +13,7 @@ Cornflow-UI follows a modular architecture organized into distinct functional ar
 ## Side menu
 
 What the user sees (folded and expanded menu, the loaded execution, the latest executions, the
-groups): [docs/menu-lateral.md](docs/menu-lateral.md).
+groups): [docs/funcionalidades/menu-lateral.md](docs/funcionalidades/menu-lateral.md).
 
 - **Groups**, in order: the history of executions (a page of its own), the entries of premium
   modules, the app's sections (`appSections`), master data (one group per schema section, or a single
@@ -28,7 +28,7 @@ groups): [docs/menu-lateral.md](docs/menu-lateral.md).
 ### Execution tab bar
 
 At the foot of the app, from where the side menu ends, a tab per loaded execution
-(`components/ExecutionTabBar.vue`). What the user sees: [docs/barra-de-pestanas.md](docs/barra-de-pestanas.md).
+(`components/ExecutionTabBar.vue`). What the user sees: [docs/funcionalidades/barra-de-pestanas.md](docs/funcionalidades/barra-de-pestanas.md).
 
 - A finished execution reads as its solution ("Optimal"), any other as its own state.
 - Premium modules may decorate the tabs (`decorateExecutionTabs`), e.g. the ⭐ of the current plan.
@@ -36,7 +36,7 @@ At the foot of the app, from where the side menu ends, a tab per loaded executio
 ### Execution summary
 
 The views of the loaded execution (input data, results, dashboard) carry a summary of it beside
-their title (`components/ExecutionSummary.vue`); what it shows: [docs/resumen-de-ejecucion.md](docs/resumen-de-ejecucion.md).
+their title (`components/ExecutionSummary.vue`); what it shows: [docs/funcionalidades/resumen-de-ejecucion.md](docs/funcionalidades/resumen-de-ejecucion.md).
 The solver shows only where `showExtraProjectExecutionColumns.showSolver` is not `false`.
 
 An app says something else with `parameters.executionSummary` in `src/app/config.ts`: a function
@@ -62,7 +62,7 @@ parameter, a DAG can set its own (`schemaOverrides`).
 ## User settings
 
 The user's own page (`views/UserSettingsView.vue`): account, appearance, language and password.
-What the user sees: [docs/ajustes-de-usuario.md](docs/ajustes-de-usuario.md).
+What the user sees: [docs/funcionalidades/ajustes-de-usuario.md](docs/funcionalidades/ajustes-de-usuario.md).
 
 - **Appearance** shows only with `enableDarkMode` (see [Dark mode](#dark-mode)).
 - **Language** offers the `languages` of the app config.
@@ -73,7 +73,7 @@ What the user sees: [docs/ajustes-de-usuario.md](docs/ajustes-de-usuario.md).
 
 The "?" button at the top right of every view opens the help menu: a tour of the app, the tour of
 the page the user is on (when it has one), the help centre with the files of `helpMenuFiles` and
-the licences. What the user sees, and which pages have a tour: [docs/ayuda.md](docs/ayuda.md).
+the licences. What the user sees, and which pages have a tour: [docs/funcionalidades/ayuda.md](docs/funcionalidades/ayuda.md).
 
 The tours are in `composables/onboarding/tours.ts`. A step points at the element marked `data-tour="<target>"` and reads its title and text from
 `onboarding.<tour>.<step>` in the locales. Besides, a step can:
@@ -95,9 +95,9 @@ The execution management section handles the complete lifecycle of optimization 
 ### Execution history
 
 `views/HistoryExecutionView.vue`: a list and a detail side by side. What the user sees (rows,
-detail, actions, filters, states): [docs/historial-de-ejecuciones.md](docs/historial-de-ejecuciones.md),
-[docs/filtros-del-historial.md](docs/filtros-del-historial.md) and
-[docs/estados-de-una-ejecucion.md](docs/estados-de-una-ejecucion.md).
+detail, actions, filters, states): [docs/funcionalidades/historial-de-ejecuciones.md](docs/funcionalidades/historial-de-ejecuciones.md),
+[docs/funcionalidades/filtros-del-historial.md](docs/funcionalidades/filtros-del-historial.md) and
+[docs/funcionalidades/estados-de-una-ejecucion.md](docs/funcionalidades/estados-de-una-ejecucion.md).
 
 - The data rows of the detail follow `showExtraProjectExecutionColumns`: user name or full name,
   finish time, solver and time limit appear only where the app shows them. The time limit also
@@ -162,7 +162,7 @@ can declare its own filters, or none, in `schemaOverrides` (see [Several DAGs in
 ### Create execution
 
 - **Purpose**: bring the data of a new execution in, review it, check it, set its parameters and
-  launch it. What the user sees, step by step: [docs/crear-ejecucion.md](docs/crear-ejecucion.md).
+  launch it. What the user sees, step by step: [docs/funcionalidades/crear-ejecucion.md](docs/funcionalidades/crear-ejecucion.md).
 - **Flows** (`createExecution` in `src/app/config.ts`, see
   [docs/create-execution-flows.md](docs/create-execution-flows.md)):
   - **Core's page** (default): one page, the data card on the left and the launch panel on the
@@ -192,7 +192,7 @@ can declare its own filters, or none, in `schemaOverrides` (see [Several DAGs in
 
 ### Master table matching (instance synchronization)
 
-The application can automatically detect when uploaded instance tables match existing master (configuration) tables. This feature enables users to synchronize data between uploaded instances and master tables. What the user sees (the bar over the table, the comparison, using or saving to the master): [docs/sincronizacion-con-tablas-maestras.md](docs/sincronizacion-con-tablas-maestras.md).
+The application can automatically detect when uploaded instance tables match existing master (configuration) tables. This feature enables users to synchronize data between uploaded instances and master tables. What the user sees (the bar over the table, the comparison, using or saving to the master): [docs/funcionalidades/sincronizacion-con-tablas-maestras.md](docs/funcionalidades/sincronizacion-con-tablas-maestras.md).
 
 #### How it works
 
@@ -287,7 +287,7 @@ When uploading data with `factoria_nombre = "Factory A"`, the system:
 
 ## Configuration tables section (optional)
 
-The configuration tables section is dynamically generated based on backend schema definitions. This section only appears when the backend provides frontend-automation schema data. What the user sees, and which operation of the backend turns on each button: [docs/tablas-de-configuracion.md](docs/tablas-de-configuracion.md).
+The configuration tables section is dynamically generated based on backend schema definitions. This section only appears when the backend provides frontend-automation schema data. What the user sees, and which operation of the backend turns on each button: [docs/funcionalidades/tablas-de-configuracion.md](docs/funcionalidades/tablas-de-configuracion.md).
 
 ### Frontend-automation system
 
@@ -676,8 +676,8 @@ used for now: they get no options, and the browser console says which table is m
 ## Input data section
 
 The input data section appears only when an execution is loaded and displays instance data tables.
-What the user sees: [docs/datos-de-entrada.md](docs/datos-de-entrada.md) and
-[docs/validaciones.md](docs/validaciones.md).
+What the user sees: [docs/funcionalidades/datos-de-entrada.md](docs/funcionalidades/datos-de-entrada.md) and
+[docs/funcionalidades/validaciones.md](docs/funcionalidades/validaciones.md).
 
 ### Table organization
 
@@ -713,8 +713,8 @@ For detailed documentation on automatic dashboards, including configuration opti
 ## Results section
 
 The results section appears only when an execution is loaded and displays solution data tables.
-What the user sees: [docs/resultados.md](docs/resultados.md), [docs/kpis.md](docs/kpis.md) and
-[docs/validaciones.md](docs/validaciones.md).
+What the user sees: [docs/funcionalidades/resultados.md](docs/funcionalidades/resultados.md), [docs/funcionalidades/kpis.md](docs/funcionalidades/kpis.md) and
+[docs/funcionalidades/validaciones.md](docs/funcionalidades/validaciones.md).
 
 ### Table organization
 
@@ -752,7 +752,7 @@ For detailed documentation on automatic dashboards, including configuration opti
 
 For applications that serve more than one model. It is off unless configured: an application with
 a single DAG in `schema` makes no extra request and shows exactly the same interface. What the user
-sees: [docs/varios-dags.md](docs/varios-dags.md).
+sees: [docs/funcionalidades/varios-dags.md](docs/funcionalidades/varios-dags.md).
 
 ### Several DAGs in one application
 
@@ -1432,7 +1432,7 @@ VITE_APP_AUTH_PROVIDERS=google,microsoft
 
 #### Sign-in page
 
-The sign-in page has two layouts, picked with `login.layout` in the app config (`core.parameters`). What the user sees: [docs/inicio-de-sesion.md](docs/inicio-de-sesion.md).
+The sign-in page has two layouts, picked with `login.layout` in the app config (`core.parameters`). What the user sees: [docs/funcionalidades/inicio-de-sesion.md](docs/funcionalidades/inicio-de-sesion.md).
 
 | `layout` | What it shows |
 | --- | --- |
@@ -1468,7 +1468,7 @@ To save dashboard preferences for a single execution, including filters, checks,
 The current plan (the execution that loads on its own after the login, the star in the history and
 the tab bar, the banner when there is none) comes with the enterprise `latest-plan` module and needs
 its backend endpoints. The core only offers the places it plugs into. It is documented with
-enterprise (`docs/` of `cornflow_ui_enterprise`).
+enterprise (`docs/funcionalidades/` of `cornflow_ui_enterprise`).
 
 ### Custom section titles
 

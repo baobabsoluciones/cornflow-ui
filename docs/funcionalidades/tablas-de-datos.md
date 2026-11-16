@@ -36,4 +36,4 @@ Todas las tablas de la aplicación funcionan igual: los datos de entrada y los r
 - [Tablas de configuración](tablas-de-configuracion.md)
 - [Datos de entrada](datos-de-entrada.md)
 - [Resultados](resultados.md)
-- Referencia técnica: *Data tables* del [README](../README.md#data-tables).
+- Referencia técnica: *Data tables* del [README](../../README.md#data-tables).

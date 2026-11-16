@@ -1,12 +1,12 @@
 # Screenshots of the functional documentation
 
-The images of `docs/` (the functional documentation, in Spanish) are taken by this script, with
+The images of `docs/funcionalidades/` (the functional documentation, in Spanish) are taken by this script, with
 Playwright, from the real app. It needs no backend: a mock backend answers every request with
 neutral demo data (a production planner with plants, products and weekly demand), so the images
 can be published and every run draws the same screens.
 
 ```bash
-npm run docs:screenshots                       # every image, into docs/images/
+npm run docs:screenshots                       # every image, into docs/funcionalidades/images/
 npm run docs:screenshots -- history            # only the specs whose file name matches
 DOCS_IMAGES_DIR=/tmp/shots npm run docs:screenshots   # somewhere else, to compare
 ```
@@ -50,6 +50,6 @@ plain JavaScript so they can be imported from node_modules
 ## Adding a screenshot
 
 1. Add a test to the spec of its area, or a new `shots/<area>.shots.ts`.
-2. Name the image `<page>-<state>`, after the page of `docs/` that shows it.
+2. Name the image `<page>-<state>`, after the page of `docs/funcionalidades/` that shows it.
 3. A shot that asks the mock backend for something it does not answer lists the request in the
    output (`unhandled requests`): add it to `mockBackend.mjs` or to the shot's `handlers`.

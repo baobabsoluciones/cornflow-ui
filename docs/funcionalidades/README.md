@@ -2,9 +2,9 @@
 
 Qué ofrece la aplicación, contado desde lo que ve el usuario. Cada página explica para qué sirve una funcionalidad, enseña cómo se ve y dice cómo se activa: si es de core o de enterprise, qué clave de configuración la enciende y qué necesita del backend.
 
-Está pensada para jefes de proyecto y preventa. Para configurar o programar, la referencia es el [README](../README.md) del repositorio.
+Está pensada para jefes de proyecto y preventa. Para configurar o programar, la referencia es el [README](../../README.md) del repositorio.
 
-Las funcionalidades de enterprise (plan actual, replanificación, recálculo de la solución, carga desde la base de datos y el agente) están en `docs/` del repositorio `cornflow_ui_enterprise`.
+Las funcionalidades de enterprise (plan actual, replanificación, recálculo de la solución, carga desde la base de datos y el agente) están en `docs/funcionalidades/` del repositorio `cornflow_ui_enterprise`.
 
 **Cómo leer «Cómo se activa»**
 
@@ -13,7 +13,7 @@ Las funcionalidades de enterprise (plan actual, replanificación, recálculo de 
 - `values.json` (o las variables `VITE_APP_*`) es la configuración de cada despliegue: se cambia sin tocar el código.
 - **Backend**: lo que tiene que dar el servidor. Cornflow es el servidor estándar; `/external/…` son endpoints del backend propio de la aplicación.
 
-Las capturas se hacen con datos de demostración (ver [cómo se regeneran](../tests/e2e/docs-screenshots/README.md)).
+Las capturas se hacen con datos de demostración (ver [cómo se regeneran](../../tests/e2e/docs-screenshots/README.md)).
 
 ## Acceso
 
@@ -87,6 +87,6 @@ La barra superior de la aplicación solo aparece cuando un módulo pone algo en 
 
 ## Referencia técnica (en inglés)
 
-- [Dashboards automáticos](AUTO_DASHBOARDS_README.md)
-- [Pantallas de nueva ejecución a medida](create-execution-flows.md)
-- [Backend de un despliegue con varios DAGs](backend-several-dags.md)
+- [Dashboards automáticos](../AUTO_DASHBOARDS_README.md)
+- [Pantallas de nueva ejecución a medida](../create-execution-flows.md)
+- [Backend de un despliegue con varios DAGs](../backend-several-dags.md)

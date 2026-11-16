@@ -1,7 +1,7 @@
 import { createDocsScreenshotsConfig } from './configFactory.mjs'
 
 /**
- * Screenshots of the core's functional documentation (`docs/`).
+ * Screenshots of the core's functional documentation (`docs/funcionalidades/`).
  *
  *   npm run docs:screenshots
  */

@@ -44,4 +44,4 @@ La lista trae como mucho 100 ejecuciones por rango de fechas. Si llega a 100, av
 ## Ver también
 
 - [Historial de ejecuciones](historial-de-ejecuciones.md)
-- Referencia técnica: *Execution history filters* del [README](../README.md#execution-history-filters-optional).
+- Referencia técnica: *Execution history filters* del [README](../../README.md#execution-history-filters-optional).

@@ -27,4 +27,4 @@ Los parámetros con los que se lanzó cada ejecución se ven luego en su detalle
 ## Ver también
 
 - [Lanzar la ejecución](lanzar-ejecucion.md)
-- Referencia técnica: *Parameters* y *Solver* del [README](../README.md#solver-solverconfig).
+- Referencia técnica: *Parameters* y *Solver* del [README](../../README.md#solver-solverconfig).
