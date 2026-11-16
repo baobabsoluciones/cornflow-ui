@@ -26,7 +26,8 @@ export interface FrontendConfigExecutions {
   /** The executions list of the history and the drawer. Cornflow's: `/execution/`. */
   list?: string
   /**
-   * One execution: its details and state (`GET`), its rename (`PUT`) and its deletion (`DELETE`).
+   * One execution: its details and state (`GET`), the upload of its solution (`PUT` with
+   * `{ data }`) and its deletion (`DELETE`).
    * Cornflow's: `/execution/{id}/`.
    */
   details?: string

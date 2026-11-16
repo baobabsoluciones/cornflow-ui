@@ -614,7 +614,7 @@ describe('ExecutionRepository', () => {
       expect(mockClient.get).toHaveBeenCalledWith('/executions/g1/', {}, {}, true)
     })
 
-    test('renames and deletes through its details', async () => {
+    test('uploads a solution and deletes through its details', async () => {
       mockClient.put.mockResolvedValue({ status: 200, content: {} })
       mockClient.remove.mockResolvedValue({ status: 200 })
 
