@@ -137,6 +137,7 @@ tests/e2e/
 │   ├── executionHelpers.ts      # Load/prepare executions
 │   ├── sessionStorageHelpers.ts
 │   └── urlHelpers.ts            # Hash routing helpers
+├── docs-screenshots/            # Screenshots of the functional docs (npm run docs:screenshots)
 ├── restore-password.spec.ts     # Restores the original password (runs on its own)
 └── specs/
     ├── auth/login.spec.ts

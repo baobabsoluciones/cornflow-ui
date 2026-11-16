@@ -2,42 +2,19 @@
 
 Cornflow-UI is a Vue.js application that serves as the user interface for Cornflow. This is the base project, and it provides the general structure and functionalities for creating new applications.
 
+**What each feature looks like and how it is turned on**, for project managers and presales, is in
+the functional documentation: [docs/README.md](docs/README.md) (in Spanish, with screenshots). This
+README is the reference for whoever configures or develops an application.
+
 # Application structure
 
 Cornflow-UI follows a modular architecture organized into distinct functional areas. The application structure is designed to be flexible and adaptable to different optimization problems while maintaining consistency across implementations.
 
 ## Side menu
 
-- The menu takes the full height of the window; the execution tab bar starts where it ends.
-- It heads with **New execution**, a button filled in the app's primary colour, for a user who may
-  create executions (the `project-execution` view). It starts a new execution afresh.
-- It keeps apart what belongs to the loaded execution from what is the same for all of them. The
-  loaded execution heads a block that holds its own groups: its input data, its results with the
-  dashboards, and the app sections that need an execution (`requiresSelectedExecution`). The
-  other groups follow, below a divider, the history first.
-- **Folded** (default): a 56 px rail with the app's icon (with several DAGs, the initial of the
-  active one on it), a round "+" for a new execution, the loaded execution (a dot in the colour of
-  its state) boxed with the icons of its groups, one icon per shared group, and the user's
-  initial. Resting the pointer on it opens the whole menu over the content; it folds again when
-  the pointer leaves. Clicking an icon pins it open.
-- **Expanded** (250 px; pinned, the content moves aside):
-  - the full logo and the pin, which keeps the menu open or lets it fold again. Below, in one
-    line, the app name and, with several DAGs, the active one (its label from `schemaLabels`); for
-    a user who may switch DAG, that line is a pill that opens the module selector (see
-    [Module selector and top bar](#module-selector-and-top-bar));
-  - **New execution**, to the screen that creates one;
-  - **Loaded execution**: the selected execution with its date and state. It opens the DAG's
-    five latest executions (a dot in the colour of each state) to switch to, and "See full
-    history". Picking one loads it if needed and selects its tab, as "Load" does in the history.
-    Its groups follow inside the same block; with none loaded, the block says what will show
-    there;
-  - the shared groups;
-  - the user (to the user settings) and "Log out", which asks first.
-- The groups are an accordion, one open at a time. An open group lists its pages, one level: a
-  group of tables is one page, whose tables show as its tabs. The group of the current page opens
-  on its own; closed, it shows a dot when it holds the current page, and how many pages it has.
-- **Narrow screens** (768 px or less): pinned, the menu lies over the content with a scrim, and
-  closes with the X.
+What the user sees (folded and expanded menu, the loaded execution, the latest executions, the
+groups): [docs/menu-lateral.md](docs/menu-lateral.md).
+
 - **Groups**, in order: the history of executions (a page of its own), the entries of premium
   modules, the app's sections (`appSections`), master data (one group per schema section, or a single
   "Master data"), and, with an execution selected, its input data and results with the
@@ -51,23 +28,16 @@ Cornflow-UI follows a modular architecture organized into distinct functional ar
 ### Execution tab bar
 
 At the foot of the app, from where the side menu ends, a tab per loaded execution
-(`components/ExecutionTabBar.vue`):
+(`components/ExecutionTabBar.vue`). What the user sees: [docs/barra-de-pestanas.md](docs/barra-de-pestanas.md).
 
-- Each tab has a dot in the colour of the execution's state, as the side menu shows it: a finished
-  execution reads as its solution ("Optimal"), any other as its own state; a running one shows a
-  spinner. The selected tab is marked; clicking it again deselects it.
-- The × closes a tab; closing the selected one deselects its execution, as clicking it again does.
-- From the keyboard the bar is a tab list: Tab reaches the selected tab, the arrows (and Home, End) move between tabs, Enter or Space selects one, and Delete closes it.
-  A new execution starts from the side menu ("New execution").
+- A finished execution reads as its solution ("Optimal"), any other as its own state.
 - Premium modules may decorate the tabs (`decorateExecutionTabs`), e.g. the ⭐ of the current plan.
 
 ### Execution summary
 
 The views of the loaded execution (input data, results, dashboard) carry a summary of it beside
-their title (`components/ExecutionSummary.vue`): its name, the date it was created and its solver
-under the name (the solver only where `showExtraProjectExecutionColumns.showSolver` is not
-`false`), and its state as a badge, as the tab bar reads it. Resting the pointer on the name opens
-the execution's details, as in the history.
+their title (`components/ExecutionSummary.vue`); what it shows: [docs/resumen-de-ejecucion.md](docs/resumen-de-ejecucion.md).
+The solver shows only where `showExtraProjectExecutionColumns.showSolver` is not `false`.
 
 An app says something else with `parameters.executionSummary` in `src/app/config.ts`: a function
 that gets the loaded execution and the core's summary, and returns the `meta` line and/or the
@@ -91,38 +61,21 @@ parameter, a DAG can set its own (`schemaOverrides`).
 
 ## User settings
 
-The user's own page (`views/UserSettingsView.vue`, reached from the user at the foot of the side
-menu), a card per subject:
+The user's own page (`views/UserSettingsView.vue`): account, appearance, language and password.
+What the user sees: [docs/ajustes-de-usuario.md](docs/ajustes-de-usuario.md).
 
-- **Account**: the name, e-mail, user name and roles of who is signed in.
-- **Appearance**, when the app offers dark mode (`enableDarkMode`): light, dark or as the system
-  is (see [Dark mode](#dark-mode)).
-- **Language** of the app, among the ones it offers (`languages` in the app config).
-- **Password**, when the app signs in with Cornflow (`auth.type: 'cornflow'`): the new one twice,
-  with what it needs ticked as it is typed (at least 5 characters; upper and lower case letters,
-  numbers and a special character; no spaces; both the same). It is sent once it meets all of it.
+- **Appearance** shows only with `enableDarkMode` (see [Dark mode](#dark-mode)).
+- **Language** offers the `languages` of the app config.
+- **Password** shows only when the app signs in with Cornflow (`auth.type: 'cornflow'`), and is
+  sent with `PUT /user/<id>/`.
 
 ## Help menu and guided tours
 
 The "?" button at the top right of every view opens the help menu: a tour of the app, the tour of
 the page the user is on (when it has one), the help centre with the files of `helpMenuFiles` and
-the licences.
+the licences. What the user sees, and which pages have a tour: [docs/ayuda.md](docs/ayuda.md).
 
-A guided tour dims the window and goes step by step over the parts of the screen, each with a card
-beside it. It shows only when the user starts it from the help menu. The tours
-(`composables/onboarding/tours.ts`):
-
-- **The app**: the side menu, a new execution, the loaded execution and its list of the latest
-  ones, what every execution shares, the open executions, the help and the account.
-- **Pages**:
-  - the execution history: what each row and each part of the detail says;
-  - create execution, with an example of checks that find errors and warnings, and how to fix the
-    data;
-  - the data tables (input data, results and master data), button by button, with the ways the
-    table can be uploaded in bulk and where to read what a column holds;
-  - user settings and roles management.
-
-A step points at the element marked `data-tour="<target>"` and reads its title and text from
+The tours are in `composables/onboarding/tours.ts`. A step points at the element marked `data-tour="<target>"` and reads its title and text from
 `onboarding.<tour>.<step>` in the locales. Besides, a step can:
 
 - **Open what it shows** (`reveal`): a menu, the buttons of a row, the detail of an execution. The
@@ -141,50 +94,18 @@ The execution management section handles the complete lifecycle of optimization 
 
 ### Execution history
 
-- **Purpose**: Provides a comprehensive view of all past executions
-- **Features**:
-  - Historical execution tracking with status monitoring
-  - Execution loading and restoration capabilities
-  - Filtering and search functionality
-  - Execution metadata display (creation date, solver used, status, etc.)
-- **Location**: `HistoryExecutionView.vue`
+`views/HistoryExecutionView.vue`: a list and a detail side by side. What the user sees (rows,
+detail, actions, filters, states): [docs/historial-de-ejecuciones.md](docs/historial-de-ejecuciones.md),
+[docs/filtros-del-historial.md](docs/filtros-del-historial.md) and
+[docs/estados-de-una-ejecucion.md](docs/estados-de-una-ejecucion.md).
 
-The history is a list and a detail side by side. The list has the filters, the number of
-executions and the executions grouped by day; the detail shows the selected one (the newest when the
-history opens):
-
-```
-List                                                           Detail
-[🔍 Search by name or description]                             Plan week 42 · adjustment         ☆ 🗑
-[📅 Date Last 30 days ▾] [Plant All ▾] [+ Add filter]          [Replanning]
-11 executions                                 Clear filters    EXECUTION  ✓ Success
-TODAY · 21 OCT  3                                              SOLUTION   ✓ Optimal
-✓ Plan week 42 · adjustment [Replanning] After line 2   10:48  [Load execution] [Download Excel]
-  • Optimal · admin · mip_solver · ⏱ 3 min 00 s                PROGRESS  ✓ Queued ── ✓ Execution ── ✓ Success
-                                                               EXECUTION DATA · EXECUTION PARAMETERS
-```
-
-- **A row** shows the execution state, the name with its "replanning" and "current plan" tags, the
-  description and the time; under them, the solution state, the user, the solver and the duration. Load and Excel are on the row when
-  the pointer is on it, and resting the pointer opens a summary of the execution beside the list.
-- **The detail** has, next to the name, "mark as current plan" (when the latest-plan module is
-  on) and delete (after a confirmation); then the execution and solution states with their
-  explanation, the server's message when the execution failed, load and download Excel, the progress (queued, running with the
-  time used of its limit, and how it ended), its data and the parameters it was launched with
-  (`configFields`, with their titles; a parameter fed by a frontend-automation table shows the name,
-  not the id). The data rows follow `showExtraProjectExecutionColumns`: user name or full name,
-  finish time, solver and time limit appear only where the app shows them.
-- **Narrow screens** (under 860px): the list takes the whole width, and selecting an execution
-  replaces it with the detail and a "Back to the list".
-
-- **Search**: keeps the executions whose name or description contains the text.
-- **Table filters** (`executionFilters`, see below): one chip each, always there.
-- **Date**: today, yesterday, last 7 days, last 30 days (the default) or a custom range.
-- **Add filter**: a searchable menu, grouped, with the filters a user can add as chips and remove
-  with their cross: execution state, user, solution state, solver and, when replanning is on
-  (`enableRecalculationOnMasterEdit`), origin (model or replanning). Their options show how many
-  executions each one leaves, given the search and the other filters.
-- **Clear filters**: back to how the history opens.
+- The data rows of the detail follow `showExtraProjectExecutionColumns`: user name or full name,
+  finish time, solver and time limit appear only where the app shows them. The time limit also
+  needs the parameters step (`configFieldsConfig.showConfigFieldsStep`).
+- The parameters it was launched with are the `configFields`; their titles are the i18n keys
+  `configParams.<key>`, and a parameter fed by a frontend-automation table shows the name, not
+  the id.
+- The origin filter (model or replanning) shows when `enableRecalculationOnMasterEdit` is on.
 
 The table filters and the date range go to the executions list request; the search and the added
 filters work on the list already loaded. That list brings at most 100 executions per date range;
@@ -241,7 +162,7 @@ can declare its own filters, or none, in `schemaOverrides` (see [Several DAGs in
 ### Create execution
 
 - **Purpose**: bring the data of a new execution in, review it, check it, set its parameters and
-  launch it.
+  launch it. What the user sees, step by step: [docs/crear-ejecucion.md](docs/crear-ejecucion.md).
 - **Flows** (`createExecution` in `src/app/config.ts`, see
   [docs/create-execution-flows.md](docs/create-execution-flows.md)):
   - **Core's page** (default): one page, the data card on the left and the launch panel on the
@@ -271,16 +192,13 @@ can declare its own filters, or none, in `schemaOverrides` (see [Several DAGs in
 
 ### Master table matching (instance synchronization)
 
-The application can automatically detect when uploaded instance tables match existing master (configuration) tables. This feature enables users to synchronize data between uploaded instances and master tables.
+The application can automatically detect when uploaded instance tables match existing master (configuration) tables. This feature enables users to synchronize data between uploaded instances and master tables. What the user sees (the bar over the table, the comparison, using or saving to the master): [docs/sincronizacion-con-tablas-maestras.md](docs/sincronizacion-con-tablas-maestras.md).
 
 #### How it works
 
 1. **Automatic detection**: When an instance is uploaded, the system compares table names with existing master tables using intelligent name normalization
 2. **Difference calculation**: For matched tables, the system calculates detailed differences (added, removed, modified, identical rows)
-3. **User choice**: Users can choose how to handle each matched table:
-   - **Keep uploaded**: Use uploaded data for this execution without modifying the master table
-   - **Use master**: Replace uploaded data with current master table data
-   - **Update master**: Overwrite the master table with the uploaded data (requires `overwrite_all` permission)
+3. **User choice**: the uploaded data stays as it is unless the user replaces it with the master ("Use master data") or overwrites the master with it ("Save to master", which needs `overwrite_all` and `enableReplaceMasterWithUploaded`)
 
 #### Table name matching
 
@@ -302,26 +220,6 @@ Examples of matched table names:
 - `e_tabla_maestra` ↔ `eTablaMaestra` ↔ `e-tabla-maestra` ↔ `ETablaMaestra`
 - `productos` ↔ `Productos` ↔ `PRODUCTOS`
 - `config_avanzada` ↔ `configAvanzada` ↔ `config-avanzada`
-
-#### Visual indicators
-
-- The tab of a table with a master table shows whether it is identical to it or has differences
-  (a spinner while comparing, an alert when the comparison failed).
-- A bar over the table names the master table and counts the rows only in the loaded data (+),
-  only in the master (−) and modified (✎), or says "Identical". Its menu offers "Use master data"
-  and "Save to master", each after a confirmation.
-
-#### Data comparison
-
-"Compare" opens the comparison of the table with its master:
-
-- **Summary**: the rows on each side and four cards (new, removed, modified, identical).
-- **Side by side**: the loaded rows and the master rows aligned row by row, the cells that differ
-  tinted. Each row can be removed from the loaded data or restored from the master.
-- **Changes**: one card per row that differs, filtered by kind; a modified field shows the master
-  value struck through and the loaded one.
-
-What is done here stays as pending changes of the table, reviewed and applied like any other edit.
 
 #### Configuration
 
@@ -389,7 +287,7 @@ When uploading data with `factoria_nombre = "Factory A"`, the system:
 
 ## Configuration tables section (optional)
 
-The configuration tables section is dynamically generated based on backend schema definitions. This section only appears when the backend provides frontend-automation schema data.
+The configuration tables section is dynamically generated based on backend schema definitions. This section only appears when the backend provides frontend-automation schema data. What the user sees, and which operation of the backend turns on each button: [docs/tablas-de-configuracion.md](docs/tablas-de-configuracion.md).
 
 ### Frontend-automation system
 
@@ -778,36 +676,20 @@ used for now: they get no options, and the browser console says which table is m
 ## Input data section
 
 The input data section appears only when an execution is loaded and displays instance data tables.
-
-### Instance tables
-
-- **Purpose**: Display and manage input data for optimization problems
-- **Data Source**: Instance schema from the backend
-- **Features**:
-  - Dynamic table generation from instance schema
-  - Read-only data display (instances cannot be modified after creation)
-  - Export capabilities for data analysis
+What the user sees: [docs/datos-de-entrada.md](docs/datos-de-entrada.md) and
+[docs/validaciones.md](docs/validaciones.md).
 
 ### Table organization
 
 Instance tables are organized based on schema definitions:
 
-1. **Default grouping**: If no specific groups are defined, all tables are grouped under "Input tables"
-2. **Custom grouping**: Tables can be organized into logical groups as defined in the schema
-3. **Individual tables**: Each table can have its own dedicated view
-4. **Hidden tables**: A table declared `"visible": false` in the schema gets no drawer entry and no tab, and is left out of the Excel download. Its data stays in the instance or solution, so custom dashboards can still read it — the usual case for tables that only feed a dashboard
-5. **Tables without schema**: An array table present in the data but not declared in the schema is listed only when `showTablesWithoutSchema` is `true`. It joins the default group and takes its columns and their types from its first row. In the instance review tabs, a table matched to a master table counts as declared. The Excel download includes these tables either way
+1. **Grouping**: every table declared in the instance schema goes in one group, "Input data"
+2. **Hidden tables**: A table declared `"visible": false` in the schema gets no drawer entry and no tab, and is left out of the Excel download. Its data stays in the instance or solution, so custom dashboards can still read it — the usual case for tables that only feed a dashboard
+3. **Tables without schema**: An array table present in the data but not declared in the schema is listed only when `showTablesWithoutSchema` is `true`. It joins the default group and takes its columns and their types from its first row. In the instance review tabs, a table matched to a master table counts as declared. The Excel download includes these tables either way
 
 ### Validation tables
 
-When instance checks are available in the schema, validation tables are automatically included:
-
-- **Purpose**: Display data validation results and constraints
-- **Group**: All validation tables are grouped under "Validations"
-- **Features**:
-  - Automatic filtering to show only tables with data
-  - Read-only display of validation results
-  - Integration with execution data checks
+When instance checks are available in the schema, validation tables are automatically included in the "Validations" group. Only the checks with rows show; a check whose schema says `is_warning: true` is a warning, any other an error.
 
 ### Custom dashboards
 
@@ -831,36 +713,20 @@ For detailed documentation on automatic dashboards, including configuration opti
 ## Results section
 
 The results section appears only when an execution is loaded and displays solution data tables.
-
-### Solution tables
-
-- **Purpose**: Display optimization results and solution data
-- **Data source**: Solution schema from the backend
-- **Features**:
-  - Dynamic table generation from solution schema
-  - Read-only data display
-  - Export capabilities for result analysis
+What the user sees: [docs/resultados.md](docs/resultados.md), [docs/kpis.md](docs/kpis.md) and
+[docs/validaciones.md](docs/validaciones.md).
 
 ### Table organization
 
 Solution tables follow the same organization principles as input data:
 
-1. **Default grouping**: If no specific groups are defined, all tables are grouped under "Output tables"
-2. **Custom grouping**: Tables can be organized into logical groups as defined in the schema
-3. **Individual tables**: Each table can have its own dedicated view
-4. **Hidden tables**: `"visible": false` hides a solution table the same way it hides an input table
-5. **Tables without schema**: `showTablesWithoutSchema` applies to solution tables the same way it applies to input tables
+1. **Grouping**: every table declared in the solution schema goes in one group, "Solution data"; the KPI tables (`kpiTablesDisplayMode: 'separate'`) and the validations follow in groups of their own
+2. **Hidden tables**: `"visible": false` hides a solution table the same way it hides an input table
+3. **Tables without schema**: `showTablesWithoutSchema` applies to solution tables the same way it applies to input tables
 
 ### Validation tables
 
-When solution checks are available in the schema, validation tables are automatically included:
-
-- **Purpose**: Display solution validation results and quality metrics
-- **Group**: All validation tables are grouped under "Validations"
-- **Features**:
-  - Automatic filtering to show only tables with data
-  - Read-only display of validation results
-  - Integration with execution data checks
+When solution checks are available in the schema, validation tables are automatically included in the "Validations" group, as for the input data.
 
 ### Custom dashboards
 
@@ -885,7 +751,8 @@ For detailed documentation on automatic dashboards, including configuration opti
 ## Several DAGs (optional)
 
 For applications that serve more than one model. It is off unless configured: an application with
-a single DAG in `schema` makes no extra request and shows exactly the same interface.
+a single DAG in `schema` makes no extra request and shows exactly the same interface. What the user
+sees: [docs/varios-dags.md](docs/varios-dags.md).
 
 ### Several DAGs in one application
 
@@ -1261,13 +1128,13 @@ Controls which columns are displayed in the execution history table.
 
 #### latestPlanConfig
 
-Configuration for the "Latest plan" feature. See [Latest plan documentation](#latest-plan-actual-plan) for details.
+Settings of the current plan, read by the enterprise `latest-plan` module (see [Latest plan](#latest-plan-actual-plan)).
 
-| Property           | Type      | Description                                                                                                                    |
-| ------------------ | --------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `enableLatestPlan` | `boolean` | Master switch to enable/disable the feature (default: `true`). If `false`, disables the feature regardless of other conditions |
-| `defaultView`      | `string`  | Route to redirect after login (`'history-execution'`, `'dashboard'`, `'input-data'`, `'results'`)                              |
-| `showStarInTabBar` | `boolean` | Show star icon in tab bar for the latest plan                                                                                  |
+| Property                 | Type      | Description                                                                                       |
+| ------------------------ | --------- | ------------------------------------------------------------------------------------------------- |
+| `enableLatestPlan`       | `boolean` | Turns the feature on. Only an explicit `false` turns it off                                        |
+| `showStarInTabBar`       | `boolean` | The ⭐ on the tab of the current plan. Only an explicit `false` hides it                            |
+| `enableUpToDateTracking` | `boolean` | Says whether the current plan is up to date with the master data                                  |
 
 #### sectionTitles
 
@@ -1281,7 +1148,7 @@ Customize navigation section titles using i18n keys. See [Custom section titles]
 
 #### solverConfig
 
-Controls the solver selection step. See [Solver step documentation](#solver-step-solverconfig) for details.
+Controls the solver selection step. See [Solver step documentation](#solver-solverconfig) for details.
 
 | Property         | Type      | Description                                      |
 | ---------------- | --------- | ------------------------------------------------ |
@@ -1565,7 +1432,7 @@ VITE_APP_AUTH_PROVIDERS=google,microsoft
 
 #### Sign-in page
 
-The sign-in page has two layouts, picked with `login.layout` in the app config (`core.parameters`):
+The sign-in page has two layouts, picked with `login.layout` in the app config (`core.parameters`). What the user sees: [docs/inicio-de-sesion.md](docs/inicio-de-sesion.md).
 
 | `layout` | What it shows |
 | --- | --- |
@@ -1598,71 +1465,10 @@ To save dashboard preferences for a single execution, including filters, checks,
 
 ### Latest plan (Actual plan)
 
-The `latest plan` feature provides context persistence, allowing users to automatically load a previously selected execution when accessing the application. This feature enables quick access to the most relevant plan without navigating through the execution history.
-
-#### When the feature is available
-
-The `latest plan` feature is **only available** when all conditions are met:
-
-1. **`enableLatestPlan` is `true`** (or not set): The master switch in `src/app/config.ts` must not be explicitly set to `false`
-2. **`hasExternalApp` is `true`**: The application must be configured with `VITE_APP_EXTERNAL_APP=true` (or `hasExternalApp: true` in `values.json`)
-3. **Backend supports the endpoints**: The backend must implement the `/plan-latest/` and `/set-plan-latest/` endpoints
-
-If any condition is not met, the feature is completely disabled:
-
-- No banner notification is shown
-- No floating action button appears
-- No "Set as Current Plan" action in the execution table
-- No automatic plan loading on login
-
-#### Backend endpoints
-
-The feature requires two backend endpoints:
-
-1. **GET `/plan-latest/`**: Returns the current latest plan
-   - Response: `{ execution_id: "string" }` or empty/404 if no plan is set
-2. **POST `/set-plan-latest/`**: Sets an execution as the latest plan
-   - Request body: `{ id_execution: "string" }`
-   - Response: 200 OK on success
-
-#### How it works
-
-When the feature is available:
-
-1. **On login**: After authentication, the system queries the `/plan-latest/` endpoint
-2. **Automatic loading**: If a latest plan exists, all data (instance, solution, dashboards) is automatically loaded
-3. **No plan notification**: If no latest plan is set, a persistent banner appears at the top of the page prompting the user to set one
-4. **Manual management**: Users can set any finished execution as the latest plan from:
-   - The execution history table (using the star icon action)
-   - A floating action button when viewing an execution
-
-#### Visual indicators
-
-- **Execution history table**: The current latest plan is marked with a "Current" chip
-- **Tab bar**: When configured, a star icon (★) appears next to the latest plan tab name
-- **Floating action button**: Shows a star icon indicating the current plan status
-
-#### Configuration options
-
-In `src/app/config.ts`, you can customize the feature behavior:
-
-```typescript
-latestPlanConfig: {
-  enableLatestPlan: true,           // Master switch: if false, disables the entire feature
-  defaultView: 'history-execution', // Route to redirect after login with latest plan
-  showStarInTabBar: true,           // Show star icon in MAppBarTab for latest plan
-  showSetCurrentPlanFab: true,      // Show floating action button to set current plan
-}
-```
-
-#### Behavior summary
-
-| Configuration                                                  | Feature Status                              |
-| -------------------------------------------------------------- | ------------------------------------------- |
-| `enableLatestPlan: false`                                      | **Disabled** - Master switch overrides all  |
-| `enableLatestPlan: true` + `hasExternalApp: false`             | **Disabled** - No latest plan functionality |
-| `enableLatestPlan: true` + `hasExternalApp: true` + No backend | **Disabled** - Feature unavailable          |
-| `enableLatestPlan: true` + `hasExternalApp: true` + Backend    | **Enabled** - Full functionality            |
+The current plan (the execution that loads on its own after the login, the star in the history and
+the tab bar, the banner when there is none) comes with the enterprise `latest-plan` module and needs
+its backend endpoints. The core only offers the places it plugs into. It is documented with
+enterprise (`docs/` of `cornflow_ui_enterprise`).
 
 ### Custom section titles
 

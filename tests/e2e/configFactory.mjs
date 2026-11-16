@@ -46,6 +46,8 @@ const NO_MIRROR = new Set([
   'playwright.config.ts',
   'README.md',
   'E2E_ARCHITECTURE.md',
+  // The screenshots of the functional docs: consumers import them from node_modules, never run them.
+  'docs-screenshots',
 ]);
 
 function mirrorDir(src, dest) {
