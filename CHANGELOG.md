@@ -12,7 +12,8 @@
   - Each read goes to the backend's endpoint, then, for the list only, to `executionsListEndpoint`, then to Cornflow. A DAG the answer leaves out, a key it leaves out or an unusable route (warned once in the console) reads from the next source, so an app whose backend declares nothing reads as before
   - The frontend config is asked when the app has an external backend (`hasExternalApp`), with or without an ETL module
   - README "Execution endpoints": the format, the order, what each key is used for and the fields the core reads from each answer
-  *Contributors:* [@HelenaCA](#)
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* #278
 
 ### Changed
 - **Every list and download of a frontend-automation table carries the active DAG**  
