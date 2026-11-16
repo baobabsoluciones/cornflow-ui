@@ -41,13 +41,11 @@ vi.mock('@cornflow-ui/core/plugins/i18n', () => ({
   locale: { value: 'en' },
 }))
 
-const etlModule = vi.hoisted(() => ({ backend: null as unknown }))
 vi.mock('@cornflow-ui/core/plugins/extensions', async (orig) => ({
   ...((await orig()) as object),
   loadPremiumMasterDataConfig: vi.fn(async () => null),
   runPremiumInitialDataHooks: vi.fn(),
   runPremiumActiveSchemaChangedHooks: vi.fn(),
-  getPremiumEtlBackend: () => etlModule.backend,
 }))
 
 const mockFrontendConfigRepository = vi.hoisted(() => ({
@@ -94,7 +92,7 @@ describe('General store — what the backend tells the interface about each DAG'
     vi.clearAllMocks()
     sessionStorage.clear()
     mockConfig.schema = 'dag_1'
-    etlModule.backend = { useEtlBackend: vi.fn(), useEtlBackendFromDb: vi.fn() }
+    mockConfig.hasExternalApp = true
     mockFrontendConfigRepository.getFrontendConfig.mockResolvedValue(answer)
   })
 
@@ -142,8 +140,8 @@ describe('General store — what the backend tells the interface about each DAG'
     expect(store.getLoadFilterFields).toEqual([])
   })
 
-  test('without an ETL module the backend is not asked', async () => {
-    etlModule.backend = null
+  test('without an external backend it is not asked', async () => {
+    mockConfig.hasExternalApp = false
     const store = useGeneralStore()
     await store.fetchFrontendConfig()
 
@@ -151,6 +149,18 @@ describe('General store — what the backend tells the interface about each DAG'
       mockFrontendConfigRepository.getFrontendConfig,
     ).not.toHaveBeenCalled()
     expect(store.getLoadFilterFields).toEqual([])
+  })
+
+  test('keeps the endpoints each DAG reads its executions from', async () => {
+    const executions = { dag_1: { list: '/executions/' } }
+    mockFrontendConfigRepository.getFrontendConfig.mockResolvedValue({
+      ...answer,
+      executions,
+    })
+    const store = useGeneralStore()
+    await store.fetchFrontendConfig()
+
+    expect(store.frontendConfig?.executions).toEqual(executions)
   })
 
   test('the end of the session forgets the answer', async () => {

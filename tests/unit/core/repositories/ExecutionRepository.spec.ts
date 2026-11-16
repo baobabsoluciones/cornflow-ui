@@ -31,6 +31,8 @@ const storeState = {
     instanceChecksSchema: {},
   },
   getSchemaName: 'test-schema',
+  /** The answer of GET /external/frontend-config/; null reads every execution from Cornflow. */
+  frontendConfig: null as Record<string, any> | null,
 }
 
 vi.mock('@cornflow-ui/core/stores/general', () => ({
@@ -88,6 +90,7 @@ describe('ExecutionRepository', () => {
     
     // Reset mocks
     vi.clearAllMocks()
+    storeState.frontendConfig = null
     
     repository = new ExecutionRepository()
   })
@@ -259,8 +262,11 @@ describe('ExecutionRepository', () => {
 
       const result = await repository.loadExecution('test-id')
 
-      expect(mockClient.get).toHaveBeenCalledWith('/execution/test-id/data/')
-      expect(mockInstanceRepo.getInstance).toHaveBeenCalledWith('test-instance-id')
+      expect(mockClient.get).toHaveBeenCalledWith('/execution/test-id/data/', {}, {}, false)
+      expect(mockInstanceRepo.getInstance).toHaveBeenCalledWith('test-instance-id', {
+        path: '/instance/test-instance-id/data/',
+        isExternal: false,
+      })
       expect(LoadedExecution).toHaveBeenCalledWith(expect.objectContaining({ solutionState: null }))
     })
 
@@ -297,7 +303,7 @@ describe('ExecutionRepository', () => {
 
       await repository.loadExecution('test-id')
 
-      expect(mockClient.get).toHaveBeenCalledWith('/execution/test-id/')
+      expect(mockClient.get).toHaveBeenCalledWith('/execution/test-id/', {}, {}, false)
       expect(LoadedExecution).toHaveBeenCalledWith(
         expect.objectContaining({
           finishedAt: '2023-01-01T00:05:00Z',
@@ -429,9 +435,12 @@ describe('ExecutionRepository', () => {
 
       const result = await repository.uploadSolutionData('test-id', mockSolutionData)
 
-      expect(mockClient.put).toHaveBeenCalledWith('/execution/test-id/', {
-        data: mockSolutionData
-      })
+      expect(mockClient.put).toHaveBeenCalledWith(
+        '/execution/test-id/',
+        { data: mockSolutionData },
+        {},
+        false,
+      )
       expect(result).toEqual(mockResponse.content)
     })
 
@@ -451,9 +460,12 @@ describe('ExecutionRepository', () => {
       await expect(
         repository.uploadSolutionData('test-id', mockSolutionData),
       ).rejects.toThrow()
-      expect(mockClient.put).toHaveBeenCalledWith('/execution/test-id/', {
-        data: mockSolutionData,
-      })
+      expect(mockClient.put).toHaveBeenCalledWith(
+        '/execution/test-id/',
+        { data: mockSolutionData },
+        {},
+        false,
+      )
     })
   })
 
@@ -464,7 +476,7 @@ describe('ExecutionRepository', () => {
 
       const result = await repository.deleteExecution('test-id')
 
-      expect(mockClient.remove).toHaveBeenCalledWith('/execution/test-id/')
+      expect(mockClient.remove).toHaveBeenCalledWith('/execution/test-id/', {}, false)
       expect(result).toBe(true)
     })
 
@@ -486,7 +498,7 @@ describe('ExecutionRepository', () => {
       })
 
       await expect(repository.getExecutionSchema('42')).resolves.toBe('dag_b')
-      expect(mockClient.get).toHaveBeenCalledWith('/execution/42/')
+      expect(mockClient.get).toHaveBeenCalledWith('/execution/42/', {}, {}, false)
     })
 
     test.each([
@@ -524,6 +536,124 @@ describe('ExecutionRepository', () => {
       await expect(
         repository.startDataCheckKpisForExecution('42', 'dag_b'),
       ).rejects.toThrow('Error starting data-check KPIs for execution')
+    })
+  })
+
+  describe('a DAG whose executions the backend serves', () => {
+    const executionData = {
+      id: 'g1',
+      instance_id: 'i1',
+      data: {},
+      checks: {},
+      name: 'Group',
+      description: '',
+      created_at: '2023-01-01T00:00:00Z',
+      state: 1,
+      message: '',
+      config: {},
+    }
+
+    beforeEach(() => {
+      storeState.frontendConfig = {
+        executions: {
+          'test-schema': {
+            list: '/executions/',
+            details: '/executions/{id}/',
+            data: '/executions/{id}/data/',
+            instance_data: '/instances/{id}/data/',
+          },
+        },
+      }
+      mockClient.get.mockResolvedValue({ status: 200, content: executionData })
+      mockInstanceRepo.getInstance.mockResolvedValue({ id: 'i1', data: {} })
+    })
+
+    test('lists the executions of the DAG from its list', async () => {
+      mockClient.get.mockResolvedValue({ status: 200, content: [] })
+
+      await repository.getExecutions('test-schema', '', '', { plant_id: '3' })
+
+      expect(mockClient.get).toHaveBeenCalledWith(
+        '/executions/',
+        { plant_id: '3', schema: 'test-schema', limit: 15 },
+        {},
+        true,
+      )
+      expect(mockResolveExecutionsListEndpoint).not.toHaveBeenCalled()
+    })
+
+    test('lists another DAG from Cornflow', async () => {
+      mockClient.get.mockResolvedValue({ status: 200, content: [] })
+
+      await repository.getExecutions('other-schema', '', '')
+
+      expect(mockClient.get).toHaveBeenCalledWith(
+        '/execution/',
+        { schema: 'other-schema', limit: 15 },
+        {},
+        false,
+      )
+    })
+
+    test('loads an execution, its details and its instance from the backend', async () => {
+      await repository.loadExecution('g1')
+
+      expect(mockClient.get).toHaveBeenCalledWith('/executions/g1/data/', {}, {}, true)
+      expect(mockClient.get).toHaveBeenCalledWith('/executions/g1/', {}, {}, true)
+      expect(mockInstanceRepo.getInstance).toHaveBeenCalledWith('i1', {
+        path: '/instances/i1/data/',
+        isExternal: true,
+      })
+    })
+
+    test('polls the state from its details', async () => {
+      await expect(repository.getExecutionState('g1')).resolves.toEqual({
+        state: 1,
+        id: 'g1',
+      })
+      expect(mockClient.get).toHaveBeenCalledWith('/executions/g1/', {}, {}, true)
+    })
+
+    test('renames and deletes through its details', async () => {
+      mockClient.put.mockResolvedValue({ status: 200, content: {} })
+      mockClient.remove.mockResolvedValue({ status: 200 })
+
+      await repository.uploadSolutionData('g1', { table: [] })
+      await repository.deleteExecution('g1')
+
+      expect(mockClient.put).toHaveBeenCalledWith(
+        '/executions/g1/',
+        { data: { table: [] } },
+        {},
+        true,
+      )
+      expect(mockClient.remove).toHaveBeenCalledWith('/executions/g1/', {}, true)
+    })
+
+    test('reads the DAG of an execution from its details', async () => {
+      mockClient.get.mockResolvedValue({
+        status: 200,
+        content: { id: 'g1', schema: 'test-schema' },
+      })
+
+      await expect(repository.getExecutionSchema('g1')).resolves.toBe('test-schema')
+      expect(mockClient.get).toHaveBeenCalledWith('/executions/g1/', {}, {}, true)
+    })
+
+    test('builds the download from its data and instance', async () => {
+      const downloadExcel = vi.fn()
+      storeState.appConfig.Experiment.mockImplementationOnce(function () {
+        return { downloadExcel, solution: 'solution', instance: 'instance' }
+      })
+
+      await repository.getDataToDownload('g1', true, false)
+
+      expect(mockClient.get).toHaveBeenCalledWith('/executions/g1/data/', {}, {}, true)
+      expect(mockInstanceRepo.getInstance).toHaveBeenCalledWith('i1', {
+        path: '/instances/i1/data/',
+        isExternal: true,
+      })
+      expect(downloadExcel).toHaveBeenCalled()
     })
   })
 
@@ -592,7 +722,7 @@ describe('ExecutionRepository', () => {
       await expect(repository.getDataToDownload('42')).rejects.toThrow(
         'Error loading execution',
       )
-      expect(mockClient.get).toHaveBeenCalledWith('/execution/42/data/')
+      expect(mockClient.get).toHaveBeenCalledWith('/execution/42/data/', {}, {}, false)
     })
 
     test.each([
@@ -609,7 +739,7 @@ describe('ExecutionRepository', () => {
       await expect(repository.getDataToDownload('42')).rejects.toThrow(
         'Error loading execution',
       )
-      expect(mockClient.get).toHaveBeenCalledWith('/execution/42/data/')
+      expect(mockClient.get).toHaveBeenCalledWith('/execution/42/data/', {}, {}, false)
     })
 
     test('HTTP 400 status:-2 → triggers regeneration, polls, downloads on 200', async () => {
@@ -647,7 +777,7 @@ describe('ExecutionRepository', () => {
       }
 
       // The regeneration runs under the DAG of the execution, not the active one.
-      expect(mockClient.get).toHaveBeenCalledWith('/execution/42/')
+      expect(mockClient.get).toHaveBeenCalledWith('/execution/42/', {}, {}, false)
       expect(mockClient.post).toHaveBeenCalledWith(
         '/data-check-kpis/execution/42/',
         { schema: 'dag_b' },
@@ -656,7 +786,7 @@ describe('ExecutionRepository', () => {
       )
       expect(mockClient.getBlob).toHaveBeenCalledTimes(3)
       expect(anchorClick).toHaveBeenCalledTimes(1)
-      expect(mockClient.get).not.toHaveBeenCalledWith('/execution/42/data/')
+      expect(mockClient.get).not.toHaveBeenCalledWith('/execution/42/data/', {}, {}, false)
     })
 
     test('HTTP 400 status:-3 → throws ExecutionFilesRegenerationError on timeout', async () => {

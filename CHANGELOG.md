@@ -7,6 +7,12 @@
   - A `PremiumDrawerSection` with `parent: 'admin'` is listed as a page of the core's Administration group (next to Roles management) instead of a group of its own. The group shows for admins when it has a page, so it no longer depends on roles management being on
   *Contributors:* [@antoniogonzalezsuarez](#)  
   *Commit ID:* #275
+- **The backend can serve the executions of a DAG (`executions` in `GET /external/frontend-config/`)**  
+  - Per DAG, the backend declares which of its endpoints the executions are read from: `list` (the history and the latest executions), `details` (state polling, who launched it, its DAG, an uploaded solution, a deletion), `data` (loading and downloading) and `instance_data` (the instance of a loaded execution). Paths go under `/external`, with `{id}` for the id
+  - Each read goes to the backend's endpoint, then, for the list only, to `executionsListEndpoint`, then to Cornflow. A DAG the answer leaves out, a key it leaves out or an unusable route (warned once in the console) reads from the next source, so an app whose backend declares nothing reads as before
+  - The frontend config is asked when the app has an external backend (`hasExternalApp`), with or without an ETL module
+  - README "Execution endpoints": the format, the order, what each key is used for and the fields the core reads from each answer
+  *Contributors:* [@HelenaCA](#)
 
 ### Changed
 - **Every list and download of a frontend-automation table carries the active DAG**  
@@ -17,7 +23,7 @@
   *Contributors:* [@HelenaCA](#)  
   *Commit ID:* #269
 - **Load filters from the backend (`GET /external/frontend-config/`)**  
-  - The load filters a DAG's ETL asks for before bringing the data come from the backend: the `query` of the active DAG, a JSON schema read like the config schema, asked once after the login when an ETL module is registered. `pre_etl: true` in the config schema is not read
+  - The load filters a DAG's ETL asks for before bringing the data come from the backend: the `query` of the active DAG, a JSON schema read like the config schema, asked once after the login when the app has an external backend (`hasExternalApp`) and read by the ETL module. `pre_etl: true` in the config schema is not read
   - The label is the property's `title` (per language, or plain text) or its `description`
   - The filters keep their values apart from the execution config; one with `in_config` also fills that config key, so it reaches the data checks and the solve
   - A backend without the endpoint, or a DAG it leaves out, asks no load filters. The database is still offered with `etl.useEtlBackend` and `etl.enableLoadFromDb`
