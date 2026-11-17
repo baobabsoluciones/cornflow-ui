@@ -137,6 +137,7 @@ const mockExecutionRepository = vi.hoisted(() => ({
 const mockInstanceRepository = vi.hoisted(() => ({
   getInstance: vi.fn(),
   createInstance: vi.fn(),
+  deleteInstance: vi.fn(),
   launchInstanceDataChecks: vi.fn(),
 }))
 
@@ -422,6 +423,18 @@ describe('General Store', () => {
         '123',
         { solution: 'data' },
       )
+    })
+
+    test('deleteInstance tells whether the instance was deleted', async () => {
+      const store = useGeneralStore()
+
+      mockInstanceRepository.deleteInstance.mockResolvedValue(true)
+      expect(await store.deleteInstance('abc')).toBe(true)
+      expect(mockInstanceRepository.deleteInstance).toHaveBeenCalledWith('abc')
+
+      mockInstanceRepository.deleteInstance.mockRejectedValue(new Error('network down'))
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      expect(await store.deleteInstance('abc')).toBe(false)
     })
 
     test('deleteExecution and update store state', async () => {

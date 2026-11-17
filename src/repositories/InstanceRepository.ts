@@ -107,4 +107,14 @@ export default class InstanceRepository {
       )
     }
   }
+
+  /**
+   * Deletes an instance (`DELETE /instance/<id>/`). True when Cornflow deleted it.
+   * Cornflow also deletes the executions of that instance, so only delete instances the UI created for itself
+   * (e.g. a temporary copy of a draft) and that nothing was launched from.
+   */
+  async deleteInstance(id: string) {
+    const response = await client.remove(`/instance/${id}/`, {})
+    return response.status === 200
+  }
 }
