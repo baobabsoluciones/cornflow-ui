@@ -143,6 +143,24 @@ reactive object (read `draft.isLoaded`, not `draft.isLoaded.value`).
 | `startFrom(loadedExecution)` | An editable copy of a loaded execution: its data, parameters, description and name ("relaunch"). |
 | `saveDraft()`, `readDraft()`, `discardDraft()`, `resumeDraft(draft)` | Keep the unfinished execution in the browser (IndexedDB, one per DAG and user): data, unapplied edits and the ETL review not yet sent. |
 
+### The active draft
+
+`src/composables/create-execution/activeDraft.ts`. `useExecutionDraft()` publishes the draft it
+returns while its component is alive, so something outside the flow (an assistant, a help panel)
+can read it, whether the flow is core's page or an app's own.
+
+```ts
+import { useActiveExecutionDraft } from '@cornflow-ui/core/composables/create-execution/activeDraft'
+
+const activeDraft = useActiveExecutionDraft() // readonly shallow ref: the draft, or null
+// activeDraft.value?.isLoaded, activeDraft.value?.execution.instance.data ...
+```
+
+It is `null` when no flow is open and goes back to `null` when the flow's scope is disposed (only
+if that draft is still the active one: closing an older flow does not hide a newer one). With two
+flows open at once, the last one created is the active one. The value is the same reactive object
+the flow works with, so it can also be changed (`setInstance`, `setParameter`...); prefer reading.
+
 ## Blocks
 
 `src/components/create-execution/`. The composite blocks take the draft; the small ones take
