@@ -10,7 +10,7 @@
  * Call it once per flow, inside `setup`. It returns a reactive object: read `draft.isLoaded`,
  * `draft.missing`… directly, in the script and in the template.
  */
-import { computed, markRaw, reactive, ref, watch } from 'vue'
+import { computed, getCurrentScope, markRaw, onScopeDispose, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ErrorObject } from 'ajv'
 import config from '@cornflow-ui/core/config'
@@ -41,6 +41,10 @@ import {
 } from './executionName'
 import { checkResultsOf, type CheckResult } from './checkResults'
 import { useUploadedSolution } from './useUploadedSolution'
+import {
+  publishActiveExecutionDraft,
+  withdrawActiveExecutionDraft,
+} from './activeDraft'
 import {
   deleteExecutionDraft,
   draftKey,
@@ -838,7 +842,7 @@ export function useExecutionDraft() {
   /** The ETL flow the review shows and sets the origin switches of; null without an ETL review. */
   const etlReviewFlow = computed(() => (etlFlow.isActive.value ? etlFlow : null))
 
-  return reactive({
+  const controller = reactive({
     // state
     execution,
     filters,
@@ -911,6 +915,12 @@ export function useExecutionDraft() {
     discardDraft,
     resumeDraft,
   })
+
+  // Anything outside the flow (an assistant) finds the draft on screen through this.
+  publishActiveExecutionDraft(controller)
+  if (getCurrentScope()) onScopeDispose(() => withdrawActiveExecutionDraft(controller))
+
+  return controller
 }
 
 export type ExecutionDraftController = ReturnType<typeof useExecutionDraft>
