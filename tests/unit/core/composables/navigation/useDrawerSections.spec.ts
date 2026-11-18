@@ -169,6 +169,35 @@ describe('useDrawerSections', () => {
     expect(destinations).not.toContain('/stock-levels')
   })
 
+  test('a master data group holding a single page links to it', () => {
+    store.getConfigurations = {
+      masterData: {
+        sites: { title: 'Sites', group: 'catalog', order: 0 },
+        rooms: { title: 'Rooms', group: 'catalog', order: 1 },
+      },
+    }
+    expect(section(setup(), 'master-data')).toMatchObject({
+      to: '/configuration/group/catalog',
+      subPages: undefined,
+    })
+  })
+
+  test('with schema sections, each block over one page links to it and the others open to show theirs', () => {
+    store.masterDataSections = [{ id: 'pricing', title: 'Pricing', order: 1 }]
+    store.getConfigurations = {
+      masterData: {
+        prices: { title: 'Prices', group: null, section: 'pricing' },
+        sites: { title: 'Sites', group: null },
+        rooms: { title: 'Rooms', group: null },
+      },
+    }
+    const api = setup()
+    expect(section(api, 'master-data-pricing')).toMatchObject({ to: '/configuration/prices', subPages: undefined })
+    const rest = api.sections.value.find((s) => s.key === 'master-data-1')!
+    expect(rest.to).toBeUndefined()
+    expect(rest.subPages!.map((p) => p.to)).toEqual(['/configuration/sites', '/configuration/rooms'])
+  })
+
   test('master data sections get their sub-sections for the DAG and roles that may see them', () => {
     store.getUser = { ...user, roles: [{ name: 'planner' }] }
     store.masterDataSections = [{ id: 'pricing', title: 'Pricing', order: 1 }]

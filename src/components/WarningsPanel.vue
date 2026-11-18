@@ -110,10 +110,12 @@ async function download() {
   outline-offset: 2px;
 }
 
+/* The panel takes the popover's height, which is capped to the window; the list scrolls inside. */
 .warnings-panel {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
-  max-height: 480px;
+  min-height: 0;
   font-family: var(--font-sans);
 }
 
@@ -147,6 +149,8 @@ async function download() {
   flex-direction: column;
   gap: calc(var(--spacing) * 1.5);
   margin: 0;
+  flex: 1 1 auto;
+  min-height: 0;
   padding: calc(var(--spacing) * 2) calc(var(--spacing) * 0.5) calc(var(--spacing) * 1);
   overflow-y: auto;
   list-style: none;
