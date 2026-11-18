@@ -9,11 +9,22 @@ import {
   stripFrontendRowIdsFromInstanceData,
   stripInvisibleParameterPropertiesFromInstanceData,
 } from '@cornflow-ui/core/utils/schemaUtils'
+import type { ExecutionEndpoint } from '@cornflow-ui/core/utils/executionEndpoints'
 
 export default class InstanceRepository {
-  // Get instance by id
-  async getInstance(id: string): Promise<InstanceCore> {
-    const response = await client.get(`/instance/${id}/data/`)
+  /**
+   * Get an instance by id, from Cornflow's `GET /instance/<id>/data/` unless `endpoint` points
+   * elsewhere: the instance of a loaded execution is read where the frontend config says (see
+   * `resolveExecutionEndpoint`).
+   */
+  async getInstance(
+    id: string,
+    endpoint: ExecutionEndpoint = {
+      path: `/instance/${id}/data/`,
+      isExternal: false,
+    },
+  ): Promise<InstanceCore> {
+    const response = await client.get(endpoint.path, {}, {}, endpoint.isExternal)
 
     if (response.status === 200) {
       const { Instance } = useGeneralStore().appConfig
@@ -95,5 +106,15 @@ export default class InstanceRepository {
         getApiErrorMessageFromContent(response.content, 'Error creating instance'),
       )
     }
+  }
+
+  /**
+   * Deletes an instance (`DELETE /instance/<id>/`). True when Cornflow deleted it.
+   * Cornflow also deletes the executions of that instance, so only delete instances the UI created for itself
+   * (e.g. a temporary copy of a draft) and that nothing was launched from.
+   */
+  async deleteInstance(id: string) {
+    const response = await client.remove(`/instance/${id}/`, {})
+    return response.status === 200
   }
 }

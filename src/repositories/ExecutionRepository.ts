@@ -12,7 +12,11 @@ import {
   getApiErrorMessageFromContent,
   getMessageFromResponseContentOrNull,
 } from '@cornflow-ui/core/utils/i18nUtils'
-import { resolveExecutionsListEndpoint } from '@cornflow-ui/core/utils/executionFilters'
+import {
+  resolveExecutionEndpoint,
+  type ExecutionEndpoint,
+  type ExecutionEndpointKey,
+} from '@cornflow-ui/core/utils/executionEndpoints'
 
 function pickDownloadReturnValue(
   experiment: any,
@@ -120,14 +124,37 @@ async function pollForRegeneratedFiles(
   return null
 }
 
+/**
+ * Where `key` of the executions of `schema` (by default the active DAG) is read: the endpoint the
+ * backend declares in the frontend config, or Cornflow's (see `resolveExecutionEndpoint`).
+ */
+function executionEndpoint(
+  key: ExecutionEndpointKey,
+  id?: string,
+  schema?: string,
+): ExecutionEndpoint {
+  const store = useGeneralStore()
+  return resolveExecutionEndpoint(
+    store.frontendConfig,
+    schema ?? store.getSchemaName,
+    key,
+    id,
+  )
+}
+
+function getFrom(endpoint: ExecutionEndpoint) {
+  return client.get(endpoint.path, {}, {}, endpoint.isExternal)
+}
+
 /** Most executions a list with a date range brings (the newest first). */
 export const EXECUTIONS_LIST_LIMIT = 100
 
 export default class ExecutionRepository {
   /**
    * Get executions created on the given date range. `filterParams` (the picked executions history
-   * filters) travel as extra query parameters; the list comes from `executionsListEndpoint` when
-   * the app declares one, and from `GET /execution/` otherwise.
+   * filters) travel as extra query parameters. The list of the DAG `name` comes from the `list`
+   * endpoint the backend declares for it, from `executionsListEndpoint` when the app declares one,
+   * and from `GET /execution/` otherwise.
    */
   async getExecutions(
     name: string,
@@ -159,12 +186,12 @@ export default class ExecutionRepository {
       queryParams.limit = 15
     }
 
-    const endpoint = resolveExecutionsListEndpoint()
+    const endpoint = executionEndpoint('list', undefined, name)
     const response = await client.get(
       endpoint.path,
       queryParams,
       {},
-      endpoint.isExternal === true,
+      endpoint.isExternal,
     )
 
     if (response.status === 200) {
@@ -207,7 +234,7 @@ export default class ExecutionRepository {
   async getExecutionState(
     id: string,
   ): Promise<{ state: number; id: string } | null> {
-    const response = await client.get(`/execution/${id}/`)
+    const response = await getFrom(executionEndpoint('details', id))
     if (response.status === 200) {
       const exec = response.content
       return { state: exec.state, id: exec.id }
@@ -223,8 +250,8 @@ export default class ExecutionRepository {
   async loadExecution(id: string): Promise<LoadedExecution> {
     // The data endpoint has no user nor last update; the details endpoint (the history's) does.
     const [response, details] = await Promise.all([
-      client.get(`/execution/${id}/data/`),
-      client.get(`/execution/${id}/`).catch(() => null),
+      getFrom(executionEndpoint('data', id)),
+      getFrom(executionEndpoint('details', id)).catch(() => null),
     ])
     const detail = details?.status === 200 ? details.content : {}
 
@@ -239,6 +266,7 @@ export default class ExecutionRepository {
       const instanceRepository = new InstanceRepository()
       const instance = await instanceRepository.getInstance(
         execution.instance_id,
+        executionEndpoint('instance_data', execution.instance_id),
       )
       if (instance) {
         const store = useGeneralStore()
@@ -381,13 +409,14 @@ export default class ExecutionRepository {
       // and propagates to the caller.
     }
 
-    const response = await client.get(`/execution/${id}/data/`)
+    const response = await getFrom(executionEndpoint('data', id))
 
     if (response.status === 200) {
       const execution = response.content
       const instanceRepository = new InstanceRepository()
       const instance = await instanceRepository.getInstance(
         execution.instance_id,
+        executionEndpoint('instance_data', execution.instance_id),
       )
       if (instance) {
         const { Solution, Experiment } = store.appConfig
@@ -458,9 +487,13 @@ export default class ExecutionRepository {
   }
 
   async uploadSolutionData(executionId: string, solutionData: any) {
-    const response = await client.put(`/execution/${executionId}/`, {
-      data: solutionData,
-    })
+    const endpoint = executionEndpoint('details', executionId)
+    const response = await client.put(
+      endpoint.path,
+      { data: solutionData },
+      {},
+      endpoint.isExternal,
+    )
     if (response.status < 200 || response.status >= 300) {
       throw new Error(
         getApiErrorMessageFromContent(
@@ -473,7 +506,8 @@ export default class ExecutionRepository {
   }
 
   async deleteExecution(id: string) {
-    const response = await client.remove(`/execution/${id}/`)
+    const endpoint = executionEndpoint('details', id)
+    const response = await client.remove(endpoint.path, {}, endpoint.isExternal)
     return response.status === 200
   }
 
@@ -506,11 +540,10 @@ export default class ExecutionRepository {
   }
 
   /**
-   * Returns the DAG (`schema`) an execution was created with, read from
-   * `GET /execution/<id>/`.
+   * Returns the DAG (`schema`) an execution was created with, read from its details.
    */
   async getExecutionSchema(executionId: string): Promise<string> {
-    const response = await client.get(`/execution/${executionId}/`)
+    const response = await getFrom(executionEndpoint('details', executionId))
     const schema = response.status === 200 ? response.content?.schema : null
     if (!schema) {
       throw new Error('Error getting the schema of the execution')

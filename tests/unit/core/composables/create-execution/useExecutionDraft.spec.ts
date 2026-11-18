@@ -53,6 +53,7 @@ vi.mock('@cornflow-ui/core/composables/create-execution/solutionFile', () => ({
 }))
 
 import { useExecutionDraft } from '@cornflow-ui/core/composables/create-execution/useExecutionDraft'
+import { useActiveExecutionDraft } from '@cornflow-ui/core/composables/create-execution/activeDraft'
 import { useTableChanges } from '@cornflow-ui/core/composables/useTableChanges'
 import config from '@cornflow-ui/core/config'
 import { parseSolutionFile } from '@cornflow-ui/core/composables/create-execution/solutionFile'
@@ -954,5 +955,61 @@ describe('useExecutionDraft', () => {
 
     expect(draft.isLoaded).toBe(false)
     expect(draft.fromExecution).toBeNull()
+  })
+})
+
+describe('useActiveExecutionDraft', () => {
+  function mountFlow() {
+    let draft: ReturnType<typeof useExecutionDraft>
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} }, missingWarn: false, fallbackWarn: false })
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          draft = useExecutionDraft()
+          return () => h('div')
+        },
+      }),
+      { global: { plugins: [i18n] } },
+    )
+    return { wrapper, draft: draft! }
+  }
+
+  beforeEach(() => {
+    resetStore()
+    extensions.etlBackend = null
+    extensions.etlFlow = null
+  })
+
+  test('is empty with no flow open', () => {
+    expect(useActiveExecutionDraft().value).toBeNull()
+  })
+
+  test('shows the draft of the flow while it is on screen and drops it when the flow closes', () => {
+    const active = useActiveExecutionDraft()
+    const { wrapper, draft } = mountFlow()
+    expect(active.value).toBe(draft)
+
+    wrapper.unmount()
+    expect(active.value).toBeNull()
+  })
+
+  test('follows the draft live: what the flow changes is what the consumer reads', () => {
+    const { wrapper, draft } = mountFlow()
+    draft.setName('My plan')
+    expect(useActiveExecutionDraft().value?.execution.name).toBe('My plan')
+    wrapper.unmount()
+  })
+
+  test('closing an older flow does not hide the newer one', () => {
+    const active = useActiveExecutionDraft()
+    const first = mountFlow()
+    const second = mountFlow()
+    expect(active.value).toBe(second.draft)
+
+    first.wrapper.unmount()
+    expect(active.value).toBe(second.draft)
+
+    second.wrapper.unmount()
+    expect(active.value).toBeNull()
   })
 })

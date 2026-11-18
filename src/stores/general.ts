@@ -20,7 +20,6 @@ import {
   runPremiumInitialDataHooks,
   runPremiumActiveSchemaChangedHooks,
   loadPremiumMasterDataConfig,
-  getPremiumEtlBackend,
 } from '@cornflow-ui/core/plugins/extensions'
 import RoleRepository from '@cornflow-ui/core/repositories/RoleRepository'
 import WarningsRepository from '@cornflow-ui/core/repositories/WarningsRepository'
@@ -330,19 +329,23 @@ export const useGeneralStore = defineStore('general', {
     },
 
     /**
-     * Asks the backend what it tells the interface about each DAG of the user: the load filters
-     * the DAG's ETL asks for. Asked once after the login, and only with an ETL module registered,
-     * since only that module brings data through an ETL; one answer covers every DAG, so a DAG
-     * switch reads it again without asking. Without an answer (no endpoint, an error) no DAG asks
-     * load filters.
+     * Asks the external backend what it tells the interface about each DAG of the user: the load
+     * filters the DAG's ETL asks for and the endpoints its executions are read from. Asked once
+     * after the login, and only when the app has an external backend (`hasExternalApp`); one
+     * answer covers every DAG, so a DAG switch reads it again without asking. Without an answer
+     * (no external backend, no endpoint, an error) no DAG asks load filters and every execution is
+     * read from Cornflow.
      */
     async fetchFrontendConfig() {
       this.frontendConfig = null
-      if (getPremiumEtlBackend() === null) return
+      if (!config.hasExternalApp) return
       try {
         this.frontendConfig = await this.frontendConfigRepository.getFrontendConfig()
       } catch (error) {
-        console.warn('No frontend config from the backend: no DAG asks load filters', error)
+        console.warn(
+          'No frontend config from the backend: no DAG asks load filters and the executions are read from Cornflow',
+          error,
+        )
       }
     },
 
@@ -849,6 +852,16 @@ export const useGeneralStore = defineStore('general', {
         return response
       } catch (error) {
         console.error('Error creating instance', error)
+        return false
+      }
+    },
+
+    /** Deletes an instance; false when it could not be deleted (the error is logged). */
+    async deleteInstance(id: string) {
+      try {
+        return await this.instanceRepository.deleteInstance(id)
+      } catch (error) {
+        console.error('Error deleting instance', error)
         return false
       }
     },

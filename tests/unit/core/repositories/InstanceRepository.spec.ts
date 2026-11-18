@@ -6,6 +6,7 @@ vi.mock('@cornflow-ui/core/api/Api', () => ({
   default: {
     get: vi.fn(),
     post: vi.fn(),
+    remove: vi.fn(),
   },
 }))
 
@@ -85,9 +86,29 @@ describe('InstanceRepository', () => {
 
       expect(mockClient.get).toHaveBeenCalledWith(
         '/instance/test-instance-id/data/',
+        {},
+        {},
+        false,
       )
       // The actual implementation should call the Instance constructor
       expect(result).toBeDefined()
+    })
+
+    test('reads the instance of a loaded execution where the frontend config says', async () => {
+      mockClient.get.mockResolvedValue({ status: 200, content: mockInstanceData })
+      mockGeneralStore.appConfig.Instance.mockReturnValue(mockInstance)
+
+      await repository.getInstance('test-instance-id', {
+        path: '/instances/test-instance-id/data/',
+        isExternal: true,
+      })
+
+      expect(mockClient.get).toHaveBeenCalledWith(
+        '/instances/test-instance-id/data/',
+        {},
+        {},
+        true,
+      )
     })
 
     test('should throw error when API returns non-200 status', async () => {
@@ -127,6 +148,9 @@ describe('InstanceRepository', () => {
 
       expect(mockClient.get).toHaveBeenCalledWith(
         '/instance/test-instance-id/data/',
+        {},
+        {},
+        false,
       )
       expect(result).toBeDefined()
     })
@@ -226,6 +250,21 @@ describe('InstanceRepository', () => {
       await expect(
         repository.launchInstanceDataChecks('test-instance-id', 'dag_a'),
       ).rejects.toThrow('Network error')
+    })
+  })
+
+  describe('deleteInstance', () => {
+    test('asks Cornflow to delete the instance and says it is gone', async () => {
+      mockClient.remove.mockResolvedValue({ status: 200, content: { message: 'deleted' } })
+
+      await expect(repository.deleteInstance('abc')).resolves.toBe(true)
+      expect(mockClient.remove).toHaveBeenCalledWith('/instance/abc/', {})
+    })
+
+    test('says it was not deleted when Cornflow refuses', async () => {
+      mockClient.remove.mockResolvedValue({ status: 404, content: { error: 'not found' } })
+
+      await expect(repository.deleteInstance('abc')).resolves.toBe(false)
     })
   })
 
