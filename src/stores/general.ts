@@ -856,6 +856,16 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
+    /** Deletes an instance; false when it could not be deleted (the error is logged). */
+    async deleteInstance(id: string) {
+      try {
+        return await this.instanceRepository.deleteInstance(id)
+      } catch (error) {
+        console.error('Error deleting instance', error)
+        return false
+      }
+    },
+
     async getInstanceById(id: string) {
       try {
         const instance = await this.instanceRepository.getInstance(id)

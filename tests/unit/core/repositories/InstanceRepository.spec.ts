@@ -6,6 +6,7 @@ vi.mock('@cornflow-ui/core/api/Api', () => ({
   default: {
     get: vi.fn(),
     post: vi.fn(),
+    remove: vi.fn(),
   },
 }))
 
@@ -249,6 +250,21 @@ describe('InstanceRepository', () => {
       await expect(
         repository.launchInstanceDataChecks('test-instance-id', 'dag_a'),
       ).rejects.toThrow('Network error')
+    })
+  })
+
+  describe('deleteInstance', () => {
+    test('asks Cornflow to delete the instance and says it is gone', async () => {
+      mockClient.remove.mockResolvedValue({ status: 200, content: { message: 'deleted' } })
+
+      await expect(repository.deleteInstance('abc')).resolves.toBe(true)
+      expect(mockClient.remove).toHaveBeenCalledWith('/instance/abc/', {})
+    })
+
+    test('says it was not deleted when Cornflow refuses', async () => {
+      mockClient.remove.mockResolvedValue({ status: 404, content: { error: 'not found' } })
+
+      await expect(repository.deleteInstance('abc')).resolves.toBe(false)
     })
   })
 
