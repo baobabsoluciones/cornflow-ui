@@ -377,6 +377,28 @@ describe('General store — several DAGs', () => {
       expect(store.appDashboardLayout).toEqual([{ id: 'app_layout' }])
     })
 
+    test("a DAG's create-execution flow takes precedence over the app's, which keeps the rest", async () => {
+      deploymentWithBothDags()
+      const appFlow = () => Promise.resolve({ name: 'AppFlow' })
+      const stockFlow = () => Promise.resolve({ name: 'StockFlow' })
+      const proposeName = () => 'Proposed'
+      mockParameters.createExecution = { component: appFlow, proposeName }
+      mockSchemaOverrides.stock_dag.parameters.createExecution = { component: stockFlow }
+      const store = useGeneralStore()
+      await store.initializeData()
+
+      expect(store.appConfig.parameters.createExecution.component).toBe(appFlow)
+
+      await store.setActiveSchema('stock_dag')
+
+      expect(store.appConfig.parameters.createExecution.component).toBe(stockFlow)
+      expect(store.appConfig.parameters.createExecution.proposeName).toBe(proposeName)
+
+      await store.setActiveSchema('planning_dag')
+
+      expect(store.appConfig.parameters.createExecution.component).toBe(appFlow)
+    })
+
     test("the schema's solver settings apply on top of the DAG's", async () => {
       deploymentWithBothDags()
       mockSchemaOverrides.stock_dag.parameters.executionSolvers = ['solver_dag']
