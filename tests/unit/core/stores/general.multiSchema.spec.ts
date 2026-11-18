@@ -80,8 +80,6 @@ vi.mock('@cornflow-ui/core/plugins/extensions', async (orig) => ({
 const mockSchemaRepository = vi.hoisted(() => ({
   getSchema: vi.fn(),
   getAvailableSchemaNames: vi.fn(),
-  getInstanceTables: vi.fn(),
-  getSolutionTables: vi.fn(),
 }))
 const mockUserRepository = vi.hoisted(() => ({ getUserById: vi.fn() }))
 const mockRoleRepository = vi.hoisted(() => ({
@@ -141,8 +139,6 @@ describe('General store — several DAGs', () => {
     })
     mockRoleRepository.getAllUserRoleAssignments.mockResolvedValue([])
     mockSchemaRepository.getSchema.mockResolvedValue({ name: 'schema' })
-    mockSchemaRepository.getInstanceTables.mockResolvedValue({ t_in: {} })
-    mockSchemaRepository.getSolutionTables.mockResolvedValue({ t_out: {} })
   })
 
   describe('active schema', () => {
@@ -157,6 +153,7 @@ describe('General store — several DAGs', () => {
       expect(store.getSchemaName).toBe('planning_dag')
       expect(store.availableSchemas).toEqual([])
       expect(store.canSwitchSchema).toBe(false)
+      expect(mockSchemaRepository.getSchema).toHaveBeenCalledTimes(1)
       expect(mockSchemaRepository.getSchema).toHaveBeenCalledWith(
         'planning_dag',
       )
@@ -266,7 +263,14 @@ describe('General store — several DAGs', () => {
       store.lastExecutions = [{ id: 'e1' }] as any
       const masterData = store.rawConfigurations?.masterData
       const uploadKey = store.uploadComponentKey
-      mockSchemaRepository.getInstanceTables.mockResolvedValue({ jit_in: {} })
+      mockSchemaRepository.getSchema.mockResolvedValue({
+        name: 'stock_dag',
+        instanceSchema: {
+          properties: {
+            jit_in: { type: 'array', items: { type: 'object', properties: {} } },
+          },
+        },
+      })
 
       const switched = await store.setActiveSchema('stock_dag')
 
@@ -277,8 +281,11 @@ describe('General store — several DAGs', () => {
       expect(store.loadedExecutions).toEqual([])
       expect(store.selectedExecution).toBeNull()
       expect(store.lastExecutions).toEqual([])
+      expect(mockSchemaRepository.getSchema).toHaveBeenCalledTimes(1)
       expect(mockSchemaRepository.getSchema).toHaveBeenCalledWith('stock_dag')
-      expect(store.rawConfigurations?.inputData).toEqual({ jit_in: {} })
+      expect(Object.keys(store.rawConfigurations?.inputData ?? {})).toEqual([
+        'jit_in',
+      ])
       expect(store.rawConfigurations?.masterData).toEqual(masterData)
       expect(store.uploadComponentKey).toBe(uploadKey + 1)
       expect(mockHooks.activeSchemaChanged).toHaveBeenCalledWith('stock_dag')
