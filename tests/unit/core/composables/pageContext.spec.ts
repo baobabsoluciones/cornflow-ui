@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, afterEach } from 'vitest'
-import { defineComponent, h, nextTick } from 'vue'
+import { KeepAlive, defineComponent, h, nextTick, ref } from 'vue'
 import { mount } from '@vue/test-utils'
 import {
   askAboutPageContext,
@@ -106,6 +106,35 @@ describe('usePageContext', () => {
       },
     })
     const wrapper = mount(Widget)
+    expect(ids()).toEqual(['results.chart'])
+
+    wrapper.unmount()
+    expect(ids()).toEqual([])
+  })
+
+  test('a page kept alive is listed only while it is the one on screen', async () => {
+    const page = (id: string) =>
+      defineComponent({
+        setup() {
+          usePageContext(entry(id))
+          return () => h('div')
+        },
+      })
+    const Results = page('results.chart')
+    const Settings = page('settings.view')
+    const current = ref<'results' | 'settings'>('results')
+    const App = defineComponent({
+      setup: () => () => h(KeepAlive, null, [h(current.value === 'results' ? Results : Settings)]),
+    })
+    const wrapper = mount(App)
+    expect(ids()).toEqual(['results.chart'])
+
+    current.value = 'settings'
+    await nextTick()
+    expect(ids()).toEqual(['settings.view'])
+
+    current.value = 'results'
+    await nextTick()
     expect(ids()).toEqual(['results.chart'])
 
     wrapper.unmount()
