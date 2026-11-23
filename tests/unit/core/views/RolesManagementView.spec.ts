@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
-import { nextTick } from 'vue'
+import { nextTick, ref } from 'vue'
 
 // ── Hoisted controllable composable + appConfig ─────────────────────────────
 const { rm, coreParams } = vi.hoisted(() => ({
@@ -21,9 +21,18 @@ const { rm, coreParams } = vi.hoisted(() => ({
     deleteRole: vi.fn().mockResolvedValue(true),
     updateUserProfile: vi.fn().mockResolvedValue(true),
     saveUserRoleAssignments: vi.fn().mockResolvedValue(true),
+    unlockUser: vi.fn().mockResolvedValue(true),
+    resetUserMfa: vi.fn().mockResolvedValue(true),
+    rolesForbidden: null as any,
   },
   coreParams: { value: { parameters: { allowEditRoles: true } } },
 }))
+
+const storeState = vi.hoisted(() => ({
+  isPlatformAdmin: false,
+  getUser: { mfaEnabled: false } as { mfaEnabled: boolean },
+}))
+vi.mock('@cornflow-ui/core/stores/general', () => ({ useGeneralStore: () => storeState }))
 
 vi.mock('@cornflow-ui/core/composables/roles-management/useRolesManagement', () => ({
   useRolesManagement: () => rm,
@@ -57,6 +66,10 @@ const { stubChild } = vi.hoisted(() => ({
       'icon',
       'title',
       'description',
+      'canUnlock',
+      'askTotp',
+      'message',
+      'confirmText',
     ],
     emits,
   }),
@@ -67,7 +80,11 @@ vi.mock('@cornflow-ui/core/components/roles-management/RolesPanel.vue', () => ({
   default: stubChild('RolesPanel', ['select', 'create', 'edit', 'delete']),
 }))
 vi.mock('@cornflow-ui/core/components/roles-management/UsersPanel.vue', () => ({
-  default: stubChild('UsersPanel', ['update:search', 'clear-filter', 'edit']),
+  default: stubChild('UsersPanel', ['update:search', 'clear-filter', 'edit', 'unlock', 'reset-mfa']),
+}))
+vi.mock('@cornflow-ui/core/components/core/CoreAlert.vue', () => ({ default: stubChild('CoreAlert') }))
+vi.mock('@cornflow-ui/core/components/core/table/CoreConfirmDialog.vue', () => ({
+  default: stubChild('CoreConfirmDialog', ['confirm', 'cancel']),
 }))
 vi.mock('@cornflow-ui/core/components/roles-management/RoleFormDialog.vue', () => ({
   default: stubChild('RoleFormDialog', ['save', 'update:modelValue']),
@@ -92,6 +109,9 @@ describe('RolesManagementView', () => {
       { id: 2, name: 'viewer' },
     ]
     rm.users.value = [{ id: 1, username: 'jdoe', role_names: ['admin'] }]
+    rm.rolesForbidden = ref(false)
+    storeState.isPlatformAdmin = false
+    storeState.getUser = { mfaEnabled: false }
   })
 
   afterEach(() => {
@@ -233,7 +253,7 @@ describe('RolesManagementView', () => {
       }
       await wrapper.vm.onUserRolesSave({ user, profile, roleNames: ['admin'] })
       expect(rm.updateUserProfile).toHaveBeenCalledWith(user, profile)
-      expect(rm.saveUserRoleAssignments).toHaveBeenCalledWith(user, ['admin'])
+      expect(rm.saveUserRoleAssignments).toHaveBeenCalledWith(user, ['admin'], undefined)
       expect(wrapper.vm.userDialog).toBe(false)
     })
 
@@ -282,6 +302,65 @@ describe('RolesManagementView', () => {
       wrapper = createWrapper()
       wrapper.findComponent({ name: 'UsersPanel' }).vm.$emit('clear-filter')
       expect(rm.selectRole).toHaveBeenCalledWith(null)
+    })
+  })
+  describe('platform roles', () => {
+    test('a deployment that keeps its roles to platform administrators says so instead of the panels', async () => {
+      rm.rolesForbidden.value = true
+      wrapper = createWrapper()
+      await nextTick()
+      expect(wrapper.find('[data-testid="roles-platform-admin-required"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="RolesPanel"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="UsersPanel"]').exists()).toBe(false)
+    })
+
+    test('only a platform administrator can unlock accounts', async () => {
+      wrapper = createWrapper()
+      expect(wrapper.findComponent({ name: 'UsersPanel' }).props('canUnlock')).toBe(false)
+      wrapper.unmount()
+
+      storeState.isPlatformAdmin = true
+      wrapper = createWrapper()
+      expect(wrapper.findComponent({ name: 'UsersPanel' }).props('canUnlock')).toBe(true)
+    })
+
+    test('unlocking and resetting two-factor run once confirmed', async () => {
+      const user = { id: 3, username: 'locked' }
+      wrapper = createWrapper()
+      const panel = wrapper.findComponent({ name: 'UsersPanel' })
+      const dialog = () => wrapper.findComponent({ name: 'CoreConfirmDialog' })
+
+      panel.vm.$emit('unlock', user)
+      await nextTick()
+      expect(dialog().props('modelValue')).toBe(true)
+      expect(rm.unlockUser).not.toHaveBeenCalled()
+      dialog().vm.$emit('confirm')
+      await flushPromises()
+      expect(rm.unlockUser).toHaveBeenCalledWith(user)
+      expect(dialog().props('modelValue')).toBe(false)
+
+      panel.vm.$emit('reset-mfa', user)
+      await nextTick()
+      dialog().vm.$emit('cancel')
+      await nextTick()
+      expect(rm.resetUserMfa).not.toHaveBeenCalled()
+
+      panel.vm.$emit('reset-mfa', user)
+      await nextTick()
+      dialog().vm.$emit('confirm')
+      await flushPromises()
+      expect(rm.resetUserMfa).toHaveBeenCalledWith(user)
+    })
+
+    test('an administrator with two-factor authentication is asked for a code to grant a platform role', async () => {
+      storeState.getUser = { mfaEnabled: true }
+      wrapper = createWrapper()
+      expect(wrapper.findComponent({ name: 'UserRolesDialog' }).props('askTotp')).toBe(true)
+
+      const user = { id: 9, username: 'k' }
+      const profile = { first_name: '', last_name: '', email: '' }
+      await wrapper.vm.onUserRolesSave({ user, profile, roleNames: ['platform_admin'], totpCode: '123456' })
+      expect(rm.saveUserRoleAssignments).toHaveBeenCalledWith(user, ['platform_admin'], '123456')
     })
   })
 })

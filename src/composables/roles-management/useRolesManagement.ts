@@ -8,6 +8,11 @@
 import { ref, computed, inject } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import {
+  PLATFORM_ADMIN_REQUIRED,
+  TOTP_REQUIRED,
+  isPlatformRole,
+} from '@cornflow-ui/core/utils/platformRoles'
 import type { Role, UserRow, UserProfileValue } from './types'
 
 export function useRolesManagement() {
@@ -20,6 +25,8 @@ export function useRolesManagement() {
   // ── State: roles ────────────────────────────────────────────────────────────
   const roles = ref<Role[]>([])
   const loadingRoles = ref(false)
+  /** Cornflow keeps its roles to platform administrators, and the user is not one. */
+  const rolesForbidden = ref(false)
   const selectedRoleId = ref<number | null>(null)
 
   // ── State: users ────────────────────────────────────────────────────────────
@@ -49,6 +56,7 @@ export function useRolesManagement() {
     loadingRoles.value = true
     try {
       roles.value = await store.roleRepository.getRoles()
+      rolesForbidden.value = false
       // Drop selection if the previously selected role no longer exists.
       if (
         selectedRoleId.value !== null &&
@@ -56,8 +64,9 @@ export function useRolesManagement() {
       ) {
         selectedRoleId.value = null
       }
-    } catch {
-      showSnackbar?.(t('rolesManagement.errorLoadRoles'), 'error')
+    } catch (error) {
+      if ((error as Error)?.message === PLATFORM_ADMIN_REQUIRED) rolesForbidden.value = true
+      else showSnackbar?.(t('rolesManagement.errorLoadRoles'), 'error')
     } finally {
       loadingRoles.value = false
     }
@@ -88,6 +97,8 @@ export function useRolesManagement() {
           first_name: u.first_name ?? '',
           last_name: u.last_name ?? '',
           email: u.email,
+          locked: !!u.locked,
+          mfaEnabled: !!u.mfa_enabled,
           _role_ids: userRoles.map((r) => r.id),
           role_names: userRoles.map((r) => r.name),
         }
@@ -172,6 +183,7 @@ export function useRolesManagement() {
   async function saveUserRoleAssignments(
     user: UserRow,
     newNames: string[],
+    totpCode?: string,
   ): Promise<boolean> {
     const oldIds = new Set(user._role_ids)
     const newIds = new Set(
@@ -182,22 +194,64 @@ export function useRolesManagement() {
 
     const toRemove = [...oldIds].filter((id) => !newIds.has(id))
     const toAdd = [...newIds].filter((id) => !oldIds.has(id))
+    const isPlatformRoleId = (id: number) =>
+      isPlatformRole(roles.value.find((r) => r.id === id)?.name ?? '')
 
     try {
       await Promise.all([
         ...toRemove.map((id) =>
           store.roleRepository.removeRoleFromUser(user.id, id),
         ),
+        // Only a platform role asks for the administrator's two-factor code.
         ...toAdd.map((id) =>
-          store.roleRepository.assignRoleToUser(user.id, id),
+          store.roleRepository.assignRoleToUser(
+            user.id,
+            id,
+            isPlatformRoleId(id) ? totpCode : undefined,
+          ),
         ),
       ])
       user._role_ids = [...newIds]
       user.role_names = [...newNames]
       showSnackbar?.(t('rolesManagement.roleAssigned'), 'success')
       return true
+    } catch (error) {
+      const totpMissing = (error as Error)?.message === TOTP_REQUIRED
+      showSnackbar?.(
+        t(totpMissing ? 'rolesManagement.errorPlatformRoleTotp' : 'rolesManagement.errorAssignRole'),
+        'error',
+      )
+      // The other changes may have gone through: show the roles as they are now.
+      await fetchUsers()
+      return false
+    }
+  }
+
+  /** Unlocks an account locked after too many failed sign-in attempts (platform admins only). */
+  async function unlockUser(user: UserRow): Promise<boolean> {
+    try {
+      if (!(await store.userRepository.unlockUser(user.id))) throw new Error('Not unlocked')
+      user.locked = false
+      showSnackbar?.(t('rolesManagement.userUnlocked'), 'success')
+      return true
     } catch {
-      showSnackbar?.(t('rolesManagement.errorAssignRole'), 'error')
+      showSnackbar?.(t('rolesManagement.errorUnlockUser'), 'error')
+      return false
+    }
+  }
+
+  /**
+   * Turns off a user's two-factor authentication, for a changed or lost phone; a server that
+   * requires it asks for the enrollment at the user's next sign-in.
+   */
+  async function resetUserMfa(user: UserRow): Promise<boolean> {
+    try {
+      if (!(await store.userRepository.resetMfa(user.id))) throw new Error('Not reset')
+      user.mfaEnabled = false
+      showSnackbar?.(t('rolesManagement.mfaReset'), 'success')
+      return true
+    } catch {
+      showSnackbar?.(t('rolesManagement.errorResetMfa'), 'error')
       return false
     }
   }
@@ -206,6 +260,7 @@ export function useRolesManagement() {
     // State
     roles,
     loadingRoles,
+    rolesForbidden,
     selectedRoleId,
     users,
     loadingUsers,
@@ -223,5 +278,7 @@ export function useRolesManagement() {
     deleteRole,
     updateUserProfile,
     saveUserRoleAssignments,
+    unlockUser,
+    resetUserMfa,
   }
 }

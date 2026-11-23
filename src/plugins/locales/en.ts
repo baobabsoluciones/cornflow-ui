@@ -1301,7 +1301,42 @@ export default {
           'Create and launch executions',
         ],
       },
+      platform_admin: {
+        description: 'Platform staff · administers the deployment',
+        permissions: [
+          'Everything an admin does',
+          'Manage roles and platform users',
+          'Unlock locked accounts',
+        ],
+      },
+      platform_planner: {
+        description: 'Platform staff · plans like a planner',
+        permissions: [
+          'Read instances and solutions',
+          'Create and launch executions',
+          'Edit master data',
+        ],
+      },
+      platform_viewer: {
+        description: 'Platform staff · read only',
+        permissions: [
+          'Read instances and solutions',
+        ],
+      },
     },
+    lockedBadge: 'Locked',
+    unlockUser: 'Unlock account',
+    unlockConfirm: '{username}\'s account will be unlocked and its failed attempts counted from zero.',
+    userUnlocked: 'The account has been unlocked.',
+    errorUnlockUser: 'The account could not be unlocked.',
+    resetMfa: 'Reset two-factor authentication',
+    resetMfaConfirm: '{username}\'s authenticator app and backup codes will stop working, and their sessions will close. When the app requires it, they set it up again at their next sign-in.',
+    mfaReset: 'Two-factor authentication has been reset.',
+    errorResetMfa: 'Two-factor authentication could not be reset.',
+    platformRoleTotpLabel: 'Your authentication code',
+    platformRoleTotpHint: 'Granting a platform role asks for a code from your authenticator app, or one of your backup codes.',
+    errorPlatformRoleTotp: 'Granting a platform role needs a valid authentication code.',
+    platformAdminRequired: 'On this deployment only platform administrators manage roles.',
   },
   externalEtl: {
     switch: {

@@ -247,4 +247,30 @@ describe('UsersPanel', () => {
       expect(wrapper.findAll('th')[0].attributes('aria-sort')).toBeUndefined()
     })
   })
+
+  describe('locked accounts and two-factor authentication', () => {
+    test('a locked account says so', () => {
+      wrapper = createWrapper({ users: [user({ locked: true }), user({ id: 2, username: 'b' })] })
+      expect(wrapper.findAll('[data-testid="user-locked"]')).toHaveLength(1)
+    })
+
+    test('only with canUnlock can a locked account be unlocked', async () => {
+      const locked = user({ locked: true })
+      wrapper = createWrapper({ users: [locked] })
+      expect(wrapper.find('[data-testid="user-unlock"]').exists()).toBe(false)
+      wrapper.unmount()
+
+      wrapper = createWrapper({ users: [locked], canUnlock: true })
+      await wrapper.find('[data-testid="user-unlock"]').trigger('click')
+      expect(wrapper.emitted('unlock')![0]).toEqual([locked])
+    })
+
+    test('a user with two-factor authentication can have it reset', async () => {
+      const withMfa = user({ mfaEnabled: true })
+      wrapper = createWrapper({ users: [withMfa, user({ id: 2, username: 'b' })] })
+      expect(wrapper.findAll('[data-testid="user-reset-mfa"]')).toHaveLength(1)
+      await wrapper.find('[data-testid="user-reset-mfa"]').trigger('click')
+      expect(wrapper.emitted('reset-mfa')![0]).toEqual([withMfa])
+    })
+  })
 })

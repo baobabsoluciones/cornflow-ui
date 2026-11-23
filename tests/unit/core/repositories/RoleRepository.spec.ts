@@ -31,6 +31,11 @@ describe('RoleRepository - roles CRUD', () => {
     await expect(repo.getRoles()).rejects.toThrow('Error getting roles')
   })
 
+  test('getRoles kept to platform administrators rejects with platform_admin_required', async () => {
+    mockClient.get.mockResolvedValueOnce({ status: 403, content: { error: 'No permission' } })
+    await expect(repo.getRoles()).rejects.toThrow('platform_admin_required')
+  })
+
   test('getRoles propagates network errors via catch', async () => {
     mockClient.get.mockRejectedValueOnce(new Error('network'))
     await expect(repo.getRoles()).rejects.toThrow('network')
@@ -90,6 +95,24 @@ describe('RoleRepository - user/role assignments', () => {
 
     mockClient.post.mockResolvedValueOnce({ status: 409, content: null })
     await expect(repo.assignRoleToUser(1, 2)).rejects.toThrow('Error assigning role to user')
+  })
+
+  test("assignRoleToUser sends the administrator's two-factor code when given", async () => {
+    mockClient.post.mockResolvedValueOnce({ status: 201, content: { id: 5 } })
+    await repo.assignRoleToUser(1, 903, '123456')
+    expect(mockClient.post).toHaveBeenCalledWith('/user/role/', {
+      user_id: 1,
+      role_id: 903,
+      totp_code: '123456',
+    })
+  })
+
+  test('assignRoleToUser without a valid two-factor code rejects with totp_required', async () => {
+    mockClient.post.mockResolvedValueOnce({
+      status: 400,
+      content: { error: 'A valid two-factor authentication code is required to grant a platform role' },
+    })
+    await expect(repo.assignRoleToUser(1, 903)).rejects.toThrow('totp_required')
   })
 
   test('removeRoleFromUser returns boolean by status', async () => {

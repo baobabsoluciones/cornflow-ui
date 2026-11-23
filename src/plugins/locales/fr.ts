@@ -1146,7 +1146,42 @@ export default {
           'Créer et lancer des exécutions',
         ],
       },
+      platform_admin: {
+        description: 'Équipe de la plateforme · administre le déploiement',
+        permissions: [
+          'Tout ce que fait un admin',
+          'Gérer les rôles et les utilisateurs de la plateforme',
+          'Débloquer les comptes bloqués',
+        ],
+      },
+      platform_planner: {
+        description: 'Équipe de la plateforme · planifie comme un planner',
+        permissions: [
+          'Lire les instances et les solutions',
+          'Créer et lancer des exécutions',
+          'Modifier les données de référence',
+        ],
+      },
+      platform_viewer: {
+        description: 'Équipe de la plateforme · lecture seule',
+        permissions: [
+          'Lire les instances et les solutions',
+        ],
+      },
     },
+    lockedBadge: 'Bloqué',
+    unlockUser: 'Débloquer le compte',
+    unlockConfirm: 'Le compte de {username} sera débloqué et ses tentatives échouées recomptées depuis zéro.',
+    userUnlocked: 'Le compte a été débloqué.',
+    errorUnlockUser: 'Le compte n\'a pas pu être débloqué.',
+    resetMfa: 'Réinitialiser l\'authentification à deux facteurs',
+    resetMfaConfirm: 'L\'application d\'authentification et les codes de secours de {username} cesseront de fonctionner, et ses sessions se fermeront. Si l\'application l\'exige, il la configurera à nouveau à la prochaine connexion.',
+    mfaReset: 'L\'authentification à deux facteurs a été réinitialisée.',
+    errorResetMfa: 'L\'authentification à deux facteurs n\'a pas pu être réinitialisée.',
+    platformRoleTotpLabel: 'Votre code d\'authentification',
+    platformRoleTotpHint: 'Accorder un rôle de plateforme demande un code de votre application d\'authentification, ou l\'un de vos codes de secours.',
+    errorPlatformRoleTotp: 'Accorder un rôle de plateforme nécessite un code d\'authentification valide.',
+    platformAdminRequired: 'Sur ce déploiement, seuls les administrateurs de la plateforme gèrent les rôles.',
   },
   externalEtl: {
     switch: {

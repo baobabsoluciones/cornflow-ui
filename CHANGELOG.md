@@ -3,6 +3,12 @@
 ## [Unreleased]
 
 ### Added
+- **Platform roles, locked accounts and two-factor resets in roles management**  
+  - A platform administrator (`platform_admin`) counts as an administrator and gets `store.isPlatformAdmin`; the platform roles have their own icon, tone, description and permissions
+  - When the server keeps the list of roles to platform administrators (403 on `GET /roles/`), anyone else is told so in place of the panels; a server without platform roles keeps the page for every administrator
+  - Granting a platform role asks an administrator with two-factor authentication for a code (`totp_code` on `POST /user/role/`); a missing or wrong code says so, and the users are read again so the table shows what changed
+  - Locked accounts show so; a platform administrator unlocks them (`PUT /user/<id>/unlock/`) and any administrator resets a user's two-factor authentication (`DELETE /user/<id>/mfa/`), both after a confirmation
+  *Contributors:* [@HelenaCA](#), [@ggsdc](#)  
 - **Two-factor authentication and personal access token in the user settings**  
   - Two-factor authentication: whether it is on; turning it on (QR code, first code, backup codes) and resetting it after a confirmation, which closes every session and goes to the sign-in. The enrollment is shared with the sign-in (`useMfaEnrollment`)
   - Personal access token: generates one, read-only if asked, confirmed with a two-factor code when the user has it, shown once; a server with tokens off says so. Hidden with `enablePersonalTokens: false`

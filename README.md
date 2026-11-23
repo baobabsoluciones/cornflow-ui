@@ -115,6 +115,27 @@ menu), a card per subject:
   generating one revokes the previous one. A server with personal tokens off says so in place of
   the form.
 
+## Roles management
+
+The administrators' page (`views/RolesManagementView.vue`, under Administration when
+`enableRolesManagement` is on): the roles of the app on the left, to filter the users by one (and,
+with `allowEditRoles`, to add, rename and delete them); the users on the right, to search them and
+edit their name, e-mail and roles.
+
+On a Cornflow server with the security hardening:
+
+- **Platform roles** (`platform_viewer`, `platform_planner`, `platform_admin`) belong to the staff
+  that runs the deployment. A platform administrator is an administrator too, with platform-only
+  actions on top (`store.isPlatformAdmin`).
+- The server keeps the list of roles to platform administrators: anyone else opening the page is
+  told so, in place of the panels. A server without platform roles keeps the page for every
+  administrator.
+- Granting a platform role the user does not have yet asks an administrator who has two-factor
+  authentication for a code of their authenticator app.
+- A locked account (too many failed sign-in attempts) shows so in its row, and a platform
+  administrator can unlock it there. Any administrator can reset a user's two-factor
+  authentication, for a changed or lost phone. Both ask for a confirmation first.
+
 ## Help menu and guided tours
 
 The "?" button at the top right of every view opens the help menu: a tour of the app, the tour of

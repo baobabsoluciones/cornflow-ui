@@ -6,9 +6,11 @@
     in the RolesPanel shows as a filter that can be cleared.
   - The table sorts by user or e-mail from its headers and scrolls inside past the window height.
     While loading with no users yet it shows placeholder rows.
+  - A locked account (too many failed sign-in attempts) says so; with `canUnlock` (platform
+    administrators) its row can unlock it. A user with two-factor authentication can have it reset.
 
-  <UsersPanel :users="users" :selected-role="role" v-model:search="search"
-    @clear-filter="clearRole" @edit="openUser" />
+  <UsersPanel :users="users" :selected-role="role" v-model:search="search" :can-unlock="isPlatformAdmin"
+    @clear-filter="clearRole" @edit="openUser" @unlock="unlock" @reset-mfa="resetMfa" />
 -->
 <template>
   <section class="panel users-panel" :aria-label="$t('rolesManagement.usersTitle')">
@@ -89,7 +91,17 @@
                   {{ avatar.initialsFor(user) }}
                 </span>
                 <span class="user-info">
-                  <span class="user-name">{{ user.full_name }}</span>
+                  <span class="user-name">
+                    {{ user.full_name }}
+                    <CoreBadge
+                      v-if="user.locked"
+                      :label="$t('rolesManagement.lockedBadge')"
+                      tone="danger"
+                      icon="mdi-lock-outline"
+                      size="small"
+                      data-testid="user-locked"
+                    />
+                  </span>
                   <span class="user-handle">@{{ user.username }}</span>
                 </span>
               </div>
@@ -113,6 +125,26 @@
               </div>
             </td>
             <td class="users-table__actions">
+              <CoreButton
+                v-if="user.locked && canUnlock"
+                variant="icon"
+                size="small"
+                icon="mdi-lock-open-variant-outline"
+                :aria-label="$t('rolesManagement.unlockUser')"
+                :title="$t('rolesManagement.unlockUser')"
+                data-testid="user-unlock"
+                @click="$emit('unlock', user)"
+              />
+              <CoreButton
+                v-if="user.mfaEnabled"
+                variant="icon"
+                size="small"
+                icon="mdi-shield-off-outline"
+                :aria-label="$t('rolesManagement.resetMfa')"
+                :title="$t('rolesManagement.resetMfa')"
+                data-testid="user-reset-mfa"
+                @click="$emit('reset-mfa', user)"
+              />
               <CoreButton
                 variant="icon"
                 size="small"
@@ -158,16 +190,21 @@ interface Props {
   selectedRole: Role | null
   search: string
   loading?: boolean
+  /** Locked accounts can be unlocked (platform administrators only). */
+  canUnlock?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   loading: false,
+  canUnlock: false,
 })
 
 defineEmits<{
   (e: 'update:search', value: string): void
   (e: 'clear-filter'): void
   (e: 'edit', user: UserRow): void
+  (e: 'unlock', user: UserRow): void
+  (e: 'reset-mfa', user: UserRow): void
 }>()
 
 const { t } = useI18n()
@@ -388,6 +425,7 @@ const sortedUsers = computed(() => {
 
 .users-table__actions {
   text-align: right;
+  white-space: nowrap;
 }
 
 .user-cell {
@@ -456,6 +494,11 @@ const sortedUsers = computed(() => {
 
 .user-name {
   font-weight: var(--font-weight-medium);
+}
+
+.user-name .core-badge {
+  margin-left: calc(var(--spacing) * 1.5);
+  vertical-align: middle;
 }
 
 .user-handle {
