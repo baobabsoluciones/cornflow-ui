@@ -598,16 +598,18 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
-    async changeUserPassword(userId: string, password: string) {
+    async changeUserPassword(
+      userId: string,
+      password: string,
+      currentPassword: string,
+    ): Promise<{ success: boolean; message?: string }> {
       try {
-        const response = await this.userRepository.changePassword(
-          userId,
-          password,
-        )
-        return response
+        const result = await this.userRepository.changePassword(userId, password, currentPassword)
+        if (result.success) sessionStorage.removeItem('pwdChangeRequired')
+        return result
       } catch (error) {
         console.error('Error changing password', error)
-        return false
+        return { success: false }
       }
     },
 

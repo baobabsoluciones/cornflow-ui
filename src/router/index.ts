@@ -214,6 +214,11 @@ const buildRoutes = (): RouteRecordRaw[] => {
       component: LoginView,
     },
     {
+      // The page the password reset e-mail links to.
+      path: '/reset-password',
+      component: () => import('@cornflow-ui/core/views/ResetPasswordView.vue'),
+    },
+    {
       path: '/',
       name: 'Home',
       component: IndexView,
@@ -287,11 +292,27 @@ export function createAppRouter(): Router {
       const auth = await initAuthService()
       const isAuthenticated = auth.isAuthenticated()
       const isSignInPage = to.path === '/sign-in'
-      const isTargetingAuthRequiredPage = to.path !== '/sign-in'
+
+      // The reset page works with the e-mailed link, signed in or not.
+      if (to.path === '/reset-password') {
+        next()
+        return
+      }
 
       // If not authenticated and going to a protected page
-      if (!isAuthenticated && isTargetingAuthRequiredPage) {
+      if (!isAuthenticated && !isSignInPage) {
         next('/sign-in')
+        return
+      }
+
+      // A password that has expired or must be renewed keeps the user on the settings page, where
+      // it is changed, until it is.
+      if (
+        isAuthenticated &&
+        sessionStorage.getItem('pwdChangeRequired') === 'true' &&
+        to.path !== '/user-settings'
+      ) {
+        next({ path: '/user-settings', query: { changePassword: 'true' } })
         return
       }
 

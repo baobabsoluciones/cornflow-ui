@@ -98,9 +98,12 @@ menu), a card per subject:
 - **Appearance**, when the app offers dark mode (`enableDarkMode`): light, dark or as the system
   is (see [Dark mode](#dark-mode)).
 - **Language** of the app, among the ones it offers (`languages` in the app config).
-- **Password**, when the app signs in with Cornflow (`auth.type: 'cornflow'`): the new one twice,
-  with what it needs ticked as it is typed (at least 5 characters; upper and lower case letters,
-  numbers and a special character; no spaces; both the same). It is sent once it meets all of it.
+- **Password**, when the app signs in with Cornflow (`auth.type: 'cornflow'`): the current one and
+  the new one twice, with Cornflow's password policy ticked as it is typed (see
+  [Password policy](#password-policy)). It is sent once it meets all of it. Changing it closes every
+  session of the user, so the page goes to the sign-in to enter with the new one. When the password
+  has expired or must be renewed, the card says so and the app keeps the user here until it is
+  changed.
 
 ## Help menu and guided tours
 
@@ -1627,6 +1630,44 @@ The application supports three authentication methods. The server must be proper
 VITE_APP_AUTH_TYPE=cornflow
 ```
 
+Cornflow's own sign-in, with what a Cornflow server with the security hardening asks of the client.
+A server without it answers with none of these, and the app signs in as with a username and password
+only.
+
+- **Session**: the login gives a short-lived access token and a refresh token. When a request finds
+  the access token expired (a 401, or a 400 whose error is about the token), the Api client
+  (`ApiClient.renewSession`) exchanges the refresh token at `POST /token/refresh/` and sends the
+  request again, once; requests that find it expired at the same time share one renewal. When the
+  refresh token is no longer accepted (inactivity, the absolute cap, a password change), the session
+  ends and the app goes to the sign-in. Logging out closes the session on the server too
+  (`POST /logout/`). Service users and servers with refresh tokens off get no refresh token.
+- **Two-factor authentication**: a user who has it is asked for the code of their authenticator app,
+  or one of their backup codes, after the password. When the server requires it (`MFA_REQUIRED=1`)
+  and the user has none yet, the sign-in goes through the enrollment first: a QR code (and its
+  secret, to type it in), the first code, and the one-time backup codes. The enrollment uses a
+  temporary token that is dropped if the user goes back.
+- **Password that must change**: when the password has expired, was reset by an administrator or
+  belongs to a newly provisioned account, the server answers 403 (`password_rotation`) on every
+  endpoint but the profile ones. The app takes the user to their settings, says why, and keeps them
+  there until the password is changed.
+- **Password recovery**: "Forgot your password?" on the sign-in asks for an e-mail, and the server
+  sends a link to `/reset-password?token=…` (the server's `CORNFLOW_UI_URL` must point at the app).
+  The page takes the token out of the address at once and asks for the new password twice. The
+  answer never says whether the e-mail belongs to an account.
+- **Refusals**: too many attempts from one address (429) and an account locked after too many
+  failed attempts (only a platform administrator unlocks it) say so, instead of "wrong credentials".
+- After the sign-in, a notice says when the previous one was.
+
+##### Password policy
+
+The password forms (user settings and the reset page) tick Cornflow's policy as the user types
+(`utils/passwordPolicy.ts`, `composables/usePasswordPolicy.ts`): at least 12 characters; upper and
+lower case letters, a digit and a special character; no spaces; no runs of 6 or more digits (such
+as dates); and hard to guess, scored with zxcvbn against common passwords and keyboard patterns (3
+or more out of 4, the server's threshold). The zxcvbn dictionaries load the first time a form
+needs them. The server has the last word: it also rejects the user's personal data and their last
+passwords, and the form shows its reason.
+
 #### Azure OpenID authentication
 
 ```env
@@ -1669,12 +1710,15 @@ parameters: {
 - The title is the app name (`VITE_APP_NAME` / `name`), its first word in bold.
 - Without `subtitle` the page says "Sign in to continue."; without `description` the brand panel
   shows none.
-- The form always signs in against Cornflow. The Microsoft and Google buttons are always there and
-  go through the deployment's external auth (Azure, or Cognito with `VITE_APP_AUTH_PROVIDERS`); on a
-  deployment without them configured, picking one says so.
+- The form always signs in against Cornflow, with the two-factor steps and the password recovery
+  request of [Cornflow authentication](#cornflow-authentication-default). The Microsoft and Google
+  buttons are always there and go through the deployment's external auth (Azure, or Cognito with
+  `VITE_APP_AUTH_PROVIDERS`); on a deployment without them configured, picking one says so.
+- Under the form, a notice that access is for authorised people only and may be monitored.
 - The footer offers the app's languages (`languages` in the app config) when it has more than one.
 - **Location**: `components/SignInLanding.vue` (the layouts), `components/sign-in/SignInForm.vue`,
-  `components/sign-in/SignInLanguages.vue` and `composables/sign-in/useSignIn.ts`.
+  `components/sign-in/SignInLanguages.vue` and `composables/sign-in/useSignIn.ts`; the reset page,
+  `views/ResetPasswordView.vue`.
 
 ### Dashboard preferences
 

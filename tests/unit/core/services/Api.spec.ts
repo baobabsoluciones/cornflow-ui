@@ -27,7 +27,8 @@ vi.mock('@cornflow-ui/core/services/AuthServiceFactory', () => ({
 
 // Mock router
 const mockRouter = vi.hoisted(() => ({
-  push: vi.fn()
+  push: vi.fn(),
+  currentRoute: { value: { path: '/' } } as { value: { path: string } },
 }))
 
 vi.mock('@cornflow-ui/core/router', () => ({
@@ -551,6 +552,163 @@ describe('ApiClient', () => {
       await expect(apiClient.getBlob('/data/1/')).rejects.toThrow('Unauthorized: Session expired')
       await expect(apiClient.postStream('/agent/', { message: 'x' })).rejects.toThrow('Unauthorized: Session expired')
       expect(handleAuthFailureSpy).toHaveBeenCalledTimes(2)
+    })
+
+    describe('session renewal with the refresh token', () => {
+      const json = (status: number, body: unknown) =>
+        new Response(JSON.stringify(body), {
+          status,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      const renewed = () => json(200, { token: 'new-access', refresh_token: 'new-refresh' })
+      const refreshCalls = () =>
+        vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/token/refresh/'))
+
+      beforeEach(() => {
+        sessionStorageMock.setItem('token', 'old-access')
+        sessionStorageMock.setItem('refreshToken', 'old-refresh')
+      })
+
+      test('an expired access token is renewed and the request sent again with the new one', async () => {
+        vi.mocked(fetch)
+          .mockResolvedValueOnce(badRequest('The token has expired, please login again'))
+          .mockResolvedValueOnce(renewed())
+          .mockResolvedValueOnce(json(200, { id: 1 }))
+
+        await expect(apiClient.get('/user/1/')).resolves.toEqual({ status: 200, content: { id: 1 } })
+
+        const [url, init] = refreshCalls()[0]
+        expect(url).toBe('http://localhost:8000/token/refresh/')
+        expect(JSON.parse(String(init?.body))).toEqual({ refresh_token: 'old-refresh' })
+        const retried = vi.mocked(fetch).mock.calls[2][1]?.headers as Record<string, string>
+        expect(retried.Authorization).toBe('Bearer new-access')
+        expect(sessionStorageMock.getItem('token')).toBe('new-access')
+        expect(sessionStorageMock.getItem('refreshToken')).toBe('new-refresh')
+      })
+
+      test('a 401 is renewed too', async () => {
+        vi.mocked(fetch)
+          .mockResolvedValueOnce(json(401, { error: 'Unauthorized' }))
+          .mockResolvedValueOnce(renewed())
+          .mockResolvedValueOnce(json(200, {}))
+
+        await expect(apiClient.get('/user/1/')).resolves.toMatchObject({ status: 200 })
+      })
+
+      test('requests that find the session ended at once share one renewal', async () => {
+        vi.mocked(fetch).mockImplementation(async (url, init) => {
+          if (String(url).endsWith('/token/refresh/')) return renewed()
+          const headers = init?.headers as Record<string, string>
+          return headers.Authorization === 'Bearer new-access'
+            ? json(200, {})
+            : badRequest('The token has expired, please login again')
+        })
+
+        await Promise.all([apiClient.get('/a/'), apiClient.get('/b/'), apiClient.get('/c/')])
+
+        expect(refreshCalls()).toHaveLength(1)
+      })
+
+      test('a refresh token cornflow no longer accepts ends the session', async () => {
+        const handleAuthFailureSpy = vi.spyOn(apiClient, 'handleAuthFailure').mockImplementation(() => {})
+        vi.mocked(fetch)
+          .mockResolvedValueOnce(badRequest('The token has expired, please login again'))
+          .mockResolvedValueOnce(json(401, { error: 'The session has expired, please log in again' }))
+
+        await expect(apiClient.get('/user/1/')).rejects.toThrow('Unauthorized: Session expired')
+        expect(handleAuthFailureSpy).toHaveBeenCalled()
+      })
+
+      test('a request is sent again only once', async () => {
+        const handleAuthFailureSpy = vi.spyOn(apiClient, 'handleAuthFailure').mockImplementation(() => {})
+        vi.mocked(fetch).mockImplementation(async (url) =>
+          String(url).endsWith('/token/refresh/') ? renewed() : json(401, {}),
+        )
+
+        await expect(apiClient.get('/user/1/')).rejects.toThrow('Unauthorized: Session expired')
+        expect(refreshCalls()).toHaveLength(1)
+        expect(handleAuthFailureSpy).toHaveBeenCalled()
+      })
+
+      test('without a refresh token there is nothing to renew', async () => {
+        sessionStorageMock.removeItem('refreshToken')
+        vi.spyOn(apiClient, 'handleAuthFailure').mockImplementation(() => {})
+        vi.mocked(fetch).mockResolvedValueOnce(json(401, {}))
+
+        await expect(apiClient.get('/user/1/')).rejects.toThrow('Unauthorized: Session expired')
+        expect(refreshCalls()).toHaveLength(0)
+      })
+
+      test.each(['/login/', '/logout/', '/user/reset-password/'])(
+        'the answer of %s is not renewed nor ends the session',
+        async (url) => {
+          const handleAuthFailureSpy = vi.spyOn(apiClient, 'handleAuthFailure').mockImplementation(() => {})
+          vi.mocked(fetch).mockResolvedValueOnce(badRequest('The token has expired, please login again'))
+
+          await expect(apiClient.put(url, {})).resolves.toMatchObject({ status: 400 })
+          expect(refreshCalls()).toHaveLength(0)
+          expect(handleAuthFailureSpy).not.toHaveBeenCalled()
+        },
+      )
+
+      test('a download and a stream are renewed too', async () => {
+        vi.mocked(fetch).mockImplementation(async (url, init) => {
+          if (String(url).endsWith('/token/refresh/')) return renewed()
+          const headers = init?.headers as Record<string, string>
+          return headers.Authorization === 'Bearer new-access'
+            ? new Response('data', { status: 200 })
+            : json(401, {})
+        })
+
+        await expect(apiClient.getBlob('/data/1/')).resolves.toMatchObject({ status: 200 })
+        await expect(apiClient.postStream('/agent/', { message: 'x' })).resolves.toMatchObject({ status: 200 })
+      })
+
+      test('logging out forgets the refresh token', () => {
+        apiClient['handleAuthFailure']()
+
+        expect(sessionStorageMock.getItem('refreshToken')).toBeNull()
+      })
+    })
+
+    describe('a password that has expired', () => {
+      test('keeps the user on the settings page until it is changed', async () => {
+        vi.useFakeTimers()
+        mockRouter.currentRoute = { value: { path: '/history-execution' } }
+        vi.mocked(fetch).mockResolvedValueOnce(
+          new Response(JSON.stringify({ error: 'Change it', error_code: 'password_rotation' }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+
+        await expect(apiClient.get('/execution/')).resolves.toMatchObject({ status: 403 })
+        await vi.runAllTimersAsync()
+
+        expect(sessionStorageMock.getItem('pwdChangeRequired')).toBe('true')
+        expect(mockRouter.push).toHaveBeenCalledWith({
+          path: '/user-settings',
+          query: { changePassword: 'true' },
+        })
+        vi.useRealTimers()
+      })
+
+      test('on the settings page already, stays there', async () => {
+        vi.useFakeTimers()
+        mockRouter.currentRoute = { value: { path: '/user-settings' } }
+        vi.mocked(fetch).mockResolvedValueOnce(
+          new Response(JSON.stringify({ error_code: 'password_rotation' }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+
+        await apiClient.get('/execution/')
+        await vi.runAllTimersAsync()
+
+        expect(mockRouter.push).not.toHaveBeenCalled()
+        vi.useRealTimers()
+      })
     })
 
     test('request handles FormData body correctly', async () => {

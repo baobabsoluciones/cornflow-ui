@@ -4,8 +4,10 @@
   - Account: the name, the e-mail, the user name and the roles of who is signed in.
   - Appearance, when the app offers dark mode (`enableDarkMode`): light, dark or as the system is.
   - Language of the app, among the ones the app offers (`languages` in its config).
-  - Password, when the app signs in with Cornflow: the new one twice, with what it needs ticked
-    as it is typed; it is sent once it meets all of it.
+  - Password, when the app signs in with Cornflow: the current one and the new one twice, with
+    what cornflow's password policy needs ticked as it is typed; it is sent once it meets all of
+    it. Changing it closes every session, so the user signs in again with the new one. When the
+    password has expired or must be renewed, the card says so and the app waits for it here.
 -->
 <template>
   <div class="view-container user-settings-view">
@@ -73,7 +75,23 @@
           <h2 id="settings-password-title" class="user-settings__title">{{ $t('settings.password') }}</h2>
           <p class="user-settings__hint">{{ $t('settings.changePassword') }}</p>
         </header>
+        <CoreAlert
+          v-if="passwordChangeForced"
+          tone="warning"
+          :message="$t('settings.passwordChangeForced')"
+          data-testid="settings-password-forced"
+        />
         <form class="user-settings__password" data-testid="settings-password" @submit.prevent="changePassword">
+          <label class="user-settings__label">
+            {{ $t('settings.currentPassword') }}
+            <CoreTextField
+              v-model="currentPassword"
+              class="user-settings__field"
+              :type="showPasswords ? 'text' : 'password'"
+              autocomplete="current-password"
+              data-testid="settings-current-password"
+            />
+          </label>
           <label class="user-settings__label">
             {{ $t('settings.newPassword') }}
             <CoreTextField
@@ -109,7 +127,7 @@
           </label>
           <ul class="user-settings__rules" :aria-label="$t('settings.passwordNeeds')">
             <li
-              v-for="rule in rules"
+              v-for="rule in passwordChecks"
               :key="rule.key"
               class="user-settings__rule"
               :class="{ 'is-met': rule.met }"
@@ -136,6 +154,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute, useRouter } from 'vue-router'
+import CoreAlert from '@cornflow-ui/core/components/core/CoreAlert.vue'
 import CoreBadge from '@cornflow-ui/core/components/core/CoreBadge.vue'
 import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
 import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
@@ -152,12 +172,16 @@ import {
   readConfiguredLanguages,
 } from '@cornflow-ui/core/plugins/languages'
 import config from '@cornflow-ui/core/config'
+import { usePasswordPolicy } from '@cornflow-ui/core/composables/usePasswordPolicy'
+import { getSpecificAuthService } from '@cornflow-ui/core/services/AuthServiceFactory'
 import appConfig from '@/app/config'
 
 defineOptions({ name: 'UserSettingsView' })
 
 const { t, locale } = useI18n()
 const store = useGeneralStore()
+const route = useRoute()
+const router = useRouter()
 
 // ── Account ──────────────────────────────────────────────────────────────────
 
@@ -207,53 +231,42 @@ watch(language, (code) => {
 
 // ── Password ─────────────────────────────────────────────────────────────────
 
-const MIN_LENGTH = 5
-const SPECIAL = /[!?@#$%^&*)(+=.<>{}[\],/¿¡:;'"|~`_-]/
-
 const canChangePassword = computed(() => config.auth.type === 'cornflow')
+const passwordChangeForced = computed(
+  () =>
+    route.query.changePassword === 'true' || sessionStorage.getItem('pwdChangeRequired') === 'true',
+)
+const currentPassword = ref('')
 const newPassword = ref('')
 const confirmPassword = ref('')
 const showPasswords = ref(false)
 const saving = ref(false)
 
-const rules = computed(() => {
-  const value = newPassword.value
-  return [
-    {
-      key: 'length',
-      label: t('settings.passwordRules.length', { length: MIN_LENGTH }),
-      met: value.length >= MIN_LENGTH,
-    },
-    {
-      key: 'characters',
-      label: t('settings.passwordRules.characters'),
-      met: /[A-Z]/.test(value) && /[a-z]/.test(value) && /\d/.test(value) && SPECIAL.test(value),
-    },
-    { key: 'spaces', label: t('settings.passwordRules.spaces'), met: value !== '' && !/\s/.test(value) },
-    {
-      key: 'match',
-      label: t('settings.passwordRules.match'),
-      met: value !== '' && value === confirmPassword.value,
-    },
-  ]
-})
+const {
+  checks: passwordChecks,
+  ready: newPasswordReady,
+  mismatch,
+} = usePasswordPolicy(newPassword, confirmPassword)
 
-const mismatch = computed(
-  () => confirmPassword.value !== '' && confirmPassword.value !== newPassword.value,
-)
-const passwordReady = computed(() => rules.value.every((rule) => rule.met))
+const passwordReady = computed(() => currentPassword.value !== '' && newPasswordReady.value)
 
 async function changePassword() {
   if (!passwordReady.value || saving.value) return
   saving.value = true
   try {
-    const changed = await store.changeUserPassword(store.getUser.id, newPassword.value)
-    if (changed) {
-      newPassword.value = ''
-      confirmPassword.value = ''
-      showSnackbar(t('settings.snackbarMessageSuccess'), 'success')
+    const result = await store.changeUserPassword(
+      store.getUser.id,
+      newPassword.value,
+      currentPassword.value,
+    )
+    if (result.success) {
+      // Cornflow closes every session of the user, this one too.
+      showSnackbar(t('settings.snackbarMessageSuccessRelogin'), 'success')
+      const auth = await getSpecificAuthService('cornflow')
+      auth?.logout()
+      void router.push('/sign-in')
     } else {
-      showSnackbar(t('settings.snackbarMessageError'), 'error')
+      showSnackbar(result.message || t('settings.snackbarMessageError'), 'error')
     }
   } catch (error) {
     console.error('Failed to change password:', error)
