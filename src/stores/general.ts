@@ -613,6 +613,15 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
+    async resetUserMfa(userId: string): Promise<boolean> {
+      try {
+        return await this.userRepository.resetMfa(userId)
+      } catch (error) {
+        console.error('Error resetting the two-factor authentication', error)
+        return false
+      }
+    },
+
     async setSchema() {
       try {
         const schema = await this.schemaRepository.getSchema(this.getSchemaName)

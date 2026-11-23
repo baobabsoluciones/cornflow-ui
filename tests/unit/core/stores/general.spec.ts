@@ -144,6 +144,7 @@ const mockInstanceRepository = vi.hoisted(() => ({
 const mockUserRepository = vi.hoisted(() => ({
   getUserById: vi.fn(),
   changePassword: vi.fn(),
+  resetMfa: vi.fn(),
 }))
 
 const mockLicenceRepository = vi.hoisted(() => ({
@@ -312,6 +313,24 @@ describe('General Store', () => {
       expect(result).toEqual({ success: false, message: 'Reused' })
       expect(sessionStorage.getItem('pwdChangeRequired')).toBe('true')
       sessionStorage.removeItem('pwdChangeRequired')
+    })
+
+    test('resetUserMfa turns off the two-factor authentication of a user', async () => {
+      mockUserRepository.resetMfa.mockResolvedValue(true)
+
+      const store = useGeneralStore()
+
+      expect(await store.resetUserMfa('7')).toBe(true)
+      expect(mockUserRepository.resetMfa).toHaveBeenCalledWith('7')
+    })
+
+    test('resetUserMfa that fails resolves to false', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      mockUserRepository.resetMfa.mockRejectedValue(new Error('offline'))
+
+      const store = useGeneralStore()
+
+      expect(await store.resetUserMfa('7')).toBe(false)
     })
 
     test('setSchema successfully', async () => {

@@ -3,6 +3,11 @@
 ## [Unreleased]
 
 ### Added
+- **Two-factor authentication and personal access token in the user settings**  
+  - Two-factor authentication: whether it is on; turning it on (QR code, first code, backup codes) and resetting it after a confirmation, which closes every session and goes to the sign-in. The enrollment is shared with the sign-in (`useMfaEnrollment`)
+  - Personal access token: generates one, read-only if asked, confirmed with a two-factor code when the user has it, shown once; a server with tokens off says so. Hidden with `enablePersonalTokens: false`
+  - Turning on two-factor authentication renews the session tokens without dropping the role flags of the signed-in user
+  *Contributors:* [@HelenaCA](#), [@ggsdc](#)  
 - **Sign-in and session against a Cornflow server with the security hardening**  
   - Session: the short-lived access token is renewed with the refresh token (`POST /token/refresh/`) when a request finds it expired, and the request is sent again once. Requests that find it expired at once share one renewal; downloads and streams are renewed too. Logging out closes the session on the server (`POST /logout/`)
   - Two-factor authentication on the sign-in: the code of the authenticator app or a backup code; and, when the server requires it, the enrollment (QR code, its secret, first code and one-time backup codes) before the session

@@ -42,6 +42,16 @@ describe('AuthService', () => {
       expect(client.initializeToken).toHaveBeenCalled()
     })
 
+    test("another user's role flags are dropped", async () => {
+      sessionStorage.setItem('userId', '3')
+      sessionStorage.setItem('isAdmin', 'true')
+      client.post.mockResolvedValue({ status: 200, content: { token: 'access', id: 7 } })
+
+      await AuthService.login('planner', 'secret')
+
+      expect(sessionStorage.getItem('isAdmin')).toBeNull()
+    })
+
     test('a session without refresh token leaves none from a previous session', async () => {
       sessionStorage.setItem('refreshToken', 'stale')
       client.post.mockResolvedValue({ status: 200, content: { token: 'access', id: 7 } })
@@ -179,6 +189,17 @@ describe('AuthService', () => {
       expect(sessionStorage.getItem('isAuthenticated')).toBe('true')
       expect(sessionStorage.getItem('token')).toBe('access')
       expect(sessionStorage.getItem('refreshToken')).toBe('refresh')
+    })
+
+    test('turning it on from the settings keeps the role flags of the signed-in user', async () => {
+      sessionStorage.setItem('isAuthenticated', 'true')
+      sessionStorage.setItem('userId', '7')
+      sessionStorage.setItem('isAdmin', 'true')
+      client.post.mockResolvedValue({ status: 200, content: { token: 'access', id: 7, backup_codes: [] } })
+
+      await AuthService.mfaVerify('123456')
+
+      expect(sessionStorage.getItem('isAdmin')).toBe('true')
     })
 
     test('mfaVerify with a wrong code gives null and opens no session', async () => {

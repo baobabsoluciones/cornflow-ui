@@ -29,6 +29,7 @@ import {
   type SsoIdentityProvider,
 } from '@cornflow-ui/core/interfaces/AuthProvider'
 import { googleLogo, microsoftLogo } from '@cornflow-ui/core/utils/assets'
+import { useMfaEnrollment } from '@cornflow-ui/core/composables/useMfaEnrollment'
 
 export interface SsoProvider {
   key: SsoIdentityProvider
@@ -53,9 +54,7 @@ export function useSignIn() {
   const password = ref('')
   const totpCode = ref('')
   const forgotEmail = ref('')
-  const enrollSecret = ref('')
-  const enrollQr = ref('')
-  const backupCodes = ref<string[]>([])
+  const enrollment = useMfaEnrollment()
   /** Set once the user sends the current step, so its empty field says so only from then on. */
   const attempted = ref(false)
   const submitting = ref(false)
@@ -111,22 +110,8 @@ export function useSignIn() {
   }
 
   async function startEnrollment() {
-    const auth = await cornflowAuth()
-    const setup = await auth?.mfaSetup?.()
-    if (!setup) {
-      showSnackbar?.(t('logIn.mfa_setup_error'), 'error')
-      return
-    }
-    enrollSecret.value = setup.secret
-    try {
-      const { toDataURL } = await import('qrcode')
-      enrollQr.value = await toDataURL(setup.provisioningUri, { width: 200, margin: 1 })
-    } catch (error) {
-      // The secret, shown below the QR code, can still be typed in.
-      console.error('Could not draw the QR code:', error)
-      enrollQr.value = ''
-    }
-    goTo('mfa-enroll')
+    if (await enrollment.start()) goTo('mfa-enroll')
+    else showSnackbar?.(t('logIn.mfa_setup_error'), 'error')
   }
 
   function reportFailure(result: LoginResult) {
@@ -172,23 +157,20 @@ export function useSignIn() {
     attempted.value = true
     if (!totpCode.value) return
     await run(async () => {
-      const auth = await cornflowAuth()
-      const verified = await auth?.mfaVerify?.(totpCode.value)
-      if (!verified) {
+      if (!(await enrollment.verify(totpCode.value))) {
         totpCode.value = ''
         showSnackbar?.(t('logIn.mfa_invalid_code'), 'error')
         return
       }
       // The enrollment signs the user in: what the next sign-in would say is not known here.
       signedIn = { success: true, lastLogin: null }
-      backupCodes.value = verified.backupCodes
       goTo('mfa-backup')
     })
   }
 
   async function copyBackupCodes() {
     try {
-      await navigator.clipboard.writeText(backupCodes.value.join('\n'))
+      await navigator.clipboard.writeText(enrollment.backupCodes.value.join('\n'))
       showSnackbar?.(t('logIn.mfa_backup_copied'), 'success')
     } catch (error) {
       console.error('Could not copy the backup codes:', error)
@@ -196,7 +178,7 @@ export function useSignIn() {
   }
 
   function finishEnrollment() {
-    backupCodes.value = []
+    enrollment.clear()
     enterApp(signedIn)
   }
 
@@ -226,9 +208,7 @@ export function useSignIn() {
   async function backToCredentials() {
     goTo('credentials')
     forgotEmail.value = ''
-    enrollSecret.value = ''
-    enrollQr.value = ''
-    backupCodes.value = []
+    enrollment.clear()
     const auth = await cornflowAuth()
     auth?.clearPendingEnrollment?.()
   }
@@ -258,9 +238,9 @@ export function useSignIn() {
     password,
     totpCode,
     forgotEmail,
-    enrollSecret,
-    enrollQr,
-    backupCodes,
+    enrollSecret: enrollment.secret,
+    enrollQr: enrollment.qr,
+    backupCodes: enrollment.backupCodes,
     submitting,
     missingUsername,
     missingPassword,

@@ -14,7 +14,13 @@ const { changeLanguage, snackbar, authConfig, theme } = vi.hoisted(() => ({
   theme: { enabled: false, preference: { value: 'light' }, setPreference: vi.fn() },
 }))
 
-const cornflowAuth = vi.hoisted(() => ({ logout: vi.fn() }))
+const cornflowAuth = vi.hoisted(() => ({
+  logout: vi.fn(),
+  mfaSetup: vi.fn(),
+  mfaVerify: vi.fn(),
+  createApiKey: vi.fn(),
+}))
+vi.mock('qrcode', () => ({ toDataURL: vi.fn(async () => 'data:image/png;base64,QR') }))
 
 vi.mock('@cornflow-ui/core/plugins/i18n', () => ({ changeLanguage }))
 vi.mock('@cornflow-ui/core/services/AuthServiceFactory', () => ({
@@ -71,12 +77,25 @@ const messages = {
     savePassword: 'Change password',
     snackbarMessageSuccess: 'Password updated successfully',
     snackbarMessageError: 'An error occurred while updating the password',
+    mfaTitle: 'Two-factor authentication',
+    mfaOn: 'On',
+    mfaOff: 'Off',
+    mfaEnableButton: 'Turn on two-factor authentication',
+    mfaInvalidCode: 'Invalid authentication code',
+    mfaEnrollError: 'Two-factor authentication could not be set up.',
+    mfaEnableSuccess: 'Two-factor authentication is on.',
+    mfaResetButton: 'Reset two-factor authentication',
+    mfaResetSuccess: 'Two-factor authentication has been reset. Sign in again.',
+    mfaResetError: 'Two-factor authentication could not be reset.',
+    apiKeySuccess: 'Personal access token generated',
+    apiKeyError: 'The personal access token could not be generated',
+    apiKeyDisabled: 'Personal access tokens are turned off on this deployment.',
   },
 }
 
 let getLanguages: ReturnType<typeof vi.spyOn>
 
-async function mountView({ authType = 'cornflow', path = '/user-settings' } = {}) {
+async function mountView({ authType = 'cornflow', path = '/user-settings', mfaEnabled = false } = {}) {
   const pinia = createPinia()
   setActivePinia(pinia)
   const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: messages, es: messages } })
@@ -88,8 +107,10 @@ async function mountView({ authType = 'cornflow', path = '/user-settings' } = {}
     fullName: 'Ana Ruiz',
     email: 'ana@example.com',
     roles: [{ id: 1, name: 'planner' }, { id: 2, name: 'admin' }],
+    mfaEnabled,
   } as any
   store.changeUserPassword = vi.fn(async () => ({ success: true })) as any
+  store.resetUserMfa = vi.fn(async () => true) as any
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -331,6 +352,163 @@ describe('UserSettingsView', () => {
 
       ;({ wrapper } = await mountView())
       expect(field(wrapper, 'settings-password-forced').exists()).toBe(false)
+    })
+  })
+
+  describe('two-factor authentication', () => {
+    test('shows only when the app signs in with Cornflow', async () => {
+      ;({ wrapper } = await mountView({ authType: 'azure' }))
+      expect(field(wrapper, 'settings-mfa').exists()).toBe(false)
+    })
+
+    test('says whether it is on', async () => {
+      ;({ wrapper } = await mountView())
+      expect(field(wrapper, 'settings-mfa-status').text()).toBe('Off')
+      wrapper.unmount()
+
+      ;({ wrapper } = await mountView({ mfaEnabled: true }))
+      expect(field(wrapper, 'settings-mfa-status').text()).toBe('On')
+    })
+
+    test('turning it on: QR code and secret, first code, then the backup codes', async () => {
+      cornflowAuth.mfaSetup.mockResolvedValue({ secret: 'ABC', provisioningUri: 'otpauth://totp/x' })
+      cornflowAuth.mfaVerify.mockResolvedValue({ backupCodes: ['a1', 'b2'] })
+      ;({ wrapper } = await mountView())
+
+      await field(wrapper, 'settings-mfa-enable').trigger('click')
+      await flushPromises()
+      expect(field(wrapper, 'settings-mfa-qr').attributes('src')).toBe('data:image/png;base64,QR')
+      expect(field(wrapper, 'settings-mfa-secret').text()).toBe('ABC')
+
+      await field(wrapper, 'settings-mfa-code').setValue('123456')
+      await field(wrapper, 'settings-mfa-enroll').trigger('submit')
+      await flushPromises()
+      expect(cornflowAuth.mfaVerify).toHaveBeenCalledWith('123456')
+      expect(field(wrapper, 'settings-mfa-backup-codes').findAll('code').map((c: any) => c.text())).toEqual([
+        'a1',
+        'b2',
+      ])
+      expect(field(wrapper, 'settings-mfa-status').text()).toBe('On')
+
+      await field(wrapper, 'settings-mfa-backup-done').trigger('click')
+      expect(snackbar).toHaveBeenCalledWith('Two-factor authentication is on.', 'success')
+      expect(field(wrapper, 'settings-mfa-reset').exists()).toBe(true)
+    })
+
+    test('a wrong first code keeps it off', async () => {
+      cornflowAuth.mfaSetup.mockResolvedValue({ secret: 'ABC', provisioningUri: 'otpauth://totp/x' })
+      cornflowAuth.mfaVerify.mockResolvedValue(null)
+      ;({ wrapper } = await mountView())
+
+      await field(wrapper, 'settings-mfa-enable').trigger('click')
+      await flushPromises()
+      await field(wrapper, 'settings-mfa-code').setValue('000000')
+      await field(wrapper, 'settings-mfa-enroll').trigger('submit')
+      await flushPromises()
+
+      expect(snackbar).toHaveBeenCalledWith('Invalid authentication code', 'error')
+      expect(field(wrapper, 'settings-mfa-enroll').exists()).toBe(true)
+      expect(field(wrapper, 'settings-mfa-status').text()).toBe('Off')
+    })
+
+    test('cancelling the enrollment goes back', async () => {
+      cornflowAuth.mfaSetup.mockResolvedValue({ secret: 'ABC', provisioningUri: 'otpauth://totp/x' })
+      ;({ wrapper } = await mountView())
+
+      await field(wrapper, 'settings-mfa-enable').trigger('click')
+      await flushPromises()
+      await field(wrapper, 'settings-mfa-cancel').trigger('click')
+
+      expect(field(wrapper, 'settings-mfa-enable').exists()).toBe(true)
+    })
+
+    test('an enrollment that cannot start says so', async () => {
+      cornflowAuth.mfaSetup.mockResolvedValue(null)
+      ;({ wrapper } = await mountView())
+
+      await field(wrapper, 'settings-mfa-enable').trigger('click')
+      await flushPromises()
+
+      expect(snackbar).toHaveBeenCalledWith('Two-factor authentication could not be set up.', 'error')
+    })
+
+    test('resetting it, once confirmed, closes the session', async () => {
+      let store: any
+      let router: any
+      ;({ wrapper, store, router } = await mountView({ mfaEnabled: true }))
+
+      await field(wrapper, 'settings-mfa-reset').trigger('click')
+      await flushPromises()
+      const confirm = [...document.querySelectorAll('button')].find(
+        (b) => b.textContent?.trim() === 'Reset two-factor authentication' && !b.closest('[data-testid="settings-mfa"]'),
+      )
+      confirm!.click()
+      await flushPromises()
+
+      expect(store.resetUserMfa).toHaveBeenCalledWith(7)
+      expect(snackbar).toHaveBeenCalledWith('Two-factor authentication has been reset. Sign in again.', 'success')
+      expect(cornflowAuth.logout).toHaveBeenCalled()
+      expect(router.currentRoute.value.path).toBe('/sign-in')
+    })
+  })
+
+  describe('personal access token', () => {
+    test('shows when the app signs in with Cornflow and offers it', async () => {
+      ;({ wrapper } = await mountView({ authType: 'azure' }))
+      expect(field(wrapper, 'settings-api-key').exists()).toBe(false)
+      wrapper.unmount()
+
+      ;({ wrapper } = await mountView())
+      expect(field(wrapper, 'settings-api-key').exists()).toBe(true)
+    })
+
+    test('generates a read-only token and shows it once', async () => {
+      cornflowAuth.createApiKey.mockResolvedValue({ success: true, apiKey: 'key-123' })
+      ;({ wrapper } = await mountView())
+
+      expect(field(wrapper, 'settings-api-key-code').exists()).toBe(false)
+      await field(wrapper, 'settings-api-key-read-only').trigger('click')
+      await field(wrapper, 'settings-api-key-form').trigger('submit')
+      await flushPromises()
+
+      expect(cornflowAuth.createApiKey).toHaveBeenCalledWith(undefined, 'read')
+      expect(field(wrapper, 'settings-api-key-value').text()).toBe('key-123')
+    })
+
+    test('a user with two-factor authentication confirms it with a code', async () => {
+      cornflowAuth.createApiKey.mockResolvedValue({ success: true, apiKey: 'key-123' })
+      ;({ wrapper } = await mountView({ mfaEnabled: true }))
+
+      expect(field(wrapper, 'settings-api-key-generate').attributes('disabled')).toBeDefined()
+      await field(wrapper, 'settings-api-key-code').setValue('123456')
+      await field(wrapper, 'settings-api-key-form').trigger('submit')
+      await flushPromises()
+
+      expect(cornflowAuth.createApiKey).toHaveBeenCalledWith('123456', undefined)
+    })
+
+    test('a deployment with tokens off says so instead of the form', async () => {
+      cornflowAuth.createApiKey.mockResolvedValue({ success: false, disabled: true })
+      ;({ wrapper } = await mountView())
+
+      await field(wrapper, 'settings-api-key-form').trigger('submit')
+      await flushPromises()
+
+      expect(field(wrapper, 'settings-api-key-disabled').text()).toBe(
+        'Personal access tokens are turned off on this deployment.',
+      )
+      expect(field(wrapper, 'settings-api-key-form').exists()).toBe(false)
+    })
+
+    test('a token the server refuses says why', async () => {
+      cornflowAuth.createApiKey.mockResolvedValue({ success: false, message: 'Invalid code' })
+      ;({ wrapper } = await mountView())
+
+      await field(wrapper, 'settings-api-key-form').trigger('submit')
+      await flushPromises()
+
+      expect(snackbar).toHaveBeenCalledWith('Invalid code', 'error')
+      expect(field(wrapper, 'settings-api-key-result').exists()).toBe(false)
     })
   })
 })

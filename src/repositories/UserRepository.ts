@@ -72,6 +72,19 @@ export default class UserRepository {
   }
 
   /**
+   * Turns off a user's two-factor authentication, theirs or, for an admin, anyone's. Cornflow also
+   * closes every session and API key of that user.
+   */
+  resetMfa(userId: string | number): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      client
+        .remove(`/user/${userId}/mfa/`)
+        .then((response) => resolve(response.status === 200))
+        .catch(reject)
+    })
+  }
+
+  /**
    * Changes the user's own password; cornflow asks for the current one. When it refuses the new
    * one (the password policy, a reused password), `message` says why.
    */

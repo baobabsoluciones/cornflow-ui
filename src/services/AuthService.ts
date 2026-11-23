@@ -19,9 +19,11 @@ function clearRoleFlags() {
 
 /**
  * Keeps the session cornflow has just issued: the access token, the refresh token that renews it
- * (service users and deployments with refresh tokens off get none) and the user id.
+ * (service users and deployments with refresh tokens off get none) and the user id. The role flags
+ * of another user are dropped; the same user, renewing their session, keeps theirs.
  */
 function storeSession(content: Content) {
+  const sameUser = sessionStorage.getItem('userId') === String(content.id)
   sessionStorage.setItem('isAuthenticated', 'true')
   sessionStorage.setItem('token', content.token)
   if (content.refresh_token) sessionStorage.setItem('refreshToken', content.refresh_token)
@@ -29,7 +31,7 @@ function storeSession(content: Content) {
   sessionStorage.setItem('userId', content.id)
   // The Api client keeps the Bearer in memory: point it at the token just issued.
   client.initializeToken()
-  clearRoleFlags()
+  if (!sameUser) clearRoleFlags()
 }
 
 class AuthService {
