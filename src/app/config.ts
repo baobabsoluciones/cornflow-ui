@@ -296,7 +296,7 @@ const createAppConfig = () => ({
       /**
        * Where the executions list is requested, e.g. `{ path: '/executions/', isExternal: true }`
        * for a backend that filters it by the executions history filters. `null` means Cornflow's
-       * `GET /execution/`. The `list` the backend declares for a DAG in
+       * `GET /execution/`. The `get_list` the backend declares for a DAG in
        * `GET /external/frontend-config/` comes first. See README "Execution endpoints".
        */
       executionsListEndpoint: null as ExecutionsListEndpoint | null,
