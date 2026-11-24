@@ -14,6 +14,12 @@
   - README "Execution endpoints": the format, the order, what each key is used for and the fields the core reads from each answer
   *Contributors:* [@HelenaCA](#)  
   *Commit ID:* #278
+- **A DAG can have a create-execution flow of its own**  
+  - `createExecution.component` can be set in a DAG's entry of `core.schemaOverrides`, and on that DAG it takes precedence over the app's flow. A DAG without one shows the app's flow, and without that, core's page
+  - The `project-execution` route shows the flow of the active DAG and mounts the new DAG's flow on a switch. Within a DAG, the route's keep-alive keeps the flow and its draft
+  - `docs/create-execution-flows.md`: the order in which the flows apply, a DAG's flow in `schemaOverrides`, and a flow that creates its executions through the app's backend instead of the draft
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* pending
 
 ### Changed
 - **Every list and download of a frontend-automation table carries the active DAG**  

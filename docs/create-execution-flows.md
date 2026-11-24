@@ -1,34 +1,60 @@
 # Create-execution flows
 
-The "create execution" screen (route `project-execution`) is a **flow** built on logic that does not
-depend on its layout. Core ships one, and an application can replace it with its own without
-touching core.
+The "create execution" screen (route `project-execution`) is a **flow**. Core ships one, and an
+application can give the whole app, or one DAG, a flow of its own without touching core.
 
 | Flow | What the user sees | How to get it |
 | --- | --- | --- |
 | **Core's page** (default) | One page: the data card on the left (where the data comes from, then its tables to review and edit) and the launch panel on the right (name, data checks, parameters, what is still missing, Resolve). | Nothing to set |
-| **The app's own** | Whatever the application needs, built with the same logic and blocks. | `createExecution.component` |
+| **The app's own** | Whatever the application needs, on every DAG. | `core.parameters.createExecution.component` |
+| **A DAG's own** | Whatever that DAG needs; the other DAGs keep theirs. | `core.schemaOverrides.<dag>.parameters.createExecution.component` |
 
-Both go through `useExecutionDraft`, so the calls to the backend, the states and the
-configuration flags behave the same whichever flow is on screen.
+A flow built on `useExecutionDraft` and core's blocks makes the same calls to the backend, with
+the same states and configuration flags, as core's page. A flow can also leave the draft aside and
+create its executions through a backend of its own (see
+[A flow that talks to its own backend](#a-flow-that-talks-to-its-own-backend)).
 
 In an application this guide ships with the package, at
 `node_modules/@cornflow-ui/core/docs/create-execution-flows.md`.
 
 ## Picking a flow
 
-In the application's `src/app/config.ts`, under `core.parameters`:
+The flow on screen is the one of the active DAG, resolved in this order:
+
+1. The DAG's own: `createExecution.component` in its entry of `core.schemaOverrides`.
+2. The app's own: `createExecution.component` in `core.parameters`.
+3. Core's page.
+
+In the application's `src/app/config.ts`:
 
 ```ts
-createExecution: {
-  // The app's own flow; without it, core's page.
-  component: () => import('@/app/views/MyCreateExecutionView.vue'),
-  // How the execution is named when its data is loaded (optional, see below).
-  proposeName: null,
+core: {
+  parameters: {
+    createExecution: {
+      // The app's own flow, for every DAG without one of its own; null for core's page.
+      component: null,
+      // How the execution is named when its data is loaded (optional, see below).
+      proposeName: null,
+    },
+  },
+  schemaOverrides: {
+    dag_b: {
+      parameters: {
+        // dag_b's own flow; the other keys of createExecution come from core.parameters.
+        createExecution: { component: () => import('@/app/views/DagBLauncherView.vue') },
+      },
+    },
+  },
 },
 ```
 
-The route is built when the app starts, so the flow is one per application (not per DAG).
+- `component` is a lazy import of the flow's view. Anything else is ignored with a console
+  warning, and the DAG gets the next flow in the order above.
+- `core.parameters` has to declare `createExecution` for a DAG to set it (see "Settings per DAG"
+  in the README). A DAG's `createExecution` merges into the app's key by key: a DAG that only
+  sets `component` keeps the app's `proposeName`.
+- Switching DAG mounts the flow of the new DAG, even when both use the same one. Within a DAG, the
+  flow is kept while the user visits other views and comes back to it, with its draft.
 
 ## Building an application's own flow
 
@@ -36,7 +62,7 @@ Everything lives in the application's `src/app`; nothing in core is copied or ed
 
 1. Create the view, e.g. `src/app/views/MyCreateExecutionView.vue`.
 2. In it, call `useExecutionDraft()` once and compose the blocks you need around it.
-3. Point `createExecution.component` at it.
+3. Point `createExecution.component` at it, in `core.parameters` or in the entry of its DAG.
 4. Add the texts you introduce to `src/app/plugins/locales/<lang>.ts`.
 
 A minimal flow that reuses core's blocks with a layout of its own:
@@ -69,17 +95,69 @@ function goToResults() {
 A flow that does not use the blocks at all only needs the draft: show `draft.missing`, call
 `draft.load()`, `draft.runChecks()`, `draft.launchExecution()`… and render it as you like.
 
+### A flow that talks to its own backend
+
+A flow whose instance is not built in the browser (the backend builds it, or creates several
+executions from one request) leaves the draft aside and calls the endpoints of the app's backend
+with `client` (`isExternal: true` sends the call to `/external`). Once the backend has created the
+execution, the flow loads it with `store.fetchLoadedExecution(id)`, which reads it from the
+endpoints the backend declares for the DAG (see "Execution endpoints" in the README), so the
+history, the results and the download show it like any other.
+
+```vue
+<template>
+  <div class="view-container my-launcher">
+    <CoreTitleView icon="mdi-play-circle-outline" :title="$t('myLauncher.title')" />
+    <CoreTextField v-model="name" :placeholder="$t('myLauncher.name')" />
+    <CoreButton :text="$t('myLauncher.launch')" :loading="launching" @click="launch" />
+    <CoreAlert v-if="error" tone="danger" :message="error" />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import client from '@cornflow-ui/core/api/Api'
+import CoreAlert from '@cornflow-ui/core/components/core/CoreAlert.vue'
+import CoreButton from '@cornflow-ui/core/components/core/CoreButton.vue'
+import CoreTextField from '@cornflow-ui/core/components/core/CoreTextField.vue'
+import CoreTitleView from '@cornflow-ui/core/components/core/CoreTitleView.vue'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+
+const store = useGeneralStore()
+const router = useRouter()
+const name = ref('')
+const launching = ref(false)
+const error = ref<string | null>(null)
+
+async function launch() {
+  launching.value = true
+  error.value = null
+  const response = await client.post('/my-launches/', { name: name.value }, {}, true)
+  launching.value = false
+  if (response.status !== 201) {
+    error.value = response.content?.message ?? null
+    return
+  }
+  await store.fetchLoadedExecution(response.content.id)
+  router.push('/history-execution')
+}
+</script>
+```
+
 ### Rules
 
-- **Talk to the backend through the draft.** Loading, checks, the ETL review sync and the launch
-  are in `useExecutionDraft`; a flow that calls the repositories itself loses the ETL, the
-  load filters, the checks config and the uploaded-solution path.
+- **A flow that builds the instance in the browser talks to the backend through the draft.**
+  Loading, checks, the ETL review sync and the launch are in `useExecutionDraft`; such a flow that
+  calls the repositories itself loses the ETL, the load filters, the checks config and the
+  uploaded-solution path. A flow whose backend builds the executions calls that backend instead
+  (see above).
 - **Use the `Core*` components** (`src/components/core/`, see the catalog: `npm run catalog`) and
   the design tokens (`--color-*`, `--spacing`, `--radius-*`…), not Vuetify or fixed colours, so the
   flow follows the app's palette.
 - **Leaving with progress.** Core's flows ask before leaving (`onBeforeRouteLeave`) and offer to keep
   a draft; an own flow decides what to do with `draft.hasProgress`, `draft.saveDraft()`,
-  `draft.readDraft()` and `draft.resumeDraft()`.
+  `draft.readDraft()` and `draft.resumeDraft()`, or, without the draft, with its own state.
 
 ## `useExecutionDraft`
 
@@ -193,8 +271,11 @@ An application changes the rule with `createExecution.proposeName`, a function t
 
 - [ ] The change lives in the application's `src/app` (view, `config.ts`, locales); nothing under
       `node_modules/@cornflow-ui/core` is edited or copied.
-- [ ] The flow gets its data and launches through `useExecutionDraft`.
+- [ ] The flow gets its data and launches through `useExecutionDraft`, or, when its backend builds
+      the executions, through that backend, and loads what it created with
+      `store.fetchLoadedExecution(id)`.
 - [ ] It is built with the blocks above and the `Core*` components; new pieces read the tokens.
-- [ ] `createExecution.component` points at the view.
+- [ ] `createExecution.component` points at the view: in `core.parameters` for every DAG, or in
+      `core.schemaOverrides.<dag>.parameters` for one DAG.
 - [ ] New texts are in every language the app shows (`src/app/plugins/locales/`).
 - [ ] What the user sees before launching still tells them what is missing (`draft.missing`).
