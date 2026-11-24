@@ -38,6 +38,12 @@
   *Commit ID:* #274
 
 ### Fixed
+- **A session of Cornflow's own login no longer ends when the access token expires, and the sign-in takes the user back**  
+  - A server with refresh-token sessions (cornflow `feature/fix_plugins_hardening`) returns a `refresh_token` on `POST /login/`; the core keeps it in `sessionStorage` (`refreshToken`) and, when a request is answered with an expired access token (400 today, 401 on newer servers), calls `POST /token/refresh/` once, stores the new access and refresh tokens and repeats the request. Requests that expire together share one renewal, as the server rotates the refresh token and treats a reused one as theft. Only when the renewal is rejected does the session end, as before
+  - A server that does not issue refresh tokens (older ones, service users, `REFRESH_TOKEN_ENABLED=0`) keeps the previous behaviour; so do the OpenID providers. Signing out also closes the session on the server (`POST /logout/`)
+  - When a session ends, the route being shown (full path and query) is remembered, and after the next successful sign-in the user lands there instead of on the default page. Only paths of the app are followed once; absolute URLs and the sign-in/out routes are ignored (`utils/returnTo`)
+  *Contributors:* [@antoniogonzalezsuarez](#)  
+  *Commit ID:* pending
 - **The data checks send the DAG of the instance or execution they check**  
   - A deployment closed to the DAGs of each user rejects a data check without `schema` (400, "The request does not specify a schema to use") and creates no check execution. `POST /data-check/instance/<id>/` sends the DAG of the instance just created next to the execution `config`, and `POST /data-check-kpis/execution/<id>/` sends the DAG of the execution, read from `GET /execution/<id>/`, both in the historical KPIs and when the execution files are regenerated. Neither takes the active DAG
   *Contributors:* [@HelenaCA](#)  

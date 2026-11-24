@@ -12,6 +12,7 @@ import { useRouter } from 'vue-router'
 import config from '@cornflow-ui/core/config'
 import { getSpecificAuthService } from '@cornflow-ui/core/services/AuthServiceFactory'
 import type { SsoIdentityProvider } from '@cornflow-ui/core/interfaces/AuthProvider'
+import { takeReturnTo } from '@cornflow-ui/core/utils/returnTo'
 import { googleLogo, microsoftLogo } from '@cornflow-ui/core/utils/assets'
 
 export interface SsoProvider {
@@ -55,7 +56,8 @@ export function useSignIn() {
         return
       }
       if (await cornflowAuth.login(username.value, password.value)) {
-        void router.push('/')
+        // After a forced sign-in (expired session) back to where the user was
+        void router.push(takeReturnTo() ?? '/')
         showSnackbar?.(t('logIn.snackbar_message_success'), 'success')
       } else {
         showSnackbar?.(t('logIn.snackbar_message_error_auth'), 'error')
