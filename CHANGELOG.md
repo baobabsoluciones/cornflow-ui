@@ -14,6 +14,7 @@
   - Personal access token: generates one, read-only if asked, confirmed with a two-factor code when the user has it, shown once; a server with tokens off says so. Hidden with `enablePersonalTokens: false`
   - Turning on two-factor authentication renews the session tokens without dropping the role flags of the signed-in user
   *Contributors:* [@HelenaCA](#), [@ggsdc](#)  
+  *Commit ID:* #285
 - **Sign-in and session against a Cornflow server with the security hardening**  
   - Session: the short-lived access token is renewed with the refresh token (`POST /token/refresh/`) when a request finds it expired, and the request is sent again once. Requests that find it expired at once share one renewal; downloads and streams are renewed too. Logging out closes the session on the server (`POST /logout/`)
   - Two-factor authentication on the sign-in: the code of the authenticator app or a backup code; and, when the server requires it, the enrollment (QR code, its secret, first code and one-time backup codes) before the session
@@ -23,6 +24,7 @@
   - Too many attempts (429) and a locked account say so instead of "wrong credentials"; after the sign-in, a notice says when the previous one was; a legal notice sits under the form
   - New dependencies: `@zxcvbn-ts/core`, `@zxcvbn-ts/language-common` and `qrcode`
   *Contributors:* [@HelenaCA](#), [@ggsdc](#)  
+  *Commit ID:* #284
 - **Premium modules can add pages to Administration**  
   - A `PremiumDrawerSection` with `parent: 'admin'` is listed as a page of the core's Administration group (next to Roles management) instead of a group of its own. The group shows for admins when it has a page, so it no longer depends on roles management being on
   *Contributors:* [@antoniogonzalezsuarez](#)  
