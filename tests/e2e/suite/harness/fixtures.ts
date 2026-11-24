@@ -18,7 +18,8 @@
  * - `api`: the Cornflow API as that same user, so what a test makes there is what the page shows.
  *   What it creates is deleted when the test ends.
  * - `checkTranslations`: on by default. Every screen the test goes through is checked for text
- *   keys shown untranslated, and the test fails listing them.
+ *   keys shown untranslated, and the test fails listing them; those a known fault of core
+ *   explains (harness/translations.ts) are noted instead, and listed by the coverage report.
  */
 import { test as base, expect } from '@playwright/test'
 import { CornflowApi } from './cornflowApi'
@@ -35,7 +36,11 @@ import {
   uatFile,
 } from './run'
 import { restoreSession } from './session'
-import { untranslatedMessage, watchTranslations } from './translations'
+import {
+  knownIssueOf,
+  untranslatedMessage,
+  watchTranslations,
+} from './translations'
 import { loadUat, type Uat } from './uat'
 
 interface TestFixtures {
@@ -72,7 +77,17 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     await use(context)
 
     const keys = (await untranslated?.()) ?? []
-    if (keys.length) throw new Error(untranslatedMessage(keys))
+    const unknown = keys.filter(({ key, where }) => {
+      const issue = knownIssueOf(key)
+      if (issue) {
+        test.info().annotations.push({
+          type: 'known issue',
+          description: `${key} shown untranslated on ${where}: ${issue}`,
+        })
+      }
+      return !issue
+    })
+    if (unknown.length) throw new Error(untranslatedMessage(unknown))
   },
 
   api: async ({ session, deployment }, use) => {

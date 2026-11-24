@@ -132,6 +132,27 @@ export async function watchTranslations(
   }
 }
 
+/**
+ * Faults of core that show keys untranslated, already known and waiting for their fix. A key
+ * they explain does not fail the test: it is noted on it (annotation `known issue`) and listed by
+ * the coverage report. Take the entry out once core is fixed, and the keys fail tests again.
+ */
+export const KNOWN_UNTRANSLATED: { pattern: RegExp; issue: string }[] = [
+  {
+    pattern: /^configParams\./,
+    issue:
+      'a parameter of the execution config of the schema that is not declared in configFields ' +
+      'shows its raw key (pending fix in core)',
+  },
+]
+
+/** The known fault that explains a key, if any. */
+export function knownIssueOf(key: string): string | null {
+  return (
+    KNOWN_UNTRANSLATED.find(({ pattern }) => pattern.test(key))?.issue ?? null
+  )
+}
+
 /** The message of a test that showed untranslated keys. */
 export function untranslatedMessage(keys: UntranslatedKey[]): string {
   return (

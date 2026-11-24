@@ -204,20 +204,30 @@ export class CornflowApi {
     return instance.checks ?? {}
   }
 
-  /** Creates and runs an execution of an instance with `config`. Returns its id. */
+  /**
+   * Creates an execution of an instance with `config` and runs it, or, with `run: false`, only
+   * creates it (state `NotRun`): enough for a test that needs it listed, with no solver involved.
+   * Returns its id.
+   */
   async createExecution(args: {
     instanceId: string
     schema: string
     config: Record<string, unknown>
     label: string
+    run?: boolean
   }): Promise<string> {
-    const { id } = await this.request<{ id: string }>('POST', '/execution/', {
-      name: this.name(args.label),
-      description: '',
-      schema: args.schema,
-      instance_id: args.instanceId,
-      config: args.config,
-    })
+    const query = args.run === false ? '?run=0' : ''
+    const { id } = await this.request<{ id: string }>(
+      'POST',
+      `/execution/${query}`,
+      {
+        name: this.name(args.label),
+        description: '',
+        schema: args.schema,
+        instance_id: args.instanceId,
+        config: args.config,
+      },
+    )
     this.executions.add(id)
     return id
   }
