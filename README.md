@@ -343,7 +343,10 @@ can declare its own filters, or none, in `schemaOverrides` (see [Several DAGs in
   [docs/create-execution-flows.md](docs/create-execution-flows.md)):
   - **Core's page** (default): one page, the data card on the left and the launch panel on the
     right.
-  - **The app's own** (`component`), built with the same logic (`useExecutionDraft`) and blocks.
+  - **The app's own** (`component`), on every DAG: built with the same logic
+    (`useExecutionDraft`) and blocks, or creating its executions through the app's backend.
+  - **A DAG's own** (`component` in the DAG's entry of `schemaOverrides`), which takes precedence
+    over the app's on that DAG.
 - **Features**:
   - Data from one or several files, or from the database through the ETL (files replace the
     tables with the same name)
@@ -360,8 +363,8 @@ can declare its own filters, or none, in `schemaOverrides` (see [Several DAGs in
   - What is still missing to launch, each item taking the user to it
   - A proposed name, the launched execution followed live, a draft kept when leaving half done,
     and relaunching an execution with changes
-- **Location**: `CreateExecutionView.vue`, `components/create-execution/`,
-  `composables/create-execution/`
+- **Location**: `CreateExecutionFlowView.vue` (the route), `CreateExecutionView.vue`,
+  `components/create-execution/`, `composables/create-execution/`
 - **Configuration**: `createExecution`, `executionSolvers`, `solverConfig`, `configFieldsConfig`,
   `configFields`, `etl`, `enableBlockAdvanceOnCheckErrors` and `isDeveloperMode` in
   `src/app/config.ts` - see [Create execution configuration](#create-execution-configuration)
@@ -1049,6 +1052,7 @@ core: {
         enableRecalculationOnMasterEdit: false,
         etl: { useEtlBackend: true },
         defaultView: 'project-execution',
+        createExecution: { component: () => import('@/app/views/StockLauncherView.vue') },
       },
       dashboardLayout: [ /* the custom dashboards of this DAG */ ],
     },
@@ -1060,6 +1064,10 @@ core: {
   key by key (`etl: { useEtlBackend: true }` keeps the rest of `etl`); arrays and any other value
   replace the app's. A DAG without an entry works with the app's `parameters`.
 - `dashboardLayout` and `instanceDashboardLayout` replace the app's layouts on that DAG.
+- `createExecution.component` gives the DAG a create-execution flow of its own; the other DAGs keep
+  the app's flow, or core's page (see
+  [docs/create-execution-flows.md](docs/create-execution-flows.md)). Switching DAG mounts the flow
+  of the new DAG.
 - `valuesJsonPath`, `schemaLabels`, `enableRolesManagement`, `allowEditRoles`,
   `showOpenIdUsername` and `enableDarkMode` apply to the whole application: a DAG entry cannot set
   them. A key the app's
@@ -1978,7 +1986,9 @@ The system automatically detects files that match the configured prefixes and pr
 #### Flow: createExecution
 
 - `component` (lazy component, optional): the app's own flow instead of core's page, e.g.
-  `() => import('@/app/views/MyCreateExecutionView.vue')`.
+  `() => import('@/app/views/MyCreateExecutionView.vue')`. A DAG gets a flow of its own with
+  `createExecution.component` in its entry of `schemaOverrides`, which takes precedence over this
+  one on that DAG (see [Settings per DAG](#several-dags-in-one-application)).
 - `proposeName` (function, optional): how the execution is named when its data is loaded; by
   default the first file's name, or "Data of <date>", followed by the load filters.
 

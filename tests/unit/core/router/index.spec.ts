@@ -311,24 +311,12 @@ describe('Router Configuration', () => {
     // Verify the router was created (we can't easily test the exact history type due to internal implementation)
     expect(typeof router.push).toBe('function')
   })
-  describe('the create-execution screen', () => {
-    async function projectExecutionComponent(createExecution?: Record<string, unknown>) {
-      vi.resetModules()
-      mockAppConfig.getCore.mockReturnValue({
-        parameters: { useHashMode: false, ...(createExecution ? { createExecution } : {}) },
-      })
-      const { default: router } = await import('@cornflow-ui/core/router/index')
-      const root = router.getRoutes().find((route) => route.path === '/')
-      return root?.children?.find((route) => route.path === 'project-execution')?.component as any
-    }
+  test('the create-execution screen shows the flow of the active DAG', async () => {
+    vi.resetModules()
+    const { default: router } = await import('@cornflow-ui/core/router/index')
+    const root = router.getRoutes().find((route) => route.path === '/')
+    const projectExecution = root?.children?.find((route) => route.path === 'project-execution')
 
-    test("is core's page by default", async () => {
-      expect((await projectExecutionComponent())?.name).toBe('CreateExecutionView')
-    })
-
-    test("is the app's own component when it gives one", async () => {
-      const own = () => Promise.resolve({ name: 'OwnFlow' })
-      expect(await projectExecutionComponent({ component: own })).toBe(own)
-    })
+    expect((projectExecution?.component as any)?.name).toBe('CreateExecutionFlowView')
   })
 })
