@@ -24,7 +24,7 @@ test.describe('history', () => {
     const schema = deployment.schemas[0]
     const data = readDataset(uat, schema, 'valid')
     test.skip(!data, `the UAT file has no valid dataset for ${schema}`)
-    const ownList = deployment.frontendConfig?.executions?.[schema]?.list
+    const ownList = deployment.frontendConfig?.executions?.[schema]?.get_list
     test.skip(
       !!ownList,
       `${schema} lists its executions from the backend's own ${ownList}, where executions ` +
