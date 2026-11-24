@@ -13,7 +13,7 @@
   - The frontend config is asked when the app has an external backend (`hasExternalApp`), with or without an ETL module
   - README "Execution endpoints": the format, the order, what each key is used for and the fields the core reads from each answer
   *Contributors:* [@HelenaCA](#)  
-  *Commit ID:* #278
+  *Commit ID:* #278, #287
 
 ### Changed
 - **Every list and download of a frontend-automation table carries the active DAG**  
