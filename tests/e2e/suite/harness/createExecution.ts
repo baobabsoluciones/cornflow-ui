@@ -3,11 +3,37 @@
  * name the execution, run the data checks, set its parameters and launch it. An app may replace
  * the page with its own flow (`createExecution.component`); `openCreateExecution` tells.
  */
-import { expect, type Page } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { ExecutionState, isExecutionActive } from './cornflowApi'
 import { openFromMenu } from './navigation'
 
 export const CREATE_EXECUTION = '/project-execution'
+
+/** How long the data checks may take: a run of the DAG's checks, queued in Airflow first. */
+const CHECKS_TIMEOUT = 120_000
+/** How long a launch may take to be accepted. */
+const LAUNCH_TIMEOUT = 60_000
+
+/**
+ * Gives the running test `ms` more on top of its timeout, for a wait that may take that long: the
+ * test's own timeout is for its steps, not for what the backend runs.
+ */
+function allowFor(ms: number): void {
+  test.info().setTimeout(test.info().timeout + ms)
+}
+
+/**
+ * How long to wait for an execution run with `config` to end: its `timeLimit` (seconds, as
+ * Cornflow's solvers take it), plus what Airflow needs to start and save it. Three minutes at
+ * least.
+ */
+export function executionTimeout(config: Record<string, unknown>): number {
+  const limit = Number(config.timeLimit)
+  return Math.max(
+    180_000,
+    (Number.isFinite(limit) ? limit * 1000 : 0) + 120_000,
+  )
+}
 
 /** How a run of the data checks ended (`data-status` of `ChecksStatus`). */
 export type ChecksOutcome = 'ok' | 'warnings' | 'errors'
@@ -56,13 +82,14 @@ export async function hasDataChecks(page: Page): Promise<boolean> {
 
 /** Runs the data checks and waits for how they end. */
 export async function runDataChecks(page: Page): Promise<ChecksOutcome> {
+  allowFor(CHECKS_TIMEOUT)
   await page.getByTestId('checks-run').click()
   const status = page.getByTestId('checks-status')
   await expect(status).toHaveAttribute(
     'data-status',
     /^(ok|warnings|errors)$/,
     {
-      timeout: 120_000,
+      timeout: CHECKS_TIMEOUT,
     },
   )
   return (await status.getAttribute('data-status')) as ChecksOutcome
@@ -117,15 +144,19 @@ export async function setParameter(
 export const resolveButton = (page: Page) =>
   page.getByTestId('launch-panel-resolve')
 
-/** Launches the execution and waits until it ends. Returns its state (`ExecutionState`). */
+/**
+ * Launches the execution and waits until it ends, `timeoutMs` at most (see `executionTimeout`).
+ * Returns its state (`ExecutionState`).
+ */
 export async function launchAndWait(
   page: Page,
-  timeoutMs = 180_000,
+  timeoutMs: number,
 ): Promise<number> {
+  allowFor(LAUNCH_TIMEOUT + timeoutMs)
   await resolveButton(page).click()
   const result = page.getByTestId('launch-result')
   const refused = page.getByTestId('launch-panel-error')
-  await expect(result.or(refused)).toBeVisible({ timeout: 60_000 })
+  await expect(result.or(refused)).toBeVisible({ timeout: LAUNCH_TIMEOUT })
   if (await refused.isVisible()) {
     throw new Error(
       `The execution could not be launched: ${(await refused.innerText()).trim()}`,

@@ -8,6 +8,7 @@ import type { Page } from '@playwright/test'
 import { test, expect } from '../../harness/fixtures'
 import {
   ExecutionState,
+  executionTimeout,
   hasDataChecks,
   launchAndWait,
   loadDataFile,
@@ -73,6 +74,7 @@ async function loadDataset(
 /**
  * Loads the dataset, names the execution and sets its config: the schema's, plus `caseConfig`.
  * A key of `caseConfig` the page does not let the user set skips the test: the case needs it.
+ * Returns how long the execution may take to end (see `executionTimeout`).
  */
 async function prepare(
   page: Page,
@@ -81,7 +83,7 @@ async function prepare(
   dataset: DatasetKind,
   name: string,
   caseConfig: Record<string, unknown> = {},
-): Promise<void> {
+): Promise<number> {
   await loadDataset(page, uat, schema, dataset)
   await nameExecution(page, name)
   const config = { ...uat.schemas[schema].config, ...caseConfig }
@@ -92,6 +94,7 @@ async function prepare(
       `the page does not let the user set "${key}", which this case needs`,
     )
   }
+  return executionTimeout(config)
 }
 
 /** The execution the page created, and its solution, as Cornflow has them. */
@@ -182,12 +185,12 @@ test.describe('create execution', () => {
     api,
   }) => {
     const name = api.name('valid')
-    await prepare(page, uat, schema, 'valid', name)
+    const timeout = await prepare(page, uat, schema, 'valid', name)
     if (await hasDataChecks(page)) {
       expect(await runDataChecks(page)).toBe('ok')
     }
 
-    expect(await launchAndWait(page)).toBe(ExecutionState.Solved)
+    expect(await launchAndWait(page, timeout)).toBe(ExecutionState.Solved)
     const { data } = await createdExecution(api, name)
     expect(solutionRows(data), 'the solution has rows').toBeGreaterThan(0)
 
@@ -229,12 +232,12 @@ test.describe('create execution', () => {
     api,
   }) => {
     const name = api.name('with warnings')
-    await prepare(page, uat, schema, 'withWarnings', name)
+    const timeout = await prepare(page, uat, schema, 'withWarnings', name)
     test.skip(!(await hasDataChecks(page)), `${schema} has no data checks`)
 
     expect(await runDataChecks(page)).toBe('warnings')
     await expect(resolveButton(page)).toBeEnabled()
-    expect(await launchAndWait(page)).toBe(ExecutionState.Solved)
+    expect(await launchAndWait(page, timeout)).toBe(ExecutionState.Solved)
     const { data } = await createdExecution(api, name)
     expect(solutionRows(data), 'the solution has rows').toBeGreaterThan(0)
   })
@@ -243,7 +246,7 @@ test.describe('create execution', () => {
     const infeasible = uat.schemas[schema]?.infeasible
     test.skip(!infeasible, `the UAT file has no infeasible case for ${schema}`)
     const name = api.name('infeasible')
-    await prepare(
+    const timeout = await prepare(
       page,
       uat,
       schema,
@@ -252,7 +255,7 @@ test.describe('create execution', () => {
       infeasible!.config,
     )
 
-    const state = await launchAndWait(page)
+    const state = await launchAndWait(page, timeout)
     expect(FAILED_STATES, 'it ends, it does not fail').not.toContain(state)
     const { data } = await createdExecution(api, name)
     expect(solutionRows(data), 'the solution has no rows').toBe(0)
@@ -262,9 +265,16 @@ test.describe('create execution', () => {
     const failing = uat.schemas[schema]?.failingSolver
     test.skip(!failing, `the UAT file has no failing-solver case for ${schema}`)
     const name = api.name('failing solver')
-    await prepare(page, uat, schema, failing!.dataset, name, failing!.config)
+    const timeout = await prepare(
+      page,
+      uat,
+      schema,
+      failing!.dataset,
+      name,
+      failing!.config,
+    )
 
-    const state = await launchAndWait(page)
+    const state = await launchAndWait(page, timeout)
     await createdExecution(api, name)
     if (state === ExecutionState.Solved) {
       // Cornflow's fault, not the interface's: see the risks of the suite's README.
