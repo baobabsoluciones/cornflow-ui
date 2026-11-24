@@ -5,6 +5,21 @@
 ⚠️ The load filters of a DAG's ETL come from the backend (`GET /external/frontend-config/`): `pre_etl: true` in the config schema is not read. An application that marks its load filters that way publishes them in the `query` of its backend's frontend config before upgrading (see **Changed**).
 
 ### Added
+- **End-to-end suite that each app runs against its own deployment**  
+  - The suite (`tests/e2e/suite/`) ships with core, and an app runs it through `createCornflowE2EConfig` against its own frontend, backend and DAGs, with nothing mocked. It reads what the app has on from `window.cornflowUi.describe()` and tests it, checks that what is off does not show, and skips what does not apply with the reason
+  - Each app gives its test data in a UAT file (`tests/e2e/uat.json`): per DAG, the execution config and a valid instance, one with errors and one with warnings, and optionally an infeasible case and a failing-solver case
+  - Two modes: `shared`, for an environment others use, signs in with one user and touches only what it creates; `disposable` also creates a user per role. What a run creates is named after it (`[e2e] <run id> …`) and deleted at the end, also after failed tests, so two runs at the same time do not touch each other's data
+  - Tests: sign in, execution history, and create execution (load filters, the solver, and each dataset through to its result)
+  - Every screen a test opens is checked for text keys shown untranslated. At the end, a coverage report lists what was tested, what failed and what was not tested, with the reason, and the known core faults the run came across
+  - Test ids on the create-execution blocks and the data table: `data-status`, `data-state`, `data-load-status`, `data-rows`, `parameter-<key>` and `load-filter-<key>`
+  - `tests/e2e/stack/`: a Cornflow with a small planning app to develop the suite against, checked with `npm run test:e2e:stack`. It is not published
+  - `tests/e2e/README.md`: running the suite in an app, the UAT file, the modes, the report and writing specs
+  *Contributors:* [@david-hidalgo-baobab](#)  
+  *Commit ID:* #
+- **`window.cornflowUi.describe()`**  
+  - What a running app is made of, as data: its config (`core`), schemas, sign-in type, languages, registered modules, sections, help files, dashboards, the backend it talks to (`backendUrl`), what the backend says about each DAG (`frontendConfig`) and the first-level keys of its texts (`i18nNamespaces`). The end-to-end suite reads it to know what to test
+  *Contributors:* [@david-hidalgo-baobab](#)  
+  *Commit ID:* #
 - **Premium modules can add pages to Administration**  
   - A `PremiumDrawerSection` with `parent: 'admin'` is listed as a page of the core's Administration group (next to Roles management) instead of a group of its own. The group shows for admins when it has a page, so it no longer depends on roles management being on
   *Contributors:* [@antoniogonzalezsuarez](#)  
@@ -38,6 +53,13 @@
   - A backend without the endpoint, or a DAG it leaves out, asks no load filters. The database is still offered with `etl.useEtlBackend` and `etl.enableLoadFromDb`
   *Contributors:* [@HelenaCA](#)  
   *Commit ID:* #274
+
+### Removed
+- **The previous end-to-end suite**  
+  - Its specs, `auth.setup.ts`, `fixtures.ts`, `helpers/`, the corporate reporter and the e-mailed report (`test:e2e:send-report`, `test:e2e:full` and the `nodemailer` dependency)
+  - **Breaking for suites built on it:** a layer that imports `fixtures`, `helpers/urlHelpers`, `helpers/executionHelpers` or `helpers/constants` from the core copy has to move to the new harness: `test` and `expect` from `.cornflow-core/harness/fixtures`, navigation with `openFromMenu`, and data through the `api` fixture (README "Writing specs"). The config factory keeps its options and its project names, so a layer's Playwright config still works
+  *Contributors:* [@david-hidalgo-baobab](#)  
+  *Commit ID:* #
 
 ### Fixed
 - **The data checks send the DAG of the instance or execution they check**  

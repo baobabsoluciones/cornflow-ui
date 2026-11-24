@@ -1,280 +1,253 @@
-# E2E tests with Playwright
+# End-to-end suite
 
-This folder holds the end-to-end (E2E) test suite, built with
-[Playwright](https://playwright.dev/).
+The end-to-end suite of cornflow-ui lives in core, and every app built on core runs it against
+its own deployment: its frontend, its backend and its DAGs, with nothing mocked.
 
-The suite ships **inside the package**: consumer apps run these very same specs against their own
-app instead of copying them. For how the layers fit together (core → enterprise → client apps),
-see [`E2E_ARCHITECTURE.md`](./E2E_ARCHITECTURE.md).
+- **It adapts to each app.** It reads what the app is made of from `window.cornflowUi.describe()`
+  (its config, the settings its backend sends, its languages and texts) and tests what the app
+  has on. What the app has off must not show. What cannot be tested there is skipped, and the
+  report says why.
+- **Apps write no tests.** An app gives the suite its test data: per schema, an instance the
+  checks find nothing in, one with errors and one with warnings, and the execution config.
+- **It reports its coverage:** what it tested, what failed and what it did not test, with the
+  reason.
+- **It checks every screen for untranslated texts.**
 
-## Setup
+It is meant to run when it matters: when an app moves to a new version of core, before a
+deployment, or in CI.
 
-### 1. Environment variables
+## Running it in an app
 
-Copy `.env.test.example` to `.env.test` in `tests/e2e/` and fill it in:
+### 1. The Playwright config
 
-```env
-# Test credentials
-PLAYWRIGHT_TEST_USER=your_user
-PLAYWRIGHT_TEST_PASSWORD=your_password
+`playwright.config.mjs` at the root of the app:
 
-# Authentication type (optional, defaults to 'cornflow')
-# Possible values: 'cornflow', 'azure', 'cognito'
-PLAYWRIGHT_AUTH_TYPE=cornflow
+```js
+import { createCornflowE2EConfig } from '@cornflow-ui/core/e2e/configFactory.mjs'
 
-# Application base URL (optional, defaults to 'http://localhost:3000')
-PLAYWRIGHT_BASE_URL=http://localhost:3000
-
-# Backend configuration (VITE_APP_*)
-# IMPORTANT: use VITE_APP_BACKEND_URL (not VITE_APP_API_URL)
-VITE_APP_BACKEND_URL=https://your-backend
-VITE_APP_SCHEMA=your_schema
-VITE_APP_AUTH_TYPE=cornflow
-# ... any other VITE_APP_* variable your application needs
+export default createCornflowE2EConfig({
+  devCommand: 'npm run dev -- --port 3000', // starts the app under test
+  baseURL: 'http://localhost:3000',
+})
 ```
 
-**Note:** `.env.test` is gitignored and never reaches the repository. Two things to keep in mind:
+Playwright cannot load TypeScript from `node_modules`, so on every run the factory copies the
+suite into `tests/e2e/.cornflow-core/` and runs that copy. Do not edit the copy: it is rewritten
+on every run.
 
-- **Vite does not read `.env.test`.** The app under test takes its configuration from the root
-  `.env`; keep both pointing at the same environment.
-- Do **not** set `PLAYWRIGHT_TEST_TEMP_PASSWORD` against a shared account: it enables the
-  change-password tests, which mutate the account.
+Other options of the factory:
 
-### 2. Dependencies
+| Option | What it does |
+| --- | --- |
+| `consumerSpecDir` | The app's own specs, run as the `chromium-app` project (see [Writing specs](#writing-specs)) |
+| `layers` | The suites of the packages between core and the app, each run as a project of its own: `{ name, sourceDir, mirrorName, modules? }` |
+| `envDefaults` | Environment for what `.env.test` and the shell leave unset |
+| `overrides` | Any other Playwright setting |
+
+### 2. What git must ignore
+
+```gitignore
+tests/e2e/.cornflow-core/
+tests/e2e/.auth/
+tests/e2e/.env.test
+playwright-report/
+test-results/
+```
+
+### 3. The UAT file
+
+`tests/e2e/uat.json`, or another file named by `E2E_UAT_FILE`:
+
+```json
+{
+  "mode": "shared",
+  "schemas": {
+    "my_dag": {
+      "config": { "solver": "default", "timeLimit": 60 },
+      "datasets": {
+        "valid": "data/valid.json",
+        "withErrors": "data/with_errors.json",
+        "withWarnings": "data/with_warnings.json"
+      },
+      "infeasible": { "dataset": "valid", "config": { "solver": "infeasible" } },
+      "failingSolver": { "dataset": "valid", "config": { "solver": "failing" } }
+    }
+  }
+}
+```
+
+| Key | What it is |
+| --- | --- |
+| `mode` | `shared` or `disposable`. See [Modes](#modes) |
+| `schemas` | One entry per DAG to test, named as the app names it |
+| `config` | The execution config every case of that DAG runs with. Its `timeLimit` (seconds) sets how long the suite waits for an execution: `timeLimit` plus two minutes, three minutes at least |
+| `datasets.valid` | Instance data that the checks find nothing in and that solves with a solution |
+| `datasets.withErrors` | Instance data that the checks find errors in |
+| `datasets.withWarnings` | Instance data that the checks find warnings in, and no errors. It still solves |
+| `infeasible` | Optional. A dataset and the config to add for an execution that ends with no solution, without failing |
+| `failingSolver` | Optional. A dataset and the config to add for an execution whose solver fails |
+
+Datasets are JSON instance files. Paths are relative to the UAT file. Any dataset or case can be
+left out: the tests that need it are skipped, and the report says so.
+
+The file is checked before anything runs. A file that is not right stops the run with every
+problem listed.
+
+### 4. Credentials and environment
+
+`tests/e2e/.env.test` (see [`.env.test.example`](./.env.test.example)), or the environment:
+
+| Variable | What it is |
+| --- | --- |
+| `E2E_USER`, `E2E_PASSWORD` | The user the suite signs in as. An admin in `disposable` mode |
+| `E2E_BACKEND_URL` | Optional. The suite works on the backend the app talks to (`describe().backendUrl`). Set it only to reach that backend at another address |
+| `PLAYWRIGHT_BASE_URL` | Optional. Where the app under test is served, if not where `baseURL` says |
+| `E2E_UAT_FILE` | Optional. Another UAT file than `tests/e2e/uat.json` |
+
+Credentials never go in the UAT file or in the repository.
+
+The app under test takes its own configuration as always (its `.env`, or `values.json`). Vite does
+not read `.env.test`.
+
+### 5. Run it
 
 ```bash
-npm install
-npx playwright install chromium
+npx playwright install chromium   # once
+npx playwright test --config=playwright.config.mjs
 ```
 
-### 3. Dev server
+`--headed` shows the browser, `--ui` opens Playwright's UI mode, and `--project=chromium-auth-tests`
+runs the sign-in tests only.
 
-The tests start the dev server on port 3000 automatically. If one is already running there it is
-reused (outside CI) — **kill any stale server first**, or the tests will silently run against
-whatever configuration it was started with.
+## Modes
 
-## Available scripts
+| | `shared` | `disposable` |
+| --- | --- | --- |
+| For | An environment others use, such as a pre-production | An environment thrown away after the run |
+| Signs in as | `E2E_USER` | A user per role of the deployment, created by `E2E_USER` (an admin). The tests run as the planner unless they ask for a role |
+| Touches | Only what it creates | Only what it creates, and the users it makes |
 
-| Script | What it does |
-|---|---|
-| `npm run test:e2e` | Runs the whole suite headless. Reports land in `playwright-report/`. |
-| `npm run test:e2e:headed` | Same, with a visible browser — useful to watch what a test does. |
-| `npm run test:e2e:ui` | Playwright UI mode: run individual tests, time-travel debugging. The best option while developing tests. |
-| `npm run test:e2e:debug` | Pauses at the start of each test and opens the Playwright Inspector for step-by-step debugging. |
-| `npm run test:e2e:send-report` | Emails the corporate report. Requires a previous run and the SMTP variables (see [Emailing the report](#emailing-the-report)). |
-| `npm run test:e2e:full` | Runs the suite and emails the report — including when tests fail, so failures still get delivered. |
+What the suite creates is named after the run:
 
-Useful filters:
+- executions and instances are named `[e2e] <run id> …`;
+- users are named `e2e_<run id>_…`.
+
+At the end of the run, the suite deletes everything named after that run, even after tests that
+failed halfway. Two runs at the same time against the same backend do not touch each other's data.
+
+Each test deletes what it made when it ends. Some data waits for the end of the run: the instance
+of data checks that never got launched, or a launch the backend turned down.
+
+## What it tests
+
+| Area | Tests |
+| --- | --- |
+| Sign in | Signs in with a valid user. Turns down a user that does not exist. Asks for both fields. Offers the languages the app shows |
+| History | Opens and loads. Lists the executions the user made, finds them by name, clears the filters and opens one |
+| Create execution | Load filters show only when the backend declares them. The solver can be picked only when the app lets the user pick one. Then, with each dataset: valid data solves and the solution shows; data with errors is caught by the checks, and stops the launch where `enableBlockAdvanceOnCheckErrors` says so; data with warnings is caught and still solves; an infeasible case ends with no solution; a failing solver ends in error |
+
+Create execution works on the schema the app opens with.
+
+What the suite does not test yet: sign-in other than Cornflow's own user and password (the run
+stops with a clear message), and executions read from a backend's own endpoints
+(`executions.<dag>` in its frontend config). The history test skips the latter.
+
+## The report
+
+At the end of a run the suite prints its coverage:
+
+```text
+Coverage: 12 tested, 1 failed, 2 not tested
+  tested      create execution › data with errors: … (check errors do not stop the launch here)
+  failed      history › lists the executions the user made, …
+  not tested  create execution › infeasible: it ends with no solution: the UAT file has no infeasible case for my_dag
+Known issues: 1
+  configParams.seconds shown untranslated on /#/project-execution: …
+```
+
+- **tested**: the test ran and passed, or passed on a retry. Between brackets, what case of the
+  app it went through.
+- **failed**: the test ran and did not pass. Playwright's own report has the details:
+  `npx playwright show-report`, with a screenshot, a video and a trace of each failure.
+- **not tested**: the test does not apply to this app, and why.
+- **Known issues**: known faults the run came across. They do not fail a test while they wait
+  for their fix (see below).
+
+## Untranslated texts
+
+Every page a test opens is watched while the test runs: every route, every step and every dialog
+it goes through. A text that is a whole text key (`createExecution.title`) instead of what the key
+says fails the test, with the key and the page it was on. Only keys of the app's own texts count
+(`describe().i18nNamespaces`), so data, file names and e-mail addresses are not taken for keys.
+The cells of data tables are left out.
+
+A known fault of core that shows a key is listed in `KNOWN_UNTRANSLATED`
+(`suite/harness/translations.ts`). Keys it explains are reported as known issues and do not fail
+the test. Take the entry out once core is fixed.
+
+## Writing specs
+
+Specs import `test` and `expect` from the suite's fixtures, never from `@playwright/test`: the
+fixtures are what put the session back. In core that is `suite/harness/fixtures.ts`. In a layer
+or an app, it is the copy: `tests/e2e/.cornflow-core/harness/fixtures.ts`.
+
+```ts
+import { test, expect } from '../.cornflow-core/harness/fixtures'
+
+test('…', async ({ page, deployment, uat, api }) => {
+  test.skip(
+    !deployment.core.parameters?.solverConfig?.showSolverStep,
+    'the solver is not offered here',
+  )
+  // …
+})
+```
+
+| Fixture | What it is |
+| --- | --- |
+| `deployment` | What `describe()` said once signed in: what is on and off |
+| `uat` | The app's UAT file, checked |
+| `api` | Cornflow's API, as the same user as the page. What it creates is deleted when the test ends |
+| `session` | The user the page is signed in as: `default`, a role (`test.use({ session: 'viewer' })`, `disposable` mode only), or `null` to start signed out |
+| `checkTranslations` | On by default |
+
+Rules that keep a spec working on every app:
+
+- Read what to expect from `deployment`, and assume nothing about a schema: no table names, no
+  row counts.
+- Skip with the reason what does not apply: `test.skip(condition, reason)`. The report lists it.
+- Name what you create with `api.name(label)`, so the clean-up finds it.
+- Find elements by `data-testid`, and move around the app through the side menu
+  (`openFromMenu` in `suite/harness/navigation.ts`).
+
+## Developing the suite in core
+
+Core runs the suite against a Cornflow of its own: `stack/`, with cornflow, airflow and a small
+planning app, `e2e_planning`, made to give each case of the UAT file.
 
 ```bash
-npx playwright test --list                            # what would run, without running it
-npx playwright test specs/version-history             # a single folder
-npx playwright test -g "download Excel"               # by test name
-npx playwright test --project=chromium-auth-tests     # only the login/logout specs
+docker compose -f tests/e2e/stack/docker-compose.yml up -d --wait
+npm run test:e2e:stack   # checks that every case of e2e_planning ends as it should
+npm run test:e2e         # the suite, against the stack
+docker compose -f tests/e2e/stack/docker-compose.yml down -v
 ```
 
-## Authentication: log in once, reuse everywhere
+- `tests/e2e/uat.json` is core's UAT file, in `disposable` mode, with the datasets of the stack.
+- `npm run test:e2e` starts core on port 3060 with the stack's settings, whatever the root
+  `.env` says.
+- The stack needs a while after `up` before airflow takes executions.
+- Airflow 2 sometimes turns a launch down ("Airflow is not accessible"), and it turns down
+  launches asked at the same time. The suite runs one test at a time, and retries a test that
+  fails: once locally, twice in CI.
 
-1. **`auth.setup.ts`** runs once before everything else. It performs a real UI login and saves the
-   full browser state (cookies, localStorage and **sessionStorage**) to `.auth/user.json`.
-2. **`fixtures.ts`** exports a custom `test` that injects the sessionStorage values (token, userId,
-   isAuthenticated) into every browser context before the page loads — Playwright's built-in
-   `storageState` does not cover sessionStorage, and that is where the cornflow token lives.
-3. Authenticated specs import `test` and `expect` from `../../fixtures` (**not** from
-   `@playwright/test`) and navigate straight away.
-4. The auth specs (`specs/auth/`) run in their own project, without a pre-authenticated state.
-
-> **Result:** the login runs **once** for the whole suite instead of ~50 times.
-
-The saved state is resolved from the project root (see `helpers/authFile.ts`), so consumer apps
-keep their own `.auth/` — override it with `CORNFLOW_E2E_AUTH_FILE` if needed.
-
-### Writing a new authenticated test
-
-```typescript
-// Import from fixtures, NOT from @playwright/test
-import { test, expect } from '../../fixtures';
-
-test('my test', async ({ page }) => {
-  // Navigate straight away — the page is already authenticated
-  await page.goto('/');
-  const app = page.locator('.v-application');
-  await app.first().waitFor({ state: 'visible', timeout: 15000 });
-
-  // ... rest of the test
-});
-```
-
-Two rules that keep these specs reusable by every consumer:
-
-- **Do not assume a schema.** No hardcoded table names, executions or row counts — adapt to
-  whatever the backend serves (`if (await tableCard.count() > 0) …`).
-- **Assert only what core owns**: its own i18n keys, structure and navigation.
-
-## File layout
-
-```
-tests/e2e/
-├── README.md                    # This file
-├── E2E_ARCHITECTURE.md          # How core / enterprise / client apps share the suite
-├── playwright.config.ts         # Thin wrapper over the shared factory
-├── configFactory.mjs            # Builds the config; also used by consumer apps
-├── auth.setup.ts                # Global auth setup (runs once)
-├── fixtures.ts                  # Custom fixture with sessionStorage injection
-├── .env.test.example            # Template (no secrets)
-├── .env.test                    # Local, gitignored
-├── .auth/                       # Saved auth state, gitignored
-│   └── user.json                # Cookies + localStorage + sessionStorage
-├── reporters/
-│   ├── corporate-reporter.ts    # Branded HTML report
-│   └── send-report.ts           # Emails that report over SMTP
-├── helpers/
-│   ├── auth/                    # cornflowAuth + authentication factory
-│   ├── authFile.ts              # Where the saved auth state lives
-│   ├── authInjectSkip.ts        # Opt out of session injection (password flows)
-│   ├── constants.ts             # Timeouts, routes and shared selectors
-│   ├── errorDetection.ts        # Console/network error detection
-│   ├── executionHelpers.ts      # Load/prepare executions
-│   ├── sessionStorageHelpers.ts
-│   └── urlHelpers.ts            # Hash routing helpers
-├── restore-password.spec.ts     # Restores the original password (runs on its own)
-└── specs/
-    ├── auth/login.spec.ts
-    ├── drawer/pinDrawer.spec.ts
-    ├── help/helpButton.spec.ts
-    ├── input-data/inputData.spec.ts
-    ├── layout/baobabLink.spec.ts
-    ├── loaded-executions/loadedExecutionsTabs.spec.ts
-    ├── solution-data/solutionData.spec.ts
-    ├── user-settings/userSettingsNavigation.spec.ts
-    ├── validations/validations.spec.ts
-    └── version-history/versionHistoryNavigation.spec.ts
-```
-
-## Specs and coverage
-
-| Folder | File | What it covers |
-|---|---|---|
-| `auth/` | `login.spec.ts` | Login (valid, invalid, empty), redirect to a protected route, logout (programmatic and via the UI button), redirect to sign-in without a session, session persistence across reloads. |
-| `drawer/` | `pinDrawer.spec.ts` | Pin drawer button: the side menu stays open, and collapses again on a second click. |
-| `help/` | `helpButton.spec.ts` | Help menu, help centre modal, user manual download, licences modal. |
-| `input-data/` | `inputData.spec.ts` | Instance data tables, tab navigation, Excel download, navigation to edit instance. |
-| `layout/` | `baobabLink.spec.ts` | "baobab soluciones" link in the app bar: correct `href`, opens in a new tab. |
-| `loaded-executions/` | `loadedExecutionsTabs.spec.ts` | Loaded-execution tab bar: create, select and close tabs. |
-| `solution-data/` | `solutionData.spec.ts` | Solution data for the selected execution, endpoint payload, tabs, Excel download. |
-| `user-settings/` | `userSettingsNavigation.spec.ts` | Settings navigation, tabs, theme and language switching, password change. |
-| `validations/` | `validations.spec.ts` | Validation tables for the instance, endpoint payload, tabs, Excel download. |
-| `version-history/` | `versionHistoryNavigation.spec.ts` | Execution list, backend payload structure, date filters (today / yesterday / 7d / 30d), custom-range datepickers, Excel download, loading an execution, confirmation modals. |
-| *(root)* | `restore-password.spec.ts` | Restores the original password after the password-change flow. |
-
-Some tests **mutate shared state** (changing the password, deleting an execution). Against a live
-environment, exclude them:
-
-```bash
-npx playwright test --grep-invert "change password|restore original password|delete execution"
-```
-
-## Reports
-
-### Playwright's own report
-
-- **`playwright-report/index.html`** — interactive HTML report with screenshots and videos of
-  failures.
-- **`test-results/`** — per-run artifacts (screenshots, videos, traces).
-
-```bash
-npx playwright show-report
-```
-
-### Corporate report
-
-A branded report is generated on every run at **`playwright-report/corporate-report.html`**, with
-a summary (total, passed, failed, skipped, flaky, duration), a success-rate bar, results grouped
-by file, failure screenshots and run metadata.
-
-It takes options in `playwright.config.ts`:
-
-```typescript
-['./reporters/corporate-reporter.ts', {
-  outputFile: 'playwright-report/corporate-report.html', // Output path
-  companyName: 'baobab soluciones',                      // Company name
-  projectName: 'Cornflow UI',                            // Project name
-  logoPath: 'src/app/assets/logo/baobab_full_logo.png',  // Logo path
-  embedScreenshots: true,                                // Embed failure screenshots
-}]
-```
-
-### Emailing the report
-
-```bash
-npm run test:e2e:send-report   # send only (tests must have run before)
-npm run test:e2e:full          # run + send
-```
-
-Add to `.env.test`:
-
-```env
-REPORT_SMTP_HOST=smtp.example.com
-REPORT_SMTP_PORT=587
-REPORT_SMTP_USER=your_address
-REPORT_SMTP_PASS=your_app_password
-REPORT_EMAIL_FROM=your_address
-REPORT_EMAIL_TO=recipient1@example.com,recipient2@example.com
-REPORT_EMAIL_CC=cc@example.com
-REPORT_EMAIL_SUBJECT=E2E Test Report – Cornflow UI
-```
-
-> For Gmail, use an [app password](https://support.google.com/accounts/answer/185833) in
-> `REPORT_SMTP_PASS`, never the account password. Credentials belong in `.env.test` or in CI
-> secrets — never in the repository.
-
-### CI/CD
-
-```yaml
-# GitHub Actions example
-- name: Run E2E tests
-  run: npm run test:e2e
-  env:
-    PLAYWRIGHT_TEST_USER: ${{ secrets.E2E_USER }}
-    PLAYWRIGHT_TEST_PASSWORD: ${{ secrets.E2E_PASSWORD }}
-
-- name: Send test report
-  if: always()
-  run: npm run test:e2e:send-report
-  env:
-    REPORT_SMTP_HOST: ${{ secrets.SMTP_HOST }}
-    REPORT_SMTP_PORT: ${{ secrets.SMTP_PORT }}
-    REPORT_SMTP_USER: ${{ secrets.SMTP_USER }}
-    REPORT_SMTP_PASS: ${{ secrets.SMTP_PASS }}
-    REPORT_EMAIL_FROM: ${{ secrets.REPORT_FROM }}
-    REPORT_EMAIL_TO: ${{ secrets.REPORT_TO }}
-```
-
-All report output is gitignored.
+`npm run test:e2e:headed`, `test:e2e:ui` and `test:e2e:debug` run the suite with a browser, in UI
+mode and in Playwright's inspector.
 
 ## Troubleshooting
 
-**Tests fail with a server error**
-- Check the credentials in `.env.test`.
-- Check that `VITE_APP_*` points at the intended backend — and remember the app itself reads the
-  root `.env`, not `.env.test`.
-
-**The server does not start**
-- Check that port 3000 is free. If a server is already running there it will be reused outside CI,
-  which may not be the one you want.
-
-**The tests are slow**
-- Authentication runs once thanks to the setup project. If it feels slow, make sure you import
-  `test` from `../../fixtures` and not from `@playwright/test`.
-- Specs run sequentially (`fullyParallel: false`) to avoid clashing over the shared server: 1
-  worker locally, 2 in CI. Both are adjustable in the config.
-
-**Selector problems**
-- `npm run test:e2e:debug` to inspect the live page, `npm run test:e2e:ui` to step through a run.
-- Check the screenshots in `test-results/` to see the page at the moment of failure.
-
-## Further reading
-
-- [Playwright documentation](https://playwright.dev/)
-- [Playwright best practices](https://playwright.dev/docs/best-practices)
-- [Playwright Test API](https://playwright.dev/docs/api/class-test)
+- **The run uses the wrong backend or base URL.** An old `tests/e2e/.env.test` takes precedence
+  over the defaults of the config. Update it from `.env.test.example`.
+- **The app does not start, or starts with the wrong settings.** A dev server already running on
+  that port is reused outside CI. Stop it first.
+- **A test fails with "The execution could not be launched".** The backend turned the launch
+  down: the message after it is the backend's.
