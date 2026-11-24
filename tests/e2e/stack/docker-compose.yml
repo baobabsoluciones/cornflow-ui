@@ -6,10 +6,15 @@
 #
 # It runs as its own compose project on ports of its own (cornflow on 5091, airflow on 8091), so
 # it can sit next to any other cornflow on the machine. `down -v` leaves nothing behind.
+#
+# Cornflow is the published release-v1.3.9. Airflow stays on release-v1.3.9rc1 (Airflow 2): the
+# published release-v1.3.9 of airflow is Airflow 3, which the DAGs in dags/ are not written for.
+# Each image has its own tag: E2E_CORNFLOW_TAG and E2E_AIRFLOW_TAG.
+# `npm run test:e2e:stack` checks that every case of e2e_planning still ends as it should.
 name: cornflow-e2e
 
 x-airflow-common: &airflow-common
-  image: baobabsoluciones/airflow:${E2E_IMAGE_TAG:-release-v1.3.9rc1}
+  image: baobabsoluciones/airflow:${E2E_AIRFLOW_TAG:-release-v1.3.9rc1}
   platform: linux/amd64
   environment: &airflow-common-env
     AIRFLOW_USER: admin
@@ -31,7 +36,7 @@ x-airflow-common: &airflow-common
 
 services:
   cornflow:
-    image: baobabsoluciones/cornflow:${E2E_IMAGE_TAG:-release-v1.3.9rc1}
+    image: baobabsoluciones/cornflow:${E2E_CORNFLOW_TAG:-release-v1.3.9}
     platform: linux/amd64
     restart: always
     ports:
