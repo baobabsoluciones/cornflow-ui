@@ -310,6 +310,47 @@ export class CornflowApi {
   }
 
   /**
+   * Deletes whatever carries this run's id, whoever created it and whether or not this client
+   * remembers it: the executions and instances named `[e2e] <run id> …` and the users named
+   * `e2e_<run id>_…`. It is how a run cleans up at the end, after tests that may have stopped
+   * half-way. Users are only listed by an admin; for anyone else there are none to delete.
+   */
+  async sweepRun(): Promise<{
+    executions: number
+    instances: number
+    users: number
+  }> {
+    const namePrefix = this.name('')
+    const userPrefix = this.username('')
+    const named = (items: { id: string; name?: string }[]) =>
+      items.filter((item) => item.name?.startsWith(namePrefix))
+
+    const executions = named(
+      await this.request<{ id: string; name?: string }[]>('GET', '/execution/'),
+    )
+    for (const { id } of executions) await this.deleteExecution(id)
+
+    const instances = named(
+      await this.request<{ id: string; name?: string }[]>('GET', '/instance/'),
+    )
+    for (const { id } of instances) await this.deleteInstance(id)
+
+    const allUsers = await this.request<
+      { id: number; username?: string }[] | null
+    >('GET', '/user/', undefined, [403])
+    const users = (Array.isArray(allUsers) ? allUsers : []).filter((user) =>
+      user.username?.startsWith(userPrefix),
+    )
+    for (const { id } of users) await this.deleteUser(id)
+
+    return {
+      executions: executions.length,
+      instances: instances.length,
+      users: users.length,
+    }
+  }
+
+  /**
    * Deletes everything this run created: its executions, its instances and then its users. Goes on
    * after a failure so that one leftover does not keep the rest, and reports them all at the end.
    */

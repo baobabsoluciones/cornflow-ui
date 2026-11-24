@@ -1,0 +1,15 @@
+{
+  "mode": "disposable",
+  "schemas": {
+    "e2e_planning": {
+      "config": { "solver": "default", "timeLimit": 60, "seconds": 0 },
+      "datasets": {
+        "valid": "stack/dags/e2e_planning/data/valid.json",
+        "withErrors": "stack/dags/e2e_planning/data/with_errors.json",
+        "withWarnings": "stack/dags/e2e_planning/data/with_warnings.json"
+      },
+      "infeasible": { "dataset": "valid", "config": { "solver": "infeasible" } },
+      "failingSolver": { "dataset": "valid", "config": { "solver": "failing" } }
+    }
+  }
+}

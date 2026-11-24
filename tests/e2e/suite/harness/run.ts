@@ -1,0 +1,124 @@
+/**
+ * What one run of the suite shares between its set-up, its tests and its clean-up: the run id,
+ * the deployment as `describe()` told it, and a signed-in session per user. The set-up writes them
+ * into the app's `tests/e2e/.auth/` (gitignored); the rest reads them from there.
+ *
+ * The config factory sets the environment this reads (`E2E_RUN_ID`, `E2E_STATE_DIR`,
+ * `E2E_UAT_FILE`) once per run, so every worker sees the same values.
+ */
+import fs from 'node:fs'
+import path from 'node:path'
+import type { Mode } from './uat'
+
+/** What `window.cornflowUi.describe()` returns (see `src/utils/appDescription.ts`). */
+export interface Deployment {
+  name: string
+  schemas: string[]
+  authType: string
+  hasExternalApp: boolean
+  isDeveloperMode: boolean
+  languages: string[]
+  modules: string[]
+  core: Record<string, any>
+  appSections: unknown[]
+  helpMenuFiles: unknown[]
+  dashboards: { solution: unknown[]; instance: unknown[] }
+  frontendConfig: {
+    etl?: Record<string, { exists?: boolean; query?: Record<string, any> }>
+    executions?: Record<string, Record<string, string>>
+  } | null
+  i18nNamespaces: string[]
+}
+
+/** A user the run signs in as. `default` is the one the tests use unless they ask for a role. */
+export interface SessionUser {
+  name: string
+  username: string
+  /** Set for the users the run created (disposable mode), which the clean-up deletes. */
+  id?: number
+}
+
+export interface RunInfo {
+  runId: string
+  mode: Mode
+  sessions: SessionUser[]
+}
+
+function required(name: string): string {
+  const value = process.env[name]
+  if (!value) {
+    throw new Error(
+      `[cornflow-e2e] ${name} is not set. Run the suite through its config factory.`,
+    )
+  }
+  return value
+}
+
+export const runId = (): string => required('E2E_RUN_ID')
+export const stateDir = (): string => required('E2E_STATE_DIR')
+export const uatFile = (): string => required('E2E_UAT_FILE')
+
+/** Where the browser state of a user's session is: what Playwright takes as `storageState`. */
+export const storageStateFile = (user: string): string =>
+  path.join(stateDir(), `${user}.json`)
+
+/** Where the `sessionStorage` of a user's session is, which Playwright does not keep. */
+export const sessionStorageFile = (user: string): string =>
+  path.join(stateDir(), `${user}.session.json`)
+
+const deploymentFile = (): string => path.join(stateDir(), 'deployment.json')
+const runFile = (): string => path.join(stateDir(), 'run.json')
+
+function write(file: string, value: unknown): void {
+  fs.mkdirSync(path.dirname(file), { recursive: true })
+  fs.writeFileSync(file, JSON.stringify(value, null, 2))
+}
+
+function read<T>(file: string, what: string): T {
+  if (!fs.existsSync(file)) {
+    throw new Error(
+      `[cornflow-e2e] No ${what} at ${file}: the set-up (project "setup") did not run.`,
+    )
+  }
+  return JSON.parse(fs.readFileSync(file, 'utf-8')) as T
+}
+
+export const saveDeployment = (deployment: Deployment): void =>
+  write(deploymentFile(), deployment)
+export const readDeployment = (): Deployment =>
+  read(deploymentFile(), 'deployment description')
+
+export const saveRun = (run: RunInfo): void => write(runFile(), run)
+export const readRun = (): RunInfo => read(runFile(), 'run information')
+
+export const saveSessionStorage = (
+  user: string,
+  entries: Record<string, string>,
+): void => write(sessionStorageFile(user), entries)
+export const readSessionStorage = (user: string): Record<string, string> =>
+  read(sessionStorageFile(user), `session of "${user}"`)
+
+/** The credentials the suite signs in with, from the environment. */
+export function credentials(): { username: string; password: string } {
+  const username = process.env.E2E_USER
+  const password = process.env.E2E_PASSWORD
+  if (!username || !password) {
+    throw new Error(
+      '[cornflow-e2e] Set E2E_USER and E2E_PASSWORD (in tests/e2e/.env.test or the environment): ' +
+        'the user the suite signs in as, an admin when the mode is "disposable".',
+    )
+  }
+  return { username, password }
+}
+
+/** The backend the app talks to: the suite works on the same one. */
+export function backendUrl(): string {
+  const url = process.env.VITE_APP_BACKEND_URL
+  if (!url) {
+    throw new Error(
+      '[cornflow-e2e] Set VITE_APP_BACKEND_URL: the backend of the app under test, which the ' +
+        'suite also uses to prepare and clean up its data.',
+    )
+  }
+  return url
+}

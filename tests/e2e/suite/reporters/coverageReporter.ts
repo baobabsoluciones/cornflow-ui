@@ -3,7 +3,7 @@
  * the reason. A test that does not apply to a deployment (a step it turns off, a dataset it does
  * not have) is skipped with that reason, `test.skip(condition, reason)`, and it shows up here.
  *
- * It is printed at the end of the run. The set-up (project `setup`) is not part of it.
+ * It is printed at the end of the run. The set-up and the clean-up of the run are not part of it.
  */
 import type {
   FullResult,
@@ -16,6 +16,9 @@ interface Line {
   title: string
   reason?: string
 }
+
+/** The projects that prepare and clean up the run, rather than test the deployment. */
+const RUN_PROJECTS = ['setup', 'teardown']
 
 /** The test's path below its project and file: `describe › test`. */
 function titleOf(test: TestCase): string {
@@ -42,7 +45,7 @@ export default class CoverageReporter implements Reporter {
     const tested: Line[] = []
     const notTested: Line[] = []
     for (const test of this.root.allTests()) {
-      if (test.parent.project()?.name === 'setup') continue
+      if (RUN_PROJECTS.includes(test.parent.project()?.name ?? '')) continue
       if (test.outcome() === 'skipped') {
         notTested.push({ title: titleOf(test), reason: reasonOf(test) })
       } else if (test.results.length) {

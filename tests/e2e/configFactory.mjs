@@ -27,11 +27,22 @@ import { fileURLToPath } from 'node:url'
  *   enterprise premium  (@cornflow-ui/enterprise)  → project `chromium-enterprise`
  *   the app's own specs                            → project `chromium-app`
  *
- * Every authenticated project depends on `setup`, which runs once before them.
+ * Every authenticated project depends on `setup`, which runs once before them and signs the run's
+ * users in; `teardown` runs once after them and deletes what the run created.
  */
 
 const packageE2EDir = path.dirname(fileURLToPath(import.meta.url))
 const packageSuiteDir = path.join(packageE2EDir, 'suite')
+
+/** The id of a run, as `newRunId` of suite/harness/cornflowApi.ts makes it. */
+function newRunId(now = new Date()) {
+  const stamp = now
+    .toISOString()
+    .slice(0, 16)
+    .replace(/[-:]/g, '')
+    .replace('T', '-')
+  return `${stamp}-${Math.random().toString(36).slice(2, 6)}`
+}
 
 function mirrorDir(src, dest) {
   fs.mkdirSync(dest, { recursive: true })
@@ -99,12 +110,28 @@ function loadConsumerEnv(consumerDir) {
  *   baseURL?: string,
  *   consumerSpecDir?: string,  // the app's own specs, run authenticated
  *   layers?: E2ELayer[],       // suites of the packages between core and the app (enterprise…)
+ *   envDefaults?: Record<string, string>, // environment for what .env.test and the shell leave unset
  *   overrides?: object,        // any other Playwright setting
  * }} [options]
  */
 export function createCornflowE2EConfig(options = {}) {
   const consumerDir = options.consumerDir ?? process.cwd()
   loadConsumerEnv(consumerDir)
+  for (const [name, value] of Object.entries(options.envDefaults ?? {})) {
+    process.env[name] ??= value
+  }
+
+  // Shared by the set-up, the tests and the clean-up of this run. The config is loaded again in
+  // every worker, which inherits these, so they are only set the first time.
+  process.env.E2E_RUN_ID ??= newRunId()
+  process.env.E2E_STATE_DIR ??= path.join(consumerDir, 'tests', 'e2e', '.auth')
+  process.env.E2E_UAT_FILE ??= path.join(
+    consumerDir,
+    'tests',
+    'e2e',
+    'uat.json',
+  )
+  const defaultSession = path.join(process.env.E2E_STATE_DIR, 'default.json')
 
   const isCI = !!process.env.CI
   const baseURL =
@@ -125,12 +152,26 @@ export function createCornflowE2EConfig(options = {}) {
   )
 
   const browser = devices['Desktop Chrome']
+  // Signed in as the run's `default` user. The interface keeps its session in sessionStorage,
+  // which the suite's fixtures put back (see suite/harness/session.ts).
+  const signedIn = { ...browser, storageState: defaultSession }
   const projects = [
-    { name: 'setup', testDir: suiteDir, testMatch: 'setup/**/*.setup.ts' },
+    {
+      name: 'setup',
+      testDir: suiteDir,
+      testMatch: 'setup/**/*.setup.ts',
+      use: browser,
+      teardown: 'teardown',
+    },
+    {
+      name: 'teardown',
+      testDir: suiteDir,
+      testMatch: 'setup/**/*.teardown.ts',
+    },
     {
       name: 'chromium',
       testDir: specsDir,
-      use: browser,
+      use: signedIn,
       dependencies: ['setup'],
       testIgnore: ['**/auth/**'],
     },
@@ -150,7 +191,7 @@ export function createCornflowE2EConfig(options = {}) {
     projects.push({
       name: layer.name,
       testDir: resolveSuiteDir(consumerDir, layer.sourceDir, layer.mirrorName),
-      use: browser,
+      use: signedIn,
       dependencies: ['setup'],
       ...(layer.modules
         ? {
@@ -166,7 +207,7 @@ export function createCornflowE2EConfig(options = {}) {
     projects.push({
       name: 'chromium-app',
       testDir: options.consumerSpecDir,
-      use: browser,
+      use: signedIn,
       dependencies: ['setup'],
     })
   }
@@ -201,7 +242,8 @@ export function createCornflowE2EConfig(options = {}) {
       url: baseURL,
       reuseExistingServer: !isCI,
       timeout: 240 * 1000,
-      stdout: 'pipe',
+      // What the app logs is noise in the run's output; its errors still show.
+      stdout: 'ignore',
       stderr: 'pipe',
       env: { ...process.env, NODE_ENV: process.env.NODE_ENV || 'development' },
     },
