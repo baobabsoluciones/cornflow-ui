@@ -17,6 +17,7 @@
     class="checks-status"
     :class="{ 'is-highlighted': highlight }"
     data-testid="checks-status"
+    :data-status="status"
   >
     <div class="checks-status__head">
       <span class="checks-status__icon" :class="`is-${tone}`">

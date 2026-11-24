@@ -21,6 +21,7 @@
     :class="{ 'is-highlighted': highlight, 'is-loaded': draft.isLoaded }"
     :aria-label="$t('createExecution.data.title')"
     data-testid="data-card"
+    :data-load-status="draft.loadStatus"
   >
     <input
       ref="fileInput"

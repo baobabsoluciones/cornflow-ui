@@ -232,6 +232,24 @@ export class CornflowApi {
     return id
   }
 
+  /**
+   * The execution called `name` that the user made (through the interface, for instance), with
+   * its instance; null when there is none. Both are deleted with the rest when this client cleans
+   * up.
+   */
+  async findExecution(
+    name: string,
+  ): Promise<{ id: string; instanceId: string } | null> {
+    const executions = await this.request<
+      { id: string; name?: string; instance_id: string }[]
+    >('GET', '/execution/')
+    const found = executions.find((execution) => execution.name === name)
+    if (!found) return null
+    this.executions.add(found.id)
+    this.instances.add(found.instance_id)
+    return { id: found.id, instanceId: found.instance_id }
+  }
+
   /** The state of an execution (`ExecutionState`). */
   async executionState(id: string): Promise<number> {
     const execution = await this.request<{ state: number }>(

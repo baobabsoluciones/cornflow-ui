@@ -3,8 +3,9 @@
  * the reason. A test that does not apply to a deployment (a step it turns off, a dataset it does
  * not have) is skipped with that reason, `test.skip(condition, reason)`, and it shows up here.
  *
- * It also lists the known faults of core the run came across (annotation `known issue`), which do
- * not fail a test while they wait for their fix.
+ * A test tells which case of the deployment it went through with a `note` annotation, shown next
+ * to it. The report also lists the known faults the run came across (annotation `known issue`),
+ * which do not fail a test while they wait for their fix.
  *
  * It is printed at the end of the run. The set-up and the clean-up of the run are not part of it.
  */
@@ -51,17 +52,24 @@ export default class CoverageReporter implements Reporter {
     for (const test of this.root.allTests()) {
       if (RUN_PROJECTS.includes(test.parent.project()?.name ?? '')) continue
       const lastResult = test.results.at(-1)
+      // A note made while the test runs is both on the test and on its result: kept once.
+      const notes = new Set<string>()
       for (const note of [
         ...test.annotations,
         ...(lastResult?.annotations ?? []),
       ]) {
         if (note.type === 'known issue' && note.description)
           knownIssues.add(note.description)
+        if (note.type === 'note' && note.description)
+          notes.add(note.description)
       }
       if (test.outcome() === 'skipped') {
         notTested.push({ title: titleOf(test), reason: reasonOf(test) })
       } else if (test.results.length) {
-        tested.push({ title: titleOf(test) })
+        tested.push({
+          title: titleOf(test),
+          reason: [...notes].join('; ') || undefined,
+        })
       }
     }
     if (!tested.length && !notTested.length) return
@@ -70,7 +78,11 @@ export default class CoverageReporter implements Reporter {
       '',
       `Coverage: ${tested.length} tested, ${notTested.length} not tested`,
     ]
-    for (const line of tested) lines.push(`  tested      ${line.title}`)
+    for (const line of tested) {
+      lines.push(
+        `  tested      ${line.title}${line.reason ? ` (${line.reason})` : ''}`,
+      )
+    }
     for (const line of notTested) {
       lines.push(`  not tested  ${line.title}: ${line.reason}`)
     }
