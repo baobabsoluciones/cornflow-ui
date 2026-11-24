@@ -1,6 +1,8 @@
 # Changelog
 
-## [Unreleased]
+## [4.1.0] - 24-11-2026
+
+⚠️ The load filters of a DAG's ETL come from the backend (`GET /external/frontend-config/`): `pre_etl: true` in the config schema is not read. An application that marks its load filters that way publishes them in the `query` of its backend's frontend config before upgrading (see **Changed**).
 
 ### Added
 - **Premium modules can add pages to Administration**  
