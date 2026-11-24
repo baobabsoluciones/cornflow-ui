@@ -12,6 +12,7 @@
   - Too many attempts (429) and a locked account say so instead of "wrong credentials"; after the sign-in, a notice says when the previous one was; a legal notice sits under the form
   - New dependencies: `@zxcvbn-ts/core`, `@zxcvbn-ts/language-common` and `qrcode`
   *Contributors:* [@HelenaCA](#), [@ggsdc](#)  
+  *Commit ID:* #284
 - **Premium modules can add pages to Administration**  
   - A `PremiumDrawerSection` with `parent: 'admin'` is listed as a page of the core's Administration group (next to Roles management) instead of a group of its own. The group shows for admins when it has a page, so it no longer depends on roles management being on
   *Contributors:* [@antoniogonzalezsuarez](#)  
