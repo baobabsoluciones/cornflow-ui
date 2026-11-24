@@ -8,18 +8,18 @@
   *Contributors:* [@antoniogonzalezsuarez](#)  
   *Commit ID:* #275
 - **The backend can serve the executions of a DAG (`executions` in `GET /external/frontend-config/`)**  
-  - Per DAG, the backend declares which of its endpoints the executions are read from: `list` (the history and the latest executions), `details` (state polling, who launched it, its DAG, an uploaded solution, a deletion), `data` (loading and downloading) and `instance_data` (the instance of a loaded execution). Paths go under `/external`, with `{id}` for the id
-  - Each read goes to the backend's endpoint, then, for the list only, to `executionsListEndpoint`, then to Cornflow. A DAG the answer leaves out, a key it leaves out or an unusable route (warned once in the console) reads from the next source, so an app whose backend declares nothing reads as before
+  - Per DAG, the backend declares one endpoint per operation on the executions: `get_list` (the history and the latest executions), `get_detail` (state polling, who launched it, its DAG), `put_detail` (an uploaded solution), `delete_detail` (a deletion), `get_data` (loading and downloading) and `get_instance_data` (the instance of a loaded execution). Paths go under `/external`, with `{id}` for the id
+  - Each operation goes to the backend's endpoint, then, for the list only, to `executionsListEndpoint`, then to Cornflow. A DAG the answer leaves out, a key it leaves out or an unusable route (warned once in the console) goes to the next source, so a backend can serve the reads of a DAG and leave its updates and deletions to Cornflow, and an app whose backend declares nothing works as before
   - The frontend config is asked when the app has an external backend (`hasExternalApp`), with or without an ETL module
   - README "Execution endpoints": the format, the order, what each key is used for and the fields the core reads from each answer
   *Contributors:* [@HelenaCA](#)  
-  *Commit ID:* #278
+  *Commit ID:* #278, #287
 - **A DAG can have a create-execution flow of its own**  
   - `createExecution.component` can be set in a DAG's entry of `core.schemaOverrides`, and on that DAG it takes precedence over the app's flow. A DAG without one shows the app's flow, and without that, core's page
   - The `project-execution` route shows the flow of the active DAG and mounts the new DAG's flow on a switch. Within a DAG, the route's keep-alive keeps the flow and its draft
   - `docs/create-execution-flows.md`: the order in which the flows apply, a DAG's flow in `schemaOverrides`, and a flow that creates its executions through the app's backend instead of the draft
   *Contributors:* [@HelenaCA](#)  
-  *Commit ID:* pending
+  *Commit ID:* #281
 
 ### Changed
 - **Every list and download of a frontend-automation table carries the active DAG**  
