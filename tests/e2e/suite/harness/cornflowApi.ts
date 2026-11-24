@@ -81,7 +81,7 @@ export function newRunId(now: Date = new Date()): string {
 export type Checks = Record<string, Record<string, unknown>[]>
 
 export interface CornflowApiOptions {
-  /** URL of the backend the interface talks to (its `VITE_APP_BACKEND_URL`). */
+  /** URL of the backend the interface talks to (`describe().backendUrl`). */
   backendUrl: string
   /**
    * Where Cornflow's routes start on that backend: `/cornflow` when the app has an external
