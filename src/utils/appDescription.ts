@@ -1,7 +1,7 @@
 /**
  * What a running deployment is made of: the configuration it took (app config, values.json or
- * the environment), the schemas it works on, the languages it shows, its own sections and the
- * modules it registered.
+ * the environment), the schemas it works on, the languages it shows, its own sections, the
+ * modules it registered, what its backend says about each DAG and the texts it has.
  *
  * The end-to-end suite reads it to know what a deployment has to show: a step, a column or a
  * section that the configuration turns on and is not on the screen is a fault, one it turns off
@@ -10,13 +10,17 @@
  * It carries data only: functions and components are left out, and of the sign-in settings only
  * the provider type is kept.
  */
+import { getActivePinia } from 'pinia'
 import config from '@cornflow-ui/core/config'
 import appConfig from '@/app/config'
 import { getRegisteredPremiumModules } from '@cornflow-ui/core/plugins/extensions'
+import i18n from '@cornflow-ui/core/plugins/i18n'
 import {
   readConfiguredLanguages,
   resolveVisibleLanguages,
 } from '@cornflow-ui/core/plugins/languages'
+import { useGeneralStore } from '@cornflow-ui/core/stores/general'
+import type { FrontendConfig } from '@cornflow-ui/core/utils/frontendConfig'
 
 export interface AppDescription {
   name: string
@@ -34,6 +38,18 @@ export interface AppDescription {
   appSections: unknown[]
   helpMenuFiles: unknown[]
   dashboards: { solution: unknown[]; instance: unknown[] }
+  /**
+   * What the backend tells the interface about each DAG (`GET /external/frontend-config/`): the
+   * load filters its ETL asks for and the endpoints its executions are read from. The app asks for
+   * it once the user signs in; null before that, and when the backend has no such endpoint (then
+   * there are no load filters and every execution is read from Cornflow).
+   */
+  frontendConfig: FrontendConfig | null
+  /**
+   * The first-level keys of the texts the app has, in any language: those of core, the project's
+   * own and the modules'. A text key starts with one of them (`createExecution.title`).
+   */
+  i18nNamespaces: string[]
 }
 
 /** `value` with what is not data left out: functions, and objects already met (cycles). */
@@ -56,6 +72,23 @@ function fromAppConfig<T>(getter: string, fallback: T): T {
   return typeof read === 'function' ? (read.call(appConfig) as T) : fallback
 }
 
+/** What the backend said about each DAG, as the store keeps it. None before the store exists. */
+function readFrontendConfig(): FrontendConfig | null {
+  if (!getActivePinia()) return null
+  return plainData(useGeneralStore().frontendConfig) as FrontendConfig | null
+}
+
+/** The first-level keys of the messages of every language, sorted. */
+function readI18nNamespaces(): string[] {
+  const namespaces = new Set<string>()
+  for (const locale of i18n.global.availableLocales) {
+    for (const key of Object.keys(i18n.global.getLocaleMessage(locale) ?? {})) {
+      namespaces.add(key)
+    }
+  }
+  return [...namespaces].sort()
+}
+
 export function describeApp(): AppDescription {
   const schemas = config.schemas.length ? config.schemas : [config.schema].filter(Boolean)
   return {
@@ -75,6 +108,8 @@ export function describeApp(): AppDescription {
       solution: plainData(fromAppConfig('getDashboardPages', [])) as unknown[],
       instance: plainData(fromAppConfig('getInstanceDashboardPages', [])) as unknown[],
     },
+    frontendConfig: readFrontendConfig(),
+    i18nNamespaces: readI18nNamespaces(),
   }
 }
 

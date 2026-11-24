@@ -1,6 +1,12 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
 
-const { runtime } = vi.hoisted(() => ({
+const { runtime, store, messages } = vi.hoisted(() => ({
+  store: { frontendConfig: null as Record<string, unknown> | null },
+  messages: {
+    en: { general: {}, createExecution: {}, $vuetify: {} },
+    es: { general: {}, createExecution: {}, $vuetify: {}, reports: {} },
+  } as Record<string, Record<string, unknown>>,
   runtime: {
     name: 'Planner',
     schema: 'planning',
@@ -34,6 +40,17 @@ vi.mock('@cornflow-ui/core/plugins/extensions', () => ({
   getRegisteredPremiumModules: () => [{ id: 'frontend-automation' }, { id: 'latest-plan' }],
 }))
 
+vi.mock('@cornflow-ui/core/plugins/i18n', () => ({
+  default: {
+    global: {
+      availableLocales: Object.keys(messages),
+      getLocaleMessage: (locale: string) => messages[locale],
+    },
+  },
+}))
+
+vi.mock('@cornflow-ui/core/stores/general', () => ({ useGeneralStore: () => store }))
+
 import {
   describeApp,
   plainData,
@@ -63,6 +80,8 @@ describe('plainData', () => {
 describe('describeApp', () => {
   beforeEach(() => {
     runtime.schemas = []
+    store.frontendConfig = null
+    setActivePinia(undefined as any)
   })
 
   test('describes the configuration the app took, as data', () => {
@@ -84,7 +103,32 @@ describe('describeApp', () => {
       appSections: [{ titleKey: 'app.reports', icon: 'mdi-chart', to: '/reports' }],
       helpMenuFiles: [{ labelKey: 'helpMenu.download', publicPath: 'manual.pdf' }],
       dashboards: { solution: [], instance: [] },
+      frontendConfig: null,
+      i18nNamespaces: ['$vuetify', 'createExecution', 'general', 'reports'],
     })
+  })
+
+  test('carries what the backend said about each DAG, once the store has it', () => {
+    setActivePinia(createPinia())
+    store.frontendConfig = {
+      etl: { planning: { exists: true, query: { properties: { week: { type: 'string' } } } } },
+      executions: { planning: { list: '/executions/' } },
+    }
+    expect(describeApp().frontendConfig).toEqual(store.frontendConfig)
+  })
+
+  test('has no backend answer before the store exists', () => {
+    store.frontendConfig = { executions: { planning: { list: '/executions/' } } }
+    expect(describeApp().frontendConfig).toBeNull()
+  })
+
+  test('lists the first-level text keys of every language, each once', () => {
+    expect(describeApp().i18nNamespaces).toEqual([
+      '$vuetify',
+      'createExecution',
+      'general',
+      'reports',
+    ])
   })
 
   test('lists every schema of a deployment on several', () => {
