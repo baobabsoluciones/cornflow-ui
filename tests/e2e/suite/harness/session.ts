@@ -56,9 +56,25 @@ export async function readDescription(page: Page): Promise<Deployment> {
 }
 
 /**
- * A browser context signed in as one of the run's users (`default` unless a test asks for a
- * role). The session goes back into `sessionStorage` on the first page of each tab only, so that
- * signing out in a test is not undone by the next page it opens.
+ * Puts the session of one of the run's users back into the `sessionStorage` of every tab of
+ * `context`, before the app loads. Only on the first page of each tab, so that signing out in a
+ * test is not undone by the next page it opens. The context has to have that user's
+ * `storageState` too.
+ */
+export async function restoreSession(
+  context: BrowserContext,
+  user: string,
+): Promise<void> {
+  await context.addInitScript((entries: Record<string, string>) => {
+    if (sessionStorage.length) return
+    for (const [key, value] of Object.entries(entries))
+      sessionStorage.setItem(key, value)
+  }, readSessionStorage(user))
+}
+
+/**
+ * A second browser context, signed in as one of the run's users, for a test that needs two at
+ * once. Its pages are not checked for untranslated keys: the test's own `page` is.
  */
 export async function newSignedInContext(
   browser: Browser,
@@ -69,10 +85,6 @@ export async function newSignedInContext(
     ...options,
     storageState: storageStateFile(user),
   })
-  await context.addInitScript((entries: Record<string, string>) => {
-    if (sessionStorage.length) return
-    for (const [key, value] of Object.entries(entries))
-      sessionStorage.setItem(key, value)
-  }, readSessionStorage(user))
+  await restoreSession(context, user)
   return context
 }

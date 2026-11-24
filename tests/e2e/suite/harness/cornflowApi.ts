@@ -159,6 +159,11 @@ export class CornflowApi {
     return content
   }
 
+  /** Acts as the user a token belongs to, such as the one a signed-in page holds. */
+  useToken(token: string): void {
+    this.token = token
+  }
+
   /** Creates an instance of `schema` with `data`. Returns its id. */
   async createInstance(args: {
     schema: string

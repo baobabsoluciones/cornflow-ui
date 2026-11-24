@@ -131,8 +131,6 @@ export function createCornflowE2EConfig(options = {}) {
     'e2e',
     'uat.json',
   )
-  const defaultSession = path.join(process.env.E2E_STATE_DIR, 'default.json')
-
   const isCI = !!process.env.CI
   const baseURL =
     options.baseURL ||
@@ -152,9 +150,8 @@ export function createCornflowE2EConfig(options = {}) {
   )
 
   const browser = devices['Desktop Chrome']
-  // Signed in as the run's `default` user. The interface keeps its session in sessionStorage,
-  // which the suite's fixtures put back (see suite/harness/session.ts).
-  const signedIn = { ...browser, storageState: defaultSession }
+  // Tests start signed in as the run's `default` user: the suite's fixtures put the session back
+  // (suite/harness/fixtures.ts), so specs import `test` from there, not from @playwright/test.
   const projects = [
     {
       name: 'setup',
@@ -171,15 +168,17 @@ export function createCornflowE2EConfig(options = {}) {
     {
       name: 'chromium',
       testDir: specsDir,
-      use: signedIn,
+      use: browser,
       dependencies: ['setup'],
       testIgnore: ['**/auth/**'],
     },
     {
-      // Signing in and out: these start without a session.
+      // Signing in and out: these start without a session. They still need the set-up, which
+      // describes the deployment.
       name: 'chromium-auth-tests',
       testDir: specsDir,
-      use: browser,
+      use: { ...browser, session: null },
+      dependencies: ['setup'],
       testMatch: ['**/auth/**'],
     },
   ]
@@ -191,7 +190,7 @@ export function createCornflowE2EConfig(options = {}) {
     projects.push({
       name: layer.name,
       testDir: resolveSuiteDir(consumerDir, layer.sourceDir, layer.mirrorName),
-      use: signedIn,
+      use: browser,
       dependencies: ['setup'],
       ...(layer.modules
         ? {
@@ -207,7 +206,7 @@ export function createCornflowE2EConfig(options = {}) {
     projects.push({
       name: 'chromium-app',
       testDir: options.consumerSpecDir,
-      use: signedIn,
+      use: browser,
       dependencies: ['setup'],
     })
   }
