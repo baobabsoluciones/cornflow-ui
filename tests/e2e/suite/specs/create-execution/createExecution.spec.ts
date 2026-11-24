@@ -13,10 +13,13 @@ import {
   loadDataFile,
   loadsJsonFiles,
   nameExecution,
+  openAdvancedParameters,
   openCreateExecution,
+  openResult,
   resolveButton,
   runDataChecks,
   setParameter,
+  shownRows,
 } from '../../harness/createExecution'
 import type { CornflowApi } from '../../harness/cornflowApi'
 import type { DatasetKind, Uat } from '../../harness/uat'
@@ -96,7 +99,71 @@ test.describe('create execution', () => {
     )
   })
 
-  test('valid data: the checks find nothing, and it solves', async ({
+  test('asks for load filters only when the backend declares them', async ({
+    page,
+    deployment,
+  }) => {
+    const query = deployment.frontendConfig?.etl?.[schema]?.query
+    const declared = Object.keys(query?.properties ?? {})
+    const required: string[] = Array.isArray(query?.required)
+      ? query.required
+      : []
+    const filters = page.getByTestId('load-filters')
+
+    if (!declared.length) {
+      test.info().annotations.push({
+        type: 'note',
+        description: `the backend declares no load filters for ${schema}`,
+      })
+      await expect(filters).toHaveCount(0)
+      return
+    }
+    await expect(filters).toBeVisible()
+    for (const key of declared) {
+      const field = filters.getByTestId(`load-filter-${key}`)
+      await expect(field, `the load filter ${key} is asked`).toBeVisible()
+      await expect(
+        field.getByTestId('load-filter-optional'),
+        `the load filter ${key} is ${required.includes(key) ? 'required' : 'optional'}`,
+      ).toHaveCount(required.includes(key) ? 0 : 1)
+    }
+  })
+
+  test('offers the solver only when the app lets the user pick one', async ({
+    page,
+    deployment,
+    uat,
+  }) => {
+    const parameters = deployment.core.parameters ?? {}
+    const solvers: string[] = parameters.executionSolvers ?? []
+    const offered =
+      parameters.configFieldsConfig?.showConfigFieldsStep !== false &&
+      !!parameters.solverConfig?.showSolverStep &&
+      solvers.length > 1
+    const file = uat.schemas[schema].datasets.valid
+    test.skip(!file, `the UAT file has no valid dataset for ${schema}`)
+    expect(await loadDataFile(page, file!), 'the data loads').toBe('loaded')
+    await openAdvancedParameters(page)
+
+    const field = page.getByTestId('parameter-solver')
+    if (!offered) {
+      test.info().annotations.push({
+        type: 'note',
+        description:
+          'the solver is not offered here (showSolverStep off or one solver)',
+      })
+      await expect(field).toHaveCount(0)
+      return
+    }
+    await expect(field).toBeVisible()
+    for (const solver of solvers) {
+      await expect(field, `the solver ${solver} is offered`).toContainText(
+        solver,
+      )
+    }
+  })
+
+  test('valid data: the checks find nothing, it solves and shows the solution', async ({
     page,
     uat,
     api,
@@ -110,6 +177,14 @@ test.describe('create execution', () => {
     expect(await launchAndWait(page)).toBe(ExecutionState.Solved)
     const { data } = await createdExecution(api, name)
     expect(solutionRows(data), 'the solution has rows').toBeGreaterThan(0)
+
+    await openResult(page)
+    await expect
+      .poll(() => shownRows(page), {
+        message: 'the result page shows the solution',
+        timeout: 30_000,
+      })
+      .toBeGreaterThan(0)
   })
 
   test('data with errors: the checks find them, and they stop the launch when the app says so', async ({

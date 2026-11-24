@@ -68,6 +68,17 @@ export async function runDataChecks(page: Page): Promise<ChecksOutcome> {
   return (await status.getAttribute('data-status')) as ChecksOutcome
 }
 
+/** Opens the "Advanced" parameters (the solver goes there), when the page has them. */
+export async function openAdvancedParameters(page: Page): Promise<void> {
+  const advanced = page.getByTestId('parameters-advanced')
+  if (
+    (await advanced.count()) &&
+    (await advanced.getAttribute('aria-expanded')) !== 'true'
+  ) {
+    await advanced.click()
+  }
+}
+
 /**
  * Sets a parameter of the execution (the solver among them) as the user would: the buttons, the
  * dropdown, the switch or the field of that parameter, opening "Advanced" when it is there.
@@ -79,15 +90,7 @@ export async function setParameter(
   value: unknown,
 ): Promise<boolean> {
   const field = page.getByTestId(`parameter-${key}`)
-  if (!(await field.count())) {
-    const advanced = page.getByTestId('parameters-advanced')
-    if (
-      (await advanced.count()) &&
-      (await advanced.getAttribute('aria-expanded')) !== 'true'
-    ) {
-      await advanced.click()
-    }
-  }
+  if (!(await field.count())) await openAdvancedParameters(page)
   if (!(await field.count())) return false
 
   const text = String(value)
@@ -121,7 +124,13 @@ export async function launchAndWait(
 ): Promise<number> {
   await resolveButton(page).click()
   const result = page.getByTestId('launch-result')
-  await expect(result).toBeVisible({ timeout: 60_000 })
+  const refused = page.getByTestId('launch-panel-error')
+  await expect(result.or(refused)).toBeVisible({ timeout: 60_000 })
+  if (await refused.isVisible()) {
+    throw new Error(
+      `The execution could not be launched: ${(await refused.innerText()).trim()}`,
+    )
+  }
   // Queued (-7) until the store has it, then as Cornflow reports it.
   await expect
     .poll(
@@ -135,6 +144,24 @@ export async function launchAndWait(
     )
     .toBe(true)
   return Number(await result.getAttribute('data-state'))
+}
+
+/** Opens the result of the execution just launched, as the user does once it has ended. */
+export async function openResult(page: Page): Promise<void> {
+  const view = page.getByTestId('launch-result-view')
+  await expect(view, 'the result can be opened').toBeEnabled()
+  await view.click()
+  await page.waitForURL((url) => !url.href.endsWith(CREATE_EXECUTION))
+}
+
+/** Rows the data tables on screen show, counting only those done loading. */
+export async function shownRows(page: Page): Promise<number> {
+  const rows = await page
+    .locator('[data-testid="data-table"][data-status="ready"]:visible')
+    .evaluateAll((tables) =>
+      tables.map((table) => Number(table.getAttribute('data-rows') ?? 0)),
+    )
+  return rows.reduce((total, count) => total + count, 0)
 }
 
 export { ExecutionState }

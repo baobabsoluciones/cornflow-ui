@@ -8,6 +8,7 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
+import { CornflowApi } from './cornflowApi'
 import type { Mode } from './uat'
 
 /** What `window.cornflowUi.describe()` returns (see `src/utils/appDescription.ts`). */
@@ -15,6 +16,7 @@ export interface Deployment {
   name: string
   schemas: string[]
   authType: string
+  backendUrl: string
   hasExternalApp: boolean
   isDeveloperMode: boolean
   languages: string[]
@@ -83,6 +85,15 @@ function read<T>(file: string, what: string): T {
   return JSON.parse(fs.readFileSync(file, 'utf-8')) as T
 }
 
+/**
+ * Forgets what an earlier run left (its deployment and run information), so a clean-up never
+ * works from a run that is not this one. The sessions are written again by the set-up.
+ */
+export function clearRunState(): void {
+  for (const file of [deploymentFile(), runFile()])
+    fs.rmSync(file, { force: true })
+}
+
 export const saveDeployment = (deployment: Deployment): void =>
   write(deploymentFile(), deployment)
 export const readDeployment = (): Deployment =>
@@ -111,14 +122,25 @@ export function credentials(): { username: string; password: string } {
   return { username, password }
 }
 
-/** The backend the app talks to: the suite works on the same one. */
-export function backendUrl(): string {
-  const url = process.env.VITE_APP_BACKEND_URL
+/**
+ * The Cornflow API of the backend the app talks to, as `describe()` told it: the suite prepares
+ * and cleans up its data on the same one. `E2E_BACKEND_URL` replaces it when the backend has to
+ * be reached at another address from where the suite runs. A relative address is the app's own.
+ */
+export function cornflowApiFor(
+  deployment: Pick<Deployment, 'backendUrl' | 'hasExternalApp'>,
+  baseURL: string | undefined,
+): CornflowApi {
+  const url = process.env.E2E_BACKEND_URL || deployment.backendUrl
   if (!url) {
     throw new Error(
-      '[cornflow-e2e] Set VITE_APP_BACKEND_URL: the backend of the app under test, which the ' +
-        'suite also uses to prepare and clean up its data.',
+      '[cornflow-e2e] The app does not say which backend it talks to (describe().backendUrl ' +
+        'is empty). Set E2E_BACKEND_URL.',
     )
   }
-  return url
+  return new CornflowApi({
+    backendUrl: new URL(url, baseURL).href,
+    cornflowPath: deployment.hasExternalApp ? '/cornflow' : '',
+    runId: runId(),
+  })
 }

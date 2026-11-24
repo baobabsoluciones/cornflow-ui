@@ -9,11 +9,11 @@
  * What it leaves is in the app's `tests/e2e/.auth/` (see `harness/run.ts`).
  */
 import { test as setup } from '@playwright/test'
-import { CornflowApi, type TestUser } from '../harness/cornflowApi'
+import type { TestUser } from '../harness/cornflowApi'
 import {
-  backendUrl,
+  clearRunState,
+  cornflowApiFor,
   credentials,
-  runId,
   saveDeployment,
   saveRun,
   saveSessionStorage,
@@ -35,6 +35,7 @@ const DEFAULT_ROLE = 'planner'
 
 setup('prepare the run', async ({ browser, baseURL }) => {
   setup.setTimeout(5 * 60_000)
+  clearRunState()
   const uat = loadUat(uatFile())
   const admin = credentials()
 
@@ -60,11 +61,9 @@ setup('prepare the run', async ({ browser, baseURL }) => {
     )
   }
 
-  const api = new CornflowApi({
-    backendUrl: backendUrl(),
-    cornflowPath: before.hasExternalApp ? '/cornflow' : '',
-    runId: runId(),
-  })
+  // Kept now, so the clean-up knows the backend even if the set-up stops before the end.
+  saveDeployment(before)
+  const api = cornflowApiFor(before, baseURL)
   await api.login(admin.username, admin.password)
 
   // The users to sign in as, and the session each one's is saved under.

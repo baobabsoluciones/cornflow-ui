@@ -27,6 +27,11 @@ export interface AppDescription {
   /** DAGs the deployment works on; the first is the one it opens with. */
   schemas: string[]
   authType: string
+  /**
+   * The backend the app talks to, as it took it (values.json or the environment): the suite
+   * prepares and cleans up its data there, so both work on the same one.
+   */
+  backendUrl: string
   hasExternalApp: boolean
   isDeveloperMode: boolean
   /** Codes of the languages the user can choose. */
@@ -95,6 +100,7 @@ export function describeApp(): AppDescription {
     name: config.name,
     schemas,
     authType: config.auth.type,
+    backendUrl: config.backend,
     hasExternalApp: config.hasExternalApp,
     isDeveloperMode: config.isDeveloperMode,
     languages: resolveVisibleLanguages(readConfiguredLanguages(appConfig)).map(

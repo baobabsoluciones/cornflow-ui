@@ -234,16 +234,18 @@ export class CornflowApi {
 
   /**
    * The execution called `name` that the user made (through the interface, for instance), with
-   * its instance; null when there is none. Both are deleted with the rest when this client cleans
-   * up.
+   * its instance; null when there is none. The latest one if there are several (a retried test
+   * makes it again). Both are deleted with the rest when this client cleans up.
    */
   async findExecution(
     name: string,
   ): Promise<{ id: string; instanceId: string } | null> {
     const executions = await this.request<
-      { id: string; name?: string; instance_id: string }[]
+      { id: string; name?: string; instance_id: string; created_at?: string }[]
     >('GET', '/execution/')
-    const found = executions.find((execution) => execution.name === name)
+    const found = executions
+      .filter((execution) => execution.name === name)
+      .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))[0]
     if (!found) return null
     this.executions.add(found.id)
     this.instances.add(found.instance_id)

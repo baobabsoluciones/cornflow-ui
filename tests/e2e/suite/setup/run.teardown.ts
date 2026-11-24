@@ -3,18 +3,22 @@
  * (executions, instances and the users the set-up made), so the backend is left as it was.
  */
 import { test as teardown } from '@playwright/test'
-import { CornflowApi } from '../harness/cornflowApi'
-import { backendUrl, credentials, readDeployment, runId } from '../harness/run'
+import {
+  cornflowApiFor,
+  credentials,
+  type Deployment,
+  readDeployment,
+} from '../harness/run'
 
-teardown('clean up the run', async () => {
+teardown('clean up the run', async ({ baseURL }) => {
+  const deployment = readDeploymentOrNull()
+  if (!deployment) {
+    // The set-up stopped before it reached the backend: nothing to clean up.
+    console.log('[cornflow-e2e] Nothing to clean up: the set-up did not start.')
+    return
+  }
   const { username, password } = credentials()
-  // The set-up may have stopped before describing the deployment: Cornflow at the root then.
-  const hasExternalApp = readDeploymentOrNull()?.hasExternalApp ?? false
-  const api = new CornflowApi({
-    backendUrl: backendUrl(),
-    cornflowPath: hasExternalApp ? '/cornflow' : '',
-    runId: runId(),
-  })
+  const api = cornflowApiFor(deployment, baseURL)
   await api.login(username, password)
   const removed = await api.sweepRun()
   console.log(
@@ -23,7 +27,7 @@ teardown('clean up the run', async () => {
   )
 })
 
-function readDeploymentOrNull() {
+function readDeploymentOrNull(): Deployment | null {
   try {
     return readDeployment()
   } catch {

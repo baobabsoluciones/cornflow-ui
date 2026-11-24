@@ -22,16 +22,15 @@
  *   explains (harness/translations.ts) are noted instead, and listed by the coverage report.
  */
 import { test as base, expect } from '@playwright/test'
-import { CornflowApi } from './cornflowApi'
+import type { CornflowApi } from './cornflowApi'
 import {
-  backendUrl,
+  cornflowApiFor,
   credentials,
   type Deployment,
   readDeployment,
   readRun,
   readSessionStorage,
   type RunInfo,
-  runId,
   storageStateFile,
   uatFile,
 } from './run'
@@ -90,12 +89,8 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     if (unknown.length) throw new Error(untranslatedMessage(unknown))
   },
 
-  api: async ({ session, deployment }, use) => {
-    const api = new CornflowApi({
-      backendUrl: backendUrl(),
-      cornflowPath: deployment.hasExternalApp ? '/cornflow' : '',
-      runId: runId(),
-    })
+  api: async ({ session, deployment, baseURL }, use) => {
+    const api = cornflowApiFor(deployment, baseURL)
     const token = session ? readSessionStorage(session).token : undefined
     if (token) api.useToken(token)
     else {
