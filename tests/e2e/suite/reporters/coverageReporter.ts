@@ -1,6 +1,6 @@
 /**
- * What a run of the suite covered on this deployment: what it tested and what it did not, with
- * the reason. A test that does not apply to a deployment (a step it turns off, a dataset it does
+ * What a run of the suite covered on this deployment: what it tested, what failed and what it did
+ * not test, with the reason. A test that does not apply to a deployment (a step it turns off, a dataset it does
  * not have) is skipped with that reason, `test.skip(condition, reason)`, and it shows up here.
  *
  * A test tells which case of the deployment it went through with a `note` annotation, shown next
@@ -47,6 +47,7 @@ export default class CoverageReporter implements Reporter {
   onEnd(_result: FullResult): void {
     if (!this.root) return
     const tested: Line[] = []
+    const failed: Line[] = []
     const notTested: Line[] = []
     const knownIssues = new Set<string>()
     for (const test of this.root.allTests()) {
@@ -66,23 +67,25 @@ export default class CoverageReporter implements Reporter {
       if (test.outcome() === 'skipped') {
         notTested.push({ title: titleOf(test), reason: reasonOf(test) })
       } else if (test.results.length) {
-        tested.push({
+        // A test that passed on a retry (flaky) did test what it says; one that never passed did not.
+        const line = {
           title: titleOf(test),
           reason: [...notes].join('; ') || undefined,
-        })
+        }
+        if (test.outcome() === 'unexpected') failed.push(line)
+        else tested.push(line)
       }
     }
-    if (!tested.length && !notTested.length) return
+    if (!tested.length && !failed.length && !notTested.length) return
 
     const lines = [
       '',
-      `Coverage: ${tested.length} tested, ${notTested.length} not tested`,
+      `Coverage: ${tested.length} tested, ${failed.length} failed, ${notTested.length} not tested`,
     ]
-    for (const line of tested) {
-      lines.push(
-        `  tested      ${line.title}${line.reason ? ` (${line.reason})` : ''}`,
-      )
-    }
+    const withReason = (line: Line) =>
+      `${line.title}${line.reason ? ` (${line.reason})` : ''}`
+    for (const line of tested) lines.push(`  tested      ${withReason(line)}`)
+    for (const line of failed) lines.push(`  failed      ${withReason(line)}`)
     for (const line of notTested) {
       lines.push(`  not tested  ${line.title}: ${line.reason}`)
     }

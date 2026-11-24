@@ -48,6 +48,29 @@ function solutionRows(data: Record<string, unknown> | null): number {
 }
 
 /**
+ * Loads a dataset of the UAT file from its JSON file, as the user does. Skips the test when the
+ * file does not give that dataset or the page does not take JSON files here (an app that brings
+ * its data from a database, for instance).
+ */
+async function loadDataset(
+  page: Page,
+  uat: Uat,
+  schema: string,
+  dataset: DatasetKind,
+): Promise<void> {
+  const file = uat.schemas[schema]?.datasets[dataset]
+  test.skip(
+    !file,
+    `the UAT file has no ${DATASET_NAMES[dataset]} dataset for ${schema}`,
+  )
+  test.skip(
+    !(await loadsJsonFiles(page)),
+    'the create-execution page does not load JSON data files here',
+  )
+  expect(await loadDataFile(page, file!), 'the data loads').toBe('loaded')
+}
+
+/**
  * Loads the dataset, names the execution and sets its config: the schema's, plus `caseConfig`.
  * A key of `caseConfig` the page does not let the user set skips the test: the case needs it.
  */
@@ -59,12 +82,7 @@ async function prepare(
   name: string,
   caseConfig: Record<string, unknown> = {},
 ): Promise<void> {
-  const file = uat.schemas[schema].datasets[dataset]
-  test.skip(
-    !file,
-    `the UAT file has no ${DATASET_NAMES[dataset]} dataset for ${schema}`,
-  )
-  expect(await loadDataFile(page, file!), 'the data loads').toBe('loaded')
+  await loadDataset(page, uat, schema, dataset)
   await nameExecution(page, name)
   const config = { ...uat.schemas[schema].config, ...caseConfig }
   for (const [key, value] of Object.entries(config)) {
@@ -86,16 +104,13 @@ async function createdExecution(api: CornflowApi, name: string) {
 test.describe('create execution', () => {
   let schema = ''
 
-  test.beforeEach(async ({ page, deployment, uat }) => {
+  // Only what every test needs: those that load a dataset check, when they do, that there is one
+  // and that the page takes it (see loadDataset).
+  test.beforeEach(async ({ page, deployment }) => {
     schema = deployment.schemas[0]
-    test.skip(!uat.schemas[schema], `the UAT file has no data for ${schema}`)
     test.skip(
       !(await openCreateExecution(page)),
-      'the app has its own create-execution flow instead of core page',
-    )
-    test.skip(
-      !(await loadsJsonFiles(page)),
-      'the create-execution page does not load JSON data files here',
+      "the app has its own create-execution flow instead of core's page",
     )
   })
 
@@ -140,9 +155,7 @@ test.describe('create execution', () => {
       parameters.configFieldsConfig?.showConfigFieldsStep !== false &&
       !!parameters.solverConfig?.showSolverStep &&
       solvers.length > 1
-    const file = uat.schemas[schema].datasets.valid
-    test.skip(!file, `the UAT file has no valid dataset for ${schema}`)
-    expect(await loadDataFile(page, file!), 'the data loads').toBe('loaded')
+    await loadDataset(page, uat, schema, 'valid')
     await openAdvancedParameters(page)
 
     const field = page.getByTestId('parameter-solver')
@@ -227,7 +240,7 @@ test.describe('create execution', () => {
   })
 
   test('infeasible: it ends with no solution', async ({ page, uat, api }) => {
-    const infeasible = uat.schemas[schema].infeasible
+    const infeasible = uat.schemas[schema]?.infeasible
     test.skip(!infeasible, `the UAT file has no infeasible case for ${schema}`)
     const name = api.name('infeasible')
     await prepare(
@@ -246,7 +259,7 @@ test.describe('create execution', () => {
   })
 
   test('failing solver: it ends in error', async ({ page, uat, api }) => {
-    const failing = uat.schemas[schema].failingSolver
+    const failing = uat.schemas[schema]?.failingSolver
     test.skip(!failing, `the UAT file has no failing-solver case for ${schema}`)
     const name = api.name('failing solver')
     await prepare(page, uat, schema, failing!.dataset, name, failing!.config)
