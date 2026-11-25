@@ -8,7 +8,11 @@
         "withErrors": "stack/dags/e2e_planning/data/with_errors.json",
         "withWarnings": "stack/dags/e2e_planning/data/with_warnings.json"
       },
-      "infeasible": { "dataset": "valid", "config": { "solver": "infeasible" } },
+      "solution": "data/e2e_planning/solution.json",
+      "infeasible": {
+        "dataset": "valid",
+        "config": { "solver": "infeasible" }
+      },
       "failingSolver": { "dataset": "valid", "config": { "solver": "failing" } }
     }
   }

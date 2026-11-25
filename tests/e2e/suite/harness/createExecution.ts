@@ -3,9 +3,10 @@
  * name the execution, run the data checks, set its parameters and launch it. An app may replace
  * the page with its own flow (`createExecution.component`); `openCreateExecution` tells.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 import { ExecutionState, isExecutionActive } from './cornflowApi'
 import { openFromMenu } from './navigation'
+import { allowFor } from './timing'
 
 export const CREATE_EXECUTION = '/project-execution'
 
@@ -13,27 +14,6 @@ export const CREATE_EXECUTION = '/project-execution'
 const CHECKS_TIMEOUT = 120_000
 /** How long a launch may take to be accepted. */
 const LAUNCH_TIMEOUT = 60_000
-
-/**
- * Gives the running test `ms` more on top of its timeout, for a wait that may take that long: the
- * test's own timeout is for its steps, not for what the backend runs.
- */
-function allowFor(ms: number): void {
-  test.info().setTimeout(test.info().timeout + ms)
-}
-
-/**
- * How long to wait for an execution run with `config` to end: its `timeLimit` (seconds, as
- * Cornflow's solvers take it), plus what Airflow needs to start and save it. Three minutes at
- * least.
- */
-export function executionTimeout(config: Record<string, unknown>): number {
-  const limit = Number(config.timeLimit)
-  return Math.max(
-    180_000,
-    (Number.isFinite(limit) ? limit * 1000 : 0) + 120_000,
-  )
-}
 
 /** How a run of the data checks ended (`data-status` of `ChecksStatus`). */
 export type ChecksOutcome = 'ok' | 'warnings' | 'errors'

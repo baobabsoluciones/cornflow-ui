@@ -8,7 +8,6 @@ import type { Page } from '@playwright/test'
 import { test, expect } from '../../harness/fixtures'
 import {
   ExecutionState,
-  executionTimeout,
   hasDataChecks,
   launchAndWait,
   loadDataFile,
@@ -23,6 +22,7 @@ import {
   shownRows,
 } from '../../harness/createExecution'
 import type { CornflowApi } from '../../harness/cornflowApi'
+import { executionTimeout } from '../../harness/timing'
 import type { DatasetKind, Uat } from '../../harness/uat'
 
 /** States an execution ends in when it fails. */

@@ -14,6 +14,7 @@
  *           "withErrors": "data/with_errors.json",
  *           "withWarnings": "data/with_warnings.json"
  *         },
+ *         "solution": "data/solution.json",
  *         "infeasible": { "dataset": "valid", "config": { "solver": "..." } },
  *         "failingSolver": { "dataset": "valid", "config": { "solver": "..." } }
  *       }
@@ -27,6 +28,9 @@
  * - `datasets`: instance data (JSON) that the checks find nothing in, that has errors, and that has
  *   warnings only. Paths are relative to the UAT file. A kind left out is not tested, and the
  *   coverage report says so.
+ * - `solution` (optional): a solution of the `valid` dataset, as the DAG returns it (the `data` of
+ *   the execution). The tests that need an execution already solved save it to one in a moment
+ *   instead of solving (see harness/executions.ts); without it, they solve for real.
  * - `infeasible` and `failingSolver` (optional): a dataset and the config to add to `config` for an
  *   execution that ends with no solution, and for one whose solver fails.
  *
@@ -50,6 +54,8 @@ export interface SchemaData {
   config: Record<string, unknown>
   /** Absolute paths of the datasets the app gave. */
   datasets: Partial<Record<DatasetKind, string>>
+  /** Absolute path of a solution of the `valid` dataset, if the app gave one. */
+  solution?: string
   infeasible?: ExecutionCase
   failingSolver?: ExecutionCase
 }
@@ -139,6 +145,22 @@ export function loadUat(file: string): Uat {
           }
         }
 
+        if (value.solution !== undefined) {
+          if (typeof value.solution !== 'string') {
+            problems.push(`${at}.solution has to be a path`)
+          } else {
+            const absolute = path.resolve(dir, value.solution)
+            const problem = datasetProblem(absolute)
+            if (problem)
+              problems.push(`${at}.solution (${value.solution}) ${problem}`)
+            else if (!isObject(value.datasets) || !('valid' in value.datasets))
+              problems.push(
+                `${at}.solution is a solution of the valid dataset, which is not given`,
+              )
+            else data.solution = absolute
+          }
+        }
+
         for (const name of CASES) {
           const item = value[name]
           if (item === undefined) continue
@@ -186,6 +208,15 @@ function datasetProblem(file: string): string | null {
   } catch {
     return 'is not valid JSON'
   }
+}
+
+/** The solution the app gave for the valid dataset of the schema, or null. */
+export function readSolution(
+  uat: Uat,
+  schema: string,
+): Record<string, unknown> | null {
+  const file = uat.schemas[schema]?.solution
+  return file ? JSON.parse(fs.readFileSync(file, 'utf-8')) : null
 }
 
 /** The data of a dataset of the schema, or null when the app did not give that kind. */

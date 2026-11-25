@@ -62,6 +62,17 @@ export const ExecutionState = {
   FailedSaving: -6,
 } as const
 
+/**
+ * What a DAG logs about a solution it found (`log` of the execution), in the codes every DAG
+ * shares through cornflow-client: solved to optimality (`status_code` 1) with a solution
+ * (`sol_code` 2). The interface shows it as the solution's state ("Optimal").
+ */
+export const SOLVED_LOG = {
+  status: 'Optimal',
+  status_code: 1,
+  sol_code: 2,
+} as const
+
 /** Still to finish: queued or running. */
 export function isExecutionActive(state: number): boolean {
   return state === ExecutionState.Running || state === ExecutionState.Queued
@@ -124,11 +135,21 @@ export class CornflowApi {
   private readonly executions = new Set<string>()
   private readonly users = new Set<number>()
 
-  constructor(options: CornflowApiOptions) {
+  constructor(private readonly options: CornflowApiOptions) {
     this.baseUrl =
       options.backendUrl.replace(/\/+$/, '') + (options.cornflowPath ?? '')
     this.runId = options.runId ?? newRunId()
     this.pollMs = options.pollMs ?? 1000
+  }
+
+  /**
+   * Another client on the same backend and run, signed in as another user: to do what this
+   * client's user may not. It keeps its own list of what it creates.
+   */
+  async signedInAs(username: string, password: string): Promise<CornflowApi> {
+    const other = new CornflowApi({ ...this.options, runId: this.runId })
+    await other.login(username, password)
+    return other
   }
 
   /** The name the suite gives something it creates: `[e2e] <run id> <label>`. */
@@ -277,6 +298,33 @@ export class CornflowApi {
       }
       await new Promise((resolve) => setTimeout(resolve, this.pollMs))
     }
+  }
+
+  /**
+   * Saves `data` as the solution of an execution, as the DAG does when it ends (`PUT /dag/<id>/`):
+   * solved, with the log of a solution found (`SOLVED_LOG`) unless told otherwise. Only an admin
+   * or the service user may; anyone else gets a 403.
+   */
+  async saveResults(
+    id: string,
+    data: Record<string, unknown>,
+    {
+      state = ExecutionState.Solved,
+      log = SOLVED_LOG,
+    }: { state?: number; log?: Record<string, unknown> } = {},
+  ): Promise<void> {
+    await this.request('PUT', `/dag/${id}/`, { data, state, log_json: log })
+  }
+
+  /**
+   * Uploads `data` as the solution of an execution, as a user does from the interface instead of
+   * solving (`PUT /execution/<id>/`). Cornflow keeps the execution's state.
+   */
+  async uploadSolution(
+    id: string,
+    data: Record<string, unknown>,
+  ): Promise<void> {
+    await this.request('PUT', `/execution/${id}/`, { data })
   }
 
   /** The solution of an execution and the checks of that solution. */

@@ -69,6 +69,7 @@ test-results/
         "withErrors": "data/with_errors.json",
         "withWarnings": "data/with_warnings.json"
       },
+      "solution": "data/solution.json",
       "infeasible": { "dataset": "valid", "config": { "solver": "infeasible" } },
       "failingSolver": { "dataset": "valid", "config": { "solver": "failing" } }
     }
@@ -84,6 +85,7 @@ test-results/
 | `datasets.valid` | Instance data that the checks find nothing in and that solves with a solution |
 | `datasets.withErrors` | Instance data that the checks find errors in |
 | `datasets.withWarnings` | Instance data that the checks find warnings in, and no errors. It still solves |
+| `solution` | Optional, recommended. A solution of the `valid` dataset, as the DAG returns it (the `data` of a solved execution). See [Executions already solved](#executions-already-solved) |
 | `infeasible` | Optional. A dataset and the config to add for an execution that ends with no solution, without failing |
 | `failingSolver` | Optional. A dataset and the config to add for an execution whose solver fails |
 
@@ -137,6 +139,20 @@ failed halfway. Two runs at the same time against the same backend do not touch 
 
 Each test deletes what it made when it ends. Some data waits for the end of the run: the instance
 of data checks that never got launched, or a launch the backend turned down.
+
+## Executions already solved
+
+The tests about executions that already exist (loading one, looking at its data, editing it, the
+history) make them through the API before they open the app, from the `valid` dataset:
+
+| | How | The execution | Time |
+| --- | --- | --- | --- |
+| With `solution`, and `E2E_USER` an admin (`disposable` mode) | The solution is saved as the DAG saves it when it ends | Solved, its solution "Optimal", as after a real run | A moment |
+| With `solution`, and `E2E_USER` not an admin | The solution is uploaded as a user does instead of solving | "Not run", with the solution. The report notes it | A moment |
+| Without `solution` | Solved for real | Solved | As long as the solver |
+
+To get the `solution` of an app, solve its `valid` dataset once and save the `data` of that
+execution (`GET /execution/<id>/data/`).
 
 ## What it tests
 
