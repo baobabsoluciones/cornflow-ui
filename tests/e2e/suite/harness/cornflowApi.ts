@@ -40,7 +40,7 @@ export interface TestUser {
  * A password for a user the suite creates: upper and lower case, digits and, as the only symbols,
  * `.` and `-` (a password that ends up in a connection URI breaks with others).
  */
-function newPassword(): string {
+export function newPassword(): string {
   const random = () => Math.random().toString(36).slice(2, 10)
   return `E2e.${random()}-${random().toUpperCase()}7`
 }

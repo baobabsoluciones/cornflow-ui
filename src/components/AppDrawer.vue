@@ -148,7 +148,13 @@
       </nav>
 
       <footer class="app-drawer__user" data-tour="drawer-user">
-        <button type="button" class="app-drawer__user-link" :title="$t('drawer.userSettings')" @click="goToSettings">
+        <button
+          type="button"
+          class="app-drawer__user-link"
+          :title="$t('drawer.userSettings')"
+          data-testid="app-drawer-user"
+          @click="goToSettings"
+        >
           <span class="app-drawer__avatar">
             <template v-if="user">{{ user.initial }}</template>
             <CoreIcon v-else name="mdi-account-outline" :size="18" />
