@@ -66,6 +66,8 @@ export async function restoreSession(
   user: string,
 ): Promise<void> {
   await context.addInitScript((entries: Record<string, string>) => {
+    // A new tab starts on about:blank, where sessionStorage cannot be read: only the app's pages.
+    if (!location.protocol.startsWith('http')) return
     if (sessionStorage.length) return
     for (const [key, value] of Object.entries(entries))
       sessionStorage.setItem(key, value)
@@ -74,7 +76,8 @@ export async function restoreSession(
 
 /**
  * A second browser context, signed in as one of the run's users, for a test that needs two at
- * once. Its pages are not checked for untranslated keys: the test's own `page` is.
+ * once. Its pages are not checked for untranslated keys nor for errors of the app: the test's own
+ * `page` is.
  */
 export async function newSignedInContext(
   browser: Browser,

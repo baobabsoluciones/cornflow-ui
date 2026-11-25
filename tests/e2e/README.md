@@ -11,7 +11,7 @@ its own deployment: its frontend, its backend and its DAGs, with nothing mocked.
   checks find nothing in, one with errors and one with warnings, and the execution config.
 - **It reports its coverage:** what it tested, what failed and what it did not test, with the
   reason.
-- **It checks every screen for untranslated texts.**
+- **It checks every screen** for untranslated texts and for errors of the app.
 
 It is meant to run when it matters: when an app moves to a new version of core, before a
 deployment, or in CI.
@@ -185,6 +185,27 @@ A known fault of core that shows a key is listed in `KNOWN_UNTRANSLATED`
 (`suite/harness/translations.ts`). Keys it explains are reported as known issues and do not fail
 the test. Take the entry out once core is fixed.
 
+## Errors of the app
+
+Every page a test opens is also watched for what goes wrong even when the screen looks fine. Any
+of these fails the test, with what happened and the page it was on:
+
+- an uncaught JavaScript error;
+- an error inside a component (Vue's "Unhandled error during execution of …");
+- a response with a 5xx status.
+
+4xx responses do not count (a wrong password answers 401, a backend without an optional endpoint
+answers 404), nor do requests cut short by a navigation or what the app logs for a failure it
+handles. The stack of each uncaught error is attached to the test in Playwright's report.
+
+Errors inside components are thrown only when the app runs in development mode, as the suite
+starts it by default; against a production build only uncaught errors and 5xx responses are
+found.
+
+Known faults go in `KNOWN_APP_ERRORS` (`suite/harness/appErrors.ts`), handled like the
+untranslated keys. A test that causes an error on purpose turns the check off with
+`test.use({ checkAppErrors: false })`.
+
 ## Writing specs
 
 Specs import `test` and `expect` from the suite's fixtures, never from `@playwright/test`: the
@@ -210,6 +231,7 @@ test('…', async ({ page, deployment, uat, api }) => {
 | `api` | Cornflow's API, as the same user as the page. What it creates is deleted when the test ends |
 | `session` | The user the page is signed in as: `default`, a role (`test.use({ session: 'viewer' })`, `disposable` mode only), or `null` to start signed out |
 | `checkTranslations` | On by default |
+| `checkAppErrors` | On by default |
 
 Rules that keep a spec working on every app:
 
