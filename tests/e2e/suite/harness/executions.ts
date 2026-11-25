@@ -15,12 +15,26 @@
  *   (-4) and the solution.
  *
  * Without a `solution`, it is solved for real (`solved`), which takes as long as the solver.
+ *
+ * Another dataset than `valid` can be asked for, and its data checks run first, for real, so the
+ * instance keeps what they found (`withChecks`). The UAT file's `solution` is the valid dataset's:
+ * put in an execution of another dataset, it is still shown as its solution, which is all a test
+ * that looks at the instance needs.
  */
 import { test } from '@playwright/test'
 import { CornflowApiError, type CornflowApi } from './cornflowApi'
 import { credentials } from './run'
 import { allowFor, executionTimeout } from './timing'
-import { readDataset, readSolution, type Uat } from './uat'
+import { readDataset, readSolution, type DatasetKind, type Uat } from './uat'
+
+/** How long the data checks of an instance may take: a run of the DAG's checks in Airflow. */
+const CHECKS_TIMEOUT = 180_000
+
+const DATASET_NAMES: Record<DatasetKind, string> = {
+  valid: 'valid',
+  withErrors: 'with errors',
+  withWarnings: 'with warnings',
+}
 
 /** How the execution got its solution. */
 export type SolvedHow = 'saved' | 'uploaded' | 'solved'
@@ -37,23 +51,36 @@ export interface SolvedExecution {
 
 /**
  * An execution of `schema` with a solution, named `api.name(label)`, made from the `valid`
- * dataset. Skips the test when the UAT file has no valid dataset for the schema. Deleted with
- * the rest of what `api` created when the test ends.
+ * dataset (or `dataset`). Skips the test when the UAT file does not have that dataset for the
+ * schema. Deleted with the rest of what `api` created when the test ends.
  */
 export async function solvedExecution(
   api: CornflowApi,
   uat: Uat,
   schema: string,
   label: string,
+  {
+    dataset = 'valid',
+    withChecks = false,
+  }: { dataset?: DatasetKind; withChecks?: boolean } = {},
 ): Promise<SolvedExecution> {
-  const data = readDataset(uat, schema, 'valid')
-  test.skip(!data, `the UAT file has no valid dataset for ${schema}`)
+  const data = readDataset(uat, schema, dataset)
+  test.skip(
+    !data,
+    `the UAT file has no ${DATASET_NAMES[dataset]} dataset for ${schema}`,
+  )
   const config = uat.schemas[schema].config
   const instanceId = await api.createInstance({
     schema,
     data: data!,
     label,
   })
+  if (withChecks) {
+    allowFor(CHECKS_TIMEOUT)
+    await api.checkInstance(instanceId, schema, config, {
+      timeoutMs: CHECKS_TIMEOUT,
+    })
+  }
   const solution = readSolution(uat, schema)
 
   if (!solution) {

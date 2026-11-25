@@ -67,25 +67,42 @@ export async function openFromLatest(page: Page, name: string): Promise<void> {
   await leaveMenu(page)
 }
 
-/**
- * Opens the first view of a group of the selected execution (its first input table, its first
- * result) from the side menu. Returns the route it went to.
- */
-export async function openExecutionView(
-  page: Page,
-  group: ExecutionGroup,
-): Promise<string> {
+/** Unfolds the side menu and opens a group of the selected execution: its pages. */
+async function openGroup(page: Page, group: ExecutionGroup): Promise<Locator> {
   await unfoldMenu(page)
   const section = page.getByTestId(`drawer-group-${group}`)
   await expect(
     section,
     `the side menu has the ${group} of the execution`,
   ).toBeVisible()
+  // The groups are an accordion: opening one closes the others.
   const head = section.locator('button[aria-expanded]')
   if ((await head.getAttribute('aria-expanded')) !== 'true') await head.click()
-  const first = section.getByRole('link').first()
-  const route = (await first.getAttribute('href')) ?? ''
-  await first.click()
+  return section.getByRole('link')
+}
+
+/** How many pages a group of the selected execution has (tables, validations, dashboards). */
+export async function executionViewCount(
+  page: Page,
+  group: ExecutionGroup,
+): Promise<number> {
+  const count = await (await openGroup(page, group)).count()
+  await leaveMenu(page)
+  return count
+}
+
+/**
+ * Opens a page of a group of the selected execution from the side menu: the first (its input
+ * tables, its results) unless `index` says another. Returns the route it went to.
+ */
+export async function openExecutionView(
+  page: Page,
+  group: ExecutionGroup,
+  index = 0,
+): Promise<string> {
+  const target = (await openGroup(page, group)).nth(index)
+  const route = (await target.getAttribute('href')) ?? ''
+  await target.click()
   // The route of a group of tables goes on to its first table.
   await page.waitForURL((url) => url.href.includes(route))
   await leaveMenu(page)

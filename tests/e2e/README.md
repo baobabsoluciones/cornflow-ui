@@ -161,6 +161,7 @@ execution (`GET /execution/<id>/data/`).
 | Sign in | Signs in with a valid user. Turns down a user that does not exist. Asks for both fields. Offers the languages the app shows |
 | History | Opens and loads. Lists the executions the user made, finds them by name, clears the filters and opens one |
 | Loaded executions | Loads an execution from its history row, its history detail and the latest executions of the side menu: a tab opens, selected, and the menu shows it. Its input data and results open headed by its summary. Switches between two tabs, deselects with a second click, and closing the selected one on its data goes back to the history |
+| Data of an execution | Every page and table tab of its input data and of its results shows the rows the table has in the backend, and no table the execution does not have. The validations show what the input data checks found, each with its rows, and only when they found something. Each table downloads to Excel as on screen, and the input data, the results and the validations download whole, a sheet per table with its rows. The results validations are not tested with checks: an execution made for a test has no solution checks |
 | Create execution | Load filters show only when the backend declares them. The solver can be picked only when the app lets the user pick one. Then, with each dataset: valid data solves and the solution shows; data with errors is caught by the checks, and stops the launch where `enableBlockAdvanceOnCheckErrors` says so; data with warnings is caught and still solves; an infeasible case ends with no solution; a failing solver ends in error |
 
 Create execution works on the schema the app opens with.
@@ -212,8 +213,9 @@ of these fails the test, with what happened and the page it was on:
 - a response with a 5xx status.
 
 4xx responses do not count (a wrong password answers 401, a backend without an optional endpoint
-answers 404), nor do requests cut short by a navigation or what the app logs for a failure it
-handles. The stack of each uncaught error is attached to the test in Playwright's report.
+answers 404), nor do requests cut short by a navigation, what the app logs for a failure it
+handles, or the 504 of Vite's development server when it optimises a new dependency and reloads
+the page. The stack of each uncaught error is attached to the test in Playwright's report.
 
 Errors inside components are thrown only when the app runs in development mode, as the suite
 starts it by default; against a production build only uncaught errors and 5xx responses are

@@ -327,6 +327,17 @@ export class CornflowApi {
     await this.request('PUT', `/execution/${id}/`, { data })
   }
 
+  /** The data of an instance and the checks Cornflow keeps with it (none until they run). */
+  async instanceData(
+    id: string,
+  ): Promise<{ data: Record<string, unknown> | null; checks: Checks }> {
+    const instance = await this.request<{
+      data?: Record<string, unknown> | null
+      checks?: Checks | null
+    }>('GET', `/instance/${id}/data/`)
+    return { data: instance.data ?? null, checks: instance.checks ?? {} }
+  }
+
   /** The solution of an execution and the checks of that solution. */
   async executionData(
     id: string,

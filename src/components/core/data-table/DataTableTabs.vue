@@ -14,7 +14,7 @@
   <DataTableTabs v-model="activeTable" :tabs="[{ key: 'lines', label: 'Lines', rows: 48 }]" />
 -->
 <template>
-  <div class="data-table-tabs">
+  <div class="data-table-tabs" data-testid="data-table-tabs">
     <button
       v-if="overflowing"
       type="button"

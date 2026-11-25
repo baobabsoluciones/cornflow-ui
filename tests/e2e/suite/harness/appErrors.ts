@@ -7,8 +7,10 @@
  * - `server`: a response with a 5xx status, from the backend or anything else the app calls.
  *
  * Left out on purpose: 4xx responses (a wrong password answers 401, and a backend without an
- * optional endpoint answers 404), requests cut short by a navigation, and what the app itself
- * logs with `console.error` for a failure it handles.
+ * optional endpoint answers 404), requests cut short by a navigation, what the app itself logs
+ * with `console.error` for a failure it handles, and the development server's own 504 when it
+ * finds a new dependency half-way through and reloads the page ("Outdated Optimize Dep" of Vite,
+ * which a built app does not have).
  *
  * Errors inside components are thrown only when the app runs in development mode, as the suite
  * starts it by default. Against a production build only `uncaught` and `server` are found.
@@ -28,6 +30,11 @@ export interface AppError {
 }
 
 const VUE_UNHANDLED = /^\[Vue warn\]: Unhandled error/
+
+/** Vite's development server answers 504 for a dependency it optimises anew, then reloads. */
+function isDevServerReoptimizing(status: number, url: string): boolean {
+  return status === 504 && url.includes('/node_modules/.vite/deps/')
+}
 
 function pathOf(page: Page | null | undefined): string {
   if (!page) return '(no page)'
@@ -80,6 +87,7 @@ export function watchAppErrors(context: BrowserContext): () => AppError[] {
 
   context.on('response', (response) => {
     if (response.status() < 500) return
+    if (isDevServerReoptimizing(response.status(), response.url())) return
     let page: Page | null = null
     try {
       page = response.frame().page()
