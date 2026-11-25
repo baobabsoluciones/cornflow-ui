@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **Premium modules can dock a panel on the right edge (`setRightPanelOffset` in the layout channel)**  
+  - A premium component reports the width its panel takes on the right edge (a folded rail, a pinned side panel), as banners report their height at the top. The content, the top bar, the execution tabs and the help and warnings buttons end where the panel starts (`--app-right-offset`), also with the side menu pinned. Without premium panels nothing changes
+  *Contributors:* [@antoniogonzalezsuarez](#)  
+
 ## [4.1.0] - 24-11-2026
 
 ⚠️ The load filters of a DAG's ETL come from the backend (`GET /external/frontend-config/`): `pre_etl: true` in the config schema is not read. An application that marks its load filters that way publishes them in the `query` of its backend's frontend config before upgrading (see **Changed**).
