@@ -30,6 +30,11 @@ import { loadUat } from '../harness/uat'
 
 /** Roles no person signs in with: Cornflow's placeholder role and the one airflow uses. */
 const ROLES_LEFT_OUT = ['dummy', 'service']
+/**
+ * Roles a run of the suite made and could not delete (Cornflow 1.3 cannot delete a role): not the
+ * deployment's, so no user of theirs.
+ */
+const SUITE_ROLE = /^e2e_/
 /** The role of the `default` session in disposable mode: the one users plan with. */
 const DEFAULT_ROLE = 'planner'
 
@@ -77,7 +82,8 @@ setup('prepare the run', async ({ browser, baseURL }) => {
     users.push({ sessions: ['default'], user: null, ...admin })
   } else {
     const roles = (await api.roles()).filter(
-      (role) => !ROLES_LEFT_OUT.includes(role.name),
+      (role) =>
+        !ROLES_LEFT_OUT.includes(role.name) && !SUITE_ROLE.test(role.name),
     )
     for (const role of roles) {
       const user = await api

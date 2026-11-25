@@ -53,6 +53,7 @@
           :key="option.value"
           :model-value="selectedNames.includes(option.value)"
           :label="option.label"
+          :data-testid="`user-roles-role-${option.value}`"
           @update:model-value="toggleRole(option.value, $event)"
         />
         <span v-if="roleOptions.length === 0" class="user-roles__none">
@@ -74,6 +75,7 @@
         size="small"
         :loading="saving"
         :disabled="!isEmailValid"
+        data-testid="user-roles-save"
         @click="onSave"
       />
     </template>

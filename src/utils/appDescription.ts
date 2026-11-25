@@ -13,6 +13,7 @@
 import { getActivePinia } from 'pinia'
 import config from '@cornflow-ui/core/config'
 import appConfig from '@/app/config'
+import * as appRoles from '@/app/rolesConfig'
 import { getRegisteredPremiumModules } from '@cornflow-ui/core/plugins/extensions'
 import i18n from '@cornflow-ui/core/plugins/i18n'
 import {
@@ -41,6 +42,11 @@ export interface AppDescription {
   /** The `core` block of the app config, data only. */
   core: Record<string, unknown>
   appSections: unknown[]
+  /**
+   * Per role, what it cannot reach and where it lands (`@/app/rolesConfig`): `forbidden_views`,
+   * `forbidden_endpoints` and `defaultView`. A role it does not name has no restriction.
+   */
+  rolesConfig: Record<string, unknown>
   helpMenuFiles: unknown[]
   dashboards: { solution: unknown[]; instance: unknown[] }
   /**
@@ -109,6 +115,10 @@ export function describeApp(): AppDescription {
     modules: getRegisteredPremiumModules().map((module) => module.id),
     core: plainData(appConfig.getCore()) as Record<string, unknown>,
     appSections: plainData(fromAppConfig('getAppSections', [])) as unknown[],
+    // The default export, by name: a project's `rolesConfig` may not have one, and then has none.
+    rolesConfig: (plainData(
+      (appRoles as { default?: unknown }).default ?? {},
+    ) ?? {}) as Record<string, unknown>,
     helpMenuFiles: plainData(fromAppConfig('getHelpMenuFiles', [])) as unknown[],
     dashboards: {
       solution: plainData(fromAppConfig('getDashboardPages', [])) as unknown[],

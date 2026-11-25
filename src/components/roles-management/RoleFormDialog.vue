@@ -18,6 +18,7 @@
       <CoreTextField
         v-model="form.name"
         autocomplete="off"
+        data-testid="role-form-name"
         @keyup.enter="onSave"
       />
     </label>
@@ -27,6 +28,7 @@
         :text="$t('rolesManagement.cancel')"
         variant="outlined"
         size="small"
+        data-testid="role-form-cancel"
         @click="close"
       />
       <CoreButton
@@ -35,6 +37,7 @@
         size="small"
         :loading="saving"
         :disabled="!form.name?.trim()"
+        data-testid="role-form-save"
         @click="onSave"
       />
     </template>

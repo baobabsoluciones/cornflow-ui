@@ -22,8 +22,8 @@ export interface Role {
   name: string
 }
 
-/** A role given to a user, as `/user/role/` lists it. */
-interface UserRole {
+/** A role given to a user, as Cornflow lists them (`GET /user/role/`). */
+export interface UserRole {
   user_id: number
   role_id: number
 }
@@ -457,6 +457,16 @@ export class CornflowApi {
     return { id, username, password, roleId: args.roleId }
   }
 
+  /** The users of the deployment, as an admin sees them (`GET /user/`). */
+  async listUsers(): Promise<{ id: number; username: string }[]> {
+    return this.request('GET', '/user/')
+  }
+
+  /** Which user has which role (`GET /user/role/`). Only an admin sees them. */
+  async userRoles(): Promise<UserRole[]> {
+    return this.request('GET', '/user/role/')
+  }
+
   /** Deletes a user. Gone already is fine. */
   async deleteUser(id: number): Promise<void> {
     await this.request('DELETE', `/user/${id}/`, undefined, [404])
@@ -465,14 +475,16 @@ export class CornflowApi {
 
   /**
    * Deletes whatever carries this run's id, whoever created it and whether or not this client
-   * remembers it: the executions and instances named `[e2e] <run id> …` and the users named
-   * `e2e_<run id>_…`. It is how a run cleans up at the end, after tests that may have stopped
-   * half-way. Users are only listed by an admin; for anyone else there are none to delete.
+   * remembers it: the executions and instances named `[e2e] <run id> …`, and the users and the
+   * roles named `e2e_<run id>_…`. It is how a run cleans up at the end, after tests that may have
+   * stopped half-way. Users and roles are only changed by an admin; for anyone else there are none
+   * to delete.
    */
   async sweepRun(): Promise<{
     executions: number
     instances: number
     users: number
+    roles: number
   }> {
     const namePrefix = this.name('')
     const userPrefix = this.username('')
@@ -497,10 +509,24 @@ export class CornflowApi {
     )
     for (const { id } of users) await this.deleteUser(id)
 
+    const allRoles = await this.request<{ id: number; name?: string }[] | null>(
+      'GET',
+      '/roles/',
+      undefined,
+      [403],
+    )
+    const roles = (Array.isArray(allRoles) ? allRoles : []).filter((role) =>
+      role.name?.startsWith(userPrefix),
+    )
+    // Cornflow 1.3 cannot delete roles (501): the suite does not create any it cannot delete.
+    for (const { id } of roles)
+      await this.request('DELETE', `/roles/${id}/`, undefined, [403, 404, 501])
+
     return {
       executions: executions.length,
       instances: instances.length,
       users: users.length,
+      roles: roles.length,
     }
   }
 

@@ -37,6 +37,10 @@ vi.mock('@/app/config', () => ({
   },
 }))
 
+vi.mock('@/app/rolesConfig', () => ({
+  default: { viewer: { forbidden_views: ['project-execution'], defaultView: 'history-execution' } },
+}))
+
 vi.mock('@cornflow-ui/core/plugins/extensions', () => ({
   getRegisteredPremiumModules: () => [{ id: 'frontend-automation' }, { id: 'latest-plan' }],
 }))
@@ -103,6 +107,9 @@ describe('describeApp', () => {
         },
       },
       appSections: [{ titleKey: 'app.reports', icon: 'mdi-chart', to: '/reports' }],
+      rolesConfig: {
+        viewer: { forbidden_views: ['project-execution'], defaultView: 'history-execution' },
+      },
       helpMenuFiles: [{ labelKey: 'helpMenu.download', publicPath: 'manual.pdf' }],
       dashboards: { solution: [], instance: [] },
       frontendConfig: null,

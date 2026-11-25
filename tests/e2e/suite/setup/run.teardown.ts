@@ -23,7 +23,7 @@ teardown('clean up the run', async ({ baseURL }) => {
   const removed = await api.sweepRun()
   console.log(
     `[cornflow-e2e] Cleaned up run ${api.runId}: ${removed.executions} executions, ` +
-      `${removed.instances} instances, ${removed.users} users.`,
+      `${removed.instances} instances, ${removed.users} users, ${removed.roles} roles.`,
   )
 })
 

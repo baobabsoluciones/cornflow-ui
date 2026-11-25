@@ -24,6 +24,7 @@
       <div
         class="role-item role-item--all"
         :class="{ 'role-item--active': selectedRoleId === null }"
+        data-testid="roles-role-all"
       >
         <button
           type="button"
@@ -49,6 +50,7 @@
         :key="role.id"
         class="role-item"
         :class="{ 'role-item--active': selectedRoleId === role.id }"
+        :data-testid="`roles-role-${role.name}`"
       >
         <button
           type="button"
@@ -68,6 +70,7 @@
             :label="String(usersCountByRole[role.id] ?? 0)"
             size="small"
             class="role-item__count"
+            data-testid="roles-role-count"
           />
         </button>
         <div v-if="isEditable(role)" class="role-item__actions">
@@ -77,6 +80,7 @@
             icon="mdi-pencil-outline"
             :aria-label="$t('rolesManagement.editRole')"
             :title="$t('rolesManagement.editRole')"
+            data-testid="roles-role-edit"
             @click="$emit('edit', role)"
           />
           <CoreButton
@@ -86,6 +90,7 @@
             icon="mdi-delete-outline"
             :aria-label="$t('rolesManagement.delete')"
             :title="$t('rolesManagement.delete')"
+            data-testid="roles-role-delete"
             @click="$emit('delete', role)"
           />
         </div>
@@ -139,6 +144,7 @@
         variant="outlined"
         size="small"
         block
+        data-testid="roles-add"
         @click="$emit('create')"
       />
     </div>

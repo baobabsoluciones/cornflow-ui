@@ -23,6 +23,8 @@ export interface Deployment {
   modules: string[]
   core: Record<string, any>
   appSections: unknown[]
+  /** Per role, the views it cannot open and where it lands (see `RolePermissions`). */
+  rolesConfig: Record<string, RolePermissions>
   helpMenuFiles: unknown[]
   dashboards: { solution: unknown[]; instance: unknown[] }
   frontendConfig: {
@@ -30,6 +32,13 @@ export interface Deployment {
     executions?: Record<string, Record<string, string>>
   } | null
   i18nNamespaces: string[]
+}
+
+/** What a role of the app's `rolesConfig` cannot reach, and where it lands. */
+export interface RolePermissions {
+  forbidden_views?: string[]
+  forbidden_endpoints?: string[]
+  defaultView?: string
 }
 
 /** A user the run signs in as. `default` is the one the tests use unless they ask for a role. */

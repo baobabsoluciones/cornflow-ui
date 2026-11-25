@@ -4,7 +4,7 @@
  * (input data and results), each headed by its summary.
  */
 import { expect, type Locator, type Page } from '@playwright/test'
-import { leaveMenu, unfoldMenu } from './navigation'
+import { leaveMenu, openMenuGroup, unfoldMenu } from './navigation'
 
 /** The groups of the side menu with the views of the selected execution. */
 export type ExecutionGroup = 'input-data' | 'results'
@@ -68,18 +68,8 @@ export async function openFromLatest(page: Page, name: string): Promise<void> {
 }
 
 /** Unfolds the side menu and opens a group of the selected execution: its pages. */
-async function openGroup(page: Page, group: ExecutionGroup): Promise<Locator> {
-  await unfoldMenu(page)
-  const section = page.getByTestId(`drawer-group-${group}`)
-  await expect(
-    section,
-    `the side menu has the ${group} of the execution`,
-  ).toBeVisible()
-  // The groups are an accordion: opening one closes the others.
-  const head = section.locator('button[aria-expanded]')
-  if ((await head.getAttribute('aria-expanded')) !== 'true') await head.click()
-  return section.getByRole('link')
-}
+const openGroup = (page: Page, group: ExecutionGroup): Promise<Locator> =>
+  openMenuGroup(page, group, `the ${group} of the execution`)
 
 /** How many pages a group of the selected execution has (tables, validations, dashboards). */
 export async function executionViewCount(

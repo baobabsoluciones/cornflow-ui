@@ -3,7 +3,7 @@
  * the deployment (hash mode or not, its default view), so tests do not write it: they follow the
  * menu's link to the route, whose `href` ends with it either way.
  */
-import { expect, type Page } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 
 /**
  * Unfolds the side menu, as a user does: it starts folded into a rail of icons and opens while the
@@ -65,4 +65,39 @@ export async function openFromMenu(page: Page, route: string): Promise<void> {
   await link.click()
   await page.waitForURL((url) => url.href.endsWith(route))
   await leaveMenu(page)
+}
+
+/**
+ * Unfolds the side menu and opens its group `key` (`drawer-group-<key>`: `admin`, `input-data`…),
+ * named `what` in the failure when there is none. Returns the links of its pages. The groups are
+ * an accordion: opening one closes the others.
+ */
+export async function openMenuGroup(
+  page: Page,
+  key: string,
+  what = `the group ${key}`,
+): Promise<Locator> {
+  await unfoldMenu(page)
+  const section = page.getByTestId(`drawer-group-${key}`)
+  await expect(section, `the side menu has ${what}`).toBeVisible()
+  const head = section.locator('button[aria-expanded]')
+  if ((await head.getAttribute('aria-expanded')) !== 'true') await head.click()
+  return section.getByRole('link')
+}
+
+/**
+ * Goes to `route` (`/roles-management`) by its address, as a user who types it or follows a link
+ * from elsewhere does, in hash mode or not, as the app is.
+ */
+export async function goToRoute(page: Page, route: string): Promise<void> {
+  if (!page.url().startsWith('http')) await page.goto('/')
+  const url = new URL(page.url())
+  if (url.hash.startsWith('#/')) {
+    url.hash = route
+  } else {
+    url.pathname = route
+    url.hash = ''
+  }
+  await page.goto(url.href)
+  await page.waitForLoadState('networkidle')
 }
