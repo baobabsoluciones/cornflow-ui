@@ -1597,6 +1597,21 @@ It's important not to edit any other file or folders. Only the folders, files an
 | **Domain**          | Cognito domain          | `VITE_APP_AUTH_DOMAIN`       | `domain`       | Domain string                  |
 | **OAuth Providers** | Enabled OAuth providers | `VITE_APP_AUTH_PROVIDERS`    | `providers`    | Comma-separated / Array        |
 
+### Session renewal and return-to
+
+- **Renewal (sign-in with Cornflow's own users)**: a Cornflow server with refresh-token sessions answers
+  `POST /login/` with a `refresh_token` next to the short-lived `token`. The core keeps both in
+  `sessionStorage` and, when a request is answered with an expired access token (400 "The token has
+  expired" on today's servers, 401 on newer ones), calls `POST /token/refresh/`, stores the new pair and
+  repeats the request. Requests that expire together share one renewal. If the renewal is rejected (the
+  inactivity window or the session cap has passed, or the session was revoked) the session ends: the user
+  is sent to `/sign-in?expired=true`. A server that returns no `refresh_token` (older ones, service
+  users, `REFRESH_TOKEN_ENABLED=0`) keeps the previous behaviour, and so do the Azure and Cognito sign-ins.
+  Signing out also closes the session on the server (`POST /logout/`).
+- **Return-to**: when a session ends, the route being shown (full path and query) is remembered for this
+  tab, and the next successful sign-in navigates back to it, once. Only paths of the app are followed:
+  an absolute URL or `//host` is ignored, and so are the sign-in and sign-out routes.
+
 ### Parameter details
 
 #### Boolean values

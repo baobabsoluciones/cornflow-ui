@@ -50,6 +50,20 @@ describe('AuthService', () => {
       expect(sessionStorageMock.setItem).toHaveBeenCalledWith('userId', 'user-123')
     })
 
+    test('keeps the refresh token the server gives, and drops a stale one when it gives none', async () => {
+      const { default: client } = await import('@cornflow-ui/core/api/Api')
+      vi.mocked(client.post).mockResolvedValue({
+        status: 200,
+        content: { token: 't1', id: 1, refresh_token: 'r1' },
+      })
+      await AuthService.login('testuser', 'password123')
+      expect(mockStorage['refreshToken']).toBe('r1')
+
+      vi.mocked(client.post).mockResolvedValue({ status: 200, content: { token: 't2', id: 1 } })
+      await AuthService.login('testuser', 'password123')
+      expect(mockStorage['refreshToken']).toBeUndefined()
+    })
+
     test('failed login sets authentication to false', async () => {
       const mockResponse = {
         status: 401,

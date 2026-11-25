@@ -47,6 +47,7 @@ async function mountPage(login?: Record<string, unknown>) {
     routes: [
       { path: '/', component: { template: '<div />' } },
       { path: '/sign-in', component: { template: '<div />' } },
+      { path: '/history-execution', component: { template: '<div />' } },
     ],
   })
   await router.push('/sign-in')
@@ -122,6 +123,27 @@ describe('SignInLanding', () => {
   })
 
   describe('form', () => {
+    test('after a forced sign-in it goes back to the page the session ended on, once', async () => {
+      sessionStorage.setItem('returnTo', '/history-execution?tab=2')
+      let router: any
+      ;({ wrapper, router } = await mountPage())
+      await fill(wrapper, 'planner', 'secret')
+      await wrapper.find('form').trigger('submit')
+      await flushPromises()
+      expect(router.currentRoute.value.fullPath).toBe('/history-execution?tab=2')
+      expect(sessionStorage.getItem('returnTo')).toBeNull()
+    })
+
+    test('a return-to that is not a page of the app is ignored', async () => {
+      sessionStorage.setItem('returnTo', 'https://evil.example/phish')
+      let router: any
+      ;({ wrapper, router } = await mountPage())
+      await fill(wrapper, 'planner', 'secret')
+      await wrapper.find('form').trigger('submit')
+      await flushPromises()
+      expect(router.currentRoute.value.path).toBe('/')
+    })
+
     test('signs in against Cornflow and goes to the app', async () => {
       let router: any
       ;({ wrapper, router } = await mountPage())

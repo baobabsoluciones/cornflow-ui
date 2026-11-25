@@ -1,4 +1,5 @@
 import client from '../api/Api'
+import { clearReturnTo } from '@cornflow-ui/core/utils/returnTo'
 
 class AuthService {
   async initialize(): Promise<void> {
@@ -19,6 +20,11 @@ class AuthService {
       sessionStorage.setItem('isAuthenticated', 'true')
       sessionStorage.setItem('token', token)
       sessionStorage.setItem('userId', userId)
+      // A server with refresh-token sessions also returns a refresh token; an older one does not,
+      // and then the session ends when the access token does, as before
+      const refreshToken = response.content.refresh_token
+      if (refreshToken) sessionStorage.setItem('refreshToken', refreshToken)
+      else sessionStorage.removeItem('refreshToken')
       // isAdmin and userRoles are determined after fetching user role assignments (see general store fetchUser)
       sessionStorage.removeItem('isAdmin')
       sessionStorage.removeItem('userRoles')
@@ -30,6 +36,13 @@ class AuthService {
   }
 
   logout(): void {
+    // Close the session on the server too (best effort: the user is signed out either way)
+    const refreshToken = sessionStorage.getItem('refreshToken')
+    if (refreshToken) {
+      Promise.resolve(client.post('/logout/', { refresh_token: refreshToken })).catch(() => {})
+    }
+    clearReturnTo()
+    sessionStorage.removeItem('refreshToken')
     sessionStorage.setItem('isAuthenticated', 'false')
     sessionStorage.removeItem('token')
     sessionStorage.removeItem('userId')
@@ -50,7 +63,8 @@ class AuthService {
     return isAuthenticated
   }
 
-  // Cornflow doesn't support token refresh from front-end side, tokens are managed by the backend
+  // Renewal of a Cornflow session is done by the API client (see `Api.ts`) when a request is
+  // answered with an expired token; this is the hook of the external (OpenID) providers
   async refreshToken(): Promise<{ token: string; expiresAt: number } | null> {
     return null
   }
