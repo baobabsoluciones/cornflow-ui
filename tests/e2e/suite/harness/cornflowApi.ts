@@ -384,11 +384,18 @@ export class CornflowApi {
 
   /** The JSON schema of the input data of a DAG, as Cornflow has it (`GET /schema/<dag>/`). */
   async instanceSchema(dag: string): Promise<JsonSchema> {
-    const schemas = await this.request<{ instance?: JsonSchema }>(
-      'GET',
-      `/schema/${dag}/`,
-    )
-    return schemas.instance ?? {}
+    return (await this.schemas(dag)).instance ?? {}
+  }
+
+  /** The JSON schema of the solution of a DAG, as Cornflow has it (`GET /schema/<dag>/`). */
+  async solutionSchema(dag: string): Promise<JsonSchema> {
+    return (await this.schemas(dag)).solution ?? {}
+  }
+
+  private schemas(
+    dag: string,
+  ): Promise<{ instance?: JsonSchema; solution?: JsonSchema }> {
+    return this.request('GET', `/schema/${dag}/`)
   }
 
   /** The solution of an execution and the checks of that solution. */

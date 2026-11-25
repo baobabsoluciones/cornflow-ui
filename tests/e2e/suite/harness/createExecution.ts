@@ -212,3 +212,75 @@ export async function shownRows(page: Page): Promise<number> {
 }
 
 export { ExecutionState }
+
+/** Whether the page takes data files with the extension `extension` (`xlsx`, `csv`, `json`). */
+export async function acceptsFiles(
+  page: Page,
+  extension: string,
+): Promise<boolean> {
+  const input = page.getByTestId('data-card-file-input')
+  if (!(await input.count())) return false
+  const accept = (await input.getAttribute('accept')) ?? ''
+  return !accept || accept.toLowerCase().includes(`.${extension}`)
+}
+
+/** Picks several data files at once and loads them. Returns whether it ended loaded or with errors. */
+export async function loadDataFiles(
+  page: Page,
+  files: string[],
+): Promise<'loaded' | 'error'> {
+  await page.getByTestId('data-card-file-input').setInputFiles(files)
+  await page.getByTestId('data-card-load').click()
+  const card = page.getByTestId('data-card')
+  await expect(card).toHaveAttribute('data-load-status', /^(loaded|error)$/, {
+    timeout: 60_000,
+  })
+  return (await card.getAttribute('data-load-status')) as 'loaded' | 'error'
+}
+
+/**
+ * Downloads the data loaded on the page to Excel, from the data card's Excel menu, into the test's
+ * output. Returns where it went.
+ */
+export async function downloadDataExcel(page: Page): Promise<string> {
+  await page.getByTestId('data-card-excel').click()
+  const [downloaded] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByTestId('data-card-excel-download').click(),
+  ])
+  const file = test.info().outputPath(downloaded.suggestedFilename())
+  await downloaded.saveAs(file)
+  return file
+}
+
+/** Overwrites the data loaded on the page with an Excel workbook, from the data card's Excel menu. */
+export async function overwriteWithExcel(
+  page: Page,
+  file: string,
+): Promise<void> {
+  await page.getByTestId('data-card-excel').click()
+  const [chooser] = await Promise.all([
+    page.waitForEvent('filechooser'),
+    page.getByTestId('data-card-excel-upload').click(),
+  ])
+  await chooser.setFiles(file)
+}
+
+/**
+ * Turns the launch into "create with this solution" (developer mode: the "⋮" next to the launch
+ * button) and picks the solution file. Returns whether the page took it, or what it found wrong.
+ */
+export async function pickSolution(
+  page: Page,
+  file: string,
+): Promise<'taken' | 'refused'> {
+  if (!(await page.getByTestId('launch-panel-solution').count())) {
+    await page.getByTestId('launch-panel-more').click()
+    await page.getByTestId('launch-panel-solution-mode').click()
+  }
+  await page.getByTestId('launch-panel-solution-input').setInputFiles(file)
+  const taken = page.getByTestId('launch-panel-solution-file')
+  const refused = page.getByTestId('launch-panel-solution-error')
+  await expect(taken.or(refused)).toBeVisible()
+  return (await taken.isVisible()) ? 'taken' : 'refused'
+}

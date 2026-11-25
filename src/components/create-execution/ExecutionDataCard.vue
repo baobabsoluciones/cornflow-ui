@@ -80,11 +80,21 @@
             <template #trigger>
               <CoreButton variant="outlined" icon="mdi-microsoft-excel" text="Excel" data-testid="data-card-excel" />
             </template>
-            <button type="button" class="data-card__menu-item" @click="excelAction('download')">
+            <button
+              type="button"
+              class="data-card__menu-item"
+              data-testid="data-card-excel-download"
+              @click="excelAction('download')"
+            >
               <CoreIcon name="mdi-download" :size="18" />
               {{ $t('projectExecution.downloadExcel') }}
             </button>
-            <button type="button" class="data-card__menu-item" @click="excelAction('upload')">
+            <button
+              type="button"
+              class="data-card__menu-item"
+              data-testid="data-card-excel-upload"
+              @click="excelAction('upload')"
+            >
               <CoreIcon name="mdi-file-arrow-up-down" :size="18" />
               {{ $t('projectExecution.uploadExcel') }}
             </button>

@@ -157,13 +157,13 @@
             <span>{{ note.text }}</span>
           </div>
 
-          <div v-if="draft.solution.enabled" class="launch-panel__solution">
+          <div v-if="draft.solution.enabled" class="launch-panel__solution" data-testid="launch-panel-solution">
             <span class="launch-panel__solution-title">{{ $t('createExecution.launch.solutionFile') }}</span>
-            <span v-if="draft.solution.file && draft.solution.data" class="launch-panel__solution-file">
+            <span v-if="draft.solution.file && draft.solution.data" class="launch-panel__solution-file" data-testid="launch-panel-solution-file">
               <CoreIcon name="mdi-file-check-outline" :size="16" />
               {{ draft.solution.file.name }}
             </span>
-            <span v-if="draft.solution.errors" class="launch-panel__solution-error">{{ solutionErrors }}</span>
+            <span v-if="draft.solution.errors" class="launch-panel__solution-error" data-testid="launch-panel-solution-error">{{ solutionErrors }}</span>
             <button type="button" class="launch-panel__link" @click="solutionInput?.click()">
               {{ draft.solution.file ? $t('createExecution.launch.solutionChange') : $t('createExecution.launch.solutionPick') }}
             </button>
@@ -172,6 +172,7 @@
               type="file"
               accept=".json,.xlsx,.csv"
               hidden
+              data-testid="launch-panel-solution-input"
               @change="onSolutionPicked"
             />
           </div>
@@ -202,9 +203,15 @@
                   icon="mdi-dots-vertical"
                   :aria-label="$t('createExecution.launch.moreOptions')"
                   :title="$t('createExecution.launch.moreOptions')"
+                  data-testid="launch-panel-more"
                 />
               </template>
-              <button type="button" class="launch-panel__menu-item" @click="toggleSolutionMode">
+              <button
+                type="button"
+                class="launch-panel__menu-item"
+                data-testid="launch-panel-solution-mode"
+                @click="toggleSolutionMode"
+              >
                 <CoreIcon :name="draft.solution.enabled ? 'mdi-play-outline' : 'mdi-file-upload-outline'" :size="18" />
                 {{ draft.solution.enabled ? $t('createExecution.launch.solveNormally') : $t('createExecution.launch.uploadSolution') }}
               </button>
