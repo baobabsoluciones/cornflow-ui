@@ -13,9 +13,9 @@ import {
   downloadView,
   expectedOnScreen,
   expectWorkbook,
-  rowsInWorkbook,
   tableKeyOf,
   visibleTable,
+  workbookRows,
 } from '../../harness/executionData'
 import { solvedExecution, type SolvedExecution } from '../../harness/executions'
 import { loadFromHistoryRow, openHistory } from '../../harness/history'
@@ -56,16 +56,6 @@ async function checkedExecution(
     dataset,
     withChecks: true,
   })
-}
-
-/** Rows per table in a whole download of `data` to Excel. */
-function workbookRows(data: Record<string, unknown> | null) {
-  return Object.fromEntries(
-    Object.entries(data ?? {}).map(([key, value]) => [
-      key,
-      rowsInWorkbook(value),
-    ]),
-  )
 }
 
 test.describe('data of a loaded execution', () => {

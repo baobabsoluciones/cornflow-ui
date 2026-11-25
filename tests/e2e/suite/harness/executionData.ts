@@ -6,7 +6,13 @@
  * A table is known by its key, the last part of the route of its tab (`…/products`), the same in
  * every language, so the backend's data says what it should show.
  */
-import { expect, test, type Locator, type Page } from '@playwright/test'
+import {
+  expect,
+  test,
+  type Download,
+  type Locator,
+  type Page,
+} from '@playwright/test'
 import {
   executionViewCount,
   openExecutionView,
@@ -39,6 +45,18 @@ export function rowsOnScreen(value: unknown): number {
 export function rowsInWorkbook(value: unknown): number {
   if (Array.isArray(value)) return value.length
   return value && typeof value === 'object' ? Object.keys(value).length : 0
+}
+
+/** Rows per table, its header aside, of a whole download of `data` to Excel. */
+export function workbookRows(
+  data: Record<string, unknown> | null,
+): Record<string, number> {
+  return Object.fromEntries(
+    Object.entries(data ?? {}).map(([key, value]) => [
+      key,
+      rowsInWorkbook(value),
+    ]),
+  )
 }
 
 /** Rows on screen of every table of `data` (instance or solution data, or checks). */
@@ -116,6 +134,53 @@ export async function download(
   const file = test.info().outputPath(name)
   await downloaded.saveAs(file)
   return { file, name }
+}
+
+/**
+ * Saves the `count` files that `click` makes the app download, in the test's output. Fails when
+ * fewer come within `timeoutMs`. Returns where each went and its name, in the order they came.
+ */
+export async function downloadFiles(
+  page: Page,
+  count: number,
+  click: () => Promise<void>,
+  timeoutMs = 30_000,
+): Promise<{ file: string; name: string }[]> {
+  const downloads: Download[] = []
+  let onDownload: (download: Download) => void = () => {}
+  const all = new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(
+      () =>
+        reject(
+          new Error(
+            `${downloads.length} of ${count} downloads came in ${timeoutMs} ms`,
+          ),
+        ),
+      timeoutMs,
+    )
+    onDownload = (download) => {
+      downloads.push(download)
+      if (downloads.length === count) {
+        clearTimeout(timer)
+        resolve()
+      }
+    }
+    page.on('download', onDownload)
+  })
+  try {
+    await click()
+    await all
+  } finally {
+    page.off('download', onDownload)
+  }
+  const saved = []
+  for (const download of downloads) {
+    const name = download.suggestedFilename()
+    const file = test.info().outputPath(name)
+    await download.saveAs(file)
+    saved.push({ file, name })
+  }
+  return saved
 }
 
 /** Downloads the table on screen with its Excel button. Returns its sheets. */

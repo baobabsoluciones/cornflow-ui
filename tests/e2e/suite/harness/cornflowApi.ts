@@ -284,6 +284,39 @@ export class CornflowApi {
     return { id: found.id, instanceId: found.instance_id }
   }
 
+  /**
+   * An execution as the user's list of executions has it: its name, state, config and the state
+   * of its solution (`status_code` of its log; -3, as the interface takes it, without a log).
+   * Null when it is not listed: deleted, or not the user's.
+   */
+  async execution(id: string): Promise<{
+    name: string
+    state: number
+    config: Record<string, unknown>
+    instanceId: string
+    solutionStatus: number
+  } | null> {
+    const executions = await this.request<
+      {
+        id: string
+        name: string
+        state: number
+        config?: Record<string, unknown> | null
+        instance_id: string
+        log?: { status_code?: number } | null
+      }[]
+    >('GET', '/execution/')
+    const execution = executions.find((candidate) => candidate.id === id)
+    if (!execution) return null
+    return {
+      name: execution.name,
+      state: execution.state,
+      config: execution.config ?? {},
+      instanceId: execution.instance_id,
+      solutionStatus: execution.log?.status_code ?? -3,
+    }
+  }
+
   /** The state of an execution (`ExecutionState`). */
   async executionState(id: string): Promise<number> {
     const execution = await this.request<{ state: number }>(

@@ -19,30 +19,41 @@ export async function unfoldMenu(page: Page): Promise<void> {
   await expect(panel, 'the side menu unfolds').toBeVisible()
 }
 
+/** ms the menu waits with the pointer on it before it opens (100) and away before it folds (200). */
+const MENU_DELAYS = 400
+
 /**
  * Moves the pointer off the side menu, as a user does once done with it: the unfolded menu lies
  * over the content (the tabs of the loaded executions among it) and folds again. A pinned menu
  * stays.
+ *
+ * When a click in the menu changes the page under the pointer, the browser at times does not tell
+ * the menu that the pointer left, and the menu stays open, or opens just after. A user then passes
+ * over it again and leaves, and so does this.
  */
 export async function leaveMenu(page: Page): Promise<void> {
-  // Unfolded by the pointer it floats; pinned it does not, and stays when the pointer leaves.
-  const floating = await page
-    .getByTestId('app-drawer')
-    .evaluate((drawer) => drawer.classList.contains('is-floating'))
+  const drawer = page.getByTestId('app-drawer')
   const size = page.viewportSize() ?? { width: 1280, height: 720 }
-  await page.mouse.move(size.width - 20, Math.round(size.height / 2))
-  if (floating) {
-    await expect(
-      page.getByTestId('app-drawer-execution-block'),
-      'the side menu folds',
-    ).toBeHidden()
+  const away = () =>
+    page.mouse.move(size.width - 20, Math.round(size.height / 2))
+  // Unfolded by the pointer it floats; pinned it does not, and stays when the pointer leaves.
+  const floating = () =>
+    drawer.evaluate((menu) => menu.classList.contains('is-floating'))
+
+  await away()
+  await page.waitForTimeout(MENU_DELAYS)
+  if (await floating()) {
+    await drawer.hover()
+    await away()
   }
+  await expect.poll(floating, { message: 'the side menu folds' }).toBe(false)
 }
 
 /**
  * Opens the page of `route` (`/history-execution`) from the side menu, loading the app first if
- * the tab has nothing yet. Fails when the menu has no link to it for this user. Pages that are a
- * group of their own (the history) are on the folded menu too.
+ * the tab has nothing yet, and moves the pointer off the menu, which would otherwise unfold over
+ * the page. Fails when the menu has no link to it for this user. Pages that are a group of their
+ * own (the history) are on the folded menu too.
  */
 export async function openFromMenu(page: Page, route: string): Promise<void> {
   if (!page.url().startsWith('http')) await page.goto('/')
@@ -53,4 +64,5 @@ export async function openFromMenu(page: Page, route: string): Promise<void> {
   await expect(link, `the side menu links to ${route}`).toBeAttached()
   await link.click()
   await page.waitForURL((url) => url.href.endsWith(route))
+  await leaveMenu(page)
 }
