@@ -8,7 +8,7 @@
   <DrawerGroup :section="section" :open="openKey === section.key" @toggle="toggle" @navigate="close" />
 -->
 <template>
-  <div class="drawer-group">
+  <div class="drawer-group" :data-testid="`drawer-group-${section.key}`">
     <RouterLink
       v-if="!hasPages && section.to"
       :to="section.to"

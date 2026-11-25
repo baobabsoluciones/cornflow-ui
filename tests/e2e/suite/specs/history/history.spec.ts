@@ -3,15 +3,12 @@
  * API as the page's own user, created and not run: listing them needs no solver.
  */
 import { test, expect } from '../../harness/fixtures'
-import { openFromMenu } from '../../harness/navigation'
+import { historySearch, openHistory } from '../../harness/history'
 import { readDataset } from '../../harness/uat'
-
-const HISTORY = '/history-execution'
 
 test.describe('history', () => {
   test('opens and loads the executions', async ({ page }) => {
-    await openFromMenu(page, HISTORY)
-    await expect(page.getByTestId('history-loading')).toHaveCount(0)
+    await openHistory(page)
     await expect(page.getByTestId('history-summary')).toBeVisible()
   })
 
@@ -49,9 +46,9 @@ test.describe('history', () => {
     const first = api.name('history first')
     const second = api.name('history second')
 
-    await openFromMenu(page, HISTORY)
+    await openHistory(page)
     const rows = page.getByTestId('history-row')
-    const search = page.getByTestId('history-search').locator('input')
+    const search = historySearch(page)
 
     // The run's two, and nothing else.
     await search.fill(api.name('history'))

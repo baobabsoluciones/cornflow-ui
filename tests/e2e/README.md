@@ -160,6 +160,7 @@ execution (`GET /execution/<id>/data/`).
 | --- | --- |
 | Sign in | Signs in with a valid user. Turns down a user that does not exist. Asks for both fields. Offers the languages the app shows |
 | History | Opens and loads. Lists the executions the user made, finds them by name, clears the filters and opens one |
+| Loaded executions | Loads an execution from its history row, its history detail and the latest executions of the side menu: a tab opens, selected, and the menu shows it. Its input data and results open headed by its summary. Switches between two tabs, deselects with a second click, and closing the selected one on its data goes back to the history |
 | Create execution | Load filters show only when the backend declares them. The solver can be picked only when the app lets the user pick one. Then, with each dataset: valid data solves and the solution shows; data with errors is caught by the checks, and stops the launch where `enableBlockAdvanceOnCheckErrors` says so; data with warnings is caught and still solves; an infeasible case ends with no solution; a failing solver ends in error |
 
 Create execution works on the schema the app opens with.
