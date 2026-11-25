@@ -91,6 +91,17 @@ export function newRunId(now: Date = new Date()): string {
 /** The checks Cornflow stored for an instance or an execution: rows by check name. */
 export type Checks = Record<string, Record<string, unknown>[]>
 
+/** A JSON schema, or a part of one: only what the suite reads of it is typed. */
+export interface JsonSchema {
+  type?: string | string[]
+  properties?: Record<string, JsonSchema>
+  items?: JsonSchema
+  required?: string[]
+  minimum?: number
+  maximum?: number
+  [key: string]: unknown
+}
+
 export interface CornflowApiOptions {
   /** URL of the backend the interface talks to (`describe().backendUrl`). */
   backendUrl: string
@@ -336,6 +347,15 @@ export class CornflowApi {
       checks?: Checks | null
     }>('GET', `/instance/${id}/data/`)
     return { data: instance.data ?? null, checks: instance.checks ?? {} }
+  }
+
+  /** The JSON schema of the input data of a DAG, as Cornflow has it (`GET /schema/<dag>/`). */
+  async instanceSchema(dag: string): Promise<JsonSchema> {
+    const schemas = await this.request<{ instance?: JsonSchema }>(
+      'GET',
+      `/schema/${dag}/`,
+    )
+    return schemas.instance ?? {}
   }
 
   /** The solution of an execution and the checks of that solution. */

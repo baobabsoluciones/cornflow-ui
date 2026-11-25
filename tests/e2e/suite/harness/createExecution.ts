@@ -3,10 +3,11 @@
  * name the execution, run the data checks, set its parameters and launch it. An app may replace
  * the page with its own flow (`createExecution.component`); `openCreateExecution` tells.
  */
-import { expect, type Page } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { ExecutionState, isExecutionActive } from './cornflowApi'
 import { openFromMenu } from './navigation'
 import { allowFor } from './timing'
+import type { DatasetKind, Uat } from './uat'
 
 export const CREATE_EXECUTION = '/project-execution'
 
@@ -50,6 +51,35 @@ export async function loadDataFile(
   return (await card.getAttribute('data-load-status')) as 'loaded' | 'error'
 }
 
+const DATASET_NAMES: Record<DatasetKind, string> = {
+  valid: 'valid',
+  withErrors: 'with errors',
+  withWarnings: 'with warnings',
+}
+
+/**
+ * Loads a dataset of the UAT file from its JSON file, as the user does. Skips the test when the
+ * file does not give that dataset or the page does not take JSON files here (an app that brings
+ * its data from a database, for instance).
+ */
+export async function loadDataset(
+  page: Page,
+  uat: Uat,
+  schema: string,
+  dataset: DatasetKind,
+): Promise<void> {
+  const file = uat.schemas[schema]?.datasets[dataset]
+  test.skip(
+    !file,
+    `the UAT file has no ${DATASET_NAMES[dataset]} dataset for ${schema}`,
+  )
+  test.skip(
+    !(await loadsJsonFiles(page)),
+    'the create-execution page does not load JSON data files here',
+  )
+  expect(await loadDataFile(page, file!), 'the data loads').toBe('loaded')
+}
+
 /** Gives the execution its name: the one the suite gives it, so the clean-up finds it. */
 export async function nameExecution(page: Page, name: string): Promise<void> {
   await page.getByTestId('launch-panel-name').fill(name)
@@ -75,9 +105,15 @@ export async function runDataChecks(page: Page): Promise<ChecksOutcome> {
   return (await status.getAttribute('data-status')) as ChecksOutcome
 }
 
+/**
+ * The parameters of the execution. Only within it: a table of parameters of the data, on the same
+ * page, names its rows the same way (`parameter-<key>`).
+ */
+const parametersForm = (page: Page) => page.getByTestId('parameters-form')
+
 /** Opens the "Advanced" parameters (the solver goes there), when the page has them. */
 export async function openAdvancedParameters(page: Page): Promise<void> {
-  const advanced = page.getByTestId('parameters-advanced')
+  const advanced = parametersForm(page).getByTestId('parameters-advanced')
   if (
     (await advanced.count()) &&
     (await advanced.getAttribute('aria-expanded')) !== 'true'
@@ -96,7 +132,7 @@ export async function setParameter(
   key: string,
   value: unknown,
 ): Promise<boolean> {
-  const field = page.getByTestId(`parameter-${key}`)
+  const field = parametersForm(page).getByTestId(`parameter-${key}`)
   if (!(await field.count())) await openAdvancedParameters(page)
   if (!(await field.count())) return false
 

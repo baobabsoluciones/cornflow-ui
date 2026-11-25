@@ -10,8 +10,7 @@ import {
   ExecutionState,
   hasDataChecks,
   launchAndWait,
-  loadDataFile,
-  loadsJsonFiles,
+  loadDataset,
   nameExecution,
   openAdvancedParameters,
   openCreateExecution,
@@ -34,41 +33,12 @@ const FAILED_STATES: number[] = [
   ExecutionState.FailedSaving,
 ]
 
-const DATASET_NAMES: Record<DatasetKind, string> = {
-  valid: 'valid',
-  withErrors: 'with errors',
-  withWarnings: 'with warnings',
-}
-
 /** Rows of the solution, in all its tables together. */
 function solutionRows(data: Record<string, unknown> | null): number {
   return Object.values(data ?? {}).reduce<number>(
     (rows, table) => rows + (Array.isArray(table) ? table.length : 0),
     0,
   )
-}
-
-/**
- * Loads a dataset of the UAT file from its JSON file, as the user does. Skips the test when the
- * file does not give that dataset or the page does not take JSON files here (an app that brings
- * its data from a database, for instance).
- */
-async function loadDataset(
-  page: Page,
-  uat: Uat,
-  schema: string,
-  dataset: DatasetKind,
-): Promise<void> {
-  const file = uat.schemas[schema]?.datasets[dataset]
-  test.skip(
-    !file,
-    `the UAT file has no ${DATASET_NAMES[dataset]} dataset for ${schema}`,
-  )
-  test.skip(
-    !(await loadsJsonFiles(page)),
-    'the create-execution page does not load JSON data files here',
-  )
-  expect(await loadDataFile(page, file!), 'the data loads').toBe('loaded')
 }
 
 /**
@@ -161,7 +131,9 @@ test.describe('create execution', () => {
     await loadDataset(page, uat, schema, 'valid')
     await openAdvancedParameters(page)
 
-    const field = page.getByTestId('parameter-solver')
+    const field = page
+      .getByTestId('parameters-form')
+      .getByTestId('parameter-solver')
     if (!offered) {
       test.info().annotations.push({
         type: 'note',

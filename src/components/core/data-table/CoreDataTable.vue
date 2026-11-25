@@ -31,6 +31,7 @@
       data-testid="data-table"
       :data-status="status"
       :data-rows="total"
+      :data-pending="pendingCount"
       @keydown.esc="adding = false"
     >
       <slot name="tabs" />

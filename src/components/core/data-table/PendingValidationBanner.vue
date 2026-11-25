@@ -5,7 +5,7 @@
   <PendingValidationBanner :message="validationError" @close="clearError" />
 -->
 <template>
-  <div class="pending-banner">
+  <div class="pending-banner" data-testid="pending-validation">
     <CoreAlert tone="danger" :title="$t('dataTable.pending.validationTitle')" :message="message" />
     <CoreButton
       variant="icon"

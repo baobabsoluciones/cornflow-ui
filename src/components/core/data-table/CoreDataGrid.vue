@@ -147,6 +147,7 @@
               :key="column.key"
               class="data-grid__cell data-grid__cell--editing"
               :class="{ 'is-sticky': index === 0 }"
+              :data-column="column.key"
               :style="index === 0 ? { left: `${frozenLeft}px` } : undefined"
               :title="
                 addErrors[column.key] ? $t(addErrors[column.key]) : undefined
