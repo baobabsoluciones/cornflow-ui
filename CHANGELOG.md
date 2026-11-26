@@ -1,8 +1,6 @@
 # Changelog
 
-## [4.1.0] - 24-11-2026
-
-⚠️ The load filters of a DAG's ETL come from the backend (`GET /external/frontend-config/`): `pre_etl: true` in the config schema is not read. An application that marks its load filters that way publishes them in the `query` of its backend's frontend config before upgrading (see **Changed**).
+## [Unreleased]
 
 ### Added
 - **Sign-in and session against a Cornflow server with the security hardening**  
@@ -15,6 +13,12 @@
   - New dependencies: `@zxcvbn-ts/core`, `@zxcvbn-ts/language-common` and `qrcode`
   *Contributors:* [@HelenaCA](#), [@ggsdc](#)  
   *Commit ID:* #284
+
+## [4.1.0] - 24-11-2026
+
+⚠️ The load filters of a DAG's ETL come from the backend (`GET /external/frontend-config/`): `pre_etl: true` in the config schema is not read. An application that marks its load filters that way publishes them in the `query` of its backend's frontend config before upgrading (see **Changed**).
+
+### Added
 - **Premium modules can add pages to Administration**  
   - A `PremiumDrawerSection` with `parent: 'admin'` is listed as a page of the core's Administration group (next to Roles management) instead of a group of its own. The group shows for admins when it has a page, so it no longer depends on roles management being on
   *Contributors:* [@antoniogonzalezsuarez](#)  
