@@ -222,6 +222,7 @@
               class="app-drawer__rail-button"
               :class="{ 'is-active': isActive(section) }"
               :aria-label="section.title"
+              :data-testid="`app-drawer-rail-${section.key}`"
             >
               <CoreIcon :name="section.icon || 'mdi-circle-small'" :size="20" />
             </RouterLink>
@@ -231,6 +232,7 @@
               class="app-drawer__rail-button"
               :class="{ 'is-active': isActive(section) }"
               :aria-label="section.title"
+              :data-testid="`app-drawer-rail-${section.key}`"
               @click="pinOn(section.key)"
             >
               <CoreIcon :name="section.icon || 'mdi-circle-small'" :size="20" />

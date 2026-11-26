@@ -30,3 +30,23 @@ export async function signOut(
   await expect(button).toBeHidden()
   if (!confirm) await leaveMenu(page)
 }
+
+/**
+ * Switches the app to `language` (one of `describe().languages`) from the user's settings, as a
+ * user does, and stays there.
+ */
+export async function chooseLanguage(
+  page: Page,
+  languages: string[],
+  language: string,
+): Promise<void> {
+  await openSettings(page)
+  const select = page.getByTestId('settings-language')
+  // The options are positions; what they stand for is in the order of `languages`.
+  const position = String(languages.indexOf(language))
+  if ((await select.inputValue()) === position) return
+  const title = page.locator('#settings-language-title')
+  const before = await title.innerText()
+  await select.selectOption(position)
+  await expect(title, `the app is in ${language}`).not.toHaveText(before)
+}

@@ -20,8 +20,8 @@
     </template>
     <CoreMenu :items="menuItems" @select="pick" />
     <div class="help-menu__versions">
-      <span>{{ appVersion }}</span>
-      <span>{{ backendVersion }}</span>
+      <span data-testid="help-menu-app-version">{{ appVersion }}</span>
+      <span data-testid="help-menu-cornflow-version">{{ backendVersion }}</span>
     </div>
   </CorePopover>
 
@@ -36,6 +36,7 @@
       <li v-for="file in downloadableFiles" :key="file.publicPath">
         <a
           class="help-menu__file"
+          data-testid="help-file"
           :href="resolveFilePath(file)"
           :download="file.downloadName || fileBaseName(file.publicPath)"
         >
@@ -57,7 +58,7 @@
     data-testid="licences-dialog"
   >
     <ul class="help-menu__licences">
-      <li v-for="licence in licences" :key="licence.library">
+      <li v-for="licence in licences" :key="licence.library" data-testid="licence">
         <strong>{{ licence.library }} v.{{ licence.version }} ({{ licence.license }})</strong>:
         {{ licence.author }} · {{ licence.description }}
       </li>

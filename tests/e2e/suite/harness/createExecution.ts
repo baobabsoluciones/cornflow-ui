@@ -19,6 +19,14 @@ const LAUNCH_TIMEOUT = 60_000
 /** How a run of the data checks ended (`data-status` of `ChecksStatus`). */
 export type ChecksOutcome = 'ok' | 'warnings' | 'errors'
 
+/** Whether the side menu offers this user "New execution", folded or not. */
+export async function offersNewExecution(page: Page): Promise<boolean> {
+  const button = page
+    .getByTestId('app-drawer-new-execution')
+    .or(page.getByTestId('app-drawer-rail-new-execution'))
+  return (await button.count()) > 0
+}
+
 /** Opens the page; false when the app has its own flow instead of core's. */
 export async function openCreateExecution(page: Page): Promise<boolean> {
   await openFromMenu(page, CREATE_EXECUTION)

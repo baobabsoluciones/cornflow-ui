@@ -1,12 +1,19 @@
 /**
  * What every page of a test is checked for, whatever the screen: text keys shown untranslated
  * (harness/translations.ts) and errors of the app (harness/appErrors.ts). The `context` fixture
- * checks the test's own pages this way; a test that opens another context (a user of each role)
- * checks it with `watchContext` too.
+ * checks the test's own pages this way; a test that opens a page as another user (`asUser`) has it
+ * checked too.
  */
-import { test, type BrowserContext } from '@playwright/test'
+import {
+  expect,
+  test,
+  type Browser,
+  type BrowserContext,
+  type Page,
+} from '@playwright/test'
 import { appErrorsMessage, knownAppIssueOf, watchAppErrors } from './appErrors'
 import type { Deployment } from './run'
+import { newSignedInContext } from './session'
 import {
   knownIssueOf,
   untranslatedMessage,
@@ -61,5 +68,31 @@ export async function watchContext(
       }
     }
     if (problems.length) throw new Error(problems.join('\n\n'))
+  }
+}
+
+/**
+ * Runs `use` on a page signed in as one of the run's users, checked as the test's own pages are
+ * (untranslated texts, errors of the app). The page is closed however `use` ends.
+ */
+export async function asUser(
+  browser: Browser,
+  deployment: Deployment,
+  session: string,
+  use: (page: Page) => Promise<void>,
+): Promise<void> {
+  const context = await newSignedInContext(browser, session)
+  try {
+    const finish = await watchContext(context, deployment)
+    const page = await context.newPage()
+    await page.goto('/')
+    await expect(page.getByTestId('app-drawer')).toBeAttached({
+      timeout: 30_000,
+    })
+    await use(page)
+    await context.close()
+    await finish()
+  } finally {
+    await context.close()
   }
 }

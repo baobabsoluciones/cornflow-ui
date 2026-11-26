@@ -421,6 +421,20 @@ export class CornflowApi {
     this.instances.delete(id)
   }
 
+  /** How Cornflow is, and its version (`GET /health/`). */
+  async health(): Promise<{
+    cornflow_status?: string
+    airflow_status?: string
+    cornflow_version?: string
+  }> {
+    return this.request('GET', '/health/')
+  }
+
+  /** The libraries Cornflow uses, with their licences (`GET /licences/`). */
+  async licences(): Promise<{ library: string; license: string }[]> {
+    return this.request('GET', '/licences/')
+  }
+
   /** The roles of the deployment: Cornflow's own and any the deployment added. */
   async roles(): Promise<Role[]> {
     return this.request<Role[]>('GET', '/roles/')

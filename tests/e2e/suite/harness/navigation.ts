@@ -101,3 +101,13 @@ export async function goToRoute(page: Page, route: string): Promise<void> {
   await page.goto(url.href)
   await page.waitForLoadState('networkidle')
 }
+
+/**
+ * The view the page is on: the first part of its route (`history-execution`, `not-found`), in
+ * hash mode or not.
+ */
+export function currentView(page: Page): string {
+  const url = new URL(page.url())
+  const route = url.hash.startsWith('#/') ? url.hash.slice(1) : url.pathname
+  return route.split('?')[0].split('/').filter(Boolean)[0] ?? ''
+}

@@ -1,5 +1,9 @@
 <template>
-  <div class="not-found-container">
+  <div
+    class="not-found-container"
+    data-testid="not-found"
+    :data-reason="isForbidden ? 'forbidden' : 'not-found'"
+  >
     <div class="not-found-content">
       <v-icon class="not-found-icon" color="primary">mdi-alert-circle-outline</v-icon>
       <h1 class="not-found-code">{{ isForbidden ? '403' : '404' }}</h1>
@@ -9,7 +13,13 @@
       <p class="not-found-subtitle">
         {{ isForbidden ? t('notFound.forbiddenMessage') : t('notFound.message') }}
       </p>
-      <v-btn color="primary" variant="flat" class="mt-6" @click="goHome">
+      <v-btn
+        color="primary"
+        variant="flat"
+        class="mt-6"
+        data-testid="not-found-home"
+        @click="goHome"
+      >
         {{ t('notFound.goHome') }}
       </v-btn>
     </div>

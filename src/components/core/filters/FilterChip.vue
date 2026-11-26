@@ -21,7 +21,11 @@
         v-bind="$attrs"
       >
         <PopoverTrigger as-child>
-          <button type="button" class="filter-chip__main">
+          <button
+            type="button"
+            class="filter-chip__main"
+            data-testid="filter-chip-main"
+          >
             <CoreIcon
               v-if="icon"
               :name="icon"

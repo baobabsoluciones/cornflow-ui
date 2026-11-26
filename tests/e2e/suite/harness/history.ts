@@ -63,7 +63,7 @@ export const historyRows = (page: Page): Locator =>
 /** Opens a filter chip's options, unless they are open already. */
 async function openChip(page: Page, chip: Locator): Promise<void> {
   if (!(await page.getByRole('menu').count()))
-    await chip.locator('.filter-chip__main').click()
+    await chip.getByTestId('filter-chip-main').click()
   await expect(page.getByRole('menu')).toBeVisible()
 }
 

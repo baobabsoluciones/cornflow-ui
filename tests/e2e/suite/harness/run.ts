@@ -98,6 +98,15 @@ function read<T>(file: string, what: string): T {
  * Forgets what an earlier run left (its deployment and run information), so a clean-up never
  * works from a run that is not this one. The sessions are written again by the set-up.
  */
+/**
+ * The users to go through, one per role: in disposable mode the run's users of each role (not
+ * `default`, the same user as one of them); in shared mode, `default`, the only one there is.
+ */
+export function roleSessions(run: RunInfo): SessionUser[] {
+  const others = run.sessions.filter((session) => session.name !== 'default')
+  return others.length ? others : run.sessions
+}
+
 export function clearRunState(): void {
   for (const file of [deploymentFile(), runFile()])
     fs.rmSync(file, { force: true })

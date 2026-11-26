@@ -12,10 +12,10 @@
  *   on, that adding, renaming and deleting a role are offered. No role is saved: Cornflow 1.3
  *   cannot delete one, so it would stay.
  */
-import type { Browser, Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { test, expect } from '../../harness/fixtures'
 import { CornflowApi, CornflowApiError } from '../../harness/cornflowApi'
-import { watchContext } from '../../harness/contextChecks'
+import { asUser } from '../../harness/contextChecks'
 import {
   CREATE_EXECUTION,
   loadDataset,
@@ -23,40 +23,33 @@ import {
   resolveButton,
 } from '../../harness/createExecution'
 import {
+  adminSession,
+  openRolesManagement,
+  ROLES_MANAGEMENT,
+} from '../../harness/admin'
+import {
+  currentView,
   goToRoute,
   leaveMenu,
   openFromMenu,
-  openMenuGroup,
   unfoldMenu,
 } from '../../harness/navigation'
 import {
   cornflowApiFor,
   credentials,
   readSessionStorage,
+  roleSessions,
   type Deployment,
   type RolePermissions,
   type RunInfo,
-  type SessionUser,
 } from '../../harness/run'
-import { newSignedInContext } from '../../harness/session'
 import { readDataset } from '../../harness/uat'
-
-const ROLES_MANAGEMENT = '/roles-management'
 
 /** Roles a run of the suite made and could not delete: not the deployment's (see the set-up). */
 const SUITE_ROLE = /^e2e_/
 
 /** Views a user can open by their address, to check that a role that forbids them cannot. */
 const ROUTE_VIEWS = ['history-execution', 'project-execution', 'user-settings']
-
-/**
- * The users to go through, one per role: in disposable mode the run's users of each role (not
- * `default`, the same user as one of them); in shared mode, `default`, the only one there is.
- */
-function roleSessions(run: RunInfo): SessionUser[] {
-  const others = run.sessions.filter((session) => session.name !== 'default')
-  return others.length ? others : run.sessions
-}
 
 /** Whether `roles` may open `view`: no role of the user forbids it (the app's rule). */
 function mayOpen(
@@ -67,46 +60,6 @@ function mayOpen(
   return roles.every(
     (role) => !(config[role]?.forbidden_views ?? []).includes(view),
   )
-}
-
-/** The view a page is on: the first part of its route. */
-function viewOf(page: Page): string {
-  const url = new URL(page.url())
-  const route = url.hash.startsWith('#/') ? url.hash.slice(1) : url.pathname
-  return route.split('?')[0].split('/').filter(Boolean)[0] ?? ''
-}
-
-/** A session of the run whose user is an admin, if there is one. */
-function adminSession(run: RunInfo): string | undefined {
-  return run.sessions.find(
-    (session) => readSessionStorage(session.name).isAdmin === 'true',
-  )?.name
-}
-
-/**
- * Runs `use` on a page signed in as one of the run's users, checked as the test's own pages are
- * (untranslated texts, errors of the app). The page is closed however `use` ends.
- */
-async function asUser(
-  browser: Browser,
-  deployment: Deployment,
-  session: string,
-  use: (page: Page) => Promise<void>,
-): Promise<void> {
-  const context = await newSignedInContext(browser, session)
-  try {
-    const finish = await watchContext(context, deployment)
-    const page = await context.newPage()
-    await page.goto('/')
-    await expect(page.getByTestId('app-drawer')).toBeAttached({
-      timeout: 30_000,
-    })
-    await use(page)
-    await context.close()
-    await finish()
-  } finally {
-    await context.close()
-  }
 }
 
 /** The roles of the user signed in on `page`, as the app has them. */
@@ -133,14 +86,6 @@ async function adminApi(api: CornflowApi): Promise<CornflowApi> {
   if (readSessionStorage('default').isAdmin === 'true') return api
   const { username, password } = credentials()
   return api.signedInAs(username, password)
-}
-
-/** Opens roles management from the admin group of the side menu. */
-async function openRolesManagement(page: Page): Promise<void> {
-  const links = await openMenuGroup(page, 'admin', 'the administration group')
-  await links.and(page.locator(`a[href$="${ROLES_MANAGEMENT}"]`)).click()
-  await page.waitForURL((url) => url.href.endsWith(ROLES_MANAGEMENT))
-  await leaveMenu(page)
 }
 
 test.describe('roles and permissions', () => {
@@ -175,15 +120,15 @@ test.describe('roles and permissions', () => {
               ? roleDefault
               : null
           await expect
-            .poll(() => viewOf(page), {
+            .poll(() => currentView(page), {
               message: `${session.name} lands where it may`,
             })
             .not.toBe('')
-          if (landing) expect(viewOf(page)).toBe(landing)
+          if (landing) expect(currentView(page)).toBe(landing)
           expect(
             forbidden,
             `${session.name} lands on a view it may open`,
-          ).not.toContain(viewOf(page))
+          ).not.toContain(currentView(page))
 
           // The menu has no link to what the role forbids, nor "New execution" when that is it.
           await unfoldMenu(page)
@@ -208,15 +153,19 @@ test.describe('roles and permissions', () => {
           for (const view of forbidden.filter((v) => ROUTE_VIEWS.includes(v))) {
             await goToRoute(page, `/${view}`)
             await expect
-              .poll(() => viewOf(page), {
+              .poll(() => currentView(page), {
                 message: `${session.name} is kept out of ${view}`,
               })
               .toBe('not-found')
+            await expect(
+              page.getByTestId('not-found'),
+              'it says the view is forbidden',
+            ).toHaveAttribute('data-reason', 'forbidden')
           }
           if (!admin || !rolesManagement) {
             await goToRoute(page, ROLES_MANAGEMENT)
             await expect
-              .poll(() => viewOf(page), {
+              .poll(() => currentView(page), {
                 message: `${session.name} is kept out of roles management`,
               })
               .not.toBe(ROLES_MANAGEMENT.slice(1))
@@ -343,7 +292,7 @@ test.describe('roles and permissions', () => {
           for (const role of roles) {
             await page
               .getByTestId(`roles-role-${role.name}`)
-              .locator('.role-item__main')
+              .getByTestId('roles-role-select')
               .click()
             const listed = theirs.includes(role.name)
             await expect(
@@ -441,7 +390,7 @@ test.describe('roles and permissions', () => {
           await expect(add).toHaveCount(0)
           await page
             .getByTestId(`roles-role-${before[0]}`)
-            .locator('.role-item__main')
+            .getByTestId('roles-role-select')
             .click()
           await expect(page.getByTestId('roles-role-edit')).toHaveCount(0)
           await expect(page.getByTestId('roles-role-delete')).toHaveCount(0)
@@ -458,7 +407,7 @@ test.describe('roles and permissions', () => {
 
         // The selected role can be renamed, starting from its name, and deleted, after asking.
         const role = page.getByTestId(`roles-role-${before[0]}`)
-        await role.locator('.role-item__main').click()
+        await role.getByTestId('roles-role-select').click()
         await role.getByTestId('roles-role-edit').click()
         await expect(name).toHaveValue(before[0])
         await page.getByTestId('role-form-cancel').click()

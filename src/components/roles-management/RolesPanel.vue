@@ -29,6 +29,7 @@
         <button
           type="button"
           class="role-item__main"
+          data-testid="roles-role-select"
           :aria-pressed="selectedRoleId === null"
           @click="$emit('select', null)"
         >
@@ -55,6 +56,7 @@
         <button
           type="button"
           class="role-item__main"
+          data-testid="roles-role-select"
           :aria-pressed="selectedRoleId === role.id"
           @click="$emit('select', role.id)"
         >
