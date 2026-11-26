@@ -242,8 +242,8 @@ describe('Router Configuration', () => {
     const mockTo = { path: '/dashboard', name: 'Dashboard' }
     const mockFrom = { path: '/project-execution' }
 
-    // Access the beforeEach guard
-    const guards = router.options.routes?.[1]?.beforeEnter
+    // Access the guard of the app's root route
+    const guards = router.options.routes?.find((route) => route.path === '/')?.beforeEnter
     expect(guards).toBeDefined()
   })
 

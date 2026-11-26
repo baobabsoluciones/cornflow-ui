@@ -98,9 +98,24 @@ menu), a card per subject:
 - **Appearance**, when the app offers dark mode (`enableDarkMode`): light, dark or as the system
   is (see [Dark mode](#dark-mode)).
 - **Language** of the app, among the ones it offers (`languages` in the app config).
-- **Password**, when the app signs in with Cornflow (`auth.type: 'cornflow'`): the new one twice,
-  with what it needs ticked as it is typed (at least 5 characters; upper and lower case letters,
-  numbers and a special character; no spaces; both the same). It is sent once it meets all of it.
+- **Password**, when the app signs in with Cornflow (`auth.type: 'cornflow'`): the current one and
+  the new one twice, with Cornflow's password policy ticked as it is typed (see
+  [Password policy](#password-policy)). It is sent once it meets all of it. Changing it closes every
+  session of the user, so the page goes to the sign-in to enter with the new one. When the password
+  has expired or must be renewed, the card says so and the app keeps the user here until it is
+  changed.
+- **Two-factor authentication**, when the app signs in with Cornflow: whether it is on. Off, it can
+  be turned on (a QR code and its secret for the authenticator app, its first code, and the
+  one-time backup codes); on, it can be reset, for a changed or lost phone, after a confirmation.
+  Resetting it closes every session of the user, so the page goes to the sign-in; a server that
+  requires two-factor authentication asks for the enrollment again there. A server that does not
+  offer two-factor authentication (Cornflow's `MFA_ENABLED` off, the default of security levels 1
+  and 2) answers the enrollment with a 501, and the card says so in place of the button.
+- **Personal access token**, when the app signs in with Cornflow and offers it
+  (`enablePersonalTokens`, on by default): a long-lived token for scripts and integrations,
+  read-only if asked, confirmed with a two-factor code when the user has it. It is shown once, and
+  generating one revokes the previous one. A server with personal tokens off says so in place of
+  the form.
 
 ## Help menu and guided tours
 
@@ -497,7 +512,7 @@ The frontend-automation system is a powerful schema-driven approach that automat
 
 #### How it works
 
-1. **Schema definition**: The backend provides an OpenAPI-compatible schema through the `/frontend-automation/` endpoint
+1. **Schema definition**: The external backend provides an OpenAPI-compatible schema through the `GET /external/frontend-automation/` endpoint, asked once after the login when the app has one ([hasExternalApp](#hasexternalapp)). Without an external backend there is no master data
 2. **Dynamic generation**: The frontend automatically transforms this schema into interactive table interfaces
 3. **CRUD operations**: Full Create, Read, Update, Delete functionality is generated based on schema definitions
 4. **Three-level hierarchy**: Tables are organized as **Section → Group → Table** for navigation (sections and groups are optional)
@@ -1069,7 +1084,7 @@ core: {
   [docs/create-execution-flows.md](docs/create-execution-flows.md)). Switching DAG mounts the flow
   of the new DAG.
 - `valuesJsonPath`, `schemaLabels`, `enableRolesManagement`, `allowEditRoles`,
-  `showOpenIdUsername` and `enableDarkMode` apply to the whole application: a DAG entry cannot set
+  `showOpenIdUsername`, `enableDarkMode` and `enablePersonalTokens` apply to the whole application: a DAG entry cannot set
   them. A key the app's
   `parameters` does not declare is ignored too. Both log a console warning naming the DAG.
 - The schema config in Cornflow still sets the solver and the config fields on top of the DAG's
@@ -1344,6 +1359,7 @@ This file contains **internal application-specific configuration** that is part 
 | `enableAutoSolutionDashboard` | `boolean`  | Auto-generate dashboards for solution tables          |
 | `enableMasterTableMatching`   | `boolean`  | Enable master table matching during instance review   |
 | `enableDarkMode`              | `boolean`  | Users may switch to dark mode in their settings (see [Dark mode](#dark-mode)) |
+| `enablePersonalTokens`        | `boolean`  | Users who sign in with Cornflow may generate a personal access token in their settings (default `true`; the server decides whether tokens are allowed) |
 | `executionSolvers`            | `string[]` | List of available solvers for execution               |
 | `instanceFileFormats`         | `string[]` | File extensions the instance upload accepts. Empty or absent means the default (`json`, `xlsx`, `csv`). |
 | `executionFilters`            | `ExecutionFilter[]` | Filters of the execution history, fed by frontend-automation tables. Empty means date filters only. See [Execution history filters](#execution-history-filters-optional) |
@@ -1628,11 +1644,12 @@ The application automatically converts these formats to proper boolean values.
 
 - **Purpose**: Says whether the app has an external backend next to Cornflow
 - **`true`**: Prefixes Cornflow requests with `/cornflow`, and asks the external backend
-  `GET /external/frontend-config/` after the login (see
-  [Load filters](#load-filters-get-externalfrontend-config) and
-  [Execution endpoints](#execution-endpoints-optional))
-- **`false`**: Direct API requests, and no frontend config: no load filters, and every execution is
-  read from Cornflow
+  `GET /external/frontend-config/` and `GET /external/frontend-automation/` after the login (see
+  [Load filters](#load-filters-get-externalfrontend-config),
+  [Execution endpoints](#execution-endpoints-optional) and
+  [Frontend-automation system](#frontend-automation-system))
+- **`false`**: Direct API requests, no frontend config and no master data: no load filters, and
+  every execution is read from Cornflow
 
 #### OAuth providers (Cognito only)
 
@@ -1651,6 +1668,44 @@ The application supports three authentication methods. The server must be proper
 ```env
 VITE_APP_AUTH_TYPE=cornflow
 ```
+
+Cornflow's own sign-in, with what a Cornflow server with the security hardening asks of the client.
+A server without it answers with none of these, and the app signs in as with a username and password
+only.
+
+- **Session**: the login gives a short-lived access token and a refresh token. When a request finds
+  the access token expired (a 401, or a 400 whose error is about the token), the Api client
+  (`ApiClient.renewSession`) exchanges the refresh token at `POST /token/refresh/` and sends the
+  request again, once; requests that find it expired at the same time share one renewal. When the
+  refresh token is no longer accepted (inactivity, the absolute cap, a password change), the session
+  ends and the app goes to the sign-in. Logging out closes the session on the server too
+  (`POST /logout/`). Service users and servers with refresh tokens off get no refresh token.
+- **Two-factor authentication**: a user who has it is asked for the code of their authenticator app,
+  or one of their backup codes, after the password. When the server requires it (`MFA_REQUIRED=1`)
+  and the user has none yet, the sign-in goes through the enrollment first: a QR code (and its
+  secret, to type it in), the first code, and the one-time backup codes. The enrollment uses a
+  temporary token that is dropped if the user goes back.
+- **Password that must change**: when the password has expired, was reset by an administrator or
+  belongs to a newly provisioned account, the server answers 403 (`password_rotation`) on every
+  endpoint but the profile ones. The app takes the user to their settings, says why, and keeps them
+  there until the password is changed.
+- **Password recovery**: "Forgot your password?" on the sign-in asks for an e-mail, and the server
+  sends a link to `/reset-password?token=…` (the server's `CORNFLOW_UI_URL` must point at the app).
+  The page takes the token out of the address at once and asks for the new password twice. The
+  answer never says whether the e-mail belongs to an account.
+- **Refusals**: too many attempts from one address (429) and an account locked after too many
+  failed attempts (only a platform administrator unlocks it) say so, instead of "wrong credentials".
+- After the sign-in, a notice says when the previous one was.
+
+##### Password policy
+
+The password forms (user settings and the reset page) tick Cornflow's policy as the user types
+(`utils/passwordPolicy.ts`, `composables/usePasswordPolicy.ts`): at least 12 characters; upper and
+lower case letters, a digit and a special character; no spaces; no runs of 6 or more digits (such
+as dates); and hard to guess, scored with zxcvbn against common passwords and keyboard patterns (3
+or more out of 4, the server's threshold). The zxcvbn dictionaries load the first time a form
+needs them. The server has the last word: it also rejects the user's personal data and their last
+passwords, and the form shows its reason.
 
 #### Azure OpenID authentication
 
@@ -1694,12 +1749,15 @@ parameters: {
 - The title is the app name (`VITE_APP_NAME` / `name`), its first word in bold.
 - Without `subtitle` the page says "Sign in to continue."; without `description` the brand panel
   shows none.
-- The form always signs in against Cornflow. The Microsoft and Google buttons are always there and
-  go through the deployment's external auth (Azure, or Cognito with `VITE_APP_AUTH_PROVIDERS`); on a
-  deployment without them configured, picking one says so.
+- The form always signs in against Cornflow, with the two-factor steps and the password recovery
+  request of [Cornflow authentication](#cornflow-authentication-default). The Microsoft and Google
+  buttons are always there and go through the deployment's external auth (Azure, or Cognito with
+  `VITE_APP_AUTH_PROVIDERS`); on a deployment without them configured, picking one says so.
+- Under the form, a notice that access is for authorised people only and may be monitored.
 - The footer offers the app's languages (`languages` in the app config) when it has more than one.
 - **Location**: `components/SignInLanding.vue` (the layouts), `components/sign-in/SignInForm.vue`,
-  `components/sign-in/SignInLanguages.vue` and `composables/sign-in/useSignIn.ts`.
+  `components/sign-in/SignInLanguages.vue` and `composables/sign-in/useSignIn.ts`; the reset page,
+  `views/ResetPasswordView.vue`.
 
 ### Dashboard preferences
 

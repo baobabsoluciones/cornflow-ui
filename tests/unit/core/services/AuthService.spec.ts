@@ -1,156 +1,406 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
 import AuthService from '@cornflow-ui/core/services/AuthService'
 
-// Mock API client
-vi.mock('@cornflow-ui/core/api/Api', () => ({
-  default: {
-    post: vi.fn()
-  }
+const client = vi.hoisted(() => ({
+  post: vi.fn(),
+  put: vi.fn(),
+  initializeToken: vi.fn(),
 }))
 
-describe('AuthService', () => {
-  // Mock sessionStorage
-  const mockStorage: { [key: string]: string } = {}
-  const sessionStorageMock = {
-    getItem: vi.fn((key: string) => mockStorage[key] || null),
-    setItem: vi.fn((key: string, value: string) => { mockStorage[key] = value }),
-    removeItem: vi.fn((key: string) => delete mockStorage[key]),
-    clear: vi.fn(() => { Object.keys(mockStorage).forEach(key => delete mockStorage[key]) })
-  }
-  Object.defineProperty(window, 'sessionStorage', { value: sessionStorageMock })
+vi.mock('@cornflow-ui/core/api/Api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@cornflow-ui/core/api/Api')>()
+  return { default: client, isEndedSession: actual.isEndedSession }
+})
 
+const JSON_HEADERS = { 'Content-Type': 'application/json' }
+
+describe('AuthService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    sessionStorageMock.clear()
+    sessionStorage.clear()
   })
 
   describe('login', () => {
-    test('successful login stores authentication data', async () => {
-      const mockResponse = {
+    test('a successful login keeps the session and its refresh token', async () => {
+      client.post.mockResolvedValue({
         status: 200,
-        content: {
-          token: 'mock-token',
-          id: 'user-123'
-        }
-      }
+        content: { token: 'access', refresh_token: 'refresh', id: 7, last_login: '2026-11-20T08:00:00Z' },
+      })
 
-      const { default: client } = await import('@cornflow-ui/core/api/Api')
-      vi.mocked(client.post).mockResolvedValue(mockResponse)
-
-      const result = await AuthService.login('testuser', 'password123')
+      const result = await AuthService.login('planner', 'secret')
 
       expect(client.post).toHaveBeenCalledWith(
         '/login/',
-        { username: 'testuser', password: 'password123' },
-        { 'Content-Type': 'application/json' }
+        { username: 'planner', password: 'secret' },
+        JSON_HEADERS,
       )
-      expect(result).toBe(true)
-      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('isAuthenticated', 'true')
-      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('token', 'mock-token')
-      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('userId', 'user-123')
+      expect(result).toEqual({ success: true, changePassword: false, lastLogin: '2026-11-20T08:00:00Z' })
+      expect(sessionStorage.getItem('isAuthenticated')).toBe('true')
+      expect(sessionStorage.getItem('token')).toBe('access')
+      expect(sessionStorage.getItem('refreshToken')).toBe('refresh')
+      expect(sessionStorage.getItem('userId')).toBe('7')
+      expect(client.initializeToken).toHaveBeenCalled()
     })
 
-    test('failed login sets authentication to false', async () => {
-      const mockResponse = {
-        status: 401,
-        content: {}
-      }
+    test("another user's role flags are dropped", async () => {
+      sessionStorage.setItem('userId', '3')
+      sessionStorage.setItem('isAdmin', 'true')
+      client.post.mockResolvedValue({ status: 200, content: { token: 'access', id: 7 } })
 
-      const { default: client } = await import('@cornflow-ui/core/api/Api')
-      vi.mocked(client.post).mockResolvedValue(mockResponse)
+      await AuthService.login('planner', 'secret')
 
-      const result = await AuthService.login('testuser', 'wrongpassword')
-
-      expect(result).toBe(false)
-      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('isAuthenticated', 'false')
+      expect(sessionStorage.getItem('isAdmin')).toBeNull()
     })
 
-    test('handles API errors gracefully', async () => {
-      const { default: client } = await import('@cornflow-ui/core/api/Api')
-      vi.mocked(client.post).mockRejectedValue(new Error('Network error'))
+    test('a session without refresh token leaves none from a previous session', async () => {
+      sessionStorage.setItem('refreshToken', 'stale')
+      client.post.mockResolvedValue({ status: 200, content: { token: 'access', id: 7 } })
 
-      await expect(AuthService.login('testuser', 'password123')).rejects.toThrow('Network error')
+      await AuthService.login('service', 'secret')
+
+      expect(sessionStorage.getItem('refreshToken')).toBeNull()
+    })
+
+    test('sends the two-factor code when there is one', async () => {
+      client.post.mockResolvedValue({ status: 200, content: { token: 'access', id: 7 } })
+
+      await AuthService.login('planner', 'secret', '123456')
+
+      expect(client.post).toHaveBeenCalledWith(
+        '/login/',
+        { username: 'planner', password: 'secret', totp_code: '123456' },
+        JSON_HEADERS,
+      )
+    })
+
+    test('asks for the two-factor code without opening a session', async () => {
+      client.post.mockResolvedValue({ status: 200, content: { mfa_required: true } })
+
+      const result = await AuthService.login('planner', 'secret')
+
+      expect(result).toEqual({ success: false, mfaRequired: true })
+      expect(sessionStorage.getItem('isAuthenticated')).toBeNull()
+      expect(sessionStorage.getItem('token')).toBeNull()
+    })
+
+    test('a required enrollment keeps its temporary token as the Bearer, not as a session', async () => {
+      client.post.mockResolvedValue({
+        status: 200,
+        content: { mfa_setup_required: true, temp_token: 'enrollment' },
+      })
+
+      const result = await AuthService.login('planner', 'secret')
+
+      expect(result).toEqual({ success: false, mfaSetupRequired: true })
+      expect(sessionStorage.getItem('isAuthenticated')).toBe('false')
+      expect(sessionStorage.getItem('token')).toBe('enrollment')
+      expect(client.initializeToken).toHaveBeenCalled()
+    })
+
+    test('a password to change is kept for the router', async () => {
+      client.post.mockResolvedValue({
+        status: 200,
+        content: { token: 'access', id: 7, change_password: true },
+      })
+
+      const result = await AuthService.login('planner', 'secret')
+
+      expect(result.changePassword).toBe(true)
+      expect(sessionStorage.getItem('pwdChangeRequired')).toBe('true')
+    })
+
+    test('wrong credentials', async () => {
+      client.post.mockResolvedValue({ status: 400, content: { error: 'Invalid credentials' } })
+
+      const result = await AuthService.login('planner', 'wrong')
+
+      expect(result).toEqual({
+        success: false,
+        rateLimited: false,
+        accountLocked: false,
+        serverError: false,
+        errorMessage: 'Invalid credentials',
+      })
+      expect(sessionStorage.getItem('isAuthenticated')).toBe('false')
+    })
+
+    test('a throttled attempt says so, with the limiter message', async () => {
+      client.post.mockResolvedValue({ status: 429, content: { message: 'Too many requests' } })
+
+      const result = await AuthService.login('planner', 'secret')
+
+      expect(result).toMatchObject({ success: false, rateLimited: true, errorMessage: 'Too many requests' })
+    })
+
+    test('a locked account says so', async () => {
+      client.post.mockResolvedValue({
+        status: 403,
+        content: { error: 'The account is locked', error_code: 'account_locked' },
+      })
+
+      const result = await AuthService.login('planner', 'secret')
+
+      expect(result).toMatchObject({ success: false, accountLocked: true })
+    })
+
+    test('a server failure is told apart from wrong credentials', async () => {
+      client.post.mockResolvedValue({ status: 500, content: { error: 'Internal error' } })
+
+      expect(await AuthService.login('planner', 'secret')).toMatchObject({ success: false, serverError: true })
+    })
+
+    test('a network error reaches the caller', async () => {
+      client.post.mockRejectedValue(new Error('Network error'))
+
+      await expect(AuthService.login('planner', 'secret')).rejects.toThrow('Network error')
+    })
+  })
+
+  describe('two-factor enrollment', () => {
+    test('mfaSetup gives the secret and the URI of the QR code', async () => {
+      client.post.mockResolvedValue({
+        status: 200,
+        content: { secret: 'ABC', provisioning_uri: 'otpauth://totp/app:planner?secret=ABC' },
+      })
+
+      const setup = await AuthService.mfaSetup()
+
+      expect(client.post).toHaveBeenCalledWith('/mfa/setup/', {}, JSON_HEADERS)
+      expect(setup).toEqual({
+        success: true,
+        secret: 'ABC',
+        provisioningUri: 'otpauth://totp/app:planner?secret=ABC',
+      })
+    })
+
+    test('mfaSetup fails when cornflow refuses', async () => {
+      client.post.mockResolvedValue({ status: 400, content: {} })
+
+      expect(await AuthService.mfaSetup()).toEqual({ success: false, unavailable: false })
+    })
+
+    test.each([501, 404])(
+      'mfaSetup tells a deployment without two-factor authentication apart (%i)',
+      async (status) => {
+        client.post.mockResolvedValue({ status, content: {} })
+
+        expect(await AuthService.mfaSetup()).toEqual({ success: false, unavailable: true })
+      },
+    )
+
+    test('mfaVerify opens the session and gives the backup codes', async () => {
+      sessionStorage.setItem('token', 'enrollment')
+      client.post.mockResolvedValue({
+        status: 200,
+        content: { token: 'access', refresh_token: 'refresh', id: 7, backup_codes: ['a1', 'b2'] },
+      })
+
+      const verified = await AuthService.mfaVerify('123456')
+
+      expect(client.post).toHaveBeenCalledWith('/mfa/verify/', { totp_code: '123456' }, JSON_HEADERS)
+      expect(verified).toEqual({ backupCodes: ['a1', 'b2'] })
+      expect(sessionStorage.getItem('isAuthenticated')).toBe('true')
+      expect(sessionStorage.getItem('token')).toBe('access')
+      expect(sessionStorage.getItem('refreshToken')).toBe('refresh')
+    })
+
+    test('turning it on from the settings keeps the role flags of the signed-in user', async () => {
+      sessionStorage.setItem('isAuthenticated', 'true')
+      sessionStorage.setItem('userId', '7')
+      sessionStorage.setItem('isAdmin', 'true')
+      client.post.mockResolvedValue({ status: 200, content: { token: 'access', id: 7, backup_codes: [] } })
+
+      await AuthService.mfaVerify('123456')
+
+      expect(sessionStorage.getItem('isAdmin')).toBe('true')
+    })
+
+    test('mfaVerify with a wrong code gives null and opens no session', async () => {
+      client.post.mockResolvedValue({ status: 400, content: { error: 'Invalid code' } })
+
+      expect(await AuthService.mfaVerify('000000')).toBeNull()
+      expect(sessionStorage.getItem('isAuthenticated')).toBeNull()
+    })
+
+    test('an abandoned enrollment drops its temporary token', () => {
+      sessionStorage.setItem('isAuthenticated', 'false')
+      sessionStorage.setItem('token', 'enrollment')
+
+      AuthService.clearPendingEnrollment()
+
+      expect(sessionStorage.getItem('token')).toBeNull()
+      expect(client.initializeToken).toHaveBeenCalled()
+    })
+
+    test('clearing an enrollment never touches a real session', () => {
+      sessionStorage.setItem('isAuthenticated', 'true')
+      sessionStorage.setItem('token', 'access')
+
+      AuthService.clearPendingEnrollment()
+
+      expect(sessionStorage.getItem('token')).toBe('access')
+    })
+  })
+
+  describe('password recovery', () => {
+    test('a processed request', async () => {
+      client.put.mockResolvedValue({ status: 200, content: {} })
+
+      const result = await AuthService.requestPasswordReset('planner@example.com')
+
+      expect(client.put).toHaveBeenCalledWith(
+        '/user/recover-password/',
+        { email: 'planner@example.com' },
+        JSON_HEADERS,
+      )
+      expect(result).toEqual({ sent: true, rateLimited: false })
+    })
+
+    test('a throttled request', async () => {
+      client.put.mockResolvedValue({ status: 429, content: {} })
+
+      expect(await AuthService.requestPasswordReset('planner@example.com')).toEqual({
+        sent: false,
+        rateLimited: true,
+      })
+    })
+
+    test('resetPassword sends the link token as the Bearer', async () => {
+      client.put.mockResolvedValue({ status: 200, content: {} })
+
+      const result = await AuthService.resetPassword('link-token', 'N3w-Passphrase!x')
+
+      expect(client.put).toHaveBeenCalledWith(
+        '/user/reset-password/',
+        { password: 'N3w-Passphrase!x' },
+        { ...JSON_HEADERS, Authorization: 'Bearer link-token' },
+      )
+      expect(result).toEqual({ success: true })
+    })
+
+    test('an expired link', async () => {
+      client.put.mockResolvedValue({
+        status: 400,
+        content: { error: 'The token has expired, please login again' },
+      })
+
+      expect(await AuthService.resetPassword('link-token', 'N3w-Passphrase!x')).toMatchObject({
+        success: false,
+        linkInvalid: true,
+      })
+    })
+
+    test('a password the policy rejects is not a bad link', async () => {
+      client.put.mockResolvedValue({
+        status: 400,
+        content: { error: 'The password has been used recently' },
+      })
+
+      expect(await AuthService.resetPassword('link-token', 'N3w-Passphrase!x')).toEqual({
+        success: false,
+        message: 'The password has been used recently',
+        linkInvalid: false,
+      })
+    })
+  })
+
+  describe('createApiKey', () => {
+    test('a read-only key confirmed with a code', async () => {
+      client.post.mockResolvedValue({ status: 201, content: { api_key: 'key' } })
+
+      const result = await AuthService.createApiKey('123456', 'read')
+
+      expect(client.post).toHaveBeenCalledWith(
+        '/user/api-key/',
+        { totp_code: '123456', scope: 'read' },
+        JSON_HEADERS,
+      )
+      expect(result).toEqual({ success: true, apiKey: 'key' })
+    })
+
+    test('a deployment with personal tokens off', async () => {
+      client.post.mockResolvedValue({ status: 501, content: { error: 'Disabled' } })
+
+      expect(await AuthService.createApiKey()).toEqual({
+        success: false,
+        disabled: true,
+        message: 'Disabled',
+      })
     })
   })
 
   describe('logout', () => {
-    test('clears authentication data from session storage', () => {
-      // Set up initial state
-      mockStorage['isAuthenticated'] = 'true'
-      mockStorage['token'] = 'mock-token'
-      mockStorage['userId'] = 'user-123'
+    test('closes the session on the server and forgets it here', () => {
+      client.post.mockResolvedValue({ status: 200, content: {} })
+      sessionStorage.setItem('isAuthenticated', 'true')
+      sessionStorage.setItem('token', 'access')
+      sessionStorage.setItem('refreshToken', 'refresh')
+      sessionStorage.setItem('userId', '7')
+      sessionStorage.setItem('isPlatformAdmin', 'true')
+      sessionStorage.setItem('pwdChangeRequired', 'true')
 
       AuthService.logout()
 
-      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('isAuthenticated', 'false')
-      expect(sessionStorageMock.removeItem).toHaveBeenCalledWith('token')
-      expect(sessionStorageMock.removeItem).toHaveBeenCalledWith('userId')
+      expect(client.post).toHaveBeenCalledWith('/logout/', { refresh_token: 'refresh' }, JSON_HEADERS)
+      expect(sessionStorage.getItem('isAuthenticated')).toBe('false')
+      for (const key of ['token', 'refreshToken', 'userId', 'isPlatformAdmin', 'pwdChangeRequired']) {
+        expect(sessionStorage.getItem(key)).toBeNull()
+      }
+      expect(client.initializeToken).toHaveBeenCalled()
+    })
+
+    test('without a refresh token there is nothing to close on the server', () => {
+      AuthService.logout()
+
+      expect(client.post).not.toHaveBeenCalled()
     })
   })
 
   describe('getToken', () => {
     test('returns token from session storage', () => {
-      mockStorage['token'] = 'mock-token'
+      sessionStorage.setItem('token', 'mock-token')
 
-      const token = AuthService.getToken()
-
-      expect(token).toBe('mock-token')
-      expect(sessionStorageMock.getItem).toHaveBeenCalledWith('token')
+      expect(AuthService.getToken()).toBe('mock-token')
     })
 
     test('returns null when no token exists', () => {
-      const token = AuthService.getToken()
-
-      expect(token).toBeNull()
+      expect(AuthService.getToken()).toBeNull()
     })
   })
 
   describe('getUserId', () => {
     test('returns user ID from session storage', () => {
-      mockStorage['userId'] = 'user-123'
+      sessionStorage.setItem('userId', 'user-123')
 
-      const userId = AuthService.getUserId()
-
-      expect(userId).toBe('user-123')
-      expect(sessionStorageMock.getItem).toHaveBeenCalledWith('userId')
+      expect(AuthService.getUserId()).toBe('user-123')
     })
 
     test('returns null when no user ID exists', () => {
-      const userId = AuthService.getUserId()
-
-      expect(userId).toBeNull()
+      expect(AuthService.getUserId()).toBeNull()
     })
   })
 
   describe('isAuthenticated', () => {
     test('returns true when authenticated', () => {
-      mockStorage['isAuthenticated'] = 'true'
+      sessionStorage.setItem('isAuthenticated', 'true')
 
-      const result = AuthService.isAuthenticated()
-
-      expect(result).toBe(true)
+      expect(AuthService.isAuthenticated()).toBe(true)
     })
 
     test('returns false when not authenticated', () => {
-      mockStorage['isAuthenticated'] = 'false'
+      sessionStorage.setItem('isAuthenticated', 'false')
 
-      const result = AuthService.isAuthenticated()
-
-      expect(result).toBe(false)
+      expect(AuthService.isAuthenticated()).toBe(false)
     })
 
     test('returns false when authentication status is not set', () => {
-      const result = AuthService.isAuthenticated()
-
-      expect(result).toBe(false)
+      expect(AuthService.isAuthenticated()).toBe(false)
     })
   })
 
   describe('refreshToken', () => {
-    test('returns null as refresh is not supported', async () => {
-      const result = await AuthService.refreshToken()
-
-      expect(result).toBeNull()
+    test('has nothing to do: the Api client renews a cornflow session', async () => {
+      expect(await AuthService.refreshToken()).toBeNull()
     })
   })
 })

@@ -3,6 +3,22 @@
 ## [Unreleased]
 
 ### Added
+- **Two-factor authentication and personal access token in the user settings**  
+  - Two-factor authentication: whether it is on; turning it on (QR code, first code, backup codes) and resetting it after a confirmation, which closes every session and goes to the sign-in. A server that does not offer it (501, or 404 without two-factor authentication) is told apart, and the card says so in place of the button. The enrollment is shared with the sign-in (`useMfaEnrollment`)
+  - Personal access token: generates one, read-only if asked, confirmed with a two-factor code when the user has it, shown once; a server with tokens off says so. Hidden with `enablePersonalTokens: false`
+  - Turning on two-factor authentication renews the session tokens without dropping the role flags of the signed-in user
+  *Contributors:* [@HelenaCA](#), [@ggsdc](#)  
+  *Commit ID:* #285
+- **Sign-in and session against a Cornflow server with the security hardening**  
+  - Session: the short-lived access token is renewed with the refresh token (`POST /token/refresh/`) when a request finds it expired, and the request is sent again once. Requests that find it expired at once share one renewal; downloads and streams are renewed too. Logging out closes the session on the server (`POST /logout/`)
+  - Two-factor authentication on the sign-in: the code of the authenticator app or a backup code; and, when the server requires it, the enrollment (QR code, its secret, first code and one-time backup codes) before the session
+  - A password that has expired or must be renewed (`password_rotation`, or `change_password` on the login) keeps the user on their settings, with a notice, until it is changed
+  - Password recovery: "Forgot your password?" asks for the reset link, and `/reset-password` sets the new password with the link's token, taken out of the address at once
+  - The password forms ask for the current password and tick the server's policy: 12 characters, character classes, no spaces, no runs of 6 digits and a zxcvbn strength of 3 or more (its dictionaries load on demand). Changing the password closes every session, so the user signs in again
+  - Too many attempts (429) and a locked account say so instead of "wrong credentials"; after the sign-in, a notice says when the previous one was; a legal notice sits under the form
+  - New dependencies: `@zxcvbn-ts/core`, `@zxcvbn-ts/language-common` and `qrcode`
+  *Contributors:* [@HelenaCA](#), [@ggsdc](#)  
+  *Commit ID:* #284
 - **End-to-end suite that each app runs against its own deployment**  
   - The suite (`tests/e2e/suite/`) ships with core, and an app runs it through `createCornflowE2EConfig` against its own frontend, backend and DAGs, with nothing mocked. It reads what the app has on from `window.cornflowUi.describe()` and tests it, checks that what is off does not show, and skips what does not apply with the reason
   - Each app gives its test data in a UAT file (`tests/e2e/uat.json`): per DAG, the execution config and a valid instance, one with errors and one with warnings, and optionally a solution of the valid one, an infeasible case and a failing-solver case. With the solution, the executions the tests need already solved are made through the API in a moment
@@ -66,6 +82,10 @@
   *Commit ID:* #274
 
 ### Fixed
+- **`usePageContext` lists a page only while it is on screen**  
+  - Core's views live under `<keep-alive>`, so a page that was left stays mounted and its page-context entries stayed registered: an assistant offered the widgets of a page the user was no longer looking at. `usePageContext` now also unregisters the entry when its component is deactivated and registers it again when it is activated
+  *Contributors:* [@antoniogonzalezsuarez](#)  
+  *Commit ID:* #283
 - **The data checks send the DAG of the instance or execution they check**  
   - A deployment closed to the DAGs of each user rejects a data check without `schema` (400, "The request does not specify a schema to use") and creates no check execution. `POST /data-check/instance/<id>/` sends the DAG of the instance just created next to the execution `config`, and `POST /data-check-kpis/execution/<id>/` sends the DAG of the execution, read from `GET /execution/<id>/`, both in the historical KPIs and when the execution files are regenerated. Neither takes the active DAG
   *Contributors:* [@HelenaCA](#)  

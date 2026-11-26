@@ -144,6 +144,7 @@ const mockInstanceRepository = vi.hoisted(() => ({
 const mockUserRepository = vi.hoisted(() => ({
   getUserById: vi.fn(),
   changePassword: vi.fn(),
+  resetMfa: vi.fn(),
 }))
 
 const mockLicenceRepository = vi.hoisted(() => ({
@@ -287,16 +288,49 @@ describe('General Store', () => {
     })
 
     test('changeUserPassword successfully', async () => {
-      mockUserRepository.changePassword.mockResolvedValue(true)
+      mockUserRepository.changePassword.mockResolvedValue({ success: true })
+      sessionStorage.setItem('pwdChangeRequired', 'true')
 
       const store = useGeneralStore()
-      const result = await store.changeUserPassword('user123', 'newpassword')
+      const result = await store.changeUserPassword('user123', 'newpassword', 'oldpassword')
 
-      expect(result).toBe(true)
+      expect(result).toEqual({ success: true })
       expect(mockUserRepository.changePassword).toHaveBeenCalledWith(
         'user123',
         'newpassword',
+        'oldpassword',
       )
+      expect(sessionStorage.getItem('pwdChangeRequired')).toBeNull()
+    })
+
+    test('changeUserPassword refused keeps a forced change pending', async () => {
+      mockUserRepository.changePassword.mockResolvedValue({ success: false, message: 'Reused' })
+      sessionStorage.setItem('pwdChangeRequired', 'true')
+
+      const store = useGeneralStore()
+      const result = await store.changeUserPassword('user123', 'newpassword', 'oldpassword')
+
+      expect(result).toEqual({ success: false, message: 'Reused' })
+      expect(sessionStorage.getItem('pwdChangeRequired')).toBe('true')
+      sessionStorage.removeItem('pwdChangeRequired')
+    })
+
+    test('resetUserMfa turns off the two-factor authentication of a user', async () => {
+      mockUserRepository.resetMfa.mockResolvedValue(true)
+
+      const store = useGeneralStore()
+
+      expect(await store.resetUserMfa('7')).toBe(true)
+      expect(mockUserRepository.resetMfa).toHaveBeenCalledWith('7')
+    })
+
+    test('resetUserMfa that fails resolves to false', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      mockUserRepository.resetMfa.mockRejectedValue(new Error('offline'))
+
+      const store = useGeneralStore()
+
+      expect(await store.resetUserMfa('7')).toBe(false)
     })
 
     test('setSchema successfully', async () => {
@@ -912,9 +946,9 @@ describe('General Store', () => {
       )
 
       const store = useGeneralStore()
-      const result = await store.changeUserPassword('user123', 'newpassword')
+      const result = await store.changeUserPassword('user123', 'newpassword', 'oldpassword')
 
-      expect(result).toBe(false)
+      expect(result).toEqual({ success: false })
       expect(consoleSpy).toHaveBeenCalledWith(
         'Error changing password',
         expect.any(Error),
@@ -1602,22 +1636,26 @@ describe('General Store', () => {
   })
 
   describe('setConfigurations', () => {
-    test('builds raw configurations from the premium master-data hook + schema repo', async () => {
+    test('builds raw configurations from the premium master-data hook + the loaded schema', async () => {
       const store = useGeneralStore()
       mockLoadPremiumMasterDataConfig.mockResolvedValue({
         config: { md: { title: 'MD' } },
         sections: [{ key: 's', order: 1 }],
         groups: [{ key: 'g', order: 1 }],
       })
-      const repo = {
-        getInstanceTables: vi.fn().mockResolvedValue({ in: {} }),
-        getSolutionTables: vi.fn().mockResolvedValue({ out: {} }),
-      }
-      store.schemaRepository = repo as any
+      const table = { type: 'array', items: { type: 'object', properties: {} } }
+      store.schemaConfig = {
+        name: 'test_dag',
+        instanceSchema: { properties: { in: table } },
+        solutionSchema: { properties: { out: table } },
+      } as any
 
       await store.setConfigurations()
 
-      expect(store.rawConfigurations).toBeTruthy()
+      expect(Object.keys(store.rawConfigurations?.inputData ?? {})).toEqual(['in'])
+      expect(Object.keys(store.rawConfigurations?.resultsData ?? {})).toEqual([
+        'out',
+      ])
       expect(store.masterDataSections).toEqual([{ key: 's', order: 1 }])
       expect(store.masterDataGroups).toEqual([{ key: 'g', order: 1 }])
       expect(store.configurations).not.toBeNull()
@@ -1627,11 +1665,6 @@ describe('General Store', () => {
       const store = useGeneralStore()
       // No frontend-automation module registered: hook returns null.
       mockLoadPremiumMasterDataConfig.mockResolvedValue(null)
-      const repo = {
-        getInstanceTables: vi.fn().mockResolvedValue({ in: {} }),
-        getSolutionTables: vi.fn().mockResolvedValue({ out: {} }),
-      }
-      store.schemaRepository = repo as any
 
       await store.setConfigurations()
 
@@ -1640,15 +1673,10 @@ describe('General Store', () => {
       expect(store.masterDataGroups).toBeNull()
     })
 
-    test('falls back to empty config when all sources reject', async () => {
+    test('falls back to empty config when master data rejects and no schema is loaded', async () => {
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
       const store = useGeneralStore()
       mockLoadPremiumMasterDataConfig.mockRejectedValue(new Error('no fa'))
-      const repo = {
-        getInstanceTables: vi.fn().mockRejectedValue(new Error('no in')),
-        getSolutionTables: vi.fn().mockRejectedValue(new Error('no out')),
-      }
-      store.schemaRepository = repo as any
 
       await store.setConfigurations()
 
