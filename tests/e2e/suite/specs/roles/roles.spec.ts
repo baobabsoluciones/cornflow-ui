@@ -16,6 +16,7 @@ import type { Page } from '@playwright/test'
 import { test, expect } from '../../harness/fixtures'
 import { CornflowApi, CornflowApiError } from '../../harness/cornflowApi'
 import { asUser } from '../../harness/contextChecks'
+import { freshSessionStorage } from '../../harness/session'
 import {
   CREATE_EXECUTION,
   loadDataset,
@@ -70,14 +71,14 @@ async function rolesOf(page: Page): Promise<string[]> {
   )
 }
 
-/** The Cornflow API as one of the run's users. */
-function apiAs(
+/** The Cornflow API as one of the run's users, signed in again. */
+async function apiAs(
   deployment: Deployment,
   baseURL: string | undefined,
   session: string,
 ) {
   const api = cornflowApiFor(deployment, baseURL)
-  api.useToken(readSessionStorage(session).token)
+  api.useToken((await freshSessionStorage(session, baseURL)).token)
   return api
 }
 
@@ -190,7 +191,7 @@ test.describe('roles and permissions', () => {
 
     for (const session of roleSessions(run)) {
       // Whether the backend lets this role create data: its input data first.
-      const roleApi = apiAs(deployment, baseURL, session.name)
+      const roleApi = await apiAs(deployment, baseURL, session.name)
       const allowed = await roleApi
         .createInstance({ schema, data: data!, label: `probe ${session.name}` })
         .then(

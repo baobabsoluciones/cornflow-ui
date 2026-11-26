@@ -16,6 +16,7 @@ import {
   credentials,
   saveDeployment,
   saveRun,
+  saveSessionCredentials,
   saveSessionStorage,
   type SessionUser,
   storageStateFile,
@@ -82,7 +83,16 @@ setup('prepare the run', async ({ browser, baseURL }) => {
   if (uat.mode === 'shared') {
     users.push({ sessions: ['default'], user: null, ...admin })
   } else {
-    const roles = (await api.roles()).filter(
+    // Cornflow 1.4 lists the roles only to a platform administrator.
+    const mayManageUsers =
+      'In disposable mode E2E_USER has to be able to list the roles and create users: an ' +
+      'admin, or from Cornflow 1.4 on a platform administrator (platform_admin).'
+    const allRoles = await api.roles().catch((error) => {
+      throw new Error(
+        `[cornflow-e2e] Could not list the roles (${error.message}). ${mayManageUsers}`,
+      )
+    })
+    const roles = allRoles.filter(
       (role) =>
         !ROLES_LEFT_OUT.includes(role.name) && !SUITE_ROLE.test(role.name),
     )
@@ -91,8 +101,8 @@ setup('prepare the run', async ({ browser, baseURL }) => {
         .createUser({ roleId: role.id, label: role.name })
         .catch((error) => {
           throw new Error(
-            `[cornflow-e2e] Could not create a "${role.name}" user (${error.message}). In ` +
-              'disposable mode E2E_USER has to be an admin.',
+            `[cornflow-e2e] Could not create a "${role.name}" user (${error.message}). ` +
+              mayManageUsers,
           )
         })
       users.push({ sessions: [role.name], user, ...user })
@@ -111,6 +121,7 @@ setup('prepare the run', async ({ browser, baseURL }) => {
     for (const name of names) {
       await context.storageState({ path: storageStateFile(name) })
       saveSessionStorage(name, entries)
+      saveSessionCredentials(name, { username, password })
       sessions.push({ name, username, ...(user ? { id: user.id } : {}) })
     }
     // Signed in, the app also has what the backend says about each DAG and every parameter.

@@ -32,17 +32,18 @@ import {
   type Deployment,
   readDeployment,
   readRun,
-  readSessionStorage,
   type RunInfo,
   storageStateFile,
   uatFile,
 } from './run'
 import { watchContext } from './contextChecks'
-import { restoreSession } from './session'
+import { freshSessionStorage, restoreSession } from './session'
 import { loadUat, type Uat } from './uat'
 
 interface TestFixtures {
   session: string | null
+  /** The session's `sessionStorage`, signed in again for this test; null when signed out. */
+  sessionEntries: Record<string, string> | null
   checkTranslations: boolean
   checkAppErrors: boolean
   api: CornflowApi
@@ -63,16 +64,21 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   checkTranslations: [true, { option: true }],
   checkAppErrors: [true, { option: true }],
 
+  // Signed in again for each test: a saved session runs out, and its refresh token works once.
+  sessionEntries: async ({ session, baseURL }, use) => {
+    await use(session ? await freshSessionStorage(session, baseURL) : null)
+  },
+
   // The session's browser state; its sessionStorage goes back in through `context` below.
   storageState: async ({ session }, use) => {
     await use(session ? storageStateFile(session) : undefined)
   },
 
   context: async (
-    { context, session, checkTranslations, checkAppErrors, deployment },
+    { context, sessionEntries, checkTranslations, checkAppErrors, deployment },
     use,
   ) => {
-    if (session) await restoreSession(context, session)
+    if (sessionEntries) await restoreSession(context, sessionEntries)
     const finish = await watchContext(context, deployment, {
       checkTranslations,
       checkAppErrors,
@@ -81,9 +87,9 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     await finish()
   },
 
-  api: async ({ session, deployment, baseURL }, use) => {
+  api: async ({ sessionEntries, deployment, baseURL }, use) => {
     const api = cornflowApiFor(deployment, baseURL)
-    const token = session ? readSessionStorage(session).token : undefined
+    const token = sessionEntries?.token
     if (token) api.useToken(token)
     else {
       const { username, password } = credentials()

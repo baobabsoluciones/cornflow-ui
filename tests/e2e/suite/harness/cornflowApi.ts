@@ -38,11 +38,22 @@ export interface TestUser {
 
 /**
  * A password for a user the suite creates: upper and lower case, digits and, as the only symbols,
- * `.` and `-` (a password that ends up in a connection URI breaks with others).
+ * `.` and `-` (a password that ends up in a connection URI breaks with others). As Cornflow's
+ * policy asks: 22 characters, no run of six digits, and nothing of the user's name (the suite's
+ * users are `e2e_…`).
  */
 export function newPassword(): string {
-  const random = () => Math.random().toString(36).slice(2, 10)
-  return `E2e.${random()}-${random().toUpperCase()}7`
+  const random = () =>
+    Math.random()
+      .toString(36)
+      .slice(2, 10)
+      .padEnd(8, 'q')
+      .replace(/(\d{5})(?=\d)/g, '$1k')
+      .slice(0, 8)
+  let password = ''
+  do password = `Pw.${random()}-${random().toUpperCase()}q7`
+  while (password.toLowerCase().includes('e2e'))
+  return password
 }
 
 /**
@@ -200,15 +211,16 @@ export class CornflowApi {
   async login(
     username: string,
     password: string,
-  ): Promise<{ id: number; token: string }> {
-    const content = await this.request<{ id: number; token: string }>(
-      'POST',
-      '/login/',
-      {
-        username,
-        password,
-      },
-    )
+  ): Promise<{ id: number; token: string; refresh_token?: string }> {
+    // `refresh_token` from Cornflow 1.4, where refresh tokens are on.
+    const content = await this.request<{
+      id: number
+      token: string
+      refresh_token?: string
+    }>('POST', '/login/', {
+      username,
+      password,
+    })
     this.token = content.token
     return content
   }

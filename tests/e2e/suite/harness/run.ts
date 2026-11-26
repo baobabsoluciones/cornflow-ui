@@ -164,6 +164,21 @@ export const saveSessionStorage = (
 export const readSessionStorage = (user: string): Record<string, string> =>
   read(sessionStorageFile(user), `session of "${user}"`)
 
+/**
+ * The username and password of a session's user, in the same gitignored folder: each test signs
+ * in again with them (harness/session.ts `freshSessionStorage`), as a saved session runs out.
+ */
+const sessionCredentialsFile = (user: string): string =>
+  path.join(stateDir(), `${user}.credentials.json`)
+export const saveSessionCredentials = (
+  user: string,
+  credentials: { username: string; password: string },
+): void => write(sessionCredentialsFile(user), credentials)
+export const readSessionCredentials = (
+  user: string,
+): { username: string; password: string } =>
+  read(sessionCredentialsFile(user), `credentials of "${user}"`)
+
 /** The credentials the suite signs in with, from the environment. */
 export function credentials(): { username: string; password: string } {
   const username = process.env.E2E_USER

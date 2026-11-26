@@ -101,7 +101,7 @@ problem listed.
 
 | Variable | What it is |
 | --- | --- |
-| `E2E_USER`, `E2E_PASSWORD` | The user the suite signs in as. An admin in `disposable` mode |
+| `E2E_USER`, `E2E_PASSWORD` | The user the suite signs in as. In `disposable` mode, an admin; from Cornflow 1.4 on, a platform administrator (`platform_admin`), the only one that lists the roles |
 | `E2E_BACKEND_URL` | Optional. The suite works on the backend the app talks to (`describe().backendUrl`). Set it only to reach that backend at another address |
 | `PLAYWRIGHT_BASE_URL` | Optional. Where the app under test is served, if not where `baseURL` says |
 | `E2E_UAT_FILE` | Optional. Another UAT file than `tests/e2e/uat.json` |

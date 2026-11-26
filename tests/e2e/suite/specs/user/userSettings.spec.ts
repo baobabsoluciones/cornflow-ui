@@ -147,12 +147,15 @@ test.describe('user settings', () => {
     )
     await openSettings(page)
     const fields = page
-      .getByTestId('settings-new-password')
+      .getByTestId('settings-current-password')
+      .or(page.getByTestId('settings-new-password'))
       .or(page.getByTestId('settings-confirm-password'))
     const toggle = page.getByTestId('settings-show-passwords')
     // Typed, never saved.
+    await page.getByTestId('settings-current-password').fill('Not.saved-1')
     await page.getByTestId('settings-new-password').fill('A.secret-1')
     await page.getByTestId('settings-confirm-password').fill('A.secret-1')
+    await expect(fields).toHaveCount(3)
     for (const field of await fields.all())
       await expect(field, 'hidden at first').toHaveAttribute('type', 'password')
     await toggle.click()
@@ -167,7 +170,7 @@ test.describe('user settings', () => {
     // Signed out: the test signs in as a user it creates.
     test.use({ session: null })
 
-    test('changes it once the new one meets every rule, and the new one signs in', async ({
+    test('changes it once the new one meets every rule and the current one is given; the session closes and the new one signs in', async ({
       page,
       api,
       run,
@@ -190,6 +193,7 @@ test.describe('user settings', () => {
       await signInThroughForm(page, user.username, user.password)
       await openSettings(page)
 
+      const current = page.getByTestId('settings-current-password')
       const field = page.getByTestId('settings-new-password')
       const confirm = page.getByTestId('settings-confirm-password')
       const save = page.getByTestId('settings-save-password')
@@ -201,6 +205,10 @@ test.describe('user settings', () => {
       await expect(met('characters')).not.toHaveClass(/\bis-met\b/)
       await expect(save).toBeDisabled()
 
+      // A run of six digits or more.
+      await field.fill('Abc.def-1234567')
+      await expect(met('digits')).not.toHaveClass(/\bis-met\b/)
+
       // Good, but not the same twice.
       const password = newPassword()
       await field.fill(password)
@@ -208,15 +216,29 @@ test.describe('user settings', () => {
       await expect(met('match')).not.toHaveClass(/\bis-met\b/)
       await expect(save).toBeDisabled()
 
+      // The same twice: every rule the page lists is met, the strength too once it has loaded.
       await confirm.fill(password)
-      for (const rule of ['length', 'characters', 'spaces', 'match'])
-        await expect(met(rule), `the rule "${rule}" is met`).toHaveClass(
-          /\bis-met\b/,
+      const rules = await page
+        .locator('[data-testid^="settings-rule-"]')
+        .evaluateAll((all) =>
+          all.map((item) => item.getAttribute('data-testid')!),
         )
+      for (const rule of rules)
+        await expect(
+          page.getByTestId(rule),
+          `the rule "${rule.slice('settings-rule-'.length)}" is met`,
+        ).toHaveClass(/\bis-met\b/)
+      await expect(save, 'not without the current password').toBeDisabled()
+      await current.fill(user.password)
+      await expect(save).toBeEnabled()
       await save.click()
-      await expect(page.getByTestId('core-snackbar')).toBeVisible()
-      await expect(field, 'the form is emptied once saved').toHaveValue('')
 
+      // Cornflow closes every session of the user, this one too: the app asks to sign in again.
+      await expect(page.getByTestId('core-snackbar')).toBeVisible()
+      await expect(
+        page.getByTestId('sign-in-username'),
+        'it asks to sign in again',
+      ).toBeVisible()
       await expect(
         api.signedInAs(user.username, password),
         'the new password signs in',
