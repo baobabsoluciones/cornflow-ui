@@ -248,7 +248,10 @@ export function useDrawerSections() {
     }
   })
 
-  const isAdmin = computed(() => roleNames.value.includes('admin'))
+  // A platform administrator is an administrator too (same rule as the store's isAdmin).
+  const isAdmin = computed(
+    () => roleNames.value.includes('admin') || roleNames.value.includes('platform_admin'),
+  )
 
   /** Administration, for admins: roles management when it is on, and the pages premium modules add. */
   const admin = computed<DrawerSection | null>(() => {
