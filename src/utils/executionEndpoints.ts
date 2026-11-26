@@ -4,7 +4,7 @@
  * Each read goes, in this order, to:
  * 1. the endpoint the external backend declares for the DAG in the `executions` section of
  *    `GET /external/frontend-config/` (always under `/external`);
- * 2. for the list only, `executionsListEndpoint` of the app config;
+ * 2. for the list only (`get_list`), `executionsListEndpoint` of the app config;
  * 3. Cornflow.
  *
  * See the README, "Execution endpoints".
@@ -15,7 +15,7 @@ import type {
   FrontendConfigExecutions,
 } from '@cornflow-ui/core/utils/frontendConfig'
 
-/** A read of the executions of a DAG: a key of the `executions` section of the frontend config. */
+/** An operation on the executions of a DAG: a key of the `executions` section of the frontend config. */
 export type ExecutionEndpointKey = keyof FrontendConfigExecutions
 
 /** A request target: the path, under `/external` or under Cornflow. */
@@ -24,13 +24,15 @@ export interface ExecutionEndpoint {
   isExternal: boolean
 }
 
-/** Stands for the id of the execution, or of its instance in `instance_data`. */
+/** Stands for the id of the execution, or of its instance in `get_instance_data`. */
 export const EXECUTION_ID_PLACEHOLDER = '{id}'
 
-const CORNFLOW_ROUTES: Record<Exclude<ExecutionEndpointKey, 'list'>, string> = {
-  details: `/execution/${EXECUTION_ID_PLACEHOLDER}/`,
-  data: `/execution/${EXECUTION_ID_PLACEHOLDER}/data/`,
-  instance_data: `/instance/${EXECUTION_ID_PLACEHOLDER}/data/`,
+const CORNFLOW_ROUTES: Record<Exclude<ExecutionEndpointKey, 'get_list'>, string> = {
+  get_detail: `/execution/${EXECUTION_ID_PLACEHOLDER}/`,
+  put_detail: `/execution/${EXECUTION_ID_PLACEHOLDER}/`,
+  delete_detail: `/execution/${EXECUTION_ID_PLACEHOLDER}/`,
+  get_data: `/execution/${EXECUTION_ID_PLACEHOLDER}/data/`,
+  get_instance_data: `/instance/${EXECUTION_ID_PLACEHOLDER}/data/`,
 }
 
 /** Routes already warned about, so that a poll does not repeat the warning. */
@@ -42,7 +44,7 @@ function warnOnce(schema: string, key: ExecutionEndpointKey, route: unknown): vo
   warnedRoutes.add(id)
   console.warn(
     `The frontend config declares an unusable "${key}" route for the executions of "${schema}": ` +
-      `it must be a path starting with "/"${key === 'list' ? '' : ` with "${EXECUTION_ID_PLACEHOLDER}"`}. ` +
+      `it must be a path starting with "/"${key === 'get_list' ? '' : ` with "${EXECUTION_ID_PLACEHOLDER}"`}. ` +
       'The next source is used instead.',
     route,
   )
@@ -62,7 +64,7 @@ function declaredRoute(
   const usable =
     typeof route === 'string' &&
     route.startsWith('/') &&
-    (key === 'list' || route.includes(EXECUTION_ID_PLACEHOLDER))
+    (key === 'get_list' || route.includes(EXECUTION_ID_PLACEHOLDER))
   if (!usable) {
     warnOnce(schema, key, route)
     return null
@@ -75,12 +77,14 @@ function withId(route: string, id: string | undefined): string {
 }
 
 /**
- * Where to read `key` of the executions of `schema`.
+ * Where to send `key` on the executions of `schema`.
  *
  * @param frontendConfig - The answer of `GET /external/frontend-config/`, or null without one
  * @param schema - The DAG of the executions
- * @param key - What is read: the list, one execution, its data or the instance of one
- * @param id - The id that replaces `{id}`: of the execution, or of its instance in `instance_data`
+ * @param key - The operation: the list, the read, update or deletion of one execution, its data
+ *   or the instance of one
+ * @param id - The id that replaces `{id}`: of the execution, or of its instance in
+ *   `get_instance_data`
  */
 export function resolveExecutionEndpoint(
   frontendConfig: FrontendConfig | null | undefined,
@@ -92,7 +96,7 @@ export function resolveExecutionEndpoint(
   if (declared !== null) {
     return { path: withId(declared, id), isExternal: true }
   }
-  if (key === 'list') {
+  if (key === 'get_list') {
     const listEndpoint = resolveExecutionsListEndpoint()
     return { path: listEndpoint.path, isExternal: listEndpoint.isExternal === true }
   }
