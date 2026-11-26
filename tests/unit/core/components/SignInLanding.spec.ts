@@ -6,7 +6,13 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 
 const { auth, config, parameters, languages, i18nPlugin } = vi.hoisted(() => ({
   auth: {
-    cornflow: { login: vi.fn() },
+    cornflow: {
+      login: vi.fn(),
+      mfaSetup: vi.fn(),
+      mfaVerify: vi.fn(),
+      clearPendingEnrollment: vi.fn(),
+      requestPasswordReset: vi.fn(),
+    },
     azure: { login: vi.fn(), loginWith: vi.fn() },
     cognito: { login: vi.fn(), loginWith: vi.fn() },
   },
@@ -35,6 +41,7 @@ vi.mock('@cornflow-ui/core/utils/assets', () => ({
 }))
 vi.mock('@/app/config', () => ({ default: { getLanguages: () => languages.list } }))
 vi.mock('@cornflow-ui/core/plugins/i18n', () => i18nPlugin)
+vi.mock('qrcode', () => ({ toDataURL: vi.fn(async () => 'data:image/png;base64,QR') }))
 
 import SignInLanding from '@cornflow-ui/core/components/SignInLanding.vue'
 
@@ -47,7 +54,7 @@ async function mountPage(login?: Record<string, unknown>) {
     routes: [
       { path: '/', component: { template: '<div />' } },
       { path: '/sign-in', component: { template: '<div />' } },
-      { path: '/history-execution', component: { template: '<div />' } },
+      { path: '/user-settings', component: { template: '<div />' } },
     ],
   })
   await router.push('/sign-in')
@@ -123,36 +130,58 @@ describe('SignInLanding', () => {
   })
 
   describe('form', () => {
-    test('after a forced sign-in it goes back to the page the session ended on, once', async () => {
-      sessionStorage.setItem('returnTo', '/history-execution?tab=2')
-      let router: any
-      ;({ wrapper, router } = await mountPage())
-      await fill(wrapper, 'planner', 'secret')
-      await wrapper.find('form').trigger('submit')
-      await flushPromises()
-      expect(router.currentRoute.value.fullPath).toBe('/history-execution?tab=2')
-      expect(sessionStorage.getItem('returnTo')).toBeNull()
-    })
-
-    test('a return-to that is not a page of the app is ignored', async () => {
-      sessionStorage.setItem('returnTo', 'https://evil.example/phish')
-      let router: any
-      ;({ wrapper, router } = await mountPage())
-      await fill(wrapper, 'planner', 'secret')
-      await wrapper.find('form').trigger('submit')
-      await flushPromises()
-      expect(router.currentRoute.value.path).toBe('/')
-    })
-
     test('signs in against Cornflow and goes to the app', async () => {
       let router: any
       ;({ wrapper, router } = await mountPage())
       await fill(wrapper, 'planner', 'secret')
       await wrapper.find('form').trigger('submit')
       await flushPromises()
-      expect(auth.cornflow.login).toHaveBeenCalledWith('planner', 'secret')
+      expect(auth.cornflow.login).toHaveBeenCalledWith('planner', 'secret', undefined)
       expect(router.currentRoute.value.path).toBe('/')
       expect(snackbar).toHaveBeenCalledWith('logIn.snackbar_message_success', 'success')
+    })
+
+    test('says when the previous sign-in was', async () => {
+      auth.cornflow.login.mockResolvedValue({ success: true, lastLogin: '2026-11-20T08:00:00Z' })
+      ;({ wrapper } = await mountPage())
+      await fill(wrapper, 'planner', 'secret')
+      await wrapper.find('form').trigger('submit')
+      await flushPromises()
+      expect(snackbar).toHaveBeenCalledWith('logIn.last_login_info', 'info')
+    })
+
+    test('a password that must be changed leads to the settings page', async () => {
+      auth.cornflow.login.mockResolvedValue({ success: true, changePassword: true })
+      let router: any
+      ;({ wrapper, router } = await mountPage())
+      await fill(wrapper, 'planner', 'secret')
+      await wrapper.find('form').trigger('submit')
+      await flushPromises()
+      expect(router.currentRoute.value.fullPath).toBe('/user-settings?changePassword=true')
+      expect(snackbar).toHaveBeenCalledWith('logIn.password_change_required', 'warning')
+    })
+
+    test('too many attempts say so, not that the credentials are wrong', async () => {
+      auth.cornflow.login.mockResolvedValue({ success: false, rateLimited: true })
+      ;({ wrapper } = await mountPage())
+      await fill(wrapper, 'planner', 'secret')
+      await wrapper.find('form').trigger('submit')
+      await flushPromises()
+      expect(snackbar).toHaveBeenCalledWith('logIn.snackbar_message_error_rate_limited', 'error')
+    })
+
+    test('a locked account says so', async () => {
+      auth.cornflow.login.mockResolvedValue({ success: false, accountLocked: true })
+      ;({ wrapper } = await mountPage())
+      await fill(wrapper, 'planner', 'secret')
+      await wrapper.find('form').trigger('submit')
+      await flushPromises()
+      expect(snackbar).toHaveBeenCalledWith('logIn.account_locked', 'error')
+    })
+
+    test('shows the legal notice under the form', async () => {
+      ;({ wrapper } = await mountPage())
+      expect(wrapper.find('[data-testid="sign-in-legal-notice"]').text()).toBe('logIn.legal_notice')
     })
 
     test('with a field empty, says so and does not try', async () => {
@@ -190,6 +219,175 @@ describe('SignInLanding', () => {
       expect(input().attributes('type')).toBe('password')
       await wrapper.find('[data-testid="sign-in-show-password"]').trigger('click')
       expect(input().attributes('type')).toBe('text')
+    })
+  })
+
+  describe('two-factor authentication', () => {
+    async function signIn() {
+      const mounted = await mountPage()
+      await fill(mounted.wrapper, 'planner', 'secret')
+      await mounted.wrapper.find('form').trigger('submit')
+      await flushPromises()
+      return mounted
+    }
+
+    test('asks for the code and signs in with it', async () => {
+      auth.cornflow.login
+        .mockResolvedValueOnce({ success: false, mfaRequired: true })
+        .mockResolvedValueOnce({ success: true })
+      let router: any
+      ;({ wrapper, router } = await signIn())
+
+      expect(wrapper.find('[data-step="mfa-code"]').exists()).toBe(true)
+      await wrapper.find('[data-testid="sign-in-mfa-code"]').setValue('123456')
+      await wrapper.find('form').trigger('submit')
+      await flushPromises()
+
+      expect(auth.cornflow.login).toHaveBeenLastCalledWith('planner', 'secret', '123456')
+      expect(router.currentRoute.value.path).toBe('/')
+    })
+
+    test('a wrong code says so and asks again', async () => {
+      auth.cornflow.login
+        .mockResolvedValueOnce({ success: false, mfaRequired: true })
+        .mockResolvedValueOnce({ success: false, errorMessage: 'Invalid code' })
+      ;({ wrapper } = await signIn())
+
+      await wrapper.find('[data-testid="sign-in-mfa-code"]').setValue('000000')
+      await wrapper.find('form').trigger('submit')
+      await flushPromises()
+
+      expect(snackbar).toHaveBeenCalledWith('logIn.mfa_invalid_code', 'error')
+      expect(wrapper.find('[data-step="mfa-code"]').exists()).toBe(true)
+      expect((wrapper.find('[data-testid="sign-in-mfa-code"]').element as HTMLInputElement).value).toBe('')
+    })
+
+    test('a server that fails on the code says so, not that the code is wrong', async () => {
+      auth.cornflow.login
+        .mockResolvedValueOnce({ success: false, mfaRequired: true })
+        .mockResolvedValueOnce({ success: false, serverError: true })
+      ;({ wrapper } = await signIn())
+
+      await wrapper.find('[data-testid="sign-in-mfa-code"]').setValue('123456')
+      await wrapper.find('form').trigger('submit')
+      await flushPromises()
+
+      expect(snackbar).toHaveBeenCalledWith('logIn.snackbar_message_error_server', 'error')
+      expect(snackbar).not.toHaveBeenCalledWith('logIn.mfa_invalid_code', 'error')
+    })
+
+    test('without a code, says so and does not try', async () => {
+      auth.cornflow.login.mockResolvedValueOnce({ success: false, mfaRequired: true })
+      ;({ wrapper } = await signIn())
+
+      await wrapper.find('form').trigger('submit')
+      await flushPromises()
+
+      expect(auth.cornflow.login).toHaveBeenCalledTimes(1)
+      expect(wrapper.find('.sign-in-form__error').text()).toBe('rules.required')
+    })
+
+    test('a required enrollment shows the QR code and its secret, then the backup codes', async () => {
+      auth.cornflow.login.mockResolvedValue({ success: false, mfaSetupRequired: true })
+      auth.cornflow.mfaSetup.mockResolvedValue({ success: true, secret: 'ABC', provisioningUri: 'otpauth://totp/x' })
+      auth.cornflow.mfaVerify.mockResolvedValue({ backupCodes: ['a1', 'b2'] })
+      let router: any
+      ;({ wrapper, router } = await signIn())
+
+      expect(wrapper.find('[data-testid="sign-in-mfa-qr"]').attributes('src')).toBe('data:image/png;base64,QR')
+      expect(wrapper.find('[data-testid="sign-in-mfa-secret"]').text()).toBe('ABC')
+
+      await wrapper.find('[data-testid="sign-in-mfa-enroll-code"]').setValue('123456')
+      await wrapper.find('form').trigger('submit')
+      await flushPromises()
+
+      expect(auth.cornflow.mfaVerify).toHaveBeenCalledWith('123456')
+      expect(wrapper.findAll('[data-testid="sign-in-backup-codes"] code').map((c: any) => c.text())).toEqual([
+        'a1',
+        'b2',
+      ])
+
+      await wrapper.find('[data-testid="sign-in-backup-continue"]').trigger('click')
+      await flushPromises()
+      expect(router.currentRoute.value.path).toBe('/')
+    })
+
+    test('an enrollment that cannot start says so', async () => {
+      auth.cornflow.login.mockResolvedValue({ success: false, mfaSetupRequired: true })
+      auth.cornflow.mfaSetup.mockResolvedValue({ success: false })
+      ;({ wrapper } = await signIn())
+
+      expect(snackbar).toHaveBeenCalledWith('logIn.mfa_setup_error', 'error')
+      expect(wrapper.find('[data-step="credentials"]').exists()).toBe(true)
+    })
+
+    test('a wrong first code keeps the enrollment open', async () => {
+      auth.cornflow.login.mockResolvedValue({ success: false, mfaSetupRequired: true })
+      auth.cornflow.mfaSetup.mockResolvedValue({ success: true, secret: 'ABC', provisioningUri: 'otpauth://totp/x' })
+      auth.cornflow.mfaVerify.mockResolvedValue(null)
+      ;({ wrapper } = await signIn())
+
+      await wrapper.find('[data-testid="sign-in-mfa-enroll-code"]').setValue('000000')
+      await wrapper.find('form').trigger('submit')
+      await flushPromises()
+
+      expect(snackbar).toHaveBeenCalledWith('logIn.mfa_invalid_code', 'error')
+      expect(wrapper.find('[data-step="mfa-enroll"]').exists()).toBe(true)
+    })
+
+    test('going back from the enrollment drops its temporary token', async () => {
+      auth.cornflow.login.mockResolvedValue({ success: false, mfaSetupRequired: true })
+      auth.cornflow.mfaSetup.mockResolvedValue({ success: true, secret: 'ABC', provisioningUri: 'otpauth://totp/x' })
+      ;({ wrapper } = await signIn())
+
+      await wrapper.find('[data-testid="sign-in-back"]').trigger('click')
+      await flushPromises()
+
+      expect(auth.cornflow.clearPendingEnrollment).toHaveBeenCalled()
+      expect(wrapper.find('[data-step="credentials"]').exists()).toBe(true)
+    })
+  })
+
+  describe('password recovery', () => {
+    async function openForgot() {
+      const mounted = await mountPage()
+      await mounted.wrapper.find('[data-testid="sign-in-forgot"]').trigger('click')
+      return mounted
+    }
+
+    test('sends the link and goes back to the sign-in form', async () => {
+      auth.cornflow.requestPasswordReset.mockResolvedValue({ sent: true, rateLimited: false })
+      ;({ wrapper } = await openForgot())
+
+      await wrapper.find('[data-testid="sign-in-forgot-email"]').setValue('planner@example.com')
+      await wrapper.find('form').trigger('submit')
+      await flushPromises()
+
+      expect(auth.cornflow.requestPasswordReset).toHaveBeenCalledWith('planner@example.com')
+      expect(snackbar).toHaveBeenCalledWith('logIn.forgot_sent', 'success')
+      expect(wrapper.find('[data-step="credentials"]').exists()).toBe(true)
+    })
+
+    test('a throttled request says so, not that the e-mail is on its way', async () => {
+      auth.cornflow.requestPasswordReset.mockResolvedValue({ sent: false, rateLimited: true })
+      ;({ wrapper } = await openForgot())
+
+      await wrapper.find('[data-testid="sign-in-forgot-email"]').setValue('planner@example.com')
+      await wrapper.find('form').trigger('submit')
+      await flushPromises()
+
+      expect(snackbar).toHaveBeenCalledWith('logIn.snackbar_message_error_rate_limited', 'error')
+      expect(snackbar).not.toHaveBeenCalledWith('logIn.forgot_sent', 'success')
+    })
+
+    test('without an e-mail, says so and does not send', async () => {
+      ;({ wrapper } = await openForgot())
+
+      await wrapper.find('form').trigger('submit')
+      await flushPromises()
+
+      expect(auth.cornflow.requestPasswordReset).not.toHaveBeenCalled()
+      expect(wrapper.find('.sign-in-form__error').text()).toBe('rules.required')
     })
   })
 

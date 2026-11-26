@@ -296,7 +296,7 @@ const createAppConfig = () => ({
       /**
        * Where the executions list is requested, e.g. `{ path: '/executions/', isExternal: true }`
        * for a backend that filters it by the executions history filters. `null` means Cornflow's
-       * `GET /execution/`. The `list` the backend declares for a DAG in
+       * `GET /execution/`. The `get_list` the backend declares for a DAG in
        * `GET /external/frontend-config/` comes first. See README "Execution endpoints".
        */
       executionsListEndpoint: null as ExecutionsListEndpoint | null,
@@ -358,6 +358,12 @@ const createAppConfig = () => ({
        * on once the app's own screens and dashboards read well on dark surfaces.
        */
       enableDarkMode: false,
+
+      /**
+       * When true, users who sign in with Cornflow can generate a personal access token in their
+       * settings. The server decides whether tokens are allowed; this only hides the card.
+       */
+      enablePersonalTokens: true,
 
       enableSolutionRecalculation: false,
 

@@ -3,23 +3,52 @@
 ## [Unreleased]
 
 ### Added
+- **Platform roles, locked accounts and two-factor resets in roles management**  
+  - A platform administrator (`platform_admin`) counts as an administrator and gets `store.isPlatformAdmin`; the platform roles have their own icon, tone, description and permissions
+  - When the server keeps the list of roles to platform administrators (403 on `GET /roles/`), anyone else is told so and keeps the users, without the roles panel or the edit button; a server without platform roles keeps the whole page for every administrator
+  - Granting a platform role asks an administrator with two-factor authentication for a code (`totp_code` on `POST /user/role/`); a missing or wrong code says so, and the users are read again so the table shows what changed
+  - Locked accounts show so and can be unlocked from their row (`PUT /user/<id>/unlock/`); the server decides who may, and an account it leaves to a platform administrator says so. Any administrator resets a user's two-factor authentication (`DELETE /user/<id>/mfa/`). Both after a confirmation
+  *Contributors:* [@HelenaCA](#), [@ggsdc](#)  
+  *Commit ID:* #286
+- **Two-factor authentication and personal access token in the user settings**  
+  - Two-factor authentication: whether it is on; turning it on (QR code, first code, backup codes) and resetting it after a confirmation, which closes every session and goes to the sign-in. A server that does not offer it (501, or 404 without two-factor authentication) is told apart, and the card says so in place of the button. The enrollment is shared with the sign-in (`useMfaEnrollment`)
+  - Personal access token: generates one, read-only if asked, confirmed with a two-factor code when the user has it, shown once; a server with tokens off says so. Hidden with `enablePersonalTokens: false`
+  - Turning on two-factor authentication renews the session tokens without dropping the role flags of the signed-in user
+  *Contributors:* [@HelenaCA](#), [@ggsdc](#)  
+  *Commit ID:* #285
+- **Sign-in and session against a Cornflow server with the security hardening**  
+  - Session: the short-lived access token is renewed with the refresh token (`POST /token/refresh/`) when a request finds it expired, and the request is sent again once. Requests that find it expired at once share one renewal; downloads and streams are renewed too. Logging out closes the session on the server (`POST /logout/`)
+  - Two-factor authentication on the sign-in: the code of the authenticator app or a backup code; and, when the server requires it, the enrollment (QR code, its secret, first code and one-time backup codes) before the session
+  - A password that has expired or must be renewed (`password_rotation`, or `change_password` on the login) keeps the user on their settings, with a notice, until it is changed
+  - Password recovery: "Forgot your password?" asks for the reset link, and `/reset-password` sets the new password with the link's token, taken out of the address at once
+  - The password forms ask for the current password and tick the server's policy: 12 characters, character classes, no spaces, no runs of 6 digits and a zxcvbn strength of 3 or more (its dictionaries load on demand). Changing the password closes every session, so the user signs in again
+  - Too many attempts (429) and a locked account say so instead of "wrong credentials"; after the sign-in, a notice says when the previous one was; a legal notice sits under the form
+  - New dependencies: `@zxcvbn-ts/core`, `@zxcvbn-ts/language-common` and `qrcode`
+  *Contributors:* [@HelenaCA](#), [@ggsdc](#)  
+  *Commit ID:* #284
+
+## [4.1.0] - 24-11-2026
+
+⚠️ The load filters of a DAG's ETL come from the backend (`GET /external/frontend-config/`): `pre_etl: true` in the config schema is not read. An application that marks its load filters that way publishes them in the `query` of its backend's frontend config before upgrading (see **Changed**).
+
+### Added
 - **Premium modules can add pages to Administration**  
   - A `PremiumDrawerSection` with `parent: 'admin'` is listed as a page of the core's Administration group (next to Roles management) instead of a group of its own. The group shows for admins when it has a page, so it no longer depends on roles management being on
   *Contributors:* [@antoniogonzalezsuarez](#)  
   *Commit ID:* #275
 - **The backend can serve the executions of a DAG (`executions` in `GET /external/frontend-config/`)**  
-  - Per DAG, the backend declares which of its endpoints the executions are read from: `list` (the history and the latest executions), `details` (state polling, who launched it, its DAG, an uploaded solution, a deletion), `data` (loading and downloading) and `instance_data` (the instance of a loaded execution). Paths go under `/external`, with `{id}` for the id
-  - Each read goes to the backend's endpoint, then, for the list only, to `executionsListEndpoint`, then to Cornflow. A DAG the answer leaves out, a key it leaves out or an unusable route (warned once in the console) reads from the next source, so an app whose backend declares nothing reads as before
+  - Per DAG, the backend declares one endpoint per operation on the executions: `get_list` (the history and the latest executions), `get_detail` (state polling, who launched it, its DAG), `put_detail` (an uploaded solution), `delete_detail` (a deletion), `get_data` (loading and downloading) and `get_instance_data` (the instance of a loaded execution). Paths go under `/external`, with `{id}` for the id
+  - Each operation goes to the backend's endpoint, then, for the list only, to `executionsListEndpoint`, then to Cornflow. A DAG the answer leaves out, a key it leaves out or an unusable route (warned once in the console) goes to the next source, so a backend can serve the reads of a DAG and leave its updates and deletions to Cornflow, and an app whose backend declares nothing works as before
   - The frontend config is asked when the app has an external backend (`hasExternalApp`), with or without an ETL module
   - README "Execution endpoints": the format, the order, what each key is used for and the fields the core reads from each answer
   *Contributors:* [@HelenaCA](#)  
-  *Commit ID:* #278
+  *Commit ID:* #278, #287
 - **A DAG can have a create-execution flow of its own**  
   - `createExecution.component` can be set in a DAG's entry of `core.schemaOverrides`, and on that DAG it takes precedence over the app's flow. A DAG without one shows the app's flow, and without that, core's page
   - The `project-execution` route shows the flow of the active DAG and mounts the new DAG's flow on a switch. Within a DAG, the route's keep-alive keeps the flow and its draft
   - `docs/create-execution-flows.md`: the order in which the flows apply, a DAG's flow in `schemaOverrides`, and a flow that creates its executions through the app's backend instead of the draft
   *Contributors:* [@HelenaCA](#)  
-  *Commit ID:* pending
+  *Commit ID:* #281
 
 ### Changed
 - **Every list and download of a frontend-automation table carries the active DAG**  
@@ -38,12 +67,10 @@
   *Commit ID:* #274
 
 ### Fixed
-- **A session of Cornflow's own login no longer ends when the access token expires, and the sign-in takes the user back**  
-  - A server with refresh-token sessions (cornflow `feature/fix_plugins_hardening`) returns a `refresh_token` on `POST /login/`; the core keeps it in `sessionStorage` (`refreshToken`) and, when a request is answered with an expired access token (400 today, 401 on newer servers), calls `POST /token/refresh/` once, stores the new access and refresh tokens and repeats the request. Requests that expire together share one renewal, as the server rotates the refresh token and treats a reused one as theft. Only when the renewal is rejected does the session end, as before
-  - A server that does not issue refresh tokens (older ones, service users, `REFRESH_TOKEN_ENABLED=0`) keeps the previous behaviour; so do the OpenID providers. Signing out also closes the session on the server (`POST /logout/`)
-  - When a session ends, the route being shown (full path and query) is remembered, and after the next successful sign-in the user lands there instead of on the default page. Only paths of the app are followed once; absolute URLs and the sign-in/out routes are ignored (`utils/returnTo`)
+- **`usePageContext` lists a page only while it is on screen**  
+  - Core's views live under `<keep-alive>`, so a page that was left stays mounted and its page-context entries stayed registered: an assistant offered the widgets of a page the user was no longer looking at. `usePageContext` now also unregisters the entry when its component is deactivated and registers it again when it is activated
   *Contributors:* [@antoniogonzalezsuarez](#)  
-  *Commit ID:* pending
+  *Commit ID:* #283
 - **The data checks send the DAG of the instance or execution they check**  
   - A deployment closed to the DAGs of each user rejects a data check without `schema` (400, "The request does not specify a schema to use") and creates no check execution. `POST /data-check/instance/<id>/` sends the DAG of the instance just created next to the execution `config`, and `POST /data-check-kpis/execution/<id>/` sends the DAG of the execution, read from `GET /execution/<id>/`, both in the historical KPIs and when the execution files are regenerated. Neither takes the active DAG
   *Contributors:* [@HelenaCA](#)  

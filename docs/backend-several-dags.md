@@ -14,7 +14,7 @@ which always carries it (see [The executions list](#the-executions-list)).
 | Request                                                         | When                                                                                                         | `schema`            | What the backend does with it                                                       |
 | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------- | ----------------------------------------------------------------------------------- |
 | `GET /schema/` (Cornflow)                                       | After the login                                                                                              | No                  | Cornflow answers with the DAGs the user may use                                     |
-| `GET /frontend-automation/`                                     | After the login                                                                                              | No                  | One configuration for every DAG; each table says on which DAGs it shows (`schemas`) |
+| `GET /frontend-automation/`                                     | After the login, with an external backend                                                                    | No                  | One configuration for every DAG; each table says on which DAGs it shows (`schemas`) |
 | `get_list` of a table                                           | Showing a table, its pages, the referenced tables of joined columns, the options of a selector (`join_from`) | Yes, the active DAG | May return only the rows of that DAG                                                |
 | `download_excel_table` of a table                               | Downloading a table                                                                                          | Yes, the active DAG | May export only the rows of that DAG                                                |
 | Executions list (`GET /execution/`, or the backend's)           | The history                                                                                                  | Yes, always         | Cornflow filters by it; an endpoint of the app should too                           |
@@ -166,14 +166,15 @@ GET /execution/?schema=dag_a&limit=100&creation_date_gte=2026-10-01&creation_dat
 
 By default it is Cornflow's `GET /execution/`, which filters by `schema`. An application that
 filters the history by its own data (`executionFilters`, e.g. a plant) points the list at its own
-endpoint: per DAG, with `list` in the `executions` section of `GET /external/frontend-config/`
+endpoint: per DAG, with `get_list` in the `executions` section of `GET /external/frontend-config/`
 (see the README, "Execution endpoints"), or for every DAG with `executionsListEndpoint`. That
 endpoint receives the same parameters as `GET /execution/` plus the picked filters
 (`&plant_id=3`), and answers with the same shape. It has to filter by `schema` as Cornflow does:
 otherwise the history of one DAG lists the executions of all of them.
 
-The same section can point the other reads of the executions of a DAG (one execution, its data,
-its instance) at the backend. Each DAG declares only what it serves; the rest is Cornflow's.
+The same section can point the other operations on the executions of a DAG (reading, updating or
+deleting one execution, its data, its instance) at the backend, one key per operation. Each DAG
+declares only what it serves; the rest is Cornflow's.
 
 ## One row, and writes
 

@@ -2,9 +2,11 @@
   UserRolesDialog: edits a user's name, e-mail and roles.
 
   The e-mail may be left empty; otherwise it has to look like one before saving. The roles are a
-  checkbox per role of the app. `save` gives the user, the trimmed profile and the role names.
+  checkbox per role of the app. Granting a platform role the user does not have yet asks, with
+  `ask-totp` (the administrator has two-factor authentication), for a code of the administrator's
+  authenticator app. `save` gives the user, the trimmed profile, the role names and that code.
 
-  <UserRolesDialog v-model="open" :user="user" :roles="roles" :saving="saving" @save="saveUser" />
+  <UserRolesDialog v-model="open" :user="user" :roles="roles" :saving="saving" :ask-totp="mfaOn" @save="saveUser" />
 -->
 <template>
   <CoreDialog
@@ -59,6 +61,20 @@
           {{ $t('rolesManagement.noRoles') }}
         </span>
       </fieldset>
+
+      <label v-if="needsTotp" class="user-roles__label">
+        {{ $t('rolesManagement.platformRoleTotpLabel') }}
+        <CoreTextField
+          v-model="totpCode"
+          autocomplete="one-time-code"
+          inputmode="numeric"
+          :aria-describedby="totpHintId"
+          data-testid="platform-role-totp"
+        />
+      </label>
+      <p v-if="needsTotp" :id="totpHintId" class="user-roles__hint">
+        {{ $t('rolesManagement.platformRoleTotpHint') }}
+      </p>
     </div>
 
     <template #actions>
@@ -73,7 +89,7 @@
         icon="mdi-content-save-outline"
         size="small"
         :loading="saving"
-        :disabled="!isEmailValid"
+        :disabled="!isEmailValid || (needsTotp && !totpCode.trim())"
         @click="onSave"
       />
     </template>
@@ -87,6 +103,7 @@ import CoreCheckbox from '@cornflow-ui/core/components/core/CoreCheckbox.vue'
 import CoreDialog from '@cornflow-ui/core/components/core/CoreDialog.vue'
 import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
 import CoreTextField from '@cornflow-ui/core/components/core/CoreTextField.vue'
+import { isPlatformRole } from '@cornflow-ui/core/utils/platformRoles'
 import type {
   Role,
   UserRow,
@@ -98,9 +115,14 @@ interface Props {
   user: UserRow | null
   roles: Role[]
   saving?: boolean
+  /**
+   * The administrator has two-factor authentication, so Cornflow asks for a fresh code to grant a
+   * platform role.
+   */
+  askTotp?: boolean
 }
 
-const props = withDefaults(defineProps<Props>(), { saving: false })
+const props = withDefaults(defineProps<Props>(), { saving: false, askTotp: false })
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
@@ -110,6 +132,7 @@ const emit = defineEmits<{
       user: UserRow
       profile: UserProfileValue
       roleNames: string[]
+      totpCode?: string
     },
   ): void
 }>()
@@ -118,7 +141,18 @@ const selectedNames = ref<string[]>([])
 const firstName = ref('')
 const lastName = ref('')
 const email = ref('')
+const totpCode = ref('')
 const emailErrorId = useId()
+const totpHintId = useId()
+
+/** A platform role the user does not have yet is being granted. */
+const needsTotp = computed(
+  () =>
+    props.askTotp &&
+    selectedNames.value.some(
+      (name) => isPlatformRole(name) && !props.user?.role_names.includes(name),
+    ),
+)
 
 // Bounded quantifiers (local part max 64, domain parts max 63) to avoid ReDoS
 // super-linear backtracking (SonarQube S5852).
@@ -136,6 +170,7 @@ watch(
       firstName.value = props.user.first_name
       lastName.value = props.user.last_name
       email.value = props.user.email
+      totpCode.value = ''
     }
   },
   { immediate: true },
@@ -161,6 +196,7 @@ function onSave() {
       email: email.value.trim(),
     },
     roleNames: selectedNames.value,
+    totpCode: needsTotp.value ? totpCode.value.trim() : undefined,
   })
 }
 </script>
@@ -229,5 +265,11 @@ function onSave() {
 .user-roles__none {
   font-size: var(--text-md);
   color: var(--color-text-subtle);
+}
+
+.user-roles__hint {
+  margin: calc(var(--spacing) * -1.5) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }
 </style>

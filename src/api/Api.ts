@@ -1,6 +1,5 @@
 import config from '@cornflow-ui/core/config'
 import { RequestOptions } from '@cornflow-ui/core/interfaces/RequestOptions'
-import { rememberReturnTo } from '@cornflow-ui/core/utils/returnTo'
 
 /**
  * The `error` cornflow gives with a 400 when the session token is no good: expired, invalid or
@@ -17,8 +16,26 @@ export function isEndedSession(status: number, content: unknown): boolean {
   return typeof error === 'string' && ENDED_SESSION_ERROR.test(error)
 }
 
-/** Endpoints that carry their own credentials: an answer from them never triggers a renewal. */
-const SESSION_ENDPOINTS = /\/(login|logout|token\/refresh)\//
+/**
+ * The 403 cornflow gives on every endpoint but the profile ones while the user's password has
+ * expired or must be renewed.
+ */
+export function isPasswordRotation(status: number, content: unknown): boolean {
+  return (
+    status === 403 &&
+    (content as { error_code?: unknown } | null)?.error_code === 'password_rotation'
+  )
+}
+
+/**
+ * Endpoints that authenticate on their own (credentials, the refresh token, the e-mailed reset
+ * token): their 400 or 401 is an answer for the screen that called them, not the end of the
+ * session.
+ */
+const SELF_AUTHENTICATED_ENDPOINTS = ['/login/', '/token/refresh/', '/logout/', '/user/reset-password/']
+
+const isSelfAuthenticated = (url: string) =>
+  SELF_AUTHENTICATED_ENDPOINTS.some((endpoint) => url.includes(endpoint))
 
 class ApiClient {
   private baseUrl: string
@@ -27,7 +44,7 @@ class ApiClient {
   private tokenExpiration: number | null = null
   private authToken: string | null = null
   private refreshTimer: NodeJS.Timeout | null = null
-  /** The renewal of a Cornflow session in flight, shared by every request that needs it. */
+  /** The renewal in flight: the requests that find the session ended at once all wait for it. */
   private sessionRenewal: Promise<boolean> | null = null
 
   constructor() {
@@ -214,20 +231,83 @@ class ApiClient {
     this.scheduleTokenRefresh()
   }
 
-  private async request(url = '', options: RequestOptions = {}) {
+  private async request(url = '', options: RequestOptions = {}, renewed = false) {
     const completeUrl = this.buildRequestUrl(url, options)
     await this.handleTokenRefreshIfNeeded(url)
 
     try {
-      const response = await this.fetchRenewing(url, () => this.performFetch(completeUrl, options))
+      const response = await this.performFetch(completeUrl, options)
       const content = await this.parseResponseContent(response)
+      if (!renewed && (await this.renewEndedSession(response.status, content, url))) {
+        return this.request(url, options, true)
+      }
       this.handleEndedSession(response.status, content, url)
+      this.handlePasswordRotation(response.status, content)
 
       return { status: response.status, content }
     } catch (error) {
       this.handleRequestError(error, url)
       throw error
     }
+  }
+
+  /**
+   * Exchanges the stored refresh token for a new access and refresh token pair, so a session
+   * goes on while the user is active. Requests that find the session ended at the same time
+   * share one renewal. Resolves to whether the session was renewed; without a refresh token
+   * (external auth, service users, a deployment with refresh tokens off) it resolves to false.
+   */
+  renewSession(): Promise<boolean> {
+    if (this.sessionRenewal) return this.sessionRenewal
+    const refreshToken = sessionStorage.getItem('refreshToken')
+    if (!refreshToken) return Promise.resolve(false)
+
+    this.sessionRenewal = (async () => {
+      try {
+        const basePath = config.hasExternalApp ? '/cornflow' : ''
+        const response = await fetch(`${this.baseUrl}${basePath}/token/refresh/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ refresh_token: refreshToken }),
+          mode: 'cors',
+        })
+        if (!response.ok) return false
+        const data = await response.json()
+        if (!data?.token) return false
+        sessionStorage.setItem('token', data.token)
+        this.authToken = data.token
+        if (data.refresh_token) sessionStorage.setItem('refreshToken', data.refresh_token)
+        return true
+      } catch {
+        return false
+      } finally {
+        this.sessionRenewal = null
+      }
+    })()
+    return this.sessionRenewal
+  }
+
+  /** On an ended session outside the auth endpoints, renews it once. True when it was renewed. */
+  private async renewEndedSession(status: number, content: unknown, url: string): Promise<boolean> {
+    if (isSelfAuthenticated(url) || !isEndedSession(status, content)) return false
+    return this.renewSession()
+  }
+
+  /**
+   * A password that has expired or must be renewed: until it is changed, the user can only reach
+   * the settings page, where the password form asks for it.
+   */
+  private handlePasswordRotation(status: number, content: unknown): void {
+    if (!isPasswordRotation(status, content)) return
+    sessionStorage.setItem('pwdChangeRequired', 'true')
+    setTimeout(() => {
+      import('@cornflow-ui/core/router').then(({ getRouter }) => {
+        const router = getRouter()
+        if (router.currentRoute.value.path !== '/user-settings') {
+          router.push({ path: '/user-settings', query: { changePassword: 'true' } })
+        }
+      })
+    }, 0)
   }
 
   private buildRequestUrl(url: string, options: RequestOptions): URL {
@@ -257,60 +337,6 @@ class ApiClient {
         this.handleAuthFailure()
         throw error
       }
-    }
-  }
-
-  /**
-   * Sends a request and, when the answer is an ended session (an expired access token: 400 today,
-   * 401 on newer servers) and the login gave a refresh token, renews the session and sends it once
-   * more. Without a refresh token (an older server, a service user, OpenID sessions) the answer is
-   * returned as it is and the caller ends the session.
-   */
-  private async fetchRenewing(url: string, send: () => Promise<Response>): Promise<Response> {
-    const sentToken = this.authToken
-    const response = await send()
-    if (SESSION_ENDPOINTS.test(url) || !sessionStorage.getItem('refreshToken')) return response
-    const rejection = await this.rejectionContent(response)
-    if (!isEndedSession(response.status, rejection)) return response
-    // Another request may have renewed the session while this one was on its way
-    const alreadyRenewed = this.authToken !== null && this.authToken !== sentToken
-    if (!alreadyRenewed && !(await this.renewSession())) return response
-    return send()
-  }
-
-  /** Renews the access token with the refresh token. Concurrent callers wait for the same renewal. */
-  private renewSession(): Promise<boolean> {
-    this.sessionRenewal ??= this.performSessionRenewal().finally(() => {
-      this.sessionRenewal = null
-    })
-    return this.sessionRenewal
-  }
-
-  /**
-   * `POST /token/refresh/`: the server answers with a new access token and a new refresh token
-   * (rotated: the one sent is dead from then on, and sending it again closes the session).
-   */
-  private async performSessionRenewal(): Promise<boolean> {
-    const refreshToken = sessionStorage.getItem('refreshToken')
-    if (!refreshToken) return false
-    try {
-      const basePath = config.hasExternalApp ? '/cornflow' : ''
-      const response = await fetch(`${this.baseUrl}${basePath}/token/refresh/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ refresh_token: refreshToken }),
-        mode: 'cors',
-      })
-      if (response.status !== 200) return false
-      const body = await response.json()
-      if (!body?.token || !body?.refresh_token) return false
-      sessionStorage.setItem('token', body.token)
-      sessionStorage.setItem('refreshToken', body.refresh_token)
-      this.authToken = body.token
-      return true
-    } catch (error) {
-      console.error('Session renewal failed:', error)
-      return false
     }
   }
 
@@ -355,7 +381,7 @@ class ApiClient {
    * session and goes to the sign-in page.
    */
   private handleEndedSession(status: number, content: unknown, url: string): void {
-    if (SESSION_ENDPOINTS.test(url) || !isEndedSession(status, content)) return
+    if (isSelfAuthenticated(url) || !isEndedSession(status, content)) return
     console.warn('The backend rejected the session token: the session has ended')
     this.handleAuthFailure()
     throw new Error('Unauthorized: Session expired')
@@ -405,9 +431,9 @@ class ApiClient {
 
     // Clear session storage
     sessionStorage.removeItem('token')
+    sessionStorage.removeItem('refreshToken')
     sessionStorage.removeItem('tokenExpiration')
     sessionStorage.removeItem('originalToken')
-    sessionStorage.removeItem('refreshToken')
     sessionStorage.setItem('isAuthenticated', 'false')
     this.authToken = null
     this.tokenExpiration = null
@@ -419,11 +445,8 @@ class ApiClient {
     setTimeout(() => {
       // Import dynamically to avoid circular dependency
       import('@cornflow-ui/core/router').then(({ getRouter }) => {
-        const router = getRouter()
-        // The sign-in takes the user back to the page the session ended on
-        rememberReturnTo(router.currentRoute?.value?.fullPath)
         // Redirect to sign-in page with expired flag
-        router.push({ path: '/sign-in', query: { expired: 'true' } })
+        getRouter().push({ path: '/sign-in', query: { expired: 'true' } })
       })
     }, 0)
   }
@@ -467,6 +490,7 @@ class ApiClient {
     url: string,
     queryParams: Record<string, string | number | boolean | undefined> = {},
     isExternal: boolean = false,
+    renewed = false,
   ): Promise<{ status: number; blob: Blob; filename: string | null }> {
     await this.handleTokenRefreshIfNeeded(url)
 
@@ -482,15 +506,17 @@ class ApiClient {
       ).toString()
     }
 
-    const response = await this.fetchRenewing(url, () =>
-      fetch(completeUrl.toString(), {
-        method: 'GET',
-        headers: this.getHeaders(),
-        mode: 'cors',
-      }),
-    )
+    const response = await fetch(completeUrl.toString(), {
+      method: 'GET',
+      headers: this.getHeaders(),
+      mode: 'cors',
+    })
 
-    this.handleEndedSession(response.status, await this.rejectionContent(response), url)
+    const rejection = await this.rejectionContent(response)
+    if (!renewed && (await this.renewEndedSession(response.status, rejection, url))) {
+      return this.getBlob(url, queryParams, isExternal, true)
+    }
+    this.handleEndedSession(response.status, rejection, url)
 
     const blob = await response.blob()
 
@@ -545,20 +571,23 @@ class ApiClient {
     url: string,
     body: object,
     isExternal: boolean = false,
+    renewed = false,
   ): Promise<Response> {
     await this.handleTokenRefreshIfNeeded(url)
     const completeUrl = this.buildRequestUrl(url, { isExternal })
-    const response = await this.fetchRenewing(url, () =>
-      this.performFetch(completeUrl, {
-        method: 'POST',
-        body,
-        headers: {
-          Accept: 'text/event-stream, application/json',
-        },
-        isExternal,
-      }),
-    )
-    this.handleEndedSession(response.status, await this.rejectionContent(response), url)
+    const response = await this.performFetch(completeUrl, {
+      method: 'POST',
+      body,
+      headers: {
+        Accept: 'text/event-stream, application/json',
+      },
+      isExternal,
+    })
+    const rejection = await this.rejectionContent(response)
+    if (!renewed && (await this.renewEndedSession(response.status, rejection, url))) {
+      return this.postStream(url, body, isExternal, true)
+    }
+    this.handleEndedSession(response.status, rejection, url)
     return response
   }
 
