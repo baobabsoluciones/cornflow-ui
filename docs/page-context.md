@@ -17,7 +17,7 @@ interface PageContextEntry {
 | Function | What it does |
 | --- | --- |
 | `registerPageContext(entry)` | Adds the entry and returns the function that removes it. An entry with an id that is already registered replaces it (same place in the list). |
-| `usePageContext(entry)` | For components: registers on mount, unregisters on unmount. |
+| `usePageContext(entry)` | For components: the entry is listed while the component is on screen. Registers on mount and unregisters on unmount; under `<keep-alive>` (core's views are) it also unregisters when the component is deactivated and registers again when it is activated. |
 | `usePageContexts()` | Readonly reactive list of the entries, in registration order. |
 | `askAboutPageContext(id)` | A widget's "Ask about this" button. Calls the listeners with the entry; an unknown id does nothing. |
 | `onAskAboutPageContext(fn)` | Listen to the above; returns the unsubscribe function. |

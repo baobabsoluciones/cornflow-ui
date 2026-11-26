@@ -49,6 +49,7 @@ import {
   mergeAppConfigFields,
   normalizeGetListResponseToRows,
   parseJoinFrom,
+  transformJsonSchemaToAutomationFormat,
   type ExecutionConfigField,
 } from '@cornflow-ui/core/utils/schemaUtils'
 import type {
@@ -309,9 +310,12 @@ export const useGeneralStore = defineStore('general', {
         user.roles = myAssignments.map((a) => ({ id: a.role_id, name: a.role }))
         this.user = user
 
-        // Derive admin status and role names; persist both for route guards (available before store is ready)
-        const isAdmin = myAssignments.some((a: import('@cornflow-ui/core/repositories/RoleRepository').UserRoleAssignment) => a.role === 'admin')
+        // Derive admin status and role names; persist both for route guards (available before store is ready).
+        // A platform administrator is an administrator too, with platform-only actions on top.
+        const isPlatformAdmin = myAssignments.some((a) => a.role === 'platform_admin')
+        const isAdmin = isPlatformAdmin || myAssignments.some((a) => a.role === 'admin')
         sessionStorage.setItem('isAdmin', isAdmin ? 'true' : 'false')
+        sessionStorage.setItem('isPlatformAdmin', isPlatformAdmin ? 'true' : 'false')
         const roleNames = myAssignments.map((a: import('@cornflow-ui/core/repositories/RoleRepository').UserRoleAssignment) => a.role)
         sessionStorage.setItem('userRoles', JSON.stringify(roleNames))
       } catch (error) {
@@ -517,7 +521,7 @@ export const useGeneralStore = defineStore('general', {
       this.schemaConfig = {} as SchemaConfig
       this.applyAppConfigForSchema()
       await this.setSchema()
-      const { inputData, resultsData } = await this.fetchSchemaTables()
+      const { inputData, resultsData } = this.schemaTables()
       this.rawConfigurations = {
         masterData: this.rawConfigurations?.masterData ?? ({} as TableSchema),
         inputData,
@@ -598,15 +602,26 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
-    async changeUserPassword(userId: string, password: string) {
+    async changeUserPassword(
+      userId: string,
+      password: string,
+      currentPassword: string,
+    ): Promise<{ success: boolean; message?: string }> {
       try {
-        const response = await this.userRepository.changePassword(
-          userId,
-          password,
-        )
-        return response
+        const result = await this.userRepository.changePassword(userId, password, currentPassword)
+        if (result.success) sessionStorage.removeItem('pwdChangeRequired')
+        return result
       } catch (error) {
         console.error('Error changing password', error)
+        return { success: false }
+      }
+    },
+
+    async resetUserMfa(userId: string): Promise<boolean> {
+      try {
+        return await this.userRepository.resetMfa(userId)
+      } catch (error) {
+        console.error('Error resetting the two-factor authentication', error)
         return false
       }
     },
@@ -668,8 +683,8 @@ export const useGeneralStore = defineStore('general', {
           masterData = {}
         }
 
-        // Get instance and solution data from schema (may be empty if not available)
-        const { inputData, resultsData } = await this.fetchSchemaTables()
+        // Instance and solution tables of the schema `setSchema` loaded (empty without one)
+        const { inputData, resultsData } = this.schemaTables()
 
         // Store raw configurations with original multilingual data and section definitions
         this.rawConfigurations = {
@@ -696,31 +711,21 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
-    /** Instance and solution tables of the active schema; each is empty when it is not available. */
-    async fetchSchemaTables(): Promise<{
-      inputData: TableSchema
-      resultsData: TableSchema
-    }> {
-      let inputData = {} as TableSchema
-      let resultsData = {} as TableSchema
-
-      try {
-        inputData =
-          (await this.schemaRepository.getInstanceTables(this.getSchemaName)) ||
-          {}
-      } catch (error) {
-        console.warn('Instance tables not available:', error)
+    /** Instance and solution tables of the loaded schema; each is empty when the schema has none. */
+    schemaTables(): { inputData: TableSchema; resultsData: TableSchema } {
+      const schema = this.schemaConfig
+      return {
+        inputData: transformJsonSchemaToAutomationFormat(
+          schema?.instanceSchema,
+          schema?.instanceChecksSchema,
+          'instance',
+        ),
+        resultsData: transformJsonSchemaToAutomationFormat(
+          schema?.solutionSchema,
+          schema?.solutionChecksSchema,
+          'solution',
+        ),
       }
-
-      try {
-        resultsData =
-          (await this.schemaRepository.getSolutionTables(this.getSchemaName)) ||
-          {}
-      } catch (error) {
-        console.warn('Solution tables not available:', error)
-      }
-
-      return { inputData, resultsData }
     },
 
     // Update configurations with current locale and apply user schema filtering
@@ -1382,6 +1387,11 @@ export const useGeneralStore = defineStore('general', {
      */
     isAdmin(): boolean {
       return sessionStorage.getItem('isAdmin') === 'true'
+    },
+
+    /** Whether the signed-in user is a platform administrator (set when the user is fetched). */
+    isPlatformAdmin(): boolean {
+      return sessionStorage.getItem('isPlatformAdmin') === 'true'
     },
   },
 })

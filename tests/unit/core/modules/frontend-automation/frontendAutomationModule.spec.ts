@@ -6,7 +6,11 @@ vi.mock('@cornflow-ui/core/api/Api', () => ({
   default: { get: mockGet },
 }))
 
-// transformOpenApiToTableConfig now lives in the FA module; stub it to a deterministic shape.
+// Deployment config: whether the app has an external backend.
+const mockConfig = vi.hoisted(() => ({ hasExternalApp: true }))
+vi.mock('@cornflow-ui/core/config', () => ({ default: mockConfig }))
+
+// transformOpenApiToTableConfig lives in the FA module; stub it to a deterministic shape.
 const mockTransform = vi.hoisted(() => vi.fn())
 vi.mock('@cornflow-ui/core/modules/frontend-automation/openApiTransform', () => ({
   transformOpenApiToTableConfig: mockTransform,
@@ -30,6 +34,16 @@ describe('frontendAutomationModule (premium descriptor)', () => {
   test('id is "frontend-automation" and exposes loadMasterDataConfig', () => {
     expect(frontendAutomationModule.id).toBe('frontend-automation')
     expect(typeof frontendAutomationModule.loadMasterDataConfig).toBe('function')
+  })
+
+  test('is enabled when the app has an external backend', () => {
+    mockConfig.hasExternalApp = true
+    expect(frontendAutomationModule.isEnabled!(ctx)).toBe(true)
+  })
+
+  test('is disabled without an external backend', () => {
+    mockConfig.hasExternalApp = false
+    expect(frontendAutomationModule.isEnabled!(ctx)).toBe(false)
   })
 
   test('loadMasterDataConfig returns the FA endpoint config/sections/groups', async () => {

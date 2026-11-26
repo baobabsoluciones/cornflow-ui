@@ -359,6 +359,12 @@ const createAppConfig = () => ({
        */
       enableDarkMode: false,
 
+      /**
+       * When true, users who sign in with Cornflow can generate a personal access token in their
+       * settings. The server decides whether tokens are allowed; this only hides the card.
+       */
+      enablePersonalTokens: true,
+
       enableSolutionRecalculation: false,
 
       enableMasterTableMatching: false,

@@ -61,7 +61,7 @@ export async function createCornflowApp(
   options: CreateCornflowAppOptions,
 ): Promise<VueApp> {
   // Register modules first so registerPlugins() can inject their routes/locales.
-  // `frontend-automation` ships in core (master-data config source, always on);
+  // `frontend-automation` ships in core (master-data config source, on with an external app);
   // enterprise/consumer premium modules are appended after it.
   registerPremiumModules([
     frontendAutomationModule,

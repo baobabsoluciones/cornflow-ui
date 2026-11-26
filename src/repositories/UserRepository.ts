@@ -1,12 +1,16 @@
 import client from '@cornflow-ui/core/api/Api'
 import { User } from '@cornflow-ui/core/models/User'
+import { PLATFORM_ADMIN_REQUIRED } from '@cornflow-ui/core/utils/platformRoles'
 
-interface RawUser {
+export interface RawUser {
   id: number
   username: string
   email: string
   first_name?: string
   last_name?: string
+  mfa_enabled?: boolean
+  /** Locked after too many failed sign-in attempts. */
+  locked?: boolean
 }
 
 export default class UserRepository {
@@ -32,15 +36,15 @@ export default class UserRepository {
         .then((response) => {
           if (response.status === 200) {
             const raw = response.content as RawUser
-            resolve(
-              new User(
-                String(raw.id),
-                raw.username,
-                raw.email,
-                raw.first_name || '',
-                raw.last_name || '',
-              ),
+            const user = new User(
+              String(raw.id),
+              raw.username,
+              raw.email,
+              raw.first_name || '',
+              raw.last_name || '',
             )
+            user.mfaEnabled = !!raw.mfa_enabled
+            resolve(user)
           } else {
             reject(new Error('Error getting user'))
           }
@@ -70,12 +74,48 @@ export default class UserRepository {
     })
   }
 
-  changePassword(userId: string | number, password: string): Promise<boolean> {
+  /** Unlocks an account locked after too many failed sign-in attempts (platform admins only). */
+  unlockUser(userId: string | number): Promise<boolean> {
     return new Promise((resolve, reject) => {
       client
-        .put(`/user/${userId}/`, { password })
+        .put(`/user/${userId}/unlock/`, {})
         .then((response) => {
-          resolve(response.status === 200)
+          // Cornflow leaves the account to a platform administrator.
+          if (response.status === 403) reject(new Error(PLATFORM_ADMIN_REQUIRED))
+          else resolve(response.status === 200)
+        })
+        .catch(reject)
+    })
+  }
+
+  /**
+   * Turns off a user's two-factor authentication, theirs or, for an admin, anyone's. Cornflow also
+   * closes every session and API key of that user.
+   */
+  resetMfa(userId: string | number): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      client
+        .remove(`/user/${userId}/mfa/`)
+        .then((response) => resolve(response.status === 200))
+        .catch(reject)
+    })
+  }
+
+  /**
+   * Changes the user's own password; cornflow asks for the current one. When it refuses the new
+   * one (the password policy, a reused password), `message` says why.
+   */
+  changePassword(
+    userId: string | number,
+    password: string,
+    currentPassword: string,
+  ): Promise<{ success: boolean; message?: string }> {
+    return new Promise((resolve, reject) => {
+      client
+        .put(`/user/${userId}/`, { password, current_password: currentPassword })
+        .then((response) => {
+          if (response.status === 200) resolve({ success: true })
+          else resolve({ success: false, message: (response.content as { error?: string })?.error })
         })
         .catch(reject)
     })
