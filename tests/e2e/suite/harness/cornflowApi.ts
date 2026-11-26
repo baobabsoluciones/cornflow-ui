@@ -137,6 +137,28 @@ export class CornflowApiError extends Error {
   }
 }
 
+/** The backend did not answer at all: down, or not at that address. */
+export class BackendUnreachableError extends Error {
+  constructor(
+    readonly url: string,
+    method: string,
+    path: string,
+    cause: unknown,
+  ) {
+    const reason =
+      (cause as { cause?: { code?: string; message?: string } })?.cause?.code ??
+      (cause as { cause?: { message?: string } })?.cause?.message ??
+      (cause as Error)?.message ??
+      String(cause)
+    super(
+      `[cornflow-e2e] Cannot reach the backend at ${url} (${method} ${path}: ${reason}). ` +
+        'Check that it is up and that the address is right: the one the app talks to (its ' +
+        'VITE_APP_BACKEND_URL or values.json), or E2E_BACKEND_URL when set.',
+    )
+    this.name = 'BackendUnreachableError'
+  }
+}
+
 export class CornflowApi {
   readonly runId: string
   private readonly baseUrl: string
@@ -594,11 +616,16 @@ export class CornflowApi {
     if (body !== undefined) headers['Content-Type'] = 'application/json'
     if (this.token) headers.Authorization = `Bearer ${this.token}`
 
-    const response = await fetch(this.baseUrl + path, {
-      method,
-      headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
-    })
+    let response: Response
+    try {
+      response = await fetch(this.baseUrl + path, {
+        method,
+        headers,
+        body: body === undefined ? undefined : JSON.stringify(body),
+      })
+    } catch (error) {
+      throw new BackendUnreachableError(this.baseUrl, method, path, error)
+    }
     const text = await response.text()
     let content: unknown = text
     try {

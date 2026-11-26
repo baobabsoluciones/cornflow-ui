@@ -167,6 +167,17 @@ export function credentials(): { username: string; password: string } {
   const username = process.env.E2E_USER
   const password = process.env.E2E_PASSWORD
   if (!username || !password) {
+    // The names the previous suite read them from.
+    if (
+      process.env.PLAYWRIGHT_TEST_USER ||
+      process.env.PLAYWRIGHT_TEST_PASSWORD
+    ) {
+      throw new Error(
+        '[cornflow-e2e] PLAYWRIGHT_TEST_USER and PLAYWRIGHT_TEST_PASSWORD are the names of the ' +
+          'previous suite: rename them to E2E_USER and E2E_PASSWORD (in tests/e2e/.env.test or ' +
+          'the environment). See tests/e2e/.env.test.example.',
+      )
+    }
     throw new Error(
       '[cornflow-e2e] Set E2E_USER and E2E_PASSWORD (in tests/e2e/.env.test or the environment): ' +
         'the user the suite signs in as, an admin when the mode is "disposable".',

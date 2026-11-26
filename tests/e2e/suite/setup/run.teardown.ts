@@ -13,8 +13,10 @@ import {
 teardown('clean up the run', async ({ baseURL }) => {
   const deployment = readDeploymentOrNull()
   if (!deployment) {
-    // The set-up stopped before it reached the backend: nothing to clean up.
-    console.log('[cornflow-e2e] Nothing to clean up: the set-up did not start.')
+    // The set-up stopped before it signed in to the backend: the run made nothing there.
+    console.log(
+      '[cornflow-e2e] Nothing to clean up: the set-up stopped before it signed in to the backend.',
+    )
     return
   }
   const { username, password } = credentials()

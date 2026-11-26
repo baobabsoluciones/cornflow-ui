@@ -66,10 +66,11 @@ setup('prepare the run', async ({ browser, baseURL }) => {
     )
   }
 
-  // Kept now, so the clean-up knows the backend even if the set-up stops before the end.
-  saveDeployment(before)
   const api = cornflowApiFor(before, baseURL)
   await api.login(admin.username, admin.password)
+  // Kept once signed in, so the clean-up knows the backend even if the set-up stops before the
+  // end. Before that the run has made nothing, and the clean-up leaves the backend alone.
+  saveDeployment(before)
 
   // The users to sign in as, and the session each one's is saved under.
   const users: {

@@ -22,6 +22,7 @@
 - **The previous end-to-end suite**  
   - Its specs, `auth.setup.ts`, `fixtures.ts`, `helpers/`, the corporate reporter and the e-mailed report (`test:e2e:send-report`, `test:e2e:full` and the `nodemailer` dependency)
   - **Breaking for suites built on it:** a layer that imports `fixtures`, `helpers/urlHelpers`, `helpers/executionHelpers` or `helpers/constants` from the core copy has to move to the new harness: `test` and `expect` from `.cornflow-core/harness/fixtures`, navigation with `openFromMenu`, and data through the `api` fixture (README "Writing specs"). The config factory keeps its options and its project names, so a layer's Playwright config still works
+  - **Breaking for apps that ran it:** the credentials are now `E2E_USER` and `E2E_PASSWORD` (they were `PLAYWRIGHT_TEST_USER` and `PLAYWRIGHT_TEST_PASSWORD`; the suite says so when it finds the old names). `PLAYWRIGHT_BACKEND_URL` becomes the optional `E2E_BACKEND_URL`, and `PLAYWRIGHT_AUTH_TYPE`, `PLAYWRIGHT_TEST_TEMP_PASSWORD` and the `REPORT_*` variables are no longer read. Each app needs its UAT file (`tests/e2e/uat.json`, README "The UAT file"): without it the run stops before anything. Update `tests/e2e/.env.test.example` from core's
   *Contributors:* [@david-hidalgo-baobab](#)  
   *Commit ID:* #
 

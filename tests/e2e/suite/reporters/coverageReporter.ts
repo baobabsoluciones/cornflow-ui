@@ -7,7 +7,9 @@
  * to it. The report also lists the known faults the run came across (annotation `known issue`),
  * which do not fail a test while they wait for their fix.
  *
- * It is printed at the end of the run. The set-up and the clean-up of the run are not part of it.
+ * It is printed at the end of the run. The set-up and the clean-up of the run are not part of it,
+ * nor are tests that did not run (`--list`, or a set-up that failed): with none run, it prints
+ * nothing.
  */
 import type {
   FullResult,
@@ -52,6 +54,9 @@ export default class CoverageReporter implements Reporter {
     const knownIssues = new Set<string>()
     for (const test of this.root.allTests()) {
       if (RUN_PROJECTS.includes(test.parent.project()?.name ?? '')) continue
+      // Not run at all (only listed, or its set-up failed): it says nothing of the deployment. A
+      // test skipped for a reason did run, and has its result.
+      if (!test.results.length) continue
       const lastResult = test.results.at(-1)
       // A note made while the test runs is both on the test and on its result: kept once.
       const notes = new Set<string>()
@@ -66,7 +71,7 @@ export default class CoverageReporter implements Reporter {
       }
       if (test.outcome() === 'skipped') {
         notTested.push({ title: titleOf(test), reason: reasonOf(test) })
-      } else if (test.results.length) {
+      } else {
         // A test that passed on a retry (flaky) did test what it says; one that never passed did not.
         const line = {
           title: titleOf(test),
