@@ -111,3 +111,31 @@ export function currentView(page: Page): string {
   const route = url.hash.startsWith('#/') ? url.hash.slice(1) : url.pathname
   return route.split('?')[0].split('/').filter(Boolean)[0] ?? ''
 }
+
+/**
+ * The addresses the side menu links to in its groups that are the same for every execution: each
+ * group of its own, and the pages of each heading, opened one after another (they are an
+ * accordion).
+ */
+export async function menuLinks(page: Page): Promise<string[]> {
+  await unfoldMenu(page)
+  const general = page.getByTestId('app-drawer-general-block')
+  const keys = await general
+    .locator('[data-testid^="drawer-group-"]')
+    .evaluateAll((groups) =>
+      groups.map((group) =>
+        group.getAttribute('data-testid')!.slice('drawer-group-'.length),
+      ),
+    )
+  const hrefs: string[] = []
+  for (const key of keys) {
+    const own = page.getByTestId(`drawer-group-${key}`).locator(':scope > a')
+    const links = (await own.count()) ? own : await openMenuGroup(page, key)
+    hrefs.push(
+      ...(await links.evaluateAll((all) =>
+        all.map((link) => link.getAttribute('href') ?? ''),
+      )),
+    )
+  }
+  return hrefs
+}

@@ -36,6 +36,7 @@
     :class="{ 'is-expanded': expanded, 'is-floating': floating, 'is-overlay': pinned && isNarrow }"
     :aria-label="$t('drawer.label')"
     data-testid="app-drawer"
+    :data-schema="store.getSchemaName"
     data-tour="drawer"
     @pointerenter="onPointerEnter"
     @pointerleave="onPointerLeave"

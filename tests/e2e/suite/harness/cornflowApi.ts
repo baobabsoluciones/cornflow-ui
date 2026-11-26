@@ -291,6 +291,8 @@ export class CornflowApi {
    */
   async execution(id: string): Promise<{
     name: string
+    /** The DAG it runs on. */
+    schema: string
     state: number
     config: Record<string, unknown>
     instanceId: string
@@ -300,6 +302,7 @@ export class CornflowApi {
       {
         id: string
         name: string
+        schema: string
         state: number
         config?: Record<string, unknown> | null
         instance_id: string
@@ -310,6 +313,7 @@ export class CornflowApi {
     if (!execution) return null
     return {
       name: execution.name,
+      schema: execution.schema,
       state: execution.state,
       config: execution.config ?? {},
       instanceId: execution.instance_id,
@@ -419,6 +423,12 @@ export class CornflowApi {
   async deleteInstance(id: string): Promise<void> {
     await this.request('DELETE', `/instance/${id}/`, undefined, [404])
     this.instances.delete(id)
+  }
+
+  /** The DAGs this client's user may work on (`GET /schema/`). */
+  async schemaNames(): Promise<string[]> {
+    const listed = await this.request<{ name: string }[]>('GET', '/schema/')
+    return listed.map((schema) => schema.name)
   }
 
   /** How Cornflow is, and its version (`GET /health/`). */
