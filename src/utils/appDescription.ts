@@ -57,6 +57,14 @@ export interface AppDescription {
    */
   frontendConfig: FrontendConfig | null
   /**
+   * The master tables the app has from frontend automation (`/external/frontend-automation/`), as
+   * it took them: per table, its title, section, group and DAGs, and the endpoint of each
+   * operation it allows (`get_list`, `download_excel_table`…); and the sections and groups of the
+   * menu, in their order. Null until the app has asked, once the user signs in; no tables where
+   * the backend has no frontend automation.
+   */
+  masterData: MasterDataDescription | null
+  /**
    * The first-level keys of the texts the app has, in any language: those of core, the project's
    * own and the modules'. A text key starts with one of them (`createExecution.title`).
    */
@@ -81,6 +89,89 @@ export function plainData(value: unknown): unknown {
 function fromAppConfig<T>(getter: string, fallback: T): T {
   const read = (appConfig as unknown as Record<string, unknown>)[getter]
   return typeof read === 'function' ? (read.call(appConfig) as T) : fallback
+}
+
+/** A master table, as `describe()` gives it. */
+export interface MasterTableDescription {
+  /** As the backend gives it: a text, or one per language. */
+  title: unknown
+  section: string | null
+  /** The key of its group, if it is in one. */
+  group: string | null
+  /** The DAGs it is for; null for every DAG. */
+  schemas: string[] | null
+  /** Each operation it allows, by name: its endpoint, HTTP method and parameters. */
+  operations: Record<
+    string,
+    { url: string; method: string; parameters: MasterParameterDescription[] }
+  >
+}
+
+/** A parameter of an operation of a master table. */
+export interface MasterParameterDescription {
+  name: string
+  /** Where it goes (`query`, `path`…); `query` when the backend does not say. */
+  in: string
+  /** Its default value, which the app sends; null when it has none. */
+  default: unknown
+  /** What it filters by, for a filter (`filter_info.filter_type`: `limit`, `offset`…). */
+  filterType: string | null
+}
+
+export interface MasterDataDescription {
+  tables: Record<string, MasterTableDescription>
+  sections: unknown[]
+  groups: unknown[]
+}
+
+/** The master tables the store took from frontend automation; null before it asked. */
+function readMasterData(): MasterDataDescription | null {
+  if (!getActivePinia()) return null
+  const store = useGeneralStore()
+  if (!store.rawConfigurations) return null
+  const raw = (store.rawConfigurations.masterData ?? {}) as Record<string, any>
+  const tables = Object.fromEntries(
+    Object.entries(raw).map(([key, table]) => {
+      const operations = Object.fromEntries(
+        Object.entries(table ?? {})
+          .filter(([, value]: [string, any]) => value && typeof value === 'object' && value.url)
+          .map(([name, value]: [string, any]) => [
+            name,
+            {
+              url: String(value.url),
+              method: String(value.http_method ?? 'get'),
+              parameters: Array.isArray(value.parameters)
+                ? value.parameters.map(
+                    (parameter: any): MasterParameterDescription => ({
+                      name: String(parameter?.name ?? parameter),
+                      in: String(parameter?.in || 'query'),
+                      default: plainData(parameter?.default ?? null),
+                      filterType: parameter?.is_filter
+                        ? (parameter?.filter_info?.filter_type ?? null)
+                        : null,
+                    }),
+                  )
+                : [],
+            },
+          ]),
+      )
+      return [
+        key,
+        {
+          title: plainData(table?._originalTitle ?? table?.title ?? key),
+          section: table?.section ?? null,
+          group: table?._groupKey ?? null,
+          schemas: Array.isArray(table?.schemas) ? [...table.schemas] : null,
+          operations,
+        },
+      ]
+    }),
+  )
+  return {
+    tables,
+    sections: (plainData(store.masterDataSections ?? []) as unknown[]) ?? [],
+    groups: (plainData(store.masterDataGroups ?? []) as unknown[]) ?? [],
+  }
 }
 
 /** What the backend said about each DAG, as the store keeps it. None before the store exists. */
@@ -125,6 +216,7 @@ export function describeApp(): AppDescription {
       instance: plainData(fromAppConfig('getInstanceDashboardPages', [])) as unknown[],
     },
     frontendConfig: readFrontendConfig(),
+    masterData: readMasterData(),
     i18nNamespaces: readI18nNamespaces(),
   }
 }

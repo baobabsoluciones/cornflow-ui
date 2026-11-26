@@ -2,7 +2,12 @@ import { describe, test, expect, vi, beforeEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
 const { runtime, store, messages } = vi.hoisted(() => ({
-  store: { frontendConfig: null as Record<string, unknown> | null },
+  store: {
+    frontendConfig: null as Record<string, unknown> | null,
+    rawConfigurations: null as Record<string, unknown> | null,
+    masterDataSections: null as unknown[] | null,
+    masterDataGroups: null as unknown[] | null,
+  },
   messages: {
     en: { general: {}, createExecution: {}, $vuetify: {} },
     es: { general: {}, createExecution: {}, $vuetify: {}, reports: {} },
@@ -86,6 +91,9 @@ describe('describeApp', () => {
   beforeEach(() => {
     runtime.schemas = []
     store.frontendConfig = null
+    store.rawConfigurations = null
+    store.masterDataSections = null
+    store.masterDataGroups = null
     setActivePinia(undefined as any)
   })
 
@@ -113,6 +121,7 @@ describe('describeApp', () => {
       helpMenuFiles: [{ labelKey: 'helpMenu.download', publicPath: 'manual.pdf' }],
       dashboards: { solution: [], instance: [] },
       frontendConfig: null,
+      masterData: null,
       i18nNamespaces: ['$vuetify', 'createExecution', 'general', 'reports'],
     })
   })
@@ -129,6 +138,99 @@ describe('describeApp', () => {
   test('has no backend answer before the store exists', () => {
     store.frontendConfig = { executions: { planning: { list: '/executions/' } } }
     expect(describeApp().frontendConfig).toBeNull()
+  })
+
+  test('has no master tables before the app asked for them', () => {
+    setActivePinia(createPinia())
+    expect(describeApp().masterData).toBeNull()
+  })
+
+  test('gives each master table with its operations, and the sections and groups in order', () => {
+    setActivePinia(createPinia())
+    store.rawConfigurations = {
+      masterData: {
+        plants: {
+          title: 'Plants',
+          _originalTitle: { en: 'Plants', es: 'Plantas' },
+          section: 'network',
+          _groupKey: 'sites',
+          schemas: ['planning'],
+          get_list: {
+            url: '/plants/',
+            http_method: 'get',
+            response_schema: { type: 'array' },
+            parameters: [
+              {
+                name: 'limit',
+                in: 'query',
+                default: 50,
+                is_filter: true,
+                filter_info: { filter_type: 'limit' },
+              },
+              { name: 'active', default: true },
+              { name: 'id', in: 'path' },
+            ],
+          },
+          download_excel_table: { url: '/plants/excel/', http_method: 'get' },
+          icon: 'mdi-factory',
+        },
+        prices: {
+          title: 'Prices',
+          get_list: { url: '/prices/', http_method: 'get' },
+        },
+      },
+      inputData: {},
+      resultsData: {},
+    }
+    store.masterDataSections = [{ id: 'network', title: 'Network', order: 1 }]
+    store.masterDataGroups = [{ id: 'sites', title: 'Sites', order: 1 }]
+    expect(describeApp().masterData).toEqual({
+      tables: {
+        plants: {
+          title: { en: 'Plants', es: 'Plantas' },
+          section: 'network',
+          group: 'sites',
+          schemas: ['planning'],
+          operations: {
+            get_list: {
+              url: '/plants/',
+              method: 'get',
+              parameters: [
+                {
+                  name: 'limit',
+                  in: 'query',
+                  default: 50,
+                  filterType: 'limit',
+                },
+                {
+                  name: 'active',
+                  in: 'query',
+                  default: true,
+                  filterType: null,
+                },
+                { name: 'id', in: 'path', default: null, filterType: null },
+              ],
+            },
+            download_excel_table: {
+              url: '/plants/excel/',
+              method: 'get',
+              parameters: [],
+            },
+          },
+        },
+        prices: {
+          title: 'Prices',
+          section: null,
+          group: null,
+          schemas: null,
+          operations: {
+            get_list: { url: '/prices/', method: 'get', parameters: [] },
+          },
+        },
+      },
+      sections: [{ id: 'network', title: 'Network', order: 1 }],
+      groups: [{ id: 'sites', title: 'Sites', order: 1 }],
+    })
   })
 
   test('lists the first-level text keys of every language, each once', () => {

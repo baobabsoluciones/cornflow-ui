@@ -32,6 +32,41 @@ export interface Deployment {
     executions?: Record<string, Record<string, string>>
   } | null
   i18nNamespaces: string[]
+  /** The master tables of frontend automation (see `MasterData`); null until the user signs in. */
+  masterData: MasterData | null
+}
+
+/** A master table, as the app took it from frontend automation. */
+export interface MasterTable {
+  /** A text, or one per language. */
+  title: unknown
+  section: string | null
+  group: string | null
+  /** The DAGs it is for; null for every DAG. */
+  schemas: string[] | null
+  /** Each operation it allows (`get_list`, `download_excel_table`…): endpoint, method, parameters. */
+  operations: Record<
+    string,
+    { url: string; method: string; parameters: MasterParameter[] }
+  >
+}
+
+/** A parameter of an operation of a master table. */
+export interface MasterParameter {
+  name: string
+  /** Where it goes (`query`, `path`…). */
+  in: string
+  /** Its default value, which the app sends; null when it has none. */
+  default: unknown
+  /** What it filters by, for a filter (`limit`, `offset`…). */
+  filterType: string | null
+}
+
+/** The master tables of frontend automation, and the sections and groups of the menu, in order. */
+export interface MasterData {
+  tables: Record<string, MasterTable>
+  sections: { id: string; title?: unknown; order?: number }[]
+  groups: { id: string; title?: unknown; order?: number }[]
 }
 
 /** What a role of the app's `rolesConfig` cannot reach, and where it lands. */
