@@ -14,8 +14,8 @@ import { fileURLToPath } from 'node:url'
  *
  * Playwright cannot load TypeScript from node_modules, so when this factory runs from an
  * installed package it copies the suite into the app (`tests/e2e/.cornflow-core/`, gitignored,
- * rewritten on every run) and runs that copy. In core it runs the suite in place. Only `suite/`
- * is copied: the stack in `stack/` is core's own backend for developing the suite.
+ * rewritten on every run) and runs that copy. In core, or with core installed from a local copy
+ * (`npm link`, a `file:` dependency), it runs the suite in place.
  *
  * The dev server, `.env.test` and the saved sessions are always the app's, so the suite runs
  * against the app's backend, schemas and settings.
@@ -218,8 +218,8 @@ export function createCornflowE2EConfig(options = {}) {
     fullyParallel: false,
     forbidOnly: isCI,
     retries: isCI ? 2 : 1,
-    // One at a time: the tests launch executions on a real backend, and the airflow of the stack
-    // turns down some of those asked for at the same time.
+    // One at a time: the tests launch executions on a real backend, and airflow turns down some
+    // of those asked for at the same time.
     workers: 1,
     reporter: [
       ['list'],

@@ -8,7 +8,7 @@
  *   with the user's session), and downloads to Excel with them.
  *
  * Nothing is changed: master tables are reference data others use, with rules the suite does not
- * know. Where the backend has no frontend automation (core's stack), the tests are skipped.
+ * know. Where the backend has no frontend automation, the tests are skipped.
  */
 import type { Page } from '@playwright/test'
 import { test, expect } from '../../harness/fixtures'

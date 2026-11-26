@@ -10,7 +10,6 @@
   - Tests: sign in; execution history (filters, dates, deleting, downloading, relaunching); create execution (load filters, the solver, each dataset through to its result, data from Excel and CSV files, and a solution file); editing data and its review; loaded executions and their tabs; the data of an execution on screen and in Excel; the user's settings, signing out and the password; roles and permissions, and roles management; navigation, help and guided tours; several DAGs; dashboards; and master tables, read only
   - Every screen a test opens is checked for text keys shown untranslated and for errors of the app (uncaught errors, errors inside components and 5xx responses). At the end, a coverage report lists what was tested, what failed and what was not tested, with the reason, and the known core faults the run came across
   - Test ids (`data-testid`) and state attributes (`data-status`, `data-state`, `data-load-status`, `data-rows`, `data-value`…) on the screens the suite goes through: the side menu, the history, the create-execution page, data tables, dialogs, tours and help, roles management, dashboards and "not found". They change nothing the app does
-  - `tests/e2e/stack/`: a Cornflow with a small planning app to develop the suite against, checked with `npm run test:e2e:stack`. It is not published
   - `tests/e2e/README.md`: running the suite in an app, the UAT file, the modes, what it tests, the report and writing specs
   *Contributors:* [@david-hidalgo-baobab](#)  
   *Commit ID:* #

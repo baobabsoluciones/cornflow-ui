@@ -164,7 +164,7 @@ execution (`GET /execution/<id>/data/`).
 | Navigation | With a user of each role (in shared mode, the one user there is): every page of the side menu's groups that are the same for every execution opens and the menu marks it; folded, the menu shows each group, a page opens from there and a heading pins the menu open on its pages. Pinned, the menu stays open from page to page, and unpinned it folds. In a narrow window the menu opens over the page and closes from outside it, with its button or once a page is picked. The browser's back and forward go through the pages visited, and reloading stays on the page, signed in. An address that is no page shows "not found", and its button goes back to where the app starts |
 | Help | The help menu shows the version of the app and Cornflow's. The help centre gives each help file of the app (`helpMenuFiles`) in each language: the link is to the file of that language, the file is there and downloads with its name. The licences list the libraries Cornflow reports. The general tour goes back and forth with its buttons and the arrows, closes with Escape and its cross, and in each language goes over every step to the end, with its title and text, its card and what it points at on the screen, keeping the menu open meanwhile and folding it back after. The tour of each page that has one (the history, a table of a loaded execution, the create-execution page, the settings and, for an admin, roles management) goes over every step; "not found" offers none |
 | Several DAGs | Where the deployment works on several DAGs (`VITE_APP_SCHEMA` names more than one) and the user may use two of them; elsewhere skipped, with the reason. The picker of the side menu offers the DAGs the user may use, in the deployment's order, and marks the one open. Another DAG has its own executions: the history lists those of the DAG open, and an execution made on the create-execution page goes to it (with a solution where the page takes one, so nothing is solved). Switching asks first with an execution open or one being made: cancelled, nothing changes; confirmed, it switches and closes the executions open. The DAG picked is kept when the app is reloaded. The app's pages limited to some DAGs (`schemas` in `appSections`) show in the menu and open only on those |
-| Dashboards | Of a loaded execution. The automatic dashboard of each table of its input data and its results, where it is on (`enableAutoInstanceDashboard`, `enableAutoSolutionDashboard`, or `tableDashboards.<instance|solution>.<table>.showAutoDashboards` for one table): each KPI card gives the total or the average of a column of the table as the backend has it, each chart draws, and a table with figures shows one; off, the table has none. The "Dashboard" page (`showDashboardMainView`): in the results, headed by the execution's summary, and without an execution loaded it says to load one; off, the results have no such page. The app's own dashboard pages (`dashboardPages`, `instanceDashboardPages`) are in the results and the input data, and open. Not tested: the KPI tables apart (`kpiTablesDisplayMode`), which need an execution whose data comes with KPIs, and the app's own widgets (`customWidgets`) beyond showing |
+| Dashboards | Of a loaded execution. The automatic dashboard of each table of its input data and its results, where it is on (`enableAutoInstanceDashboard`, `enableAutoSolutionDashboard`, or, for one table, `showAutoDashboards` in `tableDashboards.instance.<table>` or `tableDashboards.solution.<table>`): each KPI card gives the total or the average of a column of the table as the backend has it, each chart draws, and a table with figures shows one; off, the table has none. The "Dashboard" page (`showDashboardMainView`): in the results, headed by the execution's summary, and without an execution loaded it says to load one; off, the results have no such page. The app's own dashboard pages (`dashboardPages`, `instanceDashboardPages`) are in the results and the input data, and open. Not tested: the KPI tables apart (`kpiTablesDisplayMode`), which need an execution whose data comes with KPIs, and the app's own widgets (`customWidgets`) beyond showing |
 | Master tables | Read only, where the backend has frontend automation (`/external/frontend-automation/`); elsewhere skipped, with the reason. The menu has the master tables of the DAG open in the backend's sections, in its order, with a group for the tables in no section (or one group when the backend has no sections). Each opens from the menu, shows the rows its list gives, asked for as the app asks (with the default value of each query parameter), and downloads to Excel with them; a list the app asks for a page at a time (`limit`, `offset`) is noted, not counted. Not tested: creating, editing and deleting rows, uploads and the operations on several tables, which would change reference data others use, and the app's own pages in a section (`frontendAutomationSectionSubsections`) |
 | User | The settings show who is signed in, and their role. Each language the app offers changes its texts, and the history and the create-execution page show none untranslated in it. The appearance, where `enableDarkMode` is on: light, dark, or as the system is, kept for the next visit; off, the app stays light. Signing out asks first: cancelled, the user stays; confirmed, the app asks to sign in again. In disposable mode only, the password of a user the test creates: it is saved once it meets every rule, the new one signs in and the old one no longer does |
 | Loaded executions | Loads an execution from its history row, its history detail and the latest executions of the side menu: a tab opens, selected, and the menu shows it. Its input data and results open headed by its summary. Switches between two tabs, deselects with a second click, and closing the selected one on its data goes back to the history |
@@ -272,34 +272,26 @@ Rules that keep a spec working on every app:
 
 ## Developing the suite in core
 
-Core runs the suite against a Cornflow of its own: `stack/`, with cornflow, airflow and a small
-planning app, `e2e_planning`, made to give each case of the UAT file.
+Core has no backend or DAGs of its own: the suite is checked against the deployment of an app,
+as the apps run it. Against an environment others use, always in `shared` mode.
 
-```bash
-docker compose -f tests/e2e/stack/docker-compose.yml up -d --wait
-npm run test:e2e:stack   # checks that every case of e2e_planning ends as it should
-npm run test:e2e         # the suite, against the stack
-docker compose -f tests/e2e/stack/docker-compose.yml down -v
-```
+**From the app (the usual way).** Install core in the app from your copy, so the app runs the
+suite you are changing: `npm link` in core and `npm link @cornflow-ui/core` in the app, or a
+`file:` dependency. Installed that way, the factory runs the suite in place from your copy, with
+no `.cornflow-core/` mirror, and the app's own configuration, UAT file and `.env.test`. Run it
+from the app as usual.
 
-- `tests/e2e/uat.json` is core's UAT file, in `disposable` mode, with the datasets of the stack.
-- `npm run test:e2e` starts core on port 3060 with the stack's settings, whatever the root
-  `.env` says.
-- The stack needs a while after `up` before airflow takes executions.
-- Airflow 2 sometimes turns a launch down ("Airflow is not accessible"), and it turns down
-  launches asked at the same time. The suite runs one test at a time, and retries a test that
-  fails: once locally, twice in CI.
+**From core.** `npm run test:e2e` starts core on port 3060 and runs the suite against the backend
+the root `.env` points at (`VITE_APP_BACKEND_URL`, `VITE_APP_SCHEMA`…). It needs an app's UAT file
+and its user in `tests/e2e/.env.test` (`E2E_UAT_FILE`, `E2E_USER`, `E2E_PASSWORD`). Core is not
+that app: it shows core's own configuration, not the app's, so this is for checking the suite
+itself, not the app. Core's `.gitignore` keeps `tests/e2e/uat*.json` and `tests/e2e/data/` out of
+the repository: they hold the app's data.
 
-The stack has one DAG, so the tests of several DAGs (`specs/schemas/`) are skipped there. To
-check them, register a second DAG for the while, through Cornflow's API, with no airflow code:
-
-1. Signed in as the stack's service user, read `e2e_planning` from `GET /dag/deployed/` and post
-   it again with another `id` (`e2e_planning_b`) to `POST /dag/deployed/`.
-2. Give the suite a UAT file with that DAG too (a copy of `e2e_planning`'s entry, its paths
-   absolute) in `E2E_UAT_FILE`, and run it with `VITE_APP_SCHEMA=e2e_planning,e2e_planning_b`.
-   That DAG cannot solve (airflow does not have it): the tests make its executions without
-   solving them.
-3. `down -v` removes it with the rest of the stack.
+- Airflow sometimes turns a launch down ("Airflow is not accessible"), and it turns down launches
+  asked at the same time. The suite runs one test at a time, and retries a test that fails: once
+  locally, twice in CI.
+- The tests of several DAGs (`specs/schemas/`) need a deployment that works on more than one.
 
 `npm run test:e2e:headed`, `test:e2e:ui` and `test:e2e:debug` run the suite with a browser, in UI
 mode and in Playwright's inspector.
