@@ -296,7 +296,7 @@ const createAppConfig = () => ({
       /**
        * Where the executions list is requested, e.g. `{ path: '/executions/', isExternal: true }`
        * for a backend that filters it by the executions history filters. `null` means Cornflow's
-       * `GET /execution/`. The `list` the backend declares for a DAG in
+       * `GET /execution/`. The `get_list` the backend declares for a DAG in
        * `GET /external/frontend-config/` comes first. See README "Execution endpoints".
        */
       executionsListEndpoint: null as ExecutionsListEndpoint | null,
@@ -431,9 +431,10 @@ const createAppConfig = () => ({
 
       /**
        * The "create execution" screen. See docs/create-execution-flows.md.
-       * - `component`: the app's own flow instead of core's page, e.g.
-       *   `() => import('@/app/views/MyCreateExecutionView.vue')`. It is built with
-       *   `useExecutionDraft` and the create-execution blocks, so it keeps every call to the backend.
+       * - `component`: the app's own flow instead of core's page, as a lazy import, e.g.
+       *   `() => import('@/app/views/MyCreateExecutionView.vue')`. A DAG sets a flow of its own in
+       *   `schemaOverrides.<dag>.parameters.createExecution.component`, which takes precedence over
+       *   this one; with neither, the DAG gets core's page.
        * - `proposeName`: the rule that names the execution when its data is loaded; by default the
        *   first file's name, or "Data of <date>", followed by the load filters.
        */

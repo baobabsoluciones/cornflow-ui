@@ -229,7 +229,7 @@ are independent of each other. With several DAGs, the table is asked for the row
 and a DAG switch asks them again.
 
 **Executions list.** Cornflow's `GET /execution/` ignores query parameters it does not know, so the
-picked values only filter the list when it comes from an endpoint that does: the `list` the backend
+picked values only filter the list when it comes from an endpoint that does: the `get_list` the backend
 declares for the DAG (see [Execution endpoints](#execution-endpoints-optional)) or, for every DAG,
 `executionsListEndpoint`. That endpoint receives the same query parameters as `GET /execution/` plus
 the picked values (the row `id`s), and returns the same shape.
@@ -240,8 +240,8 @@ executions list have to leave out what the user may not use.
 ### Execution endpoints (optional)
 
 By default every execution is read from Cornflow. A backend that serves the executions of a DAG its
-own way (grouped, filtered by its own data, narrowed to what each user may see) declares, per DAG,
-which of its endpoints the core reads them from instead. They come in the `executions` section of
+own way (grouped, filtered by its own data, narrowed to what each user may see) declares, per DAG
+and per operation, which of its endpoints the core uses instead. They come in the `executions` section of
 `GET /external/frontend-config/`, the same answer that carries the
 [load filters](#load-filters-get-externalfrontend-config):
 
@@ -249,31 +249,41 @@ which of its endpoints the core reads them from instead. They come in the `execu
 {
   "etl": { "...": "..." },
   "executions": {
-    "dag_a": { "list": "/executions/" },
+    "dag_a": { "get_list": "/executions/" },
     "dag_b": {
-      "list": "/executions/",
-      "details": "/executions/{id}/",
-      "data": "/executions/{id}/data/",
-      "instance_data": "/instances/{id}/data/"
+      "get_list": "/executions/",
+      "get_detail": "/executions/{id}/",
+      "get_data": "/executions/{id}/data/"
+    },
+    "dag_c": {
+      "get_list": "/executions/",
+      "get_detail": "/executions/{id}/",
+      "put_detail": "/executions/{id}/",
+      "delete_detail": "/executions/{id}/",
+      "get_data": "/executions/{id}/data/",
+      "get_instance_data": "/instances/{id}/data/"
     }
   }
 }
 ```
 
-`dag_a` lists its history from the backend and reads everything else from Cornflow. `dag_b` reads
-everything from the backend. Any other DAG reads everything from Cornflow.
+`dag_a` lists its history from the backend and does everything else through Cornflow. `dag_b`
+reads its executions from the backend, and uploads solutions, deletes executions and reads
+instances through Cornflow. `dag_c` does everything through the backend. Any other DAG does
+everything through Cornflow.
 
 **The request.** `GET /external/frontend-config/` is asked once after the login, with the user's
 token, when the app has an external backend ([hasExternalApp](#hasexternalapp)). One answer covers
 every DAG. Without an external backend, or with a 404 or any other error, every execution is read
 from Cornflow.
 
-**Where each read goes.** Each read of an execution of a DAG goes to the first source that has it:
+**Where each operation goes.** Each operation on the executions of a DAG goes to the first source
+that has it:
 
 | Order | Source                                                                   | Covers                                                                              |
 | ----- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
-| 1     | `executions.<DAG>.<key>` of the frontend config, always under `/external` | `list`, `details`, `data`, `instance_data`                                          |
-| 2     | `executionsListEndpoint` of the app config                               | `list` only                                                                         |
+| 1     | `executions.<DAG>.<key>` of the frontend config, always under `/external` | Every key                                                                           |
+| 2     | `executionsListEndpoint` of the app config                               | `get_list` only                                                                     |
 | 3     | Cornflow                                                                 | `/execution/`, `/execution/{id}/`, `/execution/{id}/data/`, `/instance/{id}/data/` |
 
 The list is resolved for the DAG it lists; the other keys for the active DAG. A DAG switch closes
@@ -281,31 +291,38 @@ the loaded executions, so an execution is never read with the endpoints of anoth
 
 **The keys.**
 
-| Key             | Requests                                                                                                                                         | `{id}`                                         | What the core uses it for                                                                                                                                  |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `list`          | `GET` with the query of `GET /execution/` (`schema`, `limit`, `creation_date_gte`, `creation_date_lte`) plus the picked [history filters](#execution-history-filters-optional) | -                                              | The history and the latest executions                                                                                                                      |
-| `details`       | `GET`, `PUT` with `{ data }`, `DELETE`                                                                                                           | The execution                                  | The state of a running execution while it is polled, who launched a loaded execution and when it finished, the DAG of an execution, an uploaded solution, a deletion from the history |
-| `data`          | `GET`                                                                                                                                            | The execution                                  | Loading an execution (from the history, once created, the data checks while they run) and building its Excel download                                      |
-| `instance_data` | `GET`                                                                                                                                            | The instance: the `instance_id` that `data` returns | The instance of a loaded or downloaded execution                                                                                                       |
+Each key is one operation, named as the method of the request and what it acts on. Two keys may
+declare the same route.
+
+| Key                 | Request                                                                                                                                          | `{id}`                                              | Cornflow's            | What the core uses it for                                                                                                     |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `get_list`          | `GET` with the query of `GET /execution/` (`schema`, `limit`, `creation_date_gte`, `creation_date_lte`) plus the picked [history filters](#execution-history-filters-optional) | -                                                   | `/execution/`         | The history and the latest executions                                                                                         |
+| `get_detail`        | `GET`                                                                                                                                            | The execution                                       | `/execution/{id}/`    | The state of a running execution while it is polled, who launched a loaded execution and when it finished, the DAG of an execution |
+| `put_detail`        | `PUT` with `{ data }`                                                                                                                            | The execution                                       | `/execution/{id}/`    | An uploaded solution                                                                                                          |
+| `delete_detail`     | `DELETE`                                                                                                                                         | The execution                                       | `/execution/{id}/`    | A deletion from the history                                                                                                   |
+| `get_data`          | `GET`                                                                                                                                            | The execution                                       | `/execution/{id}/data/` | Loading an execution (from the history, once created, the data checks while they run) and building its Excel download        |
+| `get_instance_data` | `GET`                                                                                                                                            | The instance: the `instance_id` that `get_data` returns | `/instance/{id}/data/` | The instance of a loaded or downloaded execution                                                                             |
 
 - A route is a path relative to `/external` that starts with `/`. `{id}` is replaced by the id, URL
-  encoded; every key but `list` needs it.
+  encoded; every key but `get_list` needs it.
 - A route that is not usable (not a path, or without `{id}` where the id goes) is ignored with a
   warning in the console, and the read goes to the next source.
 - The endpoints of a DAG serve **every** execution of that DAG, also the ones the core creates by
-  itself: the data checks of an instance (read through `data` and `details` while they run) and the
+  itself: the data checks of an instance (read through `get_data` and `get_detail` while they run) and the
   historical KPIs. An endpoint that serves executions of its own, such as groups of executions,
   answers for a plain execution as Cornflow does.
 - The backend decides what each user may see, as in the executions list.
 
 **What the core reads from each answer.** The shape is Cornflow's:
 
-| Key             | Fields                                                                                                                                                                                  |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `list`          | A list. Of each item: `id`, `name`, `description`, `created_at`, `updated_at`, `state`, `message`, `config`, `log`, `indicators`, `data_hash`, `schema`, `instance_id`, `user_id`, `username`, `first_name`, `last_name` |
-| `details`       | `id`, `schema`, `state`, `updated_at`, `username`, `first_name`, `last_name`                                                                                                           |
-| `data`          | `id`, `instance_id` (required: the instance is read with it), `data`, `checks`, `name`, `description`, `created_at`, `state`, `message`, `log`, `config` and, with `enableKpisResponseMerge`, `kpis` |
-| `instance_data` | `id`, `data`, `checks`                                                                                                                                                                  |
+| Key                 | Fields                                                                                                                                                                                  |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get_list`          | A list. Of each item: `id`, `name`, `description`, `created_at`, `updated_at`, `state`, `message`, `config`, `log`, `indicators`, `data_hash`, `schema`, `instance_id`, `user_id`, `username`, `first_name`, `last_name` |
+| `get_detail`        | `id`, `schema`, `state`, `updated_at`, `username`, `first_name`, `last_name`                                                                                                           |
+| `put_detail`        | A 2xx status; the body is not read                                                                                                                                                      |
+| `delete_detail`     | A 200 status                                                                                                                                                                            |
+| `get_data`          | `id`, `instance_id` (required: the instance is read with it), `data`, `checks`, `name`, `description`, `created_at`, `state`, `message`, `log`, `config` and, with `enableKpisResponseMerge`, `kpis` |
+| `get_instance_data` | `id`, `data`, `checks`                                                                                                                                                                  |
 
 **What is always Cornflow's.** Creating instances and executions, launching data checks
 (`POST /data-check/...`), the instance the create flow has just stored and checks
@@ -329,7 +346,10 @@ can declare its own filters, or none, in `schemaOverrides` (see [Several DAGs in
   [docs/create-execution-flows.md](docs/create-execution-flows.md)):
   - **Core's page** (default): one page, the data card on the left and the launch panel on the
     right.
-  - **The app's own** (`component`), built with the same logic (`useExecutionDraft`) and blocks.
+  - **The app's own** (`component`), on every DAG: built with the same logic
+    (`useExecutionDraft`) and blocks, or creating its executions through the app's backend.
+  - **A DAG's own** (`component` in the DAG's entry of `schemaOverrides`), which takes precedence
+    over the app's on that DAG.
 - **Features**:
   - Data from one or several files, or from the database through the ETL (files replace the
     tables with the same name)
@@ -346,8 +366,8 @@ can declare its own filters, or none, in `schemaOverrides` (see [Several DAGs in
   - What is still missing to launch, each item taking the user to it
   - A proposed name, the launched execution followed live, a draft kept when leaving half done,
     and relaunching an execution with changes
-- **Location**: `CreateExecutionView.vue`, `components/create-execution/`,
-  `composables/create-execution/`
+- **Location**: `CreateExecutionFlowView.vue` (the route), `CreateExecutionView.vue`,
+  `components/create-execution/`, `composables/create-execution/`
 - **Configuration**: `createExecution`, `executionSolvers`, `solverConfig`, `configFieldsConfig`,
   `configFields`, `etl`, `enableBlockAdvanceOnCheckErrors` and `isDeveloperMode` in
   `src/app/config.ts` - see [Create execution configuration](#create-execution-configuration)
@@ -1035,6 +1055,7 @@ core: {
         enableRecalculationOnMasterEdit: false,
         etl: { useEtlBackend: true },
         defaultView: 'project-execution',
+        createExecution: { component: () => import('@/app/views/StockLauncherView.vue') },
       },
       dashboardLayout: [ /* the custom dashboards of this DAG */ ],
     },
@@ -1046,6 +1067,10 @@ core: {
   key by key (`etl: { useEtlBackend: true }` keeps the rest of `etl`); arrays and any other value
   replace the app's. A DAG without an entry works with the app's `parameters`.
 - `dashboardLayout` and `instanceDashboardLayout` replace the app's layouts on that DAG.
+- `createExecution.component` gives the DAG a create-execution flow of its own; the other DAGs keep
+  the app's flow, or core's page (see
+  [docs/create-execution-flows.md](docs/create-execution-flows.md)). Switching DAG mounts the flow
+  of the new DAG.
 - `valuesJsonPath`, `schemaLabels`, `enableRolesManagement`, `allowEditRoles`,
   `showOpenIdUsername` and `enableDarkMode` apply to the whole application: a DAG entry cannot set
   them. A key the app's
@@ -1326,7 +1351,7 @@ This file contains **internal application-specific configuration** that is part 
 | `instanceFileFormats`         | `string[]` | File extensions the instance upload accepts. Empty or absent means the default (`json`, `xlsx`, `csv`). |
 | `executionFilters`            | `ExecutionFilter[]` | Filters of the execution history, fed by frontend-automation tables. Empty means date filters only. See [Execution history filters](#execution-history-filters-optional) |
 | `executionSummary`            | `ExecutionSummaryResolver` \| `null` | The app's own summary of the loaded execution; `null` means the core's. See [Execution summary](#execution-summary) |
-| `executionsListEndpoint`      | `{ path, isExternal }` \| `null` | Endpoint of the executions list; `null` means Cornflow's `GET /execution/`. The `list` the backend declares for a DAG comes first (see [Execution endpoints](#execution-endpoints-optional)) |
+| `executionsListEndpoint`      | `{ path, isExternal }` \| `null` | Endpoint of the executions list; `null` means Cornflow's `GET /execution/`. The `get_list` the backend declares for a DAG comes first (see [Execution endpoints](#execution-endpoints-optional)) |
 | `schemaLabels`                | `Record<string, string>` | Text of each DAG in the module selector, by DAG name. See [Several DAGs](#several-dags-in-one-application) |
 | `login`                       | `{ layout, subtitle, description }` | Sign-in page: `layout` is `'photo'` (default) or `'brand'`. See [Sign-in page](#sign-in-page) |
 
@@ -2005,7 +2030,9 @@ The system automatically detects files that match the configured prefixes and pr
 #### Flow: createExecution
 
 - `component` (lazy component, optional): the app's own flow instead of core's page, e.g.
-  `() => import('@/app/views/MyCreateExecutionView.vue')`.
+  `() => import('@/app/views/MyCreateExecutionView.vue')`. A DAG gets a flow of its own with
+  `createExecution.component` in its entry of `schemaOverrides`, which takes precedence over this
+  one on that DAG (see [Settings per DAG](#several-dags-in-one-application)).
 - `proposeName` (function, optional): how the execution is named when its data is loaded; by
   default the first file's name, or "Data of <date>", followed by the load filters.
 
