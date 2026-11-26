@@ -227,15 +227,23 @@ export function useRolesManagement() {
     }
   }
 
-  /** Unlocks an account locked after too many failed sign-in attempts (platform admins only). */
+  /**
+   * Unlocks an account locked after too many failed sign-in attempts. Cornflow leaves some accounts,
+   * or all of them depending on its security level, to platform administrators, and that refusal
+   * has its own message.
+   */
   async function unlockUser(user: UserRow): Promise<boolean> {
     try {
       if (!(await store.userRepository.unlockUser(user.id))) throw new Error('Not unlocked')
       user.locked = false
       showSnackbar?.(t('rolesManagement.userUnlocked'), 'success')
       return true
-    } catch {
-      showSnackbar?.(t('rolesManagement.errorUnlockUser'), 'error')
+    } catch (error) {
+      const platformOnly = (error as Error)?.message === PLATFORM_ADMIN_REQUIRED
+      showSnackbar?.(
+        t(platformOnly ? 'rolesManagement.errorUnlockPlatformAdmin' : 'rolesManagement.errorUnlockUser'),
+        'error',
+      )
       return false
     }
   }

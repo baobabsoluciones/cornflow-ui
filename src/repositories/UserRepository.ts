@@ -1,5 +1,6 @@
 import client from '@cornflow-ui/core/api/Api'
 import { User } from '@cornflow-ui/core/models/User'
+import { PLATFORM_ADMIN_REQUIRED } from '@cornflow-ui/core/utils/platformRoles'
 
 export interface RawUser {
   id: number
@@ -78,7 +79,11 @@ export default class UserRepository {
     return new Promise((resolve, reject) => {
       client
         .put(`/user/${userId}/unlock/`, {})
-        .then((response) => resolve(response.status === 200))
+        .then((response) => {
+          // Cornflow leaves the account to a platform administrator.
+          if (response.status === 403) reject(new Error(PLATFORM_ADMIN_REQUIRED))
+          else resolve(response.status === 200)
+        })
         .catch(reject)
     })
   }

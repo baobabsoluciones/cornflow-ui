@@ -1320,6 +1320,7 @@ export default {
     unlockConfirm: 'A conta de {username} será desbloqueada e as tentativas falhadas voltarão a contar a partir de zero.',
     userUnlocked: 'A conta foi desbloqueada.',
     errorUnlockUser: 'Não foi possível desbloquear a conta.',
+    errorUnlockPlatformAdmin: 'Nesta implementação só um administrador da plataforma pode desbloquear esta conta.',
     resetMfa: 'Repor a autenticação de dois fatores',
     resetMfaConfirm: 'A aplicação de autenticação e os códigos de recuperação de {username} deixarão de funcionar, e as suas sessões serão fechadas. Se a aplicação a exigir, voltará a configurá-la ao entrar.',
     mfaReset: 'A autenticação de dois fatores foi reposta.',
@@ -1327,7 +1328,7 @@ export default {
     platformRoleTotpLabel: 'O seu código de autenticação',
     platformRoleTotpHint: 'Conceder uma função de plataforma pede um código da sua aplicação de autenticação, ou um dos seus códigos de recuperação.',
     errorPlatformRoleTotp: 'Conceder uma função de plataforma exige um código de autenticação válido.',
-    platformAdminRequired: 'Nesta implementação só os administradores da plataforma gerem as funções.',
+    platformAdminRequired: 'Nesta implementação só os administradores da plataforma gerem as funções. Os utilizadores continuam aqui para desbloquear contas e repor a autenticação de dois fatores quando a implementação o permite.',
   },
   externalEtl: {
     switch: {

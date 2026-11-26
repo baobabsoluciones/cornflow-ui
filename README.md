@@ -129,14 +129,17 @@ On a Cornflow server with the security hardening:
 - **Platform roles** (`platform_viewer`, `platform_planner`, `platform_admin`) belong to the staff
   that runs the deployment. A platform administrator is an administrator too, with platform-only
   actions on top (`store.isPlatformAdmin`).
-- The server keeps the list of roles to platform administrators: anyone else opening the page is
-  told so, in place of the panels. A server without platform roles keeps the page for every
-  administrator.
+- From security level 2 the server keeps the list of roles to platform administrators. Anyone else
+  opening the page is told so, and keeps the users without the roles panel or the edit button
+  (editing a user means picking among the roles), to unlock accounts and reset two-factor
+  authentication. A server without platform roles keeps the whole page for every administrator.
 - Granting a platform role the user does not have yet asks an administrator who has two-factor
   authentication for a code of their authenticator app.
-- A locked account (too many failed sign-in attempts) shows so in its row, and a platform
-  administrator can unlock it there. Any administrator can reset a user's two-factor
-  authentication, for a changed or lost phone. Both ask for a confirmation first.
+- A locked account (too many failed sign-in attempts) shows so in its row, which can unlock it.
+  The server decides who may: a client administrator at security levels 1 and 2, except for users
+  with platform roles, and only a platform administrator at level 3; a refusal says so. Any
+  administrator can reset a user's two-factor authentication, for a changed or lost phone. Both
+  ask for a confirmation first.
 
 ## Help menu and guided tours
 

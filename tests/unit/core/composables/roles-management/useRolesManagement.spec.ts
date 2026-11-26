@@ -246,6 +246,16 @@ describe('useRolesManagement - unlock and two-factor reset', () => {
     expect(snackbar).toHaveBeenCalledWith('rolesManagement.errorUnlockUser', 'error')
   })
 
+  test('an account cornflow leaves to a platform administrator says so', async () => {
+    userRepo.unlockUser.mockRejectedValueOnce(new Error('platform_admin_required'))
+    const rm = useRolesManagement()
+    const user: any = { id: 3, locked: true }
+
+    expect(await rm.unlockUser(user)).toBe(false)
+    expect(user.locked).toBe(true)
+    expect(snackbar).toHaveBeenCalledWith('rolesManagement.errorUnlockPlatformAdmin', 'error')
+  })
+
   test('resetting two-factor authentication marks the row without it', async () => {
     userRepo.resetMfa.mockResolvedValueOnce(true)
     const rm = useRolesManagement()

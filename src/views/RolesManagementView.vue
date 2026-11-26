@@ -3,10 +3,11 @@
 
   - Roles: pick one to see its permissions and filter the users by it; with `allowEditRoles`, add,
     rename and delete roles.
-  - Users: search them and edit a user's name, e-mail and roles; reset a user's two-factor
-    authentication and, for platform administrators, unlock a locked account. Granting a platform
-    role asks for the administrator's two-factor code when they have it.
-  - On a Cornflow that keeps its roles to platform administrators, anyone else is told so.
+  - Users: search them and edit a user's name, e-mail and roles; unlock a locked account and reset
+    a user's two-factor authentication, as far as Cornflow allows. Granting a platform role asks for
+    the administrator's two-factor code when they have it.
+  - On a Cornflow that keeps its roles to platform administrators, anyone else is told so and keeps
+    the users, without editing them.
 -->
 <template>
   <div class="view-container">
@@ -24,8 +25,9 @@
       data-testid="roles-platform-admin-required"
     />
 
-    <div v-else class="roles-layout">
+    <div class="roles-layout" :class="{ 'roles-layout--users-only': rolesForbidden }">
       <RolesPanel
+        v-if="!rolesForbidden"
         data-tour="roles-roles"
         :roles="roles"
         :selected-role-id="selectedRoleId"
@@ -45,7 +47,7 @@
         :selected-role="selectedRole"
         :search="usersSearch"
         :loading="loadingUsers"
-        :can-unlock="isPlatformAdmin"
+        :can-edit-users="!rolesForbidden"
         @update:search="usersSearch = $event"
         @clear-filter="selectRole(null)"
         @edit="openUserEdit"
@@ -135,7 +137,6 @@ const {
 } = useRolesManagement()
 
 const store = useGeneralStore()
-const isPlatformAdmin = computed(() => store.isPlatformAdmin)
 /** Cornflow asks an administrator with two-factor authentication for a code to grant a platform role. */
 const askTotp = computed(() => !!store.getUser?.mfaEnabled)
 
@@ -271,6 +272,10 @@ onMounted(async () => {
   align-items: start;
   gap: calc(var(--spacing) * 5);
   margin-top: calc(var(--spacing) * 4);
+}
+
+.roles-layout--users-only {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 @media (max-width: 960px) {

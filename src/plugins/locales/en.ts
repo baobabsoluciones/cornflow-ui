@@ -1330,6 +1330,7 @@ export default {
     unlockConfirm: '{username}\'s account will be unlocked and its failed attempts counted from zero.',
     userUnlocked: 'The account has been unlocked.',
     errorUnlockUser: 'The account could not be unlocked.',
+    errorUnlockPlatformAdmin: 'On this deployment only a platform administrator can unlock this account.',
     resetMfa: 'Reset two-factor authentication',
     resetMfaConfirm: '{username}\'s authenticator app and backup codes will stop working, and their sessions will close. When the app requires it, they set it up again at their next sign-in.',
     mfaReset: 'Two-factor authentication has been reset.',
@@ -1337,7 +1338,7 @@ export default {
     platformRoleTotpLabel: 'Your authentication code',
     platformRoleTotpHint: 'Granting a platform role asks for a code from your authenticator app, or one of your backup codes.',
     errorPlatformRoleTotp: 'Granting a platform role needs a valid authentication code.',
-    platformAdminRequired: 'On this deployment only platform administrators manage roles.',
+    platformAdminRequired: 'On this deployment only platform administrators manage roles. The users are still listed, to unlock accounts and reset two-factor authentication where the deployment allows it.',
   },
   externalEtl: {
     switch: {

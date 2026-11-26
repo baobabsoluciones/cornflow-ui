@@ -29,7 +29,6 @@ const { rm, coreParams } = vi.hoisted(() => ({
 }))
 
 const storeState = vi.hoisted(() => ({
-  isPlatformAdmin: false,
   getUser: { mfaEnabled: false } as { mfaEnabled: boolean },
 }))
 vi.mock('@cornflow-ui/core/stores/general', () => ({ useGeneralStore: () => storeState }))
@@ -66,7 +65,7 @@ const { stubChild } = vi.hoisted(() => ({
       'icon',
       'title',
       'description',
-      'canUnlock',
+      'canEditUsers',
       'askTotp',
       'message',
       'confirmText',
@@ -110,7 +109,6 @@ describe('RolesManagementView', () => {
     ]
     rm.users.value = [{ id: 1, username: 'jdoe', role_names: ['admin'] }]
     rm.rolesForbidden = ref(false)
-    storeState.isPlatformAdmin = false
     storeState.getUser = { mfaEnabled: false }
   })
 
@@ -305,23 +303,21 @@ describe('RolesManagementView', () => {
     })
   })
   describe('platform roles', () => {
-    test('a deployment that keeps its roles to platform administrators says so instead of the panels', async () => {
+    test('a deployment that keeps its roles to platform administrators says so and keeps the users, without editing them', async () => {
       rm.rolesForbidden.value = true
       wrapper = createWrapper()
       await nextTick()
       expect(wrapper.find('[data-testid="roles-platform-admin-required"]').exists()).toBe(true)
       expect(wrapper.find('[data-testid="RolesPanel"]').exists()).toBe(false)
-      expect(wrapper.find('[data-testid="UsersPanel"]').exists()).toBe(false)
+      const panel = wrapper.findComponent({ name: 'UsersPanel' })
+      expect(panel.exists()).toBe(true)
+      expect(panel.props('canEditUsers')).toBe(false)
     })
 
-    test('only a platform administrator can unlock accounts', async () => {
+    test('with the roles shown, the users can be edited', () => {
       wrapper = createWrapper()
-      expect(wrapper.findComponent({ name: 'UsersPanel' }).props('canUnlock')).toBe(false)
-      wrapper.unmount()
-
-      storeState.isPlatformAdmin = true
-      wrapper = createWrapper()
-      expect(wrapper.findComponent({ name: 'UsersPanel' }).props('canUnlock')).toBe(true)
+      expect(wrapper.find('[data-testid="roles-platform-admin-required"]').exists()).toBe(false)
+      expect(wrapper.findComponent({ name: 'UsersPanel' }).props('canEditUsers')).toBe(true)
     })
 
     test('unlocking and resetting two-factor run once confirmed', async () => {

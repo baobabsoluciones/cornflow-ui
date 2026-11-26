@@ -1175,6 +1175,7 @@ export default {
     unlockConfirm: 'Le compte de {username} sera débloqué et ses tentatives échouées recomptées depuis zéro.',
     userUnlocked: 'Le compte a été débloqué.',
     errorUnlockUser: 'Le compte n\'a pas pu être débloqué.',
+    errorUnlockPlatformAdmin: 'Sur ce déploiement, seul un administrateur de la plateforme peut débloquer ce compte.',
     resetMfa: 'Réinitialiser l\'authentification à deux facteurs',
     resetMfaConfirm: 'L\'application d\'authentification et les codes de secours de {username} cesseront de fonctionner, et ses sessions se fermeront. Si l\'application l\'exige, il la configurera à nouveau à la prochaine connexion.',
     mfaReset: 'L\'authentification à deux facteurs a été réinitialisée.',
@@ -1182,7 +1183,7 @@ export default {
     platformRoleTotpLabel: 'Votre code d\'authentification',
     platformRoleTotpHint: 'Accorder un rôle de plateforme demande un code de votre application d\'authentification, ou l\'un de vos codes de secours.',
     errorPlatformRoleTotp: 'Accorder un rôle de plateforme nécessite un code d\'authentification valide.',
-    platformAdminRequired: 'Sur ce déploiement, seuls les administrateurs de la plateforme gèrent les rôles.',
+    platformAdminRequired: 'Sur ce déploiement, seuls les administrateurs de la plateforme gèrent les rôles. Les utilisateurs restent listés, pour débloquer des comptes et réinitialiser l\'authentification à deux facteurs quand le déploiement le permet.',
   },
   externalEtl: {
     switch: {

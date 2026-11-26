@@ -6,10 +6,12 @@
     in the RolesPanel shows as a filter that can be cleared.
   - The table sorts by user or e-mail from its headers and scrolls inside past the window height.
     While loading with no users yet it shows placeholder rows.
-  - A locked account (too many failed sign-in attempts) says so; with `canUnlock` (platform
-    administrators) its row can unlock it. A user with two-factor authentication can have it reset.
+  - A locked account (too many failed sign-in attempts) says so, and its row can unlock it; Cornflow
+    decides who may. A user with two-factor authentication can have it reset.
+  - Without `canEditUsers` (when Cornflow does not show the roles to the user) the rows have no
+    edit button, since editing a user means picking among the roles.
 
-  <UsersPanel :users="users" :selected-role="role" v-model:search="search" :can-unlock="isPlatformAdmin"
+  <UsersPanel :users="users" :selected-role="role" v-model:search="search" :can-edit-users="!rolesForbidden"
     @clear-filter="clearRole" @edit="openUser" @unlock="unlock" @reset-mfa="resetMfa" />
 -->
 <template>
@@ -126,7 +128,7 @@
             </td>
             <td class="users-table__actions">
               <CoreButton
-                v-if="user.locked && canUnlock"
+                v-if="user.locked"
                 variant="icon"
                 size="small"
                 icon="mdi-lock-open-variant-outline"
@@ -146,6 +148,7 @@
                 @click="$emit('reset-mfa', user)"
               />
               <CoreButton
+                v-if="canEditUsers"
                 variant="icon"
                 size="small"
                 icon="mdi-pencil-outline"
@@ -190,13 +193,13 @@ interface Props {
   selectedRole: Role | null
   search: string
   loading?: boolean
-  /** Locked accounts can be unlocked (platform administrators only). */
-  canUnlock?: boolean
+  /** The rows can be edited: name, e-mail and roles. */
+  canEditUsers?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   loading: false,
-  canUnlock: false,
+  canEditUsers: true,
 })
 
 defineEmits<{

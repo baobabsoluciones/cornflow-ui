@@ -254,15 +254,24 @@ describe('UsersPanel', () => {
       expect(wrapper.findAll('[data-testid="user-locked"]')).toHaveLength(1)
     })
 
-    test('only with canUnlock can a locked account be unlocked', async () => {
+    test('a locked account can be unlocked', async () => {
       const locked = user({ locked: true })
-      wrapper = createWrapper({ users: [locked] })
-      expect(wrapper.find('[data-testid="user-unlock"]').exists()).toBe(false)
-      wrapper.unmount()
-
-      wrapper = createWrapper({ users: [locked], canUnlock: true })
+      wrapper = createWrapper({ users: [locked, user({ id: 2, username: 'b' })] })
+      expect(wrapper.findAll('[data-testid="user-unlock"]')).toHaveLength(1)
       await wrapper.find('[data-testid="user-unlock"]').trigger('click')
       expect(wrapper.emitted('unlock')![0]).toEqual([locked])
+    })
+
+    test('without canEditUsers the rows have no edit button, and keep the other actions', () => {
+      const rows = [user({ locked: true, mfaEnabled: true })]
+      wrapper = createWrapper({ users: rows })
+      expect(wrapper.find('.users-table__edit').exists()).toBe(true)
+      wrapper.unmount()
+
+      wrapper = createWrapper({ users: rows, canEditUsers: false })
+      expect(wrapper.find('.users-table__edit').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="user-unlock"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="user-reset-mfa"]').exists()).toBe(true)
     })
 
     test('a user with two-factor authentication can have it reset', async () => {
