@@ -485,7 +485,9 @@ export class CornflowApi {
    * Cornflow gives every new user its default role, which is taken away when it is not `roleId`.
    */
   async createUser(args: { roleId: number; label: string }): Promise<TestUser> {
-    const username = this.username(args.label)
+    // A few random characters at the end: a test or set-up retried makes its user again, while the
+    // one of the attempt that failed is still there until the clean-up.
+    const username = `${this.username(args.label)}_${Math.random().toString(36).slice(2, 6)}`
     const password = newPassword()
     const { id } = await this.request<{ id: number }>('POST', '/signup/', {
       username,
@@ -531,7 +533,8 @@ export class CornflowApi {
    * remembers it: the executions and instances named `[e2e] <run id> …`, and the users and the
    * roles named `e2e_<run id>_…`. It is how a run cleans up at the end, after tests that may have
    * stopped half-way. Users and roles are only changed by an admin; for anyone else there are none
-   * to delete.
+   * to delete. One that cannot be deleted does not stop the rest: they are all tried, and then it
+   * throws listing those left.
    */
   async sweepRun(): Promise<{
     executions: number
@@ -543,16 +546,30 @@ export class CornflowApi {
     const userPrefix = this.username('')
     const named = (items: { id: string; name?: string }[]) =>
       items.filter((item) => item.name?.startsWith(namePrefix))
+    const failures: string[] = []
+    const remove = async (
+      what: string,
+      id: string | number,
+      deleting: () => Promise<unknown>,
+    ) => {
+      try {
+        await deleting()
+      } catch (error) {
+        failures.push(`${what} ${id}: ${(error as Error).message}`)
+      }
+    }
 
     const executions = named(
       await this.request<{ id: string; name?: string }[]>('GET', '/execution/'),
     )
-    for (const { id } of executions) await this.deleteExecution(id)
+    for (const { id } of executions)
+      await remove('execution', id, () => this.deleteExecution(id))
 
     const instances = named(
       await this.request<{ id: string; name?: string }[]>('GET', '/instance/'),
     )
-    for (const { id } of instances) await this.deleteInstance(id)
+    for (const { id } of instances)
+      await remove('instance', id, () => this.deleteInstance(id))
 
     const allUsers = await this.request<
       { id: number; username?: string }[] | null
@@ -560,7 +577,8 @@ export class CornflowApi {
     const users = (Array.isArray(allUsers) ? allUsers : []).filter((user) =>
       user.username?.startsWith(userPrefix),
     )
-    for (const { id } of users) await this.deleteUser(id)
+    for (const { id } of users)
+      await remove('user', id, () => this.deleteUser(id))
 
     const allRoles = await this.request<{ id: number; name?: string }[] | null>(
       'GET',
@@ -573,8 +591,16 @@ export class CornflowApi {
     )
     // Cornflow 1.3 cannot delete roles (501): the suite does not create any it cannot delete.
     for (const { id } of roles)
-      await this.request('DELETE', `/roles/${id}/`, undefined, [403, 404, 501])
+      await remove('role', id, () =>
+        this.request('DELETE', `/roles/${id}/`, undefined, [403, 404, 501]),
+      )
 
+    if (failures.length) {
+      throw new Error(
+        `[cornflow-e2e] Could not clean up all of run ${this.runId}; left on the backend:\n` +
+          failures.join('\n'),
+      )
+    }
     return {
       executions: executions.length,
       instances: instances.length,

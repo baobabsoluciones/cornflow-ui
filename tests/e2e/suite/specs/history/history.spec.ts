@@ -290,12 +290,12 @@ test.describe('history', () => {
     ).toHaveLength(2)
     expectWorkbook(
       readSheets(named('instance_')!.file),
-      workbookRows(instance.data),
+      workbookRows(instance.data, await api.instanceSchema(schema)),
       'input data',
     )
     expectWorkbook(
       readSheets(named('solution_')!.file),
-      workbookRows(solution.data),
+      workbookRows(solution.data, await api.solutionSchema(schema)),
       'solution',
     )
   })
@@ -378,12 +378,12 @@ test.describe('history', () => {
         files.find(({ name }) => name.startsWith(prefix))
       expectWorkbook(
         readSheets(named('instance_')!.file),
-        workbookRows(instance.data),
+        workbookRows(instance.data, await api.instanceSchema(schema)),
         'input data',
       )
       expectWorkbook(
         readSheets(named('solution_')!.file),
-        workbookRows(solution.data),
+        workbookRows(solution.data, await api.solutionSchema(schema)),
         'solution',
       )
     })

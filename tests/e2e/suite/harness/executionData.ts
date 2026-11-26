@@ -18,6 +18,7 @@ import {
   openExecutionView,
   type ExecutionGroup,
 } from './loadedExecutions'
+import type { JsonSchema } from './cornflowApi'
 import { readSheets, type Sheet } from './xlsx'
 
 /** The table on screen: the one of the selected tab. */
@@ -39,24 +40,37 @@ export function rowsOnScreen(value: unknown): number {
 }
 
 /**
- * Rows a whole download to Excel gives a table of data, its header aside: a list, one per item;
- * an object, one per key (name and value).
+ * Rows per table, its header aside, of a whole download of `data` to Excel, as the app writes it
+ * with the data's `schema`: a table the schema hides (`visible: false`) has no sheet, nor has an
+ * empty one with no columns to head it; a table the schema says is one object (`type: object`)
+ * has a row per field but its `id` and those the schema hides; anything else is a list of one.
  */
-export function rowsInWorkbook(value: unknown): number {
-  if (Array.isArray(value)) return value.length
-  return value && typeof value === 'object' ? Object.keys(value).length : 0
-}
-
-/** Rows per table, its header aside, of a whole download of `data` to Excel. */
 export function workbookRows(
   data: Record<string, unknown> | null,
+  schema: JsonSchema = {},
 ): Record<string, number> {
-  return Object.fromEntries(
-    Object.entries(data ?? {}).map(([key, value]) => [
-      key,
-      rowsInWorkbook(value),
-    ]),
-  )
+  const rows: Record<string, number> = {}
+  for (const [key, value] of Object.entries(data ?? {})) {
+    const table = schema.properties?.[key]
+    if (table?.visible === false) continue
+    if (table?.type === 'object' && value && typeof value === 'object') {
+      // A row per field (name and value), as the schema says it is one object.
+      rows[key] = Object.keys(value).filter(
+        (field) =>
+          field !== 'id' && table.properties?.[field]?.visible !== false,
+      ).length
+    } else if (Array.isArray(value)) {
+      const columns =
+        Object.keys(table?.items?.properties ?? {}).length +
+        (table?.items?.required?.length ?? 0)
+      if (!value.length && !columns) continue
+      rows[key] = value.length
+    } else {
+      // Anything else is written as a list of one: a row, empty if it is nothing.
+      rows[key] = value == null ? 0 : 1
+    }
+  }
+  return rows
 }
 
 /** Rows on screen of every table of `data` (instance or solution data, or checks). */

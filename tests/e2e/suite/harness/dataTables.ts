@@ -121,7 +121,14 @@ export function sortedLikeTheApp(
       const factor = direction === 'asc' ? 1 : -1
       return [...values].sort((x, y) => {
         if (!x || !y) return Number(!x) - Number(!y)
-        return x.localeCompare(y, undefined, { numeric: true }) * factor
+        // Not minding capitals, as the app: 'Apple' and 'apple' keep the order of the data.
+        return (
+          x
+            .toLocaleLowerCase()
+            .localeCompare(y.toLocaleLowerCase(), undefined, {
+              numeric: true,
+            }) * factor
+        )
       })
     },
     { values, direction },

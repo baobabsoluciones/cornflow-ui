@@ -143,7 +143,8 @@ test.describe('data of a loaded execution', () => {
       if (!(tableKeyOf(page.url()) in checks)) continue
       expectWorkbook(
         await downloadView(page),
-        workbookRows(checks),
+        // All the checks, as the app downloads them: those that found nothing too.
+        workbookRows(instance.checks, await api.instanceChecksSchema(schema)),
         'validations',
       )
       downloaded = true
@@ -203,14 +204,14 @@ test.describe('data of a loaded execution', () => {
     await openExecutionView(page, 'input-data')
     expectWorkbook(
       await downloadView(page),
-      workbookRows(instance.data),
+      workbookRows(instance.data, await api.instanceSchema(schema)),
       'input data',
     )
 
     await openExecutionView(page, 'results')
     expectWorkbook(
       await downloadView(page),
-      workbookRows(solution.data),
+      workbookRows(solution.data, await api.solutionSchema(schema)),
       'results',
     )
   })

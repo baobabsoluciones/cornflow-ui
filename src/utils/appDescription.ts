@@ -73,15 +73,19 @@ export interface AppDescription {
   i18nNamespaces: string[]
 }
 
-/** `value` with what is not data left out: functions, and objects already met (cycles). */
+/**
+ * `value` with what is not data left out: functions, and an object inside itself (a cycle). An
+ * object met in two places that do not hold each other is kept in both.
+ */
 export function plainData(value: unknown): unknown {
-  const seen = new WeakSet<object>()
-  const text = JSON.stringify(value, (_key, item: unknown) => {
+  // The objects that hold the one being read, from the outermost.
+  const ancestors: object[] = []
+  const text = JSON.stringify(value, function (this: object, _key, item: unknown) {
     if (typeof item === 'function' || typeof item === 'symbol') return undefined
-    if (item && typeof item === 'object') {
-      if (seen.has(item)) return undefined
-      seen.add(item)
-    }
+    if (!item || typeof item !== 'object') return item
+    while (ancestors.length && ancestors[ancestors.length - 1] !== this) ancestors.pop()
+    if (ancestors.includes(item)) return undefined
+    ancestors.push(item)
     return item
   })
   return text === undefined ? null : JSON.parse(text)

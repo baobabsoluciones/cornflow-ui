@@ -75,10 +75,11 @@ export function readSheets(file: string): Sheet[] {
     const name = /\bname="([^"]*)"/.exec(attributes)?.[1] ?? ''
     const id = /\br:id="([^"]+)"/.exec(attributes)?.[1] ?? ''
     const xml = files.get(targets.get(id) ?? '') ?? ''
-    // A row element with no cell in it is empty: only rows that hold something count.
+    // Only rows with a value count: a row of cells that are only styled (`<c r="A2" s="3"/>`, as
+    // an empty table's row of blanks) holds nothing.
     const rows = [
       ...xml.matchAll(/<row\b[^>]*?(\/>|>([\s\S]*?)<\/row>)/g),
-    ].filter(([, , cells]) => cells && /<c\b/.test(cells)).length
+    ].filter(([, , cells]) => cells && /<(v|is)\b/.test(cells)).length
     sheets.push({ name: decodeXml(name), rows })
   }
   return sheets

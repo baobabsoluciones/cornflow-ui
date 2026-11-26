@@ -5,18 +5,22 @@
 import type { Page } from '@playwright/test'
 import type { Deployment } from './run'
 
-/** The address of `path` on the client's backend, with `query`. */
+/**
+ * The address of `path` on the client's backend, with `query`. Relative where the app's backend is
+ * (`/api`, behind the same host): the page reads it, so it goes where the app's requests go.
+ */
 export function externalUrl(
   deployment: Deployment,
   path: string,
   query: Record<string, string> = {},
 ): string {
-  const url = new URL(
-    `${deployment.backendUrl.replace(/\/+$/, '')}/external${path}`,
-  )
+  const address = `${deployment.backendUrl.replace(/\/+$/, '')}/external${path}`
+  const absolute = /^[a-z][a-z\d+.-]*:/i.test(address)
+  // Any host does to add the query; a relative address is given back without it.
+  const url = new URL(address, 'http://relative.invalid')
   for (const [name, value] of Object.entries(query))
     url.searchParams.set(name, value)
-  return url.href
+  return absolute ? url.href : `${url.pathname}${url.search}`
 }
 
 /** Reads `href` from the page with the user's session: its status and its JSON, if any. */

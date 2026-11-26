@@ -101,14 +101,16 @@ test.describe('master tables', () => {
       expect(groups, 'one group of master data').toEqual(['master-data'])
       return
     }
+    // A group per section with tables, named after its id, in the backend's order; then, if any
+    // table is in no section, a last group named after its place in the menu. Ids may be numbers,
+    // so the groups are told apart by where they are, not by how their names look.
     expect(
-      groups.filter((group) => !/^master-data-\d+$/.test(group)),
-      "a group per section, in the backend's order",
-    ).toEqual(inSections.map((id) => `master-data-${id}`))
-    expect(
-      groups.some((group) => /^master-data-\d+$/.test(group)),
-      `${outside ? 'a' : 'no'} group for the tables in no section`,
-    ).toBe(outside)
+      groups,
+      `a group per section, in the backend's order, and ${outside ? 'a' : 'no'} group for the tables in no section`,
+    ).toEqual([
+      ...inSections.map((id) => `master-data-${id}`),
+      ...(outside ? [`master-data-${inSections.length}`] : []),
+    ])
   })
 
   test('each opens from the menu, shows the rows its backend gives and downloads them to Excel', async ({

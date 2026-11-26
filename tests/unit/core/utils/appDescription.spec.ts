@@ -77,10 +77,21 @@ describe('plainData', () => {
     })
   })
 
-  test('leaves out an object it has already met', () => {
-    const loop: Record<string, unknown> = { name: 'a' }
+  test('leaves out an object inside itself', () => {
+    const loop: Record<string, unknown> = { name: 'a', list: [] }
     loop.self = loop
-    expect(plainData(loop)).toEqual({ name: 'a' })
+    ;(loop.list as unknown[]).push(loop)
+    expect(plainData(loop)).toEqual({ name: 'a', list: [null] })
+  })
+
+  test('keeps an object met in two places that do not hold each other', () => {
+    const views = ['project-execution']
+    expect(
+      plainData({ viewer: { forbidden_views: views }, auditor: { forbidden_views: views } }),
+    ).toEqual({
+      viewer: { forbidden_views: ['project-execution'] },
+      auditor: { forbidden_views: ['project-execution'] },
+    })
   })
 
   test('a function alone is null', () => {

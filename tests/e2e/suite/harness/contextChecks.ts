@@ -90,7 +90,7 @@ export async function asUser(
       timeout: 30_000,
     })
     await use(page)
-    await context.close()
+    // Checked before closing: the last look goes through the pages still open.
     await finish()
   } finally {
     await context.close()
