@@ -536,7 +536,7 @@ The frontend-automation system is a powerful schema-driven approach that automat
 
 #### How it works
 
-1. **Schema definition**: The backend provides an OpenAPI-compatible schema through the `/frontend-automation/` endpoint
+1. **Schema definition**: The external backend provides an OpenAPI-compatible schema through the `GET /external/frontend-automation/` endpoint, asked once after the login when the app has one ([hasExternalApp](#hasexternalapp)). Without an external backend there is no master data
 2. **Dynamic generation**: The frontend automatically transforms this schema into interactive table interfaces
 3. **CRUD operations**: Full Create, Read, Update, Delete functionality is generated based on schema definitions
 4. **Three-level hierarchy**: Tables are organized as **Section → Group → Table** for navigation (sections and groups are optional)
@@ -1668,11 +1668,12 @@ The application automatically converts these formats to proper boolean values.
 
 - **Purpose**: Says whether the app has an external backend next to Cornflow
 - **`true`**: Prefixes Cornflow requests with `/cornflow`, and asks the external backend
-  `GET /external/frontend-config/` after the login (see
-  [Load filters](#load-filters-get-externalfrontend-config) and
-  [Execution endpoints](#execution-endpoints-optional))
-- **`false`**: Direct API requests, and no frontend config: no load filters, and every execution is
-  read from Cornflow
+  `GET /external/frontend-config/` and `GET /external/frontend-automation/` after the login (see
+  [Load filters](#load-filters-get-externalfrontend-config),
+  [Execution endpoints](#execution-endpoints-optional) and
+  [Frontend-automation system](#frontend-automation-system))
+- **`false`**: Direct API requests, no frontend config and no master data: no load filters, and
+  every execution is read from Cornflow
 
 #### OAuth providers (Cognito only)
 
