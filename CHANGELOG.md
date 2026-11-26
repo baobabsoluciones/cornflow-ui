@@ -5,17 +5,17 @@
 ### Added
 - **End-to-end suite that each app runs against its own deployment**  
   - The suite (`tests/e2e/suite/`) ships with core, and an app runs it through `createCornflowE2EConfig` against its own frontend, backend and DAGs, with nothing mocked. It reads what the app has on from `window.cornflowUi.describe()` and tests it, checks that what is off does not show, and skips what does not apply with the reason
-  - Each app gives its test data in a UAT file (`tests/e2e/uat.json`): per DAG, the execution config and a valid instance, one with errors and one with warnings, and optionally an infeasible case and a failing-solver case
+  - Each app gives its test data in a UAT file (`tests/e2e/uat.json`): per DAG, the execution config and a valid instance, one with errors and one with warnings, and optionally a solution of the valid one, an infeasible case and a failing-solver case. With the solution, the executions the tests need already solved are made through the API in a moment
   - Two modes: `shared`, for an environment others use, signs in with one user and touches only what it creates; `disposable` also creates a user per role. What a run creates is named after it (`[e2e] <run id> …`) and deleted at the end, also after failed tests, so two runs at the same time do not touch each other's data
-  - Tests: sign in, execution history, and create execution (load filters, the solver, and each dataset through to its result)
-  - Every screen a test opens is checked for text keys shown untranslated. At the end, a coverage report lists what was tested, what failed and what was not tested, with the reason, and the known core faults the run came across
-  - Test ids on the create-execution blocks and the data table: `data-status`, `data-state`, `data-load-status`, `data-rows`, `parameter-<key>` and `load-filter-<key>`
+  - Tests: sign in; execution history (filters, dates, deleting, downloading, relaunching); create execution (load filters, the solver, each dataset through to its result, data from Excel and CSV files, and a solution file); editing data and its review; loaded executions and their tabs; the data of an execution on screen and in Excel; the user's settings, signing out and the password; roles and permissions, and roles management; navigation, help and guided tours; several DAGs; dashboards; and master tables, read only
+  - Every screen a test opens is checked for text keys shown untranslated and for errors of the app (uncaught errors, errors inside components and 5xx responses). At the end, a coverage report lists what was tested, what failed and what was not tested, with the reason, and the known core faults the run came across
+  - Test ids (`data-testid`) and state attributes (`data-status`, `data-state`, `data-load-status`, `data-rows`, `data-value`…) on the screens the suite goes through: the side menu, the history, the create-execution page, data tables, dialogs, tours and help, roles management, dashboards and "not found". They change nothing the app does
   - `tests/e2e/stack/`: a Cornflow with a small planning app to develop the suite against, checked with `npm run test:e2e:stack`. It is not published
-  - `tests/e2e/README.md`: running the suite in an app, the UAT file, the modes, the report and writing specs
+  - `tests/e2e/README.md`: running the suite in an app, the UAT file, the modes, what it tests, the report and writing specs
   *Contributors:* [@david-hidalgo-baobab](#)  
   *Commit ID:* #
 - **`window.cornflowUi.describe()`**  
-  - What a running app is made of, as data: its config (`core`), schemas, sign-in type, languages, registered modules, sections, help files, dashboards, the backend it talks to (`backendUrl`), what the backend says about each DAG (`frontendConfig`) and the first-level keys of its texts (`i18nNamespaces`). The end-to-end suite reads it to know what to test
+  - What a running app is made of, as data: its config (`core`), schemas, sign-in type, developer mode, languages, registered modules, sections, roles (`rolesConfig`), help files, dashboards, the backend it talks to (`backendUrl`), what the backend says about each DAG (`frontendConfig`), the master tables of frontend automation (`masterData`) and the first-level keys of its texts (`i18nNamespaces`). It only reads. The end-to-end suite reads it to know what to test
   *Contributors:* [@david-hidalgo-baobab](#)  
   *Commit ID:* #
 
