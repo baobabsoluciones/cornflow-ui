@@ -9,6 +9,7 @@
 import { expect, type Page } from '@playwright/test'
 import type { Deployment, MasterData, MasterTable } from './run'
 import { readDescription } from './session'
+import { externalUrl, readFromPage } from './external'
 
 /** The master tables of the app open in `page`, once it has asked the backend for them. */
 export async function liveMasterData(page: Page): Promise<MasterData> {
@@ -70,23 +71,16 @@ export async function backendList(
   const list = table.operations.get_list
   expect(list, 'the table has a list (get_list)').toBeDefined()
   const query = list.parameters.filter((parameter) => parameter.in === 'query')
-  const url = new URL(
-    `${deployment.backendUrl.replace(/\/+$/, '')}/external${list.url}`,
-  )
+  const values: Record<string, string> = {}
   for (const parameter of query) {
     if (parameter.default !== null && !PAGING.includes(parameter.name))
-      url.searchParams.set(parameter.name, String(parameter.default))
+      values[parameter.name] = String(parameter.default)
   }
-  if (deployment.schemas.length > 1) url.searchParams.set('schema', schema)
-  const { status, body } = await page.evaluate(async (href) => {
-    const response = await fetch(href, {
-      headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` },
-    })
-    return {
-      status: response.status,
-      body: await response.json().catch(() => null),
-    }
-  }, url.href)
+  if (deployment.schemas.length > 1) values.schema = schema
+  const { status, body } = await readFromPage(
+    page,
+    externalUrl(deployment, list.url, values),
+  )
   expect(status, `the backend gives the list of ${list.url}`).toBe(200)
   const envelope =
     body && typeof body === 'object' && !Array.isArray(body)

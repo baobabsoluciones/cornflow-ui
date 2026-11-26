@@ -35,6 +35,8 @@ export interface AppDescription {
   backendUrl: string
   hasExternalApp: boolean
   isDeveloperMode: boolean
+  /** The staging notice runs along the top of every page (`isStagingEnvironment`). */
+  isStagingEnvironment: boolean
   /** Codes of the languages the user can choose. */
   languages: string[]
   /** Ids of the modules registered at start-up (frontend automation, premium modules). */
@@ -200,6 +202,7 @@ export function describeApp(): AppDescription {
     backendUrl: config.backend,
     hasExternalApp: config.hasExternalApp,
     isDeveloperMode: config.isDeveloperMode,
+    isStagingEnvironment: config.isStagingEnvironment,
     languages: resolveVisibleLanguages(readConfiguredLanguages(appConfig)).map(
       (language) => language.code,
     ),

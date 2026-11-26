@@ -46,6 +46,7 @@
         :tabindex="tab.key === focusKey ? 0 : -1"
         :title="summary(tab)"
         :data-tab="tab.key"
+        :data-label="tab.label"
         :data-testid="`data-table-tab-${tab.key}`"
         @click="select(tab.key)"
       >

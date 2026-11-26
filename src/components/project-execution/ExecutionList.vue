@@ -10,6 +10,7 @@
       class="execution-list__day"
       :aria-label="group.label"
       data-testid="history-day"
+      :data-count="group.executions.length"
     >
       <h3 class="execution-list__day-heading">
         <span class="execution-list__day-label">{{ group.label }}</span>

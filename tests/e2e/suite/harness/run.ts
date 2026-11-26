@@ -19,6 +19,8 @@ export interface Deployment {
   backendUrl: string
   hasExternalApp: boolean
   isDeveloperMode: boolean
+  /** The staging notice runs along the top of every page. */
+  isStagingEnvironment: boolean
   languages: string[]
   modules: string[]
   core: Record<string, any>

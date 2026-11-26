@@ -1,6 +1,7 @@
 /**
  * The data of a loaded execution: its input data, its results and the validations of what its
- * checks found, each table with the rows it has in the backend, and their downloads to Excel.
+ * checks found, each table with the rows it has in the backend, and their downloads to Excel;
+ * and the tables the data has without schema, where `showTablesWithoutSchema` shows them.
  * The executions are made solved through the API first (harness/executions.ts); the checks of the
  * input data run for real.
  */
@@ -13,6 +14,7 @@ import {
   downloadView,
   expectedOnScreen,
   expectWorkbook,
+  forEachTable,
   tableKeyOf,
   visibleTable,
   workbookRows,
@@ -25,7 +27,7 @@ import {
   openExecutionView,
   type ExecutionGroup,
 } from '../../harness/loadedExecutions'
-import type { Uat } from '../../harness/uat'
+import { readDataset, type Uat } from '../../harness/uat'
 
 /** Loads `execution` from the history and waits until it is selected. */
 async function load(page: Page, execution: SolvedExecution): Promise<void> {
@@ -187,7 +189,12 @@ test.describe('data of a loaded execution', () => {
     page,
     api,
     uat,
+    deployment,
   }) => {
+    test.skip(
+      !!deployment.core.parameters?.useBackendExecutionFilesDownload,
+      'useBackendExecutionFilesDownload is on: they download as the backend gives them (tested in the history)',
+    )
     const execution = await solvedExecution(api, uat, schema, 'whole excel')
     const instance = await api.instanceData(execution.instanceId)
     const solution = await api.executionData(execution.id)
@@ -206,5 +213,64 @@ test.describe('data of a loaded execution', () => {
       workbookRows(solution.data),
       'results',
     )
+  })
+
+  test('a table the data has and its schema does not shows where showTablesWithoutSchema is on, and not where it is off', async ({
+    page,
+    api,
+    uat,
+    deployment,
+  }) => {
+    const on = !!deployment.core.parameters?.showTablesWithoutSchema
+    const data = readDataset(uat, schema, 'valid')
+    test.skip(!data, `the UAT file has no valid dataset for ${schema}`)
+    const declared = (await api.instanceSchema(schema)).properties ?? {}
+    const extra = 'e2e_extra'
+    expect(declared[extra], `${schema} has no table ${extra}`).toBeUndefined()
+    const label = 'without schema'
+    let instanceId = ''
+    try {
+      instanceId = await api.createInstance({
+        schema,
+        data: {
+          ...data,
+          [extra]: [
+            { code: 'A', amount: 1 },
+            { code: 'B', amount: 2 },
+          ],
+        },
+        label,
+      })
+    } catch (error) {
+      test.skip(
+        true,
+        `the backend does not take data with a table its schema does not have: ${(error as Error).message}`,
+      )
+    }
+    const id = await api.createExecution({
+      instanceId,
+      schema,
+      config: uat.schemas[schema].config,
+      label,
+      run: false,
+    })
+    await openHistory(page)
+    await loadFromHistoryRow(page, api.name(label))
+    await expectSelected(page, id, api.name(label))
+
+    const seen: string[] = []
+    await forEachTable(page, 'input-data', async (key) => {
+      seen.push(key)
+      if (key === extra) {
+        await expect(visibleTable(page), 'with its rows').toHaveAttribute(
+          'data-rows',
+          '2',
+        )
+      }
+    })
+    expect(
+      seen.includes(extra),
+      `showTablesWithoutSchema is ${on ? 'on: the table shows' : 'off: the table does not show'}`,
+    ).toBe(on)
   })
 })

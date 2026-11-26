@@ -19,6 +19,7 @@ const { runtime, store, messages } = vi.hoisted(() => ({
     backend: 'https://backend.example',
     hasExternalApp: true,
     isDeveloperMode: false,
+    isStagingEnvironment: true,
     auth: { type: 'azure', clientId: 'client-id', authority: 'https://login.example/tenant' },
   },
 }))
@@ -105,6 +106,7 @@ describe('describeApp', () => {
       backendUrl: 'https://backend.example',
       hasExternalApp: true,
       isDeveloperMode: false,
+      isStagingEnvironment: true,
       languages: ['en', 'es'],
       modules: ['frontend-automation', 'latest-plan'],
       core: {

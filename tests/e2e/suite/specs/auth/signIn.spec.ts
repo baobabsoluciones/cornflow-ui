@@ -57,6 +57,19 @@ test.describe('sign in', () => {
     )
     await expect(page.getByTestId('core-snackbar')).toHaveCount(0)
   })
+
+  test('the password can be shown, and hidden again', async ({ page }) => {
+    await page.goto('/')
+    const field = page.getByTestId('sign-in-password')
+    const toggle = page.getByTestId('sign-in-show-password')
+    await field.fill('A.secret-1')
+    await expect(field, 'hidden at first').toHaveAttribute('type', 'password')
+    await toggle.click()
+    await expect(field, 'shown').toHaveAttribute('type', 'text')
+    await expect(field).toHaveValue('A.secret-1')
+    await toggle.click()
+    await expect(field, 'hidden again').toHaveAttribute('type', 'password')
+  })
 })
 
 test.describe('languages of the sign-in page', () => {

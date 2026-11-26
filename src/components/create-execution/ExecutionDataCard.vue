@@ -155,7 +155,7 @@
         </span>
       </div>
 
-      <div v-if="draft.loadErrors" class="data-card__errors" role="alert" data-testid="data-card-errors">
+      <div v-if="draft.loadErrors" class="data-card__errors" role="alert" data-testid="data-card-errors" :data-count="draft.loadErrors.count">
         <div class="data-card__errors-head">
           <CoreIcon name="mdi-alert-circle" :size="18" class="data-card__errors-icon" />
           <span class="data-card__errors-title">
@@ -167,6 +167,7 @@
             size="small"
             icon="mdi-download"
             :text="$t('createExecution.data.downloadErrors')"
+            data-testid="data-card-errors-download"
             @click="downloadErrors"
           />
         </div>

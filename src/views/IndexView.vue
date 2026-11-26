@@ -34,7 +34,7 @@
         />
       </div>
 
-      <div class="marquee-container" v-if="showStagingWarning">
+      <div class="marquee-container" v-if="showStagingWarning" data-testid="staging-warning">
         <Vue3Marquee :pause-on-hover="true">
           🚧 {{ $t('projectExecution.stagingWarning') }} 🚧
         </Vue3Marquee>

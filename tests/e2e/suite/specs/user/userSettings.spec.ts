@@ -137,6 +137,32 @@ test.describe('user settings', () => {
     ).toBeVisible()
   })
 
+  test('the new password can be shown, and hidden again, before saving it', async ({
+    page,
+    deployment,
+  }) => {
+    test.skip(
+      deployment.authType !== 'cornflow',
+      'the password is changed only where users sign in with Cornflow',
+    )
+    await openSettings(page)
+    const fields = page
+      .getByTestId('settings-new-password')
+      .or(page.getByTestId('settings-confirm-password'))
+    const toggle = page.getByTestId('settings-show-passwords')
+    // Typed, never saved.
+    await page.getByTestId('settings-new-password').fill('A.secret-1')
+    await page.getByTestId('settings-confirm-password').fill('A.secret-1')
+    for (const field of await fields.all())
+      await expect(field, 'hidden at first').toHaveAttribute('type', 'password')
+    await toggle.click()
+    for (const field of await fields.all())
+      await expect(field, 'shown').toHaveAttribute('type', 'text')
+    await toggle.click()
+    for (const field of await fields.all())
+      await expect(field, 'hidden again').toHaveAttribute('type', 'password')
+  })
+
   test.describe('the password', () => {
     // Signed out: the test signs in as a user it creates.
     test.use({ session: null })

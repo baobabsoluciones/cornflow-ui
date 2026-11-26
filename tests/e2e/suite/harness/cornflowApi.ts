@@ -418,9 +418,16 @@ export class CornflowApi {
     return (await this.schemas(dag)).solution ?? {}
   }
 
-  private schemas(
-    dag: string,
-  ): Promise<{ instance?: JsonSchema; solution?: JsonSchema }> {
+  /** The JSON schema of the checks of the instance of a DAG (`instance_checks`). */
+  async instanceChecksSchema(dag: string): Promise<JsonSchema> {
+    return (await this.schemas(dag)).instance_checks ?? {}
+  }
+
+  private schemas(dag: string): Promise<{
+    instance?: JsonSchema
+    solution?: JsonSchema
+    instance_checks?: JsonSchema
+  }> {
     return this.request('GET', `/schema/${dag}/`)
   }
 

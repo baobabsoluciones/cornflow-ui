@@ -6,7 +6,8 @@
  *   for one table): its KPI cards give the total or the average of a column of the table, as the
  *   backend has it, and its charts draw. Off, the table has none.
  * - The "Dashboard" page (`showDashboardMainView`): in the results, headed by the execution's
- *   summary; without an execution loaded, it says to load one.
+ *   summary; without an execution loaded, it says to load one; with one still running, that its
+ *   solution shows once it ends.
  * - The app's own dashboard pages (`dashboardPages`, `instanceDashboardPages`): in the results and
  *   the input data, and they open.
  *
@@ -15,6 +16,7 @@
 import type { Page } from '@playwright/test'
 import { test, expect } from '../../harness/fixtures'
 import { forEachTable } from '../../harness/executionData'
+import { isExecutionActive } from '../../harness/cornflowApi'
 import { solvedExecution, type SolvedExecution } from '../../harness/executions'
 import { loadFromHistoryRow, openHistory } from '../../harness/history'
 import {
@@ -29,6 +31,7 @@ import {
   openMenuGroup,
 } from '../../harness/navigation'
 import type { Deployment } from '../../harness/run'
+import { readDataset } from '../../harness/uat'
 
 type Row = Record<string, unknown>
 type DashboardType = 'instance' | 'solution'
@@ -241,6 +244,52 @@ test.describe('dashboards', () => {
       .poll(() => currentView(fresh), { message: 'to the history' })
       .toBe('history-execution')
     await fresh.close()
+  })
+
+  test('the "Dashboard" page of an execution still running says its solution shows once it ends', async ({
+    page,
+    api,
+    uat,
+    deployment,
+  }) => {
+    test.skip(
+      !deployment.core.parameters?.showDashboardMainView,
+      'showDashboardMainView is off: there is no Dashboard page',
+    )
+    const data = readDataset(uat, schema, 'valid')
+    test.skip(!data, `the UAT file has no valid dataset for ${schema}`)
+    const label = 'running dashboard'
+    const instanceId = await api.createInstance({ schema, data: data!, label })
+    // Launched: it runs while the page opens.
+    const id = await api.createExecution({
+      instanceId,
+      schema,
+      config: uat.schemas[schema].config,
+      label,
+    })
+    await openHistory(page)
+    await loadFromHistoryRow(page, api.name(label))
+    await expectSelected(page, id, api.name(label))
+    await goToRoute(page, '/dashboard')
+
+    const running = page.getByTestId('dashboard-running')
+    const shown = await running
+      .waitFor({ timeout: 10_000 })
+      .then(() => true)
+      .catch(() => false)
+    if (!shown) {
+      expect(
+        isExecutionActive(await api.executionState(id)),
+        'the page says it is running while it runs',
+      ).toBe(false)
+      test.info().annotations.push({
+        type: 'note',
+        description:
+          'the execution ended before the page opened: nothing running to see',
+      })
+      return
+    }
+    await expect(running).toBeVisible()
   })
 
   test("the app's own dashboard pages are in the results and the input data of a loaded execution, and open", async ({

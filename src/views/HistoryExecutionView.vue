@@ -215,7 +215,7 @@
               :steps="executionDetails.timelineSteps(selectedExecution, now)"
             />
           </div>
-          <div class="history-detail__section" data-tour="history-detail-data">
+          <div class="history-detail__section" data-tour="history-detail-data" data-testid="history-detail-data">
             <CoreDescriptionList
               :title="$t('versionHistory.detail.data')"
               :items="executionDetails.dataItems(selectedExecution, now)"
@@ -226,6 +226,7 @@
             v-if="selectedParameters.length > 0"
             class="history-detail__section"
             data-tour="history-detail-parameters"
+            data-testid="history-detail-parameters"
           >
             <CoreDescriptionList
               :title="$t('versionHistory.detail.parameters')"

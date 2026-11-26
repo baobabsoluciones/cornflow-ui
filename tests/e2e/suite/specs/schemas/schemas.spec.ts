@@ -67,6 +67,10 @@ async function usableSchemas(
   return deployment.schemas.filter((schema) => granted.includes(schema))
 }
 
+/** Whether `text` is a key of the app's texts (`createExecution.title`) rather than a text. */
+const isTextKey = (text: string, namespaces: string[]) =>
+  text.includes('.') && namespaces.includes(text.split('.')[0])
+
 /** The DAG the app opens with: the deployment's first, or the first the user may use. */
 const openingSchema = (deployment: Deployment, usable: string[]) =>
   usable.includes(deployment.schemas[0]) ? deployment.schemas[0] : usable[0]
@@ -144,6 +148,20 @@ test.describe('several DAGs', () => {
     await openHistory(page)
     expect(await activeSchema(page), 'it opens on its first DAG').toBe(first)
     expect(await openSchemaPicker(page), 'the DAGs offered').toEqual(usable)
+    // Each by its label (`schemaLabels`), or its name. A label that is a text key shows its
+    // translation, the app's own: the check of untranslated texts covers it.
+    const labels = (deployment.core.parameters?.schemaLabels ?? {}) as Record<
+      string,
+      string
+    >
+    for (const schema of usable) {
+      const label = labels[schema]
+      if (label && isTextKey(label, deployment.i18nNamespaces)) continue
+      await expect(
+        page.getByTestId(`app-drawer-module-${schema}`),
+        `${schema} shows as "${label ?? schema}"`,
+      ).toContainText(label ?? schema)
+    }
     for (const schema of usable) {
       await expect(
         page.getByTestId(`app-drawer-module-${schema}`),
