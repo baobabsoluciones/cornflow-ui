@@ -287,16 +287,31 @@ describe('General Store', () => {
     })
 
     test('changeUserPassword successfully', async () => {
-      mockUserRepository.changePassword.mockResolvedValue(true)
+      mockUserRepository.changePassword.mockResolvedValue({ success: true })
+      sessionStorage.setItem('pwdChangeRequired', 'true')
 
       const store = useGeneralStore()
-      const result = await store.changeUserPassword('user123', 'newpassword')
+      const result = await store.changeUserPassword('user123', 'newpassword', 'oldpassword')
 
-      expect(result).toBe(true)
+      expect(result).toEqual({ success: true })
       expect(mockUserRepository.changePassword).toHaveBeenCalledWith(
         'user123',
         'newpassword',
+        'oldpassword',
       )
+      expect(sessionStorage.getItem('pwdChangeRequired')).toBeNull()
+    })
+
+    test('changeUserPassword refused keeps a forced change pending', async () => {
+      mockUserRepository.changePassword.mockResolvedValue({ success: false, message: 'Reused' })
+      sessionStorage.setItem('pwdChangeRequired', 'true')
+
+      const store = useGeneralStore()
+      const result = await store.changeUserPassword('user123', 'newpassword', 'oldpassword')
+
+      expect(result).toEqual({ success: false, message: 'Reused' })
+      expect(sessionStorage.getItem('pwdChangeRequired')).toBe('true')
+      sessionStorage.removeItem('pwdChangeRequired')
     })
 
     test('setSchema successfully', async () => {
@@ -912,9 +927,9 @@ describe('General Store', () => {
       )
 
       const store = useGeneralStore()
-      const result = await store.changeUserPassword('user123', 'newpassword')
+      const result = await store.changeUserPassword('user123', 'newpassword', 'oldpassword')
 
-      expect(result).toBe(false)
+      expect(result).toEqual({ success: false })
       expect(consoleSpy).toHaveBeenCalledWith(
         'Error changing password',
         expect.any(Error),

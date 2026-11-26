@@ -52,6 +52,15 @@ describe('UserRepository', () => {
       const result = await repository.getUserById('test-user-id')
 
       expect(mockClient.get).toHaveBeenCalledWith('/user/test-user-id/')
+      expect(result.mfaEnabled).toBe(false)
+    })
+
+    test('says whether the user has two-factor authentication', async () => {
+      mockClient.get.mockResolvedValue({ status: 200, content: { ...mockUserData, mfa_enabled: true } })
+
+      const result = await repository.getUserById('test-user-id')
+
+      expect(result.mfaEnabled).toBe(true)
     })
 
     test('should reject when API returns non-200 status', async () => {
@@ -85,77 +94,43 @@ describe('UserRepository', () => {
   })
 
   describe('changePassword', () => {
-    test('should change password successfully', async () => {
-      const mockResponse = {
-        status: 200,
-        content: { success: true }
-      }
-      mockClient.put.mockResolvedValue(mockResponse)
+    test('sends the new password with the current one', async () => {
+      mockClient.put.mockResolvedValue({ status: 200, content: {} })
 
-      const result = await repository.changePassword('test-user-id', 'newPassword123')
+      const result = await repository.changePassword('7', 'N3w-Passphrase!x', 'Old-Passphrase!1')
 
-      expect(mockClient.put).toHaveBeenCalledWith('/user/test-user-id/', {
-        password: 'newPassword123'
+      expect(mockClient.put).toHaveBeenCalledWith('/user/7/', {
+        password: 'N3w-Passphrase!x',
+        current_password: 'Old-Passphrase!1',
       })
-      expect(result).toBe(true)
+      expect(result).toEqual({ success: true })
     })
 
-    test('should return false when password change fails with non-200 status', async () => {
-      const mockResponse = {
+    test('says why cornflow refused the new password', async () => {
+      mockClient.put.mockResolvedValue({
         status: 400,
-        content: { error: 'Invalid password' }
-      }
-      mockClient.put.mockResolvedValue(mockResponse)
-
-      const result = await repository.changePassword('test-user-id', 'weak')
-
-      expect(result).toBe(false)
-    })
-
-    test('should reject when API call fails', async () => {
-      const error = new Error('Network error')
-      mockClient.put.mockRejectedValue(error)
-
-      await expect(repository.changePassword('test-user-id', 'newPassword123')).rejects.toThrow('Network error')
-    })
-
-    test('should handle empty password', async () => {
-      const mockResponse = {
-        status: 200,
-        content: { success: true }
-      }
-      mockClient.put.mockResolvedValue(mockResponse)
-
-      const result = await repository.changePassword('test-user-id', '')
-
-      expect(mockClient.put).toHaveBeenCalledWith('/user/test-user-id/', {
-        password: ''
+        content: { error: 'The password has been used recently' },
       })
-      expect(result).toBe(true)
+
+      const result = await repository.changePassword('7', 'N3w-Passphrase!x', 'Old-Passphrase!1')
+
+      expect(result).toEqual({ success: false, message: 'The password has been used recently' })
     })
 
-    test('should handle unauthorized access', async () => {
-      const mockResponse = {
-        status: 401,
-        content: { error: 'Unauthorized' }
-      }
-      mockClient.put.mockResolvedValue(mockResponse)
+    test('a wrong current password is refused', async () => {
+      mockClient.put.mockResolvedValue({ status: 403, content: { error: 'Wrong current password' } })
 
-      const result = await repository.changePassword('test-user-id', 'newPassword123')
+      const result = await repository.changePassword('7', 'N3w-Passphrase!x', 'wrong')
 
-      expect(result).toBe(false)
+      expect(result).toEqual({ success: false, message: 'Wrong current password' })
     })
 
-    test('should handle forbidden access', async () => {
-      const mockResponse = {
-        status: 403,
-        content: { error: 'Forbidden' }
-      }
-      mockClient.put.mockResolvedValue(mockResponse)
+    test('a network error reaches the caller', async () => {
+      mockClient.put.mockRejectedValue(new Error('Network error'))
 
-      const result = await repository.changePassword('test-user-id', 'newPassword123')
-
-      expect(result).toBe(false)
+      await expect(
+        repository.changePassword('7', 'N3w-Passphrase!x', 'Old-Passphrase!1'),
+      ).rejects.toThrow('Network error')
     })
   })
 })

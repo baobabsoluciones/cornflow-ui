@@ -1,5 +1,19 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **Sign-in and session against a Cornflow server with the security hardening**  
+  - Session: the short-lived access token is renewed with the refresh token (`POST /token/refresh/`) when a request finds it expired, and the request is sent again once. Requests that find it expired at once share one renewal; downloads and streams are renewed too. Logging out closes the session on the server (`POST /logout/`)
+  - Two-factor authentication on the sign-in: the code of the authenticator app or a backup code; and, when the server requires it, the enrollment (QR code, its secret, first code and one-time backup codes) before the session
+  - A password that has expired or must be renewed (`password_rotation`, or `change_password` on the login) keeps the user on their settings, with a notice, until it is changed
+  - Password recovery: "Forgot your password?" asks for the reset link, and `/reset-password` sets the new password with the link's token, taken out of the address at once
+  - The password forms ask for the current password and tick the server's policy: 12 characters, character classes, no spaces, no runs of 6 digits and a zxcvbn strength of 3 or more (its dictionaries load on demand). Changing the password closes every session, so the user signs in again
+  - Too many attempts (429) and a locked account say so instead of "wrong credentials"; after the sign-in, a notice says when the previous one was; a legal notice sits under the form
+  - New dependencies: `@zxcvbn-ts/core`, `@zxcvbn-ts/language-common` and `qrcode`
+  *Contributors:* [@HelenaCA](#), [@ggsdc](#)  
+  *Commit ID:* #284
+
 ## [4.1.0] - 24-11-2026
 
 ⚠️ The load filters of a DAG's ETL come from the backend (`GET /external/frontend-config/`): `pre_etl: true` in the config schema is not read. An application that marks its load filters that way publishes them in the `query` of its backend's frontend config before upgrading (see **Changed**).
