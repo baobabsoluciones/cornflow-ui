@@ -108,7 +108,9 @@ menu), a card per subject:
   be turned on (a QR code and its secret for the authenticator app, its first code, and the
   one-time backup codes); on, it can be reset, for a changed or lost phone, after a confirmation.
   Resetting it closes every session of the user, so the page goes to the sign-in; a server that
-  requires two-factor authentication asks for the enrollment again there.
+  requires two-factor authentication asks for the enrollment again there. A server that does not
+  offer two-factor authentication (Cornflow's `MFA_ENABLED` off, the default of security levels 1
+  and 2) answers the enrollment with a 501, and the card says so in place of the button.
 - **Personal access token**, when the app signs in with Cornflow and offers it
   (`enablePersonalTokens`, on by default): a long-lived token for scripts and integrations,
   read-only if asked, confirmed with a two-factor code when the user has it. It is shown once, and

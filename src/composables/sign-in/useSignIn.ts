@@ -110,7 +110,7 @@ export function useSignIn() {
   }
 
   async function startEnrollment() {
-    if (await enrollment.start()) goTo('mfa-enroll')
+    if ((await enrollment.start()) === 'started') goTo('mfa-enroll')
     else showSnackbar?.(t('logIn.mfa_setup_error'), 'error')
   }
 

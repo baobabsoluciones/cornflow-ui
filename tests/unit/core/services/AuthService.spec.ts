@@ -166,14 +166,27 @@ describe('AuthService', () => {
       const setup = await AuthService.mfaSetup()
 
       expect(client.post).toHaveBeenCalledWith('/mfa/setup/', {}, JSON_HEADERS)
-      expect(setup).toEqual({ secret: 'ABC', provisioningUri: 'otpauth://totp/app:planner?secret=ABC' })
+      expect(setup).toEqual({
+        success: true,
+        secret: 'ABC',
+        provisioningUri: 'otpauth://totp/app:planner?secret=ABC',
+      })
     })
 
-    test('mfaSetup gives null when cornflow refuses', async () => {
+    test('mfaSetup fails when cornflow refuses', async () => {
       client.post.mockResolvedValue({ status: 400, content: {} })
 
-      expect(await AuthService.mfaSetup()).toBeNull()
+      expect(await AuthService.mfaSetup()).toEqual({ success: false, unavailable: false })
     })
+
+    test.each([501, 404])(
+      'mfaSetup tells a deployment without two-factor authentication apart (%i)',
+      async (status) => {
+        client.post.mockResolvedValue({ status, content: {} })
+
+        expect(await AuthService.mfaSetup()).toEqual({ success: false, unavailable: true })
+      },
+    )
 
     test('mfaVerify opens the session and gives the backup codes', async () => {
       sessionStorage.setItem('token', 'enrollment')

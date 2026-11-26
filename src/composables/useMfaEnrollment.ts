@@ -11,26 +11,31 @@
 import { ref } from 'vue'
 import { getSpecificAuthService } from '@cornflow-ui/core/services/AuthServiceFactory'
 
+/**
+ * How `start()` ended: the enrollment started, the deployment does not offer two-factor
+ * authentication, or Cornflow could not start it.
+ */
+export type MfaEnrollmentStart = 'started' | 'unavailable' | 'failed'
+
 export function useMfaEnrollment() {
   const secret = ref('')
   /** The QR code as a data URL; empty when it could not be drawn (the secret can be typed in). */
   const qr = ref('')
   const backupCodes = ref<string[]>([])
 
-  /** Resolves to whether Cornflow started the enrollment. */
-  async function start(): Promise<boolean> {
+  async function start(): Promise<MfaEnrollmentStart> {
     const auth = await getSpecificAuthService('cornflow')
     const setup = await auth?.mfaSetup?.()
-    if (!setup) return false
-    secret.value = setup.secret
+    if (!setup?.success) return setup?.unavailable ? 'unavailable' : 'failed'
+    secret.value = setup.secret ?? ''
     try {
       const { toDataURL } = await import('qrcode')
-      qr.value = await toDataURL(setup.provisioningUri, { width: 200, margin: 1 })
+      qr.value = await toDataURL(setup.provisioningUri ?? '', { width: 200, margin: 1 })
     } catch (error) {
       console.error('Could not draw the QR code:', error)
       qr.value = ''
     }
-    return true
+    return 'started'
   }
 
   /** Resolves to whether the code activated two-factor authentication. */
