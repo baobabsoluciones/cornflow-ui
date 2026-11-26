@@ -208,6 +208,13 @@
           @click="mfaResetOpen = true"
         />
 
+        <CoreAlert
+          v-else-if="mfaUnavailable"
+          tone="info"
+          :message="$t('settings.mfaUnavailable')"
+          data-testid="settings-mfa-unavailable"
+        />
+
         <CoreButton
           v-else-if="mfaStep === 'idle'"
           class="user-settings__action"
@@ -499,10 +506,15 @@ const mfaBusy = ref(false)
 const mfaResetOpen = ref(false)
 const enrollment = useMfaEnrollment()
 
+/** The deployment does not offer two-factor authentication, which the server says on `start()`. */
+const mfaUnavailable = ref(false)
+
 async function startMfa() {
   mfaBusy.value = true
   try {
-    if (await enrollment.start()) mfaStep.value = 'enroll'
+    const started = await enrollment.start()
+    if (started === 'started') mfaStep.value = 'enroll'
+    else if (started === 'unavailable') mfaUnavailable.value = true
     else showSnackbar(t('settings.mfaEnrollError'), 'error')
   } finally {
     mfaBusy.value = false

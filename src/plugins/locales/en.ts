@@ -606,6 +606,7 @@ export default {
     mfaVerifyButton: 'Verify',
     mfaInvalidCode: 'Invalid authentication code',
     mfaEnrollError: 'Two-factor authentication could not be set up.',
+    mfaUnavailable: 'This deployment does not offer two-factor authentication.',
     mfaBackupHint: 'Keep these one-time backup codes in a safe place. They will not be shown again.',
     mfaBackupContinue: 'I have saved my codes',
     mfaEnableSuccess: 'Two-factor authentication is on.',

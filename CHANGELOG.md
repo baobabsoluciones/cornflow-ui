@@ -4,7 +4,7 @@
 
 ### Added
 - **Two-factor authentication and personal access token in the user settings**  
-  - Two-factor authentication: whether it is on; turning it on (QR code, first code, backup codes) and resetting it after a confirmation, which closes every session and goes to the sign-in. The enrollment is shared with the sign-in (`useMfaEnrollment`)
+  - Two-factor authentication: whether it is on; turning it on (QR code, first code, backup codes) and resetting it after a confirmation, which closes every session and goes to the sign-in. A server that does not offer it (501, or 404 without two-factor authentication) is told apart, and the card says so in place of the button. The enrollment is shared with the sign-in (`useMfaEnrollment`)
   - Personal access token: generates one, read-only if asked, confirmed with a two-factor code when the user has it, shown once; a server with tokens off says so. Hidden with `enablePersonalTokens: false`
   - Turning on two-factor authentication renews the session tokens without dropping the role flags of the signed-in user
   *Contributors:* [@HelenaCA](#), [@ggsdc](#)  

@@ -371,7 +371,7 @@ describe('UserSettingsView', () => {
     })
 
     test('turning it on: QR code and secret, first code, then the backup codes', async () => {
-      cornflowAuth.mfaSetup.mockResolvedValue({ secret: 'ABC', provisioningUri: 'otpauth://totp/x' })
+      cornflowAuth.mfaSetup.mockResolvedValue({ success: true, secret: 'ABC', provisioningUri: 'otpauth://totp/x' })
       cornflowAuth.mfaVerify.mockResolvedValue({ backupCodes: ['a1', 'b2'] })
       ;({ wrapper } = await mountView())
 
@@ -396,7 +396,7 @@ describe('UserSettingsView', () => {
     })
 
     test('a wrong first code keeps it off', async () => {
-      cornflowAuth.mfaSetup.mockResolvedValue({ secret: 'ABC', provisioningUri: 'otpauth://totp/x' })
+      cornflowAuth.mfaSetup.mockResolvedValue({ success: true, secret: 'ABC', provisioningUri: 'otpauth://totp/x' })
       cornflowAuth.mfaVerify.mockResolvedValue(null)
       ;({ wrapper } = await mountView())
 
@@ -412,7 +412,7 @@ describe('UserSettingsView', () => {
     })
 
     test('cancelling the enrollment goes back', async () => {
-      cornflowAuth.mfaSetup.mockResolvedValue({ secret: 'ABC', provisioningUri: 'otpauth://totp/x' })
+      cornflowAuth.mfaSetup.mockResolvedValue({ success: true, secret: 'ABC', provisioningUri: 'otpauth://totp/x' })
       ;({ wrapper } = await mountView())
 
       await field(wrapper, 'settings-mfa-enable').trigger('click')
@@ -423,13 +423,25 @@ describe('UserSettingsView', () => {
     })
 
     test('an enrollment that cannot start says so', async () => {
-      cornflowAuth.mfaSetup.mockResolvedValue(null)
+      cornflowAuth.mfaSetup.mockResolvedValue({ success: false })
       ;({ wrapper } = await mountView())
 
       await field(wrapper, 'settings-mfa-enable').trigger('click')
       await flushPromises()
 
       expect(snackbar).toHaveBeenCalledWith('Two-factor authentication could not be set up.', 'error')
+    })
+
+    test('a deployment without two-factor authentication says so in place of the button', async () => {
+      cornflowAuth.mfaSetup.mockResolvedValue({ success: false, unavailable: true })
+      ;({ wrapper } = await mountView())
+
+      await field(wrapper, 'settings-mfa-enable').trigger('click')
+      await flushPromises()
+
+      expect(field(wrapper, 'settings-mfa-unavailable').exists()).toBe(true)
+      expect(field(wrapper, 'settings-mfa-enable').exists()).toBe(false)
+      expect(snackbar).not.toHaveBeenCalled()
     })
 
     test('resetting it, once confirmed, closes the session', async () => {

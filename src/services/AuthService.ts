@@ -2,7 +2,7 @@ import client, { isEndedSession } from '../api/Api'
 import type {
   ApiKeyResult,
   LoginResult,
-  MfaSetupData,
+  MfaSetupResult,
   MfaVerifyData,
 } from '../interfaces/AuthProvider'
 
@@ -86,13 +86,16 @@ class AuthService {
 
   /**
    * Starts the two-factor enrollment, with the session or with the temporary token of a sign-in
-   * that requires it.
+   * that requires it. A deployment that does not offer it answers 501 (turned off) or 404 (a
+   * server without two-factor authentication).
    */
-  async mfaSetup(): Promise<MfaSetupData | null> {
+  async mfaSetup(): Promise<MfaSetupResult> {
     const response = await client.post('/mfa/setup/', {}, JSON_HEADERS)
-    if (response.status !== 200) return null
+    if (response.status !== 200) {
+      return { success: false, unavailable: response.status === 501 || response.status === 404 }
+    }
     const content = response.content as Content
-    return { secret: content.secret, provisioningUri: content.provisioning_uri }
+    return { success: true, secret: content.secret, provisioningUri: content.provisioning_uri }
   }
 
   /**

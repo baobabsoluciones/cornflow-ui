@@ -612,6 +612,7 @@ export default {
     mfaVerifyButton: 'Verificar',
     mfaInvalidCode: 'Código de autenticación no válido',
     mfaEnrollError: 'No se pudo configurar la autenticación de dos factores.',
+    mfaUnavailable: 'Este despliegue no ofrece la autenticación de dos factores.',
     mfaBackupHint: 'Guarda estos códigos de respaldo de un solo uso en un lugar seguro. No se volverán a mostrar.',
     mfaBackupContinue: 'He guardado mis códigos',
     mfaEnableSuccess: 'La autenticación de dos factores está activada.',
