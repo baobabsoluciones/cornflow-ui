@@ -1037,6 +1037,9 @@ export default {
     },
   },
   dashboard: {
+    range: {
+      shown: '{shown} of {count}',
+    },
     widgets: {
       total: 'Total {column}',
       average: 'Average {column}',
@@ -1097,6 +1100,8 @@ export default {
       'No instance data available. Changes cannot be saved.',
   },
   common: {
+    from: 'From',
+    to: 'To',
     clear: 'Clear',
     close: 'Close',
     cancel: 'Cancel',

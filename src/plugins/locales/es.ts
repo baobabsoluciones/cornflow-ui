@@ -1045,6 +1045,9 @@ export default {
     },
   },
   dashboard: {
+    range: {
+      shown: '{shown} de {count}',
+    },
     widgets: {
       total: '{column} total',
       average: 'Promedio {column}',
@@ -1106,6 +1109,8 @@ export default {
       'No hay datos de instancia. No se pueden guardar los cambios.',
   },
   common: {
+    from: 'Desde',
+    to: 'Hasta',
     clear: 'Limpiar',
     close: 'Cerrar',
     cancel: 'Cancelar',

@@ -942,7 +942,14 @@ export default {
       updateError: 'Erreur lors de la mise à jour de la table de configuration',
     },
   },
+  dashboard: {
+    range: {
+      shown: '{shown} sur {count}',
+    },
+  },
   common: {
+    from: 'Du',
+    to: 'Au',
     clear: 'Effacer',
     close: 'Fermer',
   },
