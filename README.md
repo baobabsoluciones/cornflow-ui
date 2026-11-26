@@ -1700,10 +1700,15 @@ only.
 - **Session**: the login gives a short-lived access token and a refresh token. When a request finds
   the access token expired (a 401, or a 400 whose error is about the token), the Api client
   (`ApiClient.renewSession`) exchanges the refresh token at `POST /token/refresh/` and sends the
-  request again, once; requests that find it expired at the same time share one renewal. When the
-  refresh token is no longer accepted (inactivity, the absolute cap, a password change), the session
-  ends and the app goes to the sign-in. Logging out closes the session on the server too
-  (`POST /logout/`). Service users and servers with refresh tokens off get no refresh token.
+  request again, once; requests that find it expired at the same time share one renewal, and a
+  request that finds it already renewed by another one is just sent again. When the refresh token is
+  no longer accepted (inactivity, the absolute cap, a password change), the session ends and the app
+  goes to the sign-in. Logging out closes the session on the server too (`POST /logout/`). Service
+  users and servers with refresh tokens off get no refresh token.
+- **Back to the page after a forced sign-in**: when the session ends, the page being shown (path and
+  query) is kept for the tab, and the next sign-in, with Cornflow or a single sign-on provider, goes
+  back to it once instead of the home page (`utils/returnTo`). Only pages of the app are followed: an
+  absolute URL, a `//host` and the sign-in and sign-out pages are ignored. Logging out forgets it.
 - **Two-factor authentication**: a user who has it is asked for the code of their authenticator app,
   or one of their backup codes, after the password. When the server requires it (`MFA_REQUIRED=1`)
   and the user has none yet, the sign-in goes through the enrollment first: a QR code (and its

@@ -3,6 +3,11 @@
 ## [Unreleased]
 
 ### Added
+- **After a forced sign-in, the user goes back to the page the session ended on**  
+  - When the session ends (an expired or revoked session), the page being shown is kept, and the next sign-in, with Cornflow or a single sign-on provider, goes back to it once instead of the home page. Only pages of the app are followed: absolute URLs and the sign-in and sign-out pages are ignored. Logging out forgets it (`utils/returnTo`)
+  - A request that finds the session already renewed by another one is sent again with the new token, without renewing it a second time
+  *Contributors:* [@antoniogonzalezsuarez](#), [@HelenaCA](#)  
+  *Commit ID:* #289
 - **Platform roles, locked accounts and two-factor resets in roles management**  
   - A platform administrator (`platform_admin`) counts as an administrator and gets `store.isPlatformAdmin`; the platform roles have their own icon, tone, description and permissions
   - When the server keeps the list of roles to platform administrators (403 on `GET /roles/`), anyone else is told so and keeps the users, without the roles panel or the edit button; a server without platform roles keeps the whole page for every administrator
