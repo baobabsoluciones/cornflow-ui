@@ -91,6 +91,7 @@ describe('ExecutionRepository', () => {
     // Reset mocks
     vi.clearAllMocks()
     storeState.frontendConfig = null
+    storeState.getSchemaName = 'test-schema'
     
     repository = new ExecutionRepository()
   })
@@ -557,10 +558,17 @@ describe('ExecutionRepository', () => {
       storeState.frontendConfig = {
         executions: {
           'test-schema': {
-            list: '/executions/',
-            details: '/executions/{id}/',
-            data: '/executions/{id}/data/',
-            instance_data: '/instances/{id}/data/',
+            get_list: '/executions/',
+            get_detail: '/executions/{id}/',
+            put_detail: '/executions/{id}/',
+            delete_detail: '/executions/{id}/',
+            get_data: '/executions/{id}/data/',
+            get_instance_data: '/instances/{id}/data/',
+          },
+          'read-only-schema': {
+            get_list: '/executions/',
+            get_detail: '/executions/{id}/',
+            get_data: '/executions/{id}/data/',
           },
         },
       }
@@ -568,7 +576,7 @@ describe('ExecutionRepository', () => {
       mockInstanceRepo.getInstance.mockResolvedValue({ id: 'i1', data: {} })
     })
 
-    test('lists the executions of the DAG from its list', async () => {
+    test('lists the executions of the DAG from its get_list', async () => {
       mockClient.get.mockResolvedValue({ status: 200, content: [] })
 
       await repository.getExecutions('test-schema', '', '', { plant_id: '3' })
@@ -614,7 +622,7 @@ describe('ExecutionRepository', () => {
       expect(mockClient.get).toHaveBeenCalledWith('/executions/g1/', {}, {}, true)
     })
 
-    test('uploads a solution and deletes through its details', async () => {
+    test('uploads a solution and deletes through its put_detail and delete_detail', async () => {
       mockClient.put.mockResolvedValue({ status: 200, content: {} })
       mockClient.remove.mockResolvedValue({ status: 200 })
 
@@ -628,6 +636,28 @@ describe('ExecutionRepository', () => {
         true,
       )
       expect(mockClient.remove).toHaveBeenCalledWith('/executions/g1/', {}, true)
+    })
+
+    test('a DAG that only reads from the backend uploads and deletes through Cornflow', async () => {
+      storeState.getSchemaName = 'read-only-schema'
+      mockClient.put.mockResolvedValue({ status: 200, content: {} })
+      mockClient.remove.mockResolvedValue({ status: 200 })
+
+      await expect(repository.getExecutionState('g1')).resolves.toEqual({
+        state: 1,
+        id: 'g1',
+      })
+      await repository.uploadSolutionData('g1', { table: [] })
+      await repository.deleteExecution('g1')
+
+      expect(mockClient.get).toHaveBeenCalledWith('/executions/g1/', {}, {}, true)
+      expect(mockClient.put).toHaveBeenCalledWith(
+        '/execution/g1/',
+        { data: { table: [] } },
+        {},
+        false,
+      )
+      expect(mockClient.remove).toHaveBeenCalledWith('/execution/g1/', {}, false)
     })
 
     test('reads the DAG of an execution from its details', async () => {

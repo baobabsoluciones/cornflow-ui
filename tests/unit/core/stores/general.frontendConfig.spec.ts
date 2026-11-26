@@ -152,7 +152,7 @@ describe('General store — what the backend tells the interface about each DAG'
   })
 
   test('keeps the endpoints each DAG reads its executions from', async () => {
-    const executions = { dag_1: { list: '/executions/' } }
+    const executions = { dag_1: { get_list: '/executions/' } }
     mockFrontendConfigRepository.getFrontendConfig.mockResolvedValue({
       ...answer,
       executions,

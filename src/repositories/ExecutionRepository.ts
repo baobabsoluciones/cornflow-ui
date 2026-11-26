@@ -125,7 +125,7 @@ async function pollForRegeneratedFiles(
 }
 
 /**
- * Where `key` of the executions of `schema` (by default the active DAG) is read: the endpoint the
+ * Where `key` on the executions of `schema` (by default the active DAG) is sent: the endpoint the
  * backend declares in the frontend config, or Cornflow's (see `resolveExecutionEndpoint`).
  */
 function executionEndpoint(
@@ -152,7 +152,7 @@ export const EXECUTIONS_LIST_LIMIT = 100
 export default class ExecutionRepository {
   /**
    * Get executions created on the given date range. `filterParams` (the picked executions history
-   * filters) travel as extra query parameters. The list of the DAG `name` comes from the `list`
+   * filters) travel as extra query parameters. The list of the DAG `name` comes from the `get_list`
    * endpoint the backend declares for it, from `executionsListEndpoint` when the app declares one,
    * and from `GET /execution/` otherwise.
    */
@@ -186,7 +186,7 @@ export default class ExecutionRepository {
       queryParams.limit = 15
     }
 
-    const endpoint = executionEndpoint('list', undefined, name)
+    const endpoint = executionEndpoint('get_list', undefined, name)
     const response = await client.get(
       endpoint.path,
       queryParams,
@@ -234,7 +234,7 @@ export default class ExecutionRepository {
   async getExecutionState(
     id: string,
   ): Promise<{ state: number; id: string } | null> {
-    const response = await getFrom(executionEndpoint('details', id))
+    const response = await getFrom(executionEndpoint('get_detail', id))
     if (response.status === 200) {
       const exec = response.content
       return { state: exec.state, id: exec.id }
@@ -250,8 +250,8 @@ export default class ExecutionRepository {
   async loadExecution(id: string): Promise<LoadedExecution> {
     // The data endpoint has no user nor last update; the details endpoint (the history's) does.
     const [response, details] = await Promise.all([
-      getFrom(executionEndpoint('data', id)),
-      getFrom(executionEndpoint('details', id)).catch(() => null),
+      getFrom(executionEndpoint('get_data', id)),
+      getFrom(executionEndpoint('get_detail', id)).catch(() => null),
     ])
     const detail = details?.status === 200 ? details.content : {}
 
@@ -266,7 +266,7 @@ export default class ExecutionRepository {
       const instanceRepository = new InstanceRepository()
       const instance = await instanceRepository.getInstance(
         execution.instance_id,
-        executionEndpoint('instance_data', execution.instance_id),
+        executionEndpoint('get_instance_data', execution.instance_id),
       )
       if (instance) {
         const store = useGeneralStore()
@@ -409,14 +409,14 @@ export default class ExecutionRepository {
       // and propagates to the caller.
     }
 
-    const response = await getFrom(executionEndpoint('data', id))
+    const response = await getFrom(executionEndpoint('get_data', id))
 
     if (response.status === 200) {
       const execution = response.content
       const instanceRepository = new InstanceRepository()
       const instance = await instanceRepository.getInstance(
         execution.instance_id,
-        executionEndpoint('instance_data', execution.instance_id),
+        executionEndpoint('get_instance_data', execution.instance_id),
       )
       if (instance) {
         const { Solution, Experiment } = store.appConfig
@@ -487,7 +487,7 @@ export default class ExecutionRepository {
   }
 
   async uploadSolutionData(executionId: string, solutionData: any) {
-    const endpoint = executionEndpoint('details', executionId)
+    const endpoint = executionEndpoint('put_detail', executionId)
     const response = await client.put(
       endpoint.path,
       { data: solutionData },
@@ -506,7 +506,7 @@ export default class ExecutionRepository {
   }
 
   async deleteExecution(id: string) {
-    const endpoint = executionEndpoint('details', id)
+    const endpoint = executionEndpoint('delete_detail', id)
     const response = await client.remove(endpoint.path, {}, endpoint.isExternal)
     return response.status === 200
   }
@@ -543,7 +543,7 @@ export default class ExecutionRepository {
    * Returns the DAG (`schema`) an execution was created with, read from its details.
    */
   async getExecutionSchema(executionId: string): Promise<string> {
-    const response = await getFrom(executionEndpoint('details', executionId))
+    const response = await getFrom(executionEndpoint('get_detail', executionId))
     const schema = response.status === 200 ? response.content?.schema : null
     if (!schema) {
       throw new Error('Error getting the schema of the execution')
