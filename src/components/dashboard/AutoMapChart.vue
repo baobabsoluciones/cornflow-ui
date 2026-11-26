@@ -1,5 +1,7 @@
 <template>
   <MapChartFrame
+    data-testid="dashboard-chart"
+    data-type="map"
     ref="frame"
     :title="title"
     :loading="loading"

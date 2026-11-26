@@ -72,10 +72,57 @@ export function expectedOnScreen(
 }
 
 /**
+ * Goes through every table tab of the page on screen (or its one table) and calls `visit` with the
+ * key of each table once it shows. A page with no data table (a dashboard) has none.
+ */
+export async function forEachTab(
+  page: Page,
+  visit: (key: string) => Promise<void>,
+): Promise<void> {
+  await page.waitForLoadState('networkidle')
+  if (!(await page.getByTestId('data-table').count())) return
+
+  const tabs = page.getByTestId('data-table-tabs').first().getByRole('tab')
+  const tabCount = await tabs.count()
+  let previous = ''
+  for (let tab = 0; tab < Math.max(tabCount, 1); tab++) {
+    if (tabCount) {
+      await tabs.nth(tab).click()
+      await expect(tabs.nth(tab)).toHaveAttribute('aria-selected', 'true')
+    }
+    // The route follows the tab.
+    await expect
+      .poll(() => tableKeyOf(page.url()), {
+        message: 'the route follows the tab',
+      })
+      .not.toBe(previous)
+    previous = tableKeyOf(page.url())
+    await expect(visibleTable(page)).toHaveAttribute('data-status', 'ready')
+    await visit(previous)
+  }
+}
+
+/**
  * Goes through every page of `group` of the selected execution and every table tab on it, and
- * checks that each table shows as many rows as `expected` says for its key. A table `expected`
- * does not have fails the test: the app shows something that is not there. Pages with no data
- * table (dashboards) are passed over. Returns the keys of the tables it went through.
+ * calls `visit` with the key of each table once it shows (`forEachTab`).
+ */
+export async function forEachTable(
+  page: Page,
+  group: ExecutionGroup,
+  visit: (key: string) => Promise<void>,
+): Promise<void> {
+  const pages = await executionViewCount(page, group)
+  for (let index = 0; index < pages; index++) {
+    await openExecutionView(page, group, index)
+    await forEachTab(page, visit)
+  }
+}
+
+/**
+ * Goes through every table of `group` of the selected execution (`forEachTable`) and checks that
+ * each shows as many rows as `expected` says for its key. A table `expected` does not have fails
+ * the test: the app shows something that is not there. Returns the keys of the tables it went
+ * through.
  */
 export async function checkGroupTables(
   page: Page,
@@ -83,41 +130,17 @@ export async function checkGroupTables(
   expected: Record<string, number>,
 ): Promise<string[]> {
   const seen: string[] = []
-  const pages = await executionViewCount(page, group)
-  for (let index = 0; index < pages; index++) {
-    await openExecutionView(page, group, index)
-    await page.waitForLoadState('networkidle')
-    if (!(await page.getByTestId('data-table').count())) continue
-
-    const tabs = page.getByTestId('data-table-tabs').first().getByRole('tab')
-    const tabCount = await tabs.count()
-    let previous = ''
-    for (let tab = 0; tab < Math.max(tabCount, 1); tab++) {
-      if (tabCount) {
-        await tabs.nth(tab).click()
-        await expect(tabs.nth(tab)).toHaveAttribute('aria-selected', 'true')
-      }
-      // The route follows the tab.
-      await expect
-        .poll(() => tableKeyOf(page.url()), {
-          message: 'the route follows the tab',
-        })
-        .not.toBe(previous)
-      const key = tableKeyOf(page.url())
-      previous = key
-      expect(
-        Object.keys(expected),
-        `the ${group} show a table "${key}", which the execution does not have`,
-      ).toContain(key)
-      const table = visibleTable(page)
-      await expect(table).toHaveAttribute('data-status', 'ready')
-      await expect(
-        table,
-        `the table "${key}" of the ${group} shows its rows`,
-      ).toHaveAttribute('data-rows', String(expected[key]))
-      seen.push(key)
-    }
-  }
+  await forEachTable(page, group, async (key) => {
+    expect(
+      Object.keys(expected),
+      `the ${group} show a table "${key}", which the execution does not have`,
+    ).toContain(key)
+    await expect(
+      visibleTable(page),
+      `the table "${key}" of the ${group} shows its rows`,
+    ).toHaveAttribute('data-rows', String(expected[key]))
+    seen.push(key)
+  })
   return seen
 }
 

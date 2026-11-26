@@ -1,5 +1,5 @@
 <template>
-  <div class="chart-card">
+  <div class="chart-card" data-testid="dashboard-chart" data-type="line">
     <div class="chart-header">
       <div class="chart-title">{{ title }}</div>
       <div v-if="config.totalValue !== undefined" class="chart-total-section">

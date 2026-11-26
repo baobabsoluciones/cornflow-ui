@@ -1,5 +1,5 @@
 <template>
-  <div class="kpi-card">
+  <div class="kpi-card" data-testid="dashboard-kpi" :data-value="config.value">
     <div class="kpi-content">
       <div class="kpi-top-section">
         <div class="kpi-header">
