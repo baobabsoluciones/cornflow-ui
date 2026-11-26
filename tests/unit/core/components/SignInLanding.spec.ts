@@ -289,7 +289,7 @@ describe('SignInLanding', () => {
 
     test('a required enrollment shows the QR code and its secret, then the backup codes', async () => {
       auth.cornflow.login.mockResolvedValue({ success: false, mfaSetupRequired: true })
-      auth.cornflow.mfaSetup.mockResolvedValue({ secret: 'ABC', provisioningUri: 'otpauth://totp/x' })
+      auth.cornflow.mfaSetup.mockResolvedValue({ success: true, secret: 'ABC', provisioningUri: 'otpauth://totp/x' })
       auth.cornflow.mfaVerify.mockResolvedValue({ backupCodes: ['a1', 'b2'] })
       let router: any
       ;({ wrapper, router } = await signIn())
@@ -314,7 +314,7 @@ describe('SignInLanding', () => {
 
     test('an enrollment that cannot start says so', async () => {
       auth.cornflow.login.mockResolvedValue({ success: false, mfaSetupRequired: true })
-      auth.cornflow.mfaSetup.mockResolvedValue(null)
+      auth.cornflow.mfaSetup.mockResolvedValue({ success: false })
       ;({ wrapper } = await signIn())
 
       expect(snackbar).toHaveBeenCalledWith('logIn.mfa_setup_error', 'error')
@@ -323,7 +323,7 @@ describe('SignInLanding', () => {
 
     test('a wrong first code keeps the enrollment open', async () => {
       auth.cornflow.login.mockResolvedValue({ success: false, mfaSetupRequired: true })
-      auth.cornflow.mfaSetup.mockResolvedValue({ secret: 'ABC', provisioningUri: 'otpauth://totp/x' })
+      auth.cornflow.mfaSetup.mockResolvedValue({ success: true, secret: 'ABC', provisioningUri: 'otpauth://totp/x' })
       auth.cornflow.mfaVerify.mockResolvedValue(null)
       ;({ wrapper } = await signIn())
 
@@ -337,7 +337,7 @@ describe('SignInLanding', () => {
 
     test('going back from the enrollment drops its temporary token', async () => {
       auth.cornflow.login.mockResolvedValue({ success: false, mfaSetupRequired: true })
-      auth.cornflow.mfaSetup.mockResolvedValue({ secret: 'ABC', provisioningUri: 'otpauth://totp/x' })
+      auth.cornflow.mfaSetup.mockResolvedValue({ success: true, secret: 'ABC', provisioningUri: 'otpauth://totp/x' })
       ;({ wrapper } = await signIn())
 
       await wrapper.find('[data-testid="sign-in-back"]').trigger('click')

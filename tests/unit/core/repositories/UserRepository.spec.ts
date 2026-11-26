@@ -5,7 +5,8 @@ import UserRepository from '@cornflow-ui/core/repositories/UserRepository'
 vi.mock('@cornflow-ui/core/api/Api', () => ({
   default: {
     get: vi.fn(),
-    put: vi.fn()
+    put: vi.fn(),
+    remove: vi.fn()
   }
 }))
 
@@ -90,6 +91,21 @@ describe('UserRepository', () => {
       // The repository will throw an error when trying to access null user properties
       await expect(repository.getUserById('test-user-id')).rejects.toThrow()
       expect(mockClient.get).toHaveBeenCalledWith('/user/test-user-id/')
+    })
+  })
+
+  describe('resetMfa', () => {
+    test("turns off the user's two-factor authentication", async () => {
+      mockClient.remove.mockResolvedValue({ status: 200, content: {} })
+
+      expect(await repository.resetMfa('7')).toBe(true)
+      expect(mockClient.remove).toHaveBeenCalledWith('/user/7/mfa/')
+    })
+
+    test('a refusal resolves to false', async () => {
+      mockClient.remove.mockResolvedValue({ status: 403, content: {} })
+
+      expect(await repository.resetMfa('7')).toBe(false)
     })
   })
 

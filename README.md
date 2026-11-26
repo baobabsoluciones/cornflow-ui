@@ -104,6 +104,18 @@ menu), a card per subject:
   session of the user, so the page goes to the sign-in to enter with the new one. When the password
   has expired or must be renewed, the card says so and the app keeps the user here until it is
   changed.
+- **Two-factor authentication**, when the app signs in with Cornflow: whether it is on. Off, it can
+  be turned on (a QR code and its secret for the authenticator app, its first code, and the
+  one-time backup codes); on, it can be reset, for a changed or lost phone, after a confirmation.
+  Resetting it closes every session of the user, so the page goes to the sign-in; a server that
+  requires two-factor authentication asks for the enrollment again there. A server that does not
+  offer two-factor authentication (Cornflow's `MFA_ENABLED` off, the default of security levels 1
+  and 2) answers the enrollment with a 501, and the card says so in place of the button.
+- **Personal access token**, when the app signs in with Cornflow and offers it
+  (`enablePersonalTokens`, on by default): a long-lived token for scripts and integrations,
+  read-only if asked, confirmed with a two-factor code when the user has it. It is shown once, and
+  generating one revokes the previous one. A server with personal tokens off says so in place of
+  the form.
 
 ## Help menu and guided tours
 
@@ -1072,7 +1084,7 @@ core: {
   [docs/create-execution-flows.md](docs/create-execution-flows.md)). Switching DAG mounts the flow
   of the new DAG.
 - `valuesJsonPath`, `schemaLabels`, `enableRolesManagement`, `allowEditRoles`,
-  `showOpenIdUsername` and `enableDarkMode` apply to the whole application: a DAG entry cannot set
+  `showOpenIdUsername`, `enableDarkMode` and `enablePersonalTokens` apply to the whole application: a DAG entry cannot set
   them. A key the app's
   `parameters` does not declare is ignored too. Both log a console warning naming the DAG.
 - The schema config in Cornflow still sets the solver and the config fields on top of the DAG's
@@ -1347,6 +1359,7 @@ This file contains **internal application-specific configuration** that is part 
 | `enableAutoSolutionDashboard` | `boolean`  | Auto-generate dashboards for solution tables          |
 | `enableMasterTableMatching`   | `boolean`  | Enable master table matching during instance review   |
 | `enableDarkMode`              | `boolean`  | Users may switch to dark mode in their settings (see [Dark mode](#dark-mode)) |
+| `enablePersonalTokens`        | `boolean`  | Users who sign in with Cornflow may generate a personal access token in their settings (default `true`; the server decides whether tokens are allowed) |
 | `executionSolvers`            | `string[]` | List of available solvers for execution               |
 | `instanceFileFormats`         | `string[]` | File extensions the instance upload accepts. Empty or absent means the default (`json`, `xlsx`, `csv`). |
 | `executionFilters`            | `ExecutionFilter[]` | Filters of the execution history, fed by frontend-automation tables. Empty means date filters only. See [Execution history filters](#execution-history-filters-optional) |

@@ -2,7 +2,7 @@ import client, { isEndedSession } from '../api/Api'
 import type {
   ApiKeyResult,
   LoginResult,
-  MfaSetupData,
+  MfaSetupResult,
   MfaVerifyData,
 } from '../interfaces/AuthProvider'
 
@@ -19,9 +19,11 @@ function clearRoleFlags() {
 
 /**
  * Keeps the session cornflow has just issued: the access token, the refresh token that renews it
- * (service users and deployments with refresh tokens off get none) and the user id.
+ * (service users and deployments with refresh tokens off get none) and the user id. The role flags
+ * of another user are dropped; the same user, renewing their session, keeps theirs.
  */
 function storeSession(content: Content) {
+  const sameUser = sessionStorage.getItem('userId') === String(content.id)
   sessionStorage.setItem('isAuthenticated', 'true')
   sessionStorage.setItem('token', content.token)
   if (content.refresh_token) sessionStorage.setItem('refreshToken', content.refresh_token)
@@ -29,7 +31,7 @@ function storeSession(content: Content) {
   sessionStorage.setItem('userId', content.id)
   // The Api client keeps the Bearer in memory: point it at the token just issued.
   client.initializeToken()
-  clearRoleFlags()
+  if (!sameUser) clearRoleFlags()
 }
 
 class AuthService {
@@ -84,13 +86,16 @@ class AuthService {
 
   /**
    * Starts the two-factor enrollment, with the session or with the temporary token of a sign-in
-   * that requires it.
+   * that requires it. A deployment that does not offer it answers 501 (turned off) or 404 (a
+   * server without two-factor authentication).
    */
-  async mfaSetup(): Promise<MfaSetupData | null> {
+  async mfaSetup(): Promise<MfaSetupResult> {
     const response = await client.post('/mfa/setup/', {}, JSON_HEADERS)
-    if (response.status !== 200) return null
+    if (response.status !== 200) {
+      return { success: false, unavailable: response.status === 501 || response.status === 404 }
+    }
     const content = response.content as Content
-    return { secret: content.secret, provisioningUri: content.provisioning_uri }
+    return { success: true, secret: content.secret, provisioningUri: content.provisioning_uri }
   }
 
   /**

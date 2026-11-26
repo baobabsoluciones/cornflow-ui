@@ -23,9 +23,12 @@ export interface LoginResult {
   errorMessage?: string
 }
 
-export interface MfaSetupData {
-  secret: string
-  provisioningUri: string
+export interface MfaSetupResult {
+  success: boolean
+  secret?: string
+  provisioningUri?: string
+  /** The deployment does not offer two-factor authentication: turned off (501) or missing (404). */
+  unavailable?: boolean
 }
 
 export interface MfaVerifyData {
@@ -51,7 +54,7 @@ export interface AuthProvider {
   isAuthenticated(): boolean;
   refreshToken?(): Promise<{ token: string; expiresAt: number } | null>;
   /** Starts the two-factor enrollment: the secret and the URI its QR code encodes. */
-  mfaSetup?(): Promise<MfaSetupData | null>;
+  mfaSetup?(): Promise<MfaSetupResult>;
   /** Activates two-factor authentication with the first code; returns the one-time backup codes. */
   mfaVerify?(totpCode: string): Promise<MfaVerifyData | null>;
   /** Drops the temporary token of an enrollment left half way. */
