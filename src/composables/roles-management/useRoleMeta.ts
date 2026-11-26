@@ -16,6 +16,9 @@ const ROLE_PRESETS: Record<string, { icon: string; tone: CoreTone }> = {
   planner: { icon: 'mdi-clipboard-edit-outline', tone: 'info' },
   viewer: { icon: 'mdi-eye-outline', tone: 'success' },
   service: { icon: 'mdi-cog-outline', tone: 'warning' },
+  platform_admin: { icon: 'mdi-shield-star-outline', tone: 'neutral' },
+  platform_planner: { icon: 'mdi-clipboard-account-outline', tone: 'neutral' },
+  platform_viewer: { icon: 'mdi-eye-check-outline', tone: 'neutral' },
 }
 
 const ROLE_PRESET_FALLBACK: { icon: string; tone: CoreTone } = {

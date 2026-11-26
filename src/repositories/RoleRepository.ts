@@ -1,4 +1,5 @@
 import client from '@cornflow-ui/core/api/Api'
+import { PLATFORM_ADMIN_REQUIRED, TOTP_REQUIRED } from '@cornflow-ui/core/utils/platformRoles'
 
 export interface Role {
   id: number
@@ -18,6 +19,10 @@ export interface UserRoleAssignment {
 export default class RoleRepository {
   // ── Roles CRUD ──────────────────────────────────────────────────
 
+  /**
+   * The roles of the deployment. On a Cornflow with platform roles only a platform administrator
+   * may list them: a 403 rejects with `PLATFORM_ADMIN_REQUIRED`.
+   */
   getRoles(): Promise<Role[]> {
     return new Promise((resolve, reject) => {
       client
@@ -25,6 +30,8 @@ export default class RoleRepository {
         .then((response) => {
           if (response.status === 200) {
             resolve(response.content as Role[])
+          } else if (response.status === 403) {
+            reject(new Error(PLATFORM_ADMIN_REQUIRED))
           } else {
             reject(new Error('Error getting roles'))
           }
@@ -111,13 +118,29 @@ export default class RoleRepository {
     })
   }
 
-  assignRoleToUser(userId: number, roleId: number): Promise<UserRoleAssignment> {
+  /**
+   * Gives a role to a user. Granting a platform role asks an administrator who has two-factor
+   * authentication for a fresh code (`totpCode`); without a valid one the promise rejects with
+   * `TOTP_REQUIRED`. The code is sent only when given.
+   */
+  assignRoleToUser(
+    userId: number,
+    roleId: number,
+    totpCode?: string,
+  ): Promise<UserRoleAssignment> {
+    const body: Record<string, unknown> = { user_id: userId, role_id: roleId }
+    if (totpCode) body.totp_code = totpCode
     return new Promise((resolve, reject) => {
       client
-        .post('/user/role/', { user_id: userId, role_id: roleId })
+        .post('/user/role/', body)
         .then((response) => {
           if (response.status === 200 || response.status === 201) {
             resolve(response.content as UserRoleAssignment)
+          } else if (
+            response.status === 400 &&
+            /two-factor/i.test((response.content as { error?: string })?.error ?? '')
+          ) {
+            reject(new Error(TOTP_REQUIRED))
           } else {
             reject(new Error('Error assigning role to user'))
           }

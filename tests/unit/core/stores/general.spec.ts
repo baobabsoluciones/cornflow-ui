@@ -1265,6 +1265,25 @@ describe('General Store', () => {
         'admin',
       ])
       expect(store.isAdmin).toBe(true)
+      expect(store.isPlatformAdmin).toBe(false)
+    })
+
+    test('a platform administrator is an administrator too', async () => {
+      const store = useGeneralStore()
+      const session = await import('@cornflow-ui/core/services/AuthService')
+      vi.mocked(session.default.getUserId).mockReturnValue('7' as any)
+      mockUserRepository.getUserById.mockResolvedValue({ id: '7', roles: [] })
+      store.roleRepository = {
+        getAllUserRoleAssignments: vi.fn().mockResolvedValue([
+          { user_id: 7, role_id: 903, role: 'platform_admin' },
+        ]),
+      } as any
+
+      await store.fetchUser()
+
+      expect(store.isAdmin).toBe(true)
+      expect(store.isPlatformAdmin).toBe(true)
+      sessionStorage.removeItem('isPlatformAdmin')
     })
   })
 

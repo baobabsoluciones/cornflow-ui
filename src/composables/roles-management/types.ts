@@ -6,6 +6,10 @@ export interface UserRow {
   last_name: string
   email: string
   role_names: string[]
+  /** Locked after too many failed sign-in attempts. */
+  locked: boolean
+  /** Has two-factor authentication on. */
+  mfaEnabled: boolean
   /** Role IDs kept for API calls (parallel to role_names). */
   _role_ids: number[]
 }

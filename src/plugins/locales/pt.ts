@@ -1292,7 +1292,43 @@ export default {
           'Criar e iniciar execuções',
         ],
       },
+      platform_admin: {
+        description: 'Equipa da plataforma · administra a implementação',
+        permissions: [
+          'Tudo o que um admin faz',
+          'Gerir funções e utilizadores da plataforma',
+          'Desbloquear contas bloqueadas',
+        ],
+      },
+      platform_planner: {
+        description: 'Equipa da plataforma · planeia como um planner',
+        permissions: [
+          'Ler instâncias e soluções',
+          'Criar e lançar execuções',
+          'Editar dados mestre',
+        ],
+      },
+      platform_viewer: {
+        description: 'Equipa da plataforma · só leitura',
+        permissions: [
+          'Ler instâncias e soluções',
+        ],
+      },
     },
+    lockedBadge: 'Bloqueada',
+    unlockUser: 'Desbloquear a conta',
+    unlockConfirm: 'A conta de {username} será desbloqueada e as tentativas falhadas voltarão a contar a partir de zero.',
+    userUnlocked: 'A conta foi desbloqueada.',
+    errorUnlockUser: 'Não foi possível desbloquear a conta.',
+    errorUnlockPlatformAdmin: 'Nesta implementação só um administrador da plataforma pode desbloquear esta conta.',
+    resetMfa: 'Repor a autenticação de dois fatores',
+    resetMfaConfirm: 'A aplicação de autenticação e os códigos de recuperação de {username} deixarão de funcionar, e as suas sessões serão fechadas. Se a aplicação a exigir, voltará a configurá-la ao entrar.',
+    mfaReset: 'A autenticação de dois fatores foi reposta.',
+    errorResetMfa: 'Não foi possível repor a autenticação de dois fatores.',
+    platformRoleTotpLabel: 'O seu código de autenticação',
+    platformRoleTotpHint: 'Conceder uma função de plataforma pede um código da sua aplicação de autenticação, ou um dos seus códigos de recuperação.',
+    errorPlatformRoleTotp: 'Conceder uma função de plataforma exige um código de autenticação válido.',
+    platformAdminRequired: 'Nesta implementação só os administradores da plataforma gerem as funções. Os utilizadores continuam aqui para desbloquear contas e repor a autenticação de dois fatores quando a implementação o permite.',
   },
   externalEtl: {
     switch: {

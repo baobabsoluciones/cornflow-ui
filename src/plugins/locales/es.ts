@@ -1311,7 +1311,43 @@ export default {
           'Crear y lanzar ejecuciones',
         ],
       },
+      platform_admin: {
+        description: 'Personal de plataforma · administra el despliegue',
+        permissions: [
+          'Todo lo que hace un admin',
+          'Gestionar roles y usuarios de plataforma',
+          'Desbloquear cuentas bloqueadas',
+        ],
+      },
+      platform_planner: {
+        description: 'Personal de plataforma · planifica como un planner',
+        permissions: [
+          'Leer instancias y soluciones',
+          'Crear y lanzar ejecuciones',
+          'Editar datos maestros',
+        ],
+      },
+      platform_viewer: {
+        description: 'Personal de plataforma · solo lectura',
+        permissions: [
+          'Leer instancias y soluciones',
+        ],
+      },
     },
+    lockedBadge: 'Bloqueada',
+    unlockUser: 'Desbloquear la cuenta',
+    unlockConfirm: 'Se desbloqueará la cuenta de {username} y sus intentos fallidos volverán a contar desde cero.',
+    userUnlocked: 'La cuenta se ha desbloqueado.',
+    errorUnlockUser: 'No se pudo desbloquear la cuenta.',
+    errorUnlockPlatformAdmin: 'En este despliegue solo un administrador de plataforma puede desbloquear esta cuenta.',
+    resetMfa: 'Restablecer la autenticación de dos factores',
+    resetMfaConfirm: 'La aplicación de autenticación y los códigos de respaldo de {username} dejarán de funcionar, y se cerrarán sus sesiones. Si la aplicación la exige, la volverá a configurar al entrar.',
+    mfaReset: 'La autenticación de dos factores se ha restablecido.',
+    errorResetMfa: 'No se pudo restablecer la autenticación de dos factores.',
+    platformRoleTotpLabel: 'Tu código de autenticación',
+    platformRoleTotpHint: 'Para conceder un rol de plataforma se pide un código de tu aplicación de autenticación, o uno de tus códigos de respaldo.',
+    errorPlatformRoleTotp: 'Para conceder un rol de plataforma hace falta un código de autenticación válido.',
+    platformAdminRequired: 'En este despliegue solo los administradores de plataforma gestionan los roles. Los usuarios siguen aquí para desbloquear cuentas y restablecer la autenticación de dos factores cuando el despliegue lo permite.',
   },
   externalEtl: {
     switch: {

@@ -176,6 +176,45 @@ describe('UserRolesDialog', () => {
     })
   })
 
+  describe('platform roles', () => {
+    const roles = [
+      { id: 1, name: 'admin' },
+      { id: 903, name: 'platform_admin' },
+    ]
+    const totpField = () => dialog().querySelector<HTMLInputElement>('[data-testid="platform-role-totp"]')
+
+    test('granting one asks an administrator with two-factor authentication for a code', async () => {
+      await createWrapper({ roles, askTotp: true })
+      expect(totpField()).toBeNull()
+
+      checkboxes()[1].click()
+      await nextTick()
+      expect(totpField()).not.toBeNull()
+      expect(button('rolesManagement.save').disabled).toBe(true)
+
+      await type(totpField()!, ' 123456 ')
+      expect(button('rolesManagement.save').disabled).toBe(false)
+      button('rolesManagement.save').click()
+      const payload = wrapper.emitted('save')![0][0] as any
+      expect(payload.roleNames).toEqual(['admin', 'platform_admin'])
+      expect(payload.totpCode).toBe('123456')
+    })
+
+    test('keeping one the user already has asks for no code', async () => {
+      await createWrapper({ roles, askTotp: true, user: user({ role_names: ['platform_admin'] }) })
+      expect(totpField()).toBeNull()
+      button('rolesManagement.save').click()
+      expect((wrapper.emitted('save')![0][0] as any).totpCode).toBeUndefined()
+    })
+
+    test('an administrator without two-factor authentication is asked for no code', async () => {
+      await createWrapper({ roles })
+      checkboxes()[1].click()
+      await nextTick()
+      expect(totpField()).toBeNull()
+    })
+  })
+
   describe('close behaviour', () => {
     test('the cancel button emits update:modelValue false', async () => {
       await createWrapper()
