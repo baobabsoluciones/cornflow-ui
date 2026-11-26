@@ -1617,22 +1617,26 @@ describe('General Store', () => {
   })
 
   describe('setConfigurations', () => {
-    test('builds raw configurations from the premium master-data hook + schema repo', async () => {
+    test('builds raw configurations from the premium master-data hook + the loaded schema', async () => {
       const store = useGeneralStore()
       mockLoadPremiumMasterDataConfig.mockResolvedValue({
         config: { md: { title: 'MD' } },
         sections: [{ key: 's', order: 1 }],
         groups: [{ key: 'g', order: 1 }],
       })
-      const repo = {
-        getInstanceTables: vi.fn().mockResolvedValue({ in: {} }),
-        getSolutionTables: vi.fn().mockResolvedValue({ out: {} }),
-      }
-      store.schemaRepository = repo as any
+      const table = { type: 'array', items: { type: 'object', properties: {} } }
+      store.schemaConfig = {
+        name: 'test_dag',
+        instanceSchema: { properties: { in: table } },
+        solutionSchema: { properties: { out: table } },
+      } as any
 
       await store.setConfigurations()
 
-      expect(store.rawConfigurations).toBeTruthy()
+      expect(Object.keys(store.rawConfigurations?.inputData ?? {})).toEqual(['in'])
+      expect(Object.keys(store.rawConfigurations?.resultsData ?? {})).toEqual([
+        'out',
+      ])
       expect(store.masterDataSections).toEqual([{ key: 's', order: 1 }])
       expect(store.masterDataGroups).toEqual([{ key: 'g', order: 1 }])
       expect(store.configurations).not.toBeNull()
@@ -1642,11 +1646,6 @@ describe('General Store', () => {
       const store = useGeneralStore()
       // No frontend-automation module registered: hook returns null.
       mockLoadPremiumMasterDataConfig.mockResolvedValue(null)
-      const repo = {
-        getInstanceTables: vi.fn().mockResolvedValue({ in: {} }),
-        getSolutionTables: vi.fn().mockResolvedValue({ out: {} }),
-      }
-      store.schemaRepository = repo as any
 
       await store.setConfigurations()
 
@@ -1655,15 +1654,10 @@ describe('General Store', () => {
       expect(store.masterDataGroups).toBeNull()
     })
 
-    test('falls back to empty config when all sources reject', async () => {
+    test('falls back to empty config when master data rejects and no schema is loaded', async () => {
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
       const store = useGeneralStore()
       mockLoadPremiumMasterDataConfig.mockRejectedValue(new Error('no fa'))
-      const repo = {
-        getInstanceTables: vi.fn().mockRejectedValue(new Error('no in')),
-        getSolutionTables: vi.fn().mockRejectedValue(new Error('no out')),
-      }
-      store.schemaRepository = repo as any
 
       await store.setConfigurations()
 
