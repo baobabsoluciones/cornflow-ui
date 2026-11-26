@@ -67,6 +67,10 @@
   *Commit ID:* #274
 
 ### Fixed
+- **A platform administrator sees the Administration group of the side menu**  
+  - Since #286 a platform administrator (`platform_admin`) counts as an administrator, but the side menu still built the Administration group only for the `admin` role, so a platform administrator without it saw neither roles management nor the pages premium modules add there (`parent: 'admin'`). `useDrawerSections` now applies the same rule as the store
+  *Contributors:* [@antoniogonzalezsuarez](#)  
+  *Commit ID:* #TBD
 - **`usePageContext` lists a page only while it is on screen**  
   - Core's views live under `<keep-alive>`, so a page that was left stays mounted and its page-context entries stayed registered: an assistant offered the widgets of a page the user was no longer looking at. `usePageContext` now also unregisters the entry when its component is deactivated and registers it again when it is activated
   *Contributors:* [@antoniogonzalezsuarez](#)  
