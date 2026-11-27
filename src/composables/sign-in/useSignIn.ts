@@ -29,6 +29,7 @@ import {
   type SsoIdentityProvider,
 } from '@cornflow-ui/core/interfaces/AuthProvider'
 import { googleLogo, microsoftLogo } from '@cornflow-ui/core/utils/assets'
+import { takeReturnTo } from '@cornflow-ui/core/utils/returnTo'
 import { useMfaEnrollment } from '@cornflow-ui/core/composables/useMfaEnrollment'
 
 export interface SsoProvider {
@@ -100,7 +101,8 @@ export function useSignIn() {
       void router.push({ path: '/user-settings', query: { changePassword: 'true' } })
       return
     }
-    void router.push('/')
+    // After a forced sign-in (an ended session), back to the page the user was on
+    void router.push(takeReturnTo() ?? '/')
     if (result.lastLogin) {
       const date = new Date(result.lastLogin).toLocaleString()
       showSnackbar?.(t('logIn.last_login_info', { date }), 'info')
