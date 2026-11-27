@@ -38,6 +38,7 @@
   *Commit ID:* #
 - **`window.cornflowUi.describe()`**  
   - What a running app is made of, as data: its config (`core`), schemas, sign-in type, developer mode, staging environment, languages, registered modules, sections, roles (`rolesConfig`), help files, dashboards, the backend it talks to (`backendUrl`), what the backend says about each DAG (`frontendConfig`), the master tables of frontend automation (`masterData`) and the first-level keys of its texts (`i18nNamespaces`). It only reads. The end-to-end suite reads it to know what to test
+  - Published only on the pages of the end-to-end suite, which marks them (`window.__cornflowE2E`) before the app starts; anywhere else, as in production, there is no `window.cornflowUi`
   *Contributors:* [@david-hidalgo-baobab](#)  
   *Commit ID:* #
 

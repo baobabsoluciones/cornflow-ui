@@ -5,7 +5,8 @@
  *
  * The end-to-end suite reads it to know what a deployment has to show: a step, a column or a
  * section that the configuration turns on and is not on the screen is a fault, one it turns off
- * must not be there. It is published once the app starts as `window.cornflowUi.describe()`.
+ * must not be there. It is published once the app starts as `window.cornflowUi.describe()`, only
+ * on the pages of the suite: they carry a mark the app looks for (`publishAppDescription`).
  *
  * It carries data only: functions and components are left out, and of the sign-in settings only
  * the provider type is kept.
@@ -231,10 +232,17 @@ export function describeApp(): AppDescription {
 declare global {
   interface Window {
     cornflowUi?: { describe: () => AppDescription }
+    /** Set by the end-to-end suite before the app starts: only then is `cornflowUi` published. */
+    __cornflowE2E?: boolean
   }
 }
 
-/** Publishes `window.cornflowUi.describe()`. Each call describes the app as it is then. */
+/**
+ * Publishes `window.cornflowUi.describe()` for the end-to-end suite, which marks its pages
+ * (`window.__cornflowE2E`) before the app starts. On any other page, as in production, nothing is
+ * published. Each call of `describe()` describes the app as it is then.
+ */
 export function publishAppDescription(): void {
+  if (window.__cornflowE2E !== true) return
   window.cornflowUi = Object.freeze({ describe: describeApp })
 }

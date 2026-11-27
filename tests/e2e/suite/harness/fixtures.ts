@@ -37,7 +37,7 @@ import {
   uatFile,
 } from './run'
 import { watchContext } from './contextChecks'
-import { freshSessionStorage, restoreSession } from './session'
+import { freshSessionStorage, markForTheSuite, restoreSession } from './session'
 import { loadUat, type Uat } from './uat'
 
 interface TestFixtures {
@@ -78,6 +78,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     { context, sessionEntries, checkTranslations, checkAppErrors, deployment },
     use,
   ) => {
+    await markForTheSuite(context)
     if (sessionEntries) await restoreSession(context, sessionEntries)
     const finish = await watchContext(context, deployment, {
       checkTranslations,

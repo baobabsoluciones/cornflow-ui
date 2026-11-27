@@ -23,6 +23,7 @@ import {
   uatFile,
 } from '../harness/run'
 import {
+  markForTheSuite,
   readDescription,
   readPageSessionStorage,
   signInThroughForm,
@@ -46,7 +47,9 @@ setup('prepare the run', async ({ browser, baseURL }) => {
   const admin = credentials()
 
   // What the deployment is, as it shows before anyone signs in.
-  const firstPage = await (await browser.newContext({ baseURL })).newPage()
+  const firstContext = await browser.newContext({ baseURL })
+  await markForTheSuite(firstContext)
+  const firstPage = await firstContext.newPage()
   await firstPage.goto('/')
   const before = await readDescription(firstPage)
   await firstPage.context().close()
@@ -115,6 +118,7 @@ setup('prepare the run', async ({ browser, baseURL }) => {
   const sessions: SessionUser[] = []
   for (const { sessions: names, user, username, password } of users) {
     const context = await browser.newContext({ baseURL })
+    await markForTheSuite(context)
     const page = await context.newPage()
     await signInThroughForm(page, username, password)
     const entries = await readPageSessionStorage(page)

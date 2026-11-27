@@ -90,11 +90,29 @@ export function readPageSessionStorage(
   })
 }
 
+/**
+ * Marks every page of `context` as the suite's, before the app starts: only on such a page does
+ * the app publish `window.cornflowUi.describe()` (`src/utils/appDescription.ts`). Every context
+ * the suite opens is marked: the `context` fixture, `newSignedInContext` and the set-up's.
+ */
+export async function markForTheSuite(context: BrowserContext): Promise<void> {
+  await context.addInitScript(() => {
+    ;(window as { __cornflowE2E?: boolean }).__cornflowE2E = true
+  })
+}
+
 /** What the app says it is made of: `window.cornflowUi.describe()`. */
 export async function readDescription(page: Page): Promise<Deployment> {
-  await page.waitForFunction(() => !!(window as any).cornflowUi, null, {
-    timeout: 60_000,
-  })
+  await page
+    .waitForFunction(() => !!(window as any).cornflowUi, null, {
+      timeout: 60_000,
+    })
+    .catch(() => {
+      throw new Error(
+        '[cornflow-e2e] The app did not publish window.cornflowUi.describe(). It needs a core ' +
+          'that has it, and a page the suite marked before the app started (markForTheSuite).',
+      )
+    })
   return page.evaluate(() => (window as any).cornflowUi.describe())
 }
 
@@ -189,6 +207,7 @@ export async function newSignedInContext(
     ...options,
     storageState: storageStateFile(user),
   })
+  await markForTheSuite(context)
   await restoreSession(context, entries)
   return context
 }

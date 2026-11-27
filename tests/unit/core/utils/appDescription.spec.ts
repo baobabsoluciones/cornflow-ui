@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest'
+import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
 const { runtime, store, messages } = vi.hoisted(() => ({
@@ -268,9 +268,20 @@ describe('describeApp', () => {
 })
 
 describe('publishAppDescription', () => {
-  test('publishes describe() on window, describing the app as it is when called', () => {
+  afterEach(() => {
+    delete window.cornflowUi
+    delete window.__cornflowE2E
+  })
+
+  test('on a page of the end-to-end suite, publishes describe(), describing the app as it is when called', () => {
+    window.__cornflowE2E = true
     publishAppDescription()
     runtime.schemas = ['planning', 'forecast']
     expect(window.cornflowUi?.describe().schemas).toEqual(['planning', 'forecast'])
+  })
+
+  test('on any other page, as in production, publishes nothing', () => {
+    publishAppDescription()
+    expect(window.cornflowUi).toBeUndefined()
   })
 })

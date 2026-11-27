@@ -6,7 +6,9 @@ its own deployment: its frontend, its backend and its DAGs, with nothing mocked.
 - **It adapts to each app.** It reads what the app is made of from `window.cornflowUi.describe()`
   (its config, the settings its backend sends, its languages and texts) and tests what the app
   has on. What the app has off must not show. What cannot be tested there is skipped, and the
-  report says why.
+  report says why. The app publishes `describe()` only on the pages the suite opens: they carry
+  a mark (`window.__cornflowE2E`) the suite sets before the app starts; anywhere else, as in
+  production, it is not there.
 - **Apps write no tests.** An app gives the suite its test data: per schema, an instance the
   checks find nothing in, one with errors and one with warnings, and the execution config.
 - **It reports its coverage:** what it tested, what failed and what it did not test, with the
@@ -277,6 +279,9 @@ Rules that keep a spec working on every app:
 - Name what you create with `api.name(label)`, so the clean-up finds it.
 - Find elements by `data-testid`, and move around the app through the side menu
   (`openFromMenu` in `suite/harness/navigation.ts`).
+- A page of a browser context you open yourself, for a second user, needs the session and the
+  suite's mark: open it with `newSignedInContext` (`suite/harness/session.ts`), or call
+  `markForTheSuite` on it. Without the mark the app does not publish `describe()`.
 
 ## Developing the suite in core
 
