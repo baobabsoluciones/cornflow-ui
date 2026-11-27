@@ -48,7 +48,15 @@
                     :review-label="reviewButtonLabel"
                     :highlighted-row-id="highlightedRowId"
                     @review="openReview"
-                  />
+                  >
+                    <template v-if="dataFilterFor(effectiveTableKey)" #strip>
+                      <ExecutionDataFilterStrip
+                        :filter="dataFilterFor(effectiveTableKey)!"
+                        :loading="dataFilterReading"
+                        @pick="pickDataFilterValue"
+                      />
+                    </template>
+                  </SectionDataTable>
                 </div>
                 <!-- Widgets column (30%) -->
                 <div class="widgets-column">
@@ -149,7 +157,15 @@
               :review-label="reviewButtonLabel"
               :highlighted-row-id="highlightedRowId"
               @review="openReview"
-            />
+            >
+              <template v-if="dataFilterFor(effectiveTableKey)" #strip>
+                <ExecutionDataFilterStrip
+                  :filter="dataFilterFor(effectiveTableKey)!"
+                  :loading="dataFilterReading"
+                  @pick="pickDataFilterValue"
+                />
+              </template>
+            </SectionDataTable>
           </div>
 
           <!-- Group of tables, one tab each -->
@@ -185,6 +201,13 @@
                       :model-value="selectedTable ?? ''"
                       :tabs="groupTabs"
                       @update:model-value="selectTab"
+                    />
+                  </template>
+                  <template v-if="dataFilterFor(selectedTable)" #strip>
+                    <ExecutionDataFilterStrip
+                      :filter="dataFilterFor(selectedTable)!"
+                      :loading="dataFilterReading"
+                      @pick="pickDataFilterValue"
                     />
                   </template>
                 </SectionDataTable>
@@ -267,6 +290,13 @@
                   :model-value="selectedTable ?? ''"
                   :tabs="groupTabs"
                   @update:model-value="selectTab"
+                />
+              </template>
+              <template v-if="dataFilterFor(selectedTable)" #strip>
+                <ExecutionDataFilterStrip
+                  :filter="dataFilterFor(selectedTable)!"
+                  :loading="dataFilterReading"
+                  @pick="pickDataFilterValue"
                 />
               </template>
             </SectionDataTable>
@@ -415,6 +445,11 @@ import DataTableTabs, {
 import PendingChangesPanel from '@cornflow-ui/core/components/core/data-table/PendingChangesPanel.vue'
 import RelaunchDialog from '@cornflow-ui/core/components/core/data-table/RelaunchDialog.vue'
 import SectionDataTable from '@cornflow-ui/core/components/section-view/SectionDataTable.vue'
+import ExecutionDataFilterStrip from '@cornflow-ui/core/components/section-view/ExecutionDataFilterStrip.vue'
+import {
+  narrowsTable,
+  type ExecutionDataFilter,
+} from '@cornflow-ui/core/utils/executionDataFilter'
 import { pendingChangeGroups } from '@cornflow-ui/core/composables/core-table/useDataTableChanges'
 import { columnsFromHeaders } from '@cornflow-ui/core/utils/dataTable'
 import { isForceRetryOfferError } from '@cornflow-ui/core/repositories/TableRepository'
@@ -531,6 +566,26 @@ const executionType = computed(() => {
   if (sectionType.value === 'results') return 'solution'
   return null
 })
+
+// An execution that the backend gives in parts shows, over the tables it narrows, which value
+// they carry and a selector to read it for another one.
+const dataFilterReading = ref(false)
+
+function dataFilterFor(tableKey: string | null | undefined): ExecutionDataFilter | null {
+  const filter = generalStore.selectedExecution?.dataFilter ?? null
+  return narrowsTable(filter, executionType.value, tableKey) ? filter : null
+}
+
+async function pickDataFilterValue(value: string) {
+  const executionId = generalStore.selectedExecution?.executionId
+  if (!executionId) return
+  dataFilterReading.value = true
+  try {
+    await generalStore.setExecutionDataFilterValue(executionId, value)
+  } finally {
+    dataFilterReading.value = false
+  }
+}
 
 const isRecalculationEnabled = computed(
   () => getAppParameters().enableSolutionRecalculation === true,

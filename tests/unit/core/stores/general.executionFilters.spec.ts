@@ -95,8 +95,6 @@ vi.mock('@cornflow-ui/core/repositories/TableRepository', () => ({
 const mockSchemaRepository = vi.hoisted(() => ({
   getSchema: vi.fn(),
   getAvailableSchemaNames: vi.fn(),
-  getInstanceTables: vi.fn(),
-  getSolutionTables: vi.fn(),
 }))
 const mockExecutionRepository = vi.hoisted(() => ({ getExecutions: vi.fn() }))
 
@@ -160,8 +158,6 @@ describe('General store — executions history filters', () => {
     }
     mockRows.requests = []
     mockSchemaRepository.getSchema.mockResolvedValue({ name: 'schema' })
-    mockSchemaRepository.getInstanceTables.mockResolvedValue({})
-    mockSchemaRepository.getSolutionTables.mockResolvedValue({})
   })
 
   /** A store with the frontend-automation tables loaded, as after the login. */

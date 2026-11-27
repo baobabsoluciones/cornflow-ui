@@ -4,7 +4,7 @@
  * Pages and widgets (core's or an app's) register an entry; a consumer such as an AI assistant
  * lists the entries and reads their `snapshot()` when needed. Core knows nothing about the consumer.
  */
-import { onBeforeUnmount, onMounted, shallowReadonly, shallowRef, type Ref } from 'vue'
+import { onActivated, onBeforeUnmount, onDeactivated, onMounted, shallowReadonly, shallowRef, type Ref } from 'vue'
 
 export type PageContextKind = 'view' | 'widget'
 
@@ -58,14 +58,24 @@ export function onAskAboutPageContext(fn: (entry: PageContextEntry) => void): ()
   }
 }
 
-/** For components: registers on mount, unregisters on unmount. */
+/**
+ * For components: the entry is registered while the component is on screen.
+ *
+ * Registers on mount and unregisters on unmount. Under `<keep-alive>` (core's views are) a page that was
+ * left stays mounted, so the entry is also unregistered when the component is deactivated and registered
+ * again when it is activated.
+ */
 export function usePageContext(entry: PageContextEntry): void {
   let unregister: (() => void) | null = null
-  onMounted(() => {
-    unregister = registerPageContext(entry)
-  })
-  onBeforeUnmount(() => {
+  const on = () => {
+    if (!unregister) unregister = registerPageContext(entry)
+  }
+  const off = () => {
     unregister?.()
     unregister = null
-  })
+  }
+  onMounted(on)
+  onActivated(on)
+  onDeactivated(off)
+  onBeforeUnmount(off)
 }

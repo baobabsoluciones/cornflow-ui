@@ -32,6 +32,7 @@ export const APP_WIDE_PARAMETERS: readonly string[] = [
   'allowEditRoles',
   'showOpenIdUsername',
   'enableDarkMode',
+  'enablePersonalTokens',
 ]
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

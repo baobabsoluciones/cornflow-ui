@@ -1,5 +1,39 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **Executions read in parts**  
+  - An answer of `get_data` or `get_instance_data` can carry `data_filter`: the tables it narrows to one value, that value, the values that can be picked and the query parameter that picks one
+  - Over those tables, the input data and the results show a bar with the value and a searchable selector; picking another value reads the execution again for it and keeps the tables, filters and dashboard picked on it
+  - A running execution that finishes is read again for the value it shows, and the Excel download has the part on screen. An answer without `data_filter` shows as before
+  - `FilterChip` takes `searchable`, with `searchPlaceholder` and `emptyText`
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* —
+- **Platform roles, locked accounts and two-factor resets in roles management**  
+  - A platform administrator (`platform_admin`) counts as an administrator and gets `store.isPlatformAdmin`; the platform roles have their own icon, tone, description and permissions
+  - When the server keeps the list of roles to platform administrators (403 on `GET /roles/`), anyone else is told so and keeps the users, without the roles panel or the edit button; a server without platform roles keeps the whole page for every administrator
+  - Granting a platform role asks an administrator with two-factor authentication for a code (`totp_code` on `POST /user/role/`); a missing or wrong code says so, and the users are read again so the table shows what changed
+  - Locked accounts show so and can be unlocked from their row (`PUT /user/<id>/unlock/`); the server decides who may, and an account it leaves to a platform administrator says so. Any administrator resets a user's two-factor authentication (`DELETE /user/<id>/mfa/`). Both after a confirmation
+  *Contributors:* [@HelenaCA](#), [@ggsdc](#)  
+  *Commit ID:* #286
+- **Two-factor authentication and personal access token in the user settings**  
+  - Two-factor authentication: whether it is on; turning it on (QR code, first code, backup codes) and resetting it after a confirmation, which closes every session and goes to the sign-in. A server that does not offer it (501, or 404 without two-factor authentication) is told apart, and the card says so in place of the button. The enrollment is shared with the sign-in (`useMfaEnrollment`)
+  - Personal access token: generates one, read-only if asked, confirmed with a two-factor code when the user has it, shown once; a server with tokens off says so. Hidden with `enablePersonalTokens: false`
+  - Turning on two-factor authentication renews the session tokens without dropping the role flags of the signed-in user
+  *Contributors:* [@HelenaCA](#), [@ggsdc](#)  
+  *Commit ID:* #285
+- **Sign-in and session against a Cornflow server with the security hardening**  
+  - Session: the short-lived access token is renewed with the refresh token (`POST /token/refresh/`) when a request finds it expired, and the request is sent again once. Requests that find it expired at once share one renewal; downloads and streams are renewed too. Logging out closes the session on the server (`POST /logout/`)
+  - Two-factor authentication on the sign-in: the code of the authenticator app or a backup code; and, when the server requires it, the enrollment (QR code, its secret, first code and one-time backup codes) before the session
+  - A password that has expired or must be renewed (`password_rotation`, or `change_password` on the login) keeps the user on their settings, with a notice, until it is changed
+  - Password recovery: "Forgot your password?" asks for the reset link, and `/reset-password` sets the new password with the link's token, taken out of the address at once
+  - The password forms ask for the current password and tick the server's policy: 12 characters, character classes, no spaces, no runs of 6 digits and a zxcvbn strength of 3 or more (its dictionaries load on demand). Changing the password closes every session, so the user signs in again
+  - Too many attempts (429) and a locked account say so instead of "wrong credentials"; after the sign-in, a notice says when the previous one was; a legal notice sits under the form
+  - New dependencies: `@zxcvbn-ts/core`, `@zxcvbn-ts/language-common` and `qrcode`
+  *Contributors:* [@HelenaCA](#), [@ggsdc](#)  
+  *Commit ID:* #284
+
 ## [4.1.0] - 24-11-2026
 
 ⚠️ The load filters of a DAG's ETL come from the backend (`GET /external/frontend-config/`): `pre_etl: true` in the config schema is not read. An application that marks its load filters that way publishes them in the `query` of its backend's frontend config before upgrading (see **Changed**).
@@ -40,6 +74,10 @@
   *Commit ID:* #274
 
 ### Fixed
+- **`usePageContext` lists a page only while it is on screen**  
+  - Core's views live under `<keep-alive>`, so a page that was left stays mounted and its page-context entries stayed registered: an assistant offered the widgets of a page the user was no longer looking at. `usePageContext` now also unregisters the entry when its component is deactivated and registers it again when it is activated
+  *Contributors:* [@antoniogonzalezsuarez](#)  
+  *Commit ID:* #283
 - **The data checks send the DAG of the instance or execution they check**  
   - A deployment closed to the DAGs of each user rejects a data check without `schema` (400, "The request does not specify a schema to use") and creates no check execution. `POST /data-check/instance/<id>/` sends the DAG of the instance just created next to the execution `config`, and `POST /data-check-kpis/execution/<id>/` sends the DAG of the execution, read from `GET /execution/<id>/`, both in the historical KPIs and when the execution files are regenerated. Neither takes the active DAG
   *Contributors:* [@HelenaCA](#)  
