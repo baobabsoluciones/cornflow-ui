@@ -3,29 +3,6 @@
 ## [Unreleased]
 
 ### Added
-- **Platform roles, locked accounts and two-factor resets in roles management**  
-  - A platform administrator (`platform_admin`) counts as an administrator and gets `store.isPlatformAdmin`; the platform roles have their own icon, tone, description and permissions
-  - When the server keeps the list of roles to platform administrators (403 on `GET /roles/`), anyone else is told so and keeps the users, without the roles panel or the edit button; a server without platform roles keeps the whole page for every administrator
-  - Granting a platform role asks an administrator with two-factor authentication for a code (`totp_code` on `POST /user/role/`); a missing or wrong code says so, and the users are read again so the table shows what changed
-  - Locked accounts show so and can be unlocked from their row (`PUT /user/<id>/unlock/`); the server decides who may, and an account it leaves to a platform administrator says so. Any administrator resets a user's two-factor authentication (`DELETE /user/<id>/mfa/`). Both after a confirmation
-  *Contributors:* [@HelenaCA](#), [@ggsdc](#)  
-  *Commit ID:* #286
-- **Two-factor authentication and personal access token in the user settings**  
-  - Two-factor authentication: whether it is on; turning it on (QR code, first code, backup codes) and resetting it after a confirmation, which closes every session and goes to the sign-in. A server that does not offer it (501, or 404 without two-factor authentication) is told apart, and the card says so in place of the button. The enrollment is shared with the sign-in (`useMfaEnrollment`)
-  - Personal access token: generates one, read-only if asked, confirmed with a two-factor code when the user has it, shown once; a server with tokens off says so. Hidden with `enablePersonalTokens: false`
-  - Turning on two-factor authentication renews the session tokens without dropping the role flags of the signed-in user
-  *Contributors:* [@HelenaCA](#), [@ggsdc](#)  
-  *Commit ID:* #285
-- **Sign-in and session against a Cornflow server with the security hardening**  
-  - Session: the short-lived access token is renewed with the refresh token (`POST /token/refresh/`) when a request finds it expired, and the request is sent again once. Requests that find it expired at once share one renewal; downloads and streams are renewed too. Logging out closes the session on the server (`POST /logout/`)
-  - Two-factor authentication on the sign-in: the code of the authenticator app or a backup code; and, when the server requires it, the enrollment (QR code, its secret, first code and one-time backup codes) before the session
-  - A password that has expired or must be renewed (`password_rotation`, or `change_password` on the login) keeps the user on their settings, with a notice, until it is changed
-  - Password recovery: "Forgot your password?" asks for the reset link, and `/reset-password` sets the new password with the link's token, taken out of the address at once
-  - The password forms ask for the current password and tick the server's policy: 12 characters, character classes, no spaces, no runs of 6 digits and a zxcvbn strength of 3 or more (its dictionaries load on demand). Changing the password closes every session, so the user signs in again
-  - Too many attempts (429) and a locked account say so instead of "wrong credentials"; after the sign-in, a notice says when the previous one was; a legal notice sits under the form
-  - New dependencies: `@zxcvbn-ts/core`, `@zxcvbn-ts/language-common` and `qrcode`
-  *Contributors:* [@HelenaCA](#), [@ggsdc](#)  
-  *Commit ID:* #284
 - **End-to-end suite that each app runs against its own deployment**  
   - The suite (`tests/e2e/suite/`) ships with core, and an app runs it through `createCornflowE2EConfig` against its own frontend, backend and DAGs, with nothing mocked. It reads what the app has on from `window.cornflowUi.describe()` and tests it, checks that what is off does not show, and skips what does not apply with the reason
   - Each app gives its test data in a UAT file (`tests/e2e/uat.json`): per DAG, the execution config and a valid instance, one with errors and one with warnings, and optionally a solution of the valid one, an infeasible case and a failing-solver case. With the solution, the executions the tests need already solved are made through the API in a moment
@@ -50,6 +27,52 @@
   - **Breaking for apps that ran it:** the credentials are now `E2E_USER` and `E2E_PASSWORD` (they were `PLAYWRIGHT_TEST_USER` and `PLAYWRIGHT_TEST_PASSWORD`; the suite says so when it finds the old names). `PLAYWRIGHT_BACKEND_URL` becomes the optional `E2E_BACKEND_URL`, and `PLAYWRIGHT_AUTH_TYPE`, `PLAYWRIGHT_TEST_TEMP_PASSWORD` and the `REPORT_*` variables are no longer read. Each app needs its UAT file (`tests/e2e/uat.json`, README "The UAT file"): without it the run stops before anything. Update `tests/e2e/.env.test.example` from core's
   *Contributors:* [@david-hidalgo-baobab](#)  
   *Commit ID:* #292
+
+## [4.2.0] - 27-11-2026
+
+### Added
+- **After a forced sign-in, the user goes back to the page the session ended on**  
+  - When the session ends (an expired or revoked session), the page being shown is kept, and the next sign-in, with Cornflow or a single sign-on provider, goes back to it once instead of the home page. Only pages of the app are followed: absolute URLs and the sign-in and sign-out pages are ignored. Logging out forgets it (`utils/returnTo`)
+  - A request that finds the session already renewed by another one is sent again with the new token, without renewing it a second time
+  *Contributors:* [@antoniogonzalezsuarez](#), [@HelenaCA](#)  
+  *Commit ID:* #289
+- **Premium modules can dock a panel on the right edge (`setRightPanelOffset` in the layout channel)**  
+  - A premium component reports the width its panel takes on the right edge (a folded rail, a pinned side panel), as banners report their height at the top. The content, the top bar, the execution tabs and the help and warnings buttons end where the panel starts (`--app-right-offset`), also with the side menu pinned. Without premium panels nothing changes
+  *Contributors:* [@antoniogonzalezsuarez](#)  
+  *Commit ID:* #290
+- **Platform roles, locked accounts and two-factor resets in roles management**  
+  - A platform administrator (`platform_admin`) counts as an administrator and gets `store.isPlatformAdmin`; the platform roles have their own icon, tone, description and permissions
+  - When the server keeps the list of roles to platform administrators (403 on `GET /roles/`), anyone else is told so and keeps the users, without the roles panel or the edit button; a server without platform roles keeps the whole page for every administrator
+  - Granting a platform role asks an administrator with two-factor authentication for a code (`totp_code` on `POST /user/role/`); a missing or wrong code says so, and the users are read again so the table shows what changed
+  - Locked accounts show so and can be unlocked from their row (`PUT /user/<id>/unlock/`); the server decides who may, and an account it leaves to a platform administrator says so. Any administrator resets a user's two-factor authentication (`DELETE /user/<id>/mfa/`). Both after a confirmation
+  *Contributors:* [@HelenaCA](#), [@ggsdc](#)  
+  *Commit ID:* #286
+- **Two-factor authentication and personal access token in the user settings**  
+  - Two-factor authentication: whether it is on; turning it on (QR code, first code, backup codes) and resetting it after a confirmation, which closes every session and goes to the sign-in. A server that does not offer it (501, or 404 without two-factor authentication) is told apart, and the card says so in place of the button. The enrollment is shared with the sign-in (`useMfaEnrollment`)
+  - Personal access token: generates one, read-only if asked, confirmed with a two-factor code when the user has it, shown once; a server with tokens off says so. Hidden with `enablePersonalTokens: false`
+  - Turning on two-factor authentication renews the session tokens without dropping the role flags of the signed-in user
+  *Contributors:* [@HelenaCA](#), [@ggsdc](#)  
+  *Commit ID:* #285
+- **Sign-in and session against a Cornflow server with the security hardening**  
+  - Session: the short-lived access token is renewed with the refresh token (`POST /token/refresh/`) when a request finds it expired, and the request is sent again once. Requests that find it expired at once share one renewal; downloads and streams are renewed too. Logging out closes the session on the server (`POST /logout/`)
+  - Two-factor authentication on the sign-in: the code of the authenticator app or a backup code; and, when the server requires it, the enrollment (QR code, its secret, first code and one-time backup codes) before the session
+  - A password that has expired or must be renewed (`password_rotation`, or `change_password` on the login) keeps the user on their settings, with a notice, until it is changed
+  - Password recovery: "Forgot your password?" asks for the reset link, and `/reset-password` sets the new password with the link's token, taken out of the address at once
+  - The password forms ask for the current password and tick the server's policy: 12 characters, character classes, no spaces, no runs of 6 digits and a zxcvbn strength of 3 or more (its dictionaries load on demand). Changing the password closes every session, so the user signs in again
+  - Too many attempts (429) and a locked account say so instead of "wrong credentials"; after the sign-in, a notice says when the previous one was; a legal notice sits under the form
+  - New dependencies: `@zxcvbn-ts/core`, `@zxcvbn-ts/language-common` and `qrcode`
+  *Contributors:* [@HelenaCA](#), [@ggsdc](#)  
+  *Commit ID:* #284
+
+### Fixed
+- **A platform administrator sees the Administration group of the side menu**  
+  - Since #286 a platform administrator (`platform_admin`) counts as an administrator, but the side menu still built the Administration group only for the `admin` role, so a platform administrator without it saw neither roles management nor the pages premium modules add there (`parent: 'admin'`). `useDrawerSections` now applies the same rule as the store
+  *Contributors:* [@antoniogonzalezsuarez](#)  
+  *Commit ID:* #293
+- **`usePageContext` lists a page only while it is on screen**  
+  - Core's views live under `<keep-alive>`, so a page that was left stays mounted and its page-context entries stayed registered: an assistant offered the widgets of a page the user was no longer looking at. `usePageContext` now also unregisters the entry when its component is deactivated and registers it again when it is activated
+  *Contributors:* [@antoniogonzalezsuarez](#)  
+  *Commit ID:* #283
 
 ## [4.1.0] - 24-11-2026
 
@@ -91,10 +114,6 @@
   *Commit ID:* #274
 
 ### Fixed
-- **`usePageContext` lists a page only while it is on screen**  
-  - Core's views live under `<keep-alive>`, so a page that was left stays mounted and its page-context entries stayed registered: an assistant offered the widgets of a page the user was no longer looking at. `usePageContext` now also unregisters the entry when its component is deactivated and registers it again when it is activated
-  *Contributors:* [@antoniogonzalezsuarez](#)  
-  *Commit ID:* #283
 - **The data checks send the DAG of the instance or execution they check**  
   - A deployment closed to the DAGs of each user rejects a data check without `schema` (400, "The request does not specify a schema to use") and creates no check execution. `POST /data-check/instance/<id>/` sends the DAG of the instance just created next to the execution `config`, and `POST /data-check-kpis/execution/<id>/` sends the DAG of the execution, read from `GET /execution/<id>/`, both in the historical KPIs and when the execution files are regenerated. Neither takes the active DAG
   *Contributors:* [@HelenaCA](#)  

@@ -123,6 +123,14 @@ describe('useDrawerSections', () => {
     expect(section(api, 'admin').subPages![0].to).toBe('/roles-management')
   })
 
+  test('a platform administrator sees Administration and the pages premium modules add to it', () => {
+    premiumSections.push({ titleKey: 'ai', icon: 'mdi-robot', to: '/ai-assistant', parent: 'admin' })
+    store.getUser = { ...user, roles: [{ name: 'platform_admin' }] }
+    const api = setup()
+    expect(api.isAdmin.value).toBe(true)
+    expect(section(api, 'admin').subPages!.map((page) => page.to)).toEqual(['/ai-assistant'])
+  })
+
   test('a premium page for administration joins the Administration group, with or without roles management', () => {
     premiumSections.push({ titleKey: 'ai', icon: 'mdi-robot', to: '/ai-assistant', parent: 'admin' })
     store.getUser = { ...user, roles: [{ name: 'planner' }] }

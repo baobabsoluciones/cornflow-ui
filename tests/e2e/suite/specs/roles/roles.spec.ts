@@ -13,7 +13,7 @@
  *   cannot delete one, so it would stay.
  * - Where the backend keeps the roles to platform administrators (Cornflow 1.4), an admin is told
  *   so and keeps the users without editing them, and a platform administrator of the run manages
- *   the roles. Core's menu offers Administration to the role admin only: a known fault, noted.
+ *   the roles. A platform administrator counts as an admin: the menu offers them Administration.
  * - Accounts (Cornflow 1.4, disposable mode, users the test creates): unlocking a locked one,
  *   resetting a user's two-factor authentication, and giving a platform role and taking it away.
  *   A wrong code of the platform administrator is not tried: it would count towards locking a
@@ -185,28 +185,6 @@ async function userRow(page: Page, username: string) {
   return row
 }
 
-/**
- * Opens roles management as the user who manages the roles: from the side menu, or by its
- * address when the menu does not offer it (a platform administrator: a known fault of core).
- */
-async function openAsManager(page: Page, manager: RolesManager): Promise<void> {
-  await unfoldMenu(page)
-  const offered = (await page.getByTestId('drawer-group-admin').count()) > 0
-  await leaveMenu(page)
-  if (offered || !isPlatformAdminSession(manager.session)) {
-    await openRolesManagement(page)
-    return
-  }
-  test.info().annotations.push({
-    type: 'known issue',
-    description:
-      'roles management opened by its address: the side menu offers Administration to the ' +
-      'role admin only, not to a platform administrator (useDrawerSections)',
-  })
-  await goToRoute(page, ROLES_MANAGEMENT)
-  await expect.poll(() => currentView(page)).toBe(ROLES_MANAGEMENT.slice(1))
-}
-
 test.describe('roles and permissions', () => {
   test('each role sees in the menu what its permissions let it open, and is kept out of the rest', async ({
     browser,
@@ -262,28 +240,11 @@ test.describe('roles and permissions', () => {
             page.getByTestId('app-drawer-new-execution'),
             `${session.name} ${mayOpen(config, roles, 'project-execution') ? 'can' : 'cannot'} start a new execution`,
           ).toHaveCount(mayOpen(config, roles, 'project-execution') ? 1 : 0)
-          const adminGroup = page.getByTestId('drawer-group-admin')
-          if (
-            admin &&
-            rolesManagement &&
-            !roles.includes('admin') &&
-            !(await adminGroup.count())
-          ) {
-            // A platform administrator counts as an admin and may open roles management by its
-            // address, but core's menu offers Administration to the role admin only.
-            test.info().annotations.push({
-              type: 'known issue',
-              description:
-                `${session.name} counts as an admin, but the side menu has no Administration: ` +
-                'it is offered to the role admin only (useDrawerSections), not to a platform ' +
-                'administrator',
-            })
-          } else {
-            await expect(
-              adminGroup,
-              `${session.name} ${admin ? 'has' : 'has no'} administration`,
-            ).toHaveCount(admin && rolesManagement ? 1 : 0)
-          }
+          // A platform administrator counts as an admin.
+          await expect(
+            page.getByTestId('drawer-group-admin'),
+            `${session.name} ${admin ? 'has' : 'has no'} administration`,
+          ).toHaveCount(admin && rolesManagement ? 1 : 0)
           await leaveMenu(page)
 
           // Nor does the address of a forbidden view open it.
@@ -442,7 +403,7 @@ test.describe('roles and permissions', () => {
       ])
       const userIds = new Set(users.map((user) => user.id))
       await asUser(browser, deployment, manager.session, async (page) => {
-        await openAsManager(page, manager)
+        await openRolesManagement(page)
 
         for (const role of roles) {
           const row = page.getByTestId(`roles-role-${role.name}`)
@@ -512,7 +473,7 @@ test.describe('roles and permissions', () => {
           .map((a) => a.role_id)
 
       await asUser(browser, deployment, manager.session, async (page) => {
-        await openAsManager(page, manager)
+        await openRolesManagement(page)
         await page
           .getByTestId('users-search')
           .locator('input')
@@ -572,7 +533,7 @@ test.describe('roles and permissions', () => {
       const isLocked = async () => (await manager.api.user(user.id)).locked
 
       await asUser(browser, deployment, manager.session, async (page) => {
-        await openAsManager(page, manager)
+        await openRolesManagement(page)
         const row = await userRow(page, user.username)
         const badge = row.getByTestId('user-locked')
         await expect(badge, 'it shows it is locked').toBeVisible()
@@ -611,7 +572,7 @@ test.describe('roles and permissions', () => {
       const hasIt = async () => (await manager.api.user(user.id)).mfa_enabled
 
       await asUser(browser, deployment, manager.session, async (page) => {
-        await openAsManager(page, manager)
+        await openRolesManagement(page)
         const row = await userRow(page, user.username)
         const reset = row.getByTestId('user-reset-mfa')
 
@@ -657,7 +618,7 @@ test.describe('roles and permissions', () => {
       const { username, totpSecret } = readSessionCredentials(manager.session)
 
       await asUser(browser, deployment, manager.session, async (page) => {
-        await openAsManager(page, manager)
+        await openRolesManagement(page)
         const row = await userRow(page, user.username)
         const box = page.getByTestId(`user-roles-role-${role.name}`)
         const code = page.getByTestId('platform-role-totp')
@@ -727,7 +688,7 @@ test.describe('roles and permissions', () => {
       const manager = await managerOrSkip(run, deployment, baseURL)
       const before = (await manager.api.roles()).map((role) => role.name).sort()
       await asUser(browser, deployment, manager.session, async (page) => {
-        await openAsManager(page, manager)
+        await openRolesManagement(page)
         const add = page.getByTestId('roles-add')
 
         if (!deployment.core.parameters?.allowEditRoles) {

@@ -1,5 +1,5 @@
 <template>
-  <v-app>
+  <v-app :style="appStyle">
     <!-- Full-screen loading overlay after login until drawer/configurations are ready -->
     <div
       v-if="showInitialLoading"
@@ -123,7 +123,10 @@ import {
   getPremiumGlobalComponents,
   applyPremiumExecutionTabDecorators,
 } from '@cornflow-ui/core/plugins/extensions'
-import { totalTopBannerOffset } from '@cornflow-ui/core/plugins/layoutOffsets'
+import {
+  totalTopBannerOffset,
+  totalRightPanelOffset,
+} from '@cornflow-ui/core/plugins/layoutOffsets'
 import { isOnInstanceDependentRoute } from '@cornflow-ui/core/utils/instanceDependentRoutes'
 import { useExecutionStatus } from '@cornflow-ui/core/composables/project-execution/useExecutionStatus'
 
@@ -165,6 +168,17 @@ const mainContentStyle = computed(() =>
         paddingTop: `${topStackHeight.value}px`,
         '--app-top-offset': `${topStackHeight.value}px`,
       }
+    : undefined,
+)
+
+/**
+ * Room on the right edge reported by premium panels (a docked side panel). As
+ * `--app-right-offset` on the app, the content, the top stack, the execution tabs and the fixed
+ * help and warnings buttons end where the panel starts. 0 without premium panels.
+ */
+const appStyle = computed(() =>
+  totalRightPanelOffset.value
+    ? { '--app-right-offset': `${totalRightPanelOffset.value}px` }
     : undefined,
 )
 
@@ -230,28 +244,35 @@ if (AuthService.isAuthenticated()) {
 
 <style>
 .main-content {
-  transition: margin-left 0.3s ease;
+  transition:
+    margin-left 0.3s ease,
+    width 0.3s ease,
+    max-width 0.3s ease;
   margin-left: 0;
-  width: 100%;
+  /* A premium panel docked on the right (`--app-right-offset`) takes its room from the content. */
+  width: calc(100% - var(--app-right-offset, 0px));
+  max-width: calc(100% - var(--app-right-offset, 0px));
   min-height: 100vh;
   padding: 0;
 }
 
 .main-content.drawer-pinned {
   margin-left: 250px; /* Width of the expanded drawer */
-  width: calc(100% - 250px); /* Adjust width to account for drawer */
-  max-width: calc(100% - 250px); /* Prevent overflow */
+  width: calc(100% - 250px - var(--app-right-offset, 0px)); /* Adjust width to account for drawer */
+  max-width: calc(100% - 250px - var(--app-right-offset, 0px)); /* Prevent overflow */
   overflow-x: hidden; /* Prevent horizontal scroll */
 }
 
 /* The execution tab bar, at the foot, starts where the side menu ends: the rail, or the pinned menu. */
 .execution-tabs {
   position: fixed;
-  right: 0;
+  right: var(--app-right-offset, 0px);
   bottom: 0;
   left: 56px;
   z-index: 900;
-  transition: left 0.3s ease;
+  transition:
+    left 0.3s ease,
+    right 0.3s ease;
 }
 
 .main-content.drawer-pinned .execution-tabs {
@@ -281,8 +302,9 @@ if (AuthService.isAuthenticated()) {
   position: fixed;
   top: 0;
   left: 0;
-  right: 0;
+  right: var(--app-right-offset, 0px);
   z-index: 850;
+  transition: right 0.3s ease;
 }
 
 /* Containing block of the premium banners' `position: fixed` (see the template) */
@@ -374,8 +396,8 @@ body {
 @media (max-width: 1024px) {
   .main-content.drawer-pinned {
     margin-left: 200px; /* Smaller margin on smaller screens */
-    width: calc(100% - 200px);
-    max-width: calc(100% - 200px);
+    width: calc(100% - 200px - var(--app-right-offset, 0px));
+    max-width: calc(100% - 200px - var(--app-right-offset, 0px));
   }
 
   .app-top-stack.drawer-pinned .app-top-bar {

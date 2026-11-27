@@ -609,6 +609,21 @@ describe('ApiClient', () => {
         expect(refreshCalls()).toHaveLength(1)
       })
 
+      test('a request that finds the session renewed by another one is sent again without renewing', async () => {
+        apiClient['authToken'] = 'old-access'
+        vi.mocked(fetch).mockImplementation(async (url, init) => {
+          if (String(url).endsWith('/token/refresh/')) return renewed()
+          const headers = init?.headers as Record<string, string>
+          if (headers.Authorization === 'Bearer new-access') return json(200, {})
+          // Another request renews the session while this one is on its way
+          apiClient['authToken'] = 'new-access'
+          return badRequest('The token has expired, please login again')
+        })
+
+        await expect(apiClient.get('/user/1/')).resolves.toMatchObject({ status: 200 })
+        expect(refreshCalls()).toHaveLength(0)
+      })
+
       test('a refresh token cornflow no longer accepts ends the session', async () => {
         const handleAuthFailureSpy = vi.spyOn(apiClient, 'handleAuthFailure').mockImplementation(() => {})
         vi.mocked(fetch)
@@ -875,6 +890,20 @@ describe('ApiClient', () => {
       expect(sessionStorageMock.setItem).toHaveBeenCalledWith('isAuthenticated', 'false')
       expect(apiClient['authToken']).toBeNull()
       expect(apiClient['tokenExpiration']).toBeNull()
+    })
+
+    test('handleAuthFailure remembers the page to come back to after the sign-in', async () => {
+      mockRouter.currentRoute = {
+        value: { path: '/history-execution', fullPath: '/history-execution?tab=2' },
+      } as any
+
+      vi.useFakeTimers()
+      apiClient['handleAuthFailure']()
+      await vi.runAllTimersAsync()
+      vi.useRealTimers()
+
+      await vi.waitFor(() => expect(mockRouter.push).toHaveBeenCalled())
+      expect(sessionStorageMock.setItem).toHaveBeenCalledWith('returnTo', '/history-execution?tab=2')
     })
 
     test('handleAuthFailure clears localStorage auth data', () => {
