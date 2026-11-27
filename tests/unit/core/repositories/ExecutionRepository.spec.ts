@@ -42,6 +42,7 @@ vi.mock('@cornflow-ui/core/stores/general', () => ({
 // Mock InstanceRepository
 const mockInstanceRepo = vi.hoisted(() => ({
   getInstance: vi.fn(),
+  getInstanceData: vi.fn(),
   createInstance: vi.fn(),
 }))
 
@@ -259,15 +260,15 @@ describe('ExecutionRepository', () => {
         content: mockExecutionResponse
       }
       mockClient.get.mockResolvedValue(mockResponse)
-      mockInstanceRepo.getInstance.mockResolvedValue(mockInstance)
+      mockInstanceRepo.getInstanceData.mockResolvedValue({ instance: mockInstance, dataFilter: null })
 
       const result = await repository.loadExecution('test-id')
 
       expect(mockClient.get).toHaveBeenCalledWith('/execution/test-id/data/', {}, {}, false)
-      expect(mockInstanceRepo.getInstance).toHaveBeenCalledWith('test-instance-id', {
+      expect(mockInstanceRepo.getInstanceData).toHaveBeenCalledWith('test-instance-id', {
         path: '/instance/test-instance-id/data/',
         isExternal: false,
-      })
+      }, {})
       expect(LoadedExecution).toHaveBeenCalledWith(expect.objectContaining({ solutionState: null }))
     })
 
@@ -276,7 +277,7 @@ describe('ExecutionRepository', () => {
         status: 200,
         content: { ...mockExecutionResponse, log: { status: 'Optimal', status_code: 1, sol_code: 1 } },
       })
-      mockInstanceRepo.getInstance.mockResolvedValue(mockInstance)
+      mockInstanceRepo.getInstanceData.mockResolvedValue({ instance: mockInstance, dataFilter: null })
 
       await repository.loadExecution('test-id')
 
@@ -300,7 +301,7 @@ describe('ExecutionRepository', () => {
             }
           : { status: 200, content: mockExecutionResponse },
       )
-      mockInstanceRepo.getInstance.mockResolvedValue(mockInstance)
+      mockInstanceRepo.getInstanceData.mockResolvedValue({ instance: mockInstance, dataFilter: null })
 
       await repository.loadExecution('test-id')
 
@@ -320,7 +321,7 @@ describe('ExecutionRepository', () => {
           ? { status: 403, content: {} }
           : { status: 200, content: mockExecutionResponse },
       )
-      mockInstanceRepo.getInstance.mockResolvedValue(mockInstance)
+      mockInstanceRepo.getInstanceData.mockResolvedValue({ instance: mockInstance, dataFilter: null })
 
       await repository.loadExecution('test-id')
 
@@ -335,7 +336,7 @@ describe('ExecutionRepository', () => {
         content: mockExecutionResponse
       }
       mockClient.get.mockResolvedValue(mockResponse)
-      mockInstanceRepo.getInstance.mockResolvedValue(null)
+      mockInstanceRepo.getInstanceData.mockResolvedValue({ instance: null, dataFilter: null })
 
       await expect(repository.loadExecution('test-id')).rejects.toThrow('Error loading instance')
     })
@@ -573,7 +574,7 @@ describe('ExecutionRepository', () => {
         },
       }
       mockClient.get.mockResolvedValue({ status: 200, content: executionData })
-      mockInstanceRepo.getInstance.mockResolvedValue({ id: 'i1', data: {} })
+      mockInstanceRepo.getInstanceData.mockResolvedValue({ instance: { id: 'i1', data: {} }, dataFilter: null })
     })
 
     test('lists the executions of the DAG from its get_list', async () => {
@@ -608,10 +609,10 @@ describe('ExecutionRepository', () => {
 
       expect(mockClient.get).toHaveBeenCalledWith('/executions/g1/data/', {}, {}, true)
       expect(mockClient.get).toHaveBeenCalledWith('/executions/g1/', {}, {}, true)
-      expect(mockInstanceRepo.getInstance).toHaveBeenCalledWith('i1', {
+      expect(mockInstanceRepo.getInstanceData).toHaveBeenCalledWith('i1', {
         path: '/instances/i1/data/',
         isExternal: true,
-      })
+      }, {})
     })
 
     test('polls the state from its details', async () => {
@@ -679,11 +680,96 @@ describe('ExecutionRepository', () => {
       await repository.getDataToDownload('g1', true, false)
 
       expect(mockClient.get).toHaveBeenCalledWith('/executions/g1/data/', {}, {}, true)
-      expect(mockInstanceRepo.getInstance).toHaveBeenCalledWith('i1', {
+      expect(mockInstanceRepo.getInstanceData).toHaveBeenCalledWith('i1', {
         path: '/instances/i1/data/',
         isExternal: true,
-      })
+      }, {})
       expect(downloadExcel).toHaveBeenCalled()
+    })
+
+    describe('read in parts', () => {
+      const solutionFilter = {
+        param: 'plant',
+        title: { en: 'Plant', es: 'Planta' },
+        value: 'P1',
+        options: [
+          { value: 'P1', label: 'North' },
+          { value: 'P2', label: 'South' },
+        ],
+        tables: ['daily_plan'],
+      }
+
+      test('keeps the part the solution and the instance are read for', async () => {
+        mockClient.get.mockResolvedValue({
+          status: 200,
+          content: { ...executionData, data_filter: solutionFilter },
+        })
+        mockInstanceRepo.getInstanceData.mockResolvedValue({
+          instance: { id: 'i1', data: {} },
+          dataFilter: { ...solutionFilter, tables: ['demand', 'stock'] },
+        })
+
+        await repository.loadExecution('g1')
+
+        expect(LoadedExecution).toHaveBeenCalledWith(
+          expect.objectContaining({
+            dataFilter: {
+              param: 'plant',
+              title: { en: 'Plant', es: 'Planta' },
+              value: 'P1',
+              options: solutionFilter.options,
+              tables: { instance: ['demand', 'stock'], solution: ['daily_plan'] },
+            },
+          }),
+        )
+      })
+
+      test('an execution not read in parts has no data filter', async () => {
+        await repository.loadExecution('g1')
+
+        expect(LoadedExecution).toHaveBeenCalledWith(
+          expect.objectContaining({ dataFilter: null }),
+        )
+      })
+
+      test('reads the solution and the instance for the value picked', async () => {
+        await repository.loadExecution('g1', { param: 'plant', value: 'P2' })
+
+        expect(mockClient.get).toHaveBeenCalledWith(
+          '/executions/g1/data/',
+          { plant: 'P2' },
+          {},
+          true,
+        )
+        expect(mockInstanceRepo.getInstanceData).toHaveBeenCalledWith(
+          'i1',
+          { path: '/instances/i1/data/', isExternal: true },
+          { plant: 'P2' },
+        )
+      })
+
+      test('downloads the part picked', async () => {
+        storeState.appConfig.Experiment.mockImplementationOnce(function () {
+          return { downloadExcel: vi.fn(), solution: 'solution', instance: 'instance' }
+        })
+
+        await repository.getDataToDownload('g1', false, false, {
+          param: 'plant',
+          value: 'P2',
+        })
+
+        expect(mockClient.get).toHaveBeenCalledWith(
+          '/executions/g1/data/',
+          { plant: 'P2' },
+          {},
+          true,
+        )
+        expect(mockInstanceRepo.getInstanceData).toHaveBeenCalledWith(
+          'i1',
+          { path: '/instances/i1/data/', isExternal: true },
+          { plant: 'P2' },
+        )
+      })
     })
   })
 

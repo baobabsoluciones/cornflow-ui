@@ -17,6 +17,12 @@ import {
   type ExecutionEndpoint,
   type ExecutionEndpointKey,
 } from '@cornflow-ui/core/utils/executionEndpoints'
+import {
+  combineExecutionDataFilters,
+  dataFilterQuery,
+  parseExecutionDataFilter,
+  type ExecutionDataFilterSelection,
+} from '@cornflow-ui/core/utils/executionDataFilter'
 
 function pickDownloadReturnValue(
   experiment: any,
@@ -142,8 +148,8 @@ function executionEndpoint(
   )
 }
 
-function getFrom(endpoint: ExecutionEndpoint) {
-  return client.get(endpoint.path, {}, {}, endpoint.isExternal)
+function getFrom(endpoint: ExecutionEndpoint, query: Record<string, string> = {}) {
+  return client.get(endpoint.path, query, {}, endpoint.isExternal)
 }
 
 /** Most executions a list with a date range brings (the newest first). */
@@ -246,11 +252,19 @@ export default class ExecutionRepository {
     throw new Error(`Error getting execution state (HTTP ${response.status})`)
   }
 
-  // Get full execution data by id
-  async loadExecution(id: string): Promise<LoadedExecution> {
+  /**
+   * Get the full data of an execution by id. An execution the backend gives in parts (see
+   * `utils/executionDataFilter.ts`) is read for `selection`, the value picked, or for the one the
+   * backend picks without it.
+   */
+  async loadExecution(
+    id: string,
+    selection: ExecutionDataFilterSelection | null = null,
+  ): Promise<LoadedExecution> {
+    const query = dataFilterQuery(selection)
     // The data endpoint has no user nor last update; the details endpoint (the history's) does.
     const [response, details] = await Promise.all([
-      getFrom(executionEndpoint('get_data', id)),
+      getFrom(executionEndpoint('get_data', id), query),
       getFrom(executionEndpoint('get_detail', id)).catch(() => null),
     ])
     const detail = details?.status === 200 ? details.content : {}
@@ -264,10 +278,12 @@ export default class ExecutionRepository {
         throw new Error('Execution response is missing instance_id')
       }
       const instanceRepository = new InstanceRepository()
-      const instance = await instanceRepository.getInstance(
+      const instanceData = await instanceRepository.getInstanceData(
         execution.instance_id,
         executionEndpoint('get_instance_data', execution.instance_id),
+        query,
       )
+      const instance = instanceData?.instance
       if (instance) {
         const store = useGeneralStore()
         const { Solution, Experiment } = store.appConfig
@@ -300,6 +316,10 @@ export default class ExecutionRepository {
           userName: detail.username ?? null,
           userFullName:
             getUserFullName(detail.first_name, detail.last_name) || detail.username || null,
+          dataFilter: combineExecutionDataFilters(
+            parseExecutionDataFilter(execution.data_filter),
+            instanceData.dataFilter ?? null,
+          ),
         })
       } else {
         throw new Error('Error loading instance')
@@ -392,10 +412,15 @@ export default class ExecutionRepository {
     )
   }
 
+  /**
+   * Builds and downloads the Excel of an execution. An execution the backend gives in parts is
+   * read for `selection`, the value picked on screen.
+   */
   async getDataToDownload(
     id: string,
     onlySolution: boolean = true,
     onlyInstance: boolean = true,
+    selection: ExecutionDataFilterSelection | null = null,
   ): Promise<any> {
     const store = useGeneralStore()
     const useBackend =
@@ -409,15 +434,18 @@ export default class ExecutionRepository {
       // and propagates to the caller.
     }
 
-    const response = await getFrom(executionEndpoint('get_data', id))
+    const query = dataFilterQuery(selection)
+    const response = await getFrom(executionEndpoint('get_data', id), query)
 
     if (response.status === 200) {
       const execution = response.content
       const instanceRepository = new InstanceRepository()
-      const instance = await instanceRepository.getInstance(
+      const instanceData = await instanceRepository.getInstanceData(
         execution.instance_id,
         executionEndpoint('get_instance_data', execution.instance_id),
+        query,
       )
+      const instance = instanceData?.instance
       if (instance) {
         const { Solution, Experiment } = store.appConfig
         const kpis =

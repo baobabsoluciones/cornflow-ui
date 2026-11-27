@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **Executions read in parts**  
+  - An answer of `get_data` or `get_instance_data` can carry `data_filter`: the tables it narrows to one value, that value, the values that can be picked and the query parameter that picks one
+  - Over those tables, the input data and the results show a bar with the value and a searchable selector; picking another value reads the execution again for it and keeps the tables, filters and dashboard picked on it
+  - A running execution that finishes is read again for the value it shows, and the Excel download has the part on screen. An answer without `data_filter` shows as before
+  - `FilterChip` takes `searchable`, with `searchPlaceholder` and `emptyText`
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* —
+
 ## [4.2.0] - 27-11-2026
 
 ### Added

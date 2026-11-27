@@ -249,6 +249,7 @@ export default {
       errorLoad: 'Ocurrió un error al cargar la ejecución',
       autoLoadError:
         'Ocurrió un error inesperado al recuperar la información de la ejecución',
+      dataFilterError: 'No se han podido leer los datos de ese valor. Inténtalo de nuevo.',
     },
     steps: {
       step3: {
@@ -1426,6 +1427,11 @@ export default {
       noValue: '(sin valor)',
       emptyValue: 'vacío',
       pending: 'Sin cambios pendientes en {table} | 1 cambio pendiente en {table} | {count} cambios pendientes en {table}',
+    },
+    dataFilter: {
+      hint: 'Solo se muestran las filas del valor elegido.',
+      search: 'Buscar…',
+      empty: 'Sin resultados',
     },
     source: {
       variants: {
