@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [4.2.0] - 27-11-2026
 
 ### Added
 - **After a forced sign-in, the user goes back to the page the session ended on**  
@@ -41,6 +41,10 @@
   - Since #286 a platform administrator (`platform_admin`) counts as an administrator, but the side menu still built the Administration group only for the `admin` role, so a platform administrator without it saw neither roles management nor the pages premium modules add there (`parent: 'admin'`). `useDrawerSections` now applies the same rule as the store
   *Contributors:* [@antoniogonzalezsuarez](#)  
   *Commit ID:* #293
+- **`usePageContext` lists a page only while it is on screen**  
+  - Core's views live under `<keep-alive>`, so a page that was left stays mounted and its page-context entries stayed registered: an assistant offered the widgets of a page the user was no longer looking at. `usePageContext` now also unregisters the entry when its component is deactivated and registers it again when it is activated
+  *Contributors:* [@antoniogonzalezsuarez](#)  
+  *Commit ID:* #283
 
 ## [4.1.0] - 24-11-2026
 
@@ -82,10 +86,6 @@
   *Commit ID:* #274
 
 ### Fixed
-- **`usePageContext` lists a page only while it is on screen**  
-  - Core's views live under `<keep-alive>`, so a page that was left stays mounted and its page-context entries stayed registered: an assistant offered the widgets of a page the user was no longer looking at. `usePageContext` now also unregisters the entry when its component is deactivated and registers it again when it is activated
-  *Contributors:* [@antoniogonzalezsuarez](#)  
-  *Commit ID:* #283
 - **The data checks send the DAG of the instance or execution they check**  
   - A deployment closed to the DAGs of each user rejects a data check without `schema` (400, "The request does not specify a schema to use") and creates no check execution. `POST /data-check/instance/<id>/` sends the DAG of the instance just created next to the execution `config`, and `POST /data-check-kpis/execution/<id>/` sends the DAG of the execution, read from `GET /execution/<id>/`, both in the historical KPIs and when the execution files are regenerated. Neither takes the active DAG
   *Contributors:* [@HelenaCA](#)  
