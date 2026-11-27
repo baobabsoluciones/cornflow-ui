@@ -86,8 +86,8 @@ export async function openMenuGroup(
 }
 
 /**
- * Goes to `route` (`/roles-management`) by its address, as a user who types it or follows a link
- * from elsewhere does, in hash mode or not, as the app is.
+ * Goes to `route` (`/roles-management`, `/reset-password?token=…`) by its address, as a user who
+ * types it or follows a link from elsewhere does, in hash mode or not, as the app is.
  */
 export async function goToRoute(page: Page, route: string): Promise<void> {
   if (!page.url().startsWith('http')) await page.goto('/')
@@ -95,7 +95,9 @@ export async function goToRoute(page: Page, route: string): Promise<void> {
   if (url.hash.startsWith('#/')) {
     url.hash = route
   } else {
-    url.pathname = route
+    const [path, query = ''] = route.split('?')
+    url.pathname = path
+    url.search = query ? `?${query}` : ''
     url.hash = ''
   }
   await page.goto(url.href)

@@ -69,6 +69,29 @@ export async function signInStep(
 }
 
 /**
+ * Goes through the sign-in form as far as it can: the username and password and, with two-factor
+ * authentication on and its secret, the code. Returns where it got to, as `signInStep` says it.
+ */
+export async function submitSignInForm(
+  page: Page,
+  username: string,
+  password: string,
+  totpSecret?: string,
+): Promise<string> {
+  await page.goto('/')
+  await page.getByTestId('sign-in-username').fill(username)
+  await page.getByTestId('sign-in-password').fill(password)
+  await submitSignIn(page, page.getByTestId('sign-in-submit'))
+  const outcome = await signInStep(page)
+  if (outcome !== 'mfa-code' || !totpSecret) return outcome
+  await page
+    .getByTestId('sign-in-mfa-code')
+    .fill(await claimTotpCode(totpSecret, username))
+  await submitSignIn(page, page.getByTestId('sign-in-mfa-submit'))
+  return signInStep(page, 'mfa-code')
+}
+
+/**
  * Signs in through the sign-in form of the app and waits until the app has the session. With
  * two-factor authentication on, gives the code its secret makes. Says so plainly when the server
  * asks for what the suite cannot give: a code without the secret, turning two-factor
@@ -80,24 +103,13 @@ export async function signInThroughForm(
   password: string,
   totpSecret?: string,
 ): Promise<void> {
-  await page.goto('/')
-  await page.getByTestId('sign-in-username').fill(username)
-  await page.getByTestId('sign-in-password').fill(password)
-  await submitSignIn(page, page.getByTestId('sign-in-submit'))
-  let outcome = await signInStep(page)
+  const outcome = await submitSignInForm(page, username, password, totpSecret)
   if (outcome === 'mfa-code') {
-    if (!totpSecret) {
-      throw new Error(
-        `[cornflow-e2e] Could not sign in as "${username}": it has two-factor authentication ` +
-          'on, and the suite has no secret to make its codes. For E2E_USER, set E2E_TOTP_SECRET ' +
-          'to the secret of its authenticator (the one its QR code holds).',
-      )
-    }
-    await page
-      .getByTestId('sign-in-mfa-code')
-      .fill(await claimTotpCode(totpSecret, username))
-    await submitSignIn(page, page.getByTestId('sign-in-mfa-submit'))
-    outcome = await signInStep(page, 'mfa-code')
+    throw new Error(
+      `[cornflow-e2e] Could not sign in as "${username}": it has two-factor authentication ` +
+        'on, and the suite has no secret to make its codes. For E2E_USER, set E2E_TOTP_SECRET ' +
+        'to the secret of its authenticator (the one its QR code holds).',
+    )
   }
   if (outcome === 'mfa-enroll') {
     throw new Error(

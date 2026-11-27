@@ -4,13 +4,15 @@
  * - `uncaught`: a JavaScript error nothing caught, in any page of the test.
  * - `vue`: an error inside a component (Vue warns "Unhandled error during execution of …"). In
  *   development Vue throws it again, so it is also `uncaught`; the warning says where it happened.
- * - `server`: a response with a 5xx status, from the backend or anything else the app calls.
+ * - `server`: a response with a 5xx status (but 501), from the backend or anything else the app
+ *   calls.
  *
  * Left out on purpose: 4xx responses (a wrong password answers 401, and a backend without an
- * optional endpoint answers 404), requests cut short by a navigation, what the app itself logs
- * with `console.error` for a failure it handles, and the development server's own 504 when it
- * finds a new dependency half-way through and reloads the page ("Outdated Optimize Dep" of Vite,
- * which a built app does not have).
+ * optional endpoint answers 404), a 501, with which Cornflow says a function is turned off on it
+ * (password recovery without e-mail, personal API keys), requests cut short by a navigation,
+ * what the app itself logs with `console.error` for a failure it handles, and the development
+ * server's own 504 when it finds a new dependency half-way through and reloads the page
+ * ("Outdated Optimize Dep" of Vite, which a built app does not have).
  *
  * Errors inside components are thrown only when the app runs in development mode, as the suite
  * starts it by default. Against a production build only `uncaught` and `server` are found.
@@ -86,7 +88,7 @@ export function watchAppErrors(context: BrowserContext): () => AppError[] {
   })
 
   context.on('response', (response) => {
-    if (response.status() < 500) return
+    if (response.status() < 500 || response.status() === 501) return
     if (isDevServerReoptimizing(response.status(), response.url())) return
     let page: Page | null = null
     try {

@@ -301,6 +301,29 @@ export class CornflowApi {
     return this.request('GET', `/user/${id}/`)
   }
 
+  /**
+   * Sets the password of another user, as an admin does: Cornflow then asks that user to change
+   * it at the next sign-in.
+   */
+  async setPassword(id: number, password: string): Promise<void> {
+    await this.request('PUT', `/user/${id}/`, { password })
+  }
+
+  /**
+   * Whether `refreshToken` still renews a session (`POST /token/refresh/`). When it does, it is
+   * spent: Cornflow gives a new one in its place.
+   */
+  async renews(refreshToken: string): Promise<boolean> {
+    const answer = await this.request<{ token?: string } | null>(
+      'POST',
+      '/token/refresh/',
+      { refresh_token: refreshToken },
+      [400, 401, 403],
+      null,
+    )
+    return !!answer?.token
+  }
+
   /** Acts as the user a token belongs to, such as the one a signed-in page holds. */
   useToken(token: string): void {
     this.token = token
@@ -565,6 +588,17 @@ export class CornflowApi {
   /** The roles of the deployment: Cornflow's own and any the deployment added. */
   async roles(): Promise<Role[]> {
     return this.request<Role[]>('GET', '/roles/')
+  }
+
+  /**
+   * The role for a user a test creates when what it tests is not the role: `planner`, or else the
+   * first one a person signs in with (not Cornflow's placeholder, nor airflow's).
+   */
+  async roleForTestUsers(): Promise<Role> {
+    const roles = (await this.roles()).filter(
+      (role) => !['dummy', 'service'].includes(role.name),
+    )
+    return roles.find((role) => role.name === 'planner') ?? roles[0]
   }
 
   /**

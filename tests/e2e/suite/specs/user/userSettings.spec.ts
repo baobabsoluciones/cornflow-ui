@@ -2,18 +2,17 @@
  * The user's own settings and signing out: the account of who is signed in, the language and
  * the appearance the app offers, signing out, and changing the password. The password is changed
  * only in disposable mode, and only for a user the test creates for it: never for a user others
- * sign in with.
+ * sign in with. Cornflow 1.4 cannot delete a user whose password changed (a known fault of
+ * Cornflow), so one test goes through it all: the change the server asks for, and the change itself.
  */
 import { test, expect } from '../../harness/fixtures'
 import { CREATE_EXECUTION } from '../../harness/createExecution'
 import { newPassword } from '../../harness/cornflowApi'
-import { openHistory } from '../../harness/history'
-import { openFromMenu } from '../../harness/navigation'
-import { signInThroughForm } from '../../harness/session'
-import { openSettings, signOut } from '../../harness/user'
-
-/** Roles no person signs in with, as the set-up leaves them out. */
-const ROLES_LEFT_OUT = ['dummy', 'service']
+import { HISTORY, openHistory } from '../../harness/history'
+import { goToRoute, openFromMenu } from '../../harness/navigation'
+import { signInThroughForm, submitSignInForm } from '../../harness/session'
+import { recordToasts } from '../../harness/toasts'
+import { openSettings, signOut, USER_SETTINGS } from '../../harness/user'
 
 test.describe('user settings', () => {
   test('the account shows who is signed in, and their role', async ({
@@ -170,7 +169,7 @@ test.describe('user settings', () => {
     // Signed out: the test signs in as a user it creates.
     test.use({ session: null })
 
-    test('changes it once the new one meets every rule and the current one is given; the session closes and the new one signs in', async ({
+    test('set by an admin, the user is kept on their settings until they change it; the new one has to meet every rule and the current one be given; the session closes and the new one signs in', async ({
       page,
       api,
       run,
@@ -185,18 +184,24 @@ test.describe('user settings', () => {
         'the password is changed only where users sign in with Cornflow',
       )
       // `api` is E2E_USER, an admin in disposable mode, without a session.
-      const roles = (await api.roles()).filter(
-        (role) => !ROLES_LEFT_OUT.includes(role.name),
-      )
-      const role = roles.find((r) => r.name === 'planner') ?? roles[0]
+      const role = await api.roleForTestUsers()
       const user = await api.createUser({ roleId: role.id, label: 'password' })
-      await signInThroughForm(
-        page,
-        user.username,
-        user.password,
-        user.totpSecret,
-      )
-      await openSettings(page)
+      // An admin sets it: the server asks the user to change it.
+      const given = newPassword()
+      await api.setPassword(user.id, given)
+      const toasts = await recordToasts(page)
+      expect(
+        await submitSignInForm(page, user.username, given, user.totpSecret),
+      ).toBe('signed in')
+      const forced = page.getByTestId('settings-password-forced')
+      await page.waitForURL((url) => url.href.includes(USER_SETTINGS))
+      await expect(forced, 'it says why').toBeVisible()
+      await expect
+        .poll(() => toasts.map((toast) => toast.kind))
+        .toContain('warning')
+      await goToRoute(page, HISTORY)
+      await expect(forced, 'nothing else opens until then').toBeVisible()
+      expect(page.url()).toContain(USER_SETTINGS)
 
       const current = page.getByTestId('settings-current-password')
       const field = page.getByTestId('settings-new-password')
@@ -234,7 +239,7 @@ test.describe('user settings', () => {
           `the rule "${rule.slice('settings-rule-'.length)}" is met`,
         ).toHaveClass(/\bis-met\b/)
       await expect(save, 'not without the current password').toBeDisabled()
-      await current.fill(user.password)
+      await current.fill(given)
       await expect(save).toBeEnabled()
       await save.click()
 
@@ -245,13 +250,12 @@ test.describe('user settings', () => {
         'it asks to sign in again',
       ).toBeVisible()
       await expect(
-        api.signedInAs(user.username, password, user.totpSecret),
-        'the new password signs in',
-      ).resolves.toBeTruthy()
-      await expect(
-        api.signedInAs(user.username, user.password, user.totpSecret),
-        'the old one no longer does',
+        api.signedInAs(user.username, given, user.totpSecret),
+        'the old one no longer signs in',
       ).rejects.toThrow()
+      // The new one does, and nothing keeps the user on their settings any more.
+      await signInThroughForm(page, user.username, password, user.totpSecret)
+      await openHistory(page)
     })
   })
 })

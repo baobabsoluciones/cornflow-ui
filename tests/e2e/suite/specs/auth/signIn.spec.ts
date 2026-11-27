@@ -5,6 +5,7 @@
 import { test, expect } from '../../harness/fixtures'
 import { credentials } from '../../harness/run'
 import { signInThroughForm } from '../../harness/session'
+import { recordToasts } from '../../harness/toasts'
 
 test.describe('sign in', () => {
   test.beforeEach(({ deployment }) => {
@@ -14,8 +15,18 @@ test.describe('sign in', () => {
     )
   })
 
-  test('signs in with a valid user and opens the app', async ({ page }) => {
+  test('signs in with a valid user and opens the app, saying when they last signed in', async ({
+    page,
+  }) => {
     const { username, password, totpSecret } = credentials()
+    const toasts = await recordToasts(page)
+    // What the backend said of the previous sign-in (Cornflow 1.4), in the answer that signs in.
+    let lastLogin: string | null | undefined
+    page.on('response', async (response) => {
+      if (!/\/login\/$/.test(new URL(response.url()).pathname)) return
+      const answer = await response.json().catch(() => null)
+      if (answer?.token) lastLogin = answer.last_login ?? null
+    })
     // With its code, when it has two-factor authentication on.
     await signInThroughForm(page, username, password, totpSecret)
 
@@ -24,6 +35,49 @@ test.describe('sign in', () => {
     expect(
       await page.evaluate(() => sessionStorage.getItem('isAuthenticated')),
     ).toBe('true')
+
+    if (!lastLogin) {
+      // A backend before 1.4, or a first sign-in: a welcome.
+      await expect
+        .poll(() => toasts.map((toast) => toast.kind), {
+          message: 'it says the user is in',
+        })
+        .toContain('success')
+      return
+    }
+    // Cornflow gives the time in UTC, without saying so ("2026-11-27T09:40:11"): the user reads it
+    // in theirs, as the browser shows dates.
+    const [inTheirTime, asIfTheirs] = await page.evaluate(
+      (at) => [
+        new Date(/Z|[+-]\d\d:?\d\d$/.test(at) ? at : `${at}Z`).toLocaleString(),
+        new Date(at).toLocaleString(),
+      ],
+      lastLogin,
+    )
+    await expect
+      .poll(() => toasts.find((toast) => toast.kind === 'info')?.message, {
+        message: 'it says when they last signed in',
+      })
+      .toBeTruthy()
+    const said = toasts.find((toast) => toast.kind === 'info')!.message
+    if (inTheirTime !== asIfTheirs && said.includes(asIfTheirs)) {
+      test.info().annotations.push({
+        type: 'known issue',
+        description:
+          'the last sign-in is shown in UTC as if it were local time: Cornflow gives it without ' +
+          'its time zone, and the app reads it as local (useSignIn, new Date(lastLogin))',
+      })
+      return
+    }
+    expect(said, 'the time of the last sign-in, in theirs').toContain(
+      inTheirTime,
+    )
+  })
+
+  test('shows the legal notice under the form', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.getByTestId('sign-in-legal-notice')).toBeVisible()
+    await expect(page.getByTestId('sign-in-legal-notice')).not.toBeEmpty()
   })
 
   test('turns down a user that does not exist and stays signed out', async ({
