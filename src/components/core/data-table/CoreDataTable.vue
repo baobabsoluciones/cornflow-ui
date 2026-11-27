@@ -29,6 +29,10 @@
       :style="fill && !fullscreen ? { height: `${fillHeight}px` } : undefined"
       :aria-label="title"
       data-testid="data-table"
+      :data-status="status"
+      :data-rows="total"
+      :data-shown="shown"
+      :data-pending="pendingCount"
       @keydown.esc="adding = false"
     >
       <slot name="tabs" />
@@ -38,6 +42,7 @@
         <CoreSearchInput
           v-if="searchable"
           data-tour="table-search"
+          data-testid="data-table-search"
           :model-value="search"
           class="data-table__search"
           :placeholder="$t('dataTable.searchIn', { table: title })"

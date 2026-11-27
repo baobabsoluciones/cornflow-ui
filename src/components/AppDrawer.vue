@@ -36,6 +36,7 @@
     :class="{ 'is-expanded': expanded, 'is-floating': floating, 'is-overlay': pinned && isNarrow }"
     :aria-label="$t('drawer.label')"
     data-testid="app-drawer"
+    :data-schema="store.getSchemaName"
     data-tour="drawer"
     @pointerenter="onPointerEnter"
     @pointerleave="onPointerLeave"
@@ -148,7 +149,13 @@
       </nav>
 
       <footer class="app-drawer__user" data-tour="drawer-user">
-        <button type="button" class="app-drawer__user-link" :title="$t('drawer.userSettings')" @click="goToSettings">
+        <button
+          type="button"
+          class="app-drawer__user-link"
+          :title="$t('drawer.userSettings')"
+          data-testid="app-drawer-user"
+          @click="goToSettings"
+        >
           <span class="app-drawer__avatar">
             <template v-if="user">{{ user.initial }}</template>
             <CoreIcon v-else name="mdi-account-outline" :size="18" />
@@ -216,6 +223,7 @@
               class="app-drawer__rail-button"
               :class="{ 'is-active': isActive(section) }"
               :aria-label="section.title"
+              :data-testid="`app-drawer-rail-${section.key}`"
             >
               <CoreIcon :name="section.icon || 'mdi-circle-small'" :size="20" />
             </RouterLink>
@@ -225,6 +233,7 @@
               class="app-drawer__rail-button"
               :class="{ 'is-active': isActive(section) }"
               :aria-label="section.title"
+              :data-testid="`app-drawer-rail-${section.key}`"
               @click="pinOn(section.key)"
             >
               <CoreIcon :name="section.icon || 'mdi-circle-small'" :size="20" />

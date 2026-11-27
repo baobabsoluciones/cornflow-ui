@@ -27,6 +27,7 @@
         :model-value="search"
         :placeholder="$t('rolesManagement.searchUsers')"
         class="users-toolbar__search"
+        data-testid="users-search"
         @update:model-value="$emit('update:search', $event)"
         @search="$emit('update:search', $event)"
       />
@@ -86,7 +87,12 @@
         </tbody>
 
         <tbody v-else>
-          <tr v-for="user in sortedUsers" :key="user.id" class="users-table__row">
+          <tr
+            v-for="user in sortedUsers"
+            :key="user.id"
+            class="users-table__row"
+            :data-testid="`users-row-${user.username}`"
+          >
             <td>
               <div class="user-cell">
                 <span class="user-avatar" :class="`is-${avatar.toneFor(user)}`" aria-hidden="true">
@@ -153,6 +159,7 @@
                 size="small"
                 icon="mdi-pencil-outline"
                 class="users-table__edit"
+                data-testid="users-row-edit"
                 :aria-label="$t('rolesManagement.editUser')"
                 :title="$t('rolesManagement.editUser')"
                 @click="$emit('edit', user)"

@@ -33,6 +33,7 @@
         variant="outlined"
         size="small"
         :disabled="loading"
+        data-testid="confirm-dialog-cancel"
         @click="handleCancel"
       />
       <CoreButton
@@ -42,6 +43,7 @@
         :icon="icon || null"
         :tone="tone"
         :loading="loading"
+        data-testid="confirm-dialog-confirm"
         @click="handleConfirm"
       />
     </template>

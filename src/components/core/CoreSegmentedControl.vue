@@ -28,6 +28,7 @@
       :tabindex="radioTabIndex(enabledValues, modelValue, option.value)"
       :disabled="option.disabled"
       :title="option.title"
+      :data-value="String(option.value)"
       @click="emit('update:modelValue', option.value)"
     >
       <CoreIcon v-if="option.icon" :name="option.icon" :size="15" />

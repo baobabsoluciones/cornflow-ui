@@ -31,7 +31,7 @@
       </header>
       <p v-if="!hasWarnings" class="warnings-panel__empty">{{ t('warnings.noWarnings') }}</p>
       <ul v-else class="warnings-panel__list">
-        <li v-for="(warning, index) in warnings" :key="index" class="warnings-panel__item">
+        <li v-for="(warning, index) in warnings" :key="index" class="warnings-panel__item" data-testid="warnings-item">
           {{ warning.message }}
         </li>
       </ul>

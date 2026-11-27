@@ -6,7 +6,7 @@
     @view="..." @another="draft.reset()" @history="..." />
 -->
 <template>
-  <div class="launch-result" data-testid="launch-result">
+  <div class="launch-result" data-testid="launch-result" :data-state="state">
     <div class="launch-result__head">
       <span class="launch-result__kicker">{{ kicker }}</span>
       <span class="launch-result__name">{{ name }}</span>

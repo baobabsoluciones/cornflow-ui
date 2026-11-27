@@ -48,3 +48,6 @@ test-results/
 tests/e2e/.auth/
 tests/e2e/.env.test
 tests/e2e/.cornflow-core/
+# A UAT file and its datasets, to run the suite from core against an app's deployment: its data
+tests/e2e/uat*.json
+tests/e2e/data/

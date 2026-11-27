@@ -1,5 +1,5 @@
 <template>
-  <div class="core-title-view">
+  <div class="core-title-view" data-testid="title-view">
     <div class="core-title-view__header">
       <div class="core-title-view__left">
         <div class="core-title-view__icon-title-row">

@@ -20,10 +20,12 @@
         v-for="item in visibleItems"
         :key="item.label"
         class="core-description-list__item"
+        data-testid="description-item"
       >
         <dt class="core-description-list__label">{{ item.label }}</dt>
         <dd
           :class="['core-description-list__value', { 'is-muted': item.muted }]"
+          data-testid="description-value"
         >
           {{ item.value }}
         </dd>

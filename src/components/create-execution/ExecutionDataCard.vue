@@ -21,6 +21,7 @@
     :class="{ 'is-highlighted': highlight, 'is-loaded': draft.isLoaded }"
     :aria-label="$t('createExecution.data.title')"
     data-testid="data-card"
+    :data-load-status="draft.loadStatus"
   >
     <input
       ref="fileInput"
@@ -79,11 +80,21 @@
             <template #trigger>
               <CoreButton variant="outlined" icon="mdi-microsoft-excel" text="Excel" data-testid="data-card-excel" />
             </template>
-            <button type="button" class="data-card__menu-item" @click="excelAction('download')">
+            <button
+              type="button"
+              class="data-card__menu-item"
+              data-testid="data-card-excel-download"
+              @click="excelAction('download')"
+            >
               <CoreIcon name="mdi-download" :size="18" />
               {{ $t('projectExecution.downloadExcel') }}
             </button>
-            <button type="button" class="data-card__menu-item" @click="excelAction('upload')">
+            <button
+              type="button"
+              class="data-card__menu-item"
+              data-testid="data-card-excel-upload"
+              @click="excelAction('upload')"
+            >
               <CoreIcon name="mdi-file-arrow-up-down" :size="18" />
               {{ $t('projectExecution.uploadExcel') }}
             </button>
@@ -144,7 +155,7 @@
         </span>
       </div>
 
-      <div v-if="draft.loadErrors" class="data-card__errors" role="alert" data-testid="data-card-errors">
+      <div v-if="draft.loadErrors" class="data-card__errors" role="alert" data-testid="data-card-errors" :data-count="draft.loadErrors.count">
         <div class="data-card__errors-head">
           <CoreIcon name="mdi-alert-circle" :size="18" class="data-card__errors-icon" />
           <span class="data-card__errors-title">
@@ -156,6 +167,7 @@
             size="small"
             icon="mdi-download"
             :text="$t('createExecution.data.downloadErrors')"
+            data-testid="data-card-errors-download"
             @click="downloadErrors"
           />
         </div>

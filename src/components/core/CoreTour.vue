@@ -30,6 +30,7 @@
       <div
         v-if="spotlight"
         class="core-tour__spotlight"
+        data-testid="core-tour-spotlight"
         :style="{
           top: `${spotlight.top}px`,
           left: `${spotlight.left}px`,
@@ -49,6 +50,8 @@
         :aria-describedby="textId"
         tabindex="-1"
         data-testid="core-tour-card"
+        :data-step="index + 1"
+        :data-steps="count"
         @keydown="onKey"
       >
         <header class="core-tour__header">

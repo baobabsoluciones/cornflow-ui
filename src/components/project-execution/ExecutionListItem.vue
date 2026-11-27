@@ -54,7 +54,7 @@
           />
           <template v-for="detail in details" :key="detail.key">
             <span aria-hidden="true">·</span>
-            <span class="execution-row__detail">
+            <span class="execution-row__detail" :data-testid="`history-row-${detail.key}`">
               <CoreIcon
                 v-if="detail.icon"
                 :name="detail.icon"

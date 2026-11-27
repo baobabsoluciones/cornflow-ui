@@ -7,10 +7,15 @@
 -->
 <template>
   <div class="load-filters" data-testid="load-filters">
-    <label v-for="field in fields" :key="field.key" class="load-filters__field">
+    <label
+      v-for="field in fields"
+      :key="field.key"
+      class="load-filters__field"
+      :data-testid="`load-filter-${field.key}`"
+    >
       <span class="load-filters__label">
         {{ labelOf(field) }}
-        <span v-if="!field.required" class="load-filters__optional">{{ $t('createExecution.data.optional') }}</span>
+        <span v-if="!field.required" class="load-filters__optional" data-testid="load-filter-optional">{{ $t('createExecution.data.optional') }}</span>
       </span>
       <CoreMultiSelect
         v-if="field.multiple"

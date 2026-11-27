@@ -20,6 +20,7 @@
           type="button"
           class="drawer-executions__item"
           :class="{ 'is-loaded': execution.id === loaded?.id }"
+          data-testid="drawer-executions-item"
           :aria-current="execution.id === loaded?.id ? 'true' : undefined"
           :disabled="opening !== null"
           @click="$emit('open', execution)"

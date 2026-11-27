@@ -17,6 +17,7 @@
       v-for="field in mainFields"
       :key="field.key"
       class="parameters-form__field"
+      :data-testid="`parameter-${field.key}`"
       :class="{ 'is-highlighted': highlight === field.key }"
     >
       <div class="parameters-form__label-row">
@@ -56,7 +57,12 @@
         </span>
       </button>
       <div v-if="advancedOpen" class="parameters-form__advanced-fields">
-        <div v-for="field in advancedFields" :key="field.key" class="parameters-form__field">
+        <div
+          v-for="field in advancedFields"
+          :key="field.key"
+          class="parameters-form__field"
+          :data-testid="`parameter-${field.key}`"
+        >
           <div class="parameters-form__label-row">
             <label :for="idOf(field)" class="parameters-form__label">{{ field.label }}</label>
             <button
