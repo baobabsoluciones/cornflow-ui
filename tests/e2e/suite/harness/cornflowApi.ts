@@ -9,6 +9,11 @@
  * It is plain `fetch`, with no Playwright and no import from `src`: the suite is copied into each
  * client's project, where the sources of core are not something Playwright can load.
  */
+import { randomUUID } from 'node:crypto'
+
+/** `length` random characters, 0-9 and a-f, from a cryptographically secure source (up to 32). */
+export const randomHex = (length: number): string =>
+  randomUUID().replace(/-/g, '').slice(0, length)
 
 /** What every name the suite gives starts with. */
 export const E2E_PREFIX = '[e2e]'
@@ -40,16 +45,12 @@ export interface TestUser {
  * A password for a user the suite creates: upper and lower case, digits and, as the only symbols,
  * `.` and `-` (a password that ends up in a connection URI breaks with others). As Cornflow's
  * policy asks: 22 characters, no run of six digits, and nothing of the user's name (the suite's
- * users are `e2e_…`).
+ * users are `e2e_…`). Its fixed `P`, `w`, `7`, `.` and `-` give it every kind of character the
+ * policy asks for, whatever the random parts turn out to be.
  */
 export function newPassword(): string {
-  const random = () =>
-    Math.random()
-      .toString(36)
-      .slice(2, 10)
-      .padEnd(8, 'q')
-      .replace(/(\d{5})(?=\d)/g, '$1k')
-      .slice(0, 8)
+  // A digit after five is turned into a letter: a run of six digits is not allowed.
+  const random = () => randomHex(8).replace(/(\d{5})\d/g, '$1k')
   let password = ''
   do password = `Pw.${random()}-${random().toUpperCase()}q7`
   while (password.toLowerCase().includes('e2e'))
@@ -96,7 +97,7 @@ export function newRunId(now: Date = new Date()): string {
     .slice(0, 16)
     .replace(/[-:]/g, '')
     .replace('T', '-')
-  return `${stamp}-${Math.random().toString(36).slice(2, 6)}`
+  return `${stamp}-${randomHex(4)}`
 }
 
 /** The checks Cornflow stored for an instance or an execution: rows by check name. */
@@ -499,7 +500,7 @@ export class CornflowApi {
   async createUser(args: { roleId: number; label: string }): Promise<TestUser> {
     // A few random characters at the end: a test or set-up retried makes its user again, while the
     // one of the attempt that failed is still there until the clean-up.
-    const username = `${this.username(args.label)}_${Math.random().toString(36).slice(2, 6)}`
+    const username = `${this.username(args.label)}_${randomHex(4)}`
     const password = newPassword()
     const { id } = await this.request<{ id: number }>('POST', '/signup/', {
       username,

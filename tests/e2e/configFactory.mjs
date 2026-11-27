@@ -1,5 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
 import { config as loadDotenv } from 'dotenv'
+import { randomUUID } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -41,7 +42,7 @@ function newRunId(now = new Date()) {
     .slice(0, 16)
     .replace(/[-:]/g, '')
     .replace('T', '-')
-  return `${stamp}-${Math.random().toString(36).slice(2, 6)}`
+  return `${stamp}-${randomUUID().slice(0, 4)}`
 }
 
 function mirrorDir(src, dest) {
