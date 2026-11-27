@@ -310,9 +310,12 @@ export const useGeneralStore = defineStore('general', {
         user.roles = myAssignments.map((a) => ({ id: a.role_id, name: a.role }))
         this.user = user
 
-        // Derive admin status and role names; persist both for route guards (available before store is ready)
-        const isAdmin = myAssignments.some((a: import('@cornflow-ui/core/repositories/RoleRepository').UserRoleAssignment) => a.role === 'admin')
+        // Derive admin status and role names; persist both for route guards (available before store is ready).
+        // A platform administrator is an administrator too, with platform-only actions on top.
+        const isPlatformAdmin = myAssignments.some((a) => a.role === 'platform_admin')
+        const isAdmin = isPlatformAdmin || myAssignments.some((a) => a.role === 'admin')
         sessionStorage.setItem('isAdmin', isAdmin ? 'true' : 'false')
+        sessionStorage.setItem('isPlatformAdmin', isPlatformAdmin ? 'true' : 'false')
         const roleNames = myAssignments.map((a: import('@cornflow-ui/core/repositories/RoleRepository').UserRoleAssignment) => a.role)
         sessionStorage.setItem('userRoles', JSON.stringify(roleNames))
       } catch (error) {
@@ -1384,6 +1387,11 @@ export const useGeneralStore = defineStore('general', {
      */
     isAdmin(): boolean {
       return sessionStorage.getItem('isAdmin') === 'true'
+    },
+
+    /** Whether the signed-in user is a platform administrator (set when the user is fetched). */
+    isPlatformAdmin(): boolean {
+      return sessionStorage.getItem('isPlatformAdmin') === 'true'
     },
   },
 })

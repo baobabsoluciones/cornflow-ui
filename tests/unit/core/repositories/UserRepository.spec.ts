@@ -94,6 +94,27 @@ describe('UserRepository', () => {
     })
   })
 
+  describe('unlockUser', () => {
+    test('unlocks the account', async () => {
+      mockClient.put.mockResolvedValue({ status: 200, content: {} })
+
+      expect(await repository.unlockUser('7')).toBe(true)
+      expect(mockClient.put).toHaveBeenCalledWith('/user/7/unlock/', {})
+    })
+
+    test('an account left to a platform administrator rejects with its own error', async () => {
+      mockClient.put.mockResolvedValue({ status: 403, content: {} })
+
+      await expect(repository.unlockUser('7')).rejects.toThrow('platform_admin_required')
+    })
+
+    test('any other refusal resolves to false', async () => {
+      mockClient.put.mockResolvedValue({ status: 400, content: {} })
+
+      expect(await repository.unlockUser('7')).toBe(false)
+    })
+  })
+
   describe('resetMfa', () => {
     test("turns off the user's two-factor authentication", async () => {
       mockClient.remove.mockResolvedValue({ status: 200, content: {} })

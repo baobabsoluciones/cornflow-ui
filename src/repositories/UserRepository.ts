@@ -1,13 +1,16 @@
 import client from '@cornflow-ui/core/api/Api'
 import { User } from '@cornflow-ui/core/models/User'
+import { PLATFORM_ADMIN_REQUIRED } from '@cornflow-ui/core/utils/platformRoles'
 
-interface RawUser {
+export interface RawUser {
   id: number
   username: string
   email: string
   first_name?: string
   last_name?: string
   mfa_enabled?: boolean
+  /** Locked after too many failed sign-in attempts. */
+  locked?: boolean
 }
 
 export default class UserRepository {
@@ -66,6 +69,20 @@ export default class UserRepository {
               'Error updating user'
             reject(new Error(message))
           }
+        })
+        .catch(reject)
+    })
+  }
+
+  /** Unlocks an account locked after too many failed sign-in attempts (platform admins only). */
+  unlockUser(userId: string | number): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      client
+        .put(`/user/${userId}/unlock/`, {})
+        .then((response) => {
+          // Cornflow leaves the account to a platform administrator.
+          if (response.status === 403) reject(new Error(PLATFORM_ADMIN_REQUIRED))
+          else resolve(response.status === 200)
         })
         .catch(reject)
     })
