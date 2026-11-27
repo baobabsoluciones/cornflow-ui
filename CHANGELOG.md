@@ -8,6 +8,10 @@
   - A request that finds the session already renewed by another one is sent again with the new token, without renewing it a second time
   *Contributors:* [@antoniogonzalezsuarez](#), [@HelenaCA](#)  
   *Commit ID:* #289
+- **Premium modules can dock a panel on the right edge (`setRightPanelOffset` in the layout channel)**  
+  - A premium component reports the width its panel takes on the right edge (a folded rail, a pinned side panel), as banners report their height at the top. The content, the top bar, the execution tabs and the help and warnings buttons end where the panel starts (`--app-right-offset`), also with the side menu pinned. Without premium panels nothing changes
+  *Contributors:* [@antoniogonzalezsuarez](#)  
+  *Commit ID:* #290
 - **Platform roles, locked accounts and two-factor resets in roles management**  
   - A platform administrator (`platform_admin`) counts as an administrator and gets `store.isPlatformAdmin`; the platform roles have their own icon, tone, description and permissions
   - When the server keeps the list of roles to platform administrators (403 on `GET /roles/`), anyone else is told so and keeps the users, without the roles panel or the edit button; a server without platform roles keeps the whole page for every administrator
