@@ -329,6 +329,38 @@ export class CornflowApi {
     return !!answer?.token
   }
 
+  /**
+   * Signs in as `user` with a wrong password until Cornflow locks the account (1.4: after
+   * `LOGIN_MAX_ATTEMPTS` failures in a row, 10 at most), waiting a minute when the limit of
+   * sign-ins stops it. Cornflow answers a wrong password the same, locked or not (it tells only
+   * who gives the right one), so after each try this client, an admin, looks at the user. Returns
+   * whether it got locked: never on a backend that does not lock accounts. Only for a user the
+   * test creates.
+   */
+  async lockOut(user: { id: number; username: string }): Promise<boolean> {
+    for (let attempt = 0; attempt < 10; ) {
+      try {
+        await this.request(
+          'POST',
+          '/login/',
+          { username: user.username, password: 'Not.the-password-1' },
+          [],
+          null,
+        )
+        return false
+      } catch (error) {
+        if (!(error instanceof CornflowApiError)) throw error
+        if (error.status === 429) {
+          await new Promise((resolve) => setTimeout(resolve, 61_000))
+          continue
+        }
+        attempt++
+      }
+      if ((await this.user(user.id)).locked === true) return true
+    }
+    return false
+  }
+
   /** Acts as the user a token belongs to, such as the one a signed-in page holds. */
   useToken(token: string): void {
     this.token = token

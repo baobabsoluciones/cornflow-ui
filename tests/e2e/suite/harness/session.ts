@@ -4,7 +4,13 @@
  * out. So the set-up signs in through the form, as a user does, and keeps a copy of that
  * `sessionStorage`; a browser context opened for that user gets it back before the app loads.
  */
-import type { Browser, BrowserContext, Locator, Page } from '@playwright/test'
+import {
+  type Browser,
+  type BrowserContext,
+  type Locator,
+  type Page,
+  test,
+} from '@playwright/test'
 import { type CornflowApi, CornflowApiError, type Session } from './cornflowApi'
 import { claimTotpCode } from './totp'
 import {
@@ -17,15 +23,43 @@ import {
 } from './run'
 
 /**
+ * Runs `wait`, a wait of signing in that is not the test's own (for the next two-factor code, for
+ * the limit of sign-ins a minute), and gives the test that time back: a test that signs in as
+ * several users would otherwise run out of time waiting.
+ */
+async function outsideTheTestTime<T>(wait: () => Promise<T>): Promise<T> {
+  let info: ReturnType<typeof test.info> | null = null
+  try {
+    info = test.info()
+  } catch {
+    // Not in a test: nothing to give back.
+  }
+  const timeout = info?.timeout
+  if (!info || !timeout) return wait()
+  // Room for the longest of them (two minutes of limit and a code) while it lasts, then the test
+  // keeps its own time plus what the wait took.
+  info.setTimeout(timeout + 3 * 60_000)
+  const started = Date.now()
+  try {
+    return await wait()
+  } finally {
+    info.setTimeout(timeout + Date.now() - started)
+  }
+}
+
+/**
  * Sends the sign-in form with `button` and waits for the backend's answer. When it says there
  * were too many attempts from this address (429, Cornflow 1.4), waits a minute and sends it
- * again. Returns the status of the answer.
+ * again. `fill`, when given, fills the form before each try: a two-factor code a minute old is
+ * no good, so each try takes a new one. Returns the status of the answer.
  */
 export async function submitSignIn(
   page: Page,
   button: Locator,
+  fill?: () => Promise<void>,
 ): Promise<number> {
   for (let attempt = 1; ; attempt++) {
+    if (fill) await fill()
     const answer = page.waitForResponse(
       (response) =>
         /\/login\/$|\/mfa\/verify\/$/.test(new URL(response.url()).pathname) &&
@@ -35,7 +69,7 @@ export async function submitSignIn(
     await button.click()
     const status = (await answer).status()
     if (status !== 429 || attempt === 3) return status
-    await page.waitForTimeout(61_000)
+    await outsideTheTestTime(() => page.waitForTimeout(61_000))
   }
 }
 
@@ -84,10 +118,13 @@ export async function submitSignInForm(
   await submitSignIn(page, page.getByTestId('sign-in-submit'))
   const outcome = await signInStep(page)
   if (outcome !== 'mfa-code' || !totpSecret) return outcome
-  await page
-    .getByTestId('sign-in-mfa-code')
-    .fill(await claimTotpCode(totpSecret, username))
-  await submitSignIn(page, page.getByTestId('sign-in-mfa-submit'))
+  await submitSignIn(page, page.getByTestId('sign-in-mfa-submit'), async () =>
+    page
+      .getByTestId('sign-in-mfa-code')
+      .fill(
+        await outsideTheTestTime(() => claimTotpCode(totpSecret, username)),
+      ),
+  )
   return signInStep(page, 'mfa-code')
 }
 
@@ -134,6 +171,17 @@ export async function signInThroughForm(
         'server must not ask it of the users the suite creates.',
     )
   }
+  // The app keeps the user's roles once it has them (`userRoles`, `isAdmin`…), which the suite
+  // reads from the session: a sign-in is done when they are there.
+  await page
+    .waitForFunction(() => sessionStorage.getItem('userRoles') !== null, null, {
+      timeout: 30_000,
+    })
+    .catch(() => {
+      throw new Error(
+        `[cornflow-e2e] "${username}" signed in, but the app did not get their roles.`,
+      )
+    })
   await page.waitForLoadState('networkidle')
 }
 
@@ -203,8 +251,11 @@ export async function freshSessionStorage(
     const { username, password, totpSecret } = readSessionCredentials(user)
     const api = cornflowApiFor(readDeployment(), baseURL)
     last = {
-      token: (await loginWithinLimit(api, username, password, totpSecret))
-        .token,
+      token: (
+        await outsideTheTestTime(() =>
+          loginWithinLimit(api, username, password, totpSecret),
+        )
+      ).token,
       at: Date.now(),
     }
     issued.set(user, last)

@@ -14,12 +14,18 @@
  * - Where the backend keeps the roles to platform administrators (Cornflow 1.4), an admin is told
  *   so and keeps the users without editing them, and a platform administrator of the run manages
  *   the roles. Core's menu offers Administration to the role admin only: a known fault, noted.
+ * - Accounts (Cornflow 1.4, disposable mode, users the test creates): unlocking a locked one,
+ *   resetting a user's two-factor authentication, and giving a platform role and taking it away.
+ *   A wrong code of the platform administrator is not tried: it would count towards locking a
+ *   user of the run.
  */
 import type { Page } from '@playwright/test'
 import { test, expect } from '../../harness/fixtures'
 import { CornflowApi, CornflowApiError } from '../../harness/cornflowApi'
 import { asUser } from '../../harness/contextChecks'
 import { freshSessionStorage } from '../../harness/session'
+import { newTestUser, userWithTwoFactor } from '../../harness/testUsers'
+import { claimTotpCode } from '../../harness/totp'
 import {
   CREATE_EXECUTION,
   loadDataset,
@@ -40,6 +46,7 @@ import {
 } from '../../harness/navigation'
 import {
   cornflowApiFor,
+  readSessionCredentials,
   readSessionStorage,
   roleSessions,
   type Deployment,
@@ -151,6 +158,31 @@ async function managerOrSkip(
     'the backend keeps the roles to platform administrators, and no user of the run is one',
   )
   return manager!
+}
+
+/**
+ * A platform administrator of the run, with its API, or the test is skipped: only one unlocks an
+ * account or gives a platform role (Cornflow 1.4).
+ */
+async function platformAdminOrSkip(
+  run: RunInfo,
+  deployment: Deployment,
+  baseURL: string | undefined,
+): Promise<RolesManager> {
+  const session = run.sessions.find((s) => isPlatformAdminSession(s.name))?.name
+  test.skip(
+    !session,
+    'no user of the run is a platform administrator (Cornflow 1.4), the only one who does this',
+  )
+  return { session: session!, api: await apiAs(deployment, baseURL, session!) }
+}
+
+/** Finds the user `username` in the users of roles management (open), and returns its row. */
+async function userRow(page: Page, username: string) {
+  await page.getByTestId('users-search').locator('input').fill(username)
+  const row = page.getByTestId(`users-row-${username}`)
+  await expect(row).toBeVisible()
+  return row
 }
 
 /**
@@ -517,6 +549,171 @@ test.describe('roles and permissions', () => {
           first.id,
         )
       })
+    })
+
+    test('a locked account shows so, and unlocking it asks first; confirmed, the user signs in again', async ({
+      browser,
+      deployment,
+      run,
+      baseURL,
+    }) => {
+      test.skip(
+        run.mode !== 'disposable',
+        'accounts are locked only in disposable mode, a user the test creates',
+      )
+      // Locking takes up to ten wrong sign-ins: with the limit a minute, some wait for it.
+      test.setTimeout(4 * 60_000)
+      const manager = await platformAdminOrSkip(run, deployment, baseURL)
+      const user = await newTestUser(manager.api, 'locked')
+      test.skip(
+        !(await manager.api.lockOut(user)),
+        'this backend does not lock accounts (before Cornflow 1.4)',
+      )
+      const isLocked = async () => (await manager.api.user(user.id)).locked
+
+      await asUser(browser, deployment, manager.session, async (page) => {
+        await openAsManager(page, manager)
+        const row = await userRow(page, user.username)
+        const badge = row.getByTestId('user-locked')
+        await expect(badge, 'it shows it is locked').toBeVisible()
+
+        await row.getByTestId('user-unlock').click()
+        await page.getByTestId('confirm-dialog-cancel').click()
+        await expect(badge, 'cancelled, it stays locked').toBeVisible()
+        expect(await isLocked()).toBe(true)
+
+        await row.getByTestId('user-unlock').click()
+        await page.getByTestId('confirm-dialog-confirm').click()
+        await expect(badge, 'it is no longer locked').toHaveCount(0)
+        await expect(row.getByTestId('user-unlock')).toHaveCount(0)
+      })
+      await expect
+        .poll(isLocked, { message: 'the backend unlocks it' })
+        .toBe(false)
+      await expect(
+        manager.api.signedInAs(user.username, user.password, user.totpSecret),
+        'the user signs in again',
+      ).resolves.toBeTruthy()
+    })
+
+    test("resetting a user's two-factor authentication asks first; confirmed, it is off", async ({
+      browser,
+      deployment,
+      run,
+      baseURL,
+    }) => {
+      test.skip(
+        run.mode !== 'disposable',
+        'two-factor authentication is reset only in disposable mode, of a user the test creates',
+      )
+      const manager = await managerOrSkip(run, deployment, baseURL)
+      const user = await userWithTwoFactor(manager.api, 'mfa_reset')
+      const hasIt = async () => (await manager.api.user(user.id)).mfa_enabled
+
+      await asUser(browser, deployment, manager.session, async (page) => {
+        await openAsManager(page, manager)
+        const row = await userRow(page, user.username)
+        const reset = row.getByTestId('user-reset-mfa')
+
+        await reset.click()
+        await page.getByTestId('confirm-dialog-cancel').click()
+        await expect(reset, 'cancelled, it is still on').toBeVisible()
+        expect(await hasIt()).toBe(true)
+
+        await reset.click()
+        await page.getByTestId('confirm-dialog-confirm').click()
+        await expect(reset, 'off, there is nothing to reset').toHaveCount(0)
+      })
+      await expect
+        .poll(hasIt, { message: 'the backend has it off' })
+        .toBe(false)
+    })
+
+    test('gives a user a platform role, with a code of the platform administrator when they have two-factor authentication, and takes it away', async ({
+      browser,
+      deployment,
+      run,
+      baseURL,
+    }) => {
+      test.skip(
+        run.mode !== 'disposable',
+        "users' roles are changed only in disposable mode",
+      )
+      const manager = await platformAdminOrSkip(run, deployment, baseURL)
+      const platformRoles = (await manager.api.roles()).filter(
+        (role) =>
+          role.name.startsWith('platform_') && !SUITE_ROLE.test(role.name),
+      )
+      const role =
+        platformRoles.find((r) => r.name === 'platform_viewer') ??
+        platformRoles[0]
+      test.skip(!role, 'the backend has no platform roles')
+      const user = await newTestUser(manager.api, 'platform')
+      const rolesOfUser = async () =>
+        (await manager.api.userRoles())
+          .filter((a) => a.user_id === user.id)
+          .map((a) => a.role_id)
+      // The platform administrator confirms it with a code of theirs, when they have it on.
+      const { username, totpSecret } = readSessionCredentials(manager.session)
+
+      await asUser(browser, deployment, manager.session, async (page) => {
+        await openAsManager(page, manager)
+        const row = await userRow(page, user.username)
+        const box = page.getByTestId(`user-roles-role-${role.name}`)
+        const code = page.getByTestId('platform-role-totp')
+        const save = page.getByTestId('user-roles-save')
+
+        await row.getByTestId('users-row-edit').click()
+        await expect(code, 'no code before the role is picked').toHaveCount(0)
+        await box.click()
+        await expect(box).toHaveAttribute('aria-checked', 'true')
+        if (totpSecret) {
+          await expect(code, 'it asks for a code').toBeVisible()
+          await expect(save, 'not without it').toBeDisabled()
+          await code.fill(await claimTotpCode(totpSecret, username))
+        } else {
+          await expect(code, 'no code without two-factor').toHaveCount(0)
+        }
+        const answer = page.waitForResponse(
+          (response) =>
+            /\/user\/role\/$/.test(new URL(response.url()).pathname) &&
+            response.request().method() === 'POST',
+        )
+        await save.click()
+        const granted = await answer
+        if (
+          totpSecret &&
+          granted.status() === 400 &&
+          /totp_code/.test(await granted.text())
+        ) {
+          test.info().annotations.push({
+            type: 'known issue',
+            description:
+              'a platform administrator with two-factor authentication cannot give a platform ' +
+              'role: the app sends their code (totp_code, RoleRepository.assignRoleToUser) and ' +
+              'this Cornflow does not take it (400, unknown field)',
+          })
+          await expect(save, 'the role is not given').toBeVisible()
+          await page.keyboard.press('Escape')
+          return
+        }
+        await expect(save).toBeHidden()
+        await expect(row, 'the row shows the role').toContainText(role.name)
+        await expect
+          .poll(rolesOfUser, { message: `the backend gives it ${role.name}` })
+          .toContain(role.id)
+
+        // Taking it away asks for no code.
+        await row.getByTestId('users-row-edit').click()
+        await box.click()
+        await expect(box).toHaveAttribute('aria-checked', 'false')
+        await expect(code).toHaveCount(0)
+        await save.click()
+        await expect(save).toBeHidden()
+      })
+      await expect
+        .poll(rolesOfUser, { message: `the backend takes ${role.name} away` })
+        .not.toContain(role.id)
     })
 
     test('offers adding, renaming and deleting a role where allowEditRoles is on', async ({

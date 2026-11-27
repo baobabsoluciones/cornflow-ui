@@ -4,7 +4,8 @@
  */
 import { test, expect } from '../../harness/fixtures'
 import { credentials } from '../../harness/run'
-import { signInThroughForm } from '../../harness/session'
+import { signInThroughForm, submitSignIn } from '../../harness/session'
+import { newTestUser } from '../../harness/testUsers'
 import { recordToasts } from '../../harness/toasts'
 
 test.describe('sign in', () => {
@@ -94,6 +95,41 @@ test.describe('sign in', () => {
     expect(
       await page.evaluate(() => sessionStorage.getItem('isAuthenticated')),
     ).not.toBe('true')
+  })
+
+  test('a locked account is told so, not that the password is wrong', async ({
+    page,
+    api,
+    run,
+  }) => {
+    test.skip(
+      run.mode !== 'disposable',
+      'only in disposable mode: the test locks a user it creates',
+    )
+    // Locking takes up to ten wrong sign-ins: with the limit a minute, some wait for it.
+    test.setTimeout(4 * 60_000)
+    const user = await newTestUser(api, 'locked')
+    test.skip(
+      !(await api.lockOut(user)),
+      'this backend does not lock accounts (before Cornflow 1.4)',
+    )
+    const toasts = await recordToasts(page)
+    const signIn = async (username: string, password: string) => {
+      await page.goto('/')
+      await page.getByTestId('sign-in-username').fill(username)
+      await page.getByTestId('sign-in-password').fill(password)
+      await submitSignIn(page, page.getByTestId('sign-in-submit'))
+      await expect.poll(() => toasts.length).toBeGreaterThan(0)
+      const [toast] = toasts.splice(0)
+      expect(toast.kind).toBe('error')
+      await expect(page.getByTestId('sign-in-username')).toBeVisible()
+      return toast.message
+    }
+
+    const wrong = await signIn(api.username('nobody'), 'Not.the-password1')
+    // With the right password: still locked.
+    const locked = await signIn(user.username, user.password)
+    expect(locked, 'it says the account is locked').not.toBe(wrong)
   })
 
   test('asks for both the username and the password', async ({ page }) => {
