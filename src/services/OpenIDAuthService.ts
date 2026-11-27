@@ -5,6 +5,7 @@ import { signInWithRedirect, signOut, fetchAuthSession } from 'aws-amplify/auth'
 import client from '@cornflow-ui/core/api/Api'
 import config from '@cornflow-ui/core/config'
 import { getRouter } from '@cornflow-ui/core/router'
+import { takeReturnTo } from '@cornflow-ui/core/utils/returnTo'
 
 export class OpenIDAuthService implements AuthProvider {
   private msalInstance: PublicClientApplication | null = null
@@ -294,7 +295,7 @@ export class OpenIDAuthService implements AuthProvider {
     )
     this.storeUserClaims(tokenClaims)
     client.initializeToken()
-    getRouter().push('/project-execution')
+    getRouter().push(takeReturnTo() ?? '/project-execution')
   }
 
   private async handleAuthResponse(response: any) {

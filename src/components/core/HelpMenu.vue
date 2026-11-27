@@ -135,7 +135,7 @@ defineExpose({ helpOpen, licencesOpen, resolveFilePath })
 .help-menu__trigger {
   position: fixed;
   top: calc(var(--app-top-offset, 0px) + var(--spacing) * 4);
-  right: calc(var(--spacing) * 3);
+  right: calc(var(--app-right-offset, 0px) + var(--spacing) * 3);
   z-index: 800;
   display: inline-flex;
   align-items: center;

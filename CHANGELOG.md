@@ -10,6 +10,19 @@
   - `FilterChip` takes `searchable`, with `searchPlaceholder` and `emptyText`
   *Contributors:* [@HelenaCA](#)  
   *Commit ID:* —
+
+## [4.2.0] - 27-11-2026
+
+### Added
+- **After a forced sign-in, the user goes back to the page the session ended on**  
+  - When the session ends (an expired or revoked session), the page being shown is kept, and the next sign-in, with Cornflow or a single sign-on provider, goes back to it once instead of the home page. Only pages of the app are followed: absolute URLs and the sign-in and sign-out pages are ignored. Logging out forgets it (`utils/returnTo`)
+  - A request that finds the session already renewed by another one is sent again with the new token, without renewing it a second time
+  *Contributors:* [@antoniogonzalezsuarez](#), [@HelenaCA](#)  
+  *Commit ID:* #289
+- **Premium modules can dock a panel on the right edge (`setRightPanelOffset` in the layout channel)**  
+  - A premium component reports the width its panel takes on the right edge (a folded rail, a pinned side panel), as banners report their height at the top. The content, the top bar, the execution tabs and the help and warnings buttons end where the panel starts (`--app-right-offset`), also with the side menu pinned. Without premium panels nothing changes
+  *Contributors:* [@antoniogonzalezsuarez](#)  
+  *Commit ID:* #290
 - **Platform roles, locked accounts and two-factor resets in roles management**  
   - A platform administrator (`platform_admin`) counts as an administrator and gets `store.isPlatformAdmin`; the platform roles have their own icon, tone, description and permissions
   - When the server keeps the list of roles to platform administrators (403 on `GET /roles/`), anyone else is told so and keeps the users, without the roles panel or the edit button; a server without platform roles keeps the whole page for every administrator
@@ -33,6 +46,16 @@
   - New dependencies: `@zxcvbn-ts/core`, `@zxcvbn-ts/language-common` and `qrcode`
   *Contributors:* [@HelenaCA](#), [@ggsdc](#)  
   *Commit ID:* #284
+
+### Fixed
+- **A platform administrator sees the Administration group of the side menu**  
+  - Since #286 a platform administrator (`platform_admin`) counts as an administrator, but the side menu still built the Administration group only for the `admin` role, so a platform administrator without it saw neither roles management nor the pages premium modules add there (`parent: 'admin'`). `useDrawerSections` now applies the same rule as the store
+  *Contributors:* [@antoniogonzalezsuarez](#)  
+  *Commit ID:* #293
+- **`usePageContext` lists a page only while it is on screen**  
+  - Core's views live under `<keep-alive>`, so a page that was left stays mounted and its page-context entries stayed registered: an assistant offered the widgets of a page the user was no longer looking at. `usePageContext` now also unregisters the entry when its component is deactivated and registers it again when it is activated
+  *Contributors:* [@antoniogonzalezsuarez](#)  
+  *Commit ID:* #283
 
 ## [4.1.0] - 24-11-2026
 
@@ -74,10 +97,6 @@
   *Commit ID:* #274
 
 ### Fixed
-- **`usePageContext` lists a page only while it is on screen**  
-  - Core's views live under `<keep-alive>`, so a page that was left stays mounted and its page-context entries stayed registered: an assistant offered the widgets of a page the user was no longer looking at. `usePageContext` now also unregisters the entry when its component is deactivated and registers it again when it is activated
-  *Contributors:* [@antoniogonzalezsuarez](#)  
-  *Commit ID:* #283
 - **The data checks send the DAG of the instance or execution they check**  
   - A deployment closed to the DAGs of each user rejects a data check without `schema` (400, "The request does not specify a schema to use") and creates no check execution. `POST /data-check/instance/<id>/` sends the DAG of the instance just created next to the execution `config`, and `POST /data-check-kpis/execution/<id>/` sends the DAG of the execution, read from `GET /execution/<id>/`, both in the historical KPIs and when the execution files are regenerated. Neither takes the active DAG
   *Contributors:* [@HelenaCA](#)  
