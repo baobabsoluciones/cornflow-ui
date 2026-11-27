@@ -244,6 +244,7 @@ export default {
       errorLoad: "Une erreur est survenue lors du chargement de l'exécution",
       autoLoadError:
         "Une erreur inattendue est survenue lors de la récupération des informations de l'exécution",
+      dataFilterError: 'Les données de cette valeur n’ont pas pu être lues. Réessayez.',
     },
     steps: {
       step3: {
@@ -1017,7 +1018,14 @@ export default {
       updateError: 'Erreur lors de la mise à jour de la table de configuration',
     },
   },
+  dashboard: {
+    range: {
+      shown: '{shown} sur {count}',
+    },
+  },
   common: {
+    from: 'Du',
+    to: 'Au',
     clear: 'Effacer',
     close: 'Fermer',
   },
@@ -1262,6 +1270,11 @@ export default {
       noValue: '(sans valeur)',
       emptyValue: 'vide',
       pending: 'Aucune modification en attente dans {table} | 1 modification en attente dans {table} | {count} modifications en attente dans {table}',
+    },
+    dataFilter: {
+      hint: 'Seules les lignes de la valeur choisie sont affichées.',
+      search: 'Rechercher…',
+      empty: 'Aucun résultat',
     },
     source: {
       variants: {

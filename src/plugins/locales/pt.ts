@@ -1101,6 +1101,9 @@ export default {
     },
   },
   dashboard: {
+    range: {
+      shown: '{shown} de {count}',
+    },
     widgets: {
       total: 'Total de {column}',
       average: 'Média de {column}',
@@ -1162,6 +1165,8 @@ export default {
       'Não existem dados de instância disponíveis. Não é possível guardar as alterações.',
   },
   common: {
+    from: 'De',
+    to: 'Até',
     clear: 'Limpar',
     close: 'Fechar',
     cancel: 'Cancelar',

@@ -97,6 +97,11 @@
       <TableSourceStrip :master="{ ...masterReady, added: 0, removed: 0, modified: 0 }" />
     </CatalogBlock>
 
+    <CatalogBlock name="ExecutionDataFilterStrip" api="filter · loading → pick" column>
+      <ExecutionDataFilterStrip :filter="dataFilter" @pick="(value) => (dataFilter = { ...dataFilter, value })" />
+      <ExecutionDataFilterStrip :filter="dataFilter" loading />
+    </CatalogBlock>
+
     <CatalogBlock
       name="DataComparisonDialog"
       api="open · tableTitle · columns · lines · loadedCount · masterCount · pendingCount · allowRestore · allowDelete → restore, delete"
@@ -190,6 +195,8 @@ import ParametersTable, { type ParameterRow } from '@cornflow-ui/core/components
 import PendingChangesPanel from '@cornflow-ui/core/components/core/data-table/PendingChangesPanel.vue'
 import RelaunchDialog from '@cornflow-ui/core/components/core/data-table/RelaunchDialog.vue'
 import TableSourceStrip from '@cornflow-ui/core/components/core/data-table/TableSourceStrip.vue'
+import ExecutionDataFilterStrip from '@cornflow-ui/core/components/section-view/ExecutionDataFilterStrip.vue'
+import type { ExecutionDataFilter } from '@cornflow-ui/core/utils/executionDataFilter'
 import type { ComparisonLine } from '@cornflow-ui/core/components/core/data-table/DataComparisonDialog.vue'
 import type {
   DataColumn,
@@ -444,6 +451,17 @@ function save() {
 
 // Source bar and comparison.
 const sourceChoice = ref('static')
+const dataFilter = ref<ExecutionDataFilter>({
+  param: 'plant',
+  title: { en: 'Plant', es: 'Planta', fr: 'Usine' },
+  value: 'P1',
+  options: [
+    { value: 'P1', label: 'P1 · North plant' },
+    { value: 'P2', label: 'P2 · South plant' },
+    { value: 'P3', label: 'P3 · East plant' },
+  ],
+  tables: { instance: ['demand'], solution: [] },
+})
 const fileChoice = ref('file')
 const masterReady = {
   state: 'ready' as const,

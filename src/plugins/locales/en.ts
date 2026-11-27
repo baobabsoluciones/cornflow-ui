@@ -247,6 +247,7 @@ export default {
       errorLoad: 'An error occurred while loading the execution',
       autoLoadError:
         'An unexpected error occurred while retrieving the execution information',
+      dataFilterError: 'The data could not be read for that value. Try again.',
     },
     steps: {
       step3: {
@@ -1112,6 +1113,9 @@ export default {
     },
   },
   dashboard: {
+    range: {
+      shown: '{shown} of {count}',
+    },
     widgets: {
       total: 'Total {column}',
       average: 'Average {column}',
@@ -1172,6 +1176,8 @@ export default {
       'No instance data available. Changes cannot be saved.',
   },
   common: {
+    from: 'From',
+    to: 'To',
     clear: 'Clear',
     close: 'Close',
     cancel: 'Cancel',
@@ -1417,6 +1423,11 @@ export default {
       noValue: '(no value)',
       emptyValue: 'empty',
       pending: 'No pending changes in {table} | 1 pending change in {table} | {count} pending changes in {table}',
+    },
+    dataFilter: {
+      hint: 'Only the rows of the picked value are shown.',
+      search: 'Search…',
+      empty: 'No matches',
     },
     source: {
       variants: {

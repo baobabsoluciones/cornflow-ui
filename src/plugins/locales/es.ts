@@ -249,6 +249,7 @@ export default {
       errorLoad: 'Ocurrió un error al cargar la ejecución',
       autoLoadError:
         'Ocurrió un error inesperado al recuperar la información de la ejecución',
+      dataFilterError: 'No se han podido leer los datos de ese valor. Inténtalo de nuevo.',
     },
     steps: {
       step3: {
@@ -1120,6 +1121,9 @@ export default {
     },
   },
   dashboard: {
+    range: {
+      shown: '{shown} de {count}',
+    },
     widgets: {
       total: '{column} total',
       average: 'Promedio {column}',
@@ -1181,6 +1185,8 @@ export default {
       'No hay datos de instancia. No se pueden guardar los cambios.',
   },
   common: {
+    from: 'Desde',
+    to: 'Hasta',
     clear: 'Limpiar',
     close: 'Cerrar',
     cancel: 'Cancelar',
@@ -1426,6 +1432,11 @@ export default {
       noValue: '(sin valor)',
       emptyValue: 'vacío',
       pending: 'Sin cambios pendientes en {table} | 1 cambio pendiente en {table} | {count} cambios pendientes en {table}',
+    },
+    dataFilter: {
+      hint: 'Solo se muestran las filas del valor elegido.',
+      search: 'Buscar…',
+      empty: 'Sin resultados',
     },
     source: {
       variants: {

@@ -357,8 +357,46 @@ declare the same route.
 | `get_detail`        | `id`, `schema`, `state`, `updated_at`, `username`, `first_name`, `last_name`                                                                                                           |
 | `put_detail`        | A 2xx status; the body is not read                                                                                                                                                      |
 | `delete_detail`     | A 200 status                                                                                                                                                                            |
-| `get_data`          | `id`, `instance_id` (required: the instance is read with it), `data`, `checks`, `name`, `description`, `created_at`, `state`, `message`, `log`, `config` and, with `enableKpisResponseMerge`, `kpis` |
-| `get_instance_data` | `id`, `data`, `checks`                                                                                                                                                                  |
+| `get_data`          | `id`, `instance_id` (required: the instance is read with it), `data`, `checks`, `name`, `description`, `created_at`, `state`, `message`, `log`, `config`, `data_filter` (optional) and, with `enableKpisResponseMerge`, `kpis` |
+| `get_instance_data` | `id`, `data`, `checks`, `data_filter` (optional)                                                                                                                                        |
+
+**Executions read in parts.** An execution too large to send whole (one with hundreds of plants or
+products, each with rows per day) can come with some of its tables narrowed to one value. The
+answer of `get_data` or of `get_instance_data` says so in `data_filter`:
+
+```json
+"data_filter": {
+  "param": "plant",
+  "title": { "en": "Plant", "es": "Planta" },
+  "value": "P1",
+  "options": [
+    { "value": "P1", "label": "P1 · North" },
+    { "value": "P2", "label": "P2 · South" }
+  ],
+  "tables": ["demand", "stock"]
+}
+```
+
+| Field     | What it is                                                                         |
+| --------- | ---------------------------------------------------------------------------------- |
+| `param`   | The query parameter that picks the value                                           |
+| `title`   | What is picked, as text or by language                                             |
+| `value`   | The value the narrowed tables carry                                                |
+| `options` | The values that can be picked, with the text the selector shows (`label`)          |
+| `tables`  | The tables of that answer (instance or solution) narrowed to `value`               |
+
+- Over each table in `tables`, the input data and the results show a bar with the value and a
+  selector of `options`, with a search box. Picking another value reads the execution again, the
+  solution and the instance alike, with `?<param>=<value>`, and keeps the table, the filters and
+  the dashboard picked on it. The other tables show no bar.
+- `param`, `title`, `value` and `options` are read from the solution's answer, and from the
+  instance's when the solution has no `data_filter`. Each answer names its own `tables`.
+- An answer without `data_filter` shows as it is, with no bar. One whose `data_filter` lacks a
+  field, or has one of another type, is ignored with a warning in the console.
+- A running execution that finishes is read again for the value it shows, and the Excel download
+  of a loaded execution has the part on screen.
+- The backend decides the value without `?<param>`, and answers for a value it does not offer as
+  for any wrong request.
 
 **What is always Cornflow's.** Creating instances and executions, launching data checks
 (`POST /data-check/...`), the instance the create flow has just stored and checks
@@ -367,7 +405,10 @@ declare the same route.
 
 Implementation: `utils/executionEndpoints.ts` (`resolveExecutionEndpoint`),
 `utils/frontendConfig.ts`, `repositories/ExecutionRepository.ts`,
-`repositories/InstanceRepository.ts` (`getInstance`), `stores/general.ts` (`fetchFrontendConfig`).
+`repositories/InstanceRepository.ts` (`getInstance`, `getInstanceData`), `stores/general.ts`
+(`fetchFrontendConfig`, `setExecutionDataFilterValue`). Executions read in parts:
+`utils/executionDataFilter.ts`, `components/section-view/ExecutionDataFilterStrip.vue` and
+`views/SectionView.vue`.
 
 **Several DAGs.** The options come from the frontend-automation tables of the active DAG (a table
 declared with `schemas` only offers its rows on those DAGs). A DAG switch loads the options again:

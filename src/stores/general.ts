@@ -1167,9 +1167,11 @@ export const useGeneralStore = defineStore('general', {
         // Still running → keep polling, nothing to update yet.
         if (isExecutionActive(meta.state)) return true
 
-        // State transitioned: now (and only now) fetch the full payload.
+        // State transitioned: now (and only now) fetch the full payload, for the
+        // value picked when the backend gives it in parts.
         const updatedExecution = await this.executionRepository.loadExecution(
           execution.executionId,
+          execution.getDataFilterSelection?.() ?? null,
         )
         if (!updatedExecution) return true
 
@@ -1229,6 +1231,42 @@ export const useGeneralStore = defineStore('general', {
       }
     },
 
+    /**
+     * Reads a loaded execution that the backend gives in parts again, for `value`, an option of
+     * its `dataFilter`. The tables, filters and dashboard picked on it are kept.
+     *
+     * @returns Whether it was read; when not, the execution stays as it was and a snackbar says so
+     */
+    async setExecutionDataFilterValue(
+      executionId: string,
+      value: string,
+    ): Promise<boolean> {
+      const current = this.loadedExecutions.find(
+        (execution) => execution.executionId === executionId,
+      )
+      if (!current?.dataFilter) return false
+      if (current.dataFilter.value === value) return true
+      try {
+        const reloaded = await this.executionRepository.loadExecution(
+          executionId,
+          { param: current.dataFilter.param, value },
+        )
+        reloaded.keepPreferencesOf(current)
+        this.addLoadedExecution(reloaded)
+        if (this.selectedExecution?.executionId === executionId) {
+          this.selectedExecution = reloaded
+        }
+        return true
+      } catch (error) {
+        console.error('Error reading the execution for another value', error)
+        showSnackbar(
+          i18n.global.t('projectExecution.snackbar.dataFilterError'),
+          'error',
+        )
+        return false
+      }
+    },
+
     addNotification(notification: {
       message: string
       type: 'success' | 'warning' | 'info' | 'error'
@@ -1263,7 +1301,16 @@ export const useGeneralStore = defineStore('general', {
         instance = true
       }
 
-      await this.executionRepository.getDataToDownload(id, solution, instance)
+      // A loaded execution given in parts downloads the part on screen.
+      const loaded = this.loadedExecutions.find(
+        (execution) => execution.executionId === id,
+      )
+      await this.executionRepository.getDataToDownload(
+        id,
+        solution,
+        instance,
+        loaded?.getDataFilterSelection?.() ?? null,
+      )
     },
 
     // Drawer pin actions

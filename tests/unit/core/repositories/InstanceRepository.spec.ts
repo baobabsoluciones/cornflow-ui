@@ -156,6 +156,51 @@ describe('InstanceRepository', () => {
     })
   })
 
+  describe('getInstanceData', () => {
+    const dataFilter = {
+      param: 'plant',
+      title: 'Plant',
+      value: 'P2',
+      options: [{ value: 'P2', label: 'South' }],
+      tables: ['demand'],
+    }
+
+    test('reads the instance for the value asked and keeps how it is given in parts', async () => {
+      mockClient.get.mockResolvedValue({
+        status: 200,
+        content: { id: 'g1', data: {}, checks: null, data_filter: dataFilter },
+      })
+      mockGeneralStore.appConfig.Instance.mockReturnValue({ id: 'g1' })
+
+      const result = await repository.getInstanceData(
+        'g1',
+        { path: '/instances/g1/data/', isExternal: true },
+        { plant: 'P2' },
+      )
+
+      expect(mockClient.get).toHaveBeenCalledWith(
+        '/instances/g1/data/',
+        { plant: 'P2' },
+        {},
+        true,
+      )
+      expect(result.dataFilter).toEqual(dataFilter)
+      expect(result.instance).toBeDefined()
+    })
+
+    test('an instance not given in parts has no data filter', async () => {
+      mockClient.get.mockResolvedValue({
+        status: 200,
+        content: { id: 'i1', data: {}, checks: null },
+      })
+      mockGeneralStore.appConfig.Instance.mockReturnValue({ id: 'i1' })
+
+      const result = await repository.getInstanceData('i1')
+
+      expect(result.dataFilter).toBeNull()
+    })
+  })
+
   describe('launchInstanceDataChecks', () => {
     test('should launch instance data checks successfully', async () => {
       const mockResponse = {

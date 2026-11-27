@@ -64,6 +64,53 @@ describe('LoadedExecution', () => {
       expect(solved.solutionState).toEqual({ status_code: 2 })
     })
 
+    test('keeps how the backend gives it in parts, and the value to read it for again', () => {
+      expect(loadedExecution.dataFilter).toBeNull()
+      expect(loadedExecution.getDataFilterSelection()).toBeNull()
+
+      const inParts = new LoadedExecution({
+        experiment: mockExperiment as any,
+        executionId: 'exec-125',
+        name: 'In parts',
+        description: '',
+        createdAt: '2023-01-01T00:00:00Z',
+        state: 1,
+        message: 'Success',
+        config: {},
+        dataFilter: {
+          param: 'plant',
+          title: 'Plant',
+          value: 'P1',
+          options: [{ value: 'P1', label: 'North' }],
+          tables: { instance: ['demand'], solution: [] },
+        },
+      })
+
+      expect(inParts.getDataFilterSelection()).toEqual({ param: 'plant', value: 'P1' })
+    })
+
+    test('takes the tables, filters and dashboard picked on the same execution read before', () => {
+      loadedExecution.setSelectedTablePreference('demand', 'instance')
+      loadedExecution.setFiltersPreference({ plant: 'P1' }, 'solution')
+      loadedExecution.setDashboardPreference('summary')
+      const reread = new LoadedExecution({
+        experiment: mockExperiment as any,
+        executionId: 'exec-123',
+        name: 'Test Execution',
+        description: 'Test Description',
+        createdAt: '2023-01-01T00:00:00Z',
+        state: 1,
+        message: 'Success',
+        config: {},
+      })
+
+      reread.keepPreferencesOf(loadedExecution)
+
+      expect(reread.getSelectedTablePreference('instance')).toBe('demand')
+      expect(reread.getFiltersPreference('solution')).toEqual({ plant: 'P1' })
+      expect(reread.getDashboardPreferences()).toBe('summary')
+    })
+
     test('should initialize UI preferences with default values', () => {
       expect(loadedExecution.getSelectedTablePreference('instance')).toBeNull()
       expect(loadedExecution.getSelectedTablePreference('solution')).toBeNull()
