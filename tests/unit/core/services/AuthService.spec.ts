@@ -338,12 +338,13 @@ describe('AuthService', () => {
       sessionStorage.setItem('userId', '7')
       sessionStorage.setItem('isPlatformAdmin', 'true')
       sessionStorage.setItem('pwdChangeRequired', 'true')
+      sessionStorage.setItem('returnTo', '/history-execution')
 
       AuthService.logout()
 
       expect(client.post).toHaveBeenCalledWith('/logout/', { refresh_token: 'refresh' }, JSON_HEADERS)
       expect(sessionStorage.getItem('isAuthenticated')).toBe('false')
-      for (const key of ['token', 'refreshToken', 'userId', 'isPlatformAdmin', 'pwdChangeRequired']) {
+      for (const key of ['token', 'refreshToken', 'userId', 'isPlatformAdmin', 'pwdChangeRequired', 'returnTo']) {
         expect(sessionStorage.getItem(key)).toBeNull()
       }
       expect(client.initializeToken).toHaveBeenCalled()

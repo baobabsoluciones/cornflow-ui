@@ -5,6 +5,7 @@ import type {
   MfaSetupResult,
   MfaVerifyData,
 } from '../interfaces/AuthProvider'
+import { clearReturnTo } from '../utils/returnTo'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
 
@@ -174,6 +175,8 @@ class AuthService {
     sessionStorage.removeItem('refreshToken')
     sessionStorage.removeItem('userId')
     sessionStorage.removeItem('pwdChangeRequired')
+    // A sign-out by the user has no page to come back to
+    clearReturnTo()
     clearRoleFlags()
     // Without this, a sign-in in the same tab would go on sending the previous user's Bearer.
     client.initializeToken()

@@ -3,6 +3,11 @@
 ## [Unreleased]
 
 ### Added
+- **After a forced sign-in, the user goes back to the page the session ended on**  
+  - When the session ends (an expired or revoked session), the page being shown is kept, and the next sign-in, with Cornflow or a single sign-on provider, goes back to it once instead of the home page. Only pages of the app are followed: absolute URLs and the sign-in and sign-out pages are ignored. Logging out forgets it (`utils/returnTo`)
+  - A request that finds the session already renewed by another one is sent again with the new token, without renewing it a second time
+  *Contributors:* [@antoniogonzalezsuarez](#), [@HelenaCA](#)  
+  *Commit ID:* #289
 - **Premium modules can dock a panel on the right edge (`setRightPanelOffset` in the layout channel)**  
   - A premium component reports the width its panel takes on the right edge (a folded rail, a pinned side panel), as banners report their height at the top. The content, the top bar, the execution tabs and the help and warnings buttons end where the panel starts (`--app-right-offset`), also with the side menu pinned. Without premium panels nothing changes
   *Contributors:* [@antoniogonzalezsuarez](#)  
