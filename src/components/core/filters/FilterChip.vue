@@ -7,6 +7,9 @@
 
   The `panel` slot replaces the list of options with an editor of its own (a condition with an
   operator, a range…); `valueText` is then the value the chip shows, and the slot gets `close`.
+
+  With `searchable`, a search box over a long list of options leaves the ones whose title has the
+  text typed; it empties when the menu closes.
 -->
 <template>
   <PopoverRoot v-model:open="open">
@@ -57,9 +60,13 @@
       <slot v-if="$slots.panel" name="panel" :close="() => (open = false)" />
       <CoreMenu
         v-else
+        v-model:query="query"
         :title="label"
         selectable
         :items="menuItems"
+        :searchable="searchable"
+        :search-placeholder="searchPlaceholder"
+        :empty-text="emptyText"
         @select="pick($event.key)"
       >
         <slot name="after-options" />
@@ -69,7 +76,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { PopoverAnchor, PopoverRoot, PopoverTrigger } from 'reka-ui'
 import CoreIcon from '@cornflow-ui/core/components/core/CoreIcon.vue'
 import CoreMenu from '@cornflow-ui/core/components/core/CoreMenu.vue'
@@ -106,6 +113,11 @@ const props = withDefaults(
     menuWidth?: number
     /** The value shown on the chip, instead of the title of the picked option. */
     valueText?: string
+    /** A search box over the options, which leaves the ones whose title has the text typed. */
+    searchable?: boolean
+    searchPlaceholder?: string
+    /** Shown when the search leaves no option. */
+    emptyText?: string
   }>(),
   {
     icon: undefined,
@@ -118,6 +130,9 @@ const props = withDefaults(
     keepOpenValue: undefined,
     menuWidth: 260,
     valueText: undefined,
+    searchable: false,
+    searchPlaceholder: '',
+    emptyText: '',
   },
 )
 
@@ -154,8 +169,23 @@ const valueTitle = computed(
     '',
 )
 
+/** Text typed in the search box, while `searchable`. */
+const query = ref('')
+
+watch(open, (isOpen) => {
+  if (!isOpen) query.value = ''
+})
+
+const shownOptions = computed<FilterChipOption[]>(() => {
+  const text = query.value.trim().toLocaleLowerCase()
+  if (!props.searchable || !text) return options.value
+  return options.value.filter((option) =>
+    option.title.toLocaleLowerCase().includes(text),
+  )
+})
+
 const menuItems = computed<CoreMenuItem[]>(() =>
-  options.value.map((option) => ({
+  shownOptions.value.map((option) => ({
     key: String(option.value),
     label: option.title,
     selected: isSelected(option.value),

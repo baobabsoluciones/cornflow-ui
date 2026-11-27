@@ -1,4 +1,5 @@
 import { ExperimentCore } from './Experiment'
+import type { ExecutionDataFilter } from '@cornflow-ui/core/utils/executionDataFilter'
 
 type UIPreferences = {
   inputData: { selectedTable: null | string; filters: null | object }
@@ -22,7 +23,9 @@ export class LoadedExecution {
   /** The solver's log status (`status_code`: the solution state), when the execution has one. */
   solutionState: { status_code?: number | null } | null
   config: any
-  private readonly uiPreferences: UIPreferences
+  /** How the backend gives its data in parts, when it does: the value its narrowed tables carry. */
+  dataFilter: ExecutionDataFilter | null
+  private uiPreferences: UIPreferences
 
   constructor(params: {
     experiment: ExperimentCore
@@ -37,6 +40,7 @@ export class LoadedExecution {
     message: string
     solutionState?: { status_code?: number | null } | null
     config: any
+    dataFilter?: ExecutionDataFilter | null
   }) {
     this.experiment = params.experiment
     this.executionId = params.executionId
@@ -50,6 +54,7 @@ export class LoadedExecution {
     this.messageState = params.message
     this.solutionState = params.solutionState ?? null
     this.config = params.config
+    this.dataFilter = params.dataFilter ?? null
     this.uiPreferences = {
       inputData: { selectedTable: null, filters: {} },
       outputData: { selectedTable: null, filters: {} },
@@ -83,6 +88,18 @@ export class LoadedExecution {
 
   getDashboardPreferences() {
     return this.uiPreferences.dashboard
+  }
+
+  /** Takes the tables, filters and dashboard picked on `other`, the same execution read before. */
+  keepPreferencesOf(other: LoadedExecution) {
+    this.uiPreferences = other.uiPreferences
+  }
+
+  /** The value to read this execution for again, or null when it is not read in parts. */
+  getDataFilterSelection() {
+    return this.dataFilter
+      ? { param: this.dataFilter.param, value: this.dataFilter.value }
+      : null
   }
 
   hasSolution() {

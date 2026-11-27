@@ -112,6 +112,37 @@ describe('FilterChip', () => {
 
     expect(menu()).not.toBeNull()
   })
+
+  test('a searchable chip leaves the options whose title has the text typed', async () => {
+    const wrapper = mountChip({
+      searchable: true,
+      searchPlaceholder: 'Search…',
+      emptyText: 'No matches',
+    })
+    await open(wrapper)
+    const search = () =>
+      document.body.querySelector<HTMLInputElement>('.core-menu__search-input')!
+
+    search().value = 'sou'
+    search().dispatchEvent(new Event('input'))
+    await flushPromises()
+    expect(rowLabels()).toEqual(['South'])
+
+    search().value = 'east'
+    search().dispatchEvent(new Event('input'))
+    await flushPromises()
+    expect(rowLabels()).toEqual([])
+    expect(document.body.querySelector('.core-menu__empty')?.textContent?.trim()).toBe(
+      'No matches',
+    )
+  })
+
+  test('a chip without search shows no search box', async () => {
+    const wrapper = mountChip()
+    await open(wrapper)
+
+    expect(document.body.querySelector('.core-menu__search-input')).toBeNull()
+  })
 })
 
 describe('DateFilterChip', () => {

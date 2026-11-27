@@ -3,6 +3,13 @@
 ## [Unreleased]
 
 ### Added
+- **Executions read in parts**  
+  - An answer of `get_data` or `get_instance_data` can carry `data_filter`: the tables it narrows to one value, that value, the values that can be picked and the query parameter that picks one
+  - Over those tables, the input data and the results show a bar with the value and a searchable selector; picking another value reads the execution again for it and keeps the tables, filters and dashboard picked on it
+  - A running execution that finishes is read again for the value it shows, and the Excel download has the part on screen. An answer without `data_filter` shows as before
+  - `FilterChip` takes `searchable`, with `searchPlaceholder` and `emptyText`
+  *Contributors:* [@HelenaCA](#)  
+  *Commit ID:* —
 - **Platform roles, locked accounts and two-factor resets in roles management**  
   - A platform administrator (`platform_admin`) counts as an administrator and gets `store.isPlatformAdmin`; the platform roles have their own icon, tone, description and permissions
   - When the server keeps the list of roles to platform administrators (403 on `GET /roles/`), anyone else is told so and keeps the users, without the roles panel or the edit button; a server without platform roles keeps the whole page for every administrator

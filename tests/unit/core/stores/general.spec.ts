@@ -193,6 +193,33 @@ vi.mock('@cornflow-ui/core/repositories/VersionRepository', () => ({
 
 // Mock utility modules - keeping only the ones that exist
 
+/** A loaded execution the backend gives in parts by plant, showing `value`; or not in parts with null. */
+function executionInParts(executionId: string, value: string | null): LoadedExecution {
+  return new LoadedExecution({
+    experiment: {} as any,
+    executionId,
+    name: 'In parts',
+    description: '',
+    createdAt: '2023-01-01T00:00:00Z',
+    state: 1,
+    message: '',
+    config: {},
+    dataFilter:
+      value === null
+        ? null
+        : {
+            param: 'plant',
+            title: 'Plant',
+            value,
+            options: [
+              { value: 'P1', label: 'North' },
+              { value: 'P2', label: 'South' },
+            ],
+            tables: { instance: ['demand'], solution: [] },
+          },
+  })
+}
+
 describe('General Store', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -1100,6 +1127,7 @@ describe('General Store', () => {
         '123',
         false,
         false,
+        null,
       )
     })
 
@@ -1113,6 +1141,7 @@ describe('General Store', () => {
         '123',
         true,
         false,
+        null,
       )
     })
 
@@ -1126,6 +1155,7 @@ describe('General Store', () => {
         '123',
         false,
         true,
+        null,
       )
     })
 
@@ -1171,6 +1201,7 @@ describe('General Store', () => {
       )
       expect(mockExecutionRepository.loadExecution).toHaveBeenCalledWith(
         execution.executionId,
+        null,
       )
       expect(store.loadedExecutions[0]).toEqual(updatedExecution)
     })
@@ -1551,6 +1582,104 @@ describe('General Store', () => {
       expect(consoleSpy).toHaveBeenCalled()
       expect(stopSpy).toHaveBeenCalled()
       consoleSpy.mockRestore()
+    })
+
+    test('reads an execution given in parts for the value it shows', async () => {
+      const store = useGeneralStore()
+      const execRepo = {
+        getExecutionState: vi.fn().mockResolvedValue({ state: 1 }),
+        loadExecution: vi.fn().mockResolvedValue({ executionId: 'r1', state: 1 }),
+      }
+      store.executionRepository = execRepo as any
+      vi.spyOn(store, 'addLoadedExecution').mockImplementation(() => {})
+
+      await store.refreshRunningExecution(
+        executionInParts('r1', 'P2'),
+      )
+
+      expect(execRepo.loadExecution).toHaveBeenCalledWith('r1', {
+        param: 'plant',
+        value: 'P2',
+      })
+    })
+  })
+
+  describe('setExecutionDataFilterValue', () => {
+    test('reads the execution again for the value picked, with the tables picked on it', async () => {
+      const store = useGeneralStore()
+      const current = executionInParts('e1', 'P1')
+      current.setSelectedTablePreference('demand', 'instance')
+      const reread = executionInParts('e1', 'P2')
+      const execRepo = { loadExecution: vi.fn().mockResolvedValue(reread) }
+      store.executionRepository = execRepo as any
+      vi.spyOn(store, 'autoLoadExecutions').mockImplementation(async () => {})
+      store.loadedExecutions = [current]
+      store.selectedExecution = current
+
+      const result = await store.setExecutionDataFilterValue('e1', 'P2')
+
+      expect(result).toBe(true)
+      expect(execRepo.loadExecution).toHaveBeenCalledWith('e1', {
+        param: 'plant',
+        value: 'P2',
+      })
+      expect(store.loadedExecutions).toEqual([reread])
+      expect(store.selectedExecution).toBe(reread)
+      expect(reread.getSelectedTablePreference('instance')).toBe('demand')
+    })
+
+    test('does not read the value it already shows', async () => {
+      const store = useGeneralStore()
+      const execRepo = { loadExecution: vi.fn() }
+      store.executionRepository = execRepo as any
+      store.loadedExecutions = [executionInParts('e1', 'P1')]
+
+      await expect(store.setExecutionDataFilterValue('e1', 'P1')).resolves.toBe(true)
+      expect(execRepo.loadExecution).not.toHaveBeenCalled()
+    })
+
+    test('an execution not given in parts is not read again', async () => {
+      const store = useGeneralStore()
+      const execRepo = { loadExecution: vi.fn() }
+      store.executionRepository = execRepo as any
+      store.loadedExecutions = [executionInParts('e1', null)]
+
+      await expect(store.setExecutionDataFilterValue('e1', 'P2')).resolves.toBe(false)
+      expect(execRepo.loadExecution).not.toHaveBeenCalled()
+    })
+
+    test('keeps the execution as it was when it cannot be read', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const store = useGeneralStore()
+      const current = executionInParts('e1', 'P1')
+      store.executionRepository = {
+        loadExecution: vi.fn().mockRejectedValue(new Error('read-fail')),
+      } as any
+      store.loadedExecutions = [current]
+      store.selectedExecution = current
+
+      const result = await store.setExecutionDataFilterValue('e1', 'P2')
+
+      expect(result).toBe(false)
+      expect(store.selectedExecution?.dataFilter?.value).toBe('P1')
+      expect(store.loadedExecutions.map((e) => e.dataFilter?.value)).toEqual(['P1'])
+      expect(consoleSpy).toHaveBeenCalled()
+      consoleSpy.mockRestore()
+    })
+
+    test('downloads the part an execution shows', async () => {
+      const store = useGeneralStore()
+      store.loadedExecutions = [executionInParts('e1', 'P2')]
+      mockExecutionRepository.getDataToDownload.mockResolvedValue(undefined)
+
+      await store.getDataToDownload('e1', true, false)
+
+      expect(mockExecutionRepository.getDataToDownload).toHaveBeenCalledWith(
+        'e1',
+        true,
+        false,
+        { param: 'plant', value: 'P2' },
+      )
     })
   })
 

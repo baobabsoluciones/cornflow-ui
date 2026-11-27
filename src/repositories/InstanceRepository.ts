@@ -10,6 +10,10 @@ import {
   stripInvisibleParameterPropertiesFromInstanceData,
 } from '@cornflow-ui/core/utils/schemaUtils'
 import type { ExecutionEndpoint } from '@cornflow-ui/core/utils/executionEndpoints'
+import {
+  parseExecutionDataFilter,
+  type ExecutionDataFilterAnswer,
+} from '@cornflow-ui/core/utils/executionDataFilter'
 
 export default class InstanceRepository {
   /**
@@ -24,7 +28,24 @@ export default class InstanceRepository {
       isExternal: false,
     },
   ): Promise<InstanceCore> {
-    const response = await client.get(endpoint.path, {}, {}, endpoint.isExternal)
+    const { instance } = await this.getInstanceData(id, endpoint)
+    return instance
+  }
+
+  /**
+   * The instance, as `getInstance` reads it, and the `data_filter` of the answer when the backend
+   * gives the instance in parts (see `utils/executionDataFilter.ts`). `query` goes with the
+   * request: the value to read the instance for.
+   */
+  async getInstanceData(
+    id: string,
+    endpoint: ExecutionEndpoint = {
+      path: `/instance/${id}/data/`,
+      isExternal: false,
+    },
+    query: Record<string, string> = {},
+  ): Promise<{ instance: InstanceCore; dataFilter: ExecutionDataFilterAnswer | null }> {
+    const response = await client.get(endpoint.path, query, {}, endpoint.isExternal)
 
     if (response.status === 200) {
       const { Instance } = useGeneralStore().appConfig
@@ -37,7 +58,10 @@ export default class InstanceRepository {
         useGeneralStore().getSchemaName,
         instanceContent.checks,
       )
-      return instance
+      return {
+        instance,
+        dataFilter: parseExecutionDataFilter(instanceContent.data_filter),
+      }
     } else {
       throw new Error('Error getting instance')
     }
