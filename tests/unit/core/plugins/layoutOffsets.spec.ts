@@ -3,6 +3,9 @@ import {
   setTopBannerOffset,
   totalTopBannerOffset,
   resetTopBannerOffsets,
+  setRightPanelOffset,
+  totalRightPanelOffset,
+  resetRightPanelOffsets,
 } from '@cornflow-ui/core/plugins/layoutOffsets'
 
 describe('layoutOffsets (core layout channel)', () => {
@@ -31,5 +34,16 @@ describe('layoutOffsets (core layout channel)', () => {
     setTopBannerOffset('a', 48)
     setTopBannerOffset('a', 64)
     expect(totalTopBannerOffset.value).toBe(64)
+  })
+
+  test('right-edge panels: a pinned panel replaces its rail, a hidden one leaves no room', () => {
+    resetRightPanelOffsets()
+    setRightPanelOffset('assistant', 56)
+    expect(totalRightPanelOffset.value).toBe(56)
+    setRightPanelOffset('assistant', 420)
+    expect(totalRightPanelOffset.value).toBe(420)
+    setRightPanelOffset('assistant', 0)
+    expect(totalRightPanelOffset.value).toBe(0)
+    expect(totalTopBannerOffset.value).toBe(0) // separate from the top banners
   })
 })
