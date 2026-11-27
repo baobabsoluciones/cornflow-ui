@@ -6,16 +6,12 @@
  */
 import { test, expect } from '../../harness/fixtures'
 import {
-  type CornflowApi,
-  CornflowApiError,
-  type TestUser,
-} from '../../harness/cornflowApi'
-import {
   signInStep,
   submitSignIn,
   submitSignInForm,
 } from '../../harness/session'
-import { claimTotpCode, totpCode } from '../../harness/totp'
+import { userWithTwoFactor } from '../../harness/testUsers'
+import { claimTotpCode, staleTotpCode } from '../../harness/totp'
 import { recordToasts } from '../../harness/toasts'
 import { signOut } from '../../harness/user'
 
@@ -30,32 +26,6 @@ test.beforeEach(({ deployment, run }) => {
   )
 })
 
-/**
- * A user with two-factor authentication on, created for the test; skips it when the backend has
- * none (before Cornflow 1.4) or has it turned off.
- */
-async function userWithTwoFactor(
-  api: CornflowApi,
-  label: string,
-): Promise<TestUser> {
-  const role = await api.roleForTestUsers()
-  const user = await api
-    .createUser({ roleId: role.id, label, mfa: true })
-    .catch((error) => {
-      if (
-        error instanceof CornflowApiError &&
-        [404, 501].includes(error.status)
-      )
-        test.skip(true, 'this backend has no two-factor authentication')
-      throw error
-    })
-  return user
-}
-
-/** A code of the user's that is not good now: the one of ten minutes ago. */
-const staleCode = (secret: string) =>
-  totpCode(secret, Math.floor(Date.now() / 30_000) - 20)
-
 test.describe('two-factor authentication at sign-in', () => {
   test('asks for the code after the password: a wrong one is turned down, back goes to the password, and the right one signs in', async ({
     page,
@@ -69,7 +39,7 @@ test.describe('two-factor authentication at sign-in', () => {
     ).toBe('mfa-code')
 
     const code = page.getByTestId('sign-in-mfa-code')
-    await code.fill(staleCode(user.totpSecret!))
+    await code.fill(staleTotpCode(user.totpSecret!))
     await submitSignIn(page, page.getByTestId('sign-in-mfa-submit'))
     await expect
       .poll(() => toasts.map((toast) => toast.kind))
@@ -164,7 +134,7 @@ test.describe('two-factor authentication at sign-in', () => {
 
     const code = page.getByTestId('sign-in-mfa-enroll-code')
     const verify = page.getByTestId('sign-in-mfa-enroll-submit')
-    await code.fill(staleCode(secret))
+    await code.fill(staleTotpCode(secret))
     await verify.click()
     await expect
       .poll(() => toasts.map((toast) => toast.kind))

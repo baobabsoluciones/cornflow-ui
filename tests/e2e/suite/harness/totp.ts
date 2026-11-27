@@ -39,6 +39,10 @@ export function totpCode(
   return String(value).padStart(6, '0')
 }
 
+/** A code of `secret` that is no good now: the one of ten minutes ago. */
+export const staleTotpCode = (secret: string): string =>
+  totpCode(secret, Math.floor(Date.now() / STEP_MS) - 20)
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 /**

@@ -49,6 +49,8 @@ export interface TestUser {
    * and this one has not yet: it is asked on its first sign-in.
    */
   mfaPending?: boolean
+  /** The server asks every user to turn two-factor authentication on (`MFA_REQUIRED`). */
+  mfaRequired?: boolean
 }
 
 /** What a sign-in gives: the session, and the previous sign-in (Cornflow 1.4). */
@@ -275,9 +277,12 @@ export class CornflowApi {
   /**
    * Turns two-factor authentication on for the user of `token` (a session, or the temporary token
    * of a sign-up or sign-in that asks for it). Returns its secret and its one-time backup codes.
+   * Its first code is taken for `username`, as each of its sign-ins after, so none of them is given
+   * that code again (Cornflow turns down a code used twice).
    */
   async enableMfa(
     token: string,
+    username: string,
   ): Promise<{ secret: string; backupCodes: string[] }> {
     const { secret } = await this.request<{ secret: string }>(
       'POST',
@@ -289,7 +294,7 @@ export class CornflowApi {
     const { backup_codes } = await this.request<{ backup_codes: string[] }>(
       'POST',
       '/mfa/verify/',
-      { totp_code: await claimTotpCode(secret, `enroll-${secret}`) },
+      { totp_code: await claimTotpCode(secret, username) },
       [],
       token,
     )
@@ -634,7 +639,7 @@ export class CornflowApi {
     const mfaPending = !!created.mfa_setup_required && !!args.leaveMfaPending
     const mfa =
       !mfaPending && created.token && (created.mfa_setup_required || args.mfa)
-        ? await this.enableMfa(created.token)
+        ? await this.enableMfa(created.token, username)
         : null
 
     const assignments = await this.request<UserRole[]>('GET', '/user/role/')
@@ -657,6 +662,7 @@ export class CornflowApi {
       roleId: args.roleId,
       ...(mfa ? { totpSecret: mfa.secret, backupCodes: mfa.backupCodes } : {}),
       ...(mfaPending ? { mfaPending } : {}),
+      ...(created.mfa_setup_required ? { mfaRequired: true } : {}),
     }
   }
 

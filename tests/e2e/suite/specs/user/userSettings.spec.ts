@@ -11,6 +11,7 @@ import { newPassword } from '../../harness/cornflowApi'
 import { HISTORY, openHistory } from '../../harness/history'
 import { goToRoute, openFromMenu } from '../../harness/navigation'
 import { signInThroughForm, submitSignInForm } from '../../harness/session'
+import { newTestUser } from '../../harness/testUsers'
 import { recordToasts } from '../../harness/toasts'
 import { openSettings, signOut, USER_SETTINGS } from '../../harness/user'
 
@@ -184,8 +185,7 @@ test.describe('user settings', () => {
         'the password is changed only where users sign in with Cornflow',
       )
       // `api` is E2E_USER, an admin in disposable mode, without a session.
-      const role = await api.roleForTestUsers()
-      const user = await api.createUser({ roleId: role.id, label: 'password' })
+      const user = await newTestUser(api, 'password')
       // An admin sets it: the server asks the user to change it.
       const given = newPassword()
       await api.setPassword(user.id, given)
