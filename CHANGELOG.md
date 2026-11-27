@@ -36,12 +36,12 @@
   - Test ids (`data-testid`) and state attributes (`data-status`, `data-state`, `data-load-status`, `data-rows`, `data-value`…) on the screens the suite goes through: the side menu, the history, the create-execution page, data tables, dialogs, tours and help, roles management, dashboards and "not found". They change nothing the app does
   - `tests/e2e/README.md`: running the suite in an app, the UAT file, the modes, what it tests, the report and writing specs
   *Contributors:* [@david-hidalgo-baobab](#)  
-  *Commit ID:* #
+  *Commit ID:* #292
 - **`window.cornflowUi.describe()`**  
   - What a running app is made of, as data: its config (`core`), schemas, sign-in type, developer mode, staging environment, languages, registered modules, sections, roles (`rolesConfig`), help files, dashboards, the backend it talks to (`backendUrl`), what the backend says about each DAG (`frontendConfig`), the master tables of frontend automation (`masterData`) and the first-level keys of its texts (`i18nNamespaces`). It only reads. The end-to-end suite reads it to know what to test
   - Published only on the pages of the end-to-end suite, which marks them (`window.__cornflowE2E`) before the app starts; anywhere else, as in production, there is no `window.cornflowUi`
   *Contributors:* [@david-hidalgo-baobab](#)  
-  *Commit ID:* #
+  *Commit ID:* #292
 
 ### Removed
 - **The previous end-to-end suite**  
@@ -49,7 +49,7 @@
   - **Breaking for suites built on it:** a layer that imports `fixtures`, `helpers/urlHelpers`, `helpers/executionHelpers` or `helpers/constants` from the core copy has to move to the new harness: `test` and `expect` from `.cornflow-core/harness/fixtures`, navigation with `openFromMenu`, and data through the `api` fixture (README "Writing specs"). The config factory keeps its options and its project names, so a layer's Playwright config still works
   - **Breaking for apps that ran it:** the credentials are now `E2E_USER` and `E2E_PASSWORD` (they were `PLAYWRIGHT_TEST_USER` and `PLAYWRIGHT_TEST_PASSWORD`; the suite says so when it finds the old names). `PLAYWRIGHT_BACKEND_URL` becomes the optional `E2E_BACKEND_URL`, and `PLAYWRIGHT_AUTH_TYPE`, `PLAYWRIGHT_TEST_TEMP_PASSWORD` and the `REPORT_*` variables are no longer read. Each app needs its UAT file (`tests/e2e/uat.json`, README "The UAT file"): without it the run stops before anything. Update `tests/e2e/.env.test.example` from core's
   *Contributors:* [@david-hidalgo-baobab](#)  
-  *Commit ID:* #
+  *Commit ID:* #292
 
 ## [4.1.0] - 24-11-2026
 
