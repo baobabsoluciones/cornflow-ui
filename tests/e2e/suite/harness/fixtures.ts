@@ -93,8 +93,8 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     const token = sessionEntries?.token
     if (token) api.useToken(token)
     else {
-      const { username, password } = credentials()
-      await api.login(username, password)
+      const { username, password, totpSecret } = credentials()
+      await api.login(username, password, totpSecret)
     }
     await use(api)
     await api.cleanup()

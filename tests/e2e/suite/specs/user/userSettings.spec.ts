@@ -190,7 +190,12 @@ test.describe('user settings', () => {
       )
       const role = roles.find((r) => r.name === 'planner') ?? roles[0]
       const user = await api.createUser({ roleId: role.id, label: 'password' })
-      await signInThroughForm(page, user.username, user.password)
+      await signInThroughForm(
+        page,
+        user.username,
+        user.password,
+        user.totpSecret,
+      )
       await openSettings(page)
 
       const current = page.getByTestId('settings-current-password')
@@ -240,11 +245,11 @@ test.describe('user settings', () => {
         'it asks to sign in again',
       ).toBeVisible()
       await expect(
-        api.signedInAs(user.username, password),
+        api.signedInAs(user.username, password, user.totpSecret),
         'the new password signs in',
       ).resolves.toBeTruthy()
       await expect(
-        api.signedInAs(user.username, user.password),
+        api.signedInAs(user.username, user.password, user.totpSecret),
         'the old one no longer does',
       ).rejects.toThrow()
     })

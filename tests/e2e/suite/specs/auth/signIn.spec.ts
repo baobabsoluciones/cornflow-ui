@@ -4,6 +4,7 @@
  */
 import { test, expect } from '../../harness/fixtures'
 import { credentials } from '../../harness/run'
+import { signInThroughForm } from '../../harness/session'
 
 test.describe('sign in', () => {
   test.beforeEach(({ deployment }) => {
@@ -14,11 +15,9 @@ test.describe('sign in', () => {
   })
 
   test('signs in with a valid user and opens the app', async ({ page }) => {
-    const { username, password } = credentials()
-    await page.goto('/')
-    await page.getByTestId('sign-in-username').fill(username)
-    await page.getByTestId('sign-in-password').fill(password)
-    await page.getByTestId('sign-in-submit').click()
+    const { username, password, totpSecret } = credentials()
+    // With its code, when it has two-factor authentication on.
+    await signInThroughForm(page, username, password, totpSecret)
 
     await expect(page.getByTestId('app-drawer')).toBeAttached()
     await expect(page.getByTestId('sign-in-username')).toHaveCount(0)

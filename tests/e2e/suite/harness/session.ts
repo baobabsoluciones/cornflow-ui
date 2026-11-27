@@ -4,8 +4,9 @@
  * out. So the set-up signs in through the form, as a user does, and keeps a copy of that
  * `sessionStorage`; a browser context opened for that user gets it back before the app loads.
  */
-import type { Browser, BrowserContext, Page } from '@playwright/test'
-import { type CornflowApi, CornflowApiError } from './cornflowApi'
+import type { Browser, BrowserContext, Locator, Page } from '@playwright/test'
+import { type CornflowApi, CornflowApiError, type Session } from './cornflowApi'
+import { claimTotpCode } from './totp'
 import {
   cornflowApiFor,
   type Deployment,
@@ -16,45 +17,93 @@ import {
 } from './run'
 
 /**
- * Signs in through the sign-in form of the app and waits until the app has the session. Says so
- * plainly when the server asks for more than a user and password: a two-factor code, or a new
- * password before going on. The suite signs in with neither.
+ * Sends the sign-in form with `button` and waits for the backend's answer. When it says there
+ * were too many attempts from this address (429, Cornflow 1.4), waits a minute and sends it
+ * again. Returns the status of the answer.
  */
-export async function signInThroughForm(
+export async function submitSignIn(
   page: Page,
-  username: string,
-  password: string,
-): Promise<void> {
-  await page.goto('/')
-  await page.getByTestId('sign-in-username').fill(username)
-  await page.getByTestId('sign-in-password').fill(password)
-  await page.getByTestId('sign-in-submit').click()
-  const outcome = await page
+  button: Locator,
+): Promise<number> {
+  for (let attempt = 1; ; attempt++) {
+    const answer = page.waitForResponse(
+      (response) =>
+        /\/login\/$|\/mfa\/verify\/$/.test(new URL(response.url()).pathname) &&
+        response.request().method() === 'POST',
+      { timeout: 30_000 },
+    )
+    await button.click()
+    const status = (await answer).status()
+    if (status !== 429 || attempt === 3) return status
+    await page.waitForTimeout(61_000)
+  }
+}
+
+/**
+ * Where the sign-in has got to: `signed in`, or the step of the sign-in form (`data-step`:
+ * `mfa-code`, `mfa-enroll`, `mfa-backup`) other than `credentials` and `from`; `failed` when it
+ * gets to none.
+ */
+export async function signInStep(
+  page: Page,
+  from = 'credentials',
+): Promise<string> {
+  return page
     .waitForFunction(
-      () => {
+      (from) => {
         if (
           sessionStorage.getItem('isAuthenticated') === 'true' &&
           !!sessionStorage.getItem('token')
         )
           return 'signed in'
-        const asked = (id: string) =>
-          !!document.querySelector(`[data-testid="${id}"]`)
-        return asked('sign-in-mfa-code') ||
-          asked('sign-in-mfa-qr') ||
-          asked('sign-in-mfa-enroll-code')
-          ? 'two-factor'
-          : false
+        const step = document
+          .querySelector('[data-step]')
+          ?.getAttribute('data-step')
+        return step && step !== 'credentials' && step !== from ? step : false
       },
-      null,
+      from,
       { timeout: 30_000 },
     )
-    .then((handle) => handle.jsonValue())
+    .then((handle) => handle.jsonValue() as Promise<string>)
     .catch(() => 'failed')
-  if (outcome === 'two-factor') {
+}
+
+/**
+ * Signs in through the sign-in form of the app and waits until the app has the session. With
+ * two-factor authentication on, gives the code its secret makes. Says so plainly when the server
+ * asks for what the suite cannot give: a code without the secret, turning two-factor
+ * authentication on first, or a new password before going on.
+ */
+export async function signInThroughForm(
+  page: Page,
+  username: string,
+  password: string,
+  totpSecret?: string,
+): Promise<void> {
+  await page.goto('/')
+  await page.getByTestId('sign-in-username').fill(username)
+  await page.getByTestId('sign-in-password').fill(password)
+  await submitSignIn(page, page.getByTestId('sign-in-submit'))
+  let outcome = await signInStep(page)
+  if (outcome === 'mfa-code') {
+    if (!totpSecret) {
+      throw new Error(
+        `[cornflow-e2e] Could not sign in as "${username}": it has two-factor authentication ` +
+          'on, and the suite has no secret to make its codes. For E2E_USER, set E2E_TOTP_SECRET ' +
+          'to the secret of its authenticator (the one its QR code holds).',
+      )
+    }
+    await page
+      .getByTestId('sign-in-mfa-code')
+      .fill(await claimTotpCode(totpSecret, username))
+    await submitSignIn(page, page.getByTestId('sign-in-mfa-submit'))
+    outcome = await signInStep(page, 'mfa-code')
+  }
+  if (outcome === 'mfa-enroll') {
     throw new Error(
-      `[cornflow-e2e] Could not sign in as "${username}": the server asks for a two-factor ` +
-        'code. The suite signs in with a user and password only: use a user without two-factor ' +
-        'authentication, on a server that does not require it.',
+      `[cornflow-e2e] Could not sign in as "${username}": the server requires two-factor ` +
+        'authentication, and this user has not turned it on. For E2E_USER, sign in once in the ' +
+        'app, turn it on, and give the suite its secret in E2E_TOTP_SECRET.',
     )
   }
   if (outcome !== 'signed in') {
@@ -139,10 +188,11 @@ export async function freshSessionStorage(
 ): Promise<Record<string, string>> {
   let last = issued.get(user)
   if (!last || Date.now() - last.at > REUSE_MS) {
-    const { username, password } = readSessionCredentials(user)
+    const { username, password, totpSecret } = readSessionCredentials(user)
     const api = cornflowApiFor(readDeployment(), baseURL)
     last = {
-      token: (await loginWithinLimit(api, username, password)).token,
+      token: (await loginWithinLimit(api, username, password, totpSecret))
+        .token,
       at: Date.now(),
     }
     issued.set(user, last)
@@ -153,14 +203,15 @@ export async function freshSessionStorage(
 }
 
 /** Signs in through the API, waiting a minute when Cornflow says there were too many (429). */
-async function loginWithinLimit(
+export async function loginWithinLimit(
   api: CornflowApi,
   username: string,
   password: string,
-): Promise<{ token: string }> {
+  totpSecret?: string,
+): Promise<Session> {
   for (let attempt = 1; ; attempt++) {
     try {
-      return await api.login(username, password)
+      return await api.login(username, password, totpSecret)
     } catch (error) {
       if (
         !(error instanceof CornflowApiError) ||

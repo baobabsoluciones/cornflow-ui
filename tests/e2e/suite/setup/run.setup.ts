@@ -71,7 +71,7 @@ setup('prepare the run', async ({ browser, baseURL }) => {
   }
 
   const api = cornflowApiFor(before, baseURL)
-  await api.login(admin.username, admin.password)
+  await api.login(admin.username, admin.password, admin.totpSecret)
   // Kept once signed in, so the clean-up knows the backend even if the set-up stops before the
   // end. Before that the run has made nothing, and the clean-up leaves the backend alone.
   saveDeployment(before)
@@ -82,6 +82,7 @@ setup('prepare the run', async ({ browser, baseURL }) => {
     user: TestUser | null
     password: string
     username: string
+    totpSecret?: string
   }[] = []
   if (uat.mode === 'shared') {
     users.push({ sessions: ['default'], user: null, ...admin })
@@ -116,16 +117,26 @@ setup('prepare the run', async ({ browser, baseURL }) => {
   }
 
   const sessions: SessionUser[] = []
-  for (const { sessions: names, user, username, password } of users) {
+  for (const {
+    sessions: names,
+    user,
+    username,
+    password,
+    totpSecret,
+  } of users) {
     const context = await browser.newContext({ baseURL })
     await markForTheSuite(context)
     const page = await context.newPage()
-    await signInThroughForm(page, username, password)
+    await signInThroughForm(page, username, password, totpSecret)
     const entries = await readPageSessionStorage(page)
     for (const name of names) {
       await context.storageState({ path: storageStateFile(name) })
       saveSessionStorage(name, entries)
-      saveSessionCredentials(name, { username, password })
+      saveSessionCredentials(name, {
+        username,
+        password,
+        ...(totpSecret ? { totpSecret } : {}),
+      })
       sessions.push({ name, username, ...(user ? { id: user.id } : {}) })
     }
     // Signed in, the app also has what the backend says about each DAG and every parameter.

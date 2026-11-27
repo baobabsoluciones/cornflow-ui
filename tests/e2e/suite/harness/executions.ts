@@ -103,8 +103,8 @@ export async function solvedExecution(
   })
   let how: SolvedHow = 'saved'
   try {
-    const { username, password } = credentials()
-    const saver = await api.signedInAs(username, password)
+    const { username, password, totpSecret } = credentials()
+    const saver = await api.signedInAs(username, password, totpSecret)
     await saver.saveResults(id, solution)
   } catch (error) {
     if (!(error instanceof CornflowApiError && error.status === 403))

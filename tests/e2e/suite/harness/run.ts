@@ -164,23 +164,32 @@ export const saveSessionStorage = (
 export const readSessionStorage = (user: string): Record<string, string> =>
   read(sessionStorageFile(user), `session of "${user}"`)
 
+/** What it takes to sign in as a user: and, with two-factor authentication on, its secret. */
+export interface Credentials {
+  username: string
+  password: string
+  totpSecret?: string
+}
+
 /**
- * The username and password of a session's user, in the same gitignored folder: each test signs
- * in again with them (harness/session.ts `freshSessionStorage`), as a saved session runs out.
+ * The credentials of a session's user, in the same gitignored folder: each test signs in again
+ * with them (harness/session.ts `freshSessionStorage`), as a saved session runs out.
  */
 const sessionCredentialsFile = (user: string): string =>
   path.join(stateDir(), `${user}.credentials.json`)
 export const saveSessionCredentials = (
   user: string,
-  credentials: { username: string; password: string },
+  credentials: Credentials,
 ): void => write(sessionCredentialsFile(user), credentials)
-export const readSessionCredentials = (
-  user: string,
-): { username: string; password: string } =>
+export const readSessionCredentials = (user: string): Credentials =>
   read(sessionCredentialsFile(user), `credentials of "${user}"`)
 
-/** The credentials the suite signs in with, from the environment. */
-export function credentials(): { username: string; password: string } {
+/**
+ * The credentials the suite signs in with, from the environment: `E2E_USER`, `E2E_PASSWORD`, and
+ * `E2E_TOTP_SECRET` when that user has two-factor authentication on (the secret its authenticator
+ * holds), to make its codes.
+ */
+export function credentials(): Credentials {
   const username = process.env.E2E_USER
   const password = process.env.E2E_PASSWORD
   if (!username || !password) {
@@ -200,7 +209,8 @@ export function credentials(): { username: string; password: string } {
         'the user the suite signs in as, an admin when the mode is "disposable".',
     )
   }
-  return { username, password }
+  const totpSecret = process.env.E2E_TOTP_SECRET || undefined
+  return { username, password, ...(totpSecret ? { totpSecret } : {}) }
 }
 
 /**

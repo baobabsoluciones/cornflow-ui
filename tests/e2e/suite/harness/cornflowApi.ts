@@ -10,6 +10,7 @@
  * client's project, where the sources of core are not something Playwright can load.
  */
 import { randomUUID } from 'node:crypto'
+import { claimTotpCode } from './totp'
 
 /** `length` random characters, 0-9 and a-f, from a cryptographically secure source (up to 32). */
 export const randomHex = (length: number): string =>
@@ -39,6 +40,23 @@ export interface TestUser {
   username: string
   password: string
   roleId: number
+  /** The secret of its two-factor authentication, when it has it on. */
+  totpSecret?: string
+  /** Its one-time backup codes, when it turned two-factor authentication on here. */
+  backupCodes?: string[]
+  /**
+   * The server asks every user to turn two-factor authentication on (Cornflow's `MFA_REQUIRED`),
+   * and this one has not yet: it is asked on its first sign-in.
+   */
+  mfaPending?: boolean
+}
+
+/** What a sign-in gives: the session, and the previous sign-in (Cornflow 1.4). */
+export interface Session {
+  id: number
+  token: string
+  refresh_token?: string
+  last_login?: string | null
 }
 
 /**
@@ -191,9 +209,13 @@ export class CornflowApi {
    * Another client on the same backend and run, signed in as another user: to do what this
    * client's user may not. It keeps its own list of what it creates.
    */
-  async signedInAs(username: string, password: string): Promise<CornflowApi> {
+  async signedInAs(
+    username: string,
+    password: string,
+    totpSecret?: string,
+  ): Promise<CornflowApi> {
     const other = new CornflowApi({ ...this.options, runId: this.runId })
-    await other.login(username, password)
+    await other.login(username, password, totpSecret)
     return other
   }
 
@@ -208,22 +230,75 @@ export class CornflowApi {
     return `${E2E_USER_PREFIX}${this.runId.replace(/-/g, '_')}_${slug}`
   }
 
-  /** Signs in; the calls after it are made as that user. Returns the user's id and token. */
+  /**
+   * Signs in; the calls after it are made as that user. Returns its session. A user with
+   * two-factor authentication on (Cornflow 1.4) needs its secret, `totpSecret`, to give the code.
+   */
   async login(
     username: string,
     password: string,
-  ): Promise<{ id: number; token: string; refresh_token?: string }> {
-    // `refresh_token` from Cornflow 1.4, where refresh tokens are on.
-    const content = await this.request<{
-      id: number
-      token: string
-      refresh_token?: string
-    }>('POST', '/login/', {
+    totpSecret?: string,
+  ): Promise<Session> {
+    type Answer = Partial<Session> & {
+      mfa_required?: boolean
+      mfa_setup_required?: boolean
+    }
+    let content = await this.request<Answer>('POST', '/login/', {
       username,
       password,
     })
+    if (content.mfa_required) {
+      if (!totpSecret) {
+        throw new Error(
+          `[cornflow-e2e] "${username}" has two-factor authentication on, and the suite has ` +
+            'no secret to make its codes. For E2E_USER, set E2E_TOTP_SECRET to the secret of ' +
+            'its authenticator (the one its QR code holds).',
+        )
+      }
+      content = await this.request<Answer>('POST', '/login/', {
+        username,
+        password,
+        totp_code: await claimTotpCode(totpSecret, username),
+      })
+    }
+    if (content.mfa_setup_required || !content.token) {
+      throw new Error(
+        `[cornflow-e2e] "${username}" has to turn two-factor authentication on before it can ` +
+          'sign in: the server requires it. For E2E_USER, sign in once in the app, turn it on, ' +
+          'and give the suite its secret in E2E_TOTP_SECRET.',
+      )
+    }
     this.token = content.token
-    return content
+    return content as Session
+  }
+
+  /**
+   * Turns two-factor authentication on for the user of `token` (a session, or the temporary token
+   * of a sign-up or sign-in that asks for it). Returns its secret and its one-time backup codes.
+   */
+  async enableMfa(
+    token: string,
+  ): Promise<{ secret: string; backupCodes: string[] }> {
+    const { secret } = await this.request<{ secret: string }>(
+      'POST',
+      '/mfa/setup/',
+      {},
+      [],
+      token,
+    )
+    const { backup_codes } = await this.request<{ backup_codes: string[] }>(
+      'POST',
+      '/mfa/verify/',
+      { totp_code: await claimTotpCode(secret, `enroll-${secret}`) },
+      [],
+      token,
+    )
+    return { secret, backupCodes: backup_codes }
+  }
+
+  /** A user as Cornflow describes it: whether it has two-factor authentication on, is locked… */
+  async user(id: number): Promise<Record<string, unknown>> {
+    return this.request('GET', `/user/${id}/`)
   }
 
   /** Acts as the user a token belongs to, such as the one a signed-in page holds. */
@@ -497,17 +572,36 @@ export class CornflowApi {
    * Only for a disposable deployment: it takes an admin, and sign-up being on (Cornflow's default).
    * Cornflow gives every new user its default role, which is taken away when it is not `roleId`.
    */
-  async createUser(args: { roleId: number; label: string }): Promise<TestUser> {
+  async createUser(args: {
+    roleId: number
+    label: string
+    /** Turns two-factor authentication on for it, though the server does not ask it. */
+    mfa?: boolean
+    /** Where the server asks for it, leaves it for the user's first sign-in. */
+    leaveMfaPending?: boolean
+  }): Promise<TestUser> {
     // A few random characters at the end: a test or set-up retried makes its user again, while the
     // one of the attempt that failed is still there until the clean-up.
     const username = `${this.username(args.label)}_${randomHex(4)}`
     const password = newPassword()
-    const { id } = await this.request<{ id: number }>('POST', '/signup/', {
+    const created = await this.request<{
+      id: number
+      token?: string
+      mfa_setup_required?: boolean
+    }>('POST', '/signup/', {
       username,
       email: `${username}@example.com`,
       password,
     })
+    const id = created.id
     this.users.add(id)
+    // Where the server requires two-factor authentication (Cornflow 1.4's MFA_REQUIRED), the new
+    // user cannot sign in until it turns it on: the suite does it with the sign-up's token.
+    const mfaPending = !!created.mfa_setup_required && !!args.leaveMfaPending
+    const mfa =
+      !mfaPending && created.token && (created.mfa_setup_required || args.mfa)
+        ? await this.enableMfa(created.token)
+        : null
 
     const assignments = await this.request<UserRole[]>('GET', '/user/role/')
     const current = assignments
@@ -522,7 +616,14 @@ export class CornflowApi {
     for (const roleId of current.filter((role) => role !== args.roleId)) {
       await this.request('DELETE', `/user/role/${id}/${roleId}/`)
     }
-    return { id, username, password, roleId: args.roleId }
+    return {
+      id,
+      username,
+      password,
+      roleId: args.roleId,
+      ...(mfa ? { totpSecret: mfa.secret, backupCodes: mfa.backupCodes } : {}),
+      ...(mfaPending ? { mfaPending } : {}),
+    }
   }
 
   /** The users of the deployment, as an admin sees them (`GET /user/`). */
@@ -535,9 +636,26 @@ export class CornflowApi {
     return this.request('GET', '/user/role/')
   }
 
-  /** Deletes a user. Gone already is fine. */
+  /**
+   * Deletes a user. Gone already is fine. Cornflow 1.4 does not delete a user that has two-factor
+   * authentication on (it leaves its backup codes, which keep the user): when it says so (400),
+   * the user's two-factor authentication is reset first, and the user deleted again.
+   */
   async deleteUser(id: number): Promise<void> {
-    await this.request('DELETE', `/user/${id}/`, undefined, [404])
+    const remove = () =>
+      this.request('DELETE', `/user/${id}/`, undefined, [404])
+    try {
+      await remove()
+    } catch (error) {
+      if (!(error instanceof CornflowApiError) || error.status !== 400)
+        throw error
+      const reset = await this.request('DELETE', `/user/${id}/mfa/`).then(
+        () => true,
+        () => false,
+      )
+      if (!reset) throw error
+      await remove()
+    }
     this.users.delete(id)
   }
 
@@ -657,10 +775,11 @@ export class CornflowApi {
     path: string,
     body?: unknown,
     allowedStatuses: number[] = [],
+    token: string | null = this.token,
   ): Promise<T> {
     const headers: Record<string, string> = { Accept: 'application/json' }
     if (body !== undefined) headers['Content-Type'] = 'application/json'
-    if (this.token) headers.Authorization = `Bearer ${this.token}`
+    if (token) headers.Authorization = `Bearer ${token}`
 
     let response: Response
     try {

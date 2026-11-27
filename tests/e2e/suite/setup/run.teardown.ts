@@ -19,9 +19,9 @@ teardown('clean up the run', async ({ baseURL }) => {
     )
     return
   }
-  const { username, password } = credentials()
+  const { username, password, totpSecret } = credentials()
   const api = cornflowApiFor(deployment, baseURL)
-  await api.login(username, password)
+  await api.login(username, password, totpSecret)
   const removed = await api.sweepRun()
   console.log(
     `[cornflow-e2e] Cleaned up run ${api.runId}: ${removed.executions} executions, ` +
